@@ -527,6 +527,11 @@ def water_report(c, codes=None):
 def water_api():
     return jsonify(water_report(db()))
 
+def day_words(d):
+    """'2026-10-23' -> 'Friday, Oct 23', for the change log."""
+    d = date.fromisoformat(d) if isinstance(d, str) else d
+    return f'{d:%A}, {d:%b} {d.day}'
+
 @app.route('/api/care', methods=['GET', 'POST'])
 def care():
     c = db()
@@ -552,7 +557,8 @@ def care():
         r = plant_row(c, code)
         ids.append(c.execute('INSERT INTO care_log(plant_code,kind,done_on,note,created_by,created_at) VALUES(?,?,?,?,?,?)',
                              (r['code'], kind, day, note, who, now())).lastrowid)
-        audit_only(c, 'care', 'care_log', None, f'{CARE_KINDS[kind]} {day}' + (f': {note}' if note else ''), who, CARE_KINDS[kind] + (f': {note}' if note else ''), r['id'], r['code'])
+        audit_only(c, 'care', 'care_log', None, f'{CARE_KINDS[kind]} {day}' + (f': {note}' if note else ''), who,
+                   CARE_KINDS[kind] + (f': {note}' if note else '') + ('' if day == local_today(c).isoformat() else f' (for {day_words(day)})'), r['id'], r['code'])
     c.commit()
     return jsonify(ids=ids, water=water_report(c, codes)['plants']), 201
 
@@ -564,7 +570,7 @@ def care_one(i):
     c.execute('DELETE FROM care_log WHERE id=?', (i,))
     r = c.execute('SELECT id FROM plants WHERE code=?', (old['plant_code'],)).fetchone()
     audit_only(c, 'care', 'care_log', f"{CARE_KINDS.get(old['kind'], old['kind'])} {old['done_on']}", None, editor(),
-               'Removed: ' + CARE_KINDS.get(old['kind'], old['kind']) + ' on ' + old['done_on'], r['id'] if r else None, old['plant_code'])
+               'Removed from the care log: ' + CARE_KINDS.get(old['kind'], old['kind']) + ', ' + day_words(old['done_on']), r['id'] if r else None, old['plant_code'])
     c.commit()
     return jsonify(ok=True)
 
