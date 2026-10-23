@@ -1,0 +1,28 @@
+services:
+  plants:
+    build:
+      context: .
+      args:
+        PLANTDB_VERSION: "1.7.5"
+    # The tag is the release number, so Docker Desktop shows which version is running (Containers > Image column).
+    image: plant-database:1.7.5
+    container_name: plant-database
+    labels:
+      plantdb.version: "1.7.5"
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data          # database and photos live here; back this folder up
+      - ./backups:/backups    # backups made by the app (Backups page); copy some to another drive now and then
+    environment:
+      # Optional: uncomment to require a password (any username) in the browser.
+      # PLANTDB_PASSWORD: "change-me"
+      # Optional: uncomment to stop the hourly online weather lookup.
+      # PLANTDB_WEATHER: "0"
+      TZ: America/Chicago
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8080/healthz')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3

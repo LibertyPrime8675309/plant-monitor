@@ -1,0 +1,1465 @@
+{
+ "id": "batch5",
+ "created": "2026-10-20",
+ "author": "Claude (batch 5, feeding seasons)",
+ "plants": [],
+ "existing_photos": [],
+ "updates": [
+  {
+   "code": "P-001",
+   "name": "Dieffenbachia (dumb cane), lime/cream form",
+   "photos": [
+    "img_1000021186.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     21
+    ]
+   }
+  },
+  {
+   "code": "P-002",
+   "name": "Boobie cactus (Fukurokuryuzinboku)",
+   "photos": [
+    "img_1000021088.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     8
+    ],
+    "fert_every_days": [
+     null,
+     30
+    ]
+   }
+  },
+  {
+   "code": "P-003",
+   "name": "Fig",
+   "photos": [
+    "img_1000021162.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     8
+    ],
+    "fert_every_days": [
+     null,
+     30
+    ]
+   }
+  },
+  {
+   "code": "P-004",
+   "name": "Grape vine (young)",
+   "photos": [
+    "img_1000021164.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     6
+    ],
+    "fert_every_days": [
+     null,
+     30
+    ]
+   }
+  },
+  {
+   "code": "P-005",
+   "name": "Morning glory / tievine (potted)",
+   "photos": [
+    "img_1000021165.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     30
+    ]
+   }
+  },
+  {
+   "code": "P-006",
+   "name": "Twining heart-leaf vine on trellis",
+   "photos": [
+    "img_1000021202.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     30
+    ]
+   }
+  },
+  {
+   "code": "P-007",
+   "name": "Possible moringa / compound-leaf tree seedling",
+   "photos": [
+    "img_1000021166.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     30
+    ]
+   }
+  },
+  {
+   "code": "P-008",
+   "name": "Bougainvillea",
+   "photos": [
+    "img_1000021167.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     28
+    ]
+   }
+  },
+  {
+   "code": "P-009",
+   "name": "Variegated aroid, white-streaked (in green ribbed pot)",
+   "photos": [
+    "img_1000021168.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     21
+    ]
+   }
+  },
+  {
+   "code": "P-010",
+   "name": "Dieffenbachia / cane aroid (resprouting)",
+   "photos": [
+    "img_1000021169.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     21
+    ]
+   }
+  },
+  {
+   "code": "P-011",
+   "name": "Variegated peace lily or dieffenbachia (white-splashed)",
+   "photos": [
+    "img_1000021170.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     42
+    ]
+   }
+  },
+  {
+   "code": "P-012",
+   "name": "Aeonium (green/yellow rosette form)",
+   "photos": [
+    "img_1000021171.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     10
+    ],
+    "fert_to_month": [
+     null,
+     4
+    ],
+    "fert_every_days": [
+     null,
+     42
+    ]
+   }
+  },
+  {
+   "code": "P-013",
+   "name": "Prickly pear (opuntia)",
+   "photos": [
+    "img_1000021172.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     8
+    ],
+    "fert_every_days": [
+     null,
+     30
+    ]
+   }
+  },
+  {
+   "code": "P-014",
+   "name": "Aloe vera (probable)",
+   "photos": [
+    "img_1000021174.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     8
+    ],
+    "fert_every_days": [
+     null,
+     42
+    ]
+   }
+  },
+  {
+   "code": "P-015",
+   "name": "Aloe (trunked) with companion succulents",
+   "photos": [
+    "img_1000021175.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     8
+    ],
+    "fert_every_days": [
+     null,
+     42
+    ]
+   }
+  },
+  {
+   "code": "P-016",
+   "name": "Haworthia / zebra plant pair",
+   "photos": [
+    "img_1000021176.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     56
+    ]
+   }
+  },
+  {
+   "code": "P-017",
+   "name": "Palm (pinnate, yellow-green)",
+   "photos": [
+    "img_1000021177.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     42
+    ]
+   }
+  },
+  {
+   "code": "P-018",
+   "name": "Ghost plant (blush rosette succulent)",
+   "photos": [
+    "img_1000021178.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     42
+    ]
+   }
+  },
+  {
+   "code": "P-019",
+   "name": "Variegated elephant bush (rainbow bush)",
+   "photos": [
+    "img_1000021179.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     42
+    ]
+   }
+  },
+  {
+   "code": "P-020",
+   "name": "Fiddle-leaf fig",
+   "photos": [
+    "img_1000021180.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     30
+    ]
+   }
+  },
+  {
+   "code": "P-021",
+   "name": "Desert rose seedlings (6 cups)",
+   "photos": [
+    "img_1000021181.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     28
+    ]
+   }
+  },
+  {
+   "code": "P-022",
+   "name": "Rose (potted)",
+   "photos": [
+    "img_1000021182.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     28
+    ]
+   }
+  },
+  {
+   "code": "P-023",
+   "name": "Cosmos (volunteers)",
+   "photos": [
+    "img_1000021183.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     10
+    ],
+    "fert_every_days": [
+     null,
+     14
+    ]
+   }
+  },
+  {
+   "code": "P-024",
+   "name": "Fern (crisped, recoverable)",
+   "photos": [
+    "img_1000021187.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     28
+    ]
+   }
+  },
+  {
+   "code": "P-025",
+   "name": "Begonia (lobed, bright green)",
+   "photos": [
+    "img_1000021188.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     10
+    ],
+    "fert_every_days": [
+     null,
+     21
+    ]
+   }
+  },
+  {
+   "code": "P-026",
+   "name": "Polka-dot begonia 'Obsidian'",
+   "photos": [
+    "img_1000021189.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     10
+    ],
+    "fert_every_days": [
+     null,
+     21
+    ]
+   }
+  },
+  {
+   "code": "P-027",
+   "name": "Coleus (deep red)",
+   "photos": [
+    "img_1000021190.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     10
+    ],
+    "fert_every_days": [
+     null,
+     14
+    ]
+   }
+  },
+  {
+   "code": "P-028",
+   "name": "Chinese evergreen (red/pink)",
+   "photos": [
+    "img_1000021191.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     42
+    ]
+   }
+  },
+  {
+   "code": "P-029",
+   "name": "Philodendron 'Strawberry Shake'",
+   "photos": [
+    "img_1000021192.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     21
+    ]
+   }
+  },
+  {
+   "code": "P-030",
+   "name": "Philodendron 'Pink Princess' (declining)",
+   "photos": [
+    "img_1000021193.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     21
+    ]
+   }
+  },
+  {
+   "code": "P-031",
+   "name": "Calathea (striped, crisped)",
+   "photos": [
+    "img_1000021194.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     28
+    ]
+   }
+  },
+  {
+   "code": "P-032",
+   "name": "Moth orchid in water",
+   "photos": [
+    "img_1000021195.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     10
+    ],
+    "fert_every_days": [
+     null,
+     14
+    ]
+   }
+  },
+  {
+   "code": "P-033",
+   "name": "Coleus (lime and plum)",
+   "photos": [
+    "img_1000021196.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     10
+    ],
+    "fert_every_days": [
+     null,
+     14
+    ]
+   }
+  },
+  {
+   "code": "P-034",
+   "name": "Unidentified: dying strappy plant with one new leaf",
+   "photos": [
+    "img_1000021197.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     42
+    ]
+   }
+  },
+  {
+   "code": "P-035",
+   "name": "Philodendron 'Pink Princess' (cutting, declining)",
+   "photos": [
+    "img_1000021198.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     21
+    ]
+   }
+  },
+  {
+   "code": "P-036",
+   "name": "Unidentified young serrated-leaf plant",
+   "photos": [
+    "img_1000021199.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     42
+    ]
+   }
+  },
+  {
+   "code": "P-037",
+   "name": "ZZ plant",
+   "photos": [
+    "img_1000021200.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     8
+    ],
+    "fert_every_days": [
+     null,
+     56
+    ]
+   }
+  },
+  {
+   "code": "P-038",
+   "name": "ZZ plant #2 (staked, new shoots)",
+   "photos": [
+    "img_1000021201.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     8
+    ],
+    "fert_every_days": [
+     null,
+     56
+    ]
+   }
+  },
+  {
+   "code": "P-039",
+   "name": "Yellow-cream philodendron",
+   "photos": [
+    "img_1000021173.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     21
+    ]
+   }
+  },
+  {
+   "code": "P-040",
+   "name": "Crown of thorns",
+   "photos": [
+    "img_1000021173.jpg",
+    "img_b2_01.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     42
+    ]
+   }
+  },
+  {
+   "code": "P-041",
+   "name": "Moon cactus (red, grafted)",
+   "photos": [
+    "img_b2_02.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     5
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     30
+    ]
+   }
+  },
+  {
+   "code": "P-042",
+   "name": "Agave (species not identified)",
+   "photos": [
+    "img_b2_03.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     56
+    ]
+   }
+  },
+  {
+   "code": "P-043",
+   "name": "Zebra haworthia",
+   "photos": [
+    "img_b2_04.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     56
+    ]
+   }
+  },
+  {
+   "code": "P-044",
+   "name": "Fuzzy-leaved succulent (unidentified)",
+   "photos": [
+    "img_b2_05.jpg",
+    "img_b2_01.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     42
+    ]
+   }
+  },
+  {
+   "code": "P-045",
+   "name": "Aeonium, burgundy rosettes",
+   "photos": [
+    "img_b2_06.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     10
+    ],
+    "fert_to_month": [
+     null,
+     4
+    ],
+    "fert_every_days": [
+     null,
+     42
+    ]
+   }
+  },
+  {
+   "code": "P-046",
+   "name": "Vanilla orchid (young vine)",
+   "photos": [
+    "img_b2_07.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     14
+    ]
+   }
+  },
+  {
+   "code": "P-047",
+   "name": "Purple heart",
+   "photos": [
+    "img_b2_08.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     10
+    ],
+    "fert_every_days": [
+     null,
+     28
+    ]
+   }
+  },
+  {
+   "code": "P-048",
+   "name": "Arrowhead plant (pink)",
+   "photos": [
+    "img_b2_09.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     21
+    ]
+   }
+  },
+  {
+   "code": "P-049",
+   "name": "Monstera (Swiss cheese plant)",
+   "photos": [
+    "img_b2_10.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     21
+    ]
+   }
+  },
+  {
+   "code": "P-050",
+   "name": "Water hyacinth",
+   "photos": [
+    "img_b2_11.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     28
+    ]
+   }
+  },
+  {
+   "code": "P-051",
+   "name": "Variegated clump (unidentified, new shoots)",
+   "photos": [
+    "img_b2_12.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     10
+    ],
+    "fert_every_days": [
+     null,
+     28
+    ]
+   }
+  },
+  {
+   "code": "P-052",
+   "name": "Gardenia",
+   "photos": [
+    "img_b2_13.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     28
+    ]
+   }
+  },
+  {
+   "code": "P-053",
+   "name": "Tendril vine in red pot (unidentified)",
+   "photos": [
+    "img_b2_14.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     30
+    ]
+   }
+  },
+  {
+   "code": "P-054",
+   "name": "Purple fountain grass",
+   "photos": [
+    "img_b2_15.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     7
+    ],
+    "fert_every_days": [
+     null,
+     56
+    ]
+   }
+  },
+  {
+   "code": "P-055",
+   "name": "Philodendron (self-heading type, cultivar unconfirmed)",
+   "photos": [
+    "img_b2_16.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     21
+    ]
+   }
+  },
+  {
+   "code": "P-056",
+   "name": "Alocasia (dark glossy leaf)",
+   "photos": [
+    "img_b2_18.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     14
+    ]
+   }
+  },
+  {
+   "code": "P-057",
+   "name": "Celosia 'Kelos Fire Purple'",
+   "photos": [
+    "img_b2_19.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     10
+    ],
+    "fert_every_days": [
+     null,
+     14
+    ]
+   }
+  },
+  {
+   "code": "P-058",
+   "name": "Celosia 'Glorious Orange'",
+   "photos": [
+    "img_b2_20.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     10
+    ],
+    "fert_every_days": [
+     null,
+     14
+    ]
+   }
+  },
+  {
+   "code": "P-059",
+   "name": "Wandering jew (silver-striped)",
+   "photos": [
+    "img_b2_21.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     10
+    ],
+    "fert_every_days": [
+     null,
+     28
+    ]
+   }
+  },
+  {
+   "code": "P-060",
+   "name": "Arrowhead plant (green, white-veined)",
+   "photos": [
+    "img_b2_22.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     21
+    ]
+   }
+  },
+  {
+   "code": "P-061",
+   "name": "Alocasia (lime-green, tagged)",
+   "photos": [
+    "img_b2_23.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     4
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     14
+    ]
+   }
+  },
+  {
+   "code": "P-062",
+   "name": "Philodendron 'White Knight'",
+   "photos": [
+    "img_b2_24.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     21
+    ]
+   }
+  },
+  {
+   "code": "P-063",
+   "name": "Money tree",
+   "photos": [
+    "img_b2_25.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     30
+    ]
+   }
+  },
+  {
+   "code": "P-064",
+   "name": "Bearded iris (potted)",
+   "photos": [
+    "img_b2_26.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     5
+    ],
+    "fert_every_days": [
+     null,
+     56
+    ]
+   }
+  },
+  {
+   "code": "P-065",
+   "name": "Variegated rubber tree",
+   "photos": [
+    "img_b2_27.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     30
+    ]
+   }
+  },
+  {
+   "code": "P-066",
+   "name": "Velvet-leaf philodendron (young)",
+   "photos": [
+    "img_b2_28.jpg"
+   ],
+   "note": "Added feeding season (months and days between feedings) for the fertilizer calendar",
+   "set": {
+    "fert_from_month": [
+     null,
+     3
+    ],
+    "fert_to_month": [
+     null,
+     9
+    ],
+    "fert_every_days": [
+     null,
+     21
+    ]
+   }
+  }
+ ],
+ "to_photograph_done": [],
+ "to_photograph_add": []
+}

@@ -1,0 +1,2632 @@
+{
+ "id": "batch9",
+ "created": "2026-10-22",
+ "author": "Claude (batch 9, Ethan's October 21 photos)",
+ "plants": [
+  {
+   "temp_ideal_low": 55,
+   "temp_ideal_high": 85,
+   "temp_damage_below": 32,
+   "temp_lethal_below": 25,
+   "temp_notes": "Leaves freeze at about 32 F and plants die below ~25 F.",
+   "humidity_low": 30,
+   "humidity_high": 50,
+   "humidity_notes": "Dry air preferred.",
+   "light_summary": "Full sun to bright shade",
+   "light_hours": "6 h bright light",
+   "light_notes": "Pale tan/orange leaves suggest sun or cold stress.",
+   "winter_plan": "Protect outside",
+   "winter_summary": "Cold-tender. Bring under cover before freezes.",
+   "winter_triggers": "Cover at 35 F, indoors/garage at 30 F or below.",
+   "winter_steps": "Cover at 35 F or below (frost cloth/sheet draped to the ground over a frame; frost cloth buys roughly 6-8 F). Bring in or move into the garage at 30 F or in a multi-day freeze.\nWater the day before a freeze (moist soil holds heat) but keep the plant dry the rest of winter; skip watering when it is below 40 F.\nCluster pots against a south/east wall under the roof, away from north wind, and pile mulch or leaves around the pots.\nStop nitrogen fertilizer now; new tender growth freezes first.\nKeep pots in the covered porch; avoid winter rain.",
+   "indoor_setup": "Bright south window if brought in; water monthly.",
+   "notes": "Split from P-014 on October 21 2026: the old P-014 page covered three pots.",
+   "temp_damage_above": 110,
+   "vpd_low": 0.8,
+   "vpd_high": 2.0,
+   "par_low": 600,
+   "par_high": 1500,
+   "dli_low": 15.0,
+   "dli_high": 35.0,
+   "water_notes": "Soak when the mix is dry all the way through: every 2-3 weeks in summer and about once a month in winter. Keep water out of the center of the rosette. Mushy, translucent leaves mean too much water.",
+   "soil_medium": "Cactus mix with extra pumice or perlite: about half mineral. Use a pot with drainage holes.",
+   "soil_ph_low": 6.0,
+   "soil_ph_high": 7.5,
+   "soil_moisture_low": 5,
+   "soil_moisture_high": 25,
+   "soil_temp_low": 55,
+   "soil_temp_high": 95,
+   "fertilizer": "Low-nitrogen cactus or succulent fertilizer at half strength",
+   "nutrients": "Feed 2-3 times between April and August. None in cool weather. Pale, thin leaves point to low light; brown and orange leaves can be sun stress or cold.",
+   "fert_from_month": 4,
+   "fert_to_month": 8,
+   "fert_every_days": 42,
+   "pests_watch": "Aloe mites (twisted, galled new growth)\nMealybugs and scale\nAloe rust and leaf spot\nRoot rot from wet, cold mix",
+   "pest_steps": "Inspect the crown and leaf bases with a flashlight every few weeks.\nTreat mealybugs and scale by dabbing them with 70% rubbing alcohol on a swab; repeat weekly until gone.\nKeep water out of the crown, and keep the mix dry through cold weather.\nIf a stem turns soft or black, cut well above it with a clean blade and let the cut dry for a week before replanting.\nQuarantine any new plant for 2 weeks.",
+   "pests_current": "No pests identified in the photos so far. Note here anything you see, with the date.",
+   "scientific_name": "Aloe vera (spotted young form) or a hybrid",
+   "aliases": "",
+   "plant_type": "Succulent",
+   "id_basis": "Grey-green leaves with white speckles and pale teeth along the edges, in an upright rosette. Young Aloe vera is spotted like this; the spots fade as it matures. Ethan's photos show three separate pots, so each now has its own page.",
+   "id_alternatives": "Aloe vera\nAloe maculata (soap aloe; flatter, more strongly banded)\nAn Aloe hybrid such as 'Hercules' (young)",
+   "id_improve": "A flower spike: Aloe vera has yellow flowers\nAny tag or receipt",
+   "common_name": "Aloe vera (probable), teal pot",
+   "location": "Black pots on the ground, yard",
+   "container": "Teal-green plastic pot, next to a terracotta pot",
+   "id_confidence": 60,
+   "health_rating": "Fair",
+   "health_summary": "Slimmer and upright; leaves tinged orange-tan.",
+   "health_observations": "Orange-tan stress colour\nDry leaf tips",
+   "health_steps": "Water only when the mix is dry through.\nMove it under cover before nights reach 32°F.",
+   "site": "Outdoors",
+   "photos": [
+    {
+     "file": "img_b9_p014_1.jpg",
+     "caption": "October 21: from above",
+     "primary": true,
+     "source": "P-014 (1)"
+    },
+    {
+     "file": "img_b9_p014_7.jpg",
+     "caption": "October 21: side view",
+     "primary": false,
+     "source": "P-014 (7)"
+    }
+   ]
+  },
+  {
+   "temp_ideal_low": 55,
+   "temp_ideal_high": 85,
+   "temp_damage_below": 32,
+   "temp_lethal_below": 25,
+   "temp_notes": "Leaves freeze at about 32 F and plants die below ~25 F.",
+   "humidity_low": 30,
+   "humidity_high": 50,
+   "humidity_notes": "Dry air preferred.",
+   "light_summary": "Full sun to bright shade",
+   "light_hours": "6 h bright light",
+   "light_notes": "Pale tan/orange leaves suggest sun or cold stress.",
+   "winter_plan": "Protect outside",
+   "winter_summary": "Cold-tender. Bring under cover before freezes.",
+   "winter_triggers": "Cover at 35 F, indoors/garage at 30 F or below.",
+   "winter_steps": "Cover at 35 F or below (frost cloth/sheet draped to the ground over a frame; frost cloth buys roughly 6-8 F). Bring in or move into the garage at 30 F or in a multi-day freeze.\nWater the day before a freeze (moist soil holds heat) but keep the plant dry the rest of winter; skip watering when it is below 40 F.\nCluster pots against a south/east wall under the roof, away from north wind, and pile mulch or leaves around the pots.\nStop nitrogen fertilizer now; new tender growth freezes first.\nKeep pots in the covered porch; avoid winter rain.",
+   "indoor_setup": "Bright south window if brought in; water monthly.",
+   "notes": "Split from P-014 on October 21 2026: the old P-014 page covered three pots.",
+   "temp_damage_above": 110,
+   "vpd_low": 0.8,
+   "vpd_high": 2.0,
+   "par_low": 600,
+   "par_high": 1500,
+   "dli_low": 15.0,
+   "dli_high": 35.0,
+   "water_notes": "Soak when the mix is dry all the way through: every 2-3 weeks in summer and about once a month in winter. Keep water out of the center of the rosette. Mushy, translucent leaves mean too much water.",
+   "soil_medium": "Cactus mix with extra pumice or perlite: about half mineral. Use a pot with drainage holes.",
+   "soil_ph_low": 6.0,
+   "soil_ph_high": 7.5,
+   "soil_moisture_low": 5,
+   "soil_moisture_high": 25,
+   "soil_temp_low": 55,
+   "soil_temp_high": 95,
+   "fertilizer": "Low-nitrogen cactus or succulent fertilizer at half strength",
+   "nutrients": "Feed 2-3 times between April and August. None in cool weather. Pale, thin leaves point to low light; brown and orange leaves can be sun stress or cold.",
+   "fert_from_month": 4,
+   "fert_to_month": 8,
+   "fert_every_days": 42,
+   "pests_watch": "Aloe mites (twisted, galled new growth)\nMealybugs and scale\nAloe rust and leaf spot\nRoot rot from wet, cold mix",
+   "pest_steps": "Inspect the crown and leaf bases with a flashlight every few weeks.\nTreat mealybugs and scale by dabbing them with 70% rubbing alcohol on a swab; repeat weekly until gone.\nKeep water out of the crown, and keep the mix dry through cold weather.\nIf a stem turns soft or black, cut well above it with a clean blade and let the cut dry for a week before replanting.\nQuarantine any new plant for 2 weeks.",
+   "pests_current": "No pests identified in the photos so far. Note here anything you see, with the date.",
+   "scientific_name": "Aloe vera (spotted young form) or a hybrid",
+   "aliases": "",
+   "plant_type": "Succulent",
+   "id_basis": "Grey-green leaves with white speckles and pale teeth along the edges, in an upright rosette. Young Aloe vera is spotted like this; the spots fade as it matures. Ethan's photos show three separate pots, so each now has its own page.",
+   "id_alternatives": "Aloe vera\nAloe maculata (soap aloe; flatter, more strongly banded)\nAn Aloe hybrid such as 'Hercules' (young)",
+   "id_improve": "A flower spike: Aloe vera has yellow flowers\nAny tag or receipt",
+   "common_name": "Aloe vera (probable), black pot by the prickly pear pad",
+   "location": "Black pots on the ground, yard",
+   "container": "Black nursery pot (behind the pot holding a prickly pear pad)",
+   "id_confidence": 60,
+   "health_rating": "Fair",
+   "health_summary": "Several leaf tips are dry and curled; leaves tinged orange-tan.",
+   "health_observations": "Orange-tan stress colour\nDry leaf tips",
+   "health_steps": "Water only when the mix is dry through.\nMove it under cover before nights reach 32°F.",
+   "site": "Outdoors",
+   "photos": [
+    {
+     "file": "img_b9_p014_2.jpg",
+     "caption": "October 21: from above, curled dry leaf tips",
+     "primary": true,
+     "source": "P-014 (2)"
+    },
+    {
+     "file": "img_b9_p014_5.jpg",
+     "caption": "October 21: side view",
+     "primary": false,
+     "source": "P-014 (5)"
+    }
+   ]
+  },
+  {
+   "temp_damage_above": 110,
+   "vpd_low": 0.8,
+   "vpd_high": 2.0,
+   "par_low": 600,
+   "par_high": 1500,
+   "dli_low": 15,
+   "dli_high": 35,
+   "water_notes": "Soak when the mix is dry all the way through: every 2-3 weeks in summer and about once a month in winter. Keep water out of the center of the rosette. Mushy, translucent leaves mean too much water.",
+   "soil_medium": "Cactus mix with extra pumice or perlite: about half mineral. Use a pot with drainage holes.",
+   "soil_ph_low": 6.0,
+   "soil_ph_high": 7.5,
+   "soil_moisture_low": 5,
+   "soil_moisture_high": 25,
+   "soil_temp_low": 55,
+   "soil_temp_high": 95,
+   "fertilizer": "Low-nitrogen cactus or succulent fertilizer at half strength",
+   "nutrients": "Feed 2-3 times between April and August. None in cool weather. Pale, thin leaves point to low light; brown and orange leaves can be sun stress or cold.",
+   "pests_watch": "Aloe mites (twisted, galled new growth)\nMealybugs and scale\nAloe rust and leaf spot\nRoot rot from wet, cold mix",
+   "pest_steps": "Inspect the crown and leaf bases with a flashlight every few weeks.\nTreat mealybugs and scale by dabbing them with 70% rubbing alcohol on a swab; repeat weekly until gone.\nKeep water out of the crown, and keep the mix dry through cold weather.\nIf a stem turns soft or black, cut well above it with a clean blade and let the cut dry for a week before replanting.\nQuarantine any new plant for 2 weeks.",
+   "temp_ideal_low": 55,
+   "temp_ideal_high": 85,
+   "temp_damage_below": 32,
+   "temp_lethal_below": 25,
+   "temp_notes": "Treat as frost-tender until identified.",
+   "humidity_low": 10,
+   "humidity_high": 60,
+   "humidity_notes": "Dry air is fine.",
+   "light_summary": "Bright light, morning sun",
+   "light_hours": "4-6 hours",
+   "light_notes": "Bronze colour means it is getting plenty of sun; shade it from hot afternoon sun.",
+   "winter_plan": "Move indoors",
+   "winter_summary": "Small and frost-tender. Bring the pot under cover before nights reach 35°F.",
+   "winter_triggers": "Move the pot when a night below 35°F is forecast.",
+   "winter_steps": "Water lightly in winter.\nBright window or porch.",
+   "indoor_setup": "",
+   "notes": "Split from P-016 on October 21, 2026: the two rosettes in that pot are different plants.",
+   "common_name": "Speckled dwarf aloe (in the zebra haworthia pot)",
+   "scientific_name": "Dwarf Aloe hybrid or xGasteraloe (unconfirmed)",
+   "aliases": "",
+   "plant_type": "Succulent",
+   "location": "Terracotta pot, yard",
+   "container": "Terracotta bowl with perlite and bark (shared with P-016)",
+   "id_confidence": 40,
+   "id_basis": "Broad, flat, spiralling dark olive-brown leaves covered in small white dots, with fine white teeth along the edges and papery white tips. That fits one of the many dwarf Aloe hybrids or an Aloe x Gasteria cross. It is not the same plant as the zebra haworthia beside it.",
+   "id_alternatives": "Dwarf Aloe hybrid\nxGasteraloe\nAristaloe aristata (lace aloe; has long hair-like tips)",
+   "id_improve": "A flower spike\nA side view of one leaf, and of the whole rosette\nWhere it came from",
+   "health_rating": "Fair",
+   "health_summary": "Firm, but sun-bronzed, and one outer leaf is dying back.",
+   "health_observations": "Dark bronze colour (sun stress)\nPapery white leaf tips\nOne outer leaf dying back",
+   "health_steps": "Give it a little afternoon shade.\nWater only when the mix is dry through.",
+   "site": "Outdoors",
+   "fert_from_month": 4,
+   "fert_to_month": 8,
+   "fert_every_days": 42,
+   "pests_current": "No pests identified in the photos so far. Note here anything you see, with the date.",
+   "photos": [
+    {
+     "file": "img_b9_p016_5.jpg",
+     "caption": "October 21: speckled rosette from above",
+     "primary": true,
+     "source": "P-016 (5)"
+    },
+    {
+     "file": "img_b9_p016_6.jpg",
+     "caption": "October 21: side view",
+     "primary": false,
+     "source": "P-016 (6)"
+    },
+    {
+     "file": "img_b9_p016_1.jpg",
+     "caption": "October 21: a leaf dying back",
+     "primary": false,
+     "source": "P-016 (1)"
+    }
+   ]
+  }
+ ],
+ "existing_photos": [
+  {
+   "code": "P-004",
+   "file": "img_b9_p004_3.jpg",
+   "caption": "October 21: leaf top",
+   "primary": true,
+   "source": "P-004 (3)"
+  },
+  {
+   "code": "P-004",
+   "file": "img_b9_p004_4.jpg",
+   "caption": "October 21: pale, felted leaf undersides",
+   "primary": false,
+   "source": "P-004 (4)"
+  },
+  {
+   "code": "P-004",
+   "file": "img_b9_p004_5.jpg",
+   "caption": "October 21: undersides and a leaf spot",
+   "primary": false,
+   "source": "P-004 (5)"
+  },
+  {
+   "code": "P-004",
+   "file": "img_b9_p004_2.jpg",
+   "caption": "October 21: whole plant, autumn yellowing",
+   "primary": false,
+   "source": "P-004 (2)"
+  },
+  {
+   "code": "P-004",
+   "file": "img_b9_p004_1.jpg",
+   "caption": "October 21: shredding bark at the base",
+   "primary": false,
+   "source": "P-004 (1)"
+  },
+  {
+   "code": "P-005",
+   "file": "img_b9_p005_4.jpg",
+   "caption": "October 21: three-lobed leaf and a hairy flower bud",
+   "primary": true,
+   "source": "P-005 (4)"
+  },
+  {
+   "code": "P-005",
+   "file": "img_b9_p005_2.jpg",
+   "caption": "October 21: leaf with brown blotches",
+   "primary": false,
+   "source": "P-005 (2)"
+  },
+  {
+   "code": "P-005",
+   "file": "img_b9_p005_3.jpg",
+   "caption": "October 21: bud with long, narrow, bristly sepals",
+   "primary": false,
+   "source": "P-005 (3)"
+  },
+  {
+   "code": "P-005",
+   "file": "img_b9_p005_1.jpg",
+   "caption": "October 21: vine on the stake",
+   "primary": false,
+   "source": "P-005 (1)"
+  },
+  {
+   "code": "P-005",
+   "file": "img_b9_p005_5.jpg",
+   "caption": "October 21: base, dead leaves and spurge weed",
+   "primary": false,
+   "source": "P-005 (5)"
+  },
+  {
+   "code": "P-006",
+   "file": "img_b9_p006_1.jpg",
+   "caption": "October 21: smooth heart- to arrow-shaped leaves",
+   "primary": true,
+   "source": "P-006 (1)"
+  },
+  {
+   "code": "P-006",
+   "file": "img_b9_p006_2.jpg",
+   "caption": "October 21: leaf with angular basal lobes",
+   "primary": false,
+   "source": "P-006 (2)"
+  },
+  {
+   "code": "P-006",
+   "file": "img_b9_p006_3.jpg",
+   "caption": "October 21: twining green stems",
+   "primary": false,
+   "source": "P-006 (3)"
+  },
+  {
+   "code": "P-007",
+   "file": "img_b9_p007_2.jpg",
+   "caption": "October 21: leaves and stems",
+   "primary": true,
+   "source": "P-007 (2)"
+  },
+  {
+   "code": "P-007",
+   "file": "img_b9_p007_1.jpg",
+   "caption": "October 21: tag 'Mexican Bird of Paradise, Caesalpinia mexicana'",
+   "primary": false,
+   "source": "P-007 (1)"
+  },
+  {
+   "code": "P-007",
+   "file": "img_b9_p007_4.jpg",
+   "caption": "October 21: Round Rock Garden Center label",
+   "primary": false,
+   "source": "P-007 (4)"
+  },
+  {
+   "code": "P-007",
+   "file": "img_b9_p007_3.jpg",
+   "caption": "October 21: trunk base and weed seedlings",
+   "primary": false,
+   "source": "P-007 (3)"
+  },
+  {
+   "code": "P-009",
+   "file": "img_b9_p009_3.jpg",
+   "caption": "October 21: pinstriped Birkin leaves",
+   "primary": true,
+   "source": "P-009 (3)"
+  },
+  {
+   "code": "P-009",
+   "file": "img_b9_p009_2.jpg",
+   "caption": "October 21: tag 'Philodendron Birkin'",
+   "primary": false,
+   "source": "P-009 (2)"
+  },
+  {
+   "code": "P-009",
+   "file": "img_b9_p009_4.jpg",
+   "caption": "October 21: new leaves with red sheaths",
+   "primary": false,
+   "source": "P-009 (4)"
+  },
+  {
+   "code": "P-009",
+   "file": "img_b9_p009_1.jpg",
+   "caption": "October 21: base and an all-green leaf",
+   "primary": false,
+   "source": "P-009 (1)"
+  },
+  {
+   "code": "P-010",
+   "file": "img_b9_p010_4.jpg",
+   "caption": "October 21: new leaves on the canes",
+   "primary": true,
+   "source": "P-010 (4)"
+  },
+  {
+   "code": "P-010",
+   "file": "img_b9_p010_2.jpg",
+   "caption": "October 21: tag 'Dieffenbachia Seguine'",
+   "primary": false,
+   "source": "P-010 (2)"
+  },
+  {
+   "code": "P-010",
+   "file": "img_b9_p010_3.jpg",
+   "caption": "October 21: Costa Farms label",
+   "primary": false,
+   "source": "P-010 (3)"
+  },
+  {
+   "code": "P-010",
+   "file": "img_b9_p010_1.jpg",
+   "caption": "October 21: canes with dried tops",
+   "primary": false,
+   "source": "P-010 (1)"
+  },
+  {
+   "code": "P-010",
+   "file": "img_b9_p010_5.jpg",
+   "caption": "October 21: side view",
+   "primary": false,
+   "source": "P-010 (5)"
+  },
+  {
+   "code": "P-011",
+   "file": "img_b9_p011_1.jpg",
+   "caption": "October 21: leaves with large cream and yellow sectors",
+   "primary": true,
+   "source": "P-011 (1)"
+  },
+  {
+   "code": "P-011",
+   "file": "img_b9_p011_3.jpg",
+   "caption": "October 21: the clump from above",
+   "primary": false,
+   "source": "P-011 (3)"
+  },
+  {
+   "code": "P-011",
+   "file": "img_b9_p011_2.jpg",
+   "caption": "October 21: roots showing at the soil surface",
+   "primary": false,
+   "source": "P-011 (2)"
+  },
+  {
+   "code": "P-012",
+   "file": "img_b9_p012_3.jpg",
+   "caption": "October 21: rosette with fine-toothed edges",
+   "primary": true,
+   "source": "P-012 (3)"
+  },
+  {
+   "code": "P-012",
+   "file": "img_b9_p012_2.jpg",
+   "caption": "October 21: the whole bowl",
+   "primary": false,
+   "source": "P-012 (2)"
+  },
+  {
+   "code": "P-012",
+   "file": "img_b9_p012_1.jpg",
+   "caption": "October 21: stem with aerial roots",
+   "primary": false,
+   "source": "P-012 (1)"
+  },
+  {
+   "code": "P-012",
+   "file": "img_b9_p012_4.jpg",
+   "caption": "October 21: branching stems",
+   "primary": false,
+   "source": "P-012 (4)"
+  },
+  {
+   "code": "P-012",
+   "file": "img_b9_p012_5.jpg",
+   "caption": "October 21: side view",
+   "primary": false,
+   "source": "P-012 (5)"
+  },
+  {
+   "code": "P-014",
+   "file": "img_b9_p014_6.jpg",
+   "caption": "October 21: P-014, the biggest of the three aloes (black pot, gravel)",
+   "primary": true,
+   "source": "P-014 (6)"
+  },
+  {
+   "code": "P-014",
+   "file": "img_b9_p014_3.jpg",
+   "caption": "October 21: P-014 from above",
+   "primary": false,
+   "source": "P-014 (3)"
+  },
+  {
+   "code": "P-014",
+   "file": "img_b9_p014_4.jpg",
+   "caption": "October 21: P-014 base",
+   "primary": false,
+   "source": "P-014 (4)"
+  },
+  {
+   "code": "P-015",
+   "file": "img_b9_p015_1.jpg",
+   "caption": "October 21: rosettes",
+   "primary": true,
+   "source": "P-015 (1)"
+  },
+  {
+   "code": "P-015",
+   "file": "img_b9_p015_2.jpg",
+   "caption": "October 21: tag 'Hardy Aloe Striatula'",
+   "primary": false,
+   "source": "P-015 (2)"
+  },
+  {
+   "code": "P-015",
+   "file": "img_b9_p015_3.jpg",
+   "caption": "October 21: striped leaf bases on the stem",
+   "primary": false,
+   "source": "P-015 (3)"
+  },
+  {
+   "code": "P-015",
+   "file": "img_b9_p015_4.jpg",
+   "caption": "October 21: offsets",
+   "primary": false,
+   "source": "P-015 (4)"
+  },
+  {
+   "code": "P-016",
+   "file": "img_b9_p016_4.jpg",
+   "caption": "October 21: zebra haworthia from above",
+   "primary": true,
+   "source": "P-016 (4)"
+  },
+  {
+   "code": "P-016",
+   "file": "img_b9_p016_7.jpg",
+   "caption": "October 21: zebra haworthia, offsets",
+   "primary": false,
+   "source": "P-016 (7)"
+  },
+  {
+   "code": "P-016",
+   "file": "img_b9_p016_2.jpg",
+   "caption": "October 21: zebra haworthia, dry tips",
+   "primary": false,
+   "source": "P-016 (2)"
+  },
+  {
+   "code": "P-016",
+   "file": "img_b9_p016_3.jpg",
+   "caption": "October 21: zebra haworthia side view",
+   "primary": false,
+   "source": "P-016 (3)"
+  },
+  {
+   "code": "P-018",
+   "file": "img_b9_p018_2.jpg",
+   "caption": "October 21: plump pink leaves and small grey rosettes",
+   "primary": true,
+   "source": "P-018 (2)"
+  },
+  {
+   "code": "P-018",
+   "file": "img_b9_p018_3.jpg",
+   "caption": "October 21: sprawling stems",
+   "primary": false,
+   "source": "P-018 (3)"
+  },
+  {
+   "code": "P-018",
+   "file": "img_b9_p018_1.jpg",
+   "caption": "October 21: from above, with spurge weed",
+   "primary": false,
+   "source": "P-018 (1)"
+  },
+  {
+   "code": "P-022",
+   "file": "img_b9_p022_2.jpg",
+   "caption": "October 21: the rose in its black pot",
+   "primary": true,
+   "source": "P-022 (2)"
+  },
+  {
+   "code": "P-022",
+   "file": "img_b9_p022_1.jpg",
+   "caption": "October 21: Weeks Roses tag 'Queen of Elegance'",
+   "primary": false,
+   "source": "P-022 (1)"
+  },
+  {
+   "code": "P-022",
+   "file": "img_b9_p022_3.jpg",
+   "caption": "October 21: back of the tag",
+   "primary": false,
+   "source": "P-022 (3)"
+  },
+  {
+   "code": "P-024",
+   "file": "img_b9_p024_1.jpg",
+   "caption": "October 21: new green fronds and fiddleheads",
+   "primary": true,
+   "source": "P-024 (1)"
+  },
+  {
+   "code": "P-024",
+   "file": "img_b9_p024_2.jpg",
+   "caption": "October 21: tag 'Nephrolepis Exaltata Emina'",
+   "primary": false,
+   "source": "P-024 (2)"
+  },
+  {
+   "code": "P-025",
+   "file": "img_b9_p025_1.jpg",
+   "caption": "October 21: hairy, lobed leaves",
+   "primary": true,
+   "source": "P-025 (1)"
+  },
+  {
+   "code": "P-025",
+   "file": "img_b9_p025_4.jpg",
+   "caption": "October 21: hairy leaf stalk",
+   "primary": false,
+   "source": "P-025 (4)"
+  },
+  {
+   "code": "P-025",
+   "file": "img_b9_p025_2.jpg",
+   "caption": "October 21: whole plant and tag",
+   "primary": false,
+   "source": "P-025 (2)"
+  },
+  {
+   "code": "P-025",
+   "file": "img_b9_p025_3.jpg",
+   "caption": "October 21: base and drip emitter",
+   "primary": false,
+   "source": "P-025 (3)"
+  },
+  {
+   "code": "P-029",
+   "file": "img_b9_p029_1.jpg",
+   "caption": "October 21: dark burgundy new leaf with pink streaks",
+   "primary": true,
+   "source": "P-029 (1)"
+  },
+  {
+   "code": "P-029",
+   "file": "img_b9_p030_3.jpg",
+   "caption": "October 21: the whole pot (the offshoot P-030 is at the base)",
+   "primary": false,
+   "source": "P-030 (3)"
+  },
+  {
+   "code": "P-029",
+   "file": "img_b9_p030_1.jpg",
+   "caption": "October 21: Costa Farms tag 'Pink Princess Philodendron'",
+   "primary": false,
+   "source": "P-030 (1)"
+  },
+  {
+   "code": "P-030",
+   "file": "img_b9_p030_2.jpg",
+   "caption": "October 21: the pink offshoot at the base",
+   "primary": true,
+   "source": "P-030 (2)"
+  },
+  {
+   "code": "P-031",
+   "file": "img_b9_p031_4.jpg",
+   "caption": "October 21: striped leaves",
+   "primary": true,
+   "source": "P-031 (4)"
+  },
+  {
+   "code": "P-031",
+   "file": "img_b9_p031_3.jpg",
+   "caption": "October 21: tag '05.24.26 Brett b-day gift'",
+   "primary": false,
+   "source": "P-031 (3)"
+  },
+  {
+   "code": "P-031",
+   "file": "img_b9_p031_2.jpg",
+   "caption": "October 21: red-purple leaf underside",
+   "primary": false,
+   "source": "P-031 (2)"
+  },
+  {
+   "code": "P-031",
+   "file": "img_b9_p031_1.jpg",
+   "caption": "October 21: base with new shoots and roots",
+   "primary": false,
+   "source": "P-031 (1)"
+  },
+  {
+   "code": "P-035",
+   "file": "img_b9_p035_3.jpg",
+   "caption": "October 21: new leaves and the hollow old stem with the stake in it",
+   "primary": true,
+   "source": "P-035 (3)"
+  },
+  {
+   "code": "P-035",
+   "file": "img_b9_p035_1.jpg",
+   "caption": "October 21: pale marbled leaf",
+   "primary": false,
+   "source": "P-035 (1)"
+  },
+  {
+   "code": "P-035",
+   "file": "img_b9_p035_2.jpg",
+   "caption": "October 21: dead leaves",
+   "primary": false,
+   "source": "P-035 (2)"
+  },
+  {
+   "code": "P-036",
+   "file": "img_b9_p036_1.jpg",
+   "caption": "October 21: opposite, toothed leaves",
+   "primary": true,
+   "source": "P-036 (1)"
+  },
+  {
+   "code": "P-036",
+   "file": "img_b9_p036_2.jpg",
+   "caption": "October 21: leaves tapering to the base",
+   "primary": false,
+   "source": "P-036 (2)"
+  },
+  {
+   "code": "P-036",
+   "file": "img_b9_p036_3.jpg",
+   "caption": "October 21: woody stem",
+   "primary": false,
+   "source": "P-036 (3)"
+  },
+  {
+   "code": "P-036",
+   "file": "img_b9_p036_4.jpg",
+   "caption": "October 21: base",
+   "primary": false,
+   "source": "P-036 (4)"
+  },
+  {
+   "code": "P-039",
+   "file": "img_b9_p039_1.jpg",
+   "caption": "October 21: yellow, green-speckled leaves",
+   "primary": true,
+   "source": "P-039 (1)"
+  },
+  {
+   "code": "P-039",
+   "file": "img_b9_p039_3.jpg",
+   "caption": "October 21: tag 'Philodendron Painted Lady'",
+   "primary": false,
+   "source": "P-039 (3)"
+  },
+  {
+   "code": "P-039",
+   "file": "img_b9_p039_2.jpg",
+   "caption": "October 21: roots growing out of the pot",
+   "primary": false,
+   "source": "P-039 (2)"
+  },
+  {
+   "code": "P-042",
+   "file": "img_b9_p042_1.jpg",
+   "caption": "October 21: leaf with yellow-orange blotches",
+   "primary": true,
+   "source": "P-042 (1)"
+  },
+  {
+   "code": "P-042",
+   "file": "img_b9_p042_2.jpg",
+   "caption": "October 21: yellowing lowest leaf base",
+   "primary": false,
+   "source": "P-042 (2)"
+  },
+  {
+   "code": "P-042",
+   "file": "img_b9_p042_3.jpg",
+   "caption": "October 21: from above",
+   "primary": false,
+   "source": "P-042 (3)"
+  },
+  {
+   "code": "P-044",
+   "file": "img_b9_p002_before.jpg",
+   "caption": "Before repotting, in the Costa Farms pot (was page P-002)",
+   "primary": false,
+   "source": "P-002"
+  },
+  {
+   "code": "P-044",
+   "file": "img_b9_p044_5.jpg",
+   "caption": "October 21: after repotting",
+   "primary": true,
+   "source": "P-044 (5)"
+  },
+  {
+   "code": "P-044",
+   "file": "img_b9_p044_1.jpg",
+   "caption": "October 21: star shape from above",
+   "primary": false,
+   "source": "P-044 (1)"
+  },
+  {
+   "code": "P-044",
+   "file": "img_b9_p044_2.jpg",
+   "caption": "October 21: next to a 16 oz can (about 5 in tall)",
+   "primary": false,
+   "source": "P-044 (2)"
+  },
+  {
+   "code": "P-044",
+   "file": "img_b9_p044_4.jpg",
+   "caption": "October 21: side view",
+   "primary": false,
+   "source": "P-044 (4)"
+  },
+  {
+   "code": "P-044",
+   "file": "img_b9_p044_7.jpg",
+   "caption": "October 21: from above",
+   "primary": false,
+   "source": "P-044 (7)"
+  },
+  {
+   "code": "P-051",
+   "file": "img_b9_p051_1.jpg",
+   "caption": "October 21: striped leaves from above",
+   "primary": true,
+   "source": "P-051 (1)"
+  },
+  {
+   "code": "P-051",
+   "file": "img_b9_p051_2.jpg",
+   "caption": "October 21: leaves clasping the stem",
+   "primary": false,
+   "source": "P-051 (2)"
+  },
+  {
+   "code": "P-051",
+   "file": "img_b9_p051_3.jpg",
+   "caption": "October 21: creeping stem rooting at the nodes",
+   "primary": false,
+   "source": "P-051 (3)"
+  },
+  {
+   "code": "P-053",
+   "file": "img_b9_p053_2.jpg",
+   "caption": "October 21: vine with tendrils, an insect on a top leaf",
+   "primary": true,
+   "source": "P-053 (2)"
+  },
+  {
+   "code": "P-053",
+   "file": "img_b9_p053_1.jpg",
+   "caption": "October 21: clusters of black specks on the leaves",
+   "primary": false,
+   "source": "P-053 (1)"
+  },
+  {
+   "code": "P-053",
+   "file": "img_b9_p053_3.jpg",
+   "caption": "October 21: specks and yellowing",
+   "primary": false,
+   "source": "P-053 (3)"
+  },
+  {
+   "code": "P-055",
+   "file": "img_b9_p055_1.jpg",
+   "caption": "October 21: leaves with white specks",
+   "primary": true,
+   "source": "P-055 (1)"
+  },
+  {
+   "code": "P-055",
+   "file": "img_b9_p055_3.jpg",
+   "caption": "October 21: HEB label 'PHILO BLK CARDNL'",
+   "primary": false,
+   "source": "P-055 (3)"
+  },
+  {
+   "code": "P-055",
+   "file": "img_b9_p055_2.jpg",
+   "caption": "October 21: drooping leaves",
+   "primary": false,
+   "source": "P-055 (2)"
+  },
+  {
+   "code": "P-055",
+   "file": "img_b9_p055_4.jpg",
+   "caption": "October 21: base",
+   "primary": false,
+   "source": "P-055 (4)"
+  },
+  {
+   "code": "P-056",
+   "file": "img_b9_p056_2.jpg",
+   "caption": "October 21: the big glossy leaf",
+   "primary": true,
+   "source": "P-056 (2)"
+  },
+  {
+   "code": "P-056",
+   "file": "img_b9_p056_3.jpg",
+   "caption": "October 21: baby leaves at the base",
+   "primary": false,
+   "source": "P-056 (3)"
+  },
+  {
+   "code": "P-056",
+   "file": "img_b9_p056_1.jpg",
+   "caption": "October 21: HEB label 'ALOCASIA NIGRA'",
+   "primary": false,
+   "source": "P-056 (1)"
+  },
+  {
+   "code": "P-061",
+   "file": "img_b9_p061_1.jpg",
+   "caption": "October 21: lime-green, wavy leaves",
+   "primary": true,
+   "source": "P-061 (1)"
+  },
+  {
+   "code": "P-061",
+   "file": "img_b9_p061_4.jpg",
+   "caption": "October 21: mottled leaf stalks",
+   "primary": false,
+   "source": "P-061 (4)"
+  },
+  {
+   "code": "P-061",
+   "file": "img_b9_p061_5.jpg",
+   "caption": "October 21: dead leaf base at the soil",
+   "primary": false,
+   "source": "P-061 (5)"
+  },
+  {
+   "code": "P-061",
+   "file": "img_b9_p061_3.jpg",
+   "caption": "October 21: tag 'Alocasia'",
+   "primary": false,
+   "source": "P-061 (3)"
+  },
+  {
+   "code": "P-061",
+   "file": "img_b9_p061_2.jpg",
+   "caption": "October 21: crumpled newer leaf",
+   "primary": false,
+   "source": "P-061 (2)"
+  },
+  {
+   "code": "P-066",
+   "file": "img_b9_p066_3.jpg",
+   "caption": "October 21: velvety new leaves with red stalks",
+   "primary": true,
+   "source": "P-066 (3)"
+  },
+  {
+   "code": "P-066",
+   "file": "img_b9_p066_4.jpg",
+   "caption": "October 21: the vine running from the clear pot above into the bucket",
+   "primary": false,
+   "source": "P-066 (4)"
+  },
+  {
+   "code": "P-066",
+   "file": "img_b9_p066_2.jpg",
+   "caption": "October 21: new leaf",
+   "primary": false,
+   "source": "P-066 (2)"
+  },
+  {
+   "code": "P-066",
+   "file": "img_b9_p066_1.jpg",
+   "caption": "October 21: the clear pot above: bare vines",
+   "primary": false,
+   "source": "P-066 (1)"
+  }
+ ],
+ "updates": [
+  {
+   "code": "P-004",
+   "name": "Grape vine (young)",
+   "photos": [
+    "img_1000021164.jpg"
+   ],
+   "note": "Re-identified from new photos (batch 9)",
+   "set": {
+    "scientific_name": [
+     "Vitis sp. (possibly Vitis mustangensis or a hybrid)",
+     "Vitis mustangensis (probable)"
+    ],
+    "aliases": [
+     "Mustang grape? / grape cutting",
+     "Mustang grape (Texas native)"
+    ],
+    "id_confidence": [
+     62,
+     75
+    ],
+    "id_basis": [
+     "Rounded, shallowly lobed leaves with a woolly/felted underside and reddish tendril-bearing canes fit Vitis. Species cannot be told from leaves alone.",
+     "The October photos show the leaf undersides: pale, almost white and felted with hairs, which is the mark of the native mustang grape. The leaves are heart-shaped to shallowly lobed with blunt teeth, the bark shreds at the base, and the plant is vigorous in Texas heat. Most cultivated grapes have green, nearly hairless undersides."
+    ],
+    "id_alternatives": [
+     "Vitis vinifera hybrid (e.g., 'Black Spanish/Lenoir')\nVitis mustangensis (native mustang grape)\nAmpelopsis or Cissus (less likely)",
+     "Vitis vinifera hybrid (undersides would be greener and less hairy)\nVitis cinerea (graybark grape; also has hairy undersides)"
+    ],
+    "id_improve": [
+     "Photo of a leaf underside (hairs/colour)\nPhoto of a tendril and the bark\nAny tag or where the cutting came from\nFruit/bunch photo next summer",
+     "Fruit next summer: mustang grapes are dark purple, thick-skinned and very tart\nWhere the cutting or seedling came from"
+    ],
+    "health_summary": [
+     "Young but healthy leaves; one leaf edge shows mild scorch.",
+     "Healthy and growing. Some older leaves are yellowing for autumn, and one leaf has a small brown spot."
+    ],
+    "health_observations": [
+     "Leaves large and green\nSmall edge browning on one leaf\nPea-gravel top layer helps drainage",
+     "Leaf undersides pale and felted (normal for mustang grape)\nA few yellowing older leaves (autumn)\nOne small brown leaf spot\nShredding bark at the base (normal)"
+    ]
+   }
+  },
+  {
+   "code": "P-005",
+   "name": "Morning glory / tievine (potted)",
+   "photos": [
+    "img_1000021165.jpg"
+   ],
+   "note": "Re-identified from new photos (batch 9)",
+   "set": {
+    "common_name": [
+     "Morning glory / tievine (potted)",
+     "Ivy-leaf morning glory"
+    ],
+    "scientific_name": [
+     "Ipomoea sp. (possibly Ipomoea cordatotriloba)",
+     "Ipomoea hederacea (probable)"
+    ],
+    "aliases": [
+     "Cotton morning glory / tievine (possible)",
+     "Ivyleaf morning glory"
+    ],
+    "id_confidence": [
+     55,
+     75
+    ],
+    "id_basis": [
+     "Three-lobed, heart-based leaves, red hairy stems and a tubular twisted flower bud with pointed hairy sepals fit Ipomoea.",
+     "The flower buds have very long, narrow, bristly-haired sepals that curl back at the tips, and the leaves are three-lobed and hairy on hairy reddish stems. That combination points to ivy-leaf morning glory. The native tievine has short, nearly hairless sepals."
+    ],
+    "id_alternatives": [
+     "Ipomoea cordatotriloba (native tievine)\nIpomoea batatas (ornamental sweet potato)\nIpomoea hederacea (ivy-leaf morning glory)",
+     "Ipomoea purpurea (common morning glory; heart-shaped leaves, usually unlobed)\nIpomoea cordatotriloba (tievine; short sepals)"
+    ],
+    "id_improve": [
+     "Photo of an open flower (colour and throat)\nPhoto of the leaf underside and the sepals\nSeed source or tag",
+     "An open flower: ivy-leaf morning glory is usually sky blue with a white throat, fading to pink"
+    ],
+    "health_summary": [
+     "Leaves are pale yellow-green with tan blotches and some edge scorch, but it is flowering.",
+     "Flowering, but the leaves are pale lime-green with brown blotches, and spurge weed covers the pot."
+    ],
+    "health_observations": [
+     "Chlorotic (yellow) leaves\nSpotted spurge weeds are mat-forming across the pot surface\nDead brown stem in the centre",
+     "Pale lime-yellow leaves (hunger or too much sun)\nBrown blotches on a few leaves\nSpotted spurge growing in the pot\nDead leaves at the base"
+    ],
+    "health_steps": [
+     "Pull the spurge weeds and refresh the top 1-2 in of mix\nCheck for waterlogging; repot into free-draining mix if the pot stays wet\nFeed lightly with a balanced fertilizer in spring\nCut out the dead stem",
+     "Pull the spurge weed (wear gloves; the sap irritates skin).\nFeed once with a balanced liquid fertilizer at half strength.\nRemove the dead leaves.\nIt is an annual: collect seed pods when they turn brown if you want it next year."
+    ]
+   }
+  },
+  {
+   "code": "P-006",
+   "name": "Twining heart-leaf vine on trellis",
+   "photos": [
+    "img_1000021202.jpg"
+   ],
+   "note": "Re-identified from new photos (batch 9)",
+   "set": {
+    "common_name": [
+     "Twining heart-leaf vine on trellis",
+     "Sweet potato vine (green-leaf, probable)"
+    ],
+    "scientific_name": [
+     "Ipomoea sp. (unconfirmed)",
+     "Ipomoea batatas (probable)"
+    ],
+    "id_confidence": [
+     40,
+     55
+    ],
+    "id_basis": [
+     "Heart-shaped bright leaves on thin twining stems climbing a wire trellis. Several genera look like this.",
+     "The close-ups show smooth, hairless leaves that are heart-shaped to arrow-shaped, with angular side lobes at the base, on smooth green stems. That fits a green-leaf sweet potato vine. No flower yet."
+    ],
+    "id_alternatives": [
+     "Ipomoea sp. (morning glory / moonflower)\nIpomoea batatas (sweet potato)\nDioscorea (yam vine)\nCissampelos / other twiners",
+     "Ipomoea alba (moonflower; leaves more rounded, stems often slightly prickly)\nAnother Ipomoea species\nDioscorea (yam vine; veins curve from the base to the tip)"
+    ],
+    "id_improve": [
+     "Photo of a flower or bud\nPhoto of the base of the stem and soil (any tuber?)\nPhoto of leaf undersides\nWhere it came from",
+     "A flower\nDig gently at the base: sweet potato forms a fat tuber"
+    ]
+   }
+  },
+  {
+   "code": "P-007",
+   "name": "Possible moringa / compound-leaf tree seedling",
+   "photos": [
+    "img_1000021166.jpg"
+   ],
+   "note": "Identified from its tag (batch 9)",
+   "set": {
+    "common_name": [
+     "Possible moringa / compound-leaf tree seedling",
+     "Mexican bird of paradise"
+    ],
+    "scientific_name": [
+     "Moringa oleifera (unconfirmed)",
+     "Caesalpinia mexicana (Erythrostemon mexicanus)"
+    ],
+    "aliases": [
+     "Drumstick tree? (possible)",
+     "Mexican holdback; Bird of paradise, Mexican (Round Rock Garden Center)"
+    ],
+    "plant_type": [
+     "Tropical tree",
+     "Shrub / small tree (legume)"
+    ],
+    "id_confidence": [
+     35,
+     95
+    ],
+    "id_basis": [
+     "Tall thin unbranched stem with pale lenticels (small raised dots) and compound leaves with many small round leaflets. Moringa fits, but so do several legumes.",
+     "Identified from its plant tag ('Mexican Bird of Paradise, Caesalpinia mexicana') and the Round Rock Garden Center label 'BIRD OF PARADISE MEXICAN NTN #1, $14.00'. The rounded leaflets in pairs on bipinnate leaves match. It is not a moringa."
+    ],
+    "id_alternatives": [
+     "Moringa oleifera\nSenna / Cassia sp.\nTamarindus indica seedling\nAnother legume tree",
+     "Caesalpinia pulcherrima (red bird of paradise; leaflets smaller, flowers red-orange)"
+    ],
+    "id_improve": [
+     "Photo of a whole compound leaf laid flat\nClose-up of the stem and any thorns\nPhoto of the roots/seed pod\nWhere the seed came from",
+     "Yellow flower clusters next spring or summer would settle it completely"
+    ],
+    "temp_ideal_low": [
+     75,
+     60
+    ],
+    "temp_ideal_high": [
+     95,
+     100
+    ],
+    "temp_damage_below": [
+     40,
+     20
+    ],
+    "temp_lethal_below": [
+     28,
+     10
+    ],
+    "temp_damage_above": [
+     110,
+     115
+    ],
+    "temp_notes": [
+     "If moringa: leaf drop under 50 F, stem damage near freezing, killed at about 25-28 F.",
+     "Hardy in Central Texas. It may drop some leaves below about 25°F but recovers. In a pot the roots are more exposed than in the ground, so protect it below about 20°F."
+    ],
+    "humidity_low": [
+     40,
+     20
+    ],
+    "humidity_notes": [
+     "Tolerates humid Texas weather.",
+     "Not fussy. Dry air is fine."
+    ],
+    "light_hours": [
+     "8+ h",
+     "6+ hours of direct sun"
+    ],
+    "light_notes": [
+     "Shade cloth reduces light; leggy growth suggests it wants more sun.",
+     "Flowers best in full sun. In shade it gets leggy and blooms little."
+    ],
+    "winter_plan": [
+     "Move indoors",
+     "Hardy outside"
+    ],
+    "winter_summary": [
+     "If moringa, it is a frost-tender tree. Treat as tender until identified.",
+     "Hardy outside in Round Rock. Leave it out; cover it or move it against the house on nights below about 20°F."
+    ],
+    "winter_triggers": [
+     "Move by ~Nov 1 or at the first night forecast under 45 F.",
+     "Cover or move it against the house when a night below 20°F is forecast."
+    ],
+    "winter_steps": [
+     "Target: indoors by about Nov 1, before the first night forecast under 45 F.\nPre-move: rinse the leaves with a hose, check undersides and stem nodes for spider mites, mealybugs, scale and fungus gnats, treat with insecticidal soap or neem, then quarantine 2 weeks away from other houseplants.\nAcclimate in two steps to limit leaf drop: about a week on the covered porch or in the garage, then inside.\nDo not repot or fertilize for the move; trim only dead tissue.\nCut back to about 3-4 ft before storing; it will resprout in spring.\nKeep nearly dry in a cool bright garage (above 40 F) if it drops its leaves.",
+     "Stop feeding in September.\nWater only when the mix is dry.\nCover or move it to shelter on nights below 20°F."
+    ],
+    "indoor_setup": [
+     "Indoors: within 3 ft of an east or south window, or under a full-spectrum grow light 12-14 h/day at 6-12 in. Winter sun in Round Rock is only ~4.5-6 hours of real sunshine per day in Dec-Jan, so supplement.\nWater sparingly: the pot should dry between waterings.",
+     ""
+    ],
+    "health_rating": [
+     "Fair",
+     "Good"
+    ],
+    "health_summary": [
+     "Healthy leaflets but thin and leggy; a few yellowing leaflets and spotting.",
+     "Healthy, clean leaves and a sturdy trunk. Small weed seedlings are coming up in the pot."
+    ],
+    "health_observations": [
+     "Long bare stem with leaves at the top\nYellow-spotted leaflets on some branches\nSoil looks dry/gritty",
+     "Clean green leaflets\nSturdy trunk\nWeed seedlings in the pot"
+    ],
+    "health_steps": [
+     "Water deeply, then let the top inch dry\nGive more direct sun (move out from under the shade cloth)\nPinch the tip to encourage branching",
+     "Pull the weed seedlings.\nMove it into the sunniest spot you have.\nPot up or plant in the ground in spring: it grows into a 6-10 ft shrub."
+    ],
+    "dli_high": [
+     40.0,
+     45
+    ],
+    "vpd_high": [
+     2.0,
+     2.5
+    ],
+    "soil_moisture_low": [
+     15,
+     10
+    ],
+    "soil_moisture_high": [
+     40,
+     35
+    ],
+    "soil_temp_low": [
+     70,
+     55
+    ],
+    "soil_ph_low": [
+     6.3,
+     6.0
+    ],
+    "soil_ph_high": [
+     7.0,
+     8.0
+    ],
+    "water_notes": [
+     "Water when the top 2 in of mix is dry. It likes heat and dislikes wet soil, especially in the cool months when it nearly stops growing.",
+     "Drought-tolerant once established. In a pot, water deeply when the top 2 in (5 cm) are dry; in winter much less."
+    ],
+    "soil_medium": [
+     "Sandy, very well-draining mix: potting soil with 40% sand or perlite.",
+     "Fast-draining mix: potting soil with about a third grit, pumice or perlite. It tolerates alkaline Texas soil."
+    ],
+    "fertilizer": [
+     "Light balanced slow-release; low nitrogen",
+     "Balanced slow-release or 10-10-10"
+    ],
+    "nutrients": [
+     "Feed lightly in spring and summer. Too much nitrogen gives soft, floppy growth. In cool weather give no fertilizer.",
+     "Feed lightly in spring and early summer. Too much nitrogen gives leaves and fewer flowers."
+    ],
+    "fert_from_month": [
+     4,
+     3
+    ],
+    "fert_to_month": [
+     9,
+     8
+    ],
+    "fert_every_days": [
+     30,
+     45
+    ]
+   }
+  },
+  {
+   "code": "P-009",
+   "name": "Variegated aroid, white-streaked (in green ribbed pot)",
+   "photos": [
+    "img_1000021168.jpg"
+   ],
+   "note": "Identified from its tag (batch 9)",
+   "set": {
+    "common_name": [
+     "Variegated aroid, white-streaked (in green ribbed pot)",
+     "Philodendron 'Birkin'"
+    ],
+    "scientific_name": [
+     "Monstera or Philodendron cultivar (unconfirmed)",
+     "Philodendron 'Birkin'"
+    ],
+    "aliases": [
+     "Possibly a variegated Monstera deliciosa or a variegated Philodendron",
+     ""
+    ],
+    "id_confidence": [
+     30,
+     90
+    ],
+    "id_basis": [
+     "Elongated white-and-green streaked leaves unfurling from a sheath with red-brown edging, plus a large papery brown leaf. Variegated aroids are hard to separate without mature leaves.",
+     "A hand-written tag in the pot reads 'Philodendron Birkin', and the dark leaves with fine white pinstripes match. Birkin sometimes puts out plain green leaves; that is normal."
+    ],
+    "id_alternatives": [
+     "Variegated Monstera deliciosa (Albo/Thai Constellation-type)\nVariegated Philodendron\nSyngonium or Alocasia (less likely)",
+     "Philodendron 'White Wave' or 'White Measure' (similar pinstriped types)"
+    ],
+    "id_improve": [
+     "Photo of a mature leaf (whole leaf, front)\nPhoto of the new leaf and its sheath\nStem/aerial root close-up\nTag, seller or cutting source",
+     "A mature leaf in good light"
+    ],
+    "health_rating": [
+     "Poor",
+     "Fair"
+    ],
+    "health_summary": [
+     "Large old leaf is dead/papery and several shoots are scorched, but a new leaf is unfurling.",
+     "Recovering. Several leaves droop or curl and some old ones are dead, but new leaves with red sheaths are coming."
+    ],
+    "health_observations": [
+     "Browned leaves and crispy sheaths\nNew growth is white-green and healthy\nSurface is wet-dark; plant sits close to other pots",
+     "Drooping, curled leaves\nDead papery leaves at the base\nNew leaves emerging from red sheaths\nOne plain green leaf (normal for Birkin)"
+    ],
+    "health_steps": [
+     "Trim off dead leaf tissue cleanly\nCheck roots for rot and let the mix dry slightly\nMove to bright shade and raise humidity\nBring indoors early",
+     "Remove the dead leaves.\nWater when the top inch is dry; do not let it sit wet.\nBright indirect light, no direct afternoon sun.\nBring it inside before nights reach 55°F."
+    ]
+   }
+  },
+  {
+   "code": "P-010",
+   "name": "Dieffenbachia / cane aroid (resprouting)",
+   "photos": [
+    "img_1000021169.jpg"
+   ],
+   "note": "Identified from its tags (batch 9)",
+   "set": {
+    "common_name": [
+     "Dieffenbachia / cane aroid (resprouting)",
+     "Dieffenbachia (dumb cane)"
+    ],
+    "scientific_name": [
+     "Dieffenbachia sp. (unconfirmed)",
+     "Dieffenbachia seguine"
+    ],
+    "aliases": [
+     "",
+     "Dumb cane; Costa Farms Wick and Grow pot"
+    ],
+    "id_confidence": [
+     40,
+     90
+    ],
+    "id_basis": [
+     "Thick green cane with pale leaf-scar rings and glossy bright-green heart/oval leaves. The dried papery sheaths and white plant tag add complexity.",
+     "A hand-written tag reads 'Dieffenbachia Seguine', and the Costa Farms label reads '1.40-QT DIEFFENBACHIA WCK AND GRW' (a self-watering wick pot). The jointed green canes and broad leaves match."
+    ],
+    "id_alternatives": [
+     "Dieffenbachia\nPhilodendron 'Congo'\nHomalomena",
+     "A named Dieffenbachia cultivar (the label gives none)"
+    ],
+    "id_improve": [
+     "Photo of the plant tag text\nPhoto of the whole plant from the side\nPhoto of a leaf front/back",
+     "A mature leaf in good light, to see its pattern"
+    ],
+    "temp_notes": [
+     "Cold-sensitive tropical.",
+     "The label says to keep it above 50°F. Below that the leaves are damaged."
+    ],
+    "health_summary": [
+     "Several papery brown sheaths and tip-burned leaves, but new leaves are green and growing.",
+     "Lots of healthy new leaves, but the tops of several canes have papery dead sheaths and leaves. Spurge weed in the pot."
+    ],
+    "health_observations": [
+     "Dry papery sheaths along the cane\nNew leaves emerging\nSpurge weeds on the soil surface",
+     "Healthy new leaves\nPapery dead leaf bases on the cane tops\nSpurge weed in the pot"
+    ],
+    "health_steps": [
+     "Peel away the dead sheaths gently\nRemove spurge weeds\nCheck moisture; avoid sitting in water",
+     "Remove the dead leaves and sheaths (wear gloves: the sap irritates).\nPull the spurge.\nWater weekly or when the top inch is dry, as the label says.\nBring it inside before nights reach 50°F."
+    ]
+   }
+  },
+  {
+   "code": "P-011",
+   "name": "Variegated peace lily or dieffenbachia (white-splashed)",
+   "photos": [
+    "img_1000021170.jpg"
+   ],
+   "note": "Re-identified from new photos (batch 9)",
+   "set": {
+    "common_name": [
+     "Variegated peace lily or dieffenbachia (white-splashed)",
+     "Variegated peace lily"
+    ],
+    "scientific_name": [
+     "Spathiphyllum 'Domino' or Dieffenbachia sp. (unconfirmed)",
+     "Spathiphyllum, variegated cultivar ('Picasso' type)"
+    ],
+    "aliases": [
+     "Spathiphyllum wallisii 'Domino'? / Aglaonema?",
+     "Spathiphyllum 'Picasso'?"
+    ],
+    "id_confidence": [
+     40,
+     65
+    ],
+    "id_basis": [
+     "Glossy ovate leaves with random cream-white splashes along the midrib. Peace lily 'Domino' and several variegated aroids look similar.",
+     "The leaves come straight up from the soil in a clump, with sheathing stalks and papery old sheaths, so it is a peace lily rather than a Dieffenbachia (which grows on a cane). The variegation is in large cream-white and yellow sectors, not fine speckles, which fits 'Picasso' better than 'Domino'."
+    ],
+    "id_alternatives": [
+     "Spathiphyllum 'Domino'\nDieffenbachia 'Tropic Snow'\nAglaonema variegated cultivar",
+     "Spathiphyllum 'Domino' (speckled and streaked)\nSpathiphyllum 'Sensation Variegated'"
+    ],
+    "id_improve": [
+     "Photo of the base showing whether leaves come straight from soil (peace lily) or a cane\nA flower/spathe if present\nLeaf underside",
+     "A flower\nA tag or where it came from"
+    ],
+    "health_summary": [
+     "Mostly clean glossy foliage with a few brown edges and dried leaf debris at the centre.",
+     "Mostly clean, glossy leaves. Roots are showing at the soil surface, a few leaf edges are brown, and there are old dead leaves in the centre."
+    ],
+    "health_observations": [
+     "Healthy, thick leaves\nSome dried leaf sheaths at the crown\nSoil dark and moist",
+     "Roots exposed at the surface\nA few brown edges and one yellowing leaf\nDead strap-like old leaves in the centre"
+    ],
+    "health_steps": [
+     "Remove dead sheaths from the crown\nWater when the top inch is dry",
+     "Cover the exposed roots with an inch of fresh mix, or pot up one size in spring.\nPull out the dead leaves.\nKeep it out of direct sun: the white parts burn easily.\nBring it inside before nights reach 50°F."
+    ]
+   }
+  },
+  {
+   "code": "P-012",
+   "name": "Aeonium (green/yellow rosette form)",
+   "photos": [
+    "img_1000021171.jpg"
+   ],
+   "note": "ID refined from new photos (batch 9)",
+   "set": {
+    "scientific_name": [
+     "Aeonium sp.",
+     "Aeonium haworthii type (probable)"
+    ],
+    "aliases": [
+     "Tree houseleek",
+     "Haworth's aeonium; pinwheel aeonium"
+    ],
+    "id_confidence": [
+     65,
+     70
+    ],
+    "id_basis": [
+     "Branching woody stems topped with spoon-shaped, ciliate-edged leaf rosettes. The dark rosettes behind are likely Aeonium arboreum 'Zwartkop'.",
+     "A much-branched little shrub with many small rosettes, leaf edges fringed with fine teeth, and hair-like aerial roots on the stems. That fits Aeonium haworthii (pinwheel aeonium)."
+    ],
+    "id_alternatives": [
+     "Aeonium haworthii\nAeonium 'Kiwi'\nGreenovia / Sedum (less likely)",
+     "Aeonium 'Kiwi' (similar habit, but yellow-and-red variegated)\nAeonium decorum"
+    ],
+    "health_summary": [
+     "Yellowed leaves with dark spots/tips from summer stress, but new rosettes are forming.",
+     "Leggy, with yellowing leaves and dark spots on some, after summer stress. New rosettes are forming now that it is cooler."
+    ],
+    "health_observations": [
+     "Yellow-green, spotted leaves\nBlack tips on a couple of leaves\nNew small rosettes at stem tips",
+     "Yellowing leaves with dark spots or tips\nLong bare stems\nAerial roots on the stems (it wants water)\nNew small rosettes forming"
+    ],
+    "health_steps": [
+     "Trim dead leaves\nResume watering with the cool season\nGive morning sun and afternoon shade",
+     "Remove the spotted and yellow leaves.\nIt grows in the cool season: water when the mix is dry and give it morning sun.\nCut back very long stems in spring and root the tops in dry mix.\nMove it under cover before nights reach 30°F."
+    ]
+   }
+  },
+  {
+   "code": "P-014",
+   "name": "Aloe vera (probable)",
+   "photos": [
+    "img_1000021174.jpg"
+   ],
+   "note": "Split into three pages: this one is the biggest aloe (batch 9)",
+   "set": {
+    "common_name": [
+     "Aloe vera (probable)",
+     "Aloe vera (probable), largest of three"
+    ],
+    "container": [
+     "Black nursery pots with gritty mix",
+     "Black nursery pot with white gravel and bark"
+    ],
+    "scientific_name": [
+     "Aloe vera (Aloe barbadensis)",
+     "Aloe vera (spotted young form) or a hybrid"
+    ],
+    "id_basis": [
+     "Large thick fleshy leaves, pale grey-green with small white teeth, forming a clump. Several Aloe species look similar.",
+     "Grey-green leaves with white speckles and pale teeth along the edges, in an upright rosette. Young Aloe vera is spotted like this; the spots fade as it matures. Ethan's photos show three separate pots, so each now has its own page."
+    ],
+    "id_alternatives": [
+     "Aloe vera\nAloe 'Hercules' / hybrid\nAloe maculata",
+     "Aloe vera\nAloe maculata (soap aloe; flatter, more strongly banded)\nAn Aloe hybrid such as 'Hercules' (young)"
+    ],
+    "id_improve": [
+     "Photo of the whole rosette from above\nA close-up of leaf margin teeth\nA flower spike photo",
+     "A flower spike: Aloe vera has yellow flowers\nAny tag or receipt"
+    ],
+    "health_summary": [
+     "Tan to orange-tinged leaves and tip dieback; plants are upright and firm.",
+     "Firm and upright. Leaves are tinged orange-tan from sun or cold stress, and some leaf tips are dry."
+    ],
+    "health_observations": [
+     "Orange-tan leaves\nDry leaf tips\nHealthy firm core",
+     "Orange-tan stress colour\nDry leaf tips\nFirm, upright leaves"
+    ],
+    "health_steps": [
+     "Avoid heavy watering in winter\nGradually shade from harsh afternoon sun\nRemove dead leaves at the base",
+     "Cut off fully dried leaf tips if you like (cosmetic).\nWater only when the mix is dry through.\nMove it under cover before nights reach 32°F."
+    ]
+   }
+  },
+  {
+   "code": "P-015",
+   "name": "Aloe (trunked) with companion succulents",
+   "photos": [
+    "img_1000021175.jpg"
+   ],
+   "note": "Identified from its tag (batch 9)",
+   "set": {
+    "common_name": [
+     "Aloe (trunked) with companion succulents",
+     "Hardy aloe (Aloe striatula)"
+    ],
+    "scientific_name": [
+     "Aloe sp. (possibly Aloe arborescens-type)",
+     "Aloiampelos striatula (syn. Aloe striatula)"
+    ],
+    "aliases": [
+     "Torch aloe? (possible)",
+     "Hardy aloe; Coral aloe"
+    ],
+    "id_confidence": [
+     45,
+     95
+    ],
+    "id_basis": [
+     "Slender leaves with soft teeth on a short trunk; with another clumping aloe and tiny green-cream rosettes (Sedum/Graptoveria seedlings) in the same bowl.",
+     "A hand-written tag reads 'Hardy Aloe Striatula'. The narrow, toothed, bright-green leaves on sprawling stems, with green-striped leaf bases, match."
+    ],
+    "id_alternatives": [
+     "Aloe arborescens\nAloe 'Blue Elf'\nAloe juvenna",
+     "Aloiampelos ciliaris (climbing aloe)"
+    ],
+    "id_improve": [
+     "Flower photo\nPhoto of the trunk\nTag",
+     "Orange-yellow flowers in late spring"
+    ],
+    "temp_ideal_low": [
+     55,
+     50
+    ],
+    "temp_ideal_high": [
+     85,
+     95
+    ],
+    "temp_damage_below": [
+     30,
+     15
+    ],
+    "temp_lethal_below": [
+     22,
+     5
+    ],
+    "temp_notes": [
+     "Somewhat hardier than A. vera.",
+     "One of the hardiest aloes: survives about 10-15°F if the roots are dry. Wet, cold soil is the danger, not the cold itself."
+    ],
+    "winter_plan": [
+     "Protect outside",
+     "Hardy outside"
+    ],
+    "winter_summary": [
+     "Protect from deep freeze; keep dry.",
+     "Hardy outside in Round Rock. Keep it fairly dry in winter; cover it on nights below about 15°F."
+    ],
+    "winter_triggers": [
+     "Cover at 30 F.",
+     "Cover it when a night below 15°F is forecast."
+    ],
+    "winter_steps": [
+     "Cover at 30 F or below (frost cloth/sheet draped to the ground over a frame; frost cloth buys roughly 6-8 F). Bring in or move into the garage at 24 F or in a multi-day freeze.\nWater the day before a freeze (moist soil holds heat) but keep the plant dry the rest of winter; skip watering when it is below 40 F.\nCluster pots against a south/east wall under the roof, away from north wind, and pile mulch or leaves around the pots.\nStop nitrogen fertilizer now; new tender growth freezes first.\nMove the bowl to the covered porch at the first hard freeze.",
+     "Water very little from November to February.\nCover with frost cloth on nights below 15°F."
+    ],
+    "indoor_setup": [
+     "Not needed unless it will be indoors.",
+     ""
+    ],
+    "health_summary": [
+     "Firm, bright-green leaves; no damage.",
+     "Healthy, firm green leaves and new offsets."
+    ],
+    "health_observations": [
+     "Green, upright leaves\nWeed seedlings at pot base",
+     "Firm green leaves\nNew offsets at the base"
+    ]
+   }
+  },
+  {
+   "code": "P-016",
+   "name": "Haworthia / zebra plant pair",
+   "photos": [
+    "img_1000021176.jpg"
+   ],
+   "note": "Split: the speckled rosette in the same pot has its own page now (batch 9)",
+   "set": {
+    "common_name": [
+     "Haworthia / zebra plant pair",
+     "Zebra haworthia"
+    ],
+    "scientific_name": [
+     "Haworthia / Haworthiopsis sp. and Gasteria-like rosette",
+     "Haworthiopsis attenuata type"
+    ],
+    "aliases": [
+     "",
+     "Zebra plant; zebra cactus"
+    ],
+    "id_confidence": [
+     55,
+     75
+    ],
+    "id_basis": [
+     "Two rosettes: one spiny, ridged green (Haworthiopsis-like) and one broader dark-bronze, white-tubercled (Gasteria/Haworthia type).",
+     "Stiff, narrow, pointed green leaves with raised white bumps arranged in cross-bands, forming clumps of offsets. That is the zebra haworthia. The broader, dark, white-dotted rosette in the same pot is a different plant and has its own page."
+    ],
+    "id_alternatives": [
+     "Haworthiopsis attenuata\nHaworthia limifolia\nGasteria sp.",
+     "Haworthiopsis fasciata (bands only on the outer face)\nHaworthiopsis coarctata"
+    ],
+    "id_improve": [
+     "Top-down photo of each rosette\nTag\nPhoto in shade",
+     "A side view of one leaf, showing whether the inner face is smooth"
+    ],
+    "container": [
+     "Terracotta bowl with perlite/bark",
+     "Terracotta bowl with perlite and bark (shared with the speckled rosette)"
+    ],
+    "health_summary": [
+     "Sun-bronzed tips and some dead outer leaves.",
+     "Healthy and offsetting. Many leaf tips have dried white, and a few outer leaves are dead."
+    ],
+    "health_observations": [
+     "Bronze/brown leaf tips\nHealthy centres",
+     "Dry white leaf tips (sun)\nA few dead outer leaves\nOffsets forming"
+    ]
+   }
+  },
+  {
+   "code": "P-018",
+   "name": "Ghost plant (blush rosette succulent)",
+   "photos": [
+    "img_1000021178.jpg"
+   ],
+   "note": "ID refined from new photos (batch 9)",
+   "set": {
+    "common_name": [
+     "Ghost plant (blush rosette succulent)",
+     "Graptosedum (blush succulent)"
+    ],
+    "scientific_name": [
+     "Graptopetalum paraguayense (or Graptosedum hybrid)",
+     "xGraptosedum 'Francesco Baldi' type (probable)"
+    ],
+    "aliases": [
+     "Ghost plant",
+     ""
+    ],
+    "id_confidence": [
+     65,
+     60
+    ],
+    "id_basis": [
+     "Pink-lavender, pointed-leaf rosettes. Echeveria/Graptoveria hybrids look similar.",
+     "Long, plump, round-tipped leaves in pastel pink and lavender, on stems that sprawl over the pot edge. That fits xGraptosedum 'Francesco Baldi'. The small grey-blue rosettes among them may be ghost plant (Graptopetalum paraguayense) offsets or a second plant."
+    ],
+    "id_alternatives": [
+     "Graptopetalum paraguayense\nEcheveria sp.\nGraptoveria",
+     "Graptopetalum paraguayense (ghost plant; flatter, more pointed leaves)\nxPachyveria"
+    ],
+    "health_summary": [
+     "Healthy blush colour and compact rosettes; spurge weeds present.",
+     "Healthy blush colour and plump leaves. Spurge weed is growing through it."
+    ],
+    "health_observations": [
+     "Pink-blush rosettes\nWeeds among the stems",
+     "Plump, firm leaves\nSpurge weed throughout the pot"
+    ],
+    "health_steps": [
+     "Remove weeds\nLet dry",
+     "Pull the spurge weed.\nWater only when the mix is dry.\nMove it under cover before nights reach 28°F."
+    ]
+   }
+  },
+  {
+   "code": "P-022",
+   "name": "Rose (potted)",
+   "photos": [
+    "img_1000021182.jpg"
+   ],
+   "note": "Identified from its tag (batch 9)",
+   "set": {
+    "common_name": [
+     "Rose (potted)",
+     "Rose 'Queen of Elegance'"
+    ],
+    "scientific_name": [
+     "Rosa sp.",
+     "Rosa 'WEKjucstokol' (Queen of Elegance), floribunda"
+    ],
+    "aliases": [
+     "Garden or shrub rose (cultivar unknown)",
+     "Weeks Roses, Pat. #32,810; hybridizer Tom Carruth (2020)"
+    ],
+    "id_confidence": [
+     62,
+     98
+    ],
+    "id_basis": [
+     "Pinnate compound leaves with 5-7 oval, serrated leaflets and reddish new growth. Three more roses sit on the same rack (red, green and a second black pot); they now have their own records.",
+     "The Weeks Roses tag reads 'Queen of Elegance, cv. WEKjucstokol, Floribunda'. It is medium pink, very double (40-90 petals, 3.5-4.5 in blooms) with a strong rose fragrance, medium-tall and upright; parents Life of the Party x Koko Loko."
+    ],
+    "id_alternatives": [
+     "Rosa 'Knock Out' or other shrub rose\nRosa cultivar tea/floribunda",
+     ""
+    ],
+    "id_improve": [
+     "Photo of a bloom (colour, form)\nClose-up of stem and thorns\nPlant tag or receipt",
+     "Nothing more needed"
+    ],
+    "light_hours": [
+     "6+ h",
+     "At least 6 hours of direct sun (from the tag)"
+    ],
+    "health_summary": [
+     "Leaf margins show red-orange to tan scorch on many leaflets; plant is leafy and growing.",
+     "Leafy and growing, but many leaflets still have red-brown scorched edges."
+    ]
+   }
+  },
+  {
+   "code": "P-024",
+   "name": "Fern (crisped, recoverable)",
+   "photos": [
+    "img_1000021187.jpg"
+   ],
+   "note": "Identified from its tag; recovering (batch 9)",
+   "set": {
+    "common_name": [
+     "Fern (crisped, recoverable)",
+     "Boston fern 'Emina'"
+    ],
+    "scientific_name": [
+     "Nephrolepis exaltata (probable)",
+     "Nephrolepis exaltata 'Emina'"
+    ],
+    "aliases": [
+     "Boston fern",
+     "Emina fern; curly Boston fern"
+    ],
+    "id_confidence": [
+     50,
+     95
+    ],
+    "id_basis": [
+     "Fine, ruffled fronds arising from a tight central crown; heavily desiccated, so species is uncertain.",
+     "A hand-written tag reads \"Nephrolepis Exaltata 'Emina'\". 'Emina' is a compact, upright Boston fern with tightly crimped fronds, which matches the new growth."
+    ],
+    "id_alternatives": [
+     "Nephrolepis exaltata 'Fluffy Ruffles'\nNephrolepis cordifolia\nDavallia (rabbit's-foot fern)",
+     ""
+    ],
+    "id_improve": [
+     "Photo of a healthy frond if you have an older photo\nClose-up of the crown and any rhizomes\nTag or receipt",
+     "Nothing more needed"
+    ],
+    "health_rating": [
+     "Critical",
+     "Poor"
+    ],
+    "health_summary": [
+     "Nearly all fronds are brown and crisp; a green fiddlehead at the crown shows it is still alive.",
+     "Recovering. Several new green fronds and small fiddleheads are growing, though most old fronds are dead."
+    ],
+    "health_observations": [
+     "Almost all fronds dead and papery\nHealthy green fiddlehead at the centre\nShelf location is dry and breezy",
+     "New green fronds and fiddleheads\nOld fronds brown and crisp"
+    ],
+    "health_steps": [
+     "Cut all brown fronds to the soil line\nSoak the pot in a bucket of room-temperature water for 20 minutes, then drain\nKeep evenly moist and raise humidity to 60%+\nDo not fertilize until new fronds are 4+ in tall",
+     "Cut the dead fronds off at the base so light reaches the new ones.\nKeep the mix evenly moist, never dry.\nBright indirect light, no sun.\nBring it inside before nights reach 45°F."
+    ]
+   }
+  },
+  {
+   "code": "P-025",
+   "name": "Begonia (lobed, bright green)",
+   "photos": [
+    "img_1000021188.jpg"
+   ],
+   "note": "ID refined from new photos (batch 9)",
+   "set": {
+    "id_confidence": [
+     55,
+     75
+    ],
+    "id_basis": [
+     "Rounded, palmately lobed leaves with serrated edges on short petioles; no flowers visible.",
+     "Hairy, lobed and toothed bright-green leaves with lopsided bases, on hairy reddish stalks: a Begonia for sure. The leaf shape fits a young tuberous begonia or a hairy shrub-type begonia; the tag in the pot would settle it."
+    ],
+    "id_improve": [
+     "Photo of a flower or bud\nPhoto of the stem and petioles\nPlant tag",
+     "A photo of the hand-written tag in the pot (only part of it shows)\nA flower"
+    ]
+   }
+  },
+  {
+   "code": "P-029",
+   "name": "Philodendron 'Strawberry Shake'",
+   "photos": [
+    "img_1000021192.jpg"
+   ],
+   "note": "Identified from the Costa Farms tag in its pot (batch 9)",
+   "set": {
+    "common_name": [
+     "Philodendron 'Strawberry Shake'",
+     "Philodendron 'Pink Princess'"
+    ],
+    "scientific_name": [
+     "Philodendron erubescens hybrid",
+     "Philodendron erubescens 'Pink Princess'"
+    ],
+    "aliases": [
+     "Strawberry Shake",
+     "Costa Farms"
+    ],
+    "id_confidence": [
+     65,
+     85
+    ],
+    "id_basis": [
+     "Pink-and-green marbled leaves with red petioles and pink new leaves; Strawberry Shake and Pink Princess look alike when young.",
+     "A Costa Farms tag in the pot reads 'Pink Princess Philodendron'. The new leaf is dark burgundy with pink streaks and the stalks are red, which fits. Many older leaves are marbled cream-yellow rather than pink; that happens with bright light and with some plants sold as Pink Princess. P-030 is a small offshoot growing from the base of this plant, in the same pot."
+    ],
+    "id_alternatives": [
+     "Philodendron 'Pink Congo'\nPhilodendron 'Pink Princess'",
+     "Philodendron 'Strawberry Shake' (cream-and-pink marbled)\nPhilodendron 'Pink Congo' (treated, solid pink)"
+    ],
+    "id_improve": [
+     "Tag/seller name\nPhoto of a mature leaf\nPhoto of the stem/petioles",
+     "A mature leaf in shade, to see how much pink it keeps"
+    ]
+   }
+  },
+  {
+   "code": "P-030",
+   "name": "Philodendron 'Pink Princess' (declining)",
+   "photos": [
+    "img_1000021193.jpg"
+   ],
+   "note": "Ethan: this is a baby shoot growing out of the Pink Princess, P-029 (batch 9)",
+   "set": {
+    "common_name": [
+     "Philodendron 'Pink Princess' (declining)",
+     "Pink Princess offshoot (in P-029's pot)"
+    ],
+    "container": [
+     "Black pot with an orange 'PP-' tag",
+     "Same black pot as P-029 (orange hand-written tag)"
+    ],
+    "id_confidence": [
+     60,
+     85
+    ],
+    "id_basis": [
+     "A tag reads 'PP-' and a pink new leaf remains; consistent with Pink Princess but unconfirmed.",
+     "Ethan says this is a baby shoot growing out of the Pink Princess (P-029), in the same pot, which has a Costa Farms 'Pink Princess Philodendron' tag."
+    ],
+    "id_alternatives": [
+     "Philodendron 'Pink Congo'\nPhilodendron 'Strawberry Shake'",
+     ""
+    ],
+    "id_improve": [
+     "Photo of the full tag\nPhoto of the stem node(s)\nPhoto of the roots",
+     ""
+    ],
+    "health_rating": [
+     "Critical",
+     "Poor"
+    ],
+    "health_summary": [
+     "Nearly all leaves are dead and papery; a pink new shoot is alive.",
+     "A pale pink-and-white shoot at the base among dried leaves. It is alive, but leaves with little green make little food, so it depends on the mother plant."
+    ],
+    "health_observations": [
+     "Brown dried leaves\nPink shoot alive\nBlack pot with a drip emitter nearby",
+     "Pale pink-white new shoot\nDried leaves around it"
+    ],
+    "health_steps": [
+     "Check the stem and nodes: green and firm means alive\nCut off dead leaves\nPot in a clear container with moss to monitor roots\nMove indoors to a humid bright place now",
+     "Leave it attached to the mother plant.\nPull away the dried leaves around it.\nSeparate it only when it has 2-3 leaves with some green and its own roots."
+    ]
+   }
+  },
+  {
+   "code": "P-031",
+   "name": "Calathea (striped, crisped)",
+   "photos": [
+    "img_1000021194.jpg"
+   ],
+   "note": "ID refined from new photos (batch 9)",
+   "set": {
+    "common_name": [
+     "Calathea (striped, crisped)",
+     "Calathea (feather-striped)"
+    ],
+    "scientific_name": [
+     "Goeppertia sp. (Calathea)",
+     "Goeppertia sp. ('Freddie' / concinna type, unconfirmed)"
+    ],
+    "id_confidence": [
+     50,
+     55
+    ],
+    "id_basis": [
+     "Narrow green leaves with pale stripes in a clump; tag partly legible.",
+     "Mid-green leaves with pale silvery-green feathered stripes along the side veins, on long stalks from a clump; one leaf shows a red-purple underside. That fits Goeppertia concinna ('Freddie') or G. leopardina."
+    ],
+    "id_alternatives": [
+     "Calathea 'Rattlesnake'\nCtenanthe\nGoeppertia ornata 'Pinstripe'",
+     "Goeppertia leopardina\nCtenanthe burle-marxii (fishbone prayer plant)\nGoeppertia 'Rattlesnake' (wavy edges, dark spots)"
+    ],
+    "id_improve": [
+     "Close-up of the tag\nPhoto of the leaf underside (purple vs green)",
+     "A clear photo of one healthy leaf, front and back"
+    ],
+    "notes": [
+     "",
+     "A hand-written tag reads '05.24.26 Brett b-day gift!' (a birthday gift, May 24, 2026)."
+    ],
+    "health_summary": [
+     "Majority of leaves are brown and crisped; some healthy leaves remain.",
+     "Still many brown, crisped leaves, but several clean striped leaves and new shoots are growing, with white roots at the base."
+    ],
+    "health_observations": [
+     "Crispy brown margins and whole leaves\nHealthy striped leaves at the centre\nShelf location is dry and exposed",
+     "Many brown crisped leaves\nSeveral clean new leaves\nNew shoots and white roots at the base\nDrip emitter in the pot"
+    ]
+   }
+  },
+  {
+   "code": "P-035",
+   "name": "Philodendron 'Pink Princess' (cutting, declining)",
+   "photos": [
+    "img_1000021198.jpg"
+   ],
+   "note": "New photos: new leaves forming (batch 9)",
+   "set": {
+    "health_rating": [
+     "Critical",
+     "Poor"
+    ],
+    "health_summary": [
+     "Leaves are dried and papery; one pale leaf is left; the stake and cutting base look hollow.",
+     "New leaves are forming, but the old cutting stem is hollow and the bamboo stake is pushed down into it."
+    ],
+    "health_observations": [
+     "Dried brown leaves\nOne pale green leaf\nA hollow cut stem section beside the stake",
+     "Two or three new pale-green, cream-marbled leaves\nOld cutting stem hollow\nBamboo stake inside the hollow stem\nSeveral dead papery leaves"
+    ],
+    "health_steps": [
+     "Check the node: green and firm means alive\nRe-root in moist sphagnum in a humid bag/container\nKeep warm (70+ F) and bright",
+     "Pull the stake out of the hollow stem; water collects there and rots it.\nRemove the dead leaves.\nKeep the mix barely moist and warm (above 65°F).\nBright indirect light."
+    ]
+   }
+  },
+  {
+   "code": "P-036",
+   "name": "Unidentified young serrated-leaf plant",
+   "photos": [
+    "img_1000021199.jpg"
+   ],
+   "note": "Possible ID from new photos (batch 9)",
+   "set": {
+    "common_name": [
+     "Unidentified young serrated-leaf plant",
+     "Possible stevia (young, serrated leaves)"
+    ],
+    "scientific_name": [
+     "Unknown (possibly Hydrangea or Begonia)",
+     "Stevia rebaudiana (possible)"
+    ],
+    "aliases": [
+     "",
+     "Sweetleaf?"
+    ],
+    "plant_type": [
+     "Unknown",
+     "Herb / perennial"
+    ],
+    "id_confidence": [
+     30,
+     50
+    ],
+    "id_basis": [
+     "Light green, coarsely serrated leaves in opposite pairs on a young plant.",
+     "Thin, woody brown stems with opposite pairs of light-green leaves that narrow to the base and are coarsely toothed toward the tip. That fits stevia. A taste test settles it: stevia leaves are intensely sweet."
+    ],
+    "id_alternatives": [
+     "Hydrangea macrophylla cutting\nBegonia\nSalvia",
+     "Hydrangea cutting\nSalvia\nEupatorium"
+    ],
+    "id_improve": [
+     "Plant tag photo\nPhoto of a flower or bud\nPhoto showing the stem node pairs",
+     "Tear a leaf, touch it to your tongue and spit it out: stevia tastes very sweet\nA flower (stevia has small white flowers in autumn)"
+    ]
+   }
+  },
+  {
+   "code": "P-039",
+   "name": "Yellow-cream philodendron",
+   "photos": [
+    "img_1000021173.jpg"
+   ],
+   "note": "Identified from its tag (batch 9)",
+   "set": {
+    "common_name": [
+     "Yellow-cream philodendron",
+     "Philodendron 'Painted Lady'"
+    ],
+    "scientific_name": [
+     "Philodendron hederaceum cultivar (unconfirmed)",
+     "Philodendron 'Painted Lady'"
+    ],
+    "aliases": [
+     "Possibly 'Malay Gold' or 'Cream Splash'",
+     ""
+    ],
+    "id_confidence": [
+     45,
+     90
+    ],
+    "id_basis": [
+     "Pale cream-yellow heart leaves with orange petioles and lime patches.",
+     "A hand-written tag reads \"Philodendron 'Painted Lady'\". Bright yellow leaves speckled with green, on orange-pink stalks, match."
+    ],
+    "id_alternatives": [
+     "Philodendron 'Lemon Lime'\nPhilodendron 'Moonlight'\nEpipremnum aureum cultivar",
+     ""
+    ],
+    "id_improve": [
+     "Tag or seller\nPhoto of a mature leaf in shade\nPhoto of the stem and aerial roots",
+     "Nothing more needed"
+    ],
+    "container": [
+     "White pot",
+     "Clear plastic pot"
+    ],
+    "health_summary": [
+     "Pale, partly bleached leaves with orange stems; no pests seen.",
+     "Colourful and growing, but root-bound: many roots grow out of the bottom of the pot. One leaf has a brown spot."
+    ],
+    "health_observations": [
+     "Washed-out cream leaves\nOrange-pink petioles\nOne brown dried leaf at the pot edge",
+     "Many roots growing out of the drainage holes\nOne brown leaf spot"
+    ],
+    "health_steps": [
+     "Move to bright shade\nTrim the dead leaf\nFertilize lightly in spring",
+     "Pot it up one size (1-2 in wider) into chunky aroid mix.\nBright indirect light.\nBring it inside before nights reach 55°F."
+    ]
+   }
+  },
+  {
+   "code": "P-042",
+   "name": "Agave (species not identified)",
+   "photos": [
+    "img_b2_03.jpg"
+   ],
+   "note": "New photos show leaf blotches (batch 9)",
+   "set": {
+    "health_rating": [
+     "Good",
+     "Fair"
+    ],
+    "health_summary": [
+     "Firm, upright blue-gray leaves with no soft or mushy areas. A few small reddish-brown specks near the leaf bases and slight tip browning.",
+     "Firm overall, but one leaf has yellow-orange blotches, the lowest leaf base is yellow with a brown patch, and another leaf has a scar."
+    ],
+    "health_observations": [
+     "Leaves are firm and upright\nSmall rust-coloured specks near some leaf bases (cosmetic, but could be scale)\nSurface of the mix is dry",
+     "Yellow-orange blotches on one leaf\nLowest leaf base yellow with a brown patch\nA leaf with a yellow streak and scar\nA small pink-flowered weed in the tub"
+    ],
+    "health_steps": [
+     "Check leaf bases and the crown with a flashlight for scale or mealybugs\nDab a speck with rubbing alcohol on a swab to see if it is an insect\nKeep water out of the crown",
+     "Press the yellow lowest leaf near its base: firm means it is an old leaf dying back (cut it off); soft or smelly means rot (unpot and check the core).\nKeep it dry; water only when the mix is dry through.\nPull the weed.\nMove it under cover before nights reach 25°F."
+    ]
+   }
+  },
+  {
+   "code": "P-044",
+   "name": "Fuzzy-leaved succulent (unidentified)",
+   "photos": [
+    "img_b2_05.jpg"
+   ],
+   "note": "Ethan: P-002 and P-044 are the same plant (P-002 was before repotting). This page is now the boobie cactus (batch 9)",
+   "set": {
+    "common_name": [
+     "Fuzzy-leaved succulent (unidentified)",
+     "Boobie cactus (Fukurokuryuzinboku)"
+    ],
+    "scientific_name": [
+     "Kalanchoe sp. or Plectranthus sp. (unconfirmed)",
+     "Myrtillocactus geometrizans cv. 'Fukurokuryuzinboku'"
+    ],
+    "aliases": [
+     "",
+     "Monstrose Myrtillocactus; Bilberry cactus (monstrose form)"
+    ],
+    "plant_type": [
+     "Succulent / soft-stemmed perennial",
+     "Cactus"
+    ],
+    "id_basis": [
+     "Thick, pale yellow-green leaves covered in fine hairs, in opposite pairs with rounded scalloped edges. These traits fit several fuzzy Kalanchoe and Plectranthus species and are too similar to separate here.",
+     "The lumpy, tiered monstrose shape and the Costa Farms 'Desert Escape' pot are both distinctive; this is the commonly sold boobie cactus."
+    ],
+    "id_alternatives": [
+     "Kalanchoe millotii\nKalanchoe beharensis (young plant)\nPlectranthus tomentosus (Vicks plant)\nCotyledon tomentosa (bear's paw)",
+     "Lophocereus schottii monstrose 'Totem pole' (similar look, spinier)"
+    ],
+    "id_improve": [
+     "Close-up of one leaf (top, underside and edge) next to a coin\nPhoto of the whole plant from the side\nPhoto of where the leaves attach to the stem (opposite pairs or alternate)\nRub a leaf: a strong medicinal or minty smell points to Plectranthus\nTag or where it came from",
+     "Photo of the base and the full pot after removing the sleeve\nA photo of any spines/areoles in close-up in daylight"
+    ],
+    "temp_ideal_high": [
+     85,
+     95
+    ],
+    "temp_damage_below": [
+     45,
+     35
+    ],
+    "temp_lethal_below": [
+     32,
+     25
+    ],
+    "temp_notes": [
+     "If Kalanchoe: damaged below about 45 F and killed by frost. If Plectranthus: tender below 50 F.",
+     "Tolerates a brief light freeze when dry, but this monstrose form is slow and prone to cold-wet rot. Keep it above 35 F."
+    ],
+    "humidity_low": [
+     30,
+     20
+    ],
+    "humidity_high": [
+     60,
+     50
+    ],
+    "humidity_notes": [
+     "Prefers moderate to dry air.",
+     "Dry air is ideal. Wet cold is the real danger."
+    ],
+    "light_summary": [
+     "Bright indirect light, some morning sun",
+     "Full sun once acclimated"
+    ],
+    "light_hours": [
+     "4-6 h",
+     "6+ h sun (build up over 2-3 weeks)"
+    ],
+    "light_notes": [
+     "Pale, thin leaves suggest it could use more light.",
+     "A nursery plant sunburns if moved straight into full sun."
+    ],
+    "winter_plan": [
+     "Move indoors",
+     "Protect outside"
+    ],
+    "winter_summary": [
+     "Unknown species, so treat as frost-tender and bring it in before the first night under 50 F.",
+     "Hardy to light frost only when dry. Keep dry and covered; use the porch or garage on hard-freeze nights."
+    ],
+    "winter_triggers": [
+     "Target Nov 1.",
+     "Cover at 32 F, indoors at 28 F or below."
+    ],
+    "winter_steps": [
+     "Target: indoors by about Nov 1, before the first night forecast under 50 F.\nPre-move: rinse the leaves with a hose, check undersides and stem nodes for spider mites, mealybugs, scale and fungus gnats, treat with insecticidal soap or neem, then quarantine 2 weeks away from other houseplants.\nAcclimate in two steps to limit leaf drop: about a week on the covered porch or in the garage, then inside.\nDo not repot or fertilize for the move; trim only dead tissue.",
+     "Cover at 32 F or below (frost cloth/sheet draped to the ground over a frame; frost cloth buys roughly 6-8 F). Bring in or move into the garage at 28 F or in a multi-day freeze.\nWater the day before a freeze (moist soil holds heat) but keep the plant dry the rest of winter; skip watering when it is below 40 F.\nCluster pots against a south/east wall under the roof, away from north wind, and pile mulch or leaves around the pots.\nStop nitrogen fertilizer now; new tender growth freezes first.\nKeep it under the porch roof so winter rain does not sit in the pot.\nRepot into a gritty cactus mix (about 70% mineral) in spring or within 2-3 weeks; leave it unwatered for the first week."
+    ],
+    "indoor_setup": [
+     "Indoors: within 3 ft of an east or south window, or under a full-spectrum grow light 12-14 h/day at 6-12 in. Winter sun in Round Rock is only ~4.5-6 hours of real sunshine per day in Dec-Jan, so supplement.\nLet the top inch of mix dry between waterings.",
+     "Bright south window or grow light if brought in; water about once a month in winter."
+    ],
+    "temp_damage_above": [
+     105,
+     115
+    ],
+    "vpd_high": [
+     2.0,
+     2.5
+    ],
+    "par_low": [
+     400,
+     600
+    ],
+    "par_high": [
+     1200,
+     1800
+    ],
+    "dli_low": [
+     15.0,
+     25.0
+    ],
+    "dli_high": [
+     30.0,
+     45.0
+    ],
+    "water_notes": [
+     "Soak when the mix is dry through: about every 2-3 weeks in summer and once a month, or less, in winter. Never leave water standing in the pot or saucer.",
+     "Soak the pot, then let it dry completely before watering again: about every 2-3 weeks in summer, and almost none in winter (once a month at most, and never below 45 F). Wet roots plus cold is how cacti die."
+    ],
+    "soil_medium": [
+     "Gritty succulent mix: about half pumice or perlite with potting soil. The pot must have drainage holes.",
+     "Mostly mineral: about two parts pumice, crushed granite or coarse sand to one part potting soil. The pot must have drainage holes."
+    ],
+    "soil_moisture_high": [
+     30,
+     25
+    ],
+    "fertilizer": [
+     "Low-nitrogen succulent fertilizer at half strength",
+     "Low-nitrogen cactus fertilizer, about 2-7-7, at half strength"
+    ],
+    "nutrients": [
+     "Feed lightly 2-3 times in spring and summer. None in autumn and winter. Stretched, pale growth points to too little light.",
+     "Feed once a month from April to August. None in autumn and winter. Etiolation (thin, stretched growth) means too little light, not too little food."
+    ],
+    "fert_to_month": [
+     9,
+     8
+    ],
+    "fert_every_days": [
+     42,
+     30
+    ],
+    "pests_watch": [
+     "Mealybugs: white cottony clumps at the base of leaves and in the crown\nScale: small brown bumps on leaves and stems\nRoot and crown rot from cold, wet mix\nFungus gnats in damp mix\nSnails and slugs chewing leaves outdoors",
+     "Mealybugs and scale (cochineal scale looks like white cotton on prickly pear pads)\nRoot and base rot\nFungal rot after frost damage\nFungus gnats"
+    ],
+    "id_confidence": [
+     30,
+     95
+    ],
+    "container": [
+     "Black nursery pot",
+     "Black nursery pot (repotted)"
+    ],
+    "health_rating": [
+     "Fair",
+     "Good"
+    ],
+    "health_summary": [
+     "Leaves are pale yellow-green and a little thin, which suggests low light or low nutrients. No pests or rot seen.",
+     "Firm, plump and pale green after repotting. A small corky mark low on the stem."
+    ],
+    "health_observations": [
+     "Pale yellow-green colour\nFine hairs on the leaves look intact\nSome leaves are flat or tilted\nShares a shelf with the boobie cactus and a crown of thorns",
+     "Firm, plump tubercles\nSmall corky mark low on the stem (old scar)"
+    ],
+    "health_steps": [
+     "Move to a brighter spot (morning sun)\nCheck the leaf undersides for mealybugs\nFeed lightly from March",
+     "Water only when the mix is dry through; less in winter.\nFull sun once acclimated.\nMove it under cover before nights reach 35°F."
+    ],
+    "pests_current": [
+     "No pests identified in the photos so far. Note here anything you see, with the date.",
+     "None seen."
+    ],
+    "notes": [
+     "Visible at the bottom left of the crown of thorns photo and at the right edge of the boobie cactus photo.",
+     "Same plant as P-002, which was the page from before repotting (P-002 is archived). An earlier version of this page described a 'fuzzy-leaved succulent'; that came from another pot visible beside the cactus in an October photo."
+    ]
+   }
+  },
+  {
+   "code": "P-051",
+   "name": "Variegated clump (unidentified, new shoots)",
+   "photos": [
+    "img_b2_12.jpg"
+   ],
+   "note": "Identified from new photos (batch 9)",
+   "set": {
+    "common_name": [
+     "Variegated clump (unidentified, new shoots)",
+     "Variegated tradescantia (lime, white-striped)"
+    ],
+    "scientific_name": [
+     "Unidentified (possibly a Tradescantia/Callisia relative or a variegated ginger)",
+     "Tradescantia, variegated (T. fluminensis or T. albiflora 'Albovittata' type)"
+    ],
+    "aliases": [
+     "",
+     "Inch plant; wandering dude"
+    ],
+    "plant_type": [
+     "Unknown herbaceous perennial",
+     "Trailing perennial"
+    ],
+    "id_confidence": [
+     25,
+     65
+    ],
+    "container": [
+     "Unknown (tray or bed)",
+     "Long white planter box with red lava-rock mix"
+    ],
+    "id_basis": [
+     "Pale-green leaves with fine white parallel stripes and clasping leaf bases in a clump. Parallel veins suggest a monocot. It grows next to wandering-jew type plants, but there is too little detail to name it.",
+     "Jointed, creeping stems that root at the nodes, and lance-shaped leaves that clasp the stem with a short, slightly hairy sheath. The leaves are lime-green with fine white pinstripes. That is a variegated Tradescantia."
+    ],
+    "id_alternatives": [
+     "Variegated Tradescantia or Callisia (spiderwort family)\nVariegated ginger (Alpinia zerumbet 'Variegata') seedling\nAnother variegated monocot",
+     "Callisia (smaller leaves)\nTradescantia 'Lemon Lime'"
+    ],
+    "id_improve": [
+     "Side view showing how the leaves attach to the stem\nClose-up of the underside of a leaf\nA flower photo if it blooms\nWhere it came from (gift, cutting, tag)\nA photo of the whole container or bed",
+     "A flower: Tradescantia flowers have three petals (white for T. fluminensis)"
+    ],
+    "health_summary": [
+     "New shoots are firm, clean and evenly coloured with no spots or chewing damage.",
+     "Lots of new shoots. A few leaves have brown edges or spots."
+    ],
+    "health_observations": [
+     "Firm new leaves with crisp white stripes\nNo spots or insect damage\nA few older leaves at the lower left look healthy",
+     "Many new shoots\nA few brown leaf edges and spots"
+    ]
+   }
+  },
+  {
+   "code": "P-053",
+   "name": "Gourd-family vine (red pot)",
+   "photos": [
+    "img_b2_14.jpg"
+   ],
+   "note": "New photos show possible insects (batch 9)",
+   "set": {
+    "pests_current": [
+     "Brown blotches and specks on the oldest leaf (likely a fungal leaf spot) and a few chewed holes. Check the undersides for squash bugs, cucumber beetles and mites.",
+     "October 21: clusters of tiny black specks on several leaves (seen against the light) and a small insect on a top leaf. Possibly black aphids or their droppings, or thrips. Not confirmed."
+    ],
+    "health_observations": [
+     "Whole plant pale yellow-green (low nitrogen likely: the mix is mostly perlite and bark)\nLarge brown, dry blotches and small brown specks on the oldest leaf (leaf spot such as anthracnose or alternaria, or sun scald)\nA few small holes in one leaf (chewing insects)\nNew leaves at the top are greener\nTendrils reaching toward the fence",
+     "Clusters of tiny black specks on several leaves\nA small insect on a top leaf\nOlder leaves yellowing with brown spots\nTendrils and new growth at the top"
+    ],
+    "health_steps": [
+     "Remove the leaf with the large brown blotches and bin it\nFeed with a balanced liquid fertilizer at full strength once, then every 2 weeks while it grows\nLet the tendrils grab the fence or give it a stake\nWater at the base, not over the leaves\nIf it flowers before frost, photograph the flower so it can be identified",
+     "Look under the speckled leaves with a magnifier or phone zoom.\nHose the leaves (top and underside) with a strong spray.\nThen spray insecticidal soap every 5-7 days, three times.\nFeed with a balanced fertilizer: the perlite-heavy mix is hungry.\nIt is frost-tender; it will likely die back at the first frost."
+    ]
+   }
+  },
+  {
+   "code": "P-055",
+   "name": "Philodendron (self-heading type, cultivar unconfirmed)",
+   "photos": [
+    "img_b2_16.jpg"
+   ],
+   "note": "Identified from its HEB label (batch 9)",
+   "set": {
+    "common_name": [
+     "Philodendron (self-heading type, cultivar unconfirmed)",
+     "Philodendron 'Black Cardinal'"
+    ],
+    "scientific_name": [
+     "Philodendron sp. (possibly a 'Prince of Orange' or 'Moonlight' type hybrid)",
+     "Philodendron 'Black Cardinal'"
+    ],
+    "aliases": [
+     "",
+     "HEB clearance, $1 (was $8), Sept 30 2026"
+    ],
+    "id_confidence": [
+     40,
+     85
+    ],
+    "id_basis": [
+     "Large, oblong, leathery leaves on thick petioles with papery sheaths around new growth are typical of a self-heading Philodendron hybrid. Several similar plants in orange-yellow new growth sit next to it. A plant tag in the pot (2-3 ft tall, pot friendly, cold-hardiness note) is only partly readable.",
+     "The HEB clearance label reads 'HEB PHILO BLK CARDNL 5in' (Philodendron Black Cardinal). It is a self-heading philodendron whose new leaves open copper-red and darken to near black; the reddish stalks fit."
+    ],
+    "id_alternatives": [
+     "Philodendron 'Prince of Orange'\nPhilodendron 'Moonlight'\nPhilodendron 'Xanadu' / 'Winterbourn'\nPhilodendron 'Painted Lady' (variegated)",
+     "Philodendron 'Black Congo'\nPhilodendron 'Rojo Congo'"
+    ],
+    "id_improve": [
+     "A close-up of the full plant tag (both sides)\nA side view of the whole plant from pot to top\nA close-up of a new leaf as it emerges (colour and sheath)\nThe base of the stem and petioles",
+     "A healthy new leaf as it opens"
+    ],
+    "health_rating": [
+     "Fair",
+     "Poor"
+    ],
+    "health_summary": [
+     "Large leaves have tan, dry margins and a few necrotic patches, and the newest growth in the pot centre is crumpled and browning. Many leaves are still green and healthy.",
+     "Struggling: many leaves are yellow-orange with dead brown tips and droop, and the green leaves are covered in small white specks."
+    ],
+    "health_observations": [
+     "Tan, crispy leaf edges on several leaves\nBrown necrotic patches on a variegated leaf\nSmall white or yellow pin-dots on the leaves\nDried leaf sheaths at the crown\nNewest centre growth crumpled and brown",
+     "Small white specks over the leaves\nYellow-orange leaves with dead tips\nDrooping leaves\nPapery dead sheaths at the base"
+    ],
+    "health_steps": [
+     "Trim brown edges with clean scissors, following the leaf shape\nCheck the crown for rot: if the heart is mushy, let the mix dry out\nCheck leaf undersides for thrips and spider mites\nMove out of afternoon sun and cold wind\nBring inside before 50 F nights",
+     "Wipe one speckled leaf with a damp cloth: if the specks come off they are mineral spots from water; if not, look under the leaves for thrips or mites and treat with insecticidal soap.\nCut off the dead and mostly yellow leaves.\nBright indirect light, no direct sun.\nWater when the top inch is dry.\nBring it inside before nights reach 55°F."
+    ]
+   }
+  },
+  {
+   "code": "P-056",
+   "name": "Alocasia (dark glossy leaf)",
+   "photos": [
+    "img_b2_18.jpg"
+   ],
+   "note": "Label found (batch 9)",
+   "set": {
+    "common_name": [
+     "Alocasia (dark glossy leaf)",
+     "Alocasia (sold as 'Nigra')"
+    ],
+    "aliases": [
+     "Elephant ear",
+     "HEB clearance label 'ALOCASIA NIGRA FOLIAGE' (faded), $1 (was $8), Sept 30 2026"
+    ],
+    "id_confidence": [
+     45,
+     60
+    ],
+    "id_basis": [
+     "A large arrow-shaped leaf with deeply impressed veins and a strongly glossy surface, with small matte gray-green baby leaves at the base. The genus is clear; the species or cultivar is not.",
+     "The HEB clearance label reads 'HEB ALOCASIA NIGRA FOLIA...' (faded). 'Nigra' is a store name rather than a registered cultivar. The large, glossy, dark, wavy-edged leaf fits Alocasia 'Regal Shields' type hybrids."
+    ],
+    "id_alternatives": [
+     "Alocasia 'Regal Shields'\nAlocasia x 'Calidora'\nAlocasia odora\nAlocasia 'Polly' (smaller, ruffled)",
+     "Alocasia 'Regal Shields'\nAlocasia 'Yucatan Princess'\nAlocasia odora (paler)"
+    ],
+    "id_improve": [
+     "A photo of the plant tag\nA side view of the whole plant, including petiole colour and pattern\nA close-up of the underside of a leaf and of the baby leaves",
+     "A photo of the leaf underside (purple or green?)"
+    ],
+    "health_summary": [
+     "A strong, glossy leaf with healthy baby leaves emerging at the base.",
+     "One large healthy leaf and three baby leaves at the base."
+    ]
+   }
+  },
+  {
+   "code": "P-061",
+   "name": "Alocasia (lime-green, tagged)",
+   "photos": [
+    "img_b2_23.jpg"
+   ],
+   "note": "Tag found: it only says Alocasia (batch 9)",
+   "set": {
+    "common_name": [
+     "Alocasia (lime-green, tagged)",
+     "Alocasia (lime-green, mottled stalks)"
+    ],
+    "scientific_name": [
+     "Alocasia sp. (possibly A. odora or an 'x Calidora' type)",
+     "Alocasia 'Sarian' or 'Portora' type (unconfirmed)"
+    ],
+    "id_confidence": [
+     50,
+     55
+    ],
+    "id_basis": [
+     "The plant tag reads 'Alocasia'. The large lime-green leaves have a deep basal lobe and wavy margins. The species is not identifiable from the leaf alone.",
+     "The tag only says 'Alocasia' with care notes. The leaf stalks are mottled and striped brown, and the arrow-shaped leaves have wavy edges and stand upright, which fits Alocasia 'Sarian' or 'Portora'."
+    ],
+    "id_alternatives": [
+     "Alocasia odora\nAlocasia x 'Calidora' or 'Portodora'\nAlocasia macrorrhiza (giant taro) seedling",
+     "Alocasia odora (plain green stalks)\nAlocasia x Calidora"
+    ],
+    "id_improve": [
+     "A close-up of the tag\nA side view showing petiole colour and plant height\nA photo of the underside of a leaf",
+     "A photo of the whole plant from the side"
+    ],
+    "health_summary": [
+     "Large, bright lime-green leaves, but the upper-right leaf is torn, curled and browned and weeds are growing in nearby pots.",
+     "Large leaves, but pale lime from strong sun. One newer leaf is crumpled and a dead leaf base is rotting at the soil."
+    ],
+    "health_observations": [
+     "Large healthy leaves in bright lime green\nUpper-right leaf curled with brown tissue\nRed-stemmed spurge weeds in neighbouring pots\nChunky pumice mix surface is dry",
+     "Pale lime leaves (too much sun)\nOne crumpled newer leaf\nA dead leaf base at the soil"
+    ],
+    "health_steps": [
+     "Trim the damaged leaf at the stem\nPull the spurge weeds\nCheck leaf undersides for spider mites\nFeed lightly while it is warm, then stop",
+     "Pull out the dead leaf base.\nMove it to bright shade.\nWater when the top 2 in are dry (from the tag).\nBring it inside before nights reach 55°F."
+    ]
+   }
+  },
+  {
+   "code": "P-066",
+   "name": "Velvet-leaf philodendron (young)",
+   "photos": [
+    "img_b2_28.jpg"
+   ],
+   "note": "New photos: it is a rooted runner of the plant above (batch 9)",
+   "set": {
+    "id_confidence": [
+     55,
+     65
+    ],
+    "container": [
+     "Blue 5-gallon bucket with bark mulch mix",
+     "Clear plastic pot on the rack; a vine from it has rooted in the blue 5-gallon bucket below"
+    ],
+    "id_basis": [
+     "Small heart-shaped leaves with a velvety bronze-green sheen and pink new growth on a thin climbing stem.",
+     "Velvety, bronze-olive leaves with pink edges, red stalks and pink sheaths, which is how young micans leaves look. The photos show a long vine running from a clear pot on the rack down into the blue bucket, where it has rooted and put out these leaves."
+    ],
+    "health_rating": [
+     "Good",
+     "Fair"
+    ],
+    "health_summary": [
+     "Young plant putting out pink-tinged new growth. Two older leaves are curled or lying flat on the mulch.",
+     "The part in the bucket is growing well; the plant in the clear pot above is leggy with bare vines and several dried leaves."
+    ],
+    "health_observations": [
+     "New growth with a pink sheath\nTwo older leaves curled or lying flat\nMulch surface is slightly damp",
+     "Healthy velvety new leaves in the bucket\nBare, leggy vines and dried leaves in the clear pot above"
+    ],
+    "health_steps": [
+     "Tie the vine to the post so it climbs\nKeep the mulch lightly damp\nShare a bigger pot if it grows",
+     "Pin more vine nodes onto the bucket mix so they root too.\nTrim the bare vines in the clear pot and root the cuttings.\nBring both inside before nights reach 55°F."
+    ]
+   }
+  }
+ ],
+ "archive": [
+  {
+   "code": "P-002",
+   "name": "Boobie cactus (Fukurokuryuzinboku)",
+   "photos": [
+    "img_1000021088.jpg"
+   ],
+   "note": "Same plant as P-044 (this page is from before repotting); archived in favour of P-044 (batch 9)"
+  }
+ ],
+ "to_photograph_done": [],
+ "to_photograph_add": [
+  {
+   "label": "Fuzzy pale-green-leaved plant",
+   "note": "Seen beside the boobie cactus (P-044) in an October photo: thick, hairy, pale-green leaves in a black pot. If you still have it, a photo would give it its own page."
+  }
+ ],
+ "requests_add": [
+  {
+   "key": "p014-three-aloes",
+   "code": "P-014",
+   "kind": "check",
+   "text": "P-014 is now the biggest aloe (black pot with white gravel). The other two have new pages: the one in the teal pot, and the one in the black pot behind the prickly pear pad. Print labels for the two new pages (Labels page) and put each on its pot.",
+   "photos": [
+    "img_1000021174.jpg"
+   ]
+  },
+  {
+   "key": "p016-speckled",
+   "code": "P-016",
+   "kind": "check",
+   "text": "The speckled rosette in this pot now has its own page. If you want to keep them apart, it can go in its own small pot with gritty mix.",
+   "photos": [
+    "img_1000021176.jpg"
+   ]
+  },
+  {
+   "key": "p025-tag-text",
+   "code": "P-025",
+   "kind": "photo",
+   "text": "A close photo of the hand-written tag in this pot (only part of it showed), to settle which begonia it is.",
+   "photos": [
+    "img_1000021188.jpg"
+   ]
+  },
+  {
+   "key": "p036-taste",
+   "code": "P-036",
+   "kind": "check",
+   "text": "Taste test: tear a leaf, touch it to your tongue and spit it out. Is it very sweet? (Stevia is.)",
+   "photos": [
+    "img_1000021199.jpg"
+   ]
+  },
+  {
+   "key": "p042-base",
+   "code": "P-042",
+   "kind": "check",
+   "text": "Press the yellow lowest leaf near its base: is it firm, or soft and smelly?",
+   "photos": [
+    "img_b2_03.jpg"
+   ]
+  },
+  {
+   "key": "p053-undersides",
+   "code": "P-053",
+   "kind": "check",
+   "text": "Look under a speckled leaf: are the black specks tiny insects (they move when nudged) or just dots?",
+   "photos": [
+    "img_b2_14.jpg"
+   ]
+  },
+  {
+   "key": "p055-wipe",
+   "code": "P-055",
+   "kind": "check",
+   "text": "Wipe one white-speckled leaf with a damp cloth: do the specks come off?",
+   "photos": [
+    "img_b2_16.jpg"
+   ]
+  }
+ ],
+ "requests_done": [
+  "p-029-pot-tag",
+  "p-030-pot-tag",
+  "p-039-pot-tag",
+  "p-055-pot-tag",
+  "p-056-tag-closeup",
+  "p-061-tag-closeup"
+ ]
+}

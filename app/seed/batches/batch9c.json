@@ -1,0 +1,109 @@
+{
+ "id": "batch9c",
+ "created": "2026-10-23",
+ "author": "Claude (batch 9c, your answers)",
+ "plants": [
+  {
+   "temp_ideal_low": 65,
+   "temp_ideal_high": 85,
+   "temp_damage_below": 50,
+   "temp_lethal_below": 35,
+   "temp_notes": "Leaf margins scorch or tan with chilling near 50 F. Frost kills.",
+   "humidity_low": 50,
+   "humidity_high": 70,
+   "humidity_notes": "The tan crispy edges could come from dry air.",
+   "light_summary": "Bright indirect light",
+   "light_hours": "4-6 h",
+   "light_notes": "The tan edges and yellow bleached patches suggest sunburn, cold nights or dry air. Give filtered light.",
+   "winter_plan": "Move indoors",
+   "winter_summary": "Tropical foliage plant. Bring it inside before nights fall under 55 F.",
+   "winter_triggers": "Target Nov 1; before any night under 50 F.",
+   "winter_steps": "Target: indoors by about Nov 1, before the first night forecast under 50 F.\nPre-move: rinse the leaves with a hose, check undersides and stem nodes for spider mites, mealybugs, scale and fungus gnats, treat with insecticidal soap or neem, then quarantine 2 weeks away from other houseplants.\nAcclimate in two steps to limit leaf drop: about a week on the covered porch or in the garage, then inside.\nDo not repot or fertilize for the move; trim only dead tissue.",
+   "indoor_setup": "Indoors: within 3 ft of an east or south window, or under a full-spectrum grow light 12-14 h/day at 6-12 in. Winter sun in Round Rock is only ~4.5-6 hours of real sunshine per day in Dec-Jan, so supplement.\nIndoor winter air is typically 20-35% RH; raise it with a humidifier (target 50-60%), grouping plants, or a pebble tray, and keep plants away from heater vents.\nWater when the top 2 in dry; reduce in winter.\nCheck leaf undersides for thrips and spider mites.",
+   "temp_damage_above": 100,
+   "vpd_low": 0.4,
+   "vpd_high": 1.0,
+   "par_low": 150,
+   "par_high": 400,
+   "dli_low": 6.0,
+   "dli_high": 12.0,
+   "water_notes": "Water when the top 1-2 in (3-5 cm) of mix is dry. Soak until water drains out, then empty the saucer. Indoors in winter this stretches to every 10-14 days. Cold, wet mix is the commonest way to lose these plants.",
+   "soil_medium": "Chunky, fast-draining aroid mix: about 40% potting soil, 30% orchid bark, 20% perlite or pumice and 10% coco coir or worm castings. The pot must have drainage holes.",
+   "soil_ph_low": 5.5,
+   "soil_ph_high": 6.5,
+   "soil_moisture_low": 35,
+   "soil_moisture_high": 60,
+   "soil_temp_low": 65,
+   "soil_temp_high": 85,
+   "fertilizer": "Balanced liquid, such as 3-1-2 or 20-20-20, at half strength",
+   "nutrients": "Feed every 2-4 weeks from March to September at half strength, and stop from November to February. Pale new leaves point to low nitrogen. Yellow older leaves with green veins point to low magnesium (1 tsp Epsom salt per gallon, once a season). Brown crisp tips can be salt build-up: flush the pot with plain water every 2-3 months.",
+   "fert_from_month": 3,
+   "fert_to_month": 9,
+   "fert_every_days": 21,
+   "pests_watch": "Spider mites: fine webbing and stippled leaves, worst in dry heated air\nThrips: silvery streaks and black specks on leaves\nMealybugs: white cottony clumps in leaf joints\nFungus gnats: small flies over damp mix\nRoot rot from cold, soggy mix\nBacterial or fungal leaf spot: brown, water-soaked spots",
+   "pest_steps": "Check leaf undersides and leaf joints once a week, and before any plant comes indoors.\nKeep newly moved plants apart from the others for 2 weeks.\nWipe leaves with a damp cloth to remove dust and mites.\nFor mites, thrips or mealybugs: spray insecticidal soap or neem oil every 5-7 days for three rounds. Test one leaf first and do not spray in hot sun.\nFor mealybugs on a few spots: touch each with a swab of 70% rubbing alcohol.\nFor fungus gnats: let the top inch of mix dry, add yellow sticky traps, and water once with Bti (Mosquito Bits) soaked water.\nRemove leaves with leaf spot, keep the foliage dry and give the plant airflow.",
+   "common_name": "Yellow-marbled philodendron (self-heading, unidentified)",
+   "scientific_name": "Philodendron sp. (unconfirmed)",
+   "aliases": "",
+   "plant_type": "Tropical foliage (aroid)",
+   "location": "Porch shelf / black bench with other aroids",
+   "container": "Black nursery pot",
+   "site": "Outdoors",
+   "id_confidence": 35,
+   "id_basis": "Split from P-055: Ethan says this photo shows a different plant from the Black Cardinal. A broad, glossy, oval leaf marbled lime and yellow over green, on a long stalk from the base, so probably a self-heading philodendron. Not enough to name it from one photo.",
+   "id_alternatives": "Philodendron 'Calypso' (lime-and-yellow marbled)\nPhilodendron 'Painted Lady' (young leaf)\nPhilodendron 'Golden Crocodile'\nPhilodendron 'Prince of Orange' (green-leaf stage)",
+   "id_improve": "A photo of the whole plant from the side\nA newly opened leaf (its colour as it opens)\nThe pot tag or price label",
+   "health_rating": "Fair",
+   "health_summary": "Large leaf with brown, sunburned-looking patches along the edge and near the midrib; dried stalks at the base.",
+   "health_observations": "Brown scorch patches on the big leaf\nPale yellow spots\nDried old leaf stalks at the base",
+   "health_steps": "Move it out of direct afternoon sun.\nRemove the dried stalks.\nWater when the top inch is dry.\nBring it inside before nights reach 55°F.",
+   "notes": "Split from P-055 on October 23, 2026: Ethan said the photo img_b2_17 shows a different plant.",
+   "pests_current": "None seen.",
+   "photos": [],
+   "take_photos": [
+    {
+     "file": "img_b2_17.jpg",
+     "from": "P-055",
+     "caption": "Marbled leaf with brown patches (was on P-055)"
+    }
+   ]
+  }
+ ],
+ "existing_photos": [],
+ "updates": [
+  {
+   "code": "P-055",
+   "name": "Philodendron 'Black Cardinal'",
+   "photos": [
+    "img_b9_p055_3.jpg"
+   ],
+   "note": "One photo was a different plant; it has its own page now (batch 9c)",
+   "set": {
+    "notes": [
+     "The two photos may show two different pots. If so, use Move photo to split them into two pages.",
+     "One older photo showed a different plant (yellow-marbled leaf); it was moved to that plant's own page on October 23, 2026."
+    ]
+   }
+  }
+ ],
+ "to_photograph_done": [],
+ "to_photograph_add": [],
+ "requests_done": [
+  {
+   "key": "p055-two-pots",
+   "answer": "Ethan (October 23): two different plants. The yellow-marbled one has its own page now."
+  }
+ ],
+ "requests_add": [
+  {
+   "key": "p081-whole-plant",
+   "code": "P-081",
+   "name": "Yellow-marbled philodendron (self-heading, unidentified)",
+   "photos": [
+    "img_b2_17.jpg"
+   ],
+   "kind": "photo",
+   "text": "A photo of this whole plant from the side, and its tag or price label if it has one, to identify it."
+  }
+ ]
+}

@@ -1,0 +1,20 @@
+{
+ "id": "batch9b",
+ "created": "2026-10-22",
+ "author": "Claude (batch 9b, your answers)",
+ "plants": [],
+ "existing_photos": [],
+ "updates": [],
+ "to_photograph_done": [],
+ "to_photograph_add": [],
+ "requests_done": [
+  {
+   "key": "p022-same-as-p075",
+   "answer": "Ethan (October 22): they are different roses, two separate plants."
+  },
+  {
+   "key": "p075-same-as-p022",
+   "answer": "Ethan (October 22): they are different roses, two separate plants."
+  }
+ ]
+}

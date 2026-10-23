@@ -1,0 +1,110 @@
+{
+ "id": "batch7",
+ "created": "2026-10-21",
+ "author": "Claude (batch 7, requests)",
+ "plants": [],
+ "existing_photos": [],
+ "updates": [],
+ "to_photograph_done": [],
+ "to_photograph_add": [],
+ "requests_add": [
+  {
+   "key": "p017-spear",
+   "code": "P-017",
+   "name": "Majesty palm (black pot)",
+   "kind": "check",
+   "text": "Check the centre leaf (the spear) for bud rot: tug it gently. Tell me whether it holds firm, or slides out and smells rotten (then follow the steps under Health)."
+  },
+  {
+   "key": "p055-two-pots",
+   "code": "P-055",
+   "name": "Philodendron (self-heading type, cultivar unconfirmed)",
+   "kind": "question",
+   "text": "Do the two photos on this page show two separate pots? If so, tell me, or use 'Move to another plant' on one photo to split them."
+  },
+  {
+   "key": "p075-same-as-p022",
+   "code": "P-075",
+   "name": "Rose (black pot, sparse)",
+   "kind": "question",
+   "text": "Is this sparse rose a separate plant from P-022, the bushier rose in a black pot? If they are the same pot, I will merge the two pages."
+  },
+  {
+   "key": "p022-same-as-p075",
+   "code": "P-022",
+   "name": "Rose (potted)",
+   "kind": "question",
+   "text": "Is this rose a separate plant from P-075, the sparse rose in a second black pot? If they are the same pot, I will merge the two pages."
+  },
+  {
+   "key": "p-029-pot-tag",
+   "code": "P-029",
+   "name": "Philodendron 'Strawberry Shake'",
+   "kind": "photo",
+   "text": "A photo of this pot with its plant tag (one photo per pot), to settle the cultivar name."
+  },
+  {
+   "key": "p-030-pot-tag",
+   "code": "P-030",
+   "name": "Philodendron 'Pink Princess' (declining)",
+   "kind": "photo",
+   "text": "A photo of this pot with its plant tag (one photo per pot), to settle the cultivar name."
+  },
+  {
+   "key": "p-035-pot-tag",
+   "code": "P-035",
+   "name": "Philodendron 'Pink Princess' (cutting, declining)",
+   "kind": "photo",
+   "text": "A photo of this pot with its plant tag (one photo per pot), to settle the cultivar name."
+  },
+  {
+   "key": "p-039-pot-tag",
+   "code": "P-039",
+   "name": "Yellow-cream philodendron",
+   "kind": "photo",
+   "text": "A photo of this pot with its plant tag (one photo per pot), to settle the cultivar name."
+  },
+  {
+   "key": "p-055-pot-tag",
+   "code": "P-055",
+   "name": "Philodendron (self-heading type, cultivar unconfirmed)",
+   "kind": "photo",
+   "text": "A photo of this pot with its plant tag (one photo per pot), to settle the cultivar name."
+  },
+  {
+   "key": "p-066-pot-tag",
+   "code": "P-066",
+   "name": "Velvet-leaf philodendron (young)",
+   "kind": "photo",
+   "text": "A photo of this pot with its plant tag (one photo per pot), to settle the cultivar name."
+  },
+  {
+   "key": "p-056-tag-closeup",
+   "code": "P-056",
+   "name": "Alocasia (dark glossy leaf)",
+   "kind": "photo",
+   "text": "A close-up of the plant tag, so the cultivar name can be filled in."
+  },
+  {
+   "key": "p-061-tag-closeup",
+   "code": "P-061",
+   "name": "Alocasia (lime-green, tagged)",
+   "kind": "photo",
+   "text": "A close-up of the plant tag, so the cultivar name can be filled in."
+  },
+  {
+   "key": "p-048-tag-closeup",
+   "code": "P-048",
+   "name": "Arrowhead plant (pink)",
+   "kind": "photo",
+   "text": "A close-up of the plant tag, so the cultivar name can be filled in."
+  },
+  {
+   "key": "p-060-tag-closeup",
+   "code": "P-060",
+   "name": "Arrowhead plant (green, white-veined)",
+   "kind": "photo",
+   "text": "A close-up of the plant tag, so the cultivar name can be filled in."
+  }
+ ]
+}

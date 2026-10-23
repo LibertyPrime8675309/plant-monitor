@@ -1,0 +1,41 @@
+{
+ "id": "batch3",
+ "created": "2026-10-19",
+ "author": "Claude (batch 3, from owner reply)",
+ "plants": [],
+ "existing_photos": [],
+ "updates": [
+  {
+   "code": "P-050",
+   "note": "Owner confirmed keeping the water hyacinth is fine; winter plan updated",
+   "set": {
+    "winter_plan": [
+     "Annual",
+     "Move indoors"
+    ],
+    "winter_summary": [
+     "Frost-tender and normally lost to the first freeze. Check the Texas rule below before deciding whether to keep it.",
+     "Frost-tender and normally lost to the first freeze. You've confirmed keeping it is fine, so bring it in before nights fall under 45 F if you want to try to overwinter it."
+    ],
+    "winter_triggers": [
+     "Check the rule first; frost kills it around 32 F.",
+     "Move indoors before the first night under 45 F; frost kills it around 32 F."
+    ],
+    "winter_steps": [
+     "Read the TPWD rule in the notes first.\nWhatever you decide, never pour the water or plants into a drain, ditch, creek or pond. Bag and bin the plants, or let them dry out completely.\nIf keeping it is allowed, move it indoors before the first night under 45 F to a warm bright window (65-75 F) with a grow light.",
+     "Never pour the water or plants into a drain, ditch, creek or pond. Bag and bin dead plants, or let them dry out completely.\nMove it indoors before the first night under 45 F to a warm bright window (65-75 F) with a grow light.\nIf it dies back indoors, remove the dead stalks so the water does not turn foul."
+    ],
+    "health_steps": [
+     "Check the Texas rule before spending effort on it\nIf keeping it: remove brown stalks, change to fresh water and move it into full sun\nIf it has no roots, it is unlikely to recover",
+     "Remove brown stalks, change to fresh water and move it into full sun\nIf it has no roots, it is unlikely to recover"
+    ],
+    "notes": [
+     "Texas Parks and Wildlife lists water hyacinth among harmful or potentially harmful exotic aquatic plants. Its rules make it unlawful to possess or transport listed plants without a permit and do not mention an exception for home or ornamental containers. Check with TPWD before keeping it. Source: https://tpwd.texas.gov/regulations/outdoor-annual/fishing/general-rules-regulations/possession-and-transport-of-exotic-aquatic-species",
+     "Owner confirmed on Oct 19, 2026 that keeping it is fine. For reference, Texas Parks and Wildlife lists water hyacinth among harmful or potentially harmful exotic aquatic plants and regulates possessing and transporting it, so never release it or its water into a pond, creek or drain. Source: https://tpwd.texas.gov/regulations/outdoor-annual/fishing/general-rules-regulations/possession-and-transport-of-exotic-aquatic-species"
+    ]
+   }
+  }
+ ],
+ "to_photograph_done": [],
+ "to_photograph_add": []
+}

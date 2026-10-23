@@ -1,0 +1,71 @@
+# How Plant record is built
+
+## Runtime
+- **Docker:** `docker-compose.yml` has one service, `plants`, with container `plant-database`. It is built from the `Dockerfile` on python:3.12-slim and runs gunicorn with 1 worker and 4 threads on port 8080. The image is tagged `plant-database:<version>` with label `plantdb.version`, and the build arg `PLANTDB_VERSION` writes `/app/VERSION`.
+- **Volumes:** `./data:/data` holds the database and photos; `./backups:/backups` holds backups made by the app.
+- **Environment:**
+
+  | Variable | Purpose |
+  |---|---|
+  | `DATA_DIR` | data folder |
+  | `PLANTDB_PASSWORD` | optional browser password (Basic auth, any user name) |
+  | `PLANTDB_WEATHER=0` | stops the online weather jobs |
+  | `PLANTDB_JOURNAL` | SQLite journal mode; default `DELETE`, because WAL misbehaves on Windows bind mounts |
+  | `PLANTDB_BACKUP_DIR` | backup folder |
+  | `PLANTDB_VERSION` | the version shown in the app |
+
+- **Security:**
+  - Every write request needs an `X-Editor` header (the name in "Editing as"), which also works as a CSRF guard. Cross-origin writes are refused.
+  - `/api/readings` (sensor posts) is checked with an `X-Ingest-Token` instead.
+  - The Content Security Policy forbids inline scripts.
+
+## Back end: `app/server.py` (one file, about 2,300 lines)
+- **SQLite tables:**
+  - `plants`: one row per plant. Columns come from the `FIELDS` list (name, kind, label); a new entry there adds the column on the next start.
+  - `plant_versions`: a full snapshot per page version.
+  - `audit_log`: the change log.
+  - `photos`
+  - `requests`: things Claude needs from Ethan, shown as "Needed from you".
+  - `to_photograph`
+  - `fertilizer_log`
+  - `readings`: hourly weather and sensor values, with JSON `extra`.
+  - `weather_daily`
+  - `weather_runs`
+  - `locations`: weather places; one is "home".
+  - `settings`: key/value.
+- **Field kinds:** text, long, list (one item per line), int, num and enum. Enums are winter plan, health and site (where the plant is: Outdoors, Covered porch, Indoors, Garage or shed). `norm()` validates, and `INT_RANGES` / `NUM_RANGES` bound the numbers.
+- **Edits:**
+  - `apply_changes()` writes only the changed fields, then `bump()` raises the page version and writes a snapshot plus audit rows.
+  - `PUT /api/plants/<code>` needs `base_version` and refuses stale edits with a 409.
+- **Starting up:** `init_db()` creates or upgrades the schema, seeds a fresh install from `seed/seed.json`, then runs `apply_batches()`.
+- **Upgrade batches** (`seed/batches/*.json`) are applied once each, in filename order, and recorded as `settings` key `batch_applied:<id>`. Keys:
+  - `plants`: new pages, numbered next free `P-###`. Each can carry `photos` and `take_photos` (`[{file, from}]`, which moves an existing photo onto the new page).
+  - `existing_photos`: `[{code, file, caption, primary}]`
+  - `updates`: `[{code, name, photos, note, set: {field: [old, new]}}]`. A field is only changed if it still holds `old`; otherwise a note is logged. `find_plant()` matches by photo file first, then by code plus name.
+  - `archive`: `[{code, name, photos, note}]`
+  - `requests_add`: `[{key, code, kind, text}]`
+  - `requests_done`: `[key or {key, answer}]`
+  - `to_photograph_add` / `to_photograph_done`
+- **Weather:**
+  - Data comes from Open-Meteo: forecast, archive and geocoding, with no account needed.
+  - A background loop updates every enabled place hourly. "Load history" backfills years of readings in chunks, with retries and progress shown in `/api/weather/job`.
+  - Recent years keep full hourly detail; older years keep core hourly values plus daily summaries.
+  - `/api/readings/series` aggregates readings for the charts.
+- **Backups:** `make_backup()` uses SQLite's backup API to write a zip containing `plants.db`, `backup.json` and optionally the photos. `backup_loop` handles automatic backups. `POST /api/backups {wait:true, kind:'update'}` is what the updater calls.
+- **API:** `/api/plants`, `/api/plants/<code>` and its sub-routes (`site`, `status`, `history`, `versions`, `restore`, `photos`, `qr.svg`, `daily`, `day`), plus `/api/requests`, `/api/photos`, `/api/to-photograph`, `/api/fertilizer`, `/api/weather*`, `/api/places*`, `/api/current`, `/api/backups*`, `/api/export.json|csv`, `/api/audit*`, `/api/meta`, `/api/version` and `/healthz`.
+
+## Front end: `app/static/`
+- `index.html`: the shell, with the top bar, `#app`, the section menu (`#sidenav`) and the Display button.
+- `prefs.js`: display preferences (size, spacing, contrast, theme, menu side, width, plant layout), stored in localStorage `plantdb.display` and set as `data-*` attributes on `<html>`.
+- `app.js`:
+  - A hash router (`route()`) and one `view*()` function per page: gallery, plant, edit, winter, weather, fertilizer, photos, labels, history and backups. Each returns `{title, html, after}`.
+  - Templates use the `html` tagged template, which escapes values (`raw()` opts out, `rend()` renders).
+  - Click, change and submit events are delegated to `acts`, `changeActs` and `formActs`.
+  - `buildSideNav()` builds the "On this page" menu from the `section.blk > h2` headings.
+  - `linkify()` turns plant codes into links with photo previews.
+- **Plants page filters:** the state lives in `G` and is remembered in localStorage `plantdb.filters`. It also drives Previous / Next on plant pages.
+- `style.css`: colour tokens on `:root`, overridden for dark mode and high contrast. Additions are appended in blocks headed with the version that added them.
+- **Charts:** hand-drawn SVG using a palette checked for colour-blind readers (see the CHANGELOG for 1.5.0).
+
+## Known constraints
+- A release zip carries every seed photo, so it is now about 30 MB, which is the limit for saving a file to Ethan's computer from a chat. Releases that add many photos need a plan, such as photo-only add-on zips or smaller photos.

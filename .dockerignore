@@ -1,0 +1,9 @@
+data
+backups
+dev
+docs
+.git
+.github
+**/__pycache__
+*.md
+*.zip

@@ -1,0 +1,148 @@
+{
+ "id": "batch8",
+ "created": "2026-10-21",
+ "author": "Claude (batch 8, P-034 close-ups)",
+ "plants": [],
+ "existing_photos": [
+  {
+   "code": "P-034",
+   "file": "img_b8_01.jpg",
+   "caption": "October 21: the new glossy leaf, with the joint below the blade",
+   "primary": true,
+   "source": "b8_01"
+  },
+  {
+   "code": "P-034",
+   "file": "img_b8_02.jpg",
+   "caption": "October 21: the base, with new shoots coming up between the dead leaves",
+   "primary": false,
+   "source": "b8_02"
+  }
+ ],
+ "updates": [
+  {
+   "code": "P-034",
+   "name": "Unidentified: dying strappy plant with one new leaf",
+   "photos": [
+    "img_1000021197.jpg"
+   ],
+   "note": "Identified as a peace lily from close-up photos (batch 8)",
+   "set": {
+    "common_name": [
+     "Unidentified: dying strappy plant with one new leaf",
+     "Peace lily (recovering, brown pot)"
+    ],
+    "scientific_name": [
+     "Unknown",
+     "Spathiphyllum sp. (probable)"
+    ],
+    "aliases": [
+     "",
+     "Spath; cultivar unknown"
+    ],
+    "plant_type": [
+     "Unknown",
+     "Tropical foliage (aroid)"
+    ],
+    "id_confidence": [
+     20,
+     70
+    ],
+    "id_basis": [
+     "Dead strappy, striped leaves and one new green oval leaf at the centre. Not enough to identify.",
+     "From the October 21 close-ups. The new leaf is glossy, lance-shaped with a pointed tip and a clear midrib, and has a small swollen joint (a geniculum) where the blade meets the stalk, which peace lilies have. The leaf stalks are sheathing and come straight up from the soil in a clump of several crowns, with papery brown sheaths around the new shoots. The dead leaves shrivelled lengthwise into narrow tan strips, which is how peace lily leaves dry out; that is why they looked strappy before. Several green shoots are coming up from the base, so the roots are alive."
+    ],
+    "id_alternatives": [
+     "Peace lily\nSpider plant\nAnthurium\nCalathea/Ctenanthe",
+     "Anthurium (also has a joint below the leaf and papery sheaths, but its leaves are usually heart-shaped)\nAglaonema (Chinese evergreen; leaves come from a short stem rather than a clump of crowns)"
+    ],
+    "id_improve": [
+     "Photo of the pot label (partly visible)\nPhoto of the roots\nPhoto of the new leaf close up\nAny earlier photo",
+     "The next two or three leaves as they open (a peace lily leaf stays lance-shaped and glossy)\nA flower: a white hooded spathe around a cream spike confirms a peace lily\nThe pot tag, if there is one"
+    ],
+    "temp_notes": [
+     "Unknown; assume tropical.",
+     "Peace lilies sulk below 55°F and leaves are damaged below about 45-50°F. Keep it above 60°F while it regrows. Heat above 90°F is fine in shade if it stays watered."
+    ],
+    "humidity_notes": [
+     "Unknown.",
+     "Prefers 50% or more but grows well in normal indoor air of 40%. Very dry air gives brown leaf tips."
+    ],
+    "light_summary": [
+     "Bright indirect",
+     "Bright indirect light; tolerates shade. No direct afternoon sun."
+    ],
+    "light_hours": [
+     "4 h",
+     "8-12 hours of indirect light"
+    ],
+    "light_notes": [
+     "Unknown.",
+     "An east window or a few feet back from a south or west window. Direct sun scorches the leaves; deep shade means few or no flowers."
+    ],
+    "winter_summary": [
+     "Treat as tender until identified.",
+     "Bring it inside before nights reach 50°F. Indoors it can keep growing in a warm, bright room."
+    ],
+    "health_rating": [
+     "Critical",
+     "Poor"
+    ],
+    "health_summary": [
+     "Nearly all foliage is dead; one healthy new leaf at the centre.",
+     "Recovering. Almost all the old leaves are dead, but one healthy new leaf has opened and several green shoots are coming up from the crowns."
+    ],
+    "health_observations": [
+     "Dead tan strappy leaves\nHealthy new oval leaf\nStanding saucer water",
+     "One glossy, healthy new leaf\nSeveral green shoots emerging from the base (the crowns are alive)\nOld leaves dried to tan strips, some with dark streaks\nPapery brown sheaths around the new growth (normal)"
+    ],
+    "health_steps": [
+     "Check the roots: firm and white is OK, brown and mushy is rot\nCut off the dead leaves\nEmpty the saucer\nKeep warm and lightly moist",
+     "Cut the dead leaves off near the soil with clean scissors. Leave the papery sheaths that wrap the new shoots.\nWater when the top inch of mix feels dry, then empty the saucer. Do not keep it soggy while it has so few leaves.\nKeep it warm (above 60°F) and in bright, indirect light.\nNo fertilizer until it has three or four new leaves, then half strength.\nDo not repot until it is growing well; then move it to fresh mix only one size up."
+    ],
+    "water_notes": [
+     "Unknown species. Water when the top inch of mix is dry, soak, and empty the saucer. Adjust once the plant is identified.",
+     "Water when the top inch (2-3 cm) of mix is dry. A peace lily droops clearly when thirsty and perks up within hours of watering, but do not wait for that every time. Empty the saucer. With few leaves it uses little water, so check before watering."
+    ],
+    "soil_medium": [
+     "General well-draining potting mix with about 20% perlite. Adjust once the plant is identified.",
+     "Rich, moisture-holding but well-draining mix: about 60% potting soil, 20% perlite and 20% orchid bark or coir. Drainage holes are essential."
+    ],
+    "fertilizer": [
+     "Balanced liquid at half strength",
+     "Balanced liquid, such as 20-20-20, at quarter to half strength"
+    ],
+    "nutrients": [
+     "Feed lightly (half strength) every 4 weeks in spring and summer, and not in winter, until the plant is identified.",
+     "Feed every 6 weeks from April to September at half strength, only once it is growing again. Peace lilies are light feeders; too much fertilizer burns the leaf tips."
+    ],
+    "par_low": [
+     150,
+     50
+    ],
+    "par_high": [
+     400,
+     250
+    ],
+    "dli_low": [
+     6.0,
+     3
+    ],
+    "dli_high": [
+     12.0,
+     8
+    ],
+    "soil_moisture_low": [
+     35,
+     40
+    ],
+    "soil_moisture_high": [
+     60,
+     65
+    ]
+   }
+  }
+ ],
+ "to_photograph_done": [],
+ "to_photograph_add": []
+}

@@ -1,0 +1,1095 @@
+{
+ "id": "batch6",
+ "created": "2026-10-20",
+ "author": "Claude (batch 6, from photos)",
+ "plants": [
+  {
+   "common_name": "Celosia 'Dracula Red' (crested)",
+   "scientific_name": "Celosia cristata (Celosia argentea Cristata Group) 'Dracula Red'",
+   "aliases": "Cockscomb; Crested celosia",
+   "plant_type": "Annual flower",
+   "location": "On the black crate by the porch post",
+   "container": "8 in nursery pot (4 qt / 3.78 L) from the grower",
+   "id_confidence": 99,
+   "id_basis": "The grower's tag reads 'Celosia Dracula Red, Celosia cristata'. The velvety, brain-like burgundy crests and bronze-tinged leaves match.",
+   "id_alternatives": "None needed; the tag confirms it",
+   "id_improve": "None needed",
+   "temp_ideal_low": 65,
+   "temp_ideal_high": 90,
+   "temp_damage_below": 45,
+   "temp_lethal_below": 32,
+   "temp_notes": "A warm-season annual. Growth stalls below about 55 F, leaves and crests darken and spoil below about 45 F, and frost kills it. The tag says 'summer to frost'.",
+   "humidity_low": 40,
+   "humidity_high": 70,
+   "humidity_notes": "Fine in Texas humidity. Wet crests in long rainy spells can rot.",
+   "light_summary": "Full sun",
+   "light_hours": "6-8 h",
+   "light_notes": "Full sun keeps the crests large and the colour deep. In shade the stems stretch and the crests stay small.",
+   "winter_plan": "Annual",
+   "winter_summary": "Celosia is an annual: it finishes at the first frost. You can enjoy it until then, and save seed for next year.",
+   "winter_triggers": "No action needed; first frost ends it (about mid-November).",
+   "winter_steps": "Enjoy it until the first frost; cover it with a sheet on a light-frost night to stretch the season a little.\nTo save seed: let a crest dry on the plant, cut it off, and rub it over paper; the tiny black seeds fall out. Store them dry and sow in April.\nCut a few crests now and hang them upside down somewhere dry: they keep their colour as dried flowers.\nAfter frost, pull the plant and compost it (no disease seen).",
+   "indoor_setup": "Not worth bringing indoors; it needs strong sun and declines in winter light.",
+   "health_rating": "Good",
+   "health_summary": "Three large, deep-red crests and full, healthy foliage with the bronze-purple tint typical of 'Dracula'.",
+   "health_observations": "Large, unblemished crests\nLeaves green with bronze-purple flushing (normal for this cultivar)\nOne yellowing leaf low on the plant\nSome dry potting-mix debris on the tag",
+   "health_steps": "Water at the base so the crests stay dry\nRemove yellow leaves as they appear\nFeed lightly every 2-3 weeks until early November, then stop",
+   "notes": "Grown by the same nursery as the petunia 'Ray Black' (matching tags, barcode 8 10224 33016 2). The two earlier celosias (Kelos Fire Purple and Glorious Orange) are plume types; this one is the crested type.",
+   "pests_current": "No pests seen in the photos.",
+   "fert_from_month": 3,
+   "fert_to_month": 10,
+   "fert_every_days": 14,
+   "temp_damage_above": 105,
+   "vpd_low": 0.6,
+   "vpd_high": 1.8,
+   "par_low": 1000,
+   "par_high": 2000,
+   "dli_low": 25,
+   "dli_high": 40,
+   "water_notes": "Water when the top inch of mix is dry. Annuals in pots dry out quickly in heat; check daily in summer.",
+   "soil_medium": "Well-draining potting mix with a handful of compost.",
+   "soil_ph_low": 6.0,
+   "soil_ph_high": 7.0,
+   "soil_moisture_low": 25,
+   "soil_moisture_high": 50,
+   "soil_temp_low": 55,
+   "soil_temp_high": 90,
+   "fertilizer": "Low-nitrogen bloom food",
+   "nutrients": "Feed every 2-3 weeks while it blooms. Too much nitrogen gives leaves instead of flowers. Cosmos does best with very little food.",
+   "pests_watch": "Aphids on buds and soft growth\nSpider mites in hot, dry spells\nPowdery mildew\nStem rot or damping-off in wet mix\nCaterpillars",
+   "pest_steps": "Look under leaves and at growing tips once a week.\nKnock aphids and mites off with a strong spray of water in the morning.\nUse insecticidal soap or neem oil in the evening for stubborn cases, every 5-7 days.\nPick off caterpillars by hand, or use Bt (Bacillus thuringiensis).\nFor mildew, remove the worst leaves, water at the base and give the plant airflow.",
+   "photos": [
+    {
+     "file": "img_b6_03.jpg",
+     "caption": "Celosia 'Dracula Red' with three crests",
+     "primary": true,
+     "source": "b6_03"
+    },
+    {
+     "file": "img_b6_02.jpg",
+     "caption": "Front of the tag",
+     "primary": false,
+     "source": "b6_02"
+    },
+    {
+     "file": "img_b6_01.jpg",
+     "caption": "Back of the tag: full sun, summer to frost, 8-16 in tall",
+     "primary": false,
+     "source": "b6_01"
+    }
+   ]
+  },
+  {
+   "common_name": "Petunia 'Ray Black'",
+   "scientific_name": "Petunia × hybrida 'Ray Black'",
+   "aliases": "Black petunia",
+   "plant_type": "Annual flower (tender perennial)",
+   "location": "On the black crate by the porch post",
+   "container": "8 in nursery pot (4 qt / 3.78 L) from the grower",
+   "id_confidence": 99,
+   "id_basis": "The tag from Spring Creek Growers (Waller, TX) reads 'Petunia Ray Black, Petunia hybrida', and the velvety near-black trumpets with lime-green, sticky-haired foliage match.",
+   "id_alternatives": "None needed; the tag confirms it",
+   "id_improve": "None needed",
+   "temp_ideal_low": 55,
+   "temp_ideal_high": 85,
+   "temp_damage_below": 30,
+   "temp_lethal_below": 24,
+   "temp_notes": "Petunias handle Central Texas cool seasons well and take a light frost; damage starts around 28-30 F and a hard freeze in the low 20s kills them. Heat above about 95 F slows flowering.",
+   "humidity_low": 30,
+   "humidity_high": 70,
+   "humidity_notes": "Fine across a wide range. Flowers spot in long rainy spells.",
+   "light_summary": "Full sun to part sun",
+   "light_hours": "6+ h",
+   "light_notes": "More sun means more flowers. The tag says full to part sun; in the Texas summer, afternoon shade helps.",
+   "winter_plan": "Protect outside",
+   "winter_summary": "Petunias often keep blooming through a mild Round Rock winter. Cover it on frost nights and it may carry on until spring.",
+   "winter_triggers": "Cover at 30 F; bring under the porch roof or into the garage below 26 F.",
+   "winter_steps": "Cover at 30 F or below (frost cloth/sheet draped to the ground over a frame; frost cloth buys roughly 6-8 F). Bring in or move into the garage at 26 F or in a multi-day freeze.\nWater the day before a freeze (moist soil holds heat) but keep the plant dry the rest of winter; skip watering when it is below 40 F.\nCluster pots against a south/east wall under the roof, away from north wind, and pile mulch or leaves around the pots.\nStop nitrogen fertilizer now; new tender growth freezes first.\nTrim leggy stems back by a third in late November to keep it compact.\nWater only when the top inch is dry; cool, wet mix rots the roots.",
+   "indoor_setup": "Not usually brought indoors. If you want to keep it, a sunny unheated garage window works better than a warm living room.",
+   "health_rating": "Good",
+   "health_summary": "Vigorous and bushy with many buds and dark flowers. The foliage is quite light lime-green, which in petunias often means the plant is short of iron.",
+   "health_observations": "Many velvety near-black flowers and buds\nLight lime-green leaves overall (petunias show iron shortage early)\nSome spent, twisted flowers\nSticky glandular hairs on stems (normal)",
+   "health_steps": "Feed with a fertilizer that includes iron (a petunia or 'acid' bloom food) every 2 weeks while it blooms\nIf new leaves stay pale, give a dose of chelated iron\nPinch off spent flowers and their seed pods to keep it blooming\nPinch back long stems to keep it full",
+   "notes": "Bought with the celosia 'Dracula Red' (same grower tag style). A third, blurry photo of the tag was not used.",
+   "pests_current": "No pests seen. Light, lime-green foliage noted (likely iron shortage, not a pest).",
+   "fert_from_month": 3,
+   "fert_to_month": 11,
+   "fert_every_days": 14,
+   "temp_damage_above": 95,
+   "vpd_low": 0.6,
+   "vpd_high": 1.8,
+   "par_low": 1000,
+   "par_high": 2000,
+   "dli_low": 25,
+   "dli_high": 40,
+   "water_notes": "Water when the top inch of mix is dry. Annuals in pots dry out quickly in heat; check daily in summer.",
+   "soil_medium": "Well-draining potting mix with a handful of compost.",
+   "soil_ph_low": 5.5,
+   "soil_ph_high": 6.2,
+   "soil_moisture_low": 25,
+   "soil_moisture_high": 50,
+   "soil_temp_low": 55,
+   "soil_temp_high": 90,
+   "fertilizer": "Bloom fertilizer that includes iron (petunia or acid-loving plant food)",
+   "nutrients": "Petunias are hungry and very prone to iron shortage: pale, yellow-green new leaves with green veins. Feed every 1-2 weeks while blooming with a fertilizer that contains iron, and keep the pH on the acid side (5.5-6.2). Hard, alkaline tap water makes iron shortage worse; a chelated iron dose fixes it within a couple of weeks.",
+   "pests_watch": "Aphids on buds and soft growth\nSpider mites in hot, dry spells\nPowdery mildew\nStem rot or damping-off in wet mix\nCaterpillars",
+   "pest_steps": "Look under leaves and at growing tips once a week.\nKnock aphids and mites off with a strong spray of water in the morning.\nUse insecticidal soap or neem oil in the evening for stubborn cases, every 5-7 days.\nPick off caterpillars by hand, or use Bt (Bacillus thuringiensis).\nFor mildew, remove the worst leaves, water at the base and give the plant airflow.",
+   "photos": [
+    {
+     "file": "img_b6_04.jpg",
+     "caption": "Petunia 'Ray Black' in bloom",
+     "primary": true,
+     "source": "b6_04"
+    },
+    {
+     "file": "img_b6_07.jpg",
+     "caption": "Front of the tag",
+     "primary": false,
+     "source": "b6_07"
+    },
+    {
+     "file": "img_b6_05.jpg",
+     "caption": "Back of the tag: full to part sun, spring to fall",
+     "primary": false,
+     "source": "b6_05"
+    }
+   ]
+  },
+  {
+   "common_name": "White sage (Texas native, Artemisia)",
+   "scientific_name": "Artemisia ludoviciana",
+   "aliases": "White sagebrush; Louisiana sagewort; Prairie sage; Silver sage",
+   "plant_type": "Perennial (Texas native)",
+   "location": "On the black crate by the porch post",
+   "container": "1 gal H-E-B Texas Roots 'Natives' pot",
+   "id_confidence": 96,
+   "id_basis": "The H-E-B Texas Roots tag reads 'White Sage, Artemisia ludoviciana', and the narrow, silver-felted, aromatic leaves fit. This is not the Californian white sage used for smudging (Salvia apiana); it is a different plant that happens to share the common name.",
+   "id_alternatives": "None needed; the tag confirms it",
+   "id_improve": "None needed",
+   "temp_ideal_low": 40,
+   "temp_ideal_high": 100,
+   "temp_damage_below": -20,
+   "temp_lethal_below": -30,
+   "temp_notes": "Very cold-hardy (to about -30 F) and heat-tolerant. Cold is no concern in Round Rock; winter wet is the only thing that harms it.",
+   "humidity_low": 15,
+   "humidity_high": 60,
+   "humidity_notes": "Prefers dry air. Humid, still weather can bring mildew; give it airflow.",
+   "light_summary": "Full sun",
+   "light_hours": "6-8 h",
+   "light_notes": "Full sun keeps it compact and silver. In shade it gets floppy and greener.",
+   "winter_plan": "Hardy outside",
+   "winter_summary": "Fully hardy. It may die back to the ground or look ragged in winter and regrows in spring.",
+   "winter_triggers": "No action needed.",
+   "winter_steps": "Leave it outside all winter.\nKeep the pot off saucers so it never sits in water; winter wet is the risk, not cold.\nCut it back to a few inches in late February to get fresh silver growth.\nPlant it in the ground in fall or spring if you like; see the note about spreading.",
+   "indoor_setup": "Not applicable.",
+   "health_rating": "Good",
+   "health_summary": "Bright silver, healthy young foliage with no spots or pests. A little stretched, which is normal for nursery stock.",
+   "health_observations": "Healthy silver, felted leaves\nSlightly leggy stems\nGritty, fast-draining nursery mix",
+   "health_steps": "Give it full sun\nPinch the tips once to make it bushier\nWater only when the top 2 in is dry",
+   "notes": "Spreads strongly by underground runners once in the ground; give it room or plant it where spreading is welcome (or keep it in a pot). Leaves are aromatic but this Artemisia is bitter and not a culinary herb.",
+   "pests_current": "No pests seen in the photos.",
+   "fert_from_month": 4,
+   "fert_to_month": 6,
+   "fert_every_days": 60,
+   "temp_damage_above": 112,
+   "vpd_low": 0.8,
+   "vpd_high": 2.5,
+   "par_low": 1000,
+   "par_high": 2200,
+   "dli_low": 25,
+   "dli_high": 45,
+   "water_notes": "In a pot, water when the top 2 in of mix is dry: about twice a week in summer heat, every 1-2 weeks in cool weather, and only in dry spells in winter. Once planted in the ground and established, it needs watering only in long droughts.",
+   "soil_medium": "Lean, fast-draining soil. In a pot: potting mix with 30% decomposed granite, pumice or coarse sand. In the ground: native soil is fine; do not add rich compost.",
+   "soil_ph_low": 6.0,
+   "soil_ph_high": 8.0,
+   "soil_moisture_low": 10,
+   "soil_moisture_high": 40,
+   "soil_temp_low": 45,
+   "soil_temp_high": 95,
+   "fertilizer": "None, or a light slow-release feed once in spring",
+   "nutrients": "Texas natives grow best in lean soil. Rich feeding gives floppy, weak growth and fewer flowers. One light feeding in spring is plenty; skip it entirely once planted in the ground.",
+   "pests_watch": "Powdery mildew in humid, still weather\nAphids on soft new growth\nRoot rot if the mix stays wet in winter\nSpider mites in hot, dry spells",
+   "pest_steps": "Look under leaves and at growing tips once a week.\nKnock aphids and mites off with a strong spray of water in the morning.\nUse insecticidal soap or neem oil in the evening for stubborn cases, every 5-7 days.\nPick off caterpillars by hand, or use Bt (Bacillus thuringiensis).\nFor mildew, remove the worst leaves, water at the base and give the plant airflow.",
+   "photos": [
+    {
+     "file": "img_b6_08.jpg",
+     "caption": "White sage (Artemisia ludoviciana), silver foliage",
+     "primary": true,
+     "source": "b6_08"
+    },
+    {
+     "file": "img_b6_09.jpg",
+     "caption": "H-E-B Texas Roots 'Natives' tag",
+     "primary": false,
+     "source": "b6_09"
+    }
+   ]
+  },
+  {
+   "common_name": "Bee balm (wild bergamot)",
+   "scientific_name": "Monarda fistulosa",
+   "aliases": "Beebalm; Wild bergamot; Horsemint",
+   "plant_type": "Perennial (Texas native)",
+   "location": "On the concrete by the steps",
+   "container": "1 gal H-E-B Texas Roots 'Natives' pot",
+   "id_confidence": 96,
+   "id_basis": "The H-E-B Texas Roots tag reads 'Beebalm, Monarda fistulosa'. The square stems, opposite toothed leaves and purple-flushed foliage fit; it is not in flower now (lavender pom-pom flowers in early summer).",
+   "id_alternatives": "None needed; the tag confirms it",
+   "id_improve": "A flower photo next summer, just for the record",
+   "temp_ideal_low": 50,
+   "temp_ideal_high": 95,
+   "temp_damage_below": -20,
+   "temp_lethal_below": -35,
+   "temp_notes": "Very cold-hardy. The top dies back after hard frost and it regrows from the roots in spring.",
+   "humidity_low": 30,
+   "humidity_high": 70,
+   "humidity_notes": "Prone to powdery mildew in humid, still weather; space it for airflow.",
+   "light_summary": "Full sun to light afternoon shade",
+   "light_hours": "6+ h",
+   "light_notes": "Full sun gives sturdier stems and more flowers. In Texas heat, a little afternoon shade is fine.",
+   "winter_plan": "Seasonal die-back",
+   "winter_summary": "The stems die back in winter and a low rosette of leaves stays at the base; it regrows in spring.",
+   "winter_triggers": "No cover needed. Mulch the pot if a hard freeze below 20 F is forecast.",
+   "winter_steps": "Leave it outside.\nCut the old stems to about 2 in once they have browned (December to February).\nKeep the pot just barely moist in winter; do not let it sit wet.\nPlant it in the ground in fall if you like: it spreads slowly into a clump.",
+   "indoor_setup": "Not applicable.",
+   "health_rating": "Fair",
+   "health_summary": "Leafy but lanky and floppy, with stems leaning out of the pot. Several leaves are flushed purple and some are curled, which is common in cool weather or when the pot has dried out.",
+   "health_observations": "Long, leaning stems\nPurple flushing on many leaves (cool nights, or slight phosphorus shortage)\nA few curled or dropped leaves\nTag in good condition",
+   "health_steps": "Cut the stems back by about half to tidy it and make it bushier\nWater when the top inch is dry; do not let the 1 gal pot dry out completely\nCheck under the leaves for mildew (white powder) and mites\nPlant out or move to a bigger pot this fall",
+   "notes": "Leaves smell of oregano and thyme when crushed; a pollinator favourite.",
+   "pests_current": "No insects seen. Watch for powdery mildew; none visible yet.",
+   "fert_from_month": 4,
+   "fert_to_month": 7,
+   "fert_every_days": 42,
+   "temp_damage_above": 112,
+   "vpd_low": 0.8,
+   "vpd_high": 2.5,
+   "par_low": 1000,
+   "par_high": 2200,
+   "dli_low": 25,
+   "dli_high": 45,
+   "water_notes": "In a pot, water when the top 2 in of mix is dry: about twice a week in summer heat, every 1-2 weeks in cool weather, and only in dry spells in winter. Once planted in the ground and established, it needs watering only in long droughts.",
+   "soil_medium": "Lean, fast-draining soil. In a pot: potting mix with 30% decomposed granite, pumice or coarse sand. In the ground: native soil is fine; do not add rich compost.",
+   "soil_ph_low": 6.0,
+   "soil_ph_high": 8.0,
+   "soil_moisture_low": 20,
+   "soil_moisture_high": 45,
+   "soil_temp_low": 45,
+   "soil_temp_high": 95,
+   "fertilizer": "None, or a light slow-release feed once in spring",
+   "nutrients": "Texas natives grow best in lean soil. Rich feeding gives floppy, weak growth and fewer flowers. One light feeding in spring is plenty; skip it entirely once planted in the ground.",
+   "pests_watch": "Powdery mildew (the main problem with bee balm)\nAphids on soft new growth\nSpider mites in hot, dry spells\nRoot rot if the mix stays wet in winter",
+   "pest_steps": "Look under leaves and at growing tips once a week.\nKnock aphids and mites off with a strong spray of water in the morning.\nUse insecticidal soap or neem oil in the evening for stubborn cases, every 5-7 days.\nPick off caterpillars by hand, or use Bt (Bacillus thuringiensis).\nFor mildew, remove the worst leaves, water at the base and give the plant airflow.",
+   "photos": [
+    {
+     "file": "img_b6_10.jpg",
+     "caption": "Bee balm, leaning stems with purple-flushed leaves; zexmenia behind",
+     "primary": true,
+     "source": "b6_10"
+    },
+    {
+     "file": "img_b6_11.jpg",
+     "caption": "H-E-B Texas Roots 'Natives' tag",
+     "primary": false,
+     "source": "b6_11"
+    }
+   ]
+  },
+  {
+   "common_name": "Zexmenia",
+   "scientific_name": "Wedelia acapulcensis var. hispida (syn. Wedelia texana, Zexmenia hispida)",
+   "aliases": "Orange zexmenia; Hairy wedelia",
+   "plant_type": "Perennial subshrub (Texas native)",
+   "location": "On the concrete by the steps",
+   "container": "1 gal H-E-B Texas Roots 'Natives' pot",
+   "id_confidence": 96,
+   "id_basis": "The H-E-B Texas Roots tag reads 'Zexmenia, Wedelia acapulcensis var. hispida', and the rough, narrow, toothed leaves with a single yellow-orange daisy flower fit.",
+   "id_alternatives": "None needed; the tag confirms it",
+   "id_improve": "None needed",
+   "temp_ideal_low": 55,
+   "temp_ideal_high": 105,
+   "temp_damage_below": 20,
+   "temp_lethal_below": 10,
+   "temp_notes": "Heat- and drought-tough. Hard freezes kill the top back; the roots survive to about 10 F in the ground and it regrows in spring. Roots in a pot are more exposed.",
+   "humidity_low": 15,
+   "humidity_high": 70,
+   "humidity_notes": "Indifferent to humidity.",
+   "light_summary": "Full sun",
+   "light_hours": "6-8 h",
+   "light_notes": "Full sun for the most flowers; it tolerates part shade but blooms less.",
+   "winter_plan": "Hardy outside",
+   "winter_summary": "Evergreen in mild winters, freezes back in hard ones and regrows from the base.",
+   "winter_triggers": "Mulch or group the pot on nights below 25 F; it stays outside.",
+   "winter_steps": "Leave it outside.\nOn nights forecast below 25 F, push the pot against the house wall with the others and mulch over the soil.\nCut it back by half in late February to keep it compact.\nPlanting in the ground (fall is ideal) makes it much tougher than in a pot.",
+   "indoor_setup": "Not applicable.",
+   "health_rating": "Good",
+   "health_summary": "A young plant with a fresh flower and new buds. Sparse and a bit leggy, as most 1 gal natives are at this age.",
+   "health_observations": "One open yellow-orange flower and several buds\nLong, thin stems\nHealthy green, rough leaves",
+   "health_steps": "Pinch the tallest stems to make it bushier\nWater when the top 2 in is dry\nPlant in full sun",
+   "notes": "Blooms from late spring to frost. Butterflies and native bees use it.",
+   "pests_current": "No pests seen in the photos.",
+   "fert_from_month": 4,
+   "fert_to_month": 8,
+   "fert_every_days": 60,
+   "temp_damage_above": 112,
+   "vpd_low": 0.8,
+   "vpd_high": 2.5,
+   "par_low": 1000,
+   "par_high": 2200,
+   "dli_low": 25,
+   "dli_high": 45,
+   "water_notes": "In a pot, water when the top 2 in of mix is dry: about twice a week in summer heat, every 1-2 weeks in cool weather, and only in dry spells in winter. Once planted in the ground and established, it needs watering only in long droughts.",
+   "soil_medium": "Lean, fast-draining soil. In a pot: potting mix with 30% decomposed granite, pumice or coarse sand. In the ground: native soil is fine; do not add rich compost.",
+   "soil_ph_low": 6.0,
+   "soil_ph_high": 8.0,
+   "soil_moisture_low": 10,
+   "soil_moisture_high": 40,
+   "soil_temp_low": 45,
+   "soil_temp_high": 95,
+   "fertilizer": "None, or a light slow-release feed once in spring",
+   "nutrients": "Texas natives grow best in lean soil. Rich feeding gives floppy, weak growth and fewer flowers. One light feeding in spring is plenty; skip it entirely once planted in the ground.",
+   "pests_watch": "Powdery mildew in humid, still weather\nAphids on soft new growth\nRoot rot if the mix stays wet in winter\nSpider mites in hot, dry spells",
+   "pest_steps": "Look under leaves and at growing tips once a week.\nKnock aphids and mites off with a strong spray of water in the morning.\nUse insecticidal soap or neem oil in the evening for stubborn cases, every 5-7 days.\nPick off caterpillars by hand, or use Bt (Bacillus thuringiensis).\nFor mildew, remove the worst leaves, water at the base and give the plant airflow.",
+   "photos": [
+    {
+     "file": "img_b6_12.jpg",
+     "caption": "Zexmenia with one open flower",
+     "primary": true,
+     "source": "b6_12"
+    },
+    {
+     "file": "img_b6_13.jpg",
+     "caption": "H-E-B Texas Roots 'Natives' tag",
+     "primary": false,
+     "source": "b6_13"
+    }
+   ]
+  },
+  {
+   "common_name": "Texas star hibiscus",
+   "scientific_name": "Hibiscus coccineus",
+   "aliases": "Scarlet rose mallow; Scarlet swamp hibiscus; Texas star",
+   "plant_type": "Perennial (native to the Gulf Coast)",
+   "location": "On the concrete by the steps",
+   "container": "1 gal H-E-B Texas Roots 'Natives' pot, with a wire hook in the soil",
+   "id_confidence": 96,
+   "id_basis": "The H-E-B Texas Roots tag reads 'Texas Star Hibiscus, Hibiscus coccineus', and the deeply cut, finger-like (palmate) leaves with red leaf stalks fit. Its big red star-shaped flowers come in summer.",
+   "id_alternatives": "None needed; the tag confirms it",
+   "id_improve": "A flower photo next summer, just for the record",
+   "temp_ideal_low": 60,
+   "temp_ideal_high": 100,
+   "temp_damage_below": 20,
+   "temp_lethal_below": -10,
+   "temp_notes": "Hardy perennial: the stems die to the ground after frost and new shoots come up in spring. Cold-hardy to about -10 F in the ground; protect a potted one from hard freezes.",
+   "humidity_low": 40,
+   "humidity_high": 90,
+   "humidity_notes": "Loves humidity; it grows wild in swamps and ditches.",
+   "light_summary": "Full sun",
+   "light_hours": "6-8 h",
+   "light_notes": "Full sun for flowering. It takes part shade but blooms less.",
+   "winter_plan": "Seasonal die-back",
+   "winter_summary": "It goes dormant: the leaves drop and the stems die back after frost. The roots regrow in spring, often late (May), so do not give up on it.",
+   "winter_triggers": "Mulch the pot on nights below 25 F.",
+   "winter_steps": "Let it go dormant outside.\nWhen the stems are brown and dry, cut them to about 6 in. Mark the pot so you remember it is alive.\nKeep the mix slightly moist all winter; unlike most plants it should not dry out completely.\nMulch or wrap the pot in a hard freeze below 20 F.",
+   "indoor_setup": "Not applicable.",
+   "health_rating": "Fair",
+   "health_summary": "Upright and growing, but many leaves have ragged holes and notches from chewing insects, and a few lower leaves are yellowing.",
+   "health_observations": "Holes and notched leaf edges on many leaves (chewing insects: hibiscus sawfly larvae, grasshoppers or caterpillars)\nA couple of yellowing lower leaves\nRed leaf stalks and stems (normal)\nTall single stem in a small pot",
+   "health_steps": "Look under the leaves, especially in the morning, for small green worm-like larvae (hibiscus sawfly). Pick them off or spray insecticidal soap; spinosad also works\nRemove badly chewed leaves\nKeep it well watered; it likes moist soil\nPlant it in the ground or a large pot in a sunny, damp spot",
+   "notes": "Unusual among natives: it wants moist soil and does well near a downspout or in a rain garden.",
+   "pests_current": "Chewing damage on many leaves (holes and notches). The insect itself is not visible; hibiscus sawfly larvae are the usual cause on this plant.",
+   "fert_from_month": 4,
+   "fert_to_month": 8,
+   "fert_every_days": 30,
+   "temp_damage_above": 112,
+   "vpd_low": 0.8,
+   "vpd_high": 2.5,
+   "par_low": 1000,
+   "par_high": 2200,
+   "dli_low": 25,
+   "dli_high": 45,
+   "water_notes": "Keep the soil moist; it is a wetland plant. In a pot in summer that can mean daily watering. Water less in winter dormancy, but do not let it dry out completely.",
+   "soil_medium": "Rich, moisture-holding soil with compost. It tolerates clay and wet spots.",
+   "soil_ph_low": 5.5,
+   "soil_ph_high": 7.5,
+   "soil_moisture_low": 40,
+   "soil_moisture_high": 75,
+   "soil_temp_low": 45,
+   "soil_temp_high": 95,
+   "fertilizer": "Balanced slow-release or liquid, moderate",
+   "nutrients": "Feed every 3-4 weeks from April to August with a balanced fertilizer. It grows tall and fast in rich, moist soil. Stop feeding in late summer so it can go dormant.",
+   "pests_watch": "Hibiscus sawfly larvae (small green 'worms' that skeletonise leaves)\nGrasshoppers and caterpillars\nAphids and whiteflies on new growth\nSpider mites in dry heat",
+   "pest_steps": "Look under leaves and at growing tips once a week.\nKnock aphids and mites off with a strong spray of water in the morning.\nUse insecticidal soap or neem oil in the evening for stubborn cases, every 5-7 days.\nPick off caterpillars by hand, or use Bt (Bacillus thuringiensis).\nFor mildew, remove the worst leaves, water at the base and give the plant airflow.",
+   "photos": [
+    {
+     "file": "img_b6_14.jpg",
+     "caption": "Texas star hibiscus with chewed leaves",
+     "primary": true,
+     "source": "b6_14"
+    },
+    {
+     "file": "img_b6_15.jpg",
+     "caption": "H-E-B Texas Roots 'Natives' tag",
+     "primary": false,
+     "source": "b6_15"
+    }
+   ]
+  },
+  {
+   "common_name": "Miniature rose, yellow (red pot)",
+   "scientific_name": "Rosa (miniature hybrid)",
+   "aliases": "Mini rose; Patio rose",
+   "plant_type": "Deciduous flowering shrub (miniature)",
+   "location": "Wire rack by the fence, with the other roses",
+   "container": "Burgundy-red plastic pot with a bark, perlite and pumice mix",
+   "id_confidence": 88,
+   "id_basis": "Compound leaves with serrated leaflets, small double flowers and a compact habit make this a miniature rose. One clear yellow bloom is open. This is the 'second rose in the red pot' from the to-photograph list.",
+   "id_alternatives": "A small patio or polyantha rose (less likely given the size)",
+   "id_improve": "The plant tag or receipt for the cultivar name (optional)",
+   "temp_ideal_low": 50,
+   "temp_ideal_high": 85,
+   "temp_damage_below": 15,
+   "temp_lethal_below": 0,
+   "temp_notes": "Hardy; it goes semi-dormant in winter. In a pot the roots are exposed, so group and mulch the pot in hard freezes.",
+   "humidity_low": 40,
+   "humidity_high": 60,
+   "humidity_notes": "Humid, wet weather raises black spot and mildew pressure.",
+   "light_summary": "Full sun",
+   "light_hours": "6+ h",
+   "light_notes": "Needs full sun to bloom; afternoon shade in midsummer helps a small pot.",
+   "winter_plan": "Hardy outside",
+   "winter_summary": "Hardy outdoors in Round Rock. Keep it outside, group the pot with the other roses and prune in late February.",
+   "winter_triggers": "Mulch and group the pots on nights below 20 F.",
+   "winter_steps": "Stop feeding by early November.\nGroup the rose pots against a wall and mulch the soil surface on nights below 20 F.\nRemove dead twigs now; leave the main pruning for late February.\nWater when the top inch is dry; less in winter.",
+   "indoor_setup": "Not applicable.",
+   "health_rating": "Fair",
+   "health_summary": "Leafy, green and flowering, but several spent blooms have dried on the plant and a few twigs have died back.",
+   "health_observations": "One fresh yellow bloom\nSeveral dried, brown spent blooms\nA few dead brown twigs at the base\nA couple of yellowing leaflets\nHealthy bright green new leaves",
+   "health_steps": "Deadhead: cut each spent bloom back to the first leaf with five leaflets\nCut dead twigs back to green, healthy wood\nWater deeply when the top inch is dry\nRemove any leaves with black spots",
+   "notes": "One of four potted roses on the rack (see the other rose records). Weeds (spotted spurge) are growing in the neighbouring pots.",
+   "pests_current": "No pests seen in the photos.",
+   "fert_from_month": 3,
+   "fert_to_month": 9,
+   "fert_every_days": 28,
+   "temp_damage_above": 100,
+   "vpd_low": 0.6,
+   "vpd_high": 1.4,
+   "par_low": 1200,
+   "par_high": 2000,
+   "dli_low": 25,
+   "dli_high": 40,
+   "water_notes": "Water deeply 1-2 times a week, more in summer heat. Water at the base, not over the leaves. In winter, water only when the mix is dry and the weather is above freezing.",
+   "soil_medium": "Rich loam or potting mix with compost, mulched with 2 in of bark.",
+   "soil_ph_low": 6.0,
+   "soil_ph_high": 6.5,
+   "soil_moisture_low": 25,
+   "soil_moisture_high": 45,
+   "soil_temp_low": 50,
+   "soil_temp_high": 85,
+   "fertilizer": "Rose fertilizer (such as 4-6-4 or 18-24-16)",
+   "nutrients": "Feed after the late-winter pruning (February), then every 4-6 weeks until September. Stop feeding 6 weeks before the first frost. Yellowing between veins can be iron or magnesium.",
+   "pests_watch": "Black spot and powdery mildew\nAphids and spider mites\nRose rosette virus (a Texas risk: witches' broom, red bristly growth)\nJapanese beetles and cane borers",
+   "pest_steps": "Water at the base and give the plant airflow.\nRemove and bin leaves with black spot; do not compost them.\nRinse off aphids and mites with water; use soap or neem for stubborn cases.\nIf you see rosette (red, bristly, distorted shoots), cut the plant out and bin it.",
+   "photos": [
+    {
+     "file": "img_b6_24.jpg",
+     "caption": "Yellow miniature rose in bloom (from above)",
+     "primary": true,
+     "source": "b6_24"
+    },
+    {
+     "file": "img_b6_23.jpg",
+     "caption": "In its red pot with dried spent blooms",
+     "primary": false,
+     "source": "b6_23"
+    }
+   ]
+  },
+  {
+   "common_name": "Rose (green pot)",
+   "scientific_name": "Rosa sp. (probably a miniature or patio rose)",
+   "aliases": "",
+   "plant_type": "Deciduous flowering shrub",
+   "location": "Wire rack by the fence, on a black saucer, with the other roses",
+   "container": "Green plastic pot on a black saucer, bark, perlite and pumice mix",
+   "id_confidence": 80,
+   "id_basis": "Compound leaves with five to seven small, serrated leaflets and thin thorny canes make this a rose; the small leaflets suggest a miniature or patio type. No flower in the photos.",
+   "id_alternatives": "Miniature rose\nPatio / polyantha rose",
+   "id_improve": "A photo of a bloom (colour and form)\nThe plant tag if you still have it",
+   "temp_ideal_low": 50,
+   "temp_ideal_high": 85,
+   "temp_damage_below": 15,
+   "temp_lethal_below": 0,
+   "temp_notes": "Hardy; goes semi-dormant. Protect the pot's roots in hard freezes.",
+   "humidity_low": 40,
+   "humidity_high": 60,
+   "humidity_notes": "Humid weather favours black spot.",
+   "light_summary": "Full sun",
+   "light_hours": "6+ h",
+   "light_notes": "Full sun for flowers and sturdier canes.",
+   "winter_plan": "Hardy outside",
+   "winter_summary": "Hardy outdoors in Round Rock. Keep it outside with the other roses.",
+   "winter_triggers": "Mulch and group the pots on nights below 20 F.",
+   "winter_steps": "Stop feeding by early November.\nCut out the dead canes now (they are brown and brittle).\nGroup the rose pots against a wall and mulch on nights below 20 F.\nPrune to shape in late February.",
+   "indoor_setup": "Not applicable.",
+   "health_rating": "Fair",
+   "health_summary": "Several canes have died back to brown sticks, but there is healthy green new growth from the base.",
+   "health_observations": "Three or four dead, brown canes\nHealthy green shoots and leaves from the base\nA few yellowing leaflets\nMix is coarse and well-drained",
+   "health_steps": "Cut the dead canes off at the base with clean pruners\nWater deeply when the top inch is dry; do not let the pot dry out completely\nFeed lightly once now if it has not been fed this season, then stop for winter\nCheck the base for borer holes in the cut canes",
+   "notes": "One of four potted roses on the rack. If this is actually the same plant as another rose record, tell me and I will merge them.",
+   "pests_current": "No pests seen in the photos.",
+   "fert_from_month": 3,
+   "fert_to_month": 9,
+   "fert_every_days": 28,
+   "temp_damage_above": 100,
+   "vpd_low": 0.6,
+   "vpd_high": 1.4,
+   "par_low": 1200,
+   "par_high": 2000,
+   "dli_low": 25,
+   "dli_high": 40,
+   "water_notes": "Water deeply 1-2 times a week, more in summer heat. Water at the base, not over the leaves. In winter, water only when the mix is dry and the weather is above freezing.",
+   "soil_medium": "Rich loam or potting mix with compost, mulched with 2 in of bark.",
+   "soil_ph_low": 6.0,
+   "soil_ph_high": 6.5,
+   "soil_moisture_low": 25,
+   "soil_moisture_high": 45,
+   "soil_temp_low": 50,
+   "soil_temp_high": 85,
+   "fertilizer": "Rose fertilizer (such as 4-6-4 or 18-24-16)",
+   "nutrients": "Feed after the late-winter pruning (February), then every 4-6 weeks until September. Stop feeding 6 weeks before the first frost. Yellowing between veins can be iron or magnesium.",
+   "pests_watch": "Black spot and powdery mildew\nAphids and spider mites\nRose rosette virus (a Texas risk: witches' broom, red bristly growth)\nJapanese beetles and cane borers",
+   "pest_steps": "Water at the base and give the plant airflow.\nRemove and bin leaves with black spot; do not compost them.\nRinse off aphids and mites with water; use soap or neem for stubborn cases.\nIf you see rosette (red, bristly, distorted shoots), cut the plant out and bin it.",
+   "photos": [
+    {
+     "file": "img_b6_18.jpg",
+     "caption": "Rose in a green pot with dead canes and new growth",
+     "primary": true,
+     "source": "b6_18"
+    },
+    {
+     "file": "img_b6_19.jpg",
+     "caption": "Closer view of the canes and mix",
+     "primary": false,
+     "source": "b6_19"
+    }
+   ]
+  },
+  {
+   "common_name": "Rose (black pot, sparse)",
+   "scientific_name": "Rosa sp. (probably a miniature or patio rose)",
+   "aliases": "",
+   "plant_type": "Deciduous flowering shrub",
+   "location": "Wire rack by the fence, between the red-pot and green-pot roses",
+   "container": "Black nursery pot with bark, perlite and pumice mix",
+   "id_confidence": 78,
+   "id_basis": "Rose leaves (serrated leaflets in fives and sevens), thin thorny canes and dried double blooms. Small leaflets suggest a miniature or patio type.",
+   "id_alternatives": "Miniature rose\nPatio / polyantha rose",
+   "id_improve": "A photo of a bloom when it flowers again\nThe plant tag if you still have it\nConfirm this is a separate plant from the rose already recorded in the black pot",
+   "temp_ideal_low": 50,
+   "temp_ideal_high": 85,
+   "temp_damage_below": 15,
+   "temp_lethal_below": 0,
+   "temp_notes": "Hardy, but a weak plant in a small pot is more at risk in a hard freeze.",
+   "humidity_low": 40,
+   "humidity_high": 60,
+   "humidity_notes": "Humid weather favours black spot.",
+   "light_summary": "Full sun",
+   "light_hours": "6+ h",
+   "light_notes": "Full sun for flowers.",
+   "winter_plan": "Hardy outside",
+   "winter_summary": "Hardy outdoors, but this one is weak: give it the most sheltered spot among the roses this winter.",
+   "winter_triggers": "Mulch and group the pots on nights below 20 F.",
+   "winter_steps": "Cut out the dead canes and dried blooms now.\nGroup it with the other roses against a wall; mulch on nights below 20 F.\nWater when the top inch is dry, less in winter.\nIn late February, prune lightly and feed once new growth starts.",
+   "indoor_setup": "Not applicable.",
+   "health_rating": "Poor",
+   "health_summary": "Mostly dead brown canes with a few healthy green shoots. Dried blooms hang on the plant and some leaflets are yellowing with brown edges.",
+   "health_observations": "Most of the canes are dead and brown\nA few healthy light-green shoots\nDried brown blooms still attached\nYellowing leaflets with brown edges\nTiny weed seedlings in the mix",
+   "health_steps": "Cut all dead canes and dried blooms off with clean pruners\nPull the weed seedlings\nWater deeply when the top inch is dry and keep it in full sun\nCheck the roots in spring: if they are circling or brown, repot into fresh mix one size up",
+   "notes": "One of four potted roses on the rack. The lusher rose in a black pot (the existing rose record) is a different plant, judging by the photos.",
+   "pests_current": "No insects seen. Tiny weed seedlings and spotted spurge in the neighbouring pots.",
+   "fert_from_month": 3,
+   "fert_to_month": 9,
+   "fert_every_days": 28,
+   "temp_damage_above": 100,
+   "vpd_low": 0.6,
+   "vpd_high": 1.4,
+   "par_low": 1200,
+   "par_high": 2000,
+   "dli_low": 25,
+   "dli_high": 40,
+   "water_notes": "Water deeply 1-2 times a week, more in summer heat. Water at the base, not over the leaves. In winter, water only when the mix is dry and the weather is above freezing.",
+   "soil_medium": "Rich loam or potting mix with compost, mulched with 2 in of bark.",
+   "soil_ph_low": 6.0,
+   "soil_ph_high": 6.5,
+   "soil_moisture_low": 25,
+   "soil_moisture_high": 45,
+   "soil_temp_low": 50,
+   "soil_temp_high": 85,
+   "fertilizer": "Rose fertilizer (such as 4-6-4 or 18-24-16)",
+   "nutrients": "Feed after the late-winter pruning (February), then every 4-6 weeks until September. Stop feeding 6 weeks before the first frost. Yellowing between veins can be iron or magnesium.",
+   "pests_watch": "Black spot and powdery mildew\nAphids and spider mites\nRose rosette virus (a Texas risk: witches' broom, red bristly growth)\nJapanese beetles and cane borers",
+   "pest_steps": "Water at the base and give the plant airflow.\nRemove and bin leaves with black spot; do not compost them.\nRinse off aphids and mites with water; use soap or neem for stubborn cases.\nIf you see rosette (red, bristly, distorted shoots), cut the plant out and bin it.",
+   "photos": [
+    {
+     "file": "img_b6_20.jpg",
+     "caption": "Sparse rose in a black pot with dead canes",
+     "primary": true,
+     "source": "b6_20"
+    },
+    {
+     "file": "img_b6_21.jpg",
+     "caption": "Dried blooms and yellowing leaflets",
+     "primary": false,
+     "source": "b6_21"
+    }
+   ]
+  },
+  {
+   "common_name": "Majesty palm (white pot)",
+   "scientific_name": "Ravenea rivularis",
+   "aliases": "Majesty palm",
+   "plant_type": "Palm",
+   "location": "Yard, beside the blue bucket and the fiddle-leaf plant",
+   "container": "Black nursery pot inside a white ribbed ceramic pot with saucer",
+   "id_confidence": 70,
+   "id_basis": "Two stems from swollen bases wrapped in fibrous old leaf bases, smooth green leaf stalks and long, regularly spaced, slightly drooping leaflets are typical of the majesty palm sold at garden centres. The same species as the other yard palms, as far as the photos show.",
+   "id_alternatives": "Areca / butterfly palm (Dypsis lutescens): would have yellow-golden ringed stems in a dense clump\nParlor or kentia palm (less likely at this size)",
+   "id_improve": "Close-up of where a leaf stalk joins the stem\nThe tag or receipt, if any",
+   "temp_ideal_low": 65,
+   "temp_ideal_high": 85,
+   "temp_damage_below": 35,
+   "temp_lethal_below": 28,
+   "temp_notes": "Majesty palms are tender: fronds are damaged below about 35 F and the plant can die in a freeze in the upper 20s. Growth stops below 55 F.",
+   "humidity_low": 40,
+   "humidity_high": 70,
+   "humidity_notes": "Brown, curled leaflet tips show it dislikes dry air; indoors in winter it needs a humidifier or grouping.",
+   "light_summary": "Bright light, morning sun",
+   "light_hours": "4-6 h",
+   "light_notes": "Full Texas sun bleaches majesty palms yellow. Bright light with shade from the afternoon sun keeps the fronds green.",
+   "winter_plan": "Move indoors",
+   "winter_summary": "A tender palm: bring it inside before nights fall below 45 F.",
+   "winter_triggers": "Target Nov 1; required before any night under 40 F.",
+   "winter_steps": "Target: indoors by about Nov 1, before the first night forecast under 45 F.\nPre-move: rinse the leaves with a hose, check undersides and stem nodes for spider mites, mealybugs, scale and fungus gnats, treat with insecticidal soap or neem, then quarantine 2 weeks away from other houseplants.\nAcclimate in two steps to limit leaf drop: about a week on the covered porch or in the garage, then inside.\nDo not repot or fertilize for the move; trim only dead tissue.\nCut off fully brown fronds at the base before the move; leave partly green ones (they still feed the plant).\nIndoors, keep it away from heater vents and cold drafts, and keep the mix lightly moist (never soggy).",
+   "indoor_setup": "Indoors: within 3 ft of an east or south window, or under a full-spectrum grow light 12-14 h/day at 6-12 in. Winter sun in Round Rock is only ~4.5-6 hours of real sunshine per day in Dec-Jan, so supplement.\nIndoor winter air is typically 20-35% RH; raise it with a humidifier (target 50-60%), grouping plants, or a pebble tray, and keep plants away from heater vents.\nMajesty palms struggle indoors in low light; the brightest spot you have, or a grow light, makes the difference.",
+   "health_rating": "Fair",
+   "health_summary": "Two healthy stems with plenty of fronds, but the fronds are pale yellow-green overall and the oldest leaflets have dry, brown tips.",
+   "health_observations": "Pale yellow-green fronds (sun bleaching and hunger for magnesium and nitrogen)\nBrown, dry leaflet tips on older fronds\nOld leaf bases at the base are brown and fibrous (normal shedding)\nBlack nursery pot sits loose in the ceramic cachepot",
+   "health_steps": "Move it out of the hard afternoon sun\nFeed with palm fertilizer plus a dose of Epsom salt (1 tbsp per gallon) once before winter\nEmpty any water standing in the ceramic pot after watering\nTrim only fully brown leaflet tips, leaving a thin brown edge",
+   "notes": "One of the 'three more palms' from the to-photograph list.",
+   "pests_current": "No insects seen. Check the leaflet undersides for spider mites before bringing it indoors.",
+   "fert_from_month": 3,
+   "fert_to_month": 9,
+   "fert_every_days": 42,
+   "temp_damage_above": 100,
+   "vpd_low": 0.4,
+   "vpd_high": 1.0,
+   "par_low": 300,
+   "par_high": 900,
+   "dli_low": 10,
+   "dli_high": 22,
+   "soil_ph_low": 5.5,
+   "soil_ph_high": 6.5,
+   "soil_moisture_low": 45,
+   "soil_moisture_high": 70,
+   "soil_temp_low": 65,
+   "soil_temp_high": 85,
+   "water_notes": "Majesty palms are thirsty: keep the mix evenly moist, never soggy and never bone dry. In the warm months that is every 2-4 days in a pot; check by finger. Indoors in winter, water when the top inch is dry. Brown, curling leaflet tips mean it went too dry or the air is too dry.",
+   "soil_medium": "Rich, peat- or coir-based potting mix with about 20% perlite; it likes moisture-holding mix that still drains. Use a pot with drainage holes and empty any cachepot after watering.",
+   "fertilizer": "Palm fertilizer with magnesium and manganese (such as 8-2-12 + micronutrients)",
+   "nutrients": "A heavy feeder. Feed March to September every 4-6 weeks with palm food. Yellowing of whole fronds is the classic majesty-palm sign of low nitrogen, magnesium or manganese, often made worse by strong sun. A spoonful of Epsom salt (magnesium) per gallon once a season helps. Do not feed in winter.",
+   "pests_watch": "Spider mites: fine webbing and stippled leaves, worst in dry heated air\nThrips: silvery streaks and black specks on leaves\nMealybugs: white cottony clumps in leaf joints\nFungus gnats: small flies over damp mix\nRoot rot from cold, soggy mix\nBacterial or fungal leaf spot: brown, water-soaked spots",
+   "pest_steps": "Check leaf undersides and leaf joints once a week, and before any plant comes indoors.\nKeep newly moved plants apart from the others for 2 weeks.\nWipe leaves with a damp cloth to remove dust and mites.\nFor mites, thrips or mealybugs: spray insecticidal soap or neem oil every 5-7 days for three rounds. Test one leaf first and do not spray in hot sun.\nFor mealybugs on a few spots: touch each with a swab of 70% rubbing alcohol.\nFor fungus gnats: let the top inch of mix dry, add yellow sticky traps, and water once with Bti (Mosquito Bits) soaked water.\nRemove leaves with leaf spot, keep the foliage dry and give the plant airflow.",
+   "photos": [
+    {
+     "file": "img_b6_29.jpg",
+     "caption": "Majesty palm in the white ceramic pot (overview)",
+     "primary": true,
+     "source": "b6_29"
+    },
+    {
+     "file": "img_b6_28.jpg",
+     "caption": "Base: two stems with old fibrous leaf bases",
+     "primary": false,
+     "source": "b6_28"
+    }
+   ]
+  },
+  {
+   "common_name": "Majesty palm (tall grey planter)",
+   "scientific_name": "Ravenea rivularis",
+   "aliases": "Majesty palm",
+   "plant_type": "Palm",
+   "location": "Yard, on the grass by the lumber",
+   "container": "Black nursery pot inside a tall grey-beige planter",
+   "id_confidence": 70,
+   "id_basis": "Swollen, fibre-wrapped base, smooth green leaf stalks and long, evenly spaced leaflets: majesty palm, like the other yard palms.",
+   "id_alternatives": "Areca / butterfly palm (Dypsis lutescens)",
+   "id_improve": "Close-up of where a leaf stalk joins the stem\nThe tag or receipt, if any",
+   "temp_ideal_low": 65,
+   "temp_ideal_high": 85,
+   "temp_damage_below": 35,
+   "temp_lethal_below": 28,
+   "temp_notes": "Majesty palms are tender: fronds are damaged below about 35 F and the plant can die in a freeze in the upper 20s. Growth stops below 55 F.",
+   "humidity_low": 40,
+   "humidity_high": 70,
+   "humidity_notes": "Curled, dried leaflet tips on the top frond point to dry spells or dry air.",
+   "light_summary": "Bright light, morning sun",
+   "light_hours": "4-6 h",
+   "light_notes": "Shade it from hard afternoon sun.",
+   "winter_plan": "Move indoors",
+   "winter_summary": "A tender palm: bring it inside before nights fall below 45 F.",
+   "winter_triggers": "Target Nov 1; required before any night under 40 F.",
+   "winter_steps": "Target: indoors by about Nov 1, before the first night forecast under 45 F.\nPre-move: rinse the leaves with a hose, check undersides and stem nodes for spider mites, mealybugs, scale and fungus gnats, treat with insecticidal soap or neem, then quarantine 2 weeks away from other houseplants.\nAcclimate in two steps to limit leaf drop: about a week on the covered porch or in the garage, then inside.\nDo not repot or fertilize for the move; trim only dead tissue.\nCut off fully brown fronds at the base before the move; leave partly green ones (they still feed the plant).\nIndoors, keep it away from heater vents and cold drafts, and keep the mix lightly moist (never soggy).",
+   "indoor_setup": "Indoors: within 3 ft of an east or south window, or under a full-spectrum grow light 12-14 h/day at 6-12 in. Winter sun in Round Rock is only ~4.5-6 hours of real sunshine per day in Dec-Jan, so supplement.\nIndoor winter air is typically 20-35% RH; raise it with a humidifier (target 50-60%), grouping plants, or a pebble tray, and keep plants away from heater vents.\nMajesty palms struggle indoors in low light; the brightest spot you have, or a grow light, makes the difference.",
+   "health_rating": "Fair",
+   "health_summary": "Green, full fronds lower down, but the tallest frond has dry, curling, brown leaflet tips and one stalk at the base is split with a brown streak.",
+   "health_observations": "Top frond: leaflets dried and curling at the tips (went too dry, wind, or sun)\nSeveral fronds pale yellow-green\nOne split leaf stalk with a brown streak at the base\nSpotted spurge weeds growing in the pot and around it",
+   "health_steps": "Water more often: keep the mix evenly moist\nPull the spurge out of the pot\nFeed with palm fertilizer with magnesium once before winter\nWatch the split stalk: if the brown streak spreads or turns soft, cut that frond off",
+   "notes": "One of the 'three more palms' from the to-photograph list.",
+   "pests_current": "Spotted spurge (a weed) in the pot. No insects seen.",
+   "fert_from_month": 3,
+   "fert_to_month": 9,
+   "fert_every_days": 42,
+   "temp_damage_above": 100,
+   "vpd_low": 0.4,
+   "vpd_high": 1.0,
+   "par_low": 300,
+   "par_high": 900,
+   "dli_low": 10,
+   "dli_high": 22,
+   "soil_ph_low": 5.5,
+   "soil_ph_high": 6.5,
+   "soil_moisture_low": 45,
+   "soil_moisture_high": 70,
+   "soil_temp_low": 65,
+   "soil_temp_high": 85,
+   "water_notes": "Majesty palms are thirsty: keep the mix evenly moist, never soggy and never bone dry. In the warm months that is every 2-4 days in a pot; check by finger. Indoors in winter, water when the top inch is dry. Brown, curling leaflet tips mean it went too dry or the air is too dry.",
+   "soil_medium": "Rich, peat- or coir-based potting mix with about 20% perlite; it likes moisture-holding mix that still drains. Use a pot with drainage holes and empty any cachepot after watering.",
+   "fertilizer": "Palm fertilizer with magnesium and manganese (such as 8-2-12 + micronutrients)",
+   "nutrients": "A heavy feeder. Feed March to September every 4-6 weeks with palm food. Yellowing of whole fronds is the classic majesty-palm sign of low nitrogen, magnesium or manganese, often made worse by strong sun. A spoonful of Epsom salt (magnesium) per gallon once a season helps. Do not feed in winter.",
+   "pests_watch": "Spider mites: fine webbing and stippled leaves, worst in dry heated air\nThrips: silvery streaks and black specks on leaves\nMealybugs: white cottony clumps in leaf joints\nFungus gnats: small flies over damp mix\nRoot rot from cold, soggy mix\nBacterial or fungal leaf spot: brown, water-soaked spots",
+   "pest_steps": "Check leaf undersides and leaf joints once a week, and before any plant comes indoors.\nKeep newly moved plants apart from the others for 2 weeks.\nWipe leaves with a damp cloth to remove dust and mites.\nFor mites, thrips or mealybugs: spray insecticidal soap or neem oil every 5-7 days for three rounds. Test one leaf first and do not spray in hot sun.\nFor mealybugs on a few spots: touch each with a swab of 70% rubbing alcohol.\nFor fungus gnats: let the top inch of mix dry, add yellow sticky traps, and water once with Bti (Mosquito Bits) soaked water.\nRemove leaves with leaf spot, keep the foliage dry and give the plant airflow.",
+   "photos": [
+    {
+     "file": "img_b6_31.jpg",
+     "caption": "Majesty palm in the tall grey planter",
+     "primary": true,
+     "source": "b6_31"
+    },
+    {
+     "file": "img_b6_30.jpg",
+     "caption": "Base: split leaf stalk, spurge in the pot",
+     "primary": false,
+     "source": "b6_30"
+    }
+   ]
+  }
+ ],
+ "existing_photos": [
+  {
+   "code": "P-017",
+   "file": "img_b6_25.jpg",
+   "caption": "Majesty palm: browning spear in the centre and spurge in the pot",
+   "primary": true,
+   "source": "b6_25"
+  },
+  {
+   "code": "P-017",
+   "file": "img_b6_26.jpg",
+   "caption": "Same palm, the spear and old leaf bases",
+   "primary": false,
+   "source": "b6_26"
+  },
+  {
+   "code": "P-017",
+   "file": "img_b6_27.jpg",
+   "caption": "From above: pale fronds",
+   "primary": false,
+   "source": "b6_27"
+  },
+  {
+   "code": "P-022",
+   "file": "img_b6_22.jpg",
+   "caption": "Oct 20: bushy new growth and a few dead canes",
+   "primary": false,
+   "source": "b6_22"
+  },
+  {
+   "code": "P-053",
+   "file": "img_b6_17.jpg",
+   "caption": "Oct 20: pale yellow-green leaves, tendrils",
+   "primary": true,
+   "source": "b6_17"
+  },
+  {
+   "code": "P-053",
+   "file": "img_b6_16.jpg",
+   "caption": "Oldest leaf with brown blotches",
+   "primary": false,
+   "source": "b6_16"
+  }
+ ],
+ "updates": [
+  {
+   "code": "P-017",
+   "name": "Palm (pinnate, yellow-green)",
+   "photos": [
+    "img_1000021177.jpg"
+   ],
+   "note": "New photos (batch 6): identified as a majesty palm; health and care updated",
+   "set": {
+    "common_name": [
+     "Palm (pinnate, yellow-green)",
+     "Majesty palm (black pot)"
+    ],
+    "scientific_name": [
+     "Dypsis lutescens or similar (unconfirmed)",
+     "Ravenea rivularis"
+    ],
+    "aliases": [
+     "Areca / butterfly palm? (possible)",
+     "Majesty palm"
+    ],
+    "id_confidence": [
+     40,
+     70
+    ],
+    "id_basis": [
+     "Arching pinnate fronds with narrow leaflets and a single stem base wrapped in fibre. Species not confirmed (several small palms in the yard).",
+     "A single stem from a swollen base wrapped in fibrous old leaf bases, smooth green leaf stalks and long, regularly spaced leaflets fit the majesty palm sold at garden centres. Two more palms in the yard (now their own records) look the same. Earlier this was recorded as a possible areca palm, but arecas form dense clumps of golden, ringed stems."
+    ],
+    "id_alternatives": [
+     "Dypsis lutescens\nPtychosperma elegans\nCarpentaria / Veitchia",
+     "Areca / butterfly palm (Dypsis lutescens)\nParlor or kentia palm (less likely)"
+    ],
+    "id_improve": [
+     "Photo of a full frond\nClose-up of the trunk base\nTag",
+     "Close-up of where a leaf stalk joins the stem\nThe tag or receipt, if any"
+    ],
+    "container": [
+     "Black nursery pots",
+     "Black nursery pot"
+    ],
+    "location": [
+     "Yard, near the posts",
+     "Yard, beside the blue Lowe's bucket and the white pot"
+    ],
+    "temp_damage_below": [
+     40,
+     35
+    ],
+    "temp_lethal_below": [
+     30,
+     28
+    ],
+    "temp_notes": [
+     "Cold-tender.",
+     "Majesty palms are tender: fronds are damaged below about 35 F and the plant can die in a freeze in the upper 20s. Growth stops below 55 F."
+    ],
+    "light_summary": [
+     "Bright filtered light",
+     "Bright light, morning sun"
+    ],
+    "light_notes": [
+     "Yellowing suggests too much sun or low magnesium/potassium.",
+     "Full Texas sun bleaches majesty palms yellow, which is part of why this one is pale. Bright light with shade from the afternoon sun keeps the fronds green."
+    ],
+    "health_rating": [
+     "Fair",
+     "Poor"
+    ],
+    "health_summary": [
+     "Fronds are pale yellow-green; weeds cover the pot.",
+     "Only a few fronds, all pale yellow-green, and the newest leaf (the spear) in the centre is browning at the tip. A brown spear can be the start of bud rot, which is serious in palms, so check it soon."
+    ],
+    "health_observations": [
+     "Pale chlorotic fronds\nSpurge weeds in pot",
+     "The new spear in the centre is green at the base but brown and dry at the tip, with dark spots\nA dead brown leaf stalk beside the spear\nRemaining fronds pale yellow-green with dry tips\nThick mat of spotted spurge weeds in and around the pot"
+    ],
+    "health_steps": [
+     "Feed palm fertilizer with Mg/K in spring\nRemove weeds",
+     "Check the spear: tug it gently. If it holds firm, it is just tip damage. If it slides out easily and the base smells rotten, that is bud rot: cut away the rotten part, drench the crown with a copper fungicide and keep water out of the crown\nPull the spurge weeds out of the pot\nMove it out of hard afternoon sun\nFeed palm fertilizer with magnesium once before winter, then stop until March\nKeep the mix evenly moist, not soggy"
+    ],
+    "notes": [
+     "Multiple palms appear in the yard shots; this record uses one representative plant.",
+     "The other yard palms now have their own records: majesty palm (white pot) and majesty palm (tall grey planter)."
+    ],
+    "water_notes": [
+     "Water when the top inch or two is dry; keep the mix lightly moist in the growing season and a little drier in winter. Brown tips from fluoride or salt in tap water are common, so rain water or filtered water helps.",
+     "Majesty palms are thirsty: keep the mix evenly moist, never soggy and never bone dry. In the warm months that is every 2-4 days in a pot; check by finger. Indoors in winter, water when the top inch is dry. Brown, curling leaflet tips mean it went too dry or the air is too dry."
+    ],
+    "soil_medium": [
+     "Well-draining potting mix with about 25% perlite or sand. Use a pot with drainage holes.",
+     "Rich, peat- or coir-based potting mix with about 20% perlite; it likes moisture-holding mix that still drains. Use a pot with drainage holes and empty any cachepot after watering."
+    ],
+    "fertilizer": [
+     "Slow-release palm fertilizer (about 8-2-12 with magnesium), or half-strength balanced liquid",
+     "Palm fertilizer with magnesium and manganese (such as 8-2-12 + micronutrients)"
+    ],
+    "nutrients": [
+     "Feed March to September every 4-6 weeks. Yellowing on the oldest fronds, especially with orange spotting, can be potassium or magnesium shortage. Do not feed in winter.",
+     "A heavy feeder. Feed March to September every 4-6 weeks with palm food. Yellowing of whole fronds is the classic majesty-palm sign of low nitrogen, magnesium or manganese, often made worse by strong sun. A spoonful of Epsom salt (magnesium) per gallon once a season helps. Do not feed in winter."
+    ],
+    "par_low": [
+     150,
+     300
+    ],
+    "par_high": [
+     400,
+     900
+    ],
+    "dli_low": [
+     6.0,
+     10
+    ],
+    "dli_high": [
+     12.0,
+     22
+    ],
+    "soil_moisture_low": [
+     35,
+     45
+    ],
+    "soil_moisture_high": [
+     60,
+     70
+    ],
+    "pests_current": [
+     "No pests identified in the photos so far. Note here anything you see, with the date.",
+     "Spotted spurge (a weed) covers the pot. The browning spear needs checking for bud rot (see Health)."
+    ]
+   }
+  },
+  {
+   "code": "P-022",
+   "name": "Rose (potted)",
+   "photos": [
+    "img_1000021182.jpg"
+   ],
+   "note": "New photo (batch 6): the other roses on the rack now have their own records",
+   "set": {
+    "container": [
+     "Black nursery pot (a second rose is in a red pot behind)",
+     "Black nursery pot"
+    ],
+    "id_basis": [
+     "Pinnate compound leaves with 5-7 oval, serrated leaflets and reddish new growth. A second plant in a red pot shows dried yellow blooms.",
+     "Pinnate compound leaves with 5-7 oval, serrated leaflets and reddish new growth. Three more roses sit on the same rack (red, green and a second black pot); they now have their own records."
+    ],
+    "health_observations": [
+     "Red/orange rims on leaflets (scorch, heat or potassium deficiency)\nSpent blooms on the neighbouring rose\nSoil surface is mulched and appears moist",
+     "Red/orange rims on leaflets (scorch, heat or potassium deficiency)\nOct 20: bushy with lots of healthy new growth; a few bare, dead canes stick up above it\nSpotted spurge (a weed) creeping through the pot\nSoil surface is mulched with bark"
+    ],
+    "health_steps": [
+     "Water deeply, let the top inch dry\nApply a balanced rose fertilizer with potassium in early spring\nDeadhead spent blooms\nRemove any leaves with black spots",
+     "Cut the dead canes back to healthy wood or to the base\nPull the spurge weeds\nWater deeply, let the top inch dry\nStop feeding for winter in early November\nRemove any leaves with black spots"
+    ],
+    "pests_current": [
+     "No pests identified in the photos so far. Note here anything you see, with the date.",
+     "Spotted spurge (a weed) growing in the pot. No insects seen."
+    ],
+    "notes": [
+     "",
+     "One of four potted roses on the rack: the yellow miniature in the red pot, the rose in the green pot and a sparse rose in another black pot have their own records."
+    ]
+   }
+  },
+  {
+   "code": "P-053",
+   "name": "Tendril vine in red pot (unidentified)",
+   "photos": [
+    "img_b2_14.jpg"
+   ],
+   "note": "New photos (batch 6): leaves now show it is a gourd-family vine; health updated",
+   "set": {
+    "common_name": [
+     "Tendril vine in red pot (unidentified)",
+     "Gourd-family vine (red pot)"
+    ],
+    "scientific_name": [
+     "Cucurbitaceae (gourd or squash type) or Passiflora sp. (unconfirmed)",
+     "Cucurbitaceae (probably a gourd or melon; species unconfirmed)"
+    ],
+    "aliases": [
+     "",
+     "Gourd-family vine"
+    ],
+    "id_confidence": [
+     30,
+     50
+    ],
+    "id_basis": [
+     "Heart-shaped, softly hairy leaves and spiral tendrils on a young climbing stem. Tendrils rule out the morning glory vines recorded elsewhere, which twine instead. The leaf shape fits a gourd or squash seedling, but a passion vine is possible.",
+     "Larger leaves now show the typical gourd-family shape: rounded, heart- to kidney-shaped, softly hairy and slightly angled, with branched coiling tendrils. That rules out passionflower, whose leaves are usually lobed or long with tendrils from the leaf joints. A flower or fruit will tell gourd from melon or squash."
+    ],
+    "id_alternatives": [
+     "Bottle gourd (Lagenaria)\nLoofah (Luffa)\nCucumber or squash seedling\nPassionflower (Passiflora sp.)",
+     "Bottle gourd (Lagenaria siceraria)\nMelon or cantaloupe (Cucumis melo)\nCucumber (Cucumis sativus)\nSquash or pumpkin (Cucurbita)"
+    ],
+    "id_improve": [
+     "A tendril and where it grows from the stem\nA leaf (top and underside) next to a coin\nA flower or fruit when it appears (yellow flowers suggest a gourd, an ornate fringed flower suggests passionflower)\nWhere the seed or plant came from",
+     "A flower (white flowers that open at dusk point to bottle gourd; yellow ones to melon, cucumber or squash)\nA fruit if one forms\nWhere the seed came from"
+    ],
+    "health_rating": [
+     "Fair",
+     "Poor"
+    ],
+    "health_summary": [
+     "Upright and growing, but the top leaf is pale chartreuse, one leaf has brown spotting and the pot is mostly white perlite with little organic matter.",
+     "Most leaves are pale yellow-green, and the oldest leaf has large brown dead patches. Together that points to hunger (low nitrogen in a perlite-heavy mix) plus a leaf-spot disease on the old leaves. With frost a few weeks away, this annual vine is near the end of its season."
+    ],
+    "health_observations": [
+     "Pale yellow-green new leaves\nBrown spotting on the lower right leaf\nDead leaf stub on the stem\nPot surface is mostly perlite and bark, so low in nutrients\nTendrils have nothing to grab",
+     "Whole plant pale yellow-green (low nitrogen likely: the mix is mostly perlite and bark)\nLarge brown, dry blotches and small brown specks on the oldest leaf (leaf spot such as anthracnose or alternaria, or sun scald)\nA few small holes in one leaf (chewing insects)\nNew leaves at the top are greener\nTendrils reaching toward the fence"
+    ],
+    "health_steps": [
+     "Give it a trellis or stake\nFeed with a balanced liquid fertilizer at half strength\nRepot into a mix with more compost if it stays pale\nCheck leaves for powdery mildew and aphids",
+     "Remove the leaf with the large brown blotches and bin it\nFeed with a balanced liquid fertilizer at full strength once, then every 2 weeks while it grows\nLet the tendrils grab the fence or give it a stake\nWater at the base, not over the leaves\nIf it flowers before frost, photograph the flower so it can be identified"
+    ],
+    "winter_plan": [
+     "Protect outside",
+     "Annual"
+    ],
+    "winter_summary": [
+     "Probably frost-tender. If it turns out to be a gourd or squash it is an annual and will die at frost anyway.",
+     "Gourd-family vines are annuals here: the first frost ends them. Covering on the first frost nights buys a week or two at most."
+    ],
+    "winter_triggers": [
+     "Cover at 38 F; accept the loss at 32 F if it is a gourd.",
+     "No action needed; expect it to die at the first frost (about mid-November)."
+    ],
+    "winter_steps": [
+     "Cover at 38 F or below (frost cloth/sheet draped to the ground over a frame; frost cloth buys roughly 6-8 F). Bring in or move into the garage at 32 F or in a multi-day freeze.\nWater the day before a freeze (moist soil holds heat) but keep the plant dry the rest of winter; skip watering when it is below 40 F.\nCluster pots against a south/east wall under the roof, away from north wind, and pile mulch or leaves around the pots.\nStop nitrogen fertilizer now; new tender growth freezes first.\nIf it flowers or fruits, harvest and save seed before the first frost.",
+     "Nothing to do before frost except keep feeding and watering while it grows.\nIf it flowers or sets fruit, a sheet over it on the first light-frost nights can buy a week or two.\nAfter frost kills it, pull the vine and bin the spotted leaves (do not compost them).\nSave seed from any ripe fruit to grow it again next spring."
+    ],
+    "indoor_setup": [
+     "If saved indoors it needs a bright window and a trellis; gourds and squash rarely overwinter.",
+     "Not worth bringing indoors; gourd-family vines do not overwinter well."
+    ],
+    "pests_current": [
+     "Brown spotting on one lower leaf; cause not identified. Check the undersides for mites.",
+     "Brown blotches and specks on the oldest leaf (likely a fungal leaf spot) and a few chewed holes. Check the undersides for squash bugs, cucumber beetles and mites."
+    ]
+   }
+  }
+ ],
+ "to_photograph_done": [
+  "Other palms in the yard",
+  "Second rose in the red pot"
+ ],
+ "to_photograph_add": [
+  {
+   "label": "Third extra palm, if there is one",
+   "note": "The list said three more palms; two new ones were photographed (white pot and tall grey planter). Skip this if there are only two."
+  },
+  {
+   "label": "Blooms on the green-pot rose and the sparse black-pot rose",
+   "note": "To record their flower colour when they bloom again."
+  },
+  {
+   "label": "Flower of the gourd-family vine in the red pot",
+   "note": "If it flowers before frost; white or yellow tells which gourd it is."
+  }
+ ]
+}
