@@ -437,6 +437,10 @@ details.inline{display:inline-block;margin:.2rem 0}details.inline summary{displa
 @media (max-width:40rem){.jobdl{grid-template-columns:1fr}.jobdl dd{margin-bottom:.4rem}}
 .grpbtns{grid-column:1/-1;margin:.2rem 0 .4rem;gap:.5rem}
 
+/* ---- 1.8.0: with the On this page menu open, a plant page in two halves drops its row of section buttons ----
+   The menu lists the same sections, and on a laptop the row could wrap to four lines and cover much of the right half. */
+html[data-navopen="1"][data-narrow="0"]:not([data-layout=single]) .plant .pane .jump{display:none}
+
 /* v1.3.4: section menu, page width, sticky chart controls */
 [hidden]{display:none!important}
 :root{--nav-w:17rem;--main-w:80rem;--top-h:4rem}

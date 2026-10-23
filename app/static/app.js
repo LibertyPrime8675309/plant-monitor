@@ -770,6 +770,10 @@ function repaintPhotos() { const el = document.getElementById('photopanel'); if 
 async function reloadPlant(idx) { KEEP = idx == null ? PIDX : idx; await route(); }
 const curPhoto = () => CUR.p.photos[clamp(PIDX, 0, CUR.p.photos.length - 1)];
 
+// ---------- plant page: the row of section buttons steps aside while the On this page menu is open (added in 1.8.0) ----------
+// The CSS hides the row then; this keeps --jump-h (used by the sticky section titles) right when the menu opens or closes.
+new MutationObserver(() => document.querySelectorAll('.pane').forEach(p => { const j = p.querySelector('.jump'); p.style.setProperty('--jump-h', (j ? j.offsetHeight : 0) + 'px'); }))
+  .observe(document.documentElement, { attributes: true, attributeFilter: ['data-navopen', 'data-narrow', 'data-layout'] });
 // ---------- dates ----------
 const pad2 = n => String(n).padStart(2, '0');
 const ymd = d => d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
