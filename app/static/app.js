@@ -289,7 +289,9 @@ async function viewGallery() {
   ALL = await api('GET', '/api/plants' + (G.archived ? '?status=archived' : ''));
   const lowN = ALL.filter(p => p.id_confidence != null && p.id_confidence < 70).length;
   const needN = ALL.filter(needsYou).length;
-  let todoN = 0; try { todoN = (await api('GET', '/api/to-photograph')).filter(t => !t.done).length; } catch (e) { /* ignore */ }
+  let todoN = 0, fcN = 0;
+  await Promise.all([api('GET', '/api/to-photograph').then(t => { todoN = t.filter(x => !x.done).length; }).catch(() => {}),
+    api('GET', '/api/for-claude?range=last').then(d => { fcN = d.counts.answers; }).catch(() => {})]);
   return {
     title: '',
     html: html`<div class="hero"><div><h1>${G.archived ? 'Archived plants' : 'Outdoor plants'}</h1>
@@ -297,7 +299,8 @@ async function viewGallery() {
       <a class="btn" href="#/new">Add a plant</a></div>
     <div class="needs-bar" role="group" aria-label="What Claude needs from you">
       <button type="button" class="btn ${G.needs ? '' : 'ghost'}" data-act="needs" aria-pressed="${String(G.needs)}">${G.needs ? 'Showing plants that need something from you' : 'Show plants that need something from you'} (${needN})</button>
-      <span class="hint">Questions, checks, photos and ID details I am waiting for. ${todoN ? html`Plus <a href="#/photos">${todoN} things to photograph</a> that are not in the database yet.` : ''}</span></div>
+      <span class="hint">Questions, checks, photos and ID details I am waiting for. ${todoN ? html`Plus <a href="#/photos">${todoN} things to photograph</a> that are not in the database yet.` : ''}</span>
+      <button type="button" class="btn ghost" data-act="forclaude"><span>Copy my answers for Claude${fcN ? html`<span class="fc-n"> (${fcN} new)</span>` : ''}</span></button></div>
     <div class="ledger" role="group" aria-label="Filter by winter plan">${ledger()}</div>
     <div class="filters">
       <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
@@ -755,7 +758,57 @@ function needsBox(p) {
     ${low ? html`<p class="needs-id"><span class="kind">ID info</span> The identification is ${p.id_confidence}% sure. ${lines(p.id_improve).length ? html`To raise it, send: ${lines(p.id_improve).join('; ')}.` : 'A clear photo of the tag or a flower would help.'} <a href="#ident" data-act="jump" data-id="ident">See Plant identification</a></p>` : ''}
     ${done.length ? html`<details class="needs-done"><summary>${done.length} answered</summary><ul>${done.map(r => html`<li>${r.text}<br><span class="hint">${r.answer ? 'Answer: ' + r.answer + '. ' : ''}${r.done_by || ''} ${r.done_at ? when(r.done_at) : ''}</span>
       <button class="btn small ghost" type="button" data-act="reqreopen" data-id="${r.id}">Reopen</button></li>`)}</ul></details>` : ''}
-    <p class="hint">Answers are saved on this page and in the change log, so Claude can read them in your next backup (Change log, Download all data) or when you paste them into the chat.</p></section>`;
+    <p class="hint">Answers are saved on this page and in the change log. To send them to Claude, press Copy my answers for Claude and paste the message into the chat.</p>
+    <p class="noprint"><button class="btn small" type="button" data-act="forclaude">Copy my answers for Claude</button></p></section>`;
+}
+// ---------- copy my answers for Claude (added in 1.8.0) ----------
+const FC = { range: 'last', open: false, data: null };
+const FC_RANGES = [['last', 'Since I last copied'], ['7', 'The last 7 days'], ['30', 'The last 30 days'], ['all', 'Everything']];
+const fcPl = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+async function fcLoad() { FC.data = await api('GET', `/api/for-claude?range=${FC.range}&open=${FC.open ? 1 : 0}`); return FC.data; }
+function fcWords(n) {
+  const w = [];
+  if (n.answers) w.push(fcPl(n.answers, 'answer', 'answers'));
+  if (n.pages) w.push(fcPl(n.pages, 'change to a plant page', 'changes to plant pages'));
+  if (n.photos) w.push('photo changes on ' + fcPl(n.photos, 'page', 'pages'));
+  if (n.care) w.push(fcPl(n.care, 'feeding or care entry', 'feeding or care entries'));
+  if (n.todo) w.push(fcPl(n.todo, 'change', 'changes') + ' to the "Still to photograph" list');
+  return w.length ? w.join(', ') : 'nothing new in that time';
+}
+function fcBox(D) {
+  const last = D.last_copied ? `Since I last copied (${D.last_copied_words})` : 'Since I last copied (never)';
+  return html`<div class="fc-pick">
+      <label class="f">What to include<select data-act="fcrange">${FC_RANGES.map(([k, w]) => html`<option value="${k}" ${FC.range === k ? raw('selected') : ''}>${k === 'last' ? last : w}</option>`)}</select></label>
+      <label class="chk"><input type="checkbox" data-act="fcopen" ${FC.open ? raw('checked') : ''}>Also list what is still open</label></div>
+    <p class="fc-sum"><strong>In this message:</strong> ${fcWords(D.counts)}.</p>
+    <label class="f">The message<textarea id="fc-text" readonly rows="12" spellcheck="false">${D.text}</textarea></label>`;
+}
+const fcSay = msg => { const s = document.getElementById('fc-status'); if (s) s.textContent = msg; };
+async function forClaudeDialog() {
+  if (!(await needName())) return;                          // copying is noted in the change log, under your name
+  FC.range = 'last';
+  try { await fcLoad(); } catch (e) { toast('Could not gather your answers: ' + e.message, true); return; }
+  await modal(html`<form method="dialog" class="fc"><h2>Copy my answers for Claude</h2>
+    <p>One message with everything you have done in Plant record: your answers first, then changes to plant pages, photos, feeding and care. Copy it, then paste it into your chat with Claude.</p>
+    <div id="fc-box">${fcBox(FC.data)}</div>
+    <p id="fc-status" class="fc-status" role="status" aria-live="polite"></p>
+    <div class="row"><button class="btn" type="button" data-act="fccopy" autofocus>Copy message</button>
+      <button class="btn ghost" type="button" data-act="fcsave">Save as a text file</button>
+      <button class="btn ghost" value="close">Close</button></div></form>`);
+}
+async function fcRefresh(focusSel) {
+  const box = document.getElementById('fc-box'); if (!box) return;
+  try { await fcLoad(); } catch (e) { fcSay('Could not gather your answers: ' + e.message); return; }
+  box.innerHTML = rend(fcBox(FC.data)); fcSay('');
+  const f = focusSel && box.querySelector(focusSel); if (f) f.focus();
+}
+async function fcMark() {
+  if (!FC.data) return;
+  try {
+    const r = await api('POST', '/api/for-claude/copied', { until: FC.data.until });
+    FC.data.last_copied = r.last_copied; FC.data.last_copied_words = r.last_copied_words;
+    document.querySelectorAll('.fc-n').forEach(x => x.remove());          // the "(2 new)" on the Plants page
+  } catch (e) { /* the message is copied either way */ }
 }
 function fitPanes() {
   const pl = document.querySelector('.plant');
@@ -2146,7 +2199,21 @@ const acts = {
       <div class="row"><button class="btn" value="ok">Save answer and mark done</button><button class="btn ghost" value="cancel" formnovalidate>Cancel</button></div></form>`);
     if (res !== 'ok') return;
     const a = dlg.querySelector('[name=answer]').value.trim(); if (!a) return;
-    await guard(async () => { await api('PUT', '/api/requests/' + r.id, { done: true, answer: a }); toast('Answer saved'); reloadPlant(); });
+    await guard(async () => { await api('PUT', '/api/requests/' + r.id, { done: true, answer: a }); toast('Answer saved. Use Copy my answers for Claude to send it.'); reloadPlant(); });
+  },
+  forclaude() { forClaudeDialog(); },
+  async fccopy() {
+    const t = document.getElementById('fc-text'); if (!t) return;
+    let ok = false;
+    try { await navigator.clipboard.writeText(t.value); ok = true; }
+    catch (e) { t.focus(); t.select(); try { ok = document.execCommand('copy'); } catch (e2) { ok = false; } }
+    if (!ok) { t.focus(); t.select(); fcSay('This browser would not copy it. The message is selected: press Ctrl+C to copy it.'); return; }
+    await fcMark(); fcSay('Copied. Now paste it into your chat with Claude (Ctrl+V).');
+  },
+  async fcsave() {
+    const a = document.createElement('a');
+    a.href = `/api/for-claude.txt?range=${FC.range}&open=${FC.open ? 1 : 0}`; a.download = ''; document.body.appendChild(a); a.click(); a.remove();
+    await fcMark(); fcSay('Saved to your Downloads folder. Attach it in your chat with Claude, or open it and copy the text.');
   },
   async todoedit(el) {
     const t = TODO.find(x => String(x.id) === el.dataset.id); if (!t || !(await needName())) return;
@@ -2354,6 +2421,8 @@ const changeActs = {
     const fd = new FormData(); [...el.files].forEach(f => fd.append('files', f));
     await guard(async () => { await api('POST', '/api/photos', undefined, fd); toast('Photos added'); route(); });
   },
+  fcrange(el) { FC.range = el.value; fcRefresh('select[data-act=fcrange]'); },
+  fcopen(el) { FC.open = el.checked; fcRefresh('input[data-act=fcopen]'); },
   async tododone(el) { if (!(await needName())) { el.checked = !el.checked; return; } await guard(async () => { await api('PATCH', '/api/to-photograph/' + el.dataset.id, { done: el.checked }); route(); }); },
 };
 function wtFocusTop() { const t = document.querySelector('#wx-table .pager'); if (t) t.scrollIntoView({ block: 'nearest' }); }
