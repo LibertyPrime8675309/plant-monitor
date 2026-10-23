@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.8.0 (2026-10-23)
+Nine new features and fixes, tried out first as prototypes.
+
+- **Frost alert.** When a night in the 7-day forecast would hurt a plant that is outside, a banner at the top of the page says how cold it will get, how many plants are at risk and when to act. Plant pages show their own "Frost risk" note instead.
+  - **Cold-night checklist** (from the banner, or Winter plan): the next 7 nights, then the plants to bring inside, to cover, and the close calls, each with **Moved indoors** and **Covered for tonight** buttons.
+- **Today page** (new link in the menu): plants to water or check, plants to feed, and what I need from you, most urgent first.
+  - **Watering reminders** for every plant, based on how dry it likes to be, the weather and rain. Rain counts as a watering only for plants whose Location is Outdoors.
+  - **Quick care buttons** under each plant's label, big enough for a phone in the garden: Watered today, Checked: still moist, Log feeding, Add a photo, Log other care.
+  - A **care log** in each plant's Water and soil section, and "Check for water every (days)" on the Edit page if you want to set the gap yourself.
+  - 25 plants whose spot is on the covered porch now have Location: Covered porch (upgrade batch `batch9d`). Plants whose Location you already changed were left alone.
+- **Read aloud.** Every section has a **Read aloud** button that reads it in your browser's own voice, with a Stop button. Display settings has the reading speed and voice.
+  - **Keyboard shortcuts:** R reads the page, Escape stops, [ and ] go to the previous and next plant, E edits, / searches, H goes to the Plants page, M opens the section menu, ? lists them all. Display settings can turn them off.
+- **Timeline** on every plant page: how its health and identification have changed, two photos side by side to compare (the oldest and newest to start with), and everything that has happened to it in one dated list.
+- **Copy my answers for Claude** (Plants page, and "Needed from you" on plant pages): puts everything you have answered or changed since last time into one message to paste into the chat, or to save as a text file.
+- **Photo check.** When you add photos, any that look blurry, too dark, washed out or very small are shown with what to do, and **Take a new one**, **Add only the good ones**, **Add it anyway** and **Cancel**. Good photos are added straight away as before.
+- **Phones with large text:** pages no longer run off the right edge at the larger text sizes, the menu bar scrolls away instead of covering the screen, and the Sections and Display buttons no longer overlap.
+- **Plant pages on a laptop:** with the On this page menu open, the row of section buttons steps aside so it no longer covers the details half.
+- **Smaller downloads:** the release zip no longer carries plant photos. They come in separate photo packs, only when a release adds new ones, so every file stays well under the 30 MB limit. This release adds no new photos, so there is no pack to save.
+- The "Still to photograph" list now records what you tick off in the change log.
+
 ## 1.7.5 (2026-10-23)
 - **Previous Plant / Next Plant** buttons on every plant page, each showing the plant's name and code.
   - On wide screens they sit in the empty margins either side of the page, halfway down.

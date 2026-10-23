@@ -175,7 +175,26 @@ Press the **Display** button (bottom right of every page; it stays on screen) to
 - **Colours**: match your device, light or dark.
 - **Plant pages**: photos and details side by side, or one column.
 
-On a plant page in side-by-side view, the photos (left) and details (right) each scroll on their own: put the pointer over the half you want to move and scroll. A "Switch to one column" button at the top of the page does the same as the Display setting. With very large text or a narrow window the page switches to one column automatically. The row of section buttons (Now, Temperature, Humidity, Light, Water and soil, ...) jumps straight to a section. All parts of the page can also be reached with the Tab key.
+On a plant page in side-by-side view, the photos (left) and details (right) each scroll on their own: put the pointer over the half you want to move and scroll. A "Switch to one column" button at the top of the page does the same as the Display setting. With very large text or a narrow window the page switches to one column automatically. The row of section buttons (Now, Temperature, Humidity, Light, Water and soil, ...) jumps straight to a section; in side-by-side view it steps aside while the On this page menu is open, because the menu lists the same sections. All parts of the page can also be reached with the Tab key.
+
+On a phone the menu bar at the top scrolls away with the page (scroll back to the top to reach it), and every page fits the width of the screen at every text size. With the two largest text sizes, the Sections button sits just above the Display button.
+
+### Read aloud and keyboard shortcuts (from 1.8.0)
+
+Every section has a **Read aloud** button. Your browser reads that section in its own voice, the section gets a dashed outline while it is read, and a big **Stop reading** button stays at the bottom of the screen. **Read this page aloud**, under the page title, reads the whole page. In **Display** you can hide the buttons, pick the **Reading speed** (slower to fastest) and the **Voice**, with **Try this voice**. In Microsoft Edge the "Natural" voices sound the most human.
+
+Keyboard shortcuts work on every page, except while you are typing in a box. **Display** can turn them off.
+
+| Key | What it does |
+|---|---|
+| **R** | Read this page aloud |
+| **Escape** | Stop reading |
+| **[** and **]** | Previous and next plant |
+| **E** | Edit this plant |
+| **/** | Search plants |
+| **H** | Go to the Plants page |
+| **M** | Open or fold the section menu |
+| **?** | List the shortcuts |
 
 ### Section menu ("On this page")
 
@@ -196,11 +215,55 @@ They follow the Plants page filters and sort order. The fold-out **Filters for P
 
 The label at the top of every plant page now starts with **Location**: Outdoors, Covered porch, Indoors, or Garage or shed. It is a menu. Click it (or Tab to it and use the arrow keys) and pick another place, and the change is saved straight away and recorded in the page history. The old free-text "Location" field, for example "Covered porch pallet shelf", is now called **Spot**.
 
-On the **Winter plan** page each plant in "Plant by plant" has a **Moved indoors** button. Pressing it sets the plant's Location to Indoors and takes it off those lists. It is also left out of the frost warnings in "The next 7 days". Plants already inside are listed under **Already inside**, each with a **Moved back outside** button. After upgrading, every plant starts as Outdoors.
+On the **Winter plan** page each plant in "Plant by plant" has a **Moved indoors** button. Pressing it sets the plant's Location to Indoors and takes it off those lists. It is also left out of the frost warnings in "The next 7 days". Plants already inside are listed under **Already inside**, each with a **Moved back outside** button. After upgrading to 1.7.0, every plant started as Outdoors; 1.8.0 set the plants whose Spot is on the covered porch to Covered porch, unless you had already changed them.
+
+## Today page, watering and care (from 1.8.0)
+
+The **Today** link in the menu lists what to do today, most urgent first:
+
+- **Water:** plants due or overdue for a check, each with **Watered** and **Still moist**, and **Watered all** for a whole round. "Check tomorrow" lists the next day's plants. "No watering logged yet" has one button, **I watered all today**, to start the reminders for all of them.
+- **Feed:** plants due for fertilizer today, with **Log feeding** (the same schedule as the Fertilizer page).
+- **Needed from you:** the open requests, with links to answer them.
+
+Every plant page has **quick care buttons** under its label, big enough to use on a phone in the garden after scanning the plant's label: **Watered today**, **Checked: still moist**, **Log feeding**, **Add a photo** (opens the phone's camera) and **Log other care** (repotted, pruned, treated for pests, or a note, with a date). The line above them says when the plant was last watered and when to check it next. The plant's **Water and soil** section explains the reminder and has its **care log**, with a **Remove** button on each entry.
+
+How the reminders work:
+
+1. The starting gap comes from how dry the plant likes to be: 14 days for plants that dry out completely (cacti, aloes), 10 for plants that dry out between waterings, 7 when the top of the mix should dry, 5 for evenly moist, and 4 for constantly moist (ferns, calatheas).
+2. Hot weather (highs of 85°F or more) shortens it; cool weather and being indoors lengthen it.
+3. Rain of 0.25 in or more on one day counts as a watering, but only for plants whose Location is Outdoors (not the covered porch).
+4. **Checked: still moist** moves the next check a third of the gap later.
+5. To set the gap yourself, fill in **Check for water every (days)** on the plant's Edit page.
+
+## Frost alert and cold-night checklist (from 1.8.0)
+
+When a night in the 7-day forecast would hurt a plant that is outside, a banner at the top of the page says how cold it will get and on which night, how many plants could die, would be damaged or are close calls, and when to act ("before dark today"). It is called "Frost warning" at 36°F or below and "Cold warning" above that, because the tropical plants are hurt at 50 to 60°F. **Hide until the forecast changes** hides it until the forecast gets colder or more plants are at risk. Plant pages show their own **Frost risk** note instead of the banner.
+
+**Open the cold-night checklist** (on the banner, or on the Winter plan page) shows the next 7 nights, then each plant once, most urgent first, in three groups: **Bring inside**, **Cover or move to shelter**, and **Close calls** (within 3°F of the damage point). Each plant has **Moved indoors** (sets its Location to Indoors, so it leaves every list and warning) and **Covered for tonight** (ticks it off for its next cold night only, since covers go back on each night), with **Undo**. Each group also has a button for all its plants, which asks first. Tips for a cold night are at the bottom.
+
+Plants set to Indoors or Garage or shed are never counted. Plants on the Covered porch are.
+
+## Plant timeline (from 1.8.0)
+
+Each plant page has a **Timeline** section, just above Page history (also in the On this page menu):
+
+- how the plant is doing over time, for example "Health: Critical until Oct 22, Poor now (getting better)"
+- **Compare two photos:** the oldest and newest photo side by side. Pick others with the **Left photo** and **Right photo** menus, or press **Compare** under any photo in the list.
+- **Everything that has happened**, newest first and grouped by day: photos, changes to the page (the important ones in words, such as "Health rating: from Fair to Poor"), feeding and care, answered requests, and when the page was created. Tick boxes under **Show** hide any kind.
+
+## Photo check (from 1.8.0)
+
+When you add photos, each one is checked in your browser first. Photos that look fine are added straight away. If any look **blurry**, **too dark**, **too bright (washed out)** or are a **very small picture**, a box shows them with what to do, and these buttons: **Take a new one** (opens the camera or file picker again), **Add only the good ones**, **Add it anyway** and **Cancel**. Nothing extra is sent anywhere.
 
 ## What Claude needs from you
 
-When Claude needs something to finish a plant's page (a check, a question, a photo or ID details), it is listed at the top of that plant's page under **Needed from you**, with **Answer** and **Mark done** buttons. Answers are kept on the page and in the change log, and are included in the full backup (Change log, Download all data), so you can send them back to Claude. On the **Plants** page, **Show plants that need something from you** filters to just those plants; plants whose identification is under 70% sure are included, with what would help. Things to photograph that are not in the database yet are on the **Photos** page.
+When Claude needs something to finish a plant's page (a check, a question, a photo or ID details), it is listed at the top of that plant's page under **Needed from you**, with **Answer** and **Mark done** buttons. Answers are kept on the page and in the change log. To send them to Claude, use **Copy my answers for Claude** (below). On the **Plants** page, **Show plants that need something from you** filters to just those plants; plants whose identification is under 70% sure are included, with what would help. Things to photograph that are not in the database yet are on the **Photos** page.
+
+### Copy my answers for Claude (from 1.8.0)
+
+**Copy my answers for Claude** is on the Plants page (it says how many answers are new, for example "(2 new)") and in "Needed from you" on each plant page. It puts everything you have done since you last copied into one message: your answers first, then changes to plant pages, photos added, feeding and care, and the "Still to photograph" list. Press **Copy message**, then paste it into your chat with Claude (Ctrl+V). **Save as a text file** puts the same message in your Downloads folder instead.
+
+Next time it starts from where the last copy ended, so nothing is sent twice. **What to include** can also be "The last 7 days", "The last 30 days" or "Everything", and **Also list what is still open** adds the open requests and photos, which helps when you start a new chat. Photos themselves can't go in the message, so attach any you want Claude to look at.
 
 ## Current conditions and the "Now" marker
 
@@ -382,8 +445,9 @@ If you want a password, uncomment `PLANTDB_PASSWORD` in `docker-compose.yml` and
 ## What's in the pages
 
 - **Plants**: all pages, filterable by winter plan, health and ID confidence; sortable.
-- **A plant page**: names, ID confidence and what to send to raise it to 100% (with a "Copy this as a request for Claude" button), temperature strip showing 20, 32 and 38 F against the plant's limits, humidity, sunlight, winter steps, how to keep it comfortable when the weather cannot, health and steps to improve, photos, and the page history (version, date, who, what changed, before and after, restore).
-- **Winter plan**: the 7-day forecast, expected versus tracked weather for October to March, when to act, and every plant grouped by what it needs.
+- **Today**: what to water, feed and answer today (see above).
+- **A plant page**: names, ID confidence and what to send to raise it to 100% (with a "Copy this as a request for Claude" button), temperature strip showing 20, 32 and 38 F against the plant's limits, humidity, sunlight, winter steps, how to keep it comfortable when the weather cannot, health and steps to improve, photos, quick care buttons and the care log, the timeline, and the page history (version, date, who, what changed, before and after, restore).
+- **Winter plan**: the 7-day forecast, expected versus tracked weather for October to March, when to act, every plant grouped by what it needs, and the cold-night checklist.
 - **Weather**: forecast, charts, sensor connection and location (see above).
 - **Fertilizer**: today's feed / hold / rest verdict for every plant, a calendar, and the feeding log (see above).
 - **Photos**: wide shots not yet tied to a plant, and a "still to photograph" checklist.

@@ -28,11 +28,12 @@
   - `requests`: things Claude needs from Ethan, shown as "Needed from you".
   - `to_photograph`
   - `fertilizer_log`
+  - `care_log`: waterings, "still moist" checks and other care (1.8.0).
   - `readings`: hourly weather and sensor values, with JSON `extra`.
   - `weather_daily`
   - `weather_runs`
   - `locations`: weather places; one is "home".
-  - `settings`: key/value.
+  - `settings`: key/value. Includes `frost_done` (plants ticked off for a cold night) and `claude_copied_at` (when "Copy my answers for Claude" last ran).
 - **Field kinds:** text, long, list (one item per line), int, num and enum. Enums are winter plan, health and site (where the plant is: Outdoors, Covered porch, Indoors, Garage or shed). `norm()` validates, and `INT_RANGES` / `NUM_RANGES` bound the numbers.
 - **Edits:**
   - `apply_changes()` writes only the changed fields, then `bump()` raises the page version and writes a snapshot plus audit rows.
@@ -52,13 +53,20 @@
   - Recent years keep full hourly detail; older years keep core hourly values plus daily summaries.
   - `/api/readings/series` aggregates readings for the charts.
 - **Backups:** `make_backup()` uses SQLite's backup API to write a zip containing `plants.db`, `backup.json` and optionally the photos. `backup_loop` handles automatic backups. `POST /api/backups {wait:true, kind:'update'}` is what the updater calls.
-- **API:** `/api/plants`, `/api/plants/<code>` and its sub-routes (`site`, `status`, `history`, `versions`, `restore`, `photos`, `qr.svg`, `daily`, `day`), plus `/api/requests`, `/api/photos`, `/api/to-photograph`, `/api/fertilizer`, `/api/weather*`, `/api/places*`, `/api/current`, `/api/backups*`, `/api/export.json|csv`, `/api/audit*`, `/api/meta`, `/api/version` and `/healthz`.
+- **1.8.0 additions:**
+  - **Frost:** `frost_report()` turns the home forecast into cold nights and the outdoor plants at risk (`FROST_MARGIN` = close calls). `GET /api/frost`, `POST /api/frost/done`.
+  - **Watering:** `water_report()` works out each plant's next check from its soil moisture range (or the `water_every_days` field), the last three days' highs and rain (0.25 in or more counts for Outdoors plants), and `care_log`. `GET /api/water`, `GET/POST /api/care`, `DELETE /api/care/<id>`.
+  - **Timeline:** `GET /api/plants/<code>/timeline` groups the plant's `audit_log` rows into events and adds its finished requests.
+  - **Copy for Claude:** `GET /api/for-claude`, `GET /api/for-claude.txt`, `POST /api/for-claude/copied`. Rows signed "Claude (...)" (upgrade batches) are left out.
+  - **Photos:** `repair_seed_photos()` copies seed photos that are missing from the data folder, for installs whose photos arrived in packs.
+- **API:** `/api/plants`, `/api/plants/<code>` and its sub-routes (`site`, `status`, `history`, `timeline`, `versions`, `restore`, `photos`, `qr.svg`, `daily`, `day`), plus `/api/requests`, `/api/photos`, `/api/to-photograph`, `/api/fertilizer`, `/api/water`, `/api/care`, `/api/frost`, `/api/for-claude`, `/api/weather*`, `/api/places*`, `/api/current`, `/api/backups*`, `/api/export.json|csv`, `/api/audit*`, `/api/meta`, `/api/version` and `/healthz`.
 
 ## Front end: `app/static/`
 - `index.html`: the shell, with the top bar, `#app`, the section menu (`#sidenav`) and the Display button.
-- `prefs.js`: display preferences (size, spacing, contrast, theme, menu side, width, plant layout), stored in localStorage `plantdb.display` and set as `data-*` attributes on `<html>`.
+- `prefs.js`: display preferences (size, spacing, contrast, theme, menu side, width, plant layout, read-aloud buttons, reading speed, voice, keyboard shortcuts), stored in localStorage `plantdb.display` and set as `data-*` attributes on `<html>`.
 - `app.js`:
-  - A hash router (`route()`) and one `view*()` function per page: gallery, plant, edit, winter, weather, fertilizer, photos, labels, history and backups. Each returns `{title, html, after}`.
+  - A hash router (`route()`) and one `view*()` function per page: gallery, plant, edit, today, winter, frost, weather, fertilizer, photos, labels, history and backups. Each returns `{title, html, after}`.
+  - 1.8.0 modules, each in its own block: frost banner and checklist, watering and Today, read aloud and shortcuts (`addReadButtons()`, Web Speech API), timeline (filled by a `MutationObserver` on `#app`), copy for Claude (`forClaudeDialog()`), and the photo check (`photoCheck()`, which runs before every upload).
   - Templates use the `html` tagged template, which escapes values (`raw()` opts out, `rend()` renders).
   - Click, change and submit events are delegated to `acts`, `changeActs` and `formActs`.
   - `buildSideNav()` builds the "On this page" menu from the `section.blk > h2` headings.
@@ -68,4 +76,5 @@
 - **Charts:** hand-drawn SVG using a palette checked for colour-blind readers (see the CHANGELOG for 1.5.0).
 
 ## Known constraints
-- A release zip carries every seed photo, so it is now about 30 MB, which is the limit for saving a file to Ethan's computer from a chat. Releases that add many photos need a plan, such as photo-only add-on zips or smaller photos.
+- Files saved to Ethan's computer from a chat must be under 30 MB. From 1.8.0 the release zip carries no plant photos; they ship in photo packs (one per upgrade batch, split if over 28 MB), and only new packs are sent with a release. See `tools/make-release.py` and the updater.
+- The tests run in a sandbox without Docker Hub, so the Docker image itself is only built on Ethan's PC.
