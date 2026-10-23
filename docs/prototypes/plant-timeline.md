@@ -1,7 +1,7 @@
 # Prototype: plant timeline and photo comparison
 
 ## What it does
-Each plant page gets a **Timeline** section, between Label and Page history, with a Timeline button in the row of jump buttons. It answers "is this plant getting better?" without reading the change log.
+Each plant page gets a **Timeline** section, between Label and Page history, listed in the On this page menu. It answers "is this plant getting better?" without reading the change log.
 
 - **How it is doing.** A short summary at the top, when something has changed:
   - "Health: Critical until Oct 22, Poor now (getting better)"

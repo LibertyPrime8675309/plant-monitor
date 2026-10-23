@@ -631,7 +631,7 @@ function slips(h) {
     </article>`;
   });
 }
-const JUMPS = [['needs', 'Needed'], ['sec-now', 'Now'], ['ident', 'Identification'], ['temp', 'Temperature'], ['hum', 'Humidity'], ['light', 'Light'], ['soil', 'Water and soil'], ['nutrients', 'Nutrients'], ['winter', 'Winter'], ['health', 'Health'], ['pests', 'Pests'], ['label', 'Label'], ['timeline', 'Timeline'], ['history', 'History']];
+const JUMPS = [['needs', 'Needed'], ['sec-now', 'Now'], ['ident', 'Identification'], ['temp', 'Temperature'], ['hum', 'Humidity'], ['light', 'Light'], ['soil', 'Water and soil'], ['nutrients', 'Nutrients'], ['winter', 'Winter'], ['health', 'Health'], ['pests', 'Pests'], ['label', 'Label'], ['history', 'History']];
 async function viewPlant(code) {
   const [p, h, cur, st] = await Promise.all([api('GET', '/api/plants/' + enc(code)), api('GET', '/api/plants/' + enc(code) + '/history'), loadCond(), api('GET', '/api/settings').catch(() => ({}))]);
   CUR = { p, h, base: st.base_url || location.origin };

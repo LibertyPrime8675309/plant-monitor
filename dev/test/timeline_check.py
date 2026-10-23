@@ -16,7 +16,7 @@ with sync_playwright() as p:
     pg.add_init_script("localStorage.setItem('plantdb.editor','Timeline Test');localStorage.setItem('plantdb.display',JSON.stringify({layout:'single',navopen:'0'}))")
     pg.goto(f'{BASE}/#/plant/{CODE}'); pg.wait_for_timeout(2500)
     check(pg.locator('#tl-box .tl-item').count() > 0, f"{pg.locator('#tl-box .tl-item').count()} timeline entries")
-    check(pg.locator('.jump button[data-id=timeline]').count() == 1, 'Timeline is in the jump buttons')
+    check(pg.locator('#sidenav a[href="#timeline"], #sidenav [data-id=timeline]').count() >= 1, 'Timeline is in the On this page menu')
     trend = pg.locator('.tl-trend').inner_text() if pg.locator('.tl-trend').count() else ''
     check('Health' in trend, 'health trend shown: ' + trend.replace('\n', ' | '))
     figs = pg.locator('.tl-cmp figure').count(); check(figs == 2, 'two photos side by side')
