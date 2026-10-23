@@ -350,6 +350,33 @@ section.blk,.cond,.advice,.plant section[id]{scroll-margin-top:5rem}
 @media (max-width:40rem){.dl{grid-template-columns:1fr}.dl dt{margin-top:.7rem}}
 h1,h2,h3,.l-body,.label{overflow-wrap:anywhere}
 
+/* ---- 1.8.0: plant timeline and photo comparison ---- */
+.tl-trend{list-style:none;padding:.6rem .9rem;margin:.4rem 0 1rem;border:2px solid var(--line);border-radius:8px;background:var(--sheet)}
+.tl-trend li{padding:.15rem 0}
+.tl-pick{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.tl-pick select{width:100%}
+.tl-cmp{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:.6rem 0 1.4rem}
+.tl-fig{margin:0;border:2px solid var(--line);border-radius:8px;overflow:hidden;background:var(--sheet)}
+.tl-fig img{display:block;width:100%;height:auto;max-height:60vh;object-fit:contain;background:var(--line-2,var(--line))}
+.tl-fig figcaption{padding:.5rem .7rem}
+.tl-filter{border:0;padding:0;margin:.2rem 0 .8rem;display:flex;flex-wrap:wrap;gap:.4rem 1.2rem}
+.tl-filter legend{font:inherit;font-weight:700;padding:0;margin-bottom:.3rem;width:100%}
+.tl-filter .chk{display:inline-flex;align-items:center;gap:.5rem}
+.tl-ans{margin-top:.2rem}
+.tl-by{font-size:.9em;margin-top:.2rem}
+.tl-day{margin:1.2rem 0 .3rem;font-size:1.05rem}
+.tl{list-style:none;padding:0;margin:0;border-left:3px solid var(--line);margin-left:.4rem}
+.tl-item{display:grid;grid-template-columns:7rem 1fr;gap:.7rem;padding:.55rem 0 .55rem .9rem;position:relative}
+.tl-item::before{content:"";position:absolute;left:-.55rem;top:.95rem;width:.8rem;height:.8rem;border-radius:50%;background:var(--sheet);border:3px solid var(--ink-2)}
+.tl-kind{font-weight:700;font-size:.92em}
+.tl-ch{margin:.25rem 0 0;padding-left:1.1rem}
+.tl-photos{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.4rem}
+.tl-thumb{display:flex;flex-direction:column;align-items:center;gap:.2rem;border:2px solid var(--line);border-radius:6px;background:var(--sheet);padding:.25rem;cursor:pointer;font:inherit;color:inherit}
+.tl-thumb img{width:84px;height:84px;object-fit:cover;border-radius:4px}
+.tl-thumb span{font-size:.85em;font-weight:600}
+.tl-thumb:hover{border-color:var(--ink)}
+@media (max-width:40rem){.tl-pick,.tl-cmp{grid-template-columns:1fr}.tl-item{grid-template-columns:1fr;gap:.15rem}}
+
 /* ---- calendars, feeding, past days ---- */
 :root{--s3:#1baf7a;--s4:#eda100;--s5:#e87ba4;--s6:#6250d6}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]){--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#9085e9}}
