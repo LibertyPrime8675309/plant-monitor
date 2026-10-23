@@ -939,7 +939,10 @@ async function loadPrep(box) {
   catch (e) { box.innerHTML = rend(html`<p class="notice bad">Could not load this: ${e.message}</p>`); return; }
   prepRender();
   let jump = null; try { jump = sessionStorage.getItem('plantdb.toprep'); sessionStorage.removeItem('plantdb.toprep'); } catch (e) { /* none */ }
-  if (jump === box.dataset.code) { const s = document.getElementById('inside'); if (s) scrollToSection(s); }
+  if (jump === box.dataset.code) {          // from "Open its plan": go to this section, again once the page has settled
+    const to = () => { const s = document.getElementById('inside'); if (s) scrollToSection(s); };
+    to(); setTimeout(to, 600); setTimeout(to, 1500);
+  }
 }
 new MutationObserver(() => { const b = document.getElementById('prep-box'); if (b && !b.dataset.loaded) { b.dataset.loaded = '1'; loadPrep(b); } })
   .observe(document.getElementById('app'), { childList: true });

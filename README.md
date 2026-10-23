@@ -251,6 +251,21 @@ Each plant page has a **Timeline** section, just above Page history (also in the
 - **Compare two photos:** the oldest and newest photo side by side. Pick others with the **Left photo** and **Right photo** menus, or press **Compare** under any photo in the list.
 - **Everything that has happened**, newest first and grouped by day: photos, changes to the page (the important ones in words, such as "Health rating: from Fair to Poor"), feeding and care, answered requests, and when the page was created. Tick boxes under **Show** hide any kind.
 
+## Getting plants ready to come inside (from 1.9.0)
+
+Outdoor plants often carry ants, spider mites, mealybugs and other pests. Each plant page has a **Getting ready to come inside** section, after Winter in Round Rock, that helps keep them out of the house.
+
+1. Under **About this plant**, check the **Leaf type** and choose the **Pot size**. Claude filled in the leaf type for every plant; change it if it is wrong.
+2. Inspect the plant (the first method explains how) and tick any **Pests you found**. Leave them all unticked if you found nothing.
+3. The ten methods are listed in the order to do them, each rated for this plant: **Best**, **Good**, **Use with care**, **Not needed** or **Not for this plant**, with the reason. Open **How to do it** for the steps. Methods that are not needed or not suitable are folded away under one line.
+4. Press **Done today** after each one. It goes into the care log, the timeline and "Copy my answers for Claude". **Undo the last one** takes it back. To record a step done on an earlier day, use **Log other care**.
+5. If a spray needs a second round, the **Today** page reminds you 5 days later.
+6. When the plant comes inside, change its Location to Indoors (or press **Moved indoors**). The section then says until when to keep it apart from your other houseplants: 3 weeks, or 2 weeks after its last treatment if you found pests.
+
+The page **Getting plants ready to come inside** (button on the Winter plan page, and links on the cold-night checklist and the Today page) lists every plant coming in, grouped as Not started, In progress, Ready to come inside, and Inside. Each one shows its next step and best methods, and **Open its plan** goes straight to that plant's section. The page also has the steps for all ten methods and advice on keeping plants apart.
+
+Pots are never cleaned with bleach: use hot soapy water, a brush and a day in the sun, or for extra cleaning 10 minutes in 3% hydrogen peroxide (never mixed with vinegar or other cleaners), then rinse. A new pot works too.
+
 ## Photo check (from 1.8.0)
 
 When you add photos, each one is checked in your browser first. Photos that look fine are added straight away. If any look **blurry**, **too dark**, **too bright (washed out)** or are a **very small picture**, a box shows them with what to do, and these buttons: **Take a new one** (opens the camera or file picker again), **Add only the good ones**, **Add it anyway** and **Cancel**. Nothing extra is sent anywhere.

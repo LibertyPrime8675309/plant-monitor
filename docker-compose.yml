@@ -3,12 +3,12 @@ services:
     build:
       context: .
       args:
-        PLANTDB_VERSION: "1.8.0"
+        PLANTDB_VERSION: "1.9.0"
     # The tag is the release number, so Docker Desktop shows which version is running (Containers > Image column).
-    image: plant-database:1.8.0
+    image: plant-database:1.9.0
     container_name: plant-database
     labels:
-      plantdb.version: "1.8.0"
+      plantdb.version: "1.9.0"
     ports:
       - "8080:8080"
     volumes:

@@ -80,7 +80,7 @@ with sync_playwright() as pw:
     check(t.locator('#in-doing li.job[data-code="P-065"]').count() == 1, 'P-065 is listed as In progress')
     check(t.locator('#in-methods details').count() == 10, 'it explains all 10 methods')
     t.screenshot(path=f'{OUT}/prep-page.png')
-    t.locator('#in-doing li.job[data-code="P-065"] button[data-act=openprep]').click(); t.wait_for_timeout(2800)
+    t.locator('#in-doing li.job[data-code="P-065"] button[data-act=openprep]').click(); t.wait_for_timeout(3500)
     top = t.evaluate("(() => { const s = document.getElementById('inside').getBoundingClientRect().top, p = document.getElementById('inside').closest('.pane'); return s - (p ? Math.max(p.getBoundingClientRect().top, 0) : 0); })()")
     check(t.url.endswith('/plant/P-065') and -5 <= top < 120, f'"Open its plan" opens the plant at this section ({top:.0f}px below the top of its half)')
     # moving inside

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.9.0 (2026-10-23)
+- **Getting ready to come inside.** Every plant page has a new section that helps keep ants, mites and other outdoor pests out of the house:
+  - Choose the plant's **leaf type** and **pot size**, and tick any **pests you found**. The leaf type is filled in for every plant already; change it if it is wrong.
+  - Ten methods (inspect, clean the pot, rinse, wipe, insecticidal soap, oil, rubbing alcohol, soak the pot, refresh the top soil, repot) are each rated **Best**, **Good**, **Use with care**, **Not needed** or **Not for this plant** for that plant, with the reason and step-by-step instructions. For example, succulents are never soaked, ferns get plain water, and struggling plants are not repotted.
+  - **Done today** records each step in the care log, and **Undo the last one** takes it back.
+  - When a spray needs a second round, the **Today** page reminds you 5 days later. Once a plant comes inside, it says how long to keep it apart from your other houseplants (3 weeks).
+  - A new page, **Getting plants ready to come inside** (from Winter plan, the cold-night checklist or the Today page), lists every plant coming in and where each is up to, with the steps for all ten methods.
+  - No bleach: pots are cleaned with hot soapy water and sun, or 3% hydrogen peroxide.
+- The water hyacinth page (P-050) is archived, since it went in the trash (upgrade batch `batchA1`).
+- "Log other care" now also lists these steps, so you can record one you did on an earlier day.
+
 ## 1.8.0 (2026-10-23)
 Nine new features and fixes, tried out first as prototypes.
 
