@@ -598,6 +598,64 @@ def plant_status(code):
         c.commit()
     return jsonify(plant_dict(c, plant_row(c, code)))
 
+# ---------------------------------------------------------------- plant timeline (added in 1.8.0)
+TL_KEY_FIELDS = ('common_name', 'health_rating', 'id_confidence', 'site', 'winter_plan')
+TL_KIND = {'create': 'created', 'update': 'change', 'edit': 'change', 'restore': 'change', 'archive': 'change', 'unarchive': 'change',
+           'photo_add': 'photo', 'photo_assign': 'photo', 'photo_remove': 'photo', 'photo_move': 'photo',
+           'fertilizer': 'care', 'care': 'care', 'frost': 'care'}
+
+def tl_title(a):
+    """A plain title for one change-log row."""
+    act, note = a['action'], a['note'] or ''
+    if act == 'photo_assign':
+        src = (a['old_value'] or '').replace('from ', '', 1)
+        return 'Photo moved here from ' + src if src.startswith('P-') else 'Photo added from the Photos page'
+    if act == 'photo_move' and note.endswith('moved away'):
+        dst = (a['new_value'] or '').replace('moved to ', '', 1)
+        return 'Photo moved to ' + dst if dst.startswith('P-') else 'Photo moved to the Photos page'
+    return note or FIELD_LABEL.get(a['field'], a['field'] or 'Changed')
+
+@app.route('/api/plants/<code>/timeline')
+def plant_timeline(code):
+    """One dated list for a plant, built from its change log and its answered requests: page changes (with the ones
+    that matter picked out), photos, feedings and other care. Several fields saved together are one event."""
+    c = db()
+    r = plant_row(c, code)
+    photos = {x['file']: dict(x) for x in c.execute('SELECT id, file, caption, added_at, is_primary FROM photos WHERE plant_id=?', (r['id'],))}
+    events, by_key = [], {}
+    for a in c.execute('SELECT * FROM audit_log WHERE plant_id=? ORDER BY id', (r['id'],)):
+        kind = TL_KIND.get(a['action'])
+        if not kind: continue
+        key = (a['changed_at'], 'photos' if a['action'] == 'photo_add' else a['note'] or '', a['action'])
+        e = by_key.get(key)
+        if not e:
+            e = {'at': a['changed_at'], 'kind': kind, 'action': a['action'], 'title': tl_title(a), 'by': a['changed_by'], 'changes': [], 'other': 0, 'photos': []}
+            by_key[key] = e; events.append(e)
+        if kind == 'photo':
+            f = a['new_value'] or a['old_value']
+            if f in photos and photos[f] not in e['photos']: e['photos'].append(photos[f])
+        elif a['field'] in TL_KEY_FIELDS:
+            e['changes'].append({'field': a['field'], 'label': FIELD_LABEL.get(a['field'], a['field']), 'old': a['old_value'], 'new': a['new_value']})
+        elif kind == 'change' and a['field']:
+            e['other'] += 1
+    for q in c.execute('SELECT * FROM requests WHERE plant_code=? AND done=1 AND done_at IS NOT NULL', (r['code'],)):
+        said = q['answer'] if q['answer'] and q['answer'] != 'Done' else None   # answered here or settled by an update
+        events.append({'at': q['done_at'], 'kind': 'request', 'action': 'request', 'title': 'Request answered' if said else 'Request marked done',
+                       'by': q['done_by'] or '', 'changes': [], 'other': 0, 'photos': [], 'question': q['text'], 'answer': said})
+    events.sort(key=lambda e: e['at'] or '')
+    for e in events:                                  # several photos added together read as one entry
+        if e['action'] == 'photo_add' and len(e['photos']) > 1: e['title'] = f"{len(e['photos'])} photos added"
+    seen = {x['file'] for e in events for x in e['photos']}
+    rest = [x for x in photos.values() if x['file'] not in seen]
+    if rest:                                          # photos that came with the page when it was created
+        first = next((e for e in events if e['kind'] == 'created'), None)
+        if first: first['photos'] = sorted(rest, key=lambda x: x['id'])
+    health = [{'at': e['at'], 'old': ch['old'], 'new': ch['new']} for e in events for ch in e['changes'] if ch['field'] == 'health_rating']
+    conf = [{'at': e['at'], 'old': ch['old'], 'new': ch['new']} for e in events for ch in e['changes'] if ch['field'] == 'id_confidence']
+    events.reverse()
+    return jsonify(code=r['code'], events=events, health=health, confidence=conf, current={'health': r['health_rating'], 'id_confidence': r['id_confidence']},
+                   photos=sorted(photos.values(), key=lambda x: (x['added_at'] or '', x['id'])))
+
 @app.route('/api/plants/<code>/history')
 def history(code):
     c = db()
