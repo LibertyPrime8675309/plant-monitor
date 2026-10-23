@@ -597,6 +597,15 @@ html[data-narrow="1"] main section.blk>h2{position:static}
 html[data-narrow="1"] .wx-bar{top:var(--top-h)}
 .ver{font-size:.95rem;font-weight:700;padding:.15rem .5rem;border:2px solid currentColor;border-radius:.35rem;opacity:.9;white-space:nowrap;align-self:center}
 
+/* ---- 1.8.0: photo check before adding photos ---- */
+.pchk-list{list-style:none;padding:0;margin:.8rem 0 1.2rem;display:grid;gap:1rem}
+.pchk-list>li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:1rem;align-items:start;padding-bottom:1rem;border-bottom:1px solid var(--line)}
+.pchk-thumb{width:7.5rem;height:7.5rem;background:var(--line-2,var(--line));border-radius:6px}
+.pchk-name{margin:0 0 .3rem;font-weight:700;overflow-wrap:anywhere}
+.pchk-list ul{margin:0;padding-left:1.1rem}
+.pchk-list ul li{margin:.2rem 0}
+@media (max-width:40rem){.pchk-list>li{grid-template-columns:minmax(0,1fr)}}
+
 /* v1.6.2: what Claude needs from you */
 .needs-bar{display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center;margin:0 0 1rem}
 .needs-bar .hint{flex:1 1 20rem}
