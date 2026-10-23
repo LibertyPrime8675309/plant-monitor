@@ -1,6 +1,7 @@
 /* Display settings, applied before the page paints. Stored in this browser only. */
 (function () {
-  var D = { size: '115', space: 'normal', contrast: 'normal', layout: 'split', theme: 'auto', navside: 'left', navopen: '1', width: 'normal' };
+  var D = { size: '115', space: 'normal', contrast: 'normal', layout: 'split', theme: 'auto', navside: 'left', navopen: '1', width: 'normal',
+            readbtns: '1', rate: '1', voice: 'auto', keys: '1' };   // 1.8.0: read aloud, reading speed and voice, keyboard shortcuts
   var p = {};
   try { p = JSON.parse(localStorage.getItem('plantdb.display') || '{}') || {}; } catch (e) { p = {}; }
   var r = document.documentElement;
@@ -13,6 +14,7 @@
     r.setAttribute('data-navside', x.navside);
     r.setAttribute('data-navpref', x.navopen);
     r.setAttribute('data-width', x.width);
+    r.setAttribute('data-readbtns', x.readbtns);
     if (x.theme === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', x.theme);
     var rem = parseFloat(getComputedStyle(r).fontSize) || 16;
     r.setAttribute('data-narrow', (window.innerWidth / rem) < 58 ? '1' : '0');
