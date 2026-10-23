@@ -1,7 +1,7 @@
 # Prototype: frost alert and cold-night checklist
 
 ## What it does
-- **A warning banner at the top of every page** whenever a night in the 7-day forecast would hurt a plant that is outside. It says:
+- **A warning banner at the top of every page** (except plant pages, which have their own note) whenever a night in the 7-day forecast would hurt a plant that is outside. It says:
   - how cold it will get, and which night
   - how many plants could die, would be damaged, or are close calls
   - when to act, for example "before dark today", "this evening" or "Saturday evening"
@@ -18,7 +18,7 @@
   - its next cold night and its coldest night
   - **Moved indoors** (sets Location to Indoors, so it leaves every list and warning) and **Covered for tonight** (ticks it off for its next cold night; it comes back for the night after, because covers need putting on again each night), with Undo
   - each group also has a "Moved all … indoors" or "Mark all … as covered" button, which asks first
-- **On each plant's page**, a "Frost risk" note when that plant is in danger, with what to do and a link to the checklist.
+- **On each plant's page**, a "Frost risk" note when that plant is in danger, with what to do and a link to the checklist. The big banner is left off plant pages, so it does not push the two halves of the page down.
 - Tips for protecting plants on a cold night at the bottom of the checklist.
 
 Plants set to Indoors or Garage or shed are never counted. Plants on the Covered porch are counted, with a note that the porch helps a little but not in a freeze.
@@ -50,5 +50,5 @@ Plants set to Indoors or Garage or shed are never counted. Plants on the Covered
 ## Questions for Ethan
 1. Is "close call = within 3°F" right, or do you want more warning (5°F) or less?
 2. Should plants on the covered porch get a few degrees of credit? A roofed porch is often 2-4°F warmer than open ground on a clear night.
-3. The banner shows on every page until you hide it. Would you rather see it only on the Plants and Winter plan pages?
+3. The banner shows on every page except plant pages until you hide it. Would you rather see it only on the Plants and Winter plan pages?
 4. Once the watering prototype lands, should the Today page list these cold-night jobs too? (I'd say yes.)

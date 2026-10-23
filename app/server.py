@@ -2193,8 +2193,9 @@ def frost_mark():
     else: night.pop(r['code'], None)
     if not night: done.pop(date, None)
     set_setting(c, 'frost_done', json.dumps(done))
+    d = datetime.strptime(date, '%Y-%m-%d'); night_words = f'{d:%A}, {d:%b} {d.day}'      # "Sunday, Oct 25"
     audit_only(c, 'frost', 'frost', None, what or 'undone', editor(),
-               ('Covered for the cold night of %s' % date) if what else ('Cold-night tick removed for %s' % date), r['id'], r['code'])
+               ('Covered for the cold night of %s' % night_words) if what else ('Cold-night tick removed for %s' % night_words), r['id'], r['code'])
     c.commit()
     return jsonify(frost_report(c))
 

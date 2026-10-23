@@ -157,7 +157,7 @@ async function route() {
     else view = await viewGallery();
     if (my !== token) return;
     app.innerHTML = rend(view.html);
-    if (parts[0] !== 'frost') app.insertAdjacentHTML('afterbegin', rend(frostBanner()));
+    if (parts[0] !== 'frost' && parts[0] !== 'plant') app.insertAdjacentHTML('afterbegin', rend(frostBanner()));   // plant pages have their own note
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
     if (view.after) view.after();
     buildSideNav(); navLayout(); setTimeout(() => { buildSideNav(); navLayout(); }, 1200);
