@@ -16,6 +16,10 @@ This is Ethan's home plant database: a Flask + SQLite web app ("Plant record") t
 ## How Ethan works
 - **Commands:** whenever you give him a command, give it for **Windows cmd.exe, PowerShell and bash**, in that order. The same goes for the README.
 - **Releases** ship as a zip named `plant-database-v<version>-YYYYMMDD-HHMM.zip` (UTC), with all files inside a `plant-database/` folder, VERSION and CHANGELOG included. Build it with `python3 tools/make-release.py [new-version]`.
+  - From 1.8.0 the release zip has no plant photos. They go in **photo packs**, one per upgrade batch (`dist/plant-database-photos-<batch>.zip`).
+  - Packs never change once made, so send Ethan only the packs for batches that are new in that release.
+  - The updater adds any photos his folder is missing from packs saved next to the release zip.
+  - `--full` builds the old single zip with everything.
   - He installs it with the updater: `tools/Update Plant Database.cmd` / `update-plant-database.ps1`. It unzips over his folder, keeps `data/` and `backups/`, makes a backup first and runs `docker compose up -d --build`.
   - He saves zips in `C:\Users\Ethan\Documents\Claude\Plants`. Files saved to his computer from a chat must be under 30 MB.
 - **Versions:** bump the patch number for fixes and small additions, the minor number for new features. Update all of these together:
