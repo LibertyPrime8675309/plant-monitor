@@ -174,7 +174,7 @@ let NAVSESSION = null;                // on narrow screens the menu starts folde
 function navOpen() { const P = window.PlantPrefs.get(), narrow = document.documentElement.dataset.narrow === '1'; return NAVSESSION != null ? NAVSESSION : (P.navopen === '1' && !narrow); }
 function navLayout() {
   const r = document.documentElement, top = document.querySelector('.top');
-  r.style.setProperty('--top-h', (top ? top.getBoundingClientRect().height : 64) + 'px');
+  r.style.setProperty('--top-h', (r.dataset.narrow === '1' ? 0 : (top ? top.getBoundingClientRect().height : 64)) + 'px');   // on phones the top bar scrolls away
   const open = navOpen();
   r.dataset.navopen = open ? '1' : '0';
   const side = window.PlantPrefs.get().navside;

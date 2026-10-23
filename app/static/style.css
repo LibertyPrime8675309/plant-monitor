@@ -512,6 +512,41 @@ html:not([data-layout=single]):not([data-narrow="1"]) main:has(.plant) .plant{ma
 .bad-text{color:var(--bad,#b3261e)}
 .cmp-places{margin-bottom:.8rem}
 
+/* ---- 1.8.0: phones and large text: nothing scrolls sideways, and the menu bar scrolls away ----
+   Grids had minimum column widths in rem, which grow with the text size: at the largest size on a phone a 14rem
+   column is wider than the screen. min(…, 100%) keeps each column no wider than the space it is in. */
+@media screen{
+  .grid{grid-template-columns:repeat(auto-fill,minmax(min(14rem,100%),1fr))}
+  .field-grid{grid-template-columns:repeat(auto-fit,minmax(min(14rem,100%),1fr))}
+  .field-grid.three{grid-template-columns:repeat(auto-fit,minmax(min(9rem,100%),1fr))}
+  .cond .vals{grid-template-columns:repeat(auto-fit,minmax(min(9rem,100%),1fr))}
+  .cols{grid-template-columns:repeat(auto-fit,minmax(min(19rem,100%),1fr))}
+  .pgrid{grid-template-columns:repeat(auto-fill,minmax(min(16rem,100%),1fr))}
+  .lsheet{grid-template-columns:repeat(auto-fill,minmax(min(20rem,100%),1fr))}
+  .lbl{grid-template-columns:min(6rem,28%) minmax(0,1fr)}
+  .lbl img{width:100%;height:auto;aspect-ratio:1/1}
+  .lbl>*{min-width:0}
+  fieldset{min-width:0}
+  input,select,textarea{max-width:100%;min-width:0}
+  .pg-go{flex-wrap:wrap}.pg-go input{width:min(7.5rem,40vw)}
+  main{overflow-wrap:break-word}
+  .pn{min-width:0;overflow-wrap:anywhere}
+  html[data-narrow="1"] .pnav{flex-wrap:wrap}
+  html[data-narrow="1"] .pnav .pn{flex:1 1 11rem}
+  html[data-narrow="1"] .filters{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  html[data-narrow="1"] .filters>*{min-width:0}
+  html[data-narrow="1"] a.plink{white-space:normal;overflow-wrap:anywhere}
+  .todo li{grid-template-columns:min(3.5rem,20%) minmax(0,1fr)}
+  .chk-row{flex-wrap:wrap}.chk-row .grow{flex:1 1 12rem;min-width:0}
+  .chg th,.chg td{overflow-wrap:anywhere}
+  html[data-narrow="1"] .top{position:static}         /* on phones the menu bar scrolls away instead of staying pinned */
+  html[data-narrow="1"] #sidenav{top:0}
+  /* with large text the Sections and Display buttons no longer fit side by side at the bottom: lift Sections above */
+  html[data-narrow="1"][data-size="160"] #nav-tab,html[data-narrow="1"][data-size="190"] #nav-tab{bottom:4.6rem}
+  html[data-narrow="1"][data-size="160"] #job-badge,html[data-narrow="1"][data-size="190"] #job-badge{bottom:8.2rem}
+}
+@media screen and (max-width:40rem){.label dl{grid-template-columns:minmax(0,1fr);gap:.15rem}.label dl dt{margin-top:.55rem}.label dl dt:first-child{margin-top:0}}
+
 /* v1.6.1: tighter layout, section titles stay in view */
 .wx-bar-row{gap:.5rem 1.4rem}
 .wx-bar label{flex:0 0 auto}
