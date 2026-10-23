@@ -575,6 +575,16 @@ section.needs>h2{font-size:1.35rem;margin:0 0 .5rem;position:static;border:0;pad
 .needs-done{margin-top:.7rem}.needs-done summary{cursor:pointer;font-weight:700}.needs-done li{margin:.4rem 0}
 .needs-list .kind{justify-self:start}
 
+/* ---- 1.8.0: copy my answers for Claude ---- */
+.fc-pick{display:flex;flex-wrap:wrap;gap:.6rem 1.4rem;align-items:flex-end}
+.fc-pick .f{flex:1 1 16rem;margin:0;min-width:0}
+.fc-pick select{width:100%;max-width:100%}
+.fc-pick .chk{display:inline-flex;gap:.5rem;align-items:center;font-weight:400;padding-bottom:.7rem}
+.fc-sum{margin:.8rem 0 .4rem}
+#fc-text{width:100%;font:inherit;font-weight:400;font-size:.95em;line-height:1.45;white-space:pre-wrap;min-height:12rem;resize:vertical}
+.fc-status{min-height:1.5em;font-weight:700;margin:.5rem 0}
+.needs-bar .fc-n{font-weight:700}
+
 /* v1.6.3: plant links with photo preview */
 a.plink{font-weight:700;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:.15em;white-space:nowrap}
 #plink-pop{position:fixed;z-index:60;width:min(18rem,80vw);background:var(--sheet);color:var(--ink);border:2px solid var(--ink);border-radius:.5rem;padding:.5rem;box-shadow:0 6px 24px rgba(0,0,0,.35);pointer-events:none}

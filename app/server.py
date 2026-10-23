@@ -678,6 +678,164 @@ def request_one(rid):
     c.commit()
     return jsonify(dict(c.execute('SELECT * FROM requests WHERE id=?', (rid,)).fetchone()))
 
+# ---------------------------------------------------------------- copy my answers for Claude (added in 1.8.0)
+FC_KEY = 'claude_copied_at'                       # settings: when the message was last copied or saved
+FC_EPOCH = '1970-01-01T00:00:00Z'
+FC_PAGE = ('create', 'update', 'edit', 'restore', 'archive', 'unarchive')
+FC_PHOTO = ('photo_add', 'photo_assign', 'photo_move', 'photo_remove', 'photo_caption', 'photo_primary')
+FC_CARE = ('fertilizer', 'care', 'frost')         # care and frost come from the watering and frost prototypes, if merged
+
+def fc_person(who):
+    """Changes made by people. Upgrade batches and the first import are signed "Claude (...)" and Claude knows those."""
+    return not (who or '').startswith('Claude')
+
+def fc_when(c, ts, with_time=True):
+    """'2026-10-23T20:40:00Z' -> 'Friday, Oct 23, 3:40 PM', in the home place's time zone."""
+    d = datetime.strptime(ts, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc).astimezone(tzinfo(location(c)['tz']))
+    day = f'{d:%A}, {d:%b} {d.day}'
+    return day + f', {d.hour % 12 or 12}:{d:%M} {"AM" if d.hour < 12 else "PM"}' if with_time else day
+
+def fc_clip(v, n=300):
+    v = re.sub(r'\s+', ' ', str(v if v is not None else '')).strip()
+    return v if len(v) <= n else v[:n - 1].rstrip() + '…'
+
+def fc_since(c, rng):
+    if rng in ('7', '30'): return (datetime.now(timezone.utc) - timedelta(days=int(rng))).strftime('%Y-%m-%dT%H:%M:%SZ')
+    if rng == 'all': return FC_EPOCH
+    return setting(c, FC_KEY) or FC_EPOCH        # 'last': since it was last copied, or everything the first time
+
+def for_claude_message(c, since, until, with_open=False):
+    """The message to paste into the chat: what people did since `since` (answers first), as plain text."""
+    names = {r['code']: r['common_name'] for r in c.execute('SELECT code, common_name FROM plants')}
+    nm = lambda code: f'{code} {names.get(code, "")}'.strip() if code else 'General'
+    cap = {r['file']: r['caption'] for r in c.execute('SELECT file, caption FROM photos')}
+    out, n = [], {'answers': 0, 'pages': 0, 'photos': 0, 'care': 0, 'todo': 0}
+
+    ans = [r for r in c.execute('SELECT * FROM requests WHERE done=1 AND done_at > ? AND done_at <= ? ORDER BY plant_code IS NULL, plant_code, done_at',
+                                (since, until)) if fc_person(r['done_by'])]
+    if ans:
+        n['answers'] = len(ans)
+        out.append(f'Answers ({len(ans)}):')
+        for r in ans:
+            out += [f'- {nm(r["plant_code"])} ({fc_when(c, r["done_at"])})', f'  Asked: {fc_clip(r["text"], 800)}',
+                    f'  Answer: {fc_clip(r["answer"], 2000)}' if r['answer'] and r['answer'] != 'Done' else '  Marked done, with no answer written.']
+        out.append('')
+
+    log = [a for a in c.execute('SELECT * FROM audit_log WHERE changed_at > ? AND changed_at <= ? ORDER BY id', (since, until)) if fc_person(a['changed_by'])]
+
+    pages = {}                                     # one entry per save: same plant, time, note and action
+    for a in log:
+        if a['action'] in FC_PAGE and a['plant_code']: pages.setdefault((a['plant_code'], a['changed_at'], a['note'] or '', a['action']), []).append(a)
+    if pages:
+        n['pages'] = len(pages)
+        out.append(f'Changes to plant pages ({len(pages)}):')
+        for (code, ts, note, act), rows in pages.items():
+            if act == 'create': out.append(f'- New page: {nm(code)} ({fc_when(c, ts)})'); continue
+            out.append(f'- {nm(code)} ({fc_when(c, ts)})' + (f': {fc_clip(note, 300)}' if note else ''))
+            for a in rows:
+                if not a['field']: continue
+                label = FIELD_LABEL.get(a['field']) or a['field'].replace('_', ' ').capitalize()
+                old, new = fc_clip(a['old_value'], 1000), fc_clip(a['new_value'], 1000)
+                if len(old) <= 60 and len(new) <= 60: out.append(f'  {label}: from {old or "(empty)"} to {new or "(empty)"}')
+                else: out.append(f'  {label}, now: {new or "(empty)"}')
+        out.append('')
+
+    ph = {}                                        # per plant (None = the Photos page, no plant)
+    for a in log:
+        if a['action'] not in FC_PHOTO: continue
+        p = ph.setdefault(a['plant_code'], {'added': [], 'in': [], 'out': [], 'removed': 0, 'captions': 0, 'main': 0})
+        if a['action'] == 'photo_add': p['added'].append(a['new_value'])
+        elif a['action'] == 'photo_assign': p['in'].append((a['old_value'] or '').replace('from ', '', 1))
+        elif a['action'] == 'photo_move': p['out'].append((a['new_value'] or '').replace('moved to ', '', 1))
+        elif a['action'] == 'photo_remove': p['removed'] += 1
+        elif a['action'] == 'photo_caption': p['captions'] += 1
+        elif a['action'] == 'photo_primary': p['main'] += 1
+    if ph:
+        n['photos'] = len(ph)
+        out.append('Photos:')
+        for code, p in sorted(ph.items(), key=lambda x: (x[0] is None, x[0] or '')):
+            bits = []
+            if p['added']:
+                caps = [f'"{fc_clip(cap.get(f), 80)}"' for f in p['added'] if cap.get(f)]
+                bits.append(f'{len(p["added"])} photo{"s" if len(p["added"]) > 1 else ""} ' + ('uploaded without a plant' if code is None else 'added')
+                            + (f' ({", ".join(caps[:6])})' if caps else ''))
+            if p['in']: bits.append(f'{len(p["in"])} moved here from ' + ', '.join(sorted(set(x if x.startswith('P-') else 'the Photos page' for x in p['in']))))
+            if p['out']: bits.append(f'{len(p["out"])} moved to ' + ', '.join(sorted(set(x if x.startswith('P-') else 'the Photos page' for x in p['out']))))
+            if p['removed']: bits.append(f'{p["removed"]} removed')
+            if p['captions']: bits.append(f'{p["captions"]} caption{"s" if p["captions"] > 1 else ""} edited')
+            if p['main']: bits.append('main photo changed')
+            out.append(f'- {"Photos page" if code is None else nm(code)}: ' + '; '.join(bits))
+        if any(p['added'] for p in ph.values()):
+            out.append("  The photos themselves can't go in this message. Attach the ones you want me to look at, or send a backup made with photos.")
+        out.append('')
+
+    care = {}                                      # same note on the same day for several plants reads as one line
+    for a in log:
+        if a['action'] in FC_CARE: care.setdefault((fc_when(c, a['changed_at'], False), a['note'] or a['action']), []).append(a['plant_code'])
+    if care:
+        n['care'] = sum(len(v) for v in care.values())
+        out.append('Feeding and care:')
+        for (day, note), codes in care.items():
+            codes = sorted(set(x for x in codes if x))
+            who = ', '.join(nm(x) for x in codes) if len(codes) <= 3 else ', '.join(codes)
+            out.append(f'- {day}: {fc_clip(note, 300)}' + (f' ({who})' if who else ''))
+        out.append('')
+
+    todo = [a for a in log if a['action'] == 'todo']
+    if todo:
+        n['todo'] = len(todo)
+        out.append('"Still to photograph" list:')
+        out += [f'- {fc_clip(a["note"], 300)}' for a in todo]
+        out.append('')
+
+    open_req = c.execute('SELECT * FROM requests WHERE done=0 ORDER BY plant_code IS NULL, plant_code, id').fetchall()
+    open_todo = c.execute('SELECT * FROM to_photograph WHERE done=0 ORDER BY id').fetchall()
+    if with_open and (open_req or open_todo):
+        out.append(f'Still open ({len(open_req)} requests, {len(open_todo)} to photograph):')
+        out += [f'- {nm(r["plant_code"])}: {fc_clip(r["text"], 300)}' for r in open_req]
+        out += [f'- To photograph: {fc_clip(t["label"], 200)}' + (f' ({fc_clip(t["note"], 200)})' if t['note'] else '') for t in open_todo]
+        out.append('')
+    elif open_req or open_todo:
+        out.append(f'Still open: {len(open_req)} request{"" if len(open_req) == 1 else "s"} and {len(open_todo)} thing{"" if len(open_todo) == 1 else "s"} to photograph.')
+        out.append('')
+
+    span = 'everything so far' if since == FC_EPOCH else f'{fc_when(c, since)} to {fc_when(c, until)}'
+    head = [f'Plant record update for Claude (version {APP_VERSION})', f'Covers {span}.', '']
+    if not any(n.values()): head.append('Nothing new from me in that time.\n')
+    return '\n'.join(head + out).rstrip() + '\n', n, {'requests': len(open_req), 'todo': len(open_todo)}
+
+@app.route('/api/for-claude')
+def for_claude():
+    c = db()
+    rng = request.args.get('range', 'last')
+    if rng not in ('last', '7', '30', 'all'): abort(400, "range must be last, 7, 30 or all")
+    since, until, last = fc_since(c, rng), now(), setting(c, FC_KEY)
+    text, counts, still = for_claude_message(c, since, until, request.args.get('open') == '1')
+    return jsonify(range=rng, since=since, until=until, last_copied=last, last_copied_words=fc_when(c, last) if last else None,
+                   text=text, counts=counts, still_open=still)
+
+@app.route('/api/for-claude.txt')
+def for_claude_txt():
+    c = db()
+    rng = request.args.get('range', 'last')
+    if rng not in ('last', '7', '30', 'all'): abort(400, "range must be last, 7, 30 or all")
+    text = for_claude_message(c, fc_since(c, rng), now(), request.args.get('open') == '1')[0]
+    name = 'plant-record-for-claude-' + datetime.now(timezone.utc).strftime('%Y%m%d-%H%M') + '.txt'
+    return Response(text, mimetype='text/plain; charset=utf-8', headers={'Content-Disposition': f'attachment; filename={name}'})
+
+@app.route('/api/for-claude/copied', methods=['POST'])
+def for_claude_copied():
+    """Remember that the message up to `until` has been copied or saved, so next time starts from there."""
+    c = db()
+    until = str((request.get_json(silent=True) or {}).get('until') or now())
+    if not re.match(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$', until) or until > now(): abort(400, 'until must be a time that has passed, like 2026-10-23T20:40:00Z')
+    old = setting(c, FC_KEY)
+    if not old or until > old:
+        set_setting(c, FC_KEY, until)
+        audit_only(c, 'setting', FC_KEY, old, until, editor(), 'Copied my answers for Claude')
+        c.commit()
+    return jsonify(last_copied=setting(c, FC_KEY), last_copied_words=fc_when(c, setting(c, FC_KEY)))
+
 @app.route('/api/plants', methods=['POST'])
 def create_plant():
     c = db()
@@ -950,16 +1108,23 @@ def to_photograph():
         b = request.get_json(silent=True) or {}
         if not str(b.get('label', '')).strip(): abort(400, 'label required')
         c.execute('INSERT INTO to_photograph(label,note) VALUES(?,?)', (str(b['label']).strip()[:200], str(b.get('note', '') or '').strip()[:1000]))
+        audit_only(c, 'todo', 'to_photograph', None, str(b['label']).strip()[:200], editor(), 'Added: ' + str(b['label']).strip()[:200])
         c.commit()
     return jsonify([dict(r) for r in c.execute('SELECT * FROM to_photograph ORDER BY done, id')])
 
 @app.route('/api/to-photograph/<int:i>', methods=['PATCH', 'DELETE'])
 def to_photograph_item(i):
     c = db()
-    if request.method == 'DELETE': c.execute('DELETE FROM to_photograph WHERE id=?', (i,))
+    t = c.execute('SELECT * FROM to_photograph WHERE id=?', (i,)).fetchone()
+    if request.method == 'DELETE':
+        c.execute('DELETE FROM to_photograph WHERE id=?', (i,))
+        if t: audit_only(c, 'todo', 'to_photograph', t['label'], None, editor(), 'Removed from the list: ' + t['label'])
     else:
         b = request.get_json(silent=True) or {}
-        if 'done' in b: c.execute('UPDATE to_photograph SET done=? WHERE id=?', (1 if b.get('done') else 0, i))
+        if 'done' in b:
+            c.execute('UPDATE to_photograph SET done=? WHERE id=?', (1 if b.get('done') else 0, i))
+            if t and bool(t['done']) != bool(b.get('done')):
+                audit_only(c, 'todo', 'to_photograph', t['label'], 'done' if b.get('done') else 'open', editor(), ('Ticked off: ' if b.get('done') else 'Unticked: ') + t['label'])
         if 'label' in b:
             if not str(b['label']).strip(): abort(400, 'label required')
             c.execute('UPDATE to_photograph SET label=? WHERE id=?', (str(b['label']).strip()[:200], i))
