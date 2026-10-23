@@ -161,7 +161,7 @@ async function route() {
     if (parts[0] !== 'frost' && parts[0] !== 'plant') app.insertAdjacentHTML('afterbegin', rend(frostBanner()));   // plant pages have their own note
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
     if (view.after) view.after();
-    buildSideNav(); navLayout(); setTimeout(() => { buildSideNav(); navLayout(); }, 1200);
+    buildSideNav(); navLayout(); addReadButtons(); setTimeout(() => { buildSideNav(); navLayout(); addReadButtons(); }, 1200);
     if (h !== lastPath) { window.scrollTo(0, 0); app.focus({ preventScroll: true }); }
     lastPath = h;
   } catch (e) {
@@ -2150,8 +2150,148 @@ function displayDialog() {
     ${group('navopen', 'Section menu', [['1', 'Open'], ['0', 'Folded away (the Sections button opens it)']], 'On narrow windows and phones it starts folded and covers the page while open.')}
     ${group('width', 'Page width', [['normal', 'Normal'], ['wide', 'Use the full width of the window']], 'Full width gives charts and tables more room on a wide screen.')}
     ${group('layout', 'Plant pages', [['split', 'Photos and details side by side'], ['single', 'One column']], 'Side by side lets each half scroll on its own: scroll with the pointer over the half you want to move. One column stacks the photos above the details.')}
+    ${canSpeak() ? html`${group('readbtns', 'Read aloud buttons', [['1', 'Show them on each section'], ['0', 'Hide them']], 'Your browser reads the section aloud with its own voices. The R key reads the whole page either way.')}
+    ${group('rate', 'Reading speed', [['0.8', 'Slower'], ['1', 'Normal'], ['1.25', 'Faster'], ['1.5', 'Fastest']])}
+    <fieldset class="opt-group"><legend>Voice</legend><label class="f">Voice<select data-pref="voice" id="pref-voice">${voiceOptions(P.voice)}</select></label>
+      <p class="row"><button class="btn ghost small" type="button" data-act="voicetest">Try this voice</button></p>
+      <p class="hint">"Natural" or "Online" voices in Microsoft Edge sound the most human.</p></fieldset>` : ''}
+    ${group('keys', 'Keyboard shortcuts', [['1', 'On'], ['0', 'Off']], 'R reads the page aloud, [ and ] go to the previous and next plant, ? lists them all.')}
     <div class="row"><button class="btn" value="ok" autofocus>Done</button><button class="btn ghost" type="button" data-act="prefreset">Reset to defaults</button></div></form>`);
 }
+// ---------- read aloud and keyboard shortcuts (added in 1.8.0) ----------
+// Uses the browser's own voices (Edge and Chrome on Windows have several English voices); nothing leaves the computer
+// except with "online" voices, which the browser itself provides.
+const SPEECH = { on: false, el: null, btn: null };
+const canSpeak = () => 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
+const RD_ICON = raw('<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16.500 8.500a5 5 0 0 1 0 7M19 6a8.500 8.500 0 0 1 0 12"/></svg>');
+function addReadButtons() {
+  if (!canSpeak()) return;
+  const app = document.getElementById('app');
+  app.querySelectorAll('section.blk > h2, section.needs > h2, section.cond h2').forEach(h => {
+    const sec = h.closest('section'); if (!sec || sec.querySelector(':scope > .rd-btn, :scope > header > .rd-btn')) return;
+    const name = h.textContent.trim();
+    sec.classList.add('has-rd');
+    h.insertAdjacentHTML('afterend', rend(html`<button class="btn ghost small rd-btn noprint" type="button" data-act="readsec" aria-label="Read the ${name} section aloud">${RD_ICON}<span>Read aloud</span></button>`));
+  });
+  const h1 = app.querySelector('h1');
+  if (h1 && !app.querySelector('.rd-page')) h1.insertAdjacentHTML('afterend', rend(html`<p class="rd-page noprint"><button class="btn ghost small" type="button" data-act="readpage">${RD_ICON}<span>Read this page aloud</span></button>
+    <span class="hint">Shortcut: R. Press Escape to stop.</span></p>`));
+}
+// the text a sighted reader would see: no buttons, form controls, icons, hidden parts or closed details
+function readableText(root) {
+  const out = [];
+  const skip = el => el.matches('button,select,option,input,textarea,script,style,svg,canvas,dialog,.rd-btn,.rd-page,.thumbs,.jump,.pnav,.pn-filters,.strip,.ticks,.now-tag,.now-line,[aria-hidden="true"],[hidden]');
+  (function walk(n) {
+    for (const c of n.childNodes) {
+      if (c.nodeType === 3) { const t = c.textContent.replace(/\s+/g, ' '); if (t.trim()) out.push(t); continue; }
+      if (c.nodeType !== 1 || skip(c)) continue;
+      if (c.tagName === 'DETAILS' && !c.open) { const sm = c.querySelector(':scope > summary'); if (sm) { out.push('. '); walk(sm); out.push('. '); } continue; }
+      const cs = getComputedStyle(c);
+      if (cs.display === 'none' || (cs.visibility === 'hidden' && !c.classList.contains('sr'))) continue;
+      if (c.tagName === 'IMG') { if (c.alt) out.push(' ' + c.alt + '. '); continue; }
+      const block = /^(block|flex|grid|list-item|table|table-row|table-caption|flow-root)$/.test(cs.display) || /^H[1-6]$/.test(c.tagName);
+      if (block) out.push('. ');
+      walk(c);
+      if (block) out.push('. '); else if (cs.display === 'table-cell' || cs.display === 'inline-block') out.push(', ');
+    }
+  })(root);
+  return speakable(out.join(''));
+}
+function speakable(t) {
+  return t.replace(/\bP-(\d)(\d)(\d)\b/g, 'P $1 $2 $3')
+    .replace(/(-?\d+(?:\.\d+)?)\s?°F/g, '$1 degrees').replace(/°/g, ' degrees').replace(/(\d)\s?F\b/g, '$1 degrees')
+    .replace(/(?:u|µ)mol\/m(?:2|²)\/s/g, 'micromoles per square metre per second').replace(/mol\/m(?:2|²)/g, 'moles per square metre')
+    .replace(/\/day\b/g, ' a day').replace(/(\d)\s?h\b/g, '$1 hours').replace(/\bRH\b/g, 'relative humidity').replace(/~\s?/g, 'about ')
+    .replace(/(\d)\s?-\s?(\d)/g, '$1 to $2').replace(/(\d)\s?in\b/g, '$1 inches').replace(/[✔✖■▲▶◀←→–—]/g, ' ').replace(/\s+/g, ' ')
+    .replace(/\s*\.\s*(\.\s*)+/g, '. ').replace(/([:;,])\s*\./g, '$1').replace(/\s+([.,;:])/g, '$1').replace(/^[\s.]+/, '').trim();
+}
+function rdChunks(t) {          // short pieces: some voices stop after about 15 seconds of one long utterance
+  const parts = t.split(/(?<=[.!?:;])\s+/), out = [];
+  let cur = '';
+  for (const p of parts) { if ((cur + ' ' + p).length > 220 && cur) { out.push(cur); cur = p; } else cur = cur ? cur + ' ' + p : p; }
+  if (cur) out.push(cur);
+  return out;
+}
+function rdVoice() {
+  const v = window.PlantPrefs.get().voice, all = speechSynthesis.getVoices();
+  return (v !== 'auto' && all.find(x => x.name === v)) || all.find(x => /^en(-|_)US/i.test(x.lang) && /natural|online/i.test(x.name)) || all.find(x => /^en/i.test(x.lang)) || null;
+}
+function stopReading(quiet) {
+  if (!canSpeak()) return;
+  SPEECH.on = false; speechSynthesis.cancel();
+  if (SPEECH.el) SPEECH.el.classList.remove('rd-on');
+  if (SPEECH.btn) { SPEECH.btn.querySelector('span').textContent = SPEECH.btn.dataset.act === 'readpage' ? 'Read this page aloud' : 'Read aloud'; SPEECH.btn.setAttribute('aria-pressed', 'false'); }
+  SPEECH.el = SPEECH.btn = null;
+  const s = document.getElementById('rd-stop'); if (s) s.hidden = true;
+  if (!quiet) toast('Stopped reading');
+}
+function readAloud(el, btn, label) {
+  if (!canSpeak()) { toast('This browser cannot read aloud. Edge and Chrome on Windows can.', true); return; }
+  const was = SPEECH.btn;
+  stopReading(true);
+  if (was && was === btn) return;                  // the same button again: stop
+  const text = readableText(el); if (!text) { toast('Nothing to read in this section.'); return; }
+  const P = window.PlantPrefs.get(), voice = rdVoice(), chunks = rdChunks(text);
+  SPEECH.on = true; SPEECH.el = el; SPEECH.btn = btn || null;
+  el.classList.add('rd-on');
+  if (btn) { btn.querySelector('span').textContent = 'Stop reading'; btn.setAttribute('aria-pressed', 'true'); }
+  let st = document.getElementById('rd-stop');
+  if (!st) { document.body.insertAdjacentHTML('beforeend', rend(html`<button id="rd-stop" class="btn noprint" type="button" data-act="readstop">Stop reading</button>`)); st = document.getElementById('rd-stop'); }
+  st.hidden = false;
+  chunks.forEach((c, i) => {
+    const u = new SpeechSynthesisUtterance(c);
+    u.rate = +P.rate || 1; if (voice) { u.voice = voice; u.lang = voice.lang; } else u.lang = 'en-US';
+    if (i === chunks.length - 1) u.onend = () => { if (SPEECH.on && SPEECH.el === el) stopReading(true); };
+    speechSynthesis.speak(u);
+  });
+}
+const readTarget = () => document.getElementById('pane-r') || document.getElementById('app');
+function voiceOptions(cur) {
+  const vs = canSpeak() ? speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang)) : [];
+  return html`<option value="auto" ${cur === 'auto' ? raw('selected') : ''}>Best English voice on this computer</option>${vs.map(v => html`<option value="${v.name}" ${cur === v.name ? raw('selected') : ''}>${v.name} (${v.lang})</option>`)}`;
+}
+if (canSpeak()) speechSynthesis.addEventListener('voiceschanged', () => { const s = document.getElementById('pref-voice'); if (s) s.innerHTML = rend(voiceOptions(window.PlantPrefs.get().voice)); });
+function readAloudText(t) {
+  if (!canSpeak()) return;
+  const P = window.PlantPrefs.get(), v = rdVoice(), u = new SpeechSynthesisUtterance(t);
+  u.rate = +P.rate || 1; if (v) { u.voice = v; u.lang = v.lang; }
+  speechSynthesis.speak(u);
+}
+function shortcutsDialog() {
+  const k = (key, what) => html`<tr><th scope="row"><kbd>${key}</kbd></th><td>${what}</td></tr>`;
+  modal(html`<form method="dialog"><h2>Keyboard shortcuts</h2>
+    <p class="muted">They work anywhere except while you are typing in a box. Turn them off in Display settings if they get in the way.</p>
+    <table class="tbl"><tbody>
+      ${k('R', 'Read this page aloud (press again, or Escape, to stop)')}${k('Escape', 'Stop reading')}
+      ${k('[', 'Previous plant (on a plant page)')}${k(']', 'Next plant (on a plant page)')}
+      ${k('E', 'Edit this plant (on a plant page)')}${k('/', 'Search plants')}
+      ${k('H', 'Go to the Plants page')}${k('M', 'Open or fold the section menu')}${k('?', 'Show this list')}
+    </tbody></table>
+    <div class="row"><button class="btn" value="ok" autofocus>Close</button></div></form>`);
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && SPEECH.on) { stopReading(); return; }
+  if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || window.PlantPrefs.get().keys !== '1') return;
+  const t = e.target;
+  if (t.closest && t.closest('input,textarea,select,[contenteditable="true"],dialog[open]')) return;
+  const click = sel => { const x = document.querySelector(sel); if (x) { e.preventDefault(); x.click(); } };
+  switch (e.key) {
+    case '[': click('#pnav a.pn-prev'); break;
+    case ']': click('#pnav a.pn-next'); break;
+    case 'r': case 'R': e.preventDefault(); { const b = document.querySelector('[data-act=readpage]'); readAloud(readTarget(), b, 'this page'); } break;
+    case 'e': case 'E': if (CUR && location.hash.startsWith('#/plant/') && !location.hash.endsWith('/edit')) { e.preventDefault(); location.hash = '#/plant/' + enc(CUR.p.code) + '/edit'; } break;
+    case 'h': case 'H': e.preventDefault(); go('#/'); break;
+    case 'm': case 'M': click('[data-act=navtoggle]:not([aria-hidden])'); break;
+    case '?': e.preventDefault(); shortcutsDialog(); break;
+    case '/': {
+      e.preventDefault();
+      const d = document.getElementById('pn-filters'); if (d) d.open = true;
+      const q = document.querySelector('input[data-f=q]'); if (q) { q.focus(); q.select(); } else go('#/');
+      break;
+    }
+  }
+});
+window.addEventListener('hashchange', () => stopReading(true));
 async function condDialog() {
   const c = COND || await loadCond() || { mode: 'manual' };
   const W = await api('GET', '/api/weather').catch(() => null);
@@ -2517,6 +2657,11 @@ const acts = {
     if (!(await confirmBox('Remove this photo?', 'It leaves this page. The file is kept in the photos_deleted folder inside your data folder, so it can be recovered by hand.', 'Remove photo', true))) return;
     await guard(async () => { await api('DELETE', '/api/photos/' + curPhoto().id); toast('Photo removed'); await reloadPlant(0); });
   },
+  readsec(el) { const sec = el.closest('section'); const h = sec && sec.querySelector('h2'); readAloud(sec, el, h ? h.textContent.trim() : 'this section'); },
+  readpage(el) { readAloud(readTarget(), el, 'this page'); },
+  readstop() { stopReading(); },
+  voicetest() { stopReading(true); readAloudText('This is how plant pages will sound. Philodendron Pink Princess, P 0 2 9. Damaged below 55 degrees.'); },
+  shortcuts() { shortcutsDialog(); },
   async movein(el) { await moveSite(el, 'Indoors'); },
   frosthide(el) { try { localStorage.setItem('plantdb.frosthide', fzSig()); } catch (e) { /* not remembered */ } const b = el.closest('.fz-banner'); if (b) b.remove(); toast('Frost warning hidden. It comes back if the forecast changes.'); },
   async frostin(el) {

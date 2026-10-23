@@ -558,6 +558,22 @@ a.plink{font-weight:700;text-decoration:underline;text-decoration-thickness:2px;
 .todo-form{margin:.6rem 0 1.2rem}
 @media (prefers-reduced-motion:no-preference){#plink-pop{animation:popin .12s ease-out}@keyframes popin{from{opacity:0}}}
 
+/* ---- 1.8.0: read aloud and keyboard shortcuts ---- */
+section.has-rd{position:relative}
+.rd-btn{position:absolute;top:.3rem;right:0;display:inline-flex;gap:.35rem;align-items:center;z-index:13}
+.rd-btn svg,.rd-page svg{flex:none}
+main section.blk.has-rd>h2,section.needs.has-rd>h2{padding-right:10rem}
+.cond header .rd-btn{position:static}
+.rd-page{margin:.2rem 0 .9rem;display:flex;gap:.7rem;align-items:center;flex-wrap:wrap}
+.rd-page .btn{display:inline-flex;gap:.4rem;align-items:center}
+.rd-on{outline:3px dashed var(--focus);outline-offset:6px;border-radius:4px}
+#rd-stop{position:fixed;left:50%;transform:translateX(-50%);bottom:1rem;z-index:40;box-shadow:0 4px 18px rgba(0,0,0,.35);min-height:3rem;padding-inline:1.4rem}
+#rd-stop[hidden]{display:none}
+html[data-readbtns="0"] .rd-btn,html[data-readbtns="0"] .rd-page{display:none}
+html[data-readbtns="0"] main section.blk.has-rd>h2,html[data-readbtns="0"] section.needs.has-rd>h2{padding-right:0}
+kbd{font:inherit;font-weight:700;border:2px solid var(--line);border-bottom-width:3px;border-radius:5px;padding:0 .45rem;background:var(--sheet)}
+@media (max-width:640px){main section.blk.has-rd>h2,section.needs.has-rd>h2{padding-right:0}.rd-btn{position:static;margin:0 0 .7rem}}
+
 /* ---- 1.7.0: Location menu in the plant label, Moved indoors buttons ---- */
 .printonly{display:none}
 @media print{.printonly{display:inline}}
