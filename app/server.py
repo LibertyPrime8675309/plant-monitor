@@ -218,6 +218,7 @@ def init_db():
     apply_batches(c)
     c.execute("UPDATE plants SET site='Outdoors' WHERE site IS NULL OR site=''")   # 1.7.0: every existing plant starts out as Outdoors
     c.commit()
+    repair_seed_photos(c)
     c.close()
 
 def find_plant(c, u):
@@ -328,6 +329,16 @@ def apply_batches(c):
         except Exception:
             c.rollback()
             raise
+
+def repair_seed_photos(c):
+    """From 1.8.0 plant photos can arrive in separate photo-pack zips, possibly after the batch that uses them was
+    applied. Copy any photo the database lists but the photos folder lacks, if the seed folder has it now."""
+    fixed = 0
+    for (f,) in c.execute('SELECT DISTINCT file FROM photos'):
+        if f and not os.path.exists(os.path.join(PHOTO_DIR, f)) and os.path.exists(os.path.join(SEED_DIR, 'photos', f)):
+            copy_seed_photo(f); fixed += 1
+    if fixed: print(f'Added {fixed} plant photos that arrived in a photo pack', flush=True)
+    return fixed
 
 def copy_seed_photo(name):
     src, dst = os.path.join(SEED_DIR, 'photos', name), os.path.join(PHOTO_DIR, name)

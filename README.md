@@ -78,8 +78,21 @@ Save new release zips in the folder that holds `plant-database` (for example `C:
 3. makes sure Docker Desktop is running, and starts it if not.
 4. makes a backup through the app (it appears on the Backups page as "Before update"). If the running app is older than 1.7.0, it stops the app and copies `data\plants.db` into `backups\` instead.
 5. unzips the release and copies it over the `plant-database` folder. **`data` and `backups` are never touched.**
-6. runs `docker compose up -d --build` and waits until the new version answers.
-7. offers to delete the previous version's Docker image to free disk space.
+6. adds plant photos from any photo packs the release needs (see below).
+7. runs `docker compose up -d --build` and waits until the new version answers.
+8. offers to delete the previous version's Docker image to free disk space.
+
+#### Photo packs (from 1.8.0)
+
+From 1.8.0, plant photos travel separately from the app, in **photo packs**. The release zip itself stays well under a megabyte.
+
+- Each photo pack holds the photos from one plant update, for example `plant-database-photos-batch9.zip`.
+- A pack never changes once it is made.
+- A release only comes with the packs for the plant updates that are new in it.
+
+Save any photo packs in the same folder as the release zip. The updater adds the photos your `plant-database` folder does not have yet. Packs you already have are skipped.
+
+If a release needs a pack that is not in the folder, the updater lists it and stops before changing anything. If photos arrive after you have updated (because you used `-Force`), run the updater again; it adds them even though the version is already up to date. You can delete a pack once it has been added.
 
 Everything it does is written to `update-log.txt` in the same folder. Each new release carries the newest updater in `plant-database\tools`, and the updater copies it next to the zips, so it keeps itself current.
 

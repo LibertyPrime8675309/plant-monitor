@@ -12,7 +12,9 @@
     2. Compares it with the version installed and the version running.
     3. Asks the running app for a backup (Backups page), or copies the database itself if the app is too old to do that.
     4. Unzips the release and copies it over the plant-database folder. Your data and backups folders are never touched.
-    5. Runs "docker compose up -d --build" and waits until the new version answers.
+    5. Adds plant photos from any photo pack (plant-database-photos-*.zip) in this folder that the release needs
+       and the plant-database folder does not have yet. From 1.8.0 photos travel in these packs, so release zips stay small.
+    6. Runs "docker compose up -d --build" and waits until the new version answers.
 
   Options:
     -Yes              Do not ask before updating.
@@ -60,6 +62,22 @@ function Native([scriptblock]$sb) {
     try { & $sb 2>&1 | ForEach-Object { $l = "$_".Trim(); if ($l) { Say ("  " + $l) } } } finally { $ErrorActionPreference = $old }
     return $LASTEXITCODE
 }
+function JoinAll([string]$base, [string[]]$parts) { $p = $base; foreach ($x in $parts) { $p = Join-Path $p $x }; return $p }
+# Photo packs the release in $root needs: packs with photos missing from both $root and the installed folder.
+function Pending-Packs([string]$root) {
+    $mf = JoinAll $root @('app', 'seed', 'photo-packs.json')
+    if (-not (Test-Path $mf)) { return @() }
+    $m = Get-Content $mf -Raw | ConvertFrom-Json
+    $mine = JoinAll $AppFolder @('app', 'seed', 'photos'); $theirs = JoinAll $root @('app', 'seed', 'photos')
+    $out = @()
+    foreach ($pp in $m.packs.PSObject.Properties) {
+        $miss = @($pp.Value.files | Where-Object { -not (Test-Path (Join-Path $mine $_)) -and -not (Test-Path (Join-Path $theirs $_)) })
+        if ($miss.Count -eq 0) { continue }
+        $pz = Join-Path $ZipFolder $pp.Value.zip
+        $out += [pscustomobject]@{ Name = $pp.Name; Zip = $pp.Value.zip; Path = $pz; Missing = $miss.Count; Present = (Test-Path $pz) }
+    }
+    return $out
+}
 function Docker-Ready {
     $old = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
     try { docker info --format '{{.ServerVersion}}' 2>&1 | Out-Null; return ($LASTEXITCODE -eq 0) } catch { return $false } finally { $ErrorActionPreference = $old }
@@ -90,6 +108,11 @@ Say ("Installed files: {0}" -f $(if ($installed) { $installed } else { 'unknown'
 Say ("Running app:     {0}" -f $(if ($running) { $running } else { 'not answering at ' + $Url }))
 
 $upToDate = $installed -and ([version]$installed -ge $latest.Version) -and ($running -eq $installed)
+$photosOnly = $false
+if ($upToDate -and -not $Force -and @(Pending-Packs $AppFolder | Where-Object { $_.Present }).Count) {
+    Say 'Version is up to date, but photo packs for it have arrived in this folder: adding their photos.' 'Yellow'
+    $upToDate = $false; $photosOnly = $true
+}
 if ($upToDate -and -not $Force) {
     Say ("Already up to date (version {0}). Nothing to do. Use -Force to re-apply it anyway." -f $installed) 'Green'
     exit 0
@@ -158,6 +181,16 @@ try {
     $newVersion = (Get-Content (Join-Path $src 'VERSION') -Raw).Trim()
     if ($newVersion -ne $latest.Version.ToString()) { Fail ("The zip says version {0} inside but {1} in its name." -f $newVersion, $latest.Version) }
 
+    # photo packs this release needs (checked before anything is copied, so a missing pack changes nothing)
+    $packs = @(Pending-Packs $src)
+    $absent = @($packs | Where-Object { -not $_.Present })
+    if ($absent.Count) {
+        Say 'This release needs plant photos that are not in the plant-database folder yet, and these photo packs are not in this folder:' 'Yellow'
+        foreach ($a in $absent) { Say ("  {0}  ({1} photos)" -f $a.Zip, $a.Missing) 'Yellow' }
+        if (-not $Force -and -not $photosOnly) { Fail 'Save those photo packs next to the release zip and run the updater again. Nothing has been changed. (To update without them, run it with -Force; the photos appear after you add the packs and run the updater again.)' }
+        Say $(if ($photosOnly) { 'Adding the packs that are here now. Save the others next to the release zip and run the updater again.' } else { 'Carrying on without them (-Force).' }) 'Yellow'
+    }
+
     Step 'Copying the new files over the old ones (data and backups are left alone)'
     if (Get-Command robocopy -ErrorAction SilentlyContinue) {
         $rc = Native { robocopy $src $AppFolder /E /XD (Join-Path $src 'data') (Join-Path $src 'backups') /R:2 /W:2 /NFL /NDL /NJH /NP }
@@ -168,6 +201,17 @@ try {
         }
     }
     Say ("Files updated to version {0}." -f $newVersion) 'Green'
+
+    foreach ($np in @($packs | Where-Object { $_.Present })) {
+        Step ('Adding plant photos from ' + $np.Zip)
+        $pt = Join-Path $tmp ('pack-' + $np.Name)
+        Expand-Archive -Path $np.Path -DestinationPath $pt -Force
+        $from = JoinAll $pt @('plant-database', 'app', 'seed', 'photos'); $to = JoinAll $AppFolder @('app', 'seed', 'photos')
+        New-Item -ItemType Directory -Force -Path $to | Out-Null
+        $n = 0
+        Get-ChildItem -Path $from -File | ForEach-Object { $d = Join-Path $to $_.Name; if (-not (Test-Path $d)) { Copy-Item $_.FullName $d; $n++ } }
+        Say ("{0} photos added." -f $n) 'Green'
+    }
 
     # keep this updater current: copy the newest copy of itself next to the zips
     foreach ($n in @('update-plant-database.ps1', 'Update Plant Database.cmd')) {
