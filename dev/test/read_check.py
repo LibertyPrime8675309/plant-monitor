@@ -1,4 +1,4 @@
-"""Checks read aloud, keyboard shortcuts and the phone top bar. The browser's speech is replaced by a recorder, so
+"""Checks read aloud and keyboard shortcuts. The browser's speech is replaced by a recorder, so
 this tests what would be read, not the voice. Start the mock server first, then:  python3 dev/test/read_check.py
 Screenshots: dev/tmp/shots/read-*.png"""
 import os, sys
@@ -53,8 +53,7 @@ with sync_playwright() as p:
     q = page(390, 844, "{theme:'dark'}")
     q.goto(BASE + '/#/plant/P-006'); q.wait_for_timeout(2500)
     q.evaluate('window.scrollTo(0, 1400)'); q.wait_for_timeout(400)
-    bottom = q.evaluate("document.querySelector('.top').getBoundingClientRect().bottom")
-    check(bottom <= 0, f'phone: the top bar scrolls away (bottom at {bottom:.0f}px)')
+    check(q.locator('.rd-btn').count() > 0, 'phone: the Read aloud buttons are there')
     over = q.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth'); check(over <= 2, f'phone: no sideways scrolling ({over}px)')
     q.screenshot(path=f'{OUT}/read-phone-dark.png')
     q.close()

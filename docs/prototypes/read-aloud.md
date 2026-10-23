@@ -1,4 +1,4 @@
-# Prototype: read aloud, keyboard shortcuts, and a top bar that scrolls away on phones
+# Prototype: read aloud and keyboard shortcuts
 
 ## What it does
 - **Read aloud.** Every section has a **Read aloud** button: Temperature, Light, Water and soil, Needed from you, and the sections on the Winter plan, Weather and Fertilizer pages too.
@@ -26,14 +26,13 @@
   | **H** | Go to the Plants page |
   | **M** | Open or fold the section menu |
   | **?** | List the shortcuts |
-- **Phones: the top bar scrolls away.** On a phone the menu bar used to stay pinned and cover about a third of the screen. Now it scrolls off with the page. Scroll up to reach it, and the Sections and Display buttons stay at the bottom as before.
 
 ## Screenshots
 | | |
 |---|---|
 | ![Read aloud buttons](read-aloud/1-plant-read-buttons.jpg) | ![Reading a section](read-aloud/2-reading-a-section.jpg) |
 | ![Keyboard shortcuts](read-aloud/3-shortcuts.jpg) | ![Display settings](read-aloud/4-display-settings.jpg) |
-| ![Phone, dark, scrolled](read-aloud/5-phone-dark-scrolled.jpg) | |
+| ![Phone, dark](read-aloud/5-phone-dark.jpg) | |
 
 ## What it changes in the database
 Nothing. The reading speed, voice and on/off choices are kept in this browser, like the other Display settings.
@@ -43,8 +42,8 @@ Nothing. The reading speed, voice and on/off choices are kept in this browser, l
 - `readableText()` walks the visible text of a section, skipping controls, gauges and closed folds, and `speakable()` rewrites units and plant codes. The text is read in short pieces, because some voices stop after about 15 seconds of one long piece.
 - `addReadButtons()` runs after each page draws, beside `buildSideNav()`.
 - New display preferences in `prefs.js`: `readbtns`, `rate`, `voice` and `keys`.
-- The phone top bar: `navLayout()` sets `--top-h` to 0 on narrow screens, and CSS makes `.top` static there.
-- Test: `dev/test/read_check.py` replaces the voice with a recorder. It checks what would be said, every shortcut, shortcuts staying off while typing, the setting that turns them off, and the phone top bar scrolling away.
+- The phone menu bar that scrolls away, which used to be part of this prototype, has moved to the "Fix: phones with large text" pull request.
+- Test: `dev/test/read_check.py` replaces the voice with a recorder. It checks what would be said, every shortcut, shortcuts staying off while typing, the setting that turns them off, and a phone in dark mode.
 
 ## Questions for Ethan
 1. Do you use a screen reader or screen magnifier as well? If you use a screen reader, the read-aloud buttons may be less useful than better headings and labels, and I'd tune for that instead.
