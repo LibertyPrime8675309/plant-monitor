@@ -558,6 +558,62 @@ function photoPanel(p) {
     <label class="f noprint" style="margin-top:1.2rem">Add photos<small>JPG or PNG. Location data is removed when the photo is saved.</small>
       <input type="file" accept="image/*" multiple data-act="addphotos"></label>`;
 }
+// ---------- plant timeline and photo comparison (added in 1.8.0) ----------
+const TL = { code: null, data: null, a: null, b: null, hide: new Set() };
+const TL_KINDS = [['photo', 'Photos'], ['change', 'Changes to the page'], ['care', 'Feeding and care'], ['request', 'Answers'], ['created', 'Page created']];
+const TL_WORD = { photo: 'Photo', change: 'Changed', care: 'Care', request: 'Answer', created: 'Created' };
+const tlDay = ts => new Date(ts).toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+const tlShort = ts => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
+function tlChange(ch) {
+  const set = x => x != null && x !== '', v = x => ch.field === 'id_confidence' ? x + '%' : x;
+  const what = !set(ch.old) ? html`set to ${v(ch.new)}` : !set(ch.new) ? html`cleared (it was ${v(ch.old)})` : html`from ${v(ch.old)} to ${v(ch.new)}`;
+  return html`<li><strong>${ch.label.replace(' (%)', '')}:</strong> ${what}</li>`;
+}
+function tlTrend(list, cur, word, order) {
+  // "Critical until Oct 22, Poor now (getting better)": the first value the log knows, the day it first changed, and now.
+  const set = x => x != null && x !== '';
+  if (!list.length || !set(cur)) return '';
+  const startsEmpty = !set(list[0].old), first = startsEmpty ? list[0].new : list[0].old, until = startsEmpty ? list[1] : list[0];
+  if (!until || String(first) === String(cur)) return '';
+  const a = order(first), b = order(cur), better = a < 0 || b < 0 || isNaN(a) || isNaN(b) || a === b ? null : b > a;
+  const pc = x => word === 'ID confidence' ? x + '%' : x;
+  const how = better == null ? '' : word === 'Health' ? (better ? ' (getting better)' : ' (getting worse)') : (better ? ' (more certain)' : ' (less certain)');
+  return html`<li><strong>${word}:</strong> ${pc(first)} until ${tlShort(until.at)}, ${pc(cur)} now${how}</li>`;
+}
+function tlCompare(D) {
+  const ps = D.photos; if (ps.length < 2) return '';
+  const a = ps.find(x => x.file === TL.a) || ps[0], b = ps.find(x => x.file === TL.b) || ps[ps.length - 1];
+  const opt = (sel, side) => html`<label class="f">${side === 'a' ? 'Left photo' : 'Right photo'}<select data-act="tlsel" data-side="${side}">${ps.map((x, i) => html`<option value="${x.file}" ${x.file === sel.file ? raw('selected') : ''}>${i + 1}. ${tlShort(x.added_at)}: ${x.caption || 'no caption'}</option>`)}</select></label>`;
+  const fig = x => html`<figure class="tl-fig"><img src="${photoUrl(x.file)}" alt="${x.caption || 'Plant photo'}" loading="lazy"><figcaption><strong>${tlShort(x.added_at)}</strong>. ${x.caption || ''}</figcaption></figure>`;
+  return html`<h3>Compare two photos</h3><p class="muted">The oldest and the newest photo, side by side. Pick others to compare.</p>
+    <div class="tl-pick">${opt(a, 'a')}${opt(b, 'b')}</div><div class="tl-cmp">${fig(a)}${fig(b)}</div>`;
+}
+function tlRender() {
+  const box = document.getElementById('tl-box'), D = TL.data; if (!box || !D) return;
+  const ev = D.events.filter(e => !TL.hide.has(e.kind));
+  const days = []; ev.forEach(e => { const d = tlDay(e.at); if (!days.length || days[days.length - 1].d !== d) days.push({ d, items: [] }); days[days.length - 1].items.push(e); });
+  const trend = [tlTrend(D.health, D.current.health, 'Health', h => HEALTH_ORDER[h] ?? -1), tlTrend(D.confidence, D.current.id_confidence, 'ID confidence', n => +n)].filter(Boolean);
+  box.innerHTML = rend(html`${trend.length ? html`<ul class="tl-trend">${trend}</ul>` : ''}
+    ${tlCompare(D)}
+    <h3>Everything that has happened</h3>
+    <fieldset class="tl-filter"><legend>Show</legend>${TL_KINDS.map(([k, w]) => html`<label class="chk"><input type="checkbox" data-act="tlkind" value="${k}" ${TL.hide.has(k) ? '' : raw('checked')}>${w}</label>`)}</fieldset>
+    ${days.length ? days.map(g => html`<h4 class="tl-day">${g.d}</h4><ul class="tl">${g.items.map(e => html`<li class="tl-item tl-${e.kind}">
+      <span class="tl-kind">${e.kind === 'request' && !e.answer ? 'Done' : TL_WORD[e.kind]}</span><div class="tl-body">${e.kind === 'request'
+        ? html`<div><strong>Asked:</strong> ${linkify(e.question || '')}</div><div class="tl-ans">${e.answer ? html`<strong>Answer:</strong> ${linkify(e.answer)}` : 'Marked done'}</div>`
+        : html`<div>${linkify(e.title)}</div>`}
+        ${e.changes.length || e.other ? html`<ul class="tl-ch">${e.changes.map(tlChange)}${e.other ? html`<li class="muted">and ${e.other} other detail${e.other === 1 ? '' : 's'}</li>` : ''}</ul>` : ''}
+        ${e.photos.length ? html`<div class="tl-photos">${e.photos.map(x => html`<button type="button" class="tl-thumb" data-act="tlpick" data-file="${x.file}" title="Compare this photo"><img src="${thumbUrl(x.file)}" alt="${x.caption || 'Plant photo'}" loading="lazy"><span>Compare</span></button>`)}</div>` : ''}
+        ${e.by ? html`<div class="tl-by muted">By ${e.by}</div>` : ''}</div></li>`)}</ul>`)
+      : html`<p class="muted">Nothing to show with these choices.</p>`}`);
+}
+async function loadTimeline(box) {
+  const code = box.dataset.code;
+  try { TL.data = await api('GET', '/api/plants/' + enc(code) + '/timeline'); } catch (e) { box.innerHTML = rend(html`<p class="notice bad">Could not load the timeline: ${e.message}</p>`); return; }
+  if (TL.code !== code) { TL.code = code; TL.a = TL.b = null; }
+  tlRender();
+}
+new MutationObserver(() => { const b = document.getElementById('tl-box'); if (b && !b.dataset.loaded) { b.dataset.loaded = '1'; loadTimeline(b); } })
+  .observe(document.getElementById('app'), { childList: true });
 function slips(h) {
   const byV = {};
   h.audit.forEach(a => { (byV[a.version] = byV[a.version] || []).push(a); });
@@ -746,62 +802,6 @@ function pnavLayout() {
   }
 }
 window.addEventListener('resize', () => pnavLayout());
-// ---------- plant timeline and photo comparison (added in 1.8.0) ----------
-const TL = { code: null, data: null, a: null, b: null, hide: new Set() };
-const TL_KINDS = [['photo', 'Photos'], ['change', 'Changes to the page'], ['care', 'Feeding and care'], ['request', 'Answers'], ['created', 'Page created']];
-const TL_WORD = { photo: 'Photo', change: 'Changed', care: 'Care', request: 'Answer', created: 'Created' };
-const tlDay = ts => new Date(ts).toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-const tlShort = ts => new Date(ts).toLocaleDateString([], { month: 'short', day: 'numeric' });
-function tlChange(ch) {
-  const set = x => x != null && x !== '', v = x => ch.field === 'id_confidence' ? x + '%' : x;
-  const what = !set(ch.old) ? html`set to ${v(ch.new)}` : !set(ch.new) ? html`cleared (it was ${v(ch.old)})` : html`from ${v(ch.old)} to ${v(ch.new)}`;
-  return html`<li><strong>${ch.label.replace(' (%)', '')}:</strong> ${what}</li>`;
-}
-function tlTrend(list, cur, word, order) {
-  // "Critical until Oct 22, Poor now (getting better)": the first value the log knows, the day it first changed, and now.
-  const set = x => x != null && x !== '';
-  if (!list.length || !set(cur)) return '';
-  const startsEmpty = !set(list[0].old), first = startsEmpty ? list[0].new : list[0].old, until = startsEmpty ? list[1] : list[0];
-  if (!until || String(first) === String(cur)) return '';
-  const a = order(first), b = order(cur), better = a < 0 || b < 0 || isNaN(a) || isNaN(b) || a === b ? null : b > a;
-  const pc = x => word === 'ID confidence' ? x + '%' : x;
-  const how = better == null ? '' : word === 'Health' ? (better ? ' (getting better)' : ' (getting worse)') : (better ? ' (more certain)' : ' (less certain)');
-  return html`<li><strong>${word}:</strong> ${pc(first)} until ${tlShort(until.at)}, ${pc(cur)} now${how}</li>`;
-}
-function tlCompare(D) {
-  const ps = D.photos; if (ps.length < 2) return '';
-  const a = ps.find(x => x.file === TL.a) || ps[0], b = ps.find(x => x.file === TL.b) || ps[ps.length - 1];
-  const opt = (sel, side) => html`<label class="f">${side === 'a' ? 'Left photo' : 'Right photo'}<select data-act="tlsel" data-side="${side}">${ps.map((x, i) => html`<option value="${x.file}" ${x.file === sel.file ? raw('selected') : ''}>${i + 1}. ${tlShort(x.added_at)}: ${x.caption || 'no caption'}</option>`)}</select></label>`;
-  const fig = x => html`<figure class="tl-fig"><img src="${photoUrl(x.file)}" alt="${x.caption || 'Plant photo'}" loading="lazy"><figcaption><strong>${tlShort(x.added_at)}</strong>. ${x.caption || ''}</figcaption></figure>`;
-  return html`<h3>Compare two photos</h3><p class="muted">The oldest and the newest photo, side by side. Pick others to compare.</p>
-    <div class="tl-pick">${opt(a, 'a')}${opt(b, 'b')}</div><div class="tl-cmp">${fig(a)}${fig(b)}</div>`;
-}
-function tlRender() {
-  const box = document.getElementById('tl-box'), D = TL.data; if (!box || !D) return;
-  const ev = D.events.filter(e => !TL.hide.has(e.kind));
-  const days = []; ev.forEach(e => { const d = tlDay(e.at); if (!days.length || days[days.length - 1].d !== d) days.push({ d, items: [] }); days[days.length - 1].items.push(e); });
-  const trend = [tlTrend(D.health, D.current.health, 'Health', h => HEALTH_ORDER[h] ?? -1), tlTrend(D.confidence, D.current.id_confidence, 'ID confidence', n => +n)].filter(Boolean);
-  box.innerHTML = rend(html`${trend.length ? html`<ul class="tl-trend">${trend}</ul>` : ''}
-    ${tlCompare(D)}
-    <h3>Everything that has happened</h3>
-    <fieldset class="tl-filter"><legend>Show</legend>${TL_KINDS.map(([k, w]) => html`<label class="chk"><input type="checkbox" data-act="tlkind" value="${k}" ${TL.hide.has(k) ? '' : raw('checked')}>${w}</label>`)}</fieldset>
-    ${days.length ? days.map(g => html`<h4 class="tl-day">${g.d}</h4><ul class="tl">${g.items.map(e => html`<li class="tl-item tl-${e.kind}">
-      <span class="tl-kind">${e.kind === 'request' && !e.answer ? 'Done' : TL_WORD[e.kind]}</span><div class="tl-body">${e.kind === 'request'
-        ? html`<div><strong>Asked:</strong> ${linkify(e.question || '')}</div><div class="tl-ans">${e.answer ? html`<strong>Answer:</strong> ${linkify(e.answer)}` : 'Marked done'}</div>`
-        : html`<div>${linkify(e.title)}</div>`}
-        ${e.changes.length || e.other ? html`<ul class="tl-ch">${e.changes.map(tlChange)}${e.other ? html`<li class="muted">and ${e.other} other detail${e.other === 1 ? '' : 's'}</li>` : ''}</ul>` : ''}
-        ${e.photos.length ? html`<div class="tl-photos">${e.photos.map(x => html`<button type="button" class="tl-thumb" data-act="tlpick" data-file="${x.file}" title="Compare this photo"><img src="${thumbUrl(x.file)}" alt="${x.caption || 'Plant photo'}" loading="lazy"><span>Compare</span></button>`)}</div>` : ''}
-        ${e.by ? html`<div class="tl-by muted">By ${e.by}</div>` : ''}</div></li>`)}</ul>`)
-      : html`<p class="muted">Nothing to show with these choices.</p>`}`);
-}
-async function loadTimeline(box) {
-  const code = box.dataset.code;
-  try { TL.data = await api('GET', '/api/plants/' + enc(code) + '/timeline'); } catch (e) { box.innerHTML = rend(html`<p class="notice bad">Could not load the timeline: ${e.message}</p>`); return; }
-  if (TL.code !== code) { TL.code = code; TL.a = TL.b = null; }
-  tlRender();
-}
-new MutationObserver(() => { const b = document.getElementById('tl-box'); if (b && !b.dataset.loaded) { b.dataset.loaded = '1'; loadTimeline(b); } })
-  .observe(document.getElementById('app'), { childList: true });
 const KIND_WORD = { check: 'Check', question: 'Question', photo: 'Photo', info: 'Information' };
 function needsBox(p) {
   const open = (p.requests || []).filter(r => !r.done), done = (p.requests || []).filter(r => r.done);
@@ -2357,13 +2357,6 @@ const acts = {
     if (!(await confirmBox('Remove this photo?', 'It leaves this page. The file is kept in the photos_deleted folder inside your data folder, so it can be recovered by hand.', 'Remove photo', true))) return;
     await guard(async () => { await api('DELETE', '/api/photos/' + curPhoto().id); toast('Photo removed'); await reloadPlant(0); });
   },
-  tlpick(el) {
-    const D = TL.data; if (!D) return;
-    TL.b = el.dataset.file; if (!TL.a || TL.a === TL.b) TL.a = D.photos[0].file === TL.b && D.photos[1] ? D.photos[1].file : D.photos[0].file;
-    tlRender(); const c = document.querySelector('#tl-box .tl-cmp'); if (c) { c.scrollIntoView({ block: 'center' }); }
-    const day = f => tlShort((D.photos.find(x => x.file === f) || {}).added_at);
-    toast(`Comparing the photo from ${day(TL.a)} (left) with the one from ${day(TL.b)} (right)`);
-  },
   async movein(el) { await moveSite(el, 'Indoors'); },
   async moveout(el) { await moveSite(el, 'Outdoors'); },
   async archive(el) {
@@ -2386,6 +2379,13 @@ const acts = {
     const n = el.dataset.v;
     if (!(await confirmBox('Restore the text from version ' + n + '?', 'This saves a new version with the text from version ' + n + '. Nothing is deleted, and photos stay as they are now.', 'Restore', false))) return;
     await guard(async () => { const r = await api('POST', '/api/plants/' + enc(CUR.p.code) + '/restore/' + n); toast(r.changed ? 'Restored as version ' + r.version : 'That version already matches the current text'); await reloadPlant(); });
+  },
+  tlpick(el) {
+    const D = TL.data; if (!D) return;
+    TL.b = el.dataset.file; if (!TL.a || TL.a === TL.b) TL.a = D.photos[0].file === TL.b && D.photos[1] ? D.photos[1].file : D.photos[0].file;
+    tlRender(); const c = document.querySelector('#tl-box .tl-cmp'); if (c) { c.scrollIntoView({ block: 'center' }); }
+    const day = f => tlShort((D.photos.find(x => x.file === f) || {}).added_at);
+    toast(`Comparing the photo from ${day(TL.a)} (left) with the one from ${day(TL.b)} (right)`);
   },
   async assign(el) {
     if (!(await needName())) return;
