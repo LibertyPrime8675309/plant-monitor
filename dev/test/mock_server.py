@@ -22,4 +22,15 @@ def fake(url, tries=3):
     return {kind:{'time':ts, **{n:[round(base + 12*math.sin((t/3600 % 24)/24*6.283),1) for t in ts] for n in names}}, kind+'_units':{n:('°F' if ('temp' in n or 'dew' in n) else 'inch' if ('precip' in n or 'rain' in n) else 'u') for n in names}}
 S.http_json=fake
 S.init_db()
+# rain: dry, except about 0.6 in every fifth day (so watering reminders can be tested)
+_fake_weather = S.http_json
+def _with_rain(url, tries=3):
+    d = _fake_weather(url, tries)
+    for kind in ('hourly', 'daily'):
+        if kind not in d: continue
+        for n, vals in d[kind].items():
+            if n == 'time' or 'probability' in n or not any(w in n for w in ('precip', 'rain', 'showers', 'snowfall')): continue
+            d[kind][n] = [(0.6 if kind == 'daily' or int(t // 3600) % 24 == 15 else 0.0) if int(t // 86400) % 5 == 0 else 0.0 for t in d[kind]['time']]
+    return d
+S.http_json = _with_rain
 S.app.run(host='127.0.0.1', port=int(os.environ.get('PORT', '8080')), threaded=True)

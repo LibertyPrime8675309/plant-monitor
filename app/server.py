@@ -5,7 +5,7 @@ Edits are versioned: every save bumps the plant's page version, writes a full sn
 to plant_versions and one row per changed field to audit_log (what / before / after / who / when).
 """
 import csv, hmac, io, json, math, os, re, secrets, shutil, sqlite3, threading, time, urllib.error, urllib.parse, urllib.request, uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from urllib.parse import urlparse
 
 from flask import Flask, Response, abort, g, jsonify, request, send_from_directory
@@ -70,6 +70,8 @@ FIELDS = [
     ('pests_current', 'long', 'Pests seen now'),
     # ---- added in 1.7.0
     ('site', 'enum', 'Location'),
+    # ---- added in 1.8.0
+    ('water_every_days', 'int', 'Check for water every (days)'),
 ]
 FIELD_NAMES = [f[0] for f in FIELDS]
 FIELD_KIND = {f[0]: f[1] for f in FIELDS}
@@ -80,7 +82,8 @@ INT_RANGES = {'id_confidence': (0, 100), 'temp_ideal_low': (-60, 150), 'temp_ide
               'humidity_low': (0, 100), 'humidity_high': (0, 100),
               'temp_damage_above': (0, 200), 'par_low': (0, 4000), 'par_high': (0, 4000),
               'soil_moisture_low': (0, 100), 'soil_moisture_high': (0, 100), 'soil_temp_low': (-40, 150), 'soil_temp_high': (-40, 150),
-              'fert_from_month': (1, 12), 'fert_to_month': (1, 12), 'fert_every_days': (1, 365)}
+              'fert_from_month': (1, 12), 'fert_to_month': (1, 12), 'fert_every_days': (1, 365),
+              'water_every_days': (1, 60)}
 NUM_RANGES = {'vpd_low': (0, 6), 'vpd_high': (0, 6), 'dli_low': (0, 80), 'dli_high': (0, 80), 'soil_ph_low': (0, 14), 'soil_ph_high': (0, 14)}
 
 def now():
@@ -146,6 +149,10 @@ CREATE TABLE IF NOT EXISTS fertilizer_log(
   batch_id TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_by TEXT, updated_at TEXT);
 CREATE INDEX IF NOT EXISTS fert_plant ON fertilizer_log(plant_code, applied_on);
 CREATE INDEX IF NOT EXISTS fert_day ON fertilizer_log(applied_on);
+CREATE TABLE IF NOT EXISTS care_log(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, plant_code TEXT NOT NULL, kind TEXT NOT NULL, done_on TEXT NOT NULL, note TEXT NOT NULL DEFAULT '',
+  created_by TEXT NOT NULL, created_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS care_plant ON care_log(plant_code, kind, done_on);
 CREATE TABLE IF NOT EXISTS requests(
   id INTEGER PRIMARY KEY AUTOINCREMENT, rkey TEXT UNIQUE, plant_code TEXT, kind TEXT NOT NULL DEFAULT 'question', text TEXT NOT NULL,
   created_by TEXT NOT NULL, created_at TEXT NOT NULL, done INTEGER NOT NULL DEFAULT 0, answer TEXT, done_by TEXT, done_at TEXT);
@@ -206,6 +213,8 @@ def init_db():
         c.execute("INSERT OR REPLACE INTO settings(key,value) VALUES('reference',?)", (json.dumps(seed.get('reference', {})),))
         c.execute("INSERT OR REPLACE INTO settings(key,value) VALUES('seeded',?)", (ts,))
         c.commit()
+    c.execute("UPDATE plants SET site='Outdoors' WHERE site IS NULL OR site=''")   # before the batches too, so a batch can expect 'Outdoors'
+    c.commit()
     apply_batches(c)
     c.execute("UPDATE plants SET site='Outdoors' WHERE site IS NULL OR site=''")   # 1.7.0: every existing plant starts out as Outdoors
     c.commit()
@@ -246,6 +255,7 @@ def apply_batches(c):
                 n = c.execute("SELECT COALESCE(MAX(CAST(SUBSTR(code,3) AS INTEGER)),0)+1 FROM plants").fetchone()[0]
                 code = f'P-{n:03d}'
                 cols = ['code'] + FIELD_NAMES + ['version', 'status', 'created_at', 'created_by', 'updated_at', 'updated_by']
+                p = {**p, 'site': p.get('site') or 'Outdoors'}          # so later batches in the same start-up can expect it
                 vals = [code] + [p.get(k) for k in FIELD_NAMES] + [1, 'active', ts, who, ts, who]
                 pid = c.execute(f"INSERT INTO plants({','.join(cols)}) VALUES({','.join('?' * len(cols))})", vals).lastrowid
                 for ph in p.get('photos', []):
@@ -445,6 +455,118 @@ APP_VERSION = read_version()
 
 @app.route('/healthz')
 def healthz(): return 'ok ' + APP_VERSION
+
+# ---------------------------------------------------------------- care log and watering (added in 1.8.0)
+CARE_KINDS = {'water': 'Watered', 'check': 'Checked: still moist', 'repot': 'Repotted', 'prune': 'Pruned', 'pests': 'Treated for pests', 'note': 'Note'}
+RAIN_COUNTS_IN = 0.25          # a day with at least this much rain counts as a watering for plants in the open
+
+def water_base_days(r):
+    """How often to check a plant for water in mild weather, from its own setting or its soil moisture range."""
+    if r['water_every_days']: return int(r['water_every_days']), 'set on this page'
+    lo = r['soil_moisture_low']
+    if lo is None: return 7, 'a typical potted plant'
+    for limit, days, why in ((10, 14, 'likes to dry out completely'), (20, 10, 'likes to dry out between waterings'), (30, 7, 'likes the top of the mix to dry'),
+                             (40, 5, 'likes evenly moist mix'), (101, 4, 'likes constantly moist mix')):
+        if lo <= limit: return days, why
+    return 7, 'a typical potted plant'
+
+def water_weather(c, today):
+    """Recent highs and rain at the home place: (average high of the last 3 days or None, {date: inches of rain})."""
+    L = location(c)
+    rows = c.execute('SELECT date, data FROM weather_daily WHERE loc_id=? AND date>=? AND date<? ORDER BY date',
+                     (L['id'], (today - timedelta(days=21)).isoformat(), today.isoformat())).fetchall()
+    highs, rain = [], {}
+    for d, data in rows:
+        try: x = json.loads(data)
+        except ValueError: continue
+        if x.get('temperature_2m_max') is not None: highs.append((d, x['temperature_2m_max']))
+        pr = x.get('precipitation_sum', x.get('rain_sum'))
+        if pr is not None and pr >= RAIN_COUNTS_IN: rain[d] = round(pr, 2)
+    hs = [h for _, h in highs[-3:]]
+    return (round(sum(hs) / len(hs)) if hs else None), rain
+
+def water_factor(avg_high, inside):
+    if inside: return 1.5, 'indoors, where the mix dries more slowly'
+    if avg_high is None: return 1.0, 'no recent weather'
+    for limit, f, why in ((95, .6, 'very hot'), (85, .8, 'hot'), (70, 1.0, 'warm'), (55, 1.3, 'cool'), (-99, 1.6, 'cold')):
+        if avg_high >= limit: return f, f'{why} lately (highs about {avg_high}°F)'
+    return 1.0, ''
+
+def water_report(c, codes=None):
+    today = local_today(c)
+    avg_high, rain = water_weather(c, today)
+    q = "SELECT * FROM plants WHERE status='active'" + (' AND code IN (%s)' % ','.join('?' * len(codes)) if codes else '') + ' ORDER BY code'
+    plants = c.execute(q, codes or []).fetchall()
+    last = {}
+    for code, kind, d in c.execute("SELECT plant_code, kind, MAX(done_on) FROM care_log WHERE kind IN ('water','check') GROUP BY plant_code, kind"):
+        last.setdefault(code, {})[kind] = d
+    out = []
+    for r in plants:
+        site = r['site'] or 'Outdoors'
+        inside, open_sky = site in INSIDE_SITES, site == 'Outdoors'
+        base, base_why = water_base_days(r)
+        f, f_why = water_factor(avg_high, inside)
+        every = max(1, round(base * f))
+        lw, lc = last.get(r['code'], {}).get('water'), last.get(r['code'], {}).get('check')
+        lr = max((d for d in rain if open_sky and (not lw or d > lw)), default=None)
+        start = max(x for x in (lw, lr) if x) if (lw or lr) else None
+        st = {'code': r['code'], 'every': every, 'base': base, 'why': base_why, 'weather': f_why, 'site': site,
+              'last_water': lw, 'last_rain': lr, 'rain_in': rain.get(lr) if lr else None, 'last_check': lc}
+        if not start:
+            st.update(state='unknown', next=None, overdue=None)
+        else:
+            nxt = date.fromisoformat(start) + timedelta(days=every)
+            if lc and lc >= start:                                   # checked and still moist: look again in a third of the gap
+                nxt = max(nxt, date.fromisoformat(lc) + timedelta(days=max(1, round(every / 3))))
+            od = (today - nxt).days
+            st.update(next=nxt.isoformat(), overdue=od, state='due' if od >= 0 else 'soon' if od == -1 else 'ok')
+        out.append(st)
+    return {'today': today.isoformat(), 'avg_high': avg_high, 'rain': rain, 'rain_counts_in': RAIN_COUNTS_IN, 'plants': out}
+
+@app.route('/api/water')
+def water_api():
+    return jsonify(water_report(db()))
+
+@app.route('/api/care', methods=['GET', 'POST'])
+def care():
+    c = db()
+    if request.method == 'GET':
+        q, a = 'SELECT * FROM care_log WHERE 1=1', []
+        if request.args.get('plant'): q += ' AND plant_code=?'; a.append(request.args['plant'])
+        n = max(1, min(int(request.args.get('n', 200)), 2000))
+        return jsonify([dict(x) for x in c.execute(q + ' ORDER BY done_on DESC, id DESC LIMIT ?', a + [n])])
+    b = request.get_json(silent=True) or {}
+    kind = b.get('kind')
+    if kind not in CARE_KINDS: abort(400, 'kind must be one of: ' + ', '.join(CARE_KINDS))
+    codes = b.get('plants') or ([b['plant']] if b.get('plant') else [])
+    if not isinstance(codes, list) or not codes: abort(400, 'Choose at least one plant')
+    codes = list(dict.fromkeys(str(x) for x in codes))[:300]
+    day = str(b.get('done_on') or local_today(c).isoformat())
+    try: date.fromisoformat(day)
+    except ValueError: abort(400, 'done_on must look like 2026-10-23')
+    if day > local_today(c).isoformat(): abort(400, 'That date is in the future')
+    note = str(b.get('note') or '').strip()[:500]
+    if kind == 'note' and not note: abort(400, 'Write the note')
+    who, ids = editor(), []
+    for code in codes:
+        r = plant_row(c, code)
+        ids.append(c.execute('INSERT INTO care_log(plant_code,kind,done_on,note,created_by,created_at) VALUES(?,?,?,?,?,?)',
+                             (r['code'], kind, day, note, who, now())).lastrowid)
+        audit_only(c, 'care', 'care_log', None, f'{CARE_KINDS[kind]} {day}' + (f': {note}' if note else ''), who, CARE_KINDS[kind] + (f': {note}' if note else ''), r['id'], r['code'])
+    c.commit()
+    return jsonify(ids=ids, water=water_report(c, codes)['plants']), 201
+
+@app.route('/api/care/<int:i>', methods=['DELETE'])
+def care_one(i):
+    c = db()
+    old = c.execute('SELECT * FROM care_log WHERE id=?', (i,)).fetchone()
+    if not old: abort(404, 'entry not found')
+    c.execute('DELETE FROM care_log WHERE id=?', (i,))
+    r = c.execute('SELECT id FROM plants WHERE code=?', (old['plant_code'],)).fetchone()
+    audit_only(c, 'care', 'care_log', f"{CARE_KINDS.get(old['kind'], old['kind'])} {old['done_on']}", None, editor(),
+               'Removed: ' + CARE_KINDS.get(old['kind'], old['kind']) + ' on ' + old['done_on'], r['id'] if r else None, old['plant_code'])
+    c.commit()
+    return jsonify(ok=True)
 
 @app.route('/api/version')
 def version(): return jsonify(version=APP_VERSION)
