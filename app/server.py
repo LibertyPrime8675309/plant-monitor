@@ -2115,6 +2115,89 @@ def plant_day(code):
 def index():
     return send_from_directory(app.static_folder, 'index.html')
 
+# ---------------------------------------------------------------- frost alert (added in 1.8.0)
+FROST_MARGIN = 3          # °F: forecasts often miss a clear, still night by a few degrees, so warn this far above a plant's damage point
+FROST_LEVELS = {'danger': 3, 'damage': 2, 'watch': 1}
+
+def frost_done(c):
+    try: return json.loads(setting(c, 'frost_done', '{}') or '{}')
+    except ValueError: return {}
+
+def frost_report(c):
+    """Nights in the home forecast that would hurt plants that are outside (Outdoors or Covered porch), plant by plant."""
+    L = location(c)
+    fc = loc_json(c, L['id'], 'forecast')
+    today = local_today(c).isoformat()
+    days = [d for d in (fc.get('days') or []) if d.get('date', '') >= today and d.get('low') is not None][:7]
+    done = frost_done(c)
+    plants = c.execute("SELECT * FROM plants WHERE status='active' AND temp_damage_below IS NOT NULL ORDER BY code").fetchall()
+    outdoor = [r for r in plants if (r['site'] or 'Outdoors') not in INSIDE_SITES]
+    photo = lambda pid: (c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC,id LIMIT 1', (pid,)).fetchone() or [None])[0]
+    nights, worst = [], None
+    for d in days:
+        low, at = d['low'], []
+        for r in outdoor:
+            dmg, leth = r['temp_damage_below'], r['temp_lethal_below']
+            if leth is not None and low < leth: lv = 'danger'
+            elif low < dmg: lv = 'damage'
+            elif low < dmg + FROST_MARGIN: lv = 'watch'
+            else: continue
+            at.append({'code': r['code'], 'name': r['common_name'], 'photo': photo(r['id']), 'damage': dmg, 'lethal': leth,
+                       'plan': r['winter_plan'], 'site': r['site'] or 'Outdoors', 'level': lv, 'done': done.get(d['date'], {}).get(r['code'])})
+        at.sort(key=lambda x: (-FROST_LEVELS[x['level']], -(x['damage'] or 0), x['code']))
+        lv = max((x['level'] for x in at), key=lambda v: FROST_LEVELS[v], default=None)
+        n = {'date': d['date'], 'low': low, 'high': d.get('high'), 'hours': d.get('hours'), 'level': lv, 'plants': at,
+             'counts': {k: sum(1 for x in at if x['level'] == k) for k in FROST_LEVELS}}
+        nights.append(n)
+        if lv and (worst is None or FROST_LEVELS[lv] > FROST_LEVELS[worst['level']]
+                   or (lv == worst['level'] and low < worst['low'])):
+            worst = n                                     # the most serious night; among equals, the coldest
+    first = next((n for n in nights if n['level']), None)
+    # the same, plant by plant: every cold night for each plant, the next one (what to act on) and the coldest
+    by = {}
+    for n in nights:
+        for x in n['plants']:
+            q = by.setdefault(x['code'], {k: x[k] for k in ('code', 'name', 'photo', 'damage', 'lethal', 'plan', 'site')} | {'nights': []})
+            q['nights'].append({'date': n['date'], 'low': n['low'], 'level': x['level']})
+    plants_out = []
+    for q in by.values():
+        q['next'] = q['nights'][0]
+        q['worst'] = max(q['nights'], key=lambda z: (FROST_LEVELS[z['level']], -z['low']))
+        q['level'] = q['worst']['level']
+        q['done'] = done.get(q['next']['date'], {}).get(q['code'])
+        plants_out.append(q)
+    plants_out.sort(key=lambda q: (-FROST_LEVELS[q['level']], q['next']['date'], -(q['damage'] or 0), q['code']))
+    return {'place': L['name'], 'fetched_at': fc.get('fetched_at'), 'margin': FROST_MARGIN, 'today': today, 'nights': nights, 'plants': plants_out,
+            'outdoor': len(outdoor), 'level': worst['level'] if worst else None,
+            'worst': {k: worst[k] for k in ('date', 'low', 'level', 'counts')} if worst else None,
+            'first': {k: first[k] for k in ('date', 'low', 'level', 'counts')} if first else None}
+
+@app.route('/api/frost')
+def frost_api():
+    return jsonify(frost_report(db()))
+
+@app.route('/api/frost/done', methods=['POST'])
+def frost_mark():
+    """Tick a plant off the cold-night checklist ("covered") for one night, or untick it."""
+    c = db()
+    b = request.get_json(silent=True) or {}
+    date, code, what = str(b.get('date', '')), str(b.get('code', '')), b.get('what')
+    if not re.match(r'^\d{4}-\d{2}-\d{2}$', date): abort(400, 'date must look like 2026-11-03')
+    r = plant_row(c, code)
+    if what not in ('covered', None): abort(400, "what must be 'covered' or empty")
+    done = frost_done(c)
+    keep = local_today(c).isoformat()
+    done = {k: v for k, v in done.items() if k >= keep}           # forget nights that have passed
+    night = done.setdefault(date, {})
+    if what: night[r['code']] = {'what': what, 'by': editor(), 'at': now()}
+    else: night.pop(r['code'], None)
+    if not night: done.pop(date, None)
+    set_setting(c, 'frost_done', json.dumps(done))
+    audit_only(c, 'frost', 'frost', None, what or 'undone', editor(),
+               ('Covered for the cold night of %s' % date) if what else ('Cold-night tick removed for %s' % date), r['id'], r['code'])
+    c.commit()
+    return jsonify(frost_report(c))
+
 # ---------------------------------------------------------------- backups
 import zipfile
 BACKUP_RE = re.compile(r'^plantdb-backup-\d{8}-\d{6}-(manual|auto|update)(-photos)?\.zip$')
