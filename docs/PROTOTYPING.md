@@ -20,5 +20,12 @@ This repository is set up so any Claude session can pick up the project and try 
 6. **Trying it on his PC** before merging: only if Ethan asks. Build a zip from the branch with `tools/make-release.py` and put "PROTOTYPE" at the top of its CHANGELOG entry. The updater installs it like any release and makes a backup first. Remind him that going back means restoring that backup (Backups page) and installing the previous zip with `-Force`. Screenshots are usually enough.
 7. **Merge** only when Ethan says so. The release (version bump, CHANGELOG, zip) is built from `main` after merging.
 
+## Keeping prototypes mergeable
+Several prototypes are usually open at once, and Ethan may merge them in any order. Each one should merge cleanly with `main` and with every other open `proto/` branch:
+- Add new code in its own block rather than editing shared code: a new section in `server.py`, a block of functions in `app.js`, and a CSS block headed with the version.
+- Put each new block somewhere different from the other open branches. Two branches that both add code right after the same function will conflict, even though neither changes it. `git diff main proto/<other> | grep "^@@"` shows where the others added theirs.
+- Before opening the pull request, merge every open `proto/` branch into a throwaway local branch, run all the focused checks and the smoke test there, then delete the throwaway branch.
+- Prefer a hook that does not need changes elsewhere, such as a `MutationObserver` on `#app` that fills a placeholder `<div>` when a page draws, over adding lines to `route()` or `viewPlant()`.
+
 ## Ideas list
 Add ideas to `docs/IDEAS.md` with a line each; a prototype session can take the top one.
