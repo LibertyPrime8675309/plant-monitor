@@ -730,3 +730,29 @@ a.pn:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 .fz-lv{display:inline-block;font-weight:700;border:2px solid currentColor;border-radius:4px;padding:0 .35rem;margin-right:.3rem;font-size:.9em}
 .fz-danger{color:var(--critical,var(--madder))}.fz-damage{color:var(--madder)}.fz-watch{color:var(--ink-2)}
 @media (max-width:640px){.fz-row{grid-template-columns:56px minmax(0,1fr)}.fz-row img,.fz-nophoto{width:56px;height:56px}.fz-acts{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}.fz-acts .btn{flex:1 1 9rem}}
+
+/* ---- 1.9.0: getting plants ready to come inside ---- */
+.pr-status{margin:.4rem 0 1rem}
+fieldset.pr-traits{border:2px solid var(--line);border-radius:8px;padding:.6rem 1rem .4rem;margin:0 0 1rem;min-width:0}
+fieldset.pr-traits>legend{font:inherit;font-weight:700;padding:0 .4rem}
+fieldset.pr-pests{border:0;margin:.2rem 0 .6rem;padding:0;min-width:0}
+fieldset.pr-pests>legend{font:inherit;font-weight:700;padding:0;margin-bottom:.2rem}
+.pr-checks{display:flex;flex-wrap:wrap;gap:.4rem 1.3rem}
+.pr-checks .chk{display:inline-flex;align-items:center;gap:.5rem;font-weight:400}
+.pm-list{list-style:none;padding:0;margin:.4rem 0 1rem}
+.pm{border:2px solid var(--line);border-radius:8px;padding:.7rem .9rem;margin:0 0 .8rem;background:var(--sheet)}
+.pm-head{display:flex;flex-wrap:wrap;gap:.3rem 1rem;align-items:center;justify-content:space-between}
+.pm-title{margin:0;font-size:1.1rem;overflow-wrap:anywhere}
+.pm-n{color:var(--ink-2);margin-right:.2rem}
+.pm-why,.pm-done{margin:.35rem 0}
+.pm-steps>summary{cursor:pointer;font-weight:700;padding:.35rem 0}
+.pm-steps ol{margin:.3rem 0 .6rem;padding-left:1.5rem}
+.pm-steps li{margin:.25rem 0}
+.pm-acts{margin:.4rem 0 0}
+.pm-rest>summary,.pr-watch>summary{cursor:pointer;font-weight:700;padding:.4rem 0}
+.pr-watch ul{margin:.2rem 0 .6rem;padding-left:1.3rem}
+.pm-ref{border-bottom:1px solid var(--line);padding:.2rem 0}
+.pr-sub{color:var(--ink-2)}
+.pr-badge{display:inline-flex;align-items:center;gap:.35rem;font-weight:700;font-size:.95rem;border:2px solid currentColor;border-radius:999px;padding:.05rem .7rem;white-space:nowrap}
+.pr-best{color:var(--moss)} .pr-good{color:var(--cyan)} .pr-use-with-care{color:var(--ochre)} .pr-not-needed{color:var(--ink-2)}
+.pr-not-for-this-plant{background:var(--madder);border-color:var(--madder);color:var(--on-bad)}
