@@ -1962,6 +1962,73 @@ async function condDialog() {
   await guard(async () => { COND = await api('PUT', '/api/current', body); toast('Current conditions saved'); await route(); });
 }
 
+// ---------- photo check before adding photos (added in 1.8.0) ----------
+// Each photo is checked in the browser before it is uploaded. The limits were set on Ethan's own photos in
+// dev/photos-raw: none of those is flagged, while the same photos blurred, darkened or washed out are.
+const PCHK = { dark: 45, black: 0.5, bright: 200, white: 0.2, blur: 35, small: 640 };
+async function photoStats(file) {
+  let bmp;
+  try { bmp = await createImageBitmap(file); } catch (e) { return null; }      // a format this browser cannot read: no check
+  const s = Math.min(1, 512 / Math.max(bmp.width, bmp.height)), w = Math.max(3, Math.round(bmp.width * s)), h = Math.max(3, Math.round(bmp.height * s));
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(bmp, 0, 0, w, h);
+  const d = cx.getImageData(0, 0, w, h).data, L = new Float32Array(w * h);
+  let sum = 0, black = 0, white = 0;
+  for (let i = 0, p = 0; p < L.length; i += 4, p++) {
+    const v = 0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+    L[p] = v; sum += v; if (v < 16) black++; if (v >= 250) white++;
+  }
+  // Sharpness: how much the brightness changes between neighbouring pixels, in a 4 x 4 grid of squares. The third
+  // sharpest square counts, so a blurred background behind a sharp plant does not make the photo "blurry".
+  const tiles = [];
+  for (let ty = 0; ty < 4; ty++) for (let tx = 0; tx < 4; tx++) {
+    const y0 = Math.max(1, Math.floor(ty * h / 4)), y1 = Math.min(h - 1, Math.floor((ty + 1) * h / 4));
+    const x0 = Math.max(1, Math.floor(tx * w / 4)), x1 = Math.min(w - 1, Math.floor((tx + 1) * w / 4));
+    let n = 0, m = 0, m2 = 0;
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) { const p = y * w + x, v = L[p - w] + L[p + w] + L[p - 1] + L[p + 1] - 4 * L[p]; n++; m += v; m2 += v * v; }
+    tiles.push(n ? m2 / n - (m / n) ** 2 : 0);
+  }
+  tiles.sort((a, b) => b - a);
+  return { w: bmp.width, h: bmp.height, mean: sum / L.length, black: black / L.length, white: white / L.length, sharp: tiles[2], bmp };
+}
+function photoProblems(s) {
+  const p = [];
+  if (s.mean < PCHK.dark || s.black > PCHK.black) p.push(['Too dark', 'Turn on a light or take the plant into daylight.']);
+  else if (s.mean > PCHK.bright || s.white > PCHK.white) p.push(['Too bright (washed out)', 'Keep strong sun off the leaves and out of the background; shade the plant or stand with the sun behind you.']);
+  if (s.sharp < PCHK.blur) p.push(['Blurry', 'Hold the phone still, tap the screen on the plant so it focuses, and wait a moment before taking the picture.']);
+  if (Math.max(s.w, s.h) < PCHK.small) p.push(['Very small picture', `Only ${s.w} by ${s.h} pixels. Send the photo from the camera at full size, not a screenshot or a thumbnail.`]);
+  return p;
+}
+async function photoCheck(files, input) {
+  // Returns the files to upload, or null to add none. Photos that pass are added without asking.
+  if (!window.createImageBitmap) return files;
+  const n = files.length, checked = [];
+  for (const f of files) { let s = null; try { s = await photoStats(f); } catch (e) { s = null; } checked.push({ f, s, probs: s ? photoProblems(s) : [] }); }
+  const done = () => checked.forEach(c => c.s && c.s.bmp.close && c.s.bmp.close());
+  const bad = checked.filter(c => c.probs.length), good = n - bad.length;
+  if (!bad.length) { done(); return files; }
+  const pr = modal(html`<form method="dialog" class="pchk"><h2>${n === 1 ? 'Check this photo' : `Check ${bad.length} of these ${n} photos`}</h2>
+    <p>${bad.length === 1 ? 'It' : 'They'} may be hard to use for identifying the plant or seeing how it is doing.</p>
+    <ul class="pchk-list">${bad.map((c, i) => html`<li><canvas class="pchk-thumb" data-i="${i}" width="120" height="120" role="img" aria-label="${'Preview of ' + c.f.name}"></canvas>
+      <div><p class="pchk-name">${c.f.name}</p><ul>${c.probs.map(p => html`<li><strong>${p[0]}.</strong> ${p[1]}</li>`)}</ul></div></li>`)}</ul>
+    <div class="row">
+      ${input ? html`<button class="btn" value="again" autofocus>Take ${bad.length === 1 ? 'a new one' : 'new ones'}</button>` : ''}
+      ${good ? html`<button class="btn ghost" value="good">Add only the ${good} good one${good === 1 ? '' : 's'}</button>` : ''}
+      <button class="btn ghost" value="all" ${input ? '' : raw('autofocus')}>Add ${n === 1 ? 'it' : n === 2 ? 'both' : `all ${n}`} anyway</button>
+      <button class="btn ghost" value="cancel">Cancel</button></div></form>`);
+  document.querySelectorAll('#dlg canvas.pchk-thumb').forEach(cv => {        // previews are drawn, so the page's security rules need no change
+    const box = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    if (box.width) { cv.width = Math.round(box.width * dpr); cv.height = Math.round(box.height * dpr); }
+    const b = bad[+cv.dataset.i].s.bmp, k = Math.min(cv.width / b.width, cv.height / b.height), w = b.width * k, h = b.height * k;
+    cv.getContext('2d').drawImage(b, (cv.width - w) / 2, (cv.height - h) / 2, w, h);
+  });
+  const r = await pr; done();
+  if (r === 'all') return files;
+  if (r === 'good') return checked.filter(c => !c.probs.length).map(c => c.f);
+  if (r === 'again' && input) { input.value = ''; input.click(); }
+  return null;
+}
+window.PlantPhotoCheck = { stats: photoStats, problems: photoProblems };     // for dev/test/photocheck_check.py
 // ---------- photos page ----------
 let TODO = [];
 async function viewPhotos() {
@@ -2344,14 +2411,16 @@ const changeActs = {
   async addphotos(el) {
     if (!el.files.length) return;
     if (!(await needName())) { el.value = ''; return; }
-    const fd = new FormData(); [...el.files].forEach(f => fd.append('files', f));
-    toast('Uploading ' + el.files.length + ' photo(s)');
+    const files = await photoCheck([...el.files], el); if (!files) { el.value = ''; return; }
+    const fd = new FormData(); files.forEach(f => fd.append('files', f));
+    toast('Uploading ' + files.length + ' photo(s)');
     await guard(async () => { await api('POST', '/api/plants/' + enc(CUR.p.code) + '/photos', undefined, fd); toast('Photos added'); await reloadPlant(9999); });
   },
   async addloose(el) {
     if (!el.files.length) return;
     if (!(await needName())) { el.value = ''; return; }
-    const fd = new FormData(); [...el.files].forEach(f => fd.append('files', f));
+    const files = await photoCheck([...el.files], el); if (!files) { el.value = ''; return; }
+    const fd = new FormData(); files.forEach(f => fd.append('files', f));
     await guard(async () => { await api('POST', '/api/photos', undefined, fd); toast('Photos added'); route(); });
   },
   async tododone(el) { if (!(await needName())) { el.checked = !el.checked; return; } await guard(async () => { await api('PATCH', '/api/to-photograph/' + el.dataset.id, { done: el.checked }); route(); }); },
