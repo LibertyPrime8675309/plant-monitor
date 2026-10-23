@@ -1,5 +1,7 @@
 """Run the app with a fake Open-Meteo (no internet needed), on http://127.0.0.1:8080.
-Usage: DATA_DIR=dev/tmp/data python3 dev/test/mock_server.py   (an empty DATA_DIR gets a fresh install with all plants)"""
+Usage: DATA_DIR=dev/tmp/data python3 dev/test/mock_server.py   (an empty DATA_DIR gets a fresh install with all plants)
+Cold weather for testing frost features: MOCK_BASE_F=40 (nights around 22-34°F).
+The forecast fills in after an update: POST /api/weather/refresh with an X-Editor header (or press Update now on the Weather page)."""
 import math
 import os, sys, time, urllib.parse
 os.environ['PLANTDB_WEATHER']='0'
@@ -18,8 +20,9 @@ def fake(url, tries=3):
         t=datetime.now(); a=(t-timedelta(days=int(q['past_days']))).replace(hour=0,minute=0,second=0,microsecond=0); b=a+timedelta(days=int(q['past_days'])+int(q['forecast_days'])-1)
     a=a.replace(tzinfo=timezone(timedelta(hours=-5))); ts=[]; d=a; step=timedelta(hours=1) if kind=='hourly' else timedelta(days=1)
     while d.date()<=b.date(): ts.append(int(d.timestamp())); d+=step
-    base = 30.0 if float(q['latitude'])>40 else 65.0
-    return {kind:{'time':ts, **{n:[round(base + 12*math.sin((t/3600 % 24)/24*6.283),1) for t in ts] for n in names}}, kind+'_units':{n:('°F' if ('temp' in n or 'dew' in n) else 'inch' if ('precip' in n or 'rain' in n) else 'u') for n in names}}
+    # MOCK_BASE_F sets the average temperature for places south of 40°N (default 65); each day also drifts up or down a few degrees
+    base = 30.0 if float(q['latitude'])>40 else float(os.environ.get('MOCK_BASE_F', '65'))
+    return {kind:{'time':ts, **{n:[round(base + 12*math.sin((t/3600 % 24)/24*6.283) + 6*math.cos(t/86400*1.3),1) for t in ts] for n in names}}, kind+'_units':{n:('°F' if ('temp' in n or 'dew' in n) else 'inch' if ('precip' in n or 'rain' in n) else 'u') for n in names}}
 S.http_json=fake
 S.init_db()
 S.app.run(host='127.0.0.1', port=int(os.environ.get('PORT', '8080')), threaded=True)

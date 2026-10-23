@@ -137,11 +137,11 @@ async function route() {
   const my = ++token;
   const h = location.hash.replace(/^#/, '') || '/';
   const parts = h.split('/').filter(Boolean);
-  const nav = parts[0] === 'winter' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' ? 'history' : parts[0] === 'backups' ? 'backups' : 'plants';
+  const nav = parts[0] === 'winter' || parts[0] === 'frost' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' ? 'history' : parts[0] === 'backups' ? 'backups' : 'plants';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let view;
-    await loadCodes();
+    await Promise.all([loadCodes(), loadFrost()]);
     if (!META) { META = await api('GET', '/api/meta'); const v = document.getElementById('app-ver'); if (v && META.version) v.textContent = 'v' + META.version; }
     if (parts[0] === 'plant' && parts[1] && parts[2] === 'edit') view = await viewEdit(decodeURIComponent(parts[1]));
     else if (parts[0] === 'plant' && parts[1]) view = await viewPlant(decodeURIComponent(parts[1]));
@@ -153,9 +153,11 @@ async function route() {
     else if (parts[0] === 'labels') view = await viewLabels();
     else if (parts[0] === 'history') view = await viewHistory();
     else if (parts[0] === 'backups') view = await viewBackups();
+    else if (parts[0] === 'frost') view = await viewFrost();
     else view = await viewGallery();
     if (my !== token) return;
     app.innerHTML = rend(view.html);
+    if (parts[0] !== 'frost' && parts[0] !== 'plant') app.insertAdjacentHTML('afterbegin', rend(frostBanner()));   // plant pages have their own note
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
     if (view.after) view.after();
     buildSideNav(); navLayout(); setTimeout(() => { buildSideNav(); navLayout(); }, 1200);
@@ -604,7 +606,7 @@ async function viewPlant(code) {
               <button class="btn ghost" type="button" data-act="archive" data-to="${archived ? '0' : '1'}">${archived ? 'Move back to the main list' : 'Archive'}</button></div></div>
         </div>
 
-        ${needsBox(p)}
+        ${frostNote(p)}${needsBox(p)}
         ${condCard(p, cur)}${adviceBlock(p, cur)}
 
         <section class="blk" id="ident"><h2>Plant identification</h2>
@@ -663,12 +665,22 @@ async function moveSite(el, site) {
   const code = el.dataset.code, y = window.scrollY;
   await guard(async () => {
     await api('POST', '/api/plants/' + enc(code) + '/site', { site });
-    toast(el.dataset.name + (site === 'Indoors' ? ' moved indoors' : ' moved back outside'));
+    toast(el.dataset.name + (site === 'Indoors' ? ' moved indoors' : ' moved back outside')); FROST_AT = 0;
     await route(); window.scrollTo(0, y);
     const back = document.querySelector(`[data-act="${site === 'Indoors' ? 'moveout' : 'movein'}"][data-code="${code}"]`);
     const next = document.querySelector('.winter-list [data-act="movein"]');
     (next || back || document.querySelector('main h1')).focus({ preventScroll: true });
   });
+}
+async function fzMark(el, what) {
+  if (!(await needName())) return;
+  const y = window.scrollY, code = el.dataset.code;
+  await guard(async () => { await api('POST', '/api/frost/done', { date: el.dataset.date, code, what }); toast(what ? 'Marked as covered' : 'Tick removed'); await fzReload(y, code); });
+}
+async function fzReload(y, code) {
+  await loadFrost(true); await loadCodes(true); await route(); window.scrollTo(0, y);
+  const f = (code && document.querySelector(`.fz-row[data-code="${code}"] button`)) || document.querySelector('.fz-row:not(.is-done) button') || document.querySelector('main h1');
+  if (f) f.focus({ preventScroll: true });
 }
 function sitePicker(p) {
   const v = p.site || 'Outdoors';
@@ -1889,13 +1901,114 @@ function wtControls() {
     <datalist id="wtper-list">${[25, 50, 100, 200, 500, 1000].map(n => html`<option value="${n}"></option>`)}</datalist></div>`;
 }
 
+// ---------- frost alert and cold-night checklist (added in 1.8.0) ----------
+let FROST = null, FROST_AT = 0;
+async function loadFrost(force) {
+  if (!force && FROST && Date.now() - FROST_AT < 5 * 60000) return FROST;
+  try { FROST = await api('GET', '/api/frost'); FROST_AT = Date.now(); } catch (e) { /* no banner if it cannot be worked out */ }
+  return FROST;
+}
+const FZ_WORD = { danger: 'Could die', damage: 'Damaged', watch: 'Close call' };
+// a night's low is usually reached just before dawn, so the "night" of a date is the evening before it
+function fzDay(d, lower) {
+  if (!FROST) return d;
+  const name = new Date(d + 'T12:00:00').toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
+  const w = d === FROST.today ? 'Today' : d === addDays(FROST.today, 1) ? 'Tomorrow' : '';
+  return w ? (lower ? w.toLowerCase() : w) + ' (' + name + ')' : name;
+}
+function fzActBy(d) {
+  if (!FROST) return '';
+  if (d <= FROST.today) return 'before dark today';
+  if (d === addDays(FROST.today, 1)) return 'this evening';
+  return new Date(addDays(d, -1) + 'T12:00:00').toLocaleDateString([], { weekday: 'long' }) + ' evening';
+}
+function fzSig() { const F = FROST; return F && F.first ? [F.first.date, F.first.low, F.worst.date, F.worst.low, F.worst.counts.danger, F.worst.counts.damage, F.worst.counts.watch].join('|') : ''; }
+function frostBanner() {
+  const F = FROST; if (!F || !F.first) return '';
+  try { if (localStorage.getItem('plantdb.frosthide') === fzSig()) return ''; } catch (e) { /* show it */ }
+  const W = F.worst, real = W.level !== 'watch', c = W.counts, sameNight = F.first.date === W.date;
+  const parts = [c.danger ? `${c.danger} could die` : '', c.damage ? `${c.damage} would be damaged` : '', c.watch ? `${c.watch} ${c.watch === 1 ? 'is a close call' : 'are close calls'}` : ''].filter(Boolean);
+  const list = parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0];
+  return html`<section class="fz-banner ${real ? 'bad' : ''} noprint" aria-labelledby="fz-h">
+    <p class="fz-title" id="fz-h">${!real ? 'Cold night ahead' : W.low <= 36 ? 'Frost warning' : 'Cold warning'}: down to ${W.low}°F ${fzDay(W.date, true)}</p>
+    <p>Of your ${F.outdoor} plants outside, ${list} that night.${sameNight ? '' : ` The first cold night is ${fzDay(F.first.date, true)}, at ${F.first.low}°F.`}
+      Bring them in or cover them <strong>${fzActBy(F.first.date)}</strong>.</p>
+    <p class="row"><a class="btn" href="#/frost">Open the cold-night checklist</a>
+      <button class="btn ghost" type="button" data-act="frosthide">Hide until the forecast changes</button></p></section>`;
+}
+const FZ_DO = {
+  'Move indoors': 'Bring it inside: a heated room, or the garage for a night or two.',
+  'Protect outside': 'Cover it down to the ground with frost cloth or an old sheet (not plastic touching the leaves), or move it against the house or onto the porch.',
+  'Hardy outside': 'Usually fine outside, but this is below its damage point: cover it, or move the pot against the house.',
+  'Seasonal die-back': 'The top growth may die back. Mulch or wrap the pot, or move it to shelter to protect the roots.',
+  'Annual': 'An annual: the cold will likely end its season. Bring it in only if you want to keep it going.',
+};
+const fzNight = z => `${fzDay(z.date)}, ${z.low}°F (${FZ_WORD[z.level].toLowerCase()})`;
+function fzRow(p) {
+  const d = p.done, many = p.nights.length > 1;
+  return html`<li class="fz-row ${d ? 'is-done' : ''}" data-code="${p.code}">
+    ${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy" width="72" height="72">` : html`<span class="fz-nophoto" aria-hidden="true"></span>`}
+    <div class="fz-txt"><a class="nm" href="#/plant/${enc(p.code)}">${p.name}</a> <span class="muted">${p.code}</span>
+      <div><span class="fz-lv fz-${p.level}">${FZ_WORD[p.level]}</span> Damaged below ${p.damage}°F${p.lethal != null ? `, dies below ${p.lethal}°F` : ''}.${p.site === 'Covered porch' ? ' On the covered porch, which helps a little but not in a freeze.' : ''}</div>
+      <div>Next cold night: ${fzNight(p.next)}.${many && p.worst.date !== p.next.date ? ` Coldest: ${fzNight(p.worst)}.` : ''}${many ? ` Cold on ${p.nights.length} of the next 7 nights.` : ''}</div>
+      <div class="hint">${FZ_DO[p.plan] || FZ_DO['Protect outside']}</div>
+      ${d ? html`<div class="fz-done">✔ Covered for ${fzDay(p.next.date, true)}, marked by ${d.by} ${when(d.at)}. It comes back on the list for the next cold night.</div>` : ''}</div>
+    <div class="fz-acts">${d ? html`<button class="btn small ghost" type="button" data-act="frostundo" data-code="${p.code}" data-date="${p.next.date}">Undo "Covered"</button>`
+      : html`<button class="btn small" type="button" data-act="frostin" data-code="${p.code}" data-name="${p.name}">Moved indoors</button>
+             <button class="btn small ghost" type="button" data-act="frostcover" data-code="${p.code}" data-date="${p.next.date}">Covered for ${p.next.date === FROST.today ? 'today' : p.next.date === addDays(FROST.today, 1) ? 'tonight' : new Date(addDays(p.next.date, -1) + 'T12:00:00').toLocaleDateString([], { weekday: 'long' }) + ' night'}</button>`}</div></li>`;
+}
+const FZ_GROUPS = [
+  ['in', 'Bring inside', 'Plants whose winter plan is Move indoors.', p => p.plan === 'Move indoors'],
+  ['cover', 'Cover or move to shelter', 'Plants that stay outside but would be hurt.', p => p.plan !== 'Move indoors' && p.level !== 'watch'],
+  ['watch', 'Close calls', 'Within 3°F of their damage point. Worth covering if the night is clear and still.', p => p.plan !== 'Move indoors' && p.level === 'watch'],
+];
+async function viewFrost() {
+  const F = await loadFrost(true);
+  if (!F) throw new Error('The forecast could not be read.');
+  const ticked = n => (F.plants || []).filter(p => p.done && p.next.date === n.date).length;
+  return {
+    title: 'Cold-night checklist',
+    html: html`<p class="crumb"><a href="#/winter">Winter plan</a></p><h1>Cold-night checklist</h1>
+    <p class="muted">Plants that are outside and would be hurt by a night in the 7-day forecast for ${F.place}. "Could die" and "Damaged" use each plant's own temperatures;
+      "Close call" means within ${F.margin}°F of its damage point, because forecasts often miss a clear, still night by a few degrees.
+      Plants set to Indoors or Garage or shed are left out, so a plant leaves this list when you press Moved indoors.</p>
+    ${!F.nights.length ? html`<p class="notice">No forecast yet. It is fetched a few seconds after the app starts, then every hour.</p>` : ''}
+    ${F.nights.length && !F.plants.length ? html`<p class="notice ok">No cold nights in the next 7 days for any plant that is outside.</p>` : ''}
+    ${F.nights.length ? html`<section class="blk"><h2>The next 7 nights</h2><div class="tbl-wrap"><table class="tbl fz-tbl"><caption class="sr">Plants at risk each night</caption>
+      <thead><tr><th>Day</th><th class="num">Low</th><th class="num">Could die</th><th class="num">Damaged</th><th class="num">Close calls</th><th class="num">Covered</th></tr></thead><tbody>
+      ${F.nights.map(n => html`<tr><th scope="row">${fzDay(n.date)}</th><td class="num">${n.low}°F${n.low <= 32 ? ' (freeze)' : ''}</td>
+        <td class="num">${n.counts.danger || '–'}</td><td class="num">${n.counts.damage || '–'}</td><td class="num">${n.counts.watch || '–'}</td><td class="num">${n.level ? ticked(n) : '–'}</td></tr>`)}
+      </tbody></table></div><p class="hint">Forecast updated ${F.fetched_at ? when(F.fetched_at) : 'not yet'}. The low is usually reached just before dawn, so act the evening before.</p></section>` : ''}
+    ${FZ_GROUPS.map(([id, title, sub, test]) => { const g = (F.plants || []).filter(test); if (!g.length) return '';
+      const open = g.filter(p => !p.done);
+      return html`<section class="blk" id="fz-${id}"><h2>${title} (${g.length})</h2><p class="muted">${sub} Most urgent first.</p>
+        ${open.length > 1 ? html`<p>${id === 'in' ? html`<button class="btn small ghost" type="button" data-act="frostallin" data-group="${id}">Moved all ${open.length} indoors</button>`
+          : html`<button class="btn small ghost" type="button" data-act="frostallcover" data-group="${id}">Mark all ${open.length} as covered for their next cold night</button>`}</p>` : ''}
+        <ul class="fz-list">${g.map(fzRow)}</ul></section>`; })}
+    <section class="blk"><h2>Protecting plants on a cold night</h2><ul>
+      <li>Move pots against the house wall or onto the porch: they lose less heat there than in the open.</li>
+      <li>Water dry pots during the day before: moist soil holds more heat than dry soil.</li>
+      <li>Cover plants down to the ground with frost cloth, old sheets or cardboard boxes, so the ground's warmth is trapped. Plastic touching the leaves makes damage worse.</li>
+      <li>Take the covers off the next morning once it is above freezing, so the plants get light.</li>
+      <li>Group pots together; small pots freeze through faster than big ones.</li></ul></section>`,
+  };
+}
+function frostNote(p) {
+  const x = FROST && (FROST.plants || []).find(q => q.code === p.code);
+  if (!x || x.level === 'watch') return '';
+  const w = x.worst;
+  return html`<p class="notice bad noprint fz-note"><strong>Frost risk:</strong> ${fzDay(w.date)} is forecast to drop to ${w.low}°F,
+    below this plant's ${w.level === 'danger' ? `lowest survivable temperature (${x.lethal}°F)` : `damage point (${x.damage}°F)`}.
+    ${FZ_DO[p.winter_plan] || ''} <a href="#/frost">Open the cold-night checklist</a></p>`;
+}
+
 // ---------- winter plan page ----------
 async function viewWinter() {
   const [ref, list, W, monthly] = await Promise.all([api('GET', '/api/reference'), api('GET', '/api/plants'), api('GET', '/api/weather'), api('GET', '/api/weather/monthly')]);
   return {
     title: 'Winter plan',
     html: html`<h1>Winter plan</h1><p class="muted">What to expect in Round Rock from October to March, when to act, and which plants go where.</p>
-    <section class="blk"><h2>The next 7 days</h2>${forecastBlock(W, list)}<p><a class="btn ghost small" href="#/weather">Open the Weather page for charts and sensors</a></p></section>
+    <section class="blk"><h2>The next 7 days</h2>${forecastBlock(W, list)}<p class="row"><a class="btn small" href="#/frost">Open the cold-night checklist</a><a class="btn ghost small" href="#/weather">Open the Weather page for charts and sensors</a></p></section>
     <section class="blk"><h2>Expected and tracked this season</h2>${seasonTable(ref, monthly)}
       ${(ref.notes || []).map(n => html`<p class="hint">${n}</p>`)}</section>
     <section class="blk"><h2>When to act</h2><dl class="dl">${(ref.triggers || []).map(t => html`<dt>${t.temp}</dt><dd>${t.action}</dd>`)}</dl></section>
@@ -2300,6 +2413,30 @@ const acts = {
     await guard(async () => { await api('DELETE', '/api/photos/' + curPhoto().id); toast('Photo removed'); await reloadPlant(0); });
   },
   async movein(el) { await moveSite(el, 'Indoors'); },
+  frosthide(el) { try { localStorage.setItem('plantdb.frosthide', fzSig()); } catch (e) { /* not remembered */ } const b = el.closest('.fz-banner'); if (b) b.remove(); toast('Frost warning hidden. It comes back if the forecast changes.'); },
+  async frostin(el) {
+    if (!(await needName())) return;
+    const y = window.scrollY, code = el.dataset.code;
+    await guard(async () => { await api('POST', '/api/plants/' + enc(code) + '/site', { site: 'Indoors' }); toast(el.dataset.name + ' moved indoors'); await fzReload(y, code); });
+  },
+  async frostcover(el) { await fzMark(el, 'covered'); },
+  async frostundo(el) { await fzMark(el, null); },
+  async frostallin(el) {
+    const grp = FZ_GROUPS.find(g => g[0] === el.dataset.group); if (!grp || !FROST) return;
+    const g = FROST.plants.filter(grp[3]).filter(p => !p.done);
+    if (!(await needName())) return;
+    if (!(await confirmBox(`Mark ${g.length} plants as moved indoors?`, 'Their Location changes to Indoors, so they leave the cold-night list and the frost warnings. You can change any of them back on its page.', 'Moved them indoors'))) return;
+    const y = window.scrollY;
+    await guard(async () => { for (const p of g) await api('POST', '/api/plants/' + enc(p.code) + '/site', { site: 'Indoors' }); toast(g.length + ' plants moved indoors'); await fzReload(y); });
+  },
+  async frostallcover(el) {
+    const grp = FZ_GROUPS.find(g => g[0] === el.dataset.group); if (!grp || !FROST) return;
+    const g = FROST.plants.filter(grp[3]).filter(p => !p.done);
+    if (!(await needName())) return;
+    if (!(await confirmBox(`Mark ${g.length} plants as covered?`, 'Each one is ticked off for its next cold night only; it comes back on the list for the night after. This does not change their pages.', 'Mark as covered'))) return;
+    const y = window.scrollY;
+    await guard(async () => { for (const p of g) await api('POST', '/api/frost/done', { date: p.next.date, code: p.code, what: 'covered' }); toast(g.length + ' plants marked as covered'); await fzReload(y); });
+  },
   async moveout(el) { await moveSite(el, 'Outdoors'); },
   async archive(el) {
     if (!(await needName())) return;
@@ -2339,7 +2476,7 @@ const changeActs = {
   async site(el) {
     const was = CUR.p.site || 'Outdoors';
     if (!(await needName())) { el.value = was; return; }
-    await guard(async () => { await api('POST', '/api/plants/' + enc(CUR.p.code) + '/site', { site: el.value }); toast('Location: ' + el.value); await reloadPlant(); });
+    await guard(async () => { await api('POST', '/api/plants/' + enc(CUR.p.code) + '/site', { site: el.value }); toast('Location: ' + el.value); FROST_AT = 0; await reloadPlant(); });
   },
   async addphotos(el) {
     if (!el.files.length) return;

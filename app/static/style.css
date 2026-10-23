@@ -588,3 +588,23 @@ a.pn:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 .pn-filters .pn-pos{display:inline-block;margin-left:.6rem;color:var(--ink-2);font-weight:400}
 .pn-filters .filters{margin-top:.5rem;align-items:end}
 @media print{.pnav,.pn-filters{display:none!important}}
+
+/* ---- 1.8.0: frost alert and cold-night checklist ---- */
+.fz-banner{border:2px solid var(--ochre);border-left-width:.5rem;background:var(--ochre-soft);padding:.8rem 1rem;margin:0 0 1rem;border-radius:6px}
+.fz-banner.bad{border-color:var(--madder);background:var(--madder-soft)}
+.fz-banner .fz-title{margin:0 0 .3rem;font-size:1.3rem;font-weight:700;font-family:var(--serif,inherit)}
+.fz-banner p{margin:.3rem 0;max-width:75ch}
+.fz-banner .row{gap:.6rem;flex-wrap:wrap;margin-top:.6rem}
+.fz-list{list-style:none;padding:0;margin:.4rem 0 1rem}
+.fz-row{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:.8rem;align-items:start;padding:.7rem 0;border-bottom:1px solid var(--line-2,var(--line))}
+.fz-row img,.fz-nophoto{width:72px;height:72px;object-fit:cover;border-radius:6px;background:var(--line-2,var(--line))}
+.fz-row .nm{font-weight:700}
+.fz-row .muted{white-space:nowrap}
+.fz-row .fz-txt{min-width:0;overflow-wrap:anywhere}
+.fz-row .fz-txt>div{margin-top:.2rem}
+.fz-acts{display:flex;flex-direction:column;gap:.4rem;align-items:stretch;min-width:9.5rem}
+.fz-row.is-done{opacity:.8}
+.fz-done{font-weight:600}
+.fz-lv{display:inline-block;font-weight:700;border:2px solid currentColor;border-radius:4px;padding:0 .35rem;margin-right:.3rem;font-size:.9em}
+.fz-danger{color:var(--critical,var(--madder))}.fz-damage{color:var(--madder)}.fz-watch{color:var(--ink-2)}
+@media (max-width:640px){.fz-row{grid-template-columns:56px minmax(0,1fr)}.fz-row img,.fz-nophoto{width:56px;height:56px}.fz-acts{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}.fz-acts .btn{flex:1 1 9rem}}
