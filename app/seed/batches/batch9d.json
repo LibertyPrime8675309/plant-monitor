@@ -1,0 +1,361 @@
+{
+ "id": "batch9d",
+ "created": "2026-10-23",
+ "author": "Claude (batch 9d, covered porch locations)",
+ "plants": [],
+ "existing_photos": [],
+ "updates": [
+  {
+   "code": "P-001",
+   "name": "Dieffenbachia (dumb cane), lime/cream form",
+   "photos": [
+    "img_1000021186.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-006",
+   "name": "Sweet potato vine (green-leaf, probable)",
+   "photos": [
+    "img_1000021202.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-024",
+   "name": "Boston fern 'Emina'",
+   "photos": [
+    "img_1000021187.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-025",
+   "name": "Begonia (lobed, bright green)",
+   "photos": [
+    "img_1000021188.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-026",
+   "name": "Polka-dot begonia 'Obsidian'",
+   "photos": [
+    "img_1000021189.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-027",
+   "name": "Coleus (deep red)",
+   "photos": [
+    "img_1000021190.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-028",
+   "name": "Chinese evergreen (red/pink)",
+   "photos": [
+    "img_1000021191.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-029",
+   "name": "Philodendron 'Pink Princess'",
+   "photos": [
+    "img_1000021192.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-030",
+   "name": "Pink Princess offshoot (in P-029's pot)",
+   "photos": [
+    "img_1000021193.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-031",
+   "name": "Calathea (feather-striped)",
+   "photos": [
+    "img_1000021194.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-032",
+   "name": "Moth orchid in water",
+   "photos": [
+    "img_1000021195.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-033",
+   "name": "Coleus (lime and plum)",
+   "photos": [
+    "img_1000021196.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-034",
+   "name": "Peace lily (recovering, brown pot)",
+   "photos": [
+    "img_1000021197.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-035",
+   "name": "Philodendron 'Pink Princess' (cutting, declining)",
+   "photos": [
+    "img_1000021198.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-036",
+   "name": "Possible stevia (young, serrated leaves)",
+   "photos": [
+    "img_1000021199.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-037",
+   "name": "ZZ plant",
+   "photos": [
+    "img_1000021200.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-038",
+   "name": "ZZ plant #2 (staked, new shoots)",
+   "photos": [
+    "img_1000021201.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-041",
+   "name": "Moon cactus (red, grafted)",
+   "photos": [
+    "img_b2_02.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-043",
+   "name": "Zebra haworthia",
+   "photos": [
+    "img_b2_04.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-044",
+   "name": "Boobie cactus (Fukurokuryuzinboku)",
+   "photos": [
+    "img_b2_05.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-048",
+   "name": "Arrowhead plant (pink)",
+   "photos": [
+    "img_b2_09.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-049",
+   "name": "Monstera (Swiss cheese plant)",
+   "photos": [
+    "img_b2_10.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-062",
+   "name": "Philodendron 'White Knight'",
+   "photos": [
+    "img_b2_24.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-063",
+   "name": "Money tree",
+   "photos": [
+    "img_b2_25.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  },
+  {
+   "code": "P-065",
+   "name": "Variegated rubber tree",
+   "photos": [
+    "img_b2_27.jpg"
+   ],
+   "note": "Location set to Covered porch from its spot description (batch 9d)",
+   "set": {
+    "site": [
+     "Outdoors",
+     "Covered porch"
+    ]
+   }
+  }
+ ],
+ "to_photograph_done": [],
+ "to_photograph_add": []
+}

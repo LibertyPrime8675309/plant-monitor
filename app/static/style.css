@@ -568,6 +568,27 @@ a.plink{font-weight:700;text-decoration:underline;text-decoration-thickness:2px;
 .site-pick option{color:#111;background:#fff}
 .winter-list .btn.small{margin-top:.35rem}
 
+/* ---- 1.8.0: quick care buttons, care log and the Today page ---- */
+.quick{border:2px solid var(--line);border-radius:8px;background:var(--sheet);padding:.6rem .8rem;margin:0 0 1rem}
+.quick-status{margin:0 0 .5rem;font-weight:600}
+.quick-btns{display:flex;flex-wrap:wrap;gap:.5rem}
+.quick-btns .btn{flex:1 1 11rem;min-height:3rem;justify-content:center;text-align:center}
+.quick-photo{position:relative;cursor:pointer}
+.quick-photo:focus-within{outline:3px solid var(--ink);outline-offset:2px}
+.care-log{list-style:none;padding:0;margin:.4rem 0 1rem}
+.care-log li{padding:.35rem 0;border-bottom:1px solid var(--line-2,var(--line));display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+.care-log li .btn{margin-left:auto}
+.jobs{list-style:none;padding:0;margin:.4rem 0 1rem}
+.job{display:grid;grid-template-columns:64px minmax(0,1fr) auto;gap:.8rem;align-items:start;padding:.65rem 0;border-bottom:1px solid var(--line-2,var(--line))}
+.job img,.job-nophoto{width:64px;height:64px;object-fit:cover;border-radius:6px;background:var(--line-2,var(--line))}
+.job .nm{font-weight:700}
+.job .muted{white-space:nowrap}
+.job-txt{min-width:0;overflow-wrap:anywhere}
+.job-txt>div{margin-top:.2rem;max-width:70ch}
+.job-acts{display:flex;flex-direction:column;gap:.4rem;min-width:8.5rem}
+details.grp>summary h3{display:inline;margin:0}
+@media (max-width:640px){.job{grid-template-columns:52px minmax(0,1fr)}.job img,.job-nophoto{width:52px;height:52px}.job-acts{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}.job-acts .btn{flex:1 1 8rem}}
+
 /* ---- 1.7.5: Previous / Next plant ---- */
 .pnav{display:flex;justify-content:space-between;gap:.75rem;margin:0 0 .6rem}
 .pn{display:flex;flex-direction:column;gap:.15rem;flex:1 1 0;max-width:22rem;padding:.6rem .85rem;border:2px solid var(--line);border-radius:8px;background:var(--sheet);color:var(--ink);text-decoration:none;line-height:1.3}

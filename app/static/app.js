@@ -148,6 +148,7 @@ async function route() {
     else if (parts[0] === 'new') view = viewForm(null);
     else if (parts[0] === 'winter') view = await viewWinter();
     else if (parts[0] === 'weather') view = await viewWeather();
+    else if (parts[0] === 'today') view = await viewToday();
     else if (parts[0] === 'fertilizer') view = await viewFertilizer();
     else if (parts[0] === 'photos') view = await viewPhotos();
     else if (parts[0] === 'labels') view = await viewLabels();
@@ -605,6 +606,7 @@ async function viewPlant(code) {
             <div class="row acts noprint"><a class="btn" href="#/plant/${enc(p.code)}/edit">Edit this page</a>
               <button class="btn ghost" type="button" data-act="archive" data-to="${archived ? '0' : '1'}">${archived ? 'Move back to the main list' : 'Archive'}</button></div></div>
         </div>
+        ${careQuick(p)}
 
         ${frostNote(p)}${needsBox(p)}
         ${condCard(p, cur)}${adviceBlock(p, cur)}
@@ -620,7 +622,7 @@ async function viewPlant(code) {
         <section class="blk" id="temp"><h2>Temperature</h2>${tempBlock(p, cur)}${paras(p.temp_notes)}${histBlock('temp')}</section>
         <section class="blk" id="hum"><h2>Humidity</h2>${humBlock(p, cur)}${histBlock('hum')}</section>
         <section class="blk" id="light"><h2>Sunlight</h2>${lightBlock(p, cur)}${histBlock('light')}</section>
-        <section class="blk" id="soil"><h2>Water and soil</h2>${soilBlock(p, cur)}${histBlock('soil')}</section>
+        <section class="blk" id="soil"><h2>Water and soil</h2><div id="care-plant"><p class="loading">Loading the watering record</p></div>${soilBlock(p, cur)}${histBlock('soil')}</section>
         <section class="blk" id="nutrients"><h2>Nutrients</h2>
           ${p.fertilizer ? html`<p><strong>Fertilizer:</strong> ${p.fertilizer}</p>` : ''}${paras(p.nutrients)}
           ${!p.fertilizer && !p.nutrients ? html`<p class="muted">Not filled in yet. Use Edit to add it.</p>` : ''}
@@ -655,7 +657,7 @@ async function viewPlant(code) {
           ${slips(h)}</section>
       </div>
     </div>`,
-    after: () => { fitPanes(); loadFertPlant(); pnavLayout(); setTimeout(pnavLayout, 300); },
+    after: () => { fitPanes(); loadFertPlant(); loadCarePlant(); pnavLayout(); setTimeout(pnavLayout, 300); },
   };
 }
 // where the plant is now: a plain-looking menu in the plant's label; choosing saves straight away
@@ -756,6 +758,108 @@ function pnavLayout() {
   }
 }
 window.addEventListener('resize', () => pnavLayout());
+// ---------- watering, care log and the Today page (added in 1.8.0) ----------
+const CARE_WORD = { water: 'Watered', check: 'Checked: still moist', repot: 'Repotted', prune: 'Pruned', pests: 'Treated for pests', note: 'Note' };
+function relDay(d) {
+  if (!d) return '';
+  const t = todayStr(), n = daysBetween(d, t);
+  if (n === 0) return 'today'; if (n === 1) return 'yesterday'; if (n === -1) return 'tomorrow';
+  const name = parseYmd(d).toLocaleDateString([], { weekday: 'long' }), md = parseYmd(d).toLocaleDateString([], { month: 'short', day: 'numeric' });
+  if (n > 1 && n < 7) return 'last ' + name + ' (' + md + ')';
+  if (n < -1 && n > -7) return name + ' (' + md + ')';
+  return md;
+}
+function waterWords(w) {
+  if (!w) return '';
+  if (w.state === 'unknown') return 'No watering logged yet. Press Watered when you water it, and reminders start from there.';
+  const od = w.overdue, when = od > 0 ? `${od} day${od === 1 ? '' : 's'} overdue (due ${relDay(w.next)})` : od === 0 ? 'due today' : `next check ${relDay(w.next)}`;
+  const rain = w.last_rain && (!w.last_water || w.last_rain > w.last_water) ? ` Rain of ${w.rain_in} in ${relDay(w.last_rain)} was counted as a watering.` : '';
+  const chk = w.last_check && w.last_check >= (w.last_water || '') && w.last_check >= (w.last_rain || '') ? ` Checked ${relDay(w.last_check)}: still moist.` : '';
+  return `${when[0].toUpperCase() + when.slice(1)}. ${w.last_water ? 'Last watered ' + relDay(w.last_water) + '.' : 'No watering logged yet.'}${rain}${chk} Check about every ${w.every} day${w.every === 1 ? '' : 's'}: it ${w.why === 'set on this page' ? 'is set on this page' : w.why}${w.weather ? '; ' + w.weather : ''}.`;
+}
+function careQuick(p) {
+  return html`<div class="quick noprint" role="group" aria-label="Quick care for this plant">
+    <p class="quick-status" id="quick-status">&nbsp;</p>
+    <div class="quick-btns">
+      <button class="btn" type="button" data-act="care" data-kind="water" data-code="${p.code}" data-name="${p.common_name}">Watered today</button>
+      <button class="btn ghost" type="button" data-act="care" data-kind="check" data-code="${p.code}" data-name="${p.common_name}">Checked: still moist</button>
+      <button class="btn ghost" type="button" data-act="fertlog" data-code="${p.code}">Log feeding</button>
+      <label class="btn ghost quick-photo">Add a photo<input type="file" accept="image/*" capture="environment" data-act="addphotos" class="sr"></label>
+      <button class="btn ghost" type="button" data-act="careother" data-code="${p.code}" data-name="${p.common_name}">Log other care</button>
+    </div></div>`;
+}
+async function loadCarePlant() {
+  const box = document.getElementById('care-plant'); if (!box || !CUR) return;
+  const code = CUR.p.code;
+  let W, log;
+  try { [W, log] = await Promise.all([api('GET', '/api/water'), api('GET', '/api/care?n=12&plant=' + enc(code))]); }
+  catch (e) { box.innerHTML = rend(html`<p class="notice bad">Could not load the watering record: ${e.message}</p>`); return; }
+  if (!CUR || CUR.p.code !== code) return;
+  const w = W.plants.find(x => x.code === code);
+  const qs = document.getElementById('quick-status'); if (qs) qs.textContent = w ? 'Water: ' + waterWords(w) : '';
+  box.innerHTML = rend(html`<div class="verdict-box v-${w && w.state === 'due' ? 'due' : 'wait'}" role="status"><h3>Watering</h3><p>${w ? waterWords(w) : ''}</p>
+      <p class="hint">Change the gap with "Check for water every (days)" in Edit this page. Rain of ${W.rain_counts_in} in or more counts as a watering for plants whose Location is Outdoors.</p></div>
+    <h3>Care log</h3>${log.length ? html`<ul class="care-log">${log.map(e => html`<li><strong>${CARE_WORD[e.kind] || e.kind}</strong> ${relDay(e.done_on)}${e.note ? ': ' + e.note : ''} <span class="muted">(${e.created_by})</span>
+      <button class="btn small ghost noprint" type="button" data-act="caredel" data-id="${e.id}" data-what="${(CARE_WORD[e.kind] || e.kind) + ' ' + relDay(e.done_on)}">Remove</button></li>`)}</ul>`
+      : html`<p class="muted">Nothing logged yet. Use the buttons near the top of the page.</p>`}`);
+}
+async function careDialog(code, name) {
+  if (!(await needName())) return;
+  const r = await modal(html`<form method="dialog"><h2>Log care for ${name}</h2>
+    <label class="f">What did you do?<select name="kind">${Object.entries(CARE_WORD).map(([k, v]) => html`<option value="${k}" ${k === 'repot' ? raw('selected') : ''}>${v}</option>`)}</select></label>
+    <label class="f">When<input type="date" name="day" value="${todayStr()}" max="${todayStr()}"></label>
+    <label class="f">Note (optional)<input type="text" name="note" maxlength="500" placeholder="For example: moved to a 10 inch pot"></label>
+    <div class="row"><button class="btn" value="ok">Save</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`);
+  if (r !== 'ok') return;
+  const f = dlg.querySelector('form');
+  await guard(async () => { await api('POST', '/api/care', { plant: code, kind: f.elements.kind.value, done_on: f.elements.day.value, note: f.elements.note.value }); toast('Saved: ' + CARE_WORD[f.elements.kind.value]); await careRefresh(code); });
+}
+async function careRefresh(code) {
+  if (document.getElementById('care-plant')) return loadCarePlant();
+  const y = window.scrollY; await route(); window.scrollTo(0, y);
+  const f = (code && document.querySelector(`.job[data-code="${code}"] button`)) || document.querySelector('.job button') || document.querySelector('main h1');
+  if (f) f.focus({ preventScroll: true });
+}
+function jobRow(p, words, btns) {
+  return html`<li class="job" data-code="${p.code}">${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy" width="64" height="64">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}
+    <div class="job-txt"><a class="nm" href="#/plant/${enc(p.code)}">${p.common_name}</a> <span class="muted">${p.code}</span><div>${words}</div></div>
+    <div class="job-acts">${btns}</div></li>`;
+}
+async function viewToday() {
+  const [W, reqs] = await Promise.all([api('GET', '/api/water'), api('GET', '/api/requests?open=1'), loadFertData(true)]);
+  const by = Object.fromEntries(FERT.plants.map(p => [p.code, p])), t = todayStr();
+  const ws = W.plants.filter(w => by[w.code]);
+  const due = ws.filter(w => w.state === 'due').sort((a, b) => b.overdue - a.overdue), soon = ws.filter(w => w.state === 'soon'), unk = ws.filter(w => w.state === 'unknown');
+  const feed = FERT.plants.map(p => ({ p, st: fertState(p, entriesFor(p.code), t, fertCtx()) })).filter(r => r.st.state === 'due');
+  const needs = FERT.plants.filter(needsYou);
+  const wbtn = w => html`<button class="btn small" type="button" data-act="care" data-kind="water" data-code="${w.code}" data-name="${by[w.code].common_name}">Watered</button>
+    <button class="btn small ghost" type="button" data-act="care" data-kind="check" data-code="${w.code}" data-name="${by[w.code].common_name}">Still moist</button>`;
+  const n = (k, one, many) => k + ' ' + (k === 1 ? one : many);
+  return {
+    title: 'Today',
+    html: html`<h1>Today</h1><p class="muted">${longDay(t)}. Watering, feeding and anything Claude has asked you for, most urgent first.</p>
+    <div class="verdict-box" role="status"><p><strong>${n(due.length, 'plant to water', 'plants to water')}, ${n(feed.length, 'to feed', 'to feed')}, and ${n(needs.length, 'plant that needs something from you', 'plants that need something from you')}.</strong>
+      ${W.avg_high != null ? `Highs have been about ${W.avg_high}°F lately.` : ''} ${Object.keys(W.rain).length ? `Rain counted as watering for plants out in the open: ${Object.entries(W.rain).slice(-3).map(([d, i]) => relDay(d) + ', ' + i + ' in').join('; ')}.` : ''}</p></div>
+    <section class="blk" id="today-water"><h2>Water (${due.length})</h2>
+      ${due.length ? html`${due.length > 1 ? html`<p><button class="btn small ghost" type="button" data-act="careall" data-kind="water" data-codes="${due.map(w => w.code).join(',')}">Watered all ${due.length}</button></p>` : ''}
+        <ul class="jobs">${due.map(w => jobRow(by[w.code], waterWords(w), wbtn(w)))}</ul>` : html`<p class="notice ok">Nothing is due for water today.</p>`}
+      ${soon.length ? html`<details class="grp"><summary><h3>Check tomorrow (${soon.length})</h3></summary><ul class="jobs">${soon.map(w => jobRow(by[w.code], waterWords(w), wbtn(w)))}</ul></details>` : ''}
+      ${unk.length ? html`<details class="grp"><summary><h3>No watering logged yet (${unk.length})</h3></summary>
+        <p class="hint">These have no watering in the log and no rain counted, so there is no reminder for them yet. If you water everything on a round, press the button to start the clock for all of them at once.</p>
+        <p><button class="btn small ghost" type="button" data-act="careall" data-kind="water" data-codes="${unk.map(w => w.code).join(',')}">I watered all ${unk.length} today</button></p>
+        <ul class="jobs">${unk.map(w => jobRow(by[w.code], w.site !== 'Outdoors' ? w.site + '.' : 'Outdoors.', wbtn(w)))}</ul></details>` : ''}</section>
+    <section class="blk" id="today-feed"><h2>Feed (${feed.length})</h2>
+      ${feed.length ? html`${feed.length > 1 ? html`<p><button class="btn small ghost" type="button" data-act="fertlog" data-group="due">Log feeding for all ${feed.length}</button></p>` : ''}
+        <ul class="jobs">${feed.map(r => jobRow(r.p, fertWords(r.p, r.st, t), html`<button class="btn small" type="button" data-act="fertlog" data-code="${r.p.code}">Log feeding</button>`))}</ul>`
+        : html`<p class="notice ok">No plant is due for fertilizer today. The Fertilizer page has the calendar.</p>`}</section>
+    <section class="blk" id="today-needs"><h2>Needed from you (${needs.length})</h2>
+      ${reqs.length ? html`<ul class="jobs">${reqs.slice(0, 8).map(q => { const p = by[q.plant_code] || { code: q.plant_code || '', common_name: q.plant_code || 'General' };
+        return jobRow(p, linkify(q.text), p.code ? html`<a class="btn small ghost" href="#/plant/${enc(p.code)}">Answer on its page</a>` : ''); })}</ul>
+        ${reqs.length > 8 ? html`<p class="hint">Showing 8 of ${reqs.length} open requests.</p>` : ''}` : ''}
+      <p><button class="btn small ghost" type="button" data-act="todayneeds">Show all plants that need something from you</button></p></section>`,
+    after: () => document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === 'today') a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }),
+  };
+}
 const KIND_WORD = { check: 'Check', question: 'Question', photo: 'Photo', info: 'Information' };
 function needsBox(p) {
   const open = (p.requests || []).filter(r => !r.done), done = (p.requests || []).filter(r => r.done);
@@ -1211,7 +1315,7 @@ const GROUPS = [
   ['Temperature', ['temp_ideal_low', 'temp_ideal_high', 'temp_damage_below', 'temp_lethal_below', 'temp_damage_above', 'temp_notes']],
   ['Humidity and air dryness', ['humidity_low', 'humidity_high', 'vpd_low', 'vpd_high', 'humidity_notes']],
   ['Sunlight', ['light_summary', 'light_hours', 'par_low', 'par_high', 'dli_low', 'dli_high', 'light_notes']],
-  ['Water and soil', ['water_notes', 'soil_medium', 'soil_ph_low', 'soil_ph_high', 'soil_moisture_low', 'soil_moisture_high', 'soil_temp_low', 'soil_temp_high']],
+  ['Water and soil', ['water_every_days', 'water_notes', 'soil_medium', 'soil_ph_low', 'soil_ph_high', 'soil_moisture_low', 'soil_moisture_high', 'soil_temp_low', 'soil_temp_high']],
   ['Nutrients', ['fertilizer', 'nutrients', 'fert_from_month', 'fert_to_month', 'fert_every_days']],
   ['Winter plan', ['winter_plan', 'winter_summary', 'winter_triggers', 'winter_steps', 'indoor_setup']],
   ['Health', ['health_rating', 'health_summary', 'health_observations', 'health_steps']],
@@ -1225,6 +1329,7 @@ const HINTS = {
   temp_damage_above: 'Leaves start to scorch above this.', vpd_low: 'Vapour pressure deficit in kPa. A sensor can work it out from temperature and humidity.',
   par_low: 'PAR in umol/m2/s at the leaves. Full midday sun is about 1800.', dli_low: 'Mol of light per square metre per day.',
   soil_moisture_low: 'As read by your soil probe, 0 to 100.', soil_temp_low: 'Temperature of the root zone in F.',
+  water_every_days: 'Leave empty to let the app work it out from the soil moisture range. Hot weather shortens the gap; cool weather and being indoors lengthen it.',
   winter_steps: 'One step per line, in order.', health_steps: 'One step per line, in order.', indoor_setup: 'One item per line.',
 };
 const rangeOf = n => (META.int_ranges && META.int_ranges[n]) || (META.num_ranges && META.num_ranges[n]) || [-60, 150];
@@ -2438,6 +2543,24 @@ const acts = {
     await guard(async () => { for (const p of g) await api('POST', '/api/frost/done', { date: p.next.date, code: p.code, what: 'covered' }); toast(g.length + ' plants marked as covered'); await fzReload(y); });
   },
   async moveout(el) { await moveSite(el, 'Outdoors'); },
+  async care(el) {
+    if (!(await needName())) return;
+    const k = el.dataset.kind, code = el.dataset.code;
+    await guard(async () => { await api('POST', '/api/care', { plant: code, kind: k }); toast((k === 'water' ? 'Watered: ' : 'Checked, still moist: ') + el.dataset.name); await careRefresh(code); });
+  },
+  async careall(el) {
+    const codes = el.dataset.codes.split(',').filter(Boolean); if (!codes.length) return;
+    if (!(await needName())) return;
+    if (!(await confirmBox(`Mark ${codes.length} plants as watered today?`, 'Each one gets a "Watered" entry for today in its care log. You can remove any of them on the plant\'s page.', 'Mark as watered'))) return;
+    await guard(async () => { await api('POST', '/api/care', { plants: codes, kind: el.dataset.kind }); toast(codes.length + ' plants marked as watered'); await careRefresh(); });
+  },
+  careother(el) { return careDialog(el.dataset.code, el.dataset.name); },
+  async caredel(el) {
+    if (!(await needName())) return;
+    if (!(await confirmBox('Remove this entry?', el.dataset.what + '. The change log keeps a record that it was removed.', 'Remove', true))) return;
+    await guard(async () => { await api('DELETE', '/api/care/' + el.dataset.id); toast('Entry removed'); await loadCarePlant(); });
+  },
+  todayneeds() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: true }); gSave(); go('#/'); },
   async archive(el) {
     if (!(await needName())) return;
     const to = el.dataset.to === '1';
