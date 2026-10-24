@@ -1,6 +1,7 @@
 """Run the app with a fake Open-Meteo (no internet needed), on http://127.0.0.1:8080.
 Usage: DATA_DIR=dev/tmp/data python3 dev/test/mock_server.py   (an empty DATA_DIR gets a fresh install with all plants)
 Cold weather for testing frost features: MOCK_BASE_F=40 (nights around 22-34°F).
+MOCK_TS=1 also answers on port 8081 (PLANTDB_TS_PORT) as if requests came through Tailscale; send Tailscale-User-Login yourself.
 The forecast fills in after an update: POST /api/weather/refresh with an X-Editor header (or press Update now on the Weather page)."""
 import math
 import os, sys, time, urllib.parse
@@ -36,4 +37,13 @@ def _with_rain(url, tries=3):
             d[kind][n] = [(0.6 if kind == 'daily' or int(t // 3600) % 24 == 15 else 0.0) if int(t // 86400) % 5 == 0 else 0.0 for t in d[kind]['time']]
     return d
 S.http_json = _with_rain
+# 1.12.0: a second port that stands in for the Tailscale container (MOCK_TS=1). Requests to it are treated as coming through
+# Tailscale Serve, so tests send Tailscale-User-Login / Tailscale-User-Name themselves, as Serve would.
+if os.environ.get('MOCK_TS') == '1':
+    import threading
+    from werkzeug.serving import make_server
+    _ts = make_server('127.0.0.1', int(S.TS_PORT), S.app, threaded=True)
+    threading.Thread(target=_ts.serve_forever, daemon=True).start()
+    _sensor = make_server('127.0.0.1', int(S.SENSOR_PORT), S.app, threaded=True)      # and the sensor-only port
+    threading.Thread(target=_sensor.serve_forever, daemon=True).start()
 S.app.run(host='127.0.0.1', port=int(os.environ.get('PORT', '8080')), threaded=True)

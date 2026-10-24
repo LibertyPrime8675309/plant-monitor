@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from flask import Flask, Response, abort, g, has_request_context, jsonify, request, send_from_directory
 from PIL import Image, ImageOps
 import segno
+import writable                 # 1.12.1: the start-up write check, shared with start.py
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get('DATA_DIR', '/data')
@@ -23,8 +24,15 @@ PASSWORD = os.environ.get('PLANTDB_PASSWORD', '')
 # Backups go to /backups when that folder is mounted (docker-compose maps ./backups there), otherwise data/backups.
 BACKUP_DIR = os.environ.get('PLANTDB_BACKUP_DIR') or ('/backups' if os.path.isdir('/backups') else os.path.join(DATA_DIR, 'backups'))
 
-for d in (DATA_DIR, PHOTO_DIR, TRASH_DIR, THUMB_DIR, BACKUP_DIR):
-    os.makedirs(d, exist_ok=True)
+def _check_writable():
+    """1.12.0: say plainly if Docker gives the app no write access to the data or backups folder. Since 1.12.1 start.py
+    already ran this check as the app's own user and switched to root inside the container if it failed, so this only
+    stops the app when even that cannot write (the updater looks for PLANTDB_NOT_WRITABLE)."""
+    bad = writable.problem(DATA_DIR, BACKUP_DIR)
+    if bad:
+        print('PLANTDB_NOT_WRITABLE: the app cannot write to %s (%s). See README, "If the app does not start after updating".' % bad, flush=True)
+        raise SystemExit(3)
+_check_writable()
 
 app = Flask(__name__, static_folder=os.path.join(APP_DIR, 'static'), static_url_path='')
 app.config['MAX_CONTENT_LENGTH'] = 60 * 1024 * 1024
@@ -164,6 +172,8 @@ CREATE INDEX IF NOT EXISTS fert_day ON fertilizer_log(applied_on);
 CREATE TABLE IF NOT EXISTS fertilizers(
   id INTEGER PRIMARY KEY AUTOINCREMENT, product TEXT NOT NULL UNIQUE COLLATE NOCASE, form TEXT NOT NULL DEFAULT 'liquid',
   n REAL, p REAL, k REAL, note TEXT NOT NULL DEFAULT '', created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_by TEXT, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS people(
+  login TEXT PRIMARY KEY, name TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'viewer', first_seen TEXT NOT NULL, last_seen TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS care_log(
   id INTEGER PRIMARY KEY AUTOINCREMENT, plant_code TEXT NOT NULL, kind TEXT NOT NULL, done_on TEXT NOT NULL, note TEXT NOT NULL DEFAULT '',
   created_by TEXT NOT NULL, created_at TEXT NOT NULL);
@@ -362,6 +372,8 @@ def copy_seed_photo(name):
 
 # ---------------------------------------------------------------- helpers
 def editor():
+    u = getattr(g, 'user', None)
+    if u and u.get('via') == 'tailscale': return u['name']          # 1.12.0: signed in through Tailscale, so not typed in
     n = re.sub(r'[^\w .\-@]', '', request.headers.get('X-Editor', '').strip())[:40]
     return n or 'Unknown'
 
@@ -439,19 +451,138 @@ def apply_changes(c, r, new_fields, who, action, note):
     summary = note or ('Edited: ' + ', '.join(FIELD_LABEL[n] for n, _, _ in ch))
     return bump(c, r['id'], r['code'], who, action, summary, ch), True
 
+# ---------------------------------------------------------------- people (1.12.0): who is using the app, and what they may do
+# The Tailscale container (docker-compose.yml) is the only way in to TS_PORT, which is never published to the computer or the
+# home network. Tailscale Serve adds the visitor's login and name to every request and removes any copy the visitor sent, so on
+# that port the headers can be trusted. Requests on the other port come from this computer itself (the updater, a browser on the
+# PC) or, if PLANTDB_BIND opens it, the home network; those keep working as before and have full access.
+TS_PORT = os.environ.get('PLANTDB_TS_PORT', '8081')
+SENSOR_PORT = os.environ.get('PLANTDB_SENSOR_PORT', '8082')     # sensors only: POST /api/readings with the token, nothing else
+ROLES = ['owner', 'editor', 'viewer']
+ROLE_WORD = {'owner': 'Owner', 'editor': 'Can edit', 'viewer': 'Can view only'}
+SEEN = {}                                            # login -> when last_seen was last written, so it is not written on every request
+
+def via_tailscale():
+    return has_request_context() and str(request.environ.get('SERVER_PORT', '')) == TS_PORT
+
+def clean_person_name(n):
+    return re.sub(r'[^\w .\-@\']', '', str(n or '')).strip()[:40]
+
+def ts_user():
+    login = request.headers.get('Tailscale-User-Login', '').strip()[:200]
+    if not login: return None                        # a tagged device or something else that is not a person
+    c, t = db(), now()
+    r = c.execute('SELECT * FROM people WHERE login=?', (login,)).fetchone()
+    if r is None:
+        name = clean_person_name(request.headers.get('Tailscale-User-Name')) or clean_person_name(login.split('@')[0]) or 'Someone'
+        first = not c.execute("SELECT 1 FROM people WHERE role='owner'").fetchone()   # the first person in (the setup script makes it you) owns it
+        c.execute('INSERT INTO people(login,name,role,first_seen,last_seen) VALUES(?,?,?,?,?)', (login, name, 'owner' if first else 'viewer', t, t))
+        audit_only(c, 'setting', 'person', None, f"{name} ({login})", 'Plant record', f"New person signed in through Tailscale: {name}, {'owner' if first else 'can view only'}")
+        c.commit()
+        r = c.execute('SELECT * FROM people WHERE login=?', (login,)).fetchone()
+        SEEN[login] = time.time()
+    elif time.time() - SEEN.get(login, 0) > 600:
+        c.execute('UPDATE people SET last_seen=? WHERE login=?', (t, login)); c.commit()
+        SEEN[login] = time.time()
+    return {'via': 'tailscale', 'login': r['login'], 'name': r['name'], 'role': r['role'] if r['role'] in ROLES else 'viewer'}
+
+def owner_name(c):
+    r = c.execute("SELECT name FROM people WHERE role='owner' ORDER BY first_seen LIMIT 1").fetchone()
+    return r[0] if r else 'the owner'
+
+OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people')        # any request (the people list shows everyone's login)
+OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings')           # changes only
+
+def role_refusal(u):
+    """Why this person may not make this request, or None. The server decides; the page only hides what would be refused."""
+    role, path, change = u['role'], request.path, request.method not in ('GET', 'HEAD', 'OPTIONS')
+    if role == 'owner': return None
+    if path == '/api/me': return None                                    # your own name
+    if path.startswith(OWNER_ONLY_PATHS) or (change and path.startswith(OWNER_ONLY_CHANGES)) or (change and re.match(r'^/api/places/\d+$', path)):
+        return f'Only {owner_name(db())} can do this.'
+    if role == 'viewer' and change:
+        return f'You can look at everything, but changes are turned off for you. Ask {owner_name(db())} if you would like to edit.'
+    return None
+
+def me_dict(c):
+    u = getattr(g, 'user', None) or {'via': 'local', 'login': None, 'name': '', 'role': 'owner'}
+    return {'via': u['via'], 'login': u['login'], 'name': u['name'] if u['via'] == 'tailscale' else '', 'role': u['role'],
+            'role_word': ROLE_WORD[u['role']], 'owner_name': owner_name(c)}
+
+@app.route('/api/me', methods=['GET', 'PUT'])
+def me():
+    """Who you are to the app. PUT {name} renames you, if you are signed in through Tailscale."""
+    c = db()
+    if request.method == 'PUT':
+        u = g.user
+        if u['via'] != 'tailscale': abort(400, 'On this computer your name is typed in; it is not stored by the app.')
+        name = clean_person_name((request.get_json(silent=True) or {}).get('name'))
+        if not name: abort(400, 'Type a name')
+        if name != u['name']:
+            c.execute('UPDATE people SET name=? WHERE login=?', (name, u['login']))
+            audit_only(c, 'setting', 'person', u['name'], name, name, f"Name changed from {u['name']} to {name} ({u['login']})")
+            c.commit(); g.user = dict(u, name=name)
+    return jsonify(me_dict(c))
+
+@app.route('/api/people', methods=['GET', 'PUT', 'DELETE'])
+def people():
+    """The people who have signed in through Tailscale (owner only for changes). PUT {login, name?, role?} adds or changes one;
+    DELETE ?login= removes one (they come back as "Can view only" if they visit again)."""
+    c = db()
+    if request.method == 'PUT':
+        b = request.get_json(silent=True) or {}
+        login = str(b.get('login', '')).strip()[:200]
+        if not login: abort(400, 'login is required')
+        r = c.execute('SELECT * FROM people WHERE login=?', (login,)).fetchone()
+        role = b.get('role', r['role'] if r else 'viewer')
+        if role not in ROLES: abort(400, 'role must be one of: ' + ', '.join(ROLES))
+        name = clean_person_name(b.get('name')) or (r['name'] if r else clean_person_name(login.split('@')[0]) or 'Someone')
+        if r and r['role'] == 'owner' and role != 'owner' and c.execute("SELECT COUNT(*) FROM people WHERE role='owner'").fetchone()[0] < 2:
+            abort(409, 'There must be at least one owner. Make someone else an owner first.')
+        if r:
+            c.execute('UPDATE people SET name=?, role=? WHERE login=?', (name, role, login))
+            if (r['name'], r['role']) != (name, role):
+                audit_only(c, 'setting', 'person', f"{r['name']}: {r['role']}", f"{name}: {role}", editor(), f"{name} ({login}) is now: {ROLE_WORD[role]}")
+        else:
+            t = now()
+            c.execute('INSERT INTO people(login,name,role,first_seen,last_seen) VALUES(?,?,?,?,?)', (login, name, role, t, t))
+            audit_only(c, 'setting', 'person', None, f"{name}: {role}", editor(), f"{name} ({login}) added: {ROLE_WORD[role]}")
+        c.commit()
+    elif request.method == 'DELETE':
+        login = request.args.get('login', '')
+        r = c.execute('SELECT * FROM people WHERE login=?', (login,)).fetchone()
+        if not r: abort(404, 'That person is not in the list')
+        if getattr(g, 'user', {}).get('login') == login: abort(409, 'You cannot remove yourself')
+        if r['role'] == 'owner' and c.execute("SELECT COUNT(*) FROM people WHERE role='owner'").fetchone()[0] < 2: abort(409, 'There must be at least one owner')
+        c.execute('DELETE FROM people WHERE login=?', (login,))
+        audit_only(c, 'setting', 'person', f"{r['name']}: {r['role']}", None, editor(), f"{r['name']} ({login}) removed from the list of people")
+        c.commit()
+    rows = [dict(r) | {'role_word': ROLE_WORD.get(r['role'], r['role'])} for r in c.execute("SELECT * FROM people ORDER BY CASE role WHEN 'owner' THEN 0 WHEN 'editor' THEN 1 ELSE 2 END, name")]
+    return jsonify(people=rows, roles=[{'key': k, 'label': ROLE_WORD[k]} for k in ROLES], me=me_dict(c))
+
 # ---------------------------------------------------------------- security
 @app.before_request
 def guard():
     if request.path == '/healthz': return None
+    if has_request_context() and str(request.environ.get('SERVER_PORT', '')) == SENSOR_PORT and not (request.path == '/api/readings' and request.method == 'POST'):
+        abort(404, 'This port only takes sensor readings (POST /api/readings).')
     if request.path == '/api/readings' and request.method == 'POST':
         # sensors cannot type a password or send a browser header, so this one route is checked by a secret token instead
         tok = setting(db(), 'ingest_token', '')
         if not tok or not hmac.compare_digest(request.headers.get('X-Ingest-Token', ''), tok): abort(403, 'missing or wrong X-Ingest-Token')
         return None
-    if PASSWORD:
-        a = request.authorization
-        if not (a and hmac.compare_digest(a.password or '', PASSWORD)):
-            return Response('Password required', 401, {'WWW-Authenticate': 'Basic realm="Plant database"'})
+    if via_tailscale():
+        g.user = ts_user()
+        if g.user is None:
+            return Response('Open Plant record from a device that is signed in to Tailscale as a person.', 403, {'Content-Type': 'text/plain; charset=utf-8'})
+    else:
+        if PASSWORD:
+            a = request.authorization
+            if not (a and hmac.compare_digest(a.password or '', PASSWORD)):
+                return Response('Password required', 401, {'WWW-Authenticate': 'Basic realm="Plant database"'})
+        g.user = {'via': 'local', 'login': None, 'name': editor(), 'role': 'owner'}     # this computer (or the home network, if opened to it)
+    refusal = role_refusal(g.user)
+    if refusal: abort(403, refusal)
     if request.method not in ('GET', 'HEAD', 'OPTIONS'):
         # CSRF guard: custom header cannot be sent cross-site without a CORS preflight (which we never allow)
         if not request.headers.get('X-Editor'): abort(403, 'missing X-Editor header')
@@ -460,6 +591,10 @@ def guard():
 
 @app.after_request
 def headers(resp):
+    if via_tailscale():                              # always HTTPS (Tailscale Serve), so browsers can be told to stay on HTTPS
+        resp.headers['Strict-Transport-Security'] = 'max-age=31536000'
+    resp.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), payment=(), usb=()'
+    resp.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
     resp.headers['X-Content-Type-Options'] = 'nosniff'
     resp.headers['X-Frame-Options'] = 'DENY'
     resp.headers['Referrer-Policy'] = 'no-referrer'
@@ -611,6 +746,14 @@ def care_one(i):
     c.commit()
     return jsonify(ok=True)
 
+def runs_as():
+    """1.12.1: which user the app runs as inside its container (set by start.py), for the owner's Debug window."""
+    if (getattr(g, 'user', None) or {}).get('role') != 'owner': return None
+    v = os.environ.get('PLANTDB_RUNS_AS', '')
+    if v == 'user': return {'root': False, 'text': 'Its own user, without special privileges'}
+    if v.startswith('root:'): return {'root': True, 'text': 'Root inside its container, because ' + v[5:]}
+    return None
+
 @app.route('/api/version')
 def version(): return jsonify(version=APP_VERSION)
 
@@ -625,7 +768,7 @@ def meta():
                            'photos': c.execute('SELECT COUNT(*) FROM photos').fetchone()[0]},
                    password_protected=bool(PASSWORD), int_ranges=INT_RANGES, num_ranges=NUM_RANGES, version=APP_VERSION,
                    home_tz=L['tz'],              # the browser uses this for "today", so dates match the server's
-                   place=place_brief(L), climate=place_climate(c, L),
+                   place=place_brief(L), climate=place_climate(c, L), me=me_dict(c), runs_as=runs_as(),
                    places=[place_brief(loc_dict(r)) for r in c.execute('SELECT * FROM locations ORDER BY is_home DESC, name')])
 
 REF_PLACE = (30.5083, -97.6789)       # the written winter reference (climate table and notes) is for Round Rock, TX

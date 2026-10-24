@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.12.1 (2026-10-24)
+- **The app starts on any computer after updating.** On yours, 1.12.0 stopped straight away: its new ordinary user wasn't allowed to write to the photos folder that older versions made.
+  - Now the app checks this itself each time it starts. If it may, it runs as that ordinary user. If not, it runs as root inside its container, as before 1.12.0.
+  - Nothing needs doing either way, and your plants and photos aren't changed.
+  - The first line of its log says which way it runs, and so does the **Debug** window (owner only). README: "Which user the app runs as".
+  - The `docker-compose.override.yml` file that fixed this by hand is no longer needed, and the updater removes it.
+- **A busy port no longer stops the update.** If port 8080 is still in use when the app restarts, the updater:
+  - tells you to close any browser tabs with Plant record open
+  - waits, and tries again for about a minute
+  - if the port is still busy, names the program that has it and moves the app to a free port (for example `http://localhost:8090`). The Tailscale address stays the same.
+- **No more "Control server error" lines in the log.** The new gunicorn version wanted to make a control file on the read-only container. That part is now switched off; the app never used it.
+
+## 1.12.0 (2026-10-24)
+- **Use the app away from home, safely.** The app now has its own Tailscale device, "plants". With Tailscale on, you open it at `https://plants.<your-tailnet>.ts.net` from anywhere: encrypted, with a real certificate, and without opening anything on your router.
+  - Run **Set Up Remote Access** once (in `plant-database\tools`; README: "Using the app away from home"). It signs the device in, checks HTTPS and makes you the owner.
+- **Share it with someone.** Share just the plants device in Tailscale. They reach the plant app and nothing else of yours.
+- **Signed in by Tailscale.** The top right says "Signed in as …", and the audit log names people by their Tailscale account instead of a typed name.
+- **What people may do.** Press your name to see everyone who has opened the app and choose what each can do:
+  - **Can view only:** sees everything, changes nothing. Everyone starts here.
+  - **Can edit:** also makes changes.
+  - **Owner:** also backups, settings and this list.
+  - The app enforces this on every request, not just by hiding buttons.
+- **Closed to the home network.** Only this computer can open `http://localhost:8080` now; everyone else comes in through Tailscale. Your old `http://<your PC>:8080` address (on the Wi-Fi or through Tailscale) stops working. A line in a `.env` file opens it again if you need it (README).
+- **Sensors** get their own port (8082). It only takes readings with the token, and it stays shut until you open it.
+- **A tighter container.** The app no longer runs as root, has no special privileges, and its program files are read-only. Each update now rebuilds it on a freshly downloaded base image and fetches the newest Tailscale container, so the security fixes Docker warns about keep arriving.
+
 ## 1.11.0 (2026-10-23)
 - **What each plant needs, on the Fertilizer page.** Under each plant's code and "last fed" line:
   - the N-P-K ratio it needs and how strong to mix it, for example "Needs N-P-K ratio 2-7-7, at half strength";

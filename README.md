@@ -153,17 +153,99 @@ curl http://localhost:8080/api/version
 
 If the version in the app is older than the newest zip in your folder, that update has not been applied yet. Each update leaves the previous image behind; to free the space, remove old ones with `docker image rm plant-database:1.6.1` (any shell), using the old version number.
 
-## Use it from your phone
+## Using the app away from home (from 1.12.0)
 
-1. Find your PC's address on the Wi-Fi.
-   - Windows (cmd.exe): `ipconfig` and look for "IPv4 Address" (for example `192.168.1.20`).
-   - Windows (PowerShell): `Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.*' -and $_.IPAddress -ne '127.0.0.1' } | Select-Object InterfaceAlias, IPAddress`
-   - macOS: `ipconfig getifaddr en0`
-   - Linux (bash): `hostname -I`
-2. On the phone (same Wi-Fi), open `http://192.168.1.20:8080` (use your address).
-3. If it does not load, Windows Firewall may be blocking port 8080. Allow Docker Desktop on private networks when Windows asks, or add a rule:
-   - Windows (cmd.exe, run as administrator): `netsh advfirewall firewall add rule name="Plant database" dir=in action=allow protocol=TCP localport=8080 profile=private`
-   - Windows (PowerShell, run as administrator): `New-NetFirewallRule -DisplayName "Plant database" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8080 -Profile Private`
+From version 1.12.0 the app has its own Tailscale device, called **plants**. You open it at an address like `https://plants.your-tailnet.ts.net` from any phone or computer that has Tailscale on, at home or away. It's encrypted all the way, with a real certificate, so browsers no longer say "Not secure". Nothing on your router is opened, and you can share just the app (not your whole computer) with someone else.
+
+What changed:
+- **Your home network can't reach the app any more.** Before 1.12.0, anyone on the house Wi-Fi could open `http://<your PC>:8080` and change things. Now only this computer can open `http://localhost:8080`, which the updater and backups use. Everyone else, including you on your phone, uses the `https://plants…ts.net` address with Tailscale on.
+- **Your old Tailscale address for the desktop (port 8080) stops working too.** Use the new address instead.
+- **People who come in through Tailscale are signed in by Tailscale.** The app knows who they are without a password. It names them in the audit log, and they can only do what you allow (see below).
+
+### One-time setup
+
+1. Update to 1.12.0 with the updater as usual.
+2. Run **Set Up Remote Access**: double-click `Set Up Remote Access.cmd` in the `plant-database\tools` folder, or from the Plants folder run:
+   - Windows (cmd.exe): `"plant-database\tools\Set Up Remote Access.cmd"`
+   - Windows (PowerShell): `powershell -ExecutionPolicy Bypass -File .\plant-database\tools\setup-remote-access.ps1`
+   - bash: `pwsh -File ./plant-database/tools/setup-remote-access.ps1`
+
+   It opens Tailscale's sign-in page. Sign in with your usual Tailscale account. If it says HTTPS is off, it opens the DNS page of the Tailscale admin console: turn on **MagicDNS** if it is off, press **Enable HTTPS**, and go back to the script. It then makes you the owner, prints the app's address, and offers to point the QR codes on labels at it. You can run it again any time to check everything; it changes nothing that is already right.
+3. In the [Tailscale admin console](https://login.tailscale.com/admin/machines), open **Machines**, then **plants**, then the **…** menu, and choose **Disable key expiry**. Otherwise Tailscale asks you to sign the device in again after a few months.
+4. On your phone: install the Tailscale app, sign in with the same account and switch it on. Open the `https://plants…ts.net` address and add it to your home screen.
+
+### Sharing it with someone (for example your girlfriend)
+
+1. In the Tailscale admin console, go to **Machines**, then **plants**, then the **…** menu, then **Share**. Copy the invite link (or invite by email) and send it.
+2. She installs Tailscale on her phone or computer and signs in with her own account (Google, Microsoft, Apple and others work). Then she opens the invite link and accepts it.
+3. With Tailscale on, she opens the same `https://plants…ts.net` address. She can reach the plant app and nothing else of yours: not your computer, its files or games.
+4. The first time she opens it, she appears in the app's people list as **Can view only**. Press your name at the top right to see the list, and change her to **Can edit** if she should make changes.
+5. To stop sharing: **Machines**, then **plants**, then **Share**, and remove her there. Then press **Remove** next to her in the app's list.
+
+### Who can do what
+
+- **Can view only**: sees everything (plants, photos, weather, the audit log) and changes nothing. A "View only" note sits at the top of each page, and buttons that would change something are hidden.
+- **Can edit**: also changes plant pages, care, feedings, photos, answers and the photo list.
+- **Owner**: also backups, settings (label address, weather places, the sensor token) and the people list. The setup script makes you the owner; if it couldn't, the first person to open the app through Tailscale is. There is always at least one owner.
+- On this computer (`http://localhost:8080`) everything stays open, as before, and your name is typed in.
+
+The app itself checks every request, so hiding a button is only a convenience: a change someone isn't allowed to make is refused even if they try it another way. The audit log shows each change under the Tailscale name of the person who made it. You can change the name shown for you in the same window.
+
+### Security, in short
+
+- **Encrypted all the way.** Traffic travels inside Tailscale's encryption, and the app adds HTTPS with a real certificate on top. Tailscale's servers never see your plant data.
+- **No open router ports.** Nothing is opened to the internet (Tailscale Funnel is switched off in `tailscale\config\serve.json`), and the router needs no changes.
+- **Only signed-in people get in.** That means your devices and people you have shared the plants device with, each with the role you chose.
+- **A tighter container:**
+  - Its program files are read-only, and it has almost no Linux privileges and can't gain any.
+  - It runs as an ordinary user when Docker allows that, and otherwise as root inside its container, as before (see "Which user the app runs as" below).
+  - Each update rebuilds it on a freshly downloaded base image and fetches the newest Tailscale container, so security fixes keep arriving.
+- **Private files stay private.** The Tailscale sign-in is in `tailscale\state`. It never goes into a release or a backup zip, so keep that folder to yourself.
+
+### Which user the app runs as (from 1.12.1)
+
+Each time it starts, the app checks whether an ordinary user (called `plants`) may write to the `data` and `backups` folders.
+- **If it may,** the app runs as that user, with no special privileges at all. This is the safer way, and the usual one on a new install.
+- **If it may not,** the app runs as root inside its container, the way every version before 1.12.0 did. Nothing needs doing. This is normal on Windows for folders an older version wrote to: Docker Desktop doesn't let the new user write there and can't hand those folders over.
+
+Either way the program files stay read-only and only a few privileges are allowed. The first line of the app's log says which way it runs, and so does the **Debug** window (for the owner). To see the log line:
+- Windows (cmd.exe): `docker logs plant-database 2>&1 | findstr /C:"Plant record runs"`
+- Windows (PowerShell): `docker logs plant-database 2>&1 | Select-String 'Plant record runs'`
+- bash: `docker logs plant-database 2>&1 | grep 'Plant record runs'`
+
+Version 1.12.0 needed a `docker-compose.override.yml` file for the second case. The updater removes that file, because the app now decides by itself. To always run as root, put the line `PLANTDB_RUN_AS=root` in the `.env` file and run `docker compose up -d`.
+
+### Opening it to your home network again (less safe)
+
+If you need the old `http://<your PC>:8080` address on your home Wi-Fi (for example for a device that can't run Tailscale), put a line in a file named `.env` next to `docker-compose.yml`, then restart. Anyone on the Wi-Fi can then change things, unless you also set `PLANTDB_PASSWORD` in `docker-compose.yml`. From the `plant-database` folder:
+
+- Windows (cmd.exe): `(echo PLANTDB_BIND=0.0.0.0)>>.env` then `docker compose up -d`
+- Windows (PowerShell): `Add-Content .env 'PLANTDB_BIND=0.0.0.0'; docker compose up -d`
+- bash: `echo 'PLANTDB_BIND=0.0.0.0' >> .env && docker compose up -d`
+
+Then find your PC's address on the Wi-Fi:
+- Windows (cmd.exe): `ipconfig` (look for "IPv4 Address", for example `192.168.1.20`)
+- Windows (PowerShell): `Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.*' -and $_.IPAddress -ne '127.0.0.1' } | Select-Object InterfaceAlias, IPAddress`
+- bash: `hostname -I`
+
+If it doesn't load from the phone, Windows Firewall may be blocking port 8080. Allow Docker Desktop on private networks when Windows asks, or add a rule:
+- Windows (cmd.exe, run as administrator): `netsh advfirewall firewall add rule name="Plant database" dir=in action=allow protocol=TCP localport=8080 profile=private`
+- Windows (PowerShell, run as administrator): `New-NetFirewallRule -DisplayName "Plant database" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8080 -Profile Private`
+- bash (Linux with ufw): `sudo ufw allow 8080/tcp`
+
+Remove the line from `.env` and run `docker compose up -d` to close it again.
+
+### If something doesn't work
+
+- **The address doesn't open:** check that Tailscale is on for that phone or computer. Run Set Up Remote Access again: it says what is missing.
+- **"Open Plant record from a device that is signed in to Tailscale as a person":** the device uses a Tailscale tag or isn't signed in as a person. Sign it in with a personal account.
+- **The updater says port 8080 is busy** ("ports are not available" or "Only one usage of each socket address"): close any browser tabs that have Plant record open, at `http://localhost:8080` or the old address. They can hold on to the port while the app restarts. The updater says so, waits and tries again for about a minute. If the port is still busy after that, it names the program that holds it and moves the app to a free port such as `http://localhost:8090`, saved as `PLANTDB_PORT` in the `.env` file. The Tailscale address doesn't change. To move it back later, close the program holding port 8080, delete the `PLANTDB_PORT` line from `.env`, and from the `plant-database` folder run:
+  - Windows (cmd.exe): `docker compose up -d`
+  - Windows (PowerShell): `docker compose up -d`
+  - bash: `docker compose up -d`
+- **If the app does not start after updating:** in Docker Desktop, open **Containers**, then **plant-database**, then **Logs**.
+  - A line starting with `PLANTDB_NOT_WRITABLE` means the app can't write to its data folder, even as root. Check that the `plant-database` folder isn't read-only (in File Explorer, right-click it, then **Properties**), then run the updater again.
+  - If that doesn't help, send the log to Claude. Your plants and photos aren't changed.
 
 ## Display settings and low vision
 
@@ -375,24 +457,32 @@ Open **Weather**, then **Connect your sensor**. It shows the address and a priva
 - `par` (umol/m2/s) or `lux` (converted at 54 lux per PAR)
 - `soil_moisture` (%), `soil_temp_f` or `soil_temp_c`, `soil_ph`
 
-Send up to 500 readings at once as `{"readings":[ ... ]}`. A reading with an impossible value is refused with an explanation. Use the PC's Wi-Fi address (step 1 under "Use it from your phone"), saved on the Labels page, so the address shown on the Weather page works from the sensor. Try it from the PC (replace `YOURTOKEN`):
+Send up to 500 readings at once as `{"readings":[ ... ]}`. A reading with an impossible value is refused with an explanation.
+
+From 1.12.0 sensors send to their own port, **8082**. It only takes readings with the token; nothing else of the app answers there. It is shut until you open it to your home network. Put the line `PLANTDB_SENSOR_BIND=0.0.0.0` in the `.env` file next to `docker-compose.yml` and run `docker compose up -d` (from the `plant-database` folder):
+
+- Windows (cmd.exe): `(echo PLANTDB_SENSOR_BIND=0.0.0.0)>>.env` then `docker compose up -d`
+- Windows (PowerShell): `Add-Content .env 'PLANTDB_SENSOR_BIND=0.0.0.0'; docker compose up -d`
+- bash: `echo 'PLANTDB_SENSOR_BIND=0.0.0.0' >> .env && docker compose up -d`
+
+The sensor then sends to `http://<your PC's Wi-Fi address>:8082/api/readings` ("Opening it to your home network again" shows how to find that address). Try it from the PC (replace `YOURTOKEN`):
 
 Windows (cmd.exe):
 
 ```
-curl -X POST http://localhost:8080/api/readings -H "X-Ingest-Token: YOURTOKEN" -H "Content-Type: application/json" -d "{\"device\":\"porch\",\"temp_f\":71.2,\"humidity\":58,\"par\":240}"
+curl -X POST http://localhost:8082/api/readings -H "X-Ingest-Token: YOURTOKEN" -H "Content-Type: application/json" -d "{\"device\":\"porch\",\"temp_f\":71.2,\"humidity\":58,\"par\":240}"
 ```
 
 Windows (PowerShell):
 
 ```
-Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/readings -Headers @{"X-Ingest-Token"="YOURTOKEN"} -ContentType "application/json" -Body '{"device":"porch","temp_f":71.2,"humidity":58,"par":240}'
+Invoke-RestMethod -Method Post -Uri http://localhost:8082/api/readings -Headers @{"X-Ingest-Token"="YOURTOKEN"} -ContentType "application/json" -Body '{"device":"porch","temp_f":71.2,"humidity":58,"par":240}'
 ```
 
 macOS / Linux (bash):
 
 ```
-curl -X POST http://localhost:8080/api/readings -H "X-Ingest-Token: YOURTOKEN" -H "Content-Type: application/json" -d '{"device":"porch","temp_f":71.2,"humidity":58,"par":240}'
+curl -X POST http://localhost:8082/api/readings -H "X-Ingest-Token: YOURTOKEN" -H "Content-Type: application/json" -d '{"device":"porch","temp_f":71.2,"humidity":58,"par":240}'
 ```
 
 The token is the only thing protecting this address (the password option does not apply to it), so keep it private and use **Make a new token** if it leaks. When your sensor is working, choose "My sensor" in Current conditions.
@@ -477,9 +567,11 @@ Open **Labels**, type the address from step 1 into "Address the codes should ope
 
 ## Who made a change
 
-The first time you save something, the app asks for your name. It goes into the change log with the date and time. It is typed in, not a login, so it records who says they made the change. Click your name at the top right to change it.
+People who open the app through Tailscale (from 1.12.0) are named by Tailscale: the top right says "Signed in as …", and their changes show under that name. Press it to change the name shown for you, and (owner) to see who can use the app.
 
-If you want a password, uncomment `PLANTDB_PASSWORD` in `docker-compose.yml` and run `docker compose up -d`. The browser then asks for a password (leave the username blank or put anything). Do not expose port 8080 to the internet; this is built for your home network.
+On this computer (`http://localhost:8080`), the first time you save something the app asks for your name. It goes into the audit log with the date and time. It is typed in, not a login, so it records who says they made the change. Click your name at the top right to change it.
+
+If you open the app to your home network again (see "Using the app away from home"), you can also require a password there: uncomment `PLANTDB_PASSWORD` in `docker-compose.yml` and run `docker compose up -d`. The browser then asks for it (leave the username blank or put anything). Never open port 8080 to the internet.
 
 ## Audit log (from 1.10.0)
 

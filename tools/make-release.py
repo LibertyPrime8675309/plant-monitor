@@ -15,7 +15,7 @@ CHANGELOG entry agree."""
 import os, re, sys, json, glob, zipfile, datetime
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 SKIP_DIRS = {'.git', '.github', 'dev', 'docs', 'dist', '__pycache__'}
-SKIP_TOP = {'CLAUDE.md'}
+SKIP_TOP = {'CLAUDE.md', '.env'}         # .env may hold a Tailscale auth key
 PACK_LIMIT = 28 * 1000 * 1000          # bytes of photos per pack zip (photos are already compressed)
 PHOTOS = os.path.join(ROOT, 'app', 'seed', 'photos')
 def rd(p): return open(os.path.join(ROOT, p), encoding='utf-8').read()
@@ -72,7 +72,7 @@ manifest = None if full else {'version': ver, 'packs': {k: {'zip': f'plant-datab
 with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
     for d, dirs, files in os.walk(ROOT):
         rel = os.path.relpath(d, ROOT)
-        dirs[:] = [x for x in dirs if x not in SKIP_DIRS and not (rel == '.' and x in ('data', 'backups'))]
+        dirs[:] = [x for x in dirs if x not in SKIP_DIRS and not (rel == '.' and x in ('data', 'backups')) and not (rel == 'tailscale' and x == 'state')]   # 1.12.0: the Tailscale sign-in
         if not full and os.path.abspath(d) == PHOTOS: continue          # photos travel in the packs
         for f in files:
             if rel == '.' and (f in SKIP_TOP or f.endswith('.zip')): continue

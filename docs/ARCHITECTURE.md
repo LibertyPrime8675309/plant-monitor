@@ -64,6 +64,34 @@
 - **1.11.0 additions:**
   - **Place in use:** `location(c)` is now the place the browser chose, sent as the `X-Place` header on every request (falling back to the home place). `home_place(c)` is the home place, used outside requests (hourly updates). `req_loc()` falls back to `location(c)`. Everything that used the home place (frost, watering, prep weather, current conditions, `local_today`, `/api/reference`, `/api/meta`) follows the header. `/api/meta` returns `place`, `places` and `climate` (`place_climate()`: a usual winter's coldest night and coldest-month night, from 3+ years of `weather_daily`, cached 6 hours). `/api/reference` adds `applies` (the written notes are for Round Rock, `REF_PLACE`) and `normals` (`place_normals()`, monthly averages from history).
   - **Fertilizer needs:** plant fields `npk_ratio` (text, normalised to `a-b-c` by `parse_ratio()`) and `fert_strength` (optional enum `FERT_STRENGTHS`). Table `fertilizers` (saved products). `fert_products()` merges saved ones with every product in `fertilizer_log`; `fert_match()` compares N-P-K as shares of the total (largest difference: ≤0.05 Matches, ≤0.12 Close, ≤0.22 Usable); `fert_dose()` aims the strongest nutrient at `STRENGTH_PPM` (150/75/55/40 ppm) and rounds to spoon measures (`nice_amount()`). Routes: `GET/POST /api/fertilizer/products`, `PUT/DELETE /api/fertilizer/products/<id>`, `GET /api/fertilizer/needs[?plant=]`.
+- **1.12.0 additions (remote access):**
+  - **Ports:** gunicorn listens on three ports in the container.
+    - 8080 is "this computer". It is published on 127.0.0.1 only (`PLANTDB_BIND` in `.env` opens it). It has full access, with the optional `PLANTDB_PASSWORD`.
+    - 8081 (`TS_PORT`) is reached only by the `tailscale` container. It is never published.
+    - 8082 (`SENSOR_PORT`) accepts only `POST /api/readings`. It is published on 127.0.0.1 unless `PLANTDB_SENSOR_BIND` opens it.
+    - `via_tailscale()` compares `SERVER_PORT` (the real listener, not the Host header).
+  - **Identity:** Tailscale Serve (`tailscale/config/serve.json`: HTTPS on 443, proxy to `http://plants:8081`, Funnel off) adds `Tailscale-User-Login`/`-Name` and strips spoofed copies. `ts_user()` keeps the table `people(login, name, role, first_seen, last_seen)`. The first person is the owner (or the one the setup script sets); the rest start as `viewer`. Requests on 8081 with no login are refused.
+  - **Roles:** `role_refusal()` enforces them in `guard()`.
+    - Viewers can't make changes.
+    - `/api/backups*`, `/api/ingest*` and `/api/people` are owner only, as are changes to `/api/settings`, `/api/weather/settings` and `/api/places/<id>`.
+    - `editor()` returns the Tailscale name for Tailscale requests.
+    - Routes: `GET/PUT /api/me`, `GET/PUT/DELETE /api/people`. `/api/meta` includes `me`. HSTS is sent on 8081.
+  - **Container:** user 10001, `read_only`, tmpfs `/tmp`, `cap_drop: ALL`, `no-new-privileges`. `_check_writable()` prints `PLANTDB_NOT_WRITABLE` if the data folders can't be written. The updater then writes `docker-compose.override.yml` (user root plus the file capabilities it needs) and restarts.
+  - **Updater:** runs `docker compose build --pull`, then `pull --ignore-buildable` (the tailscale image), then `up -d`.
+- **1.12.1 additions (starting the container):**
+  - **Which user:** the container starts as root and runs `app/start.py`.
+    - A brand-new, empty `data` or `backups` folder is chowned to 10001; nothing else is changed.
+    - A forked child switches to 10001 (`setgroups([])`, `setgid(0)`, `setuid(10001)`) and runs `writable.problem()`: every data folder takes a test file, and the database and its SQLite side files open read-write.
+    - If that passes, the process switches to 10001 and execs gunicorn with no capabilities left. If not, it stays root (logged as `PLANTDB_RUNNING_AS_ROOT: …`).
+    - `PLANTDB_RUN_AS=root` skips the check. `PLANTDB_RUNS_AS` passes the result to the app, and `/api/meta.runs_as` shows it to owners (Debug window).
+    - Compose grants SETUID and SETGID (to switch), plus CHOWN, DAC_OVERRIDE and FOWNER (for the root case), on top of `cap_drop: ALL`.
+  - `_check_writable()` in server.py uses the same `writable.problem()`. `PLANTDB_NOT_WRITABLE` now means even root can't write.
+  - **gunicorn settings** live in `app/gunicorn.conf.py`, so unknown settings are ignored by older versions. `control_socket_disable = True`: gunicorn 25.1+ otherwise tries to make `~/.gunicorn/gunicorn.ctl` on the read-only filesystem.
+  - **Updater:**
+    - removes the `docker-compose.override.yml` that 1.12.0 (or Claude) wrote, recognised by its first line; a person's own override is kept.
+    - On a busy port (`Start-App`): first tells the person to close Plant record tabs, then retries after 5, 10, 15 and 30 s. Then it moves the port (`PLANTDB_PORT` 8090–8099, `PLANTDB_SENSOR_PORT` 8180–8189, in `.env`).
+    - `setup-remote-access.ps1` reads `PLANTDB_PORT`.
+  - **Setup script:** `tools/setup-remote-access.ps1` reads `tailscale status --json` in the `plant-tailscale` container (AuthURL, CertDomains, Self.DNSName, User) and makes the signed-in login the owner via `PUT /api/people` on localhost. `tailscale/state` and `.env` are never in a release.
 - **API:** `/api/plants`, `/api/plants/<code>` and its sub-routes (`site`, `status`, `history`, `timeline`, `versions`, `restore`, `photos`, `qr.svg`, `daily`, `day`), plus `/api/requests`, `/api/photos`, `/api/to-photograph`, `/api/fertilizer`, `/api/water`, `/api/care`, `/api/frost`, `/api/for-claude`, `/api/weather*`, `/api/places*`, `/api/current`, `/api/backups*`, `/api/export.json|csv`, `/api/audit*`, `/api/meta`, `/api/version` and `/healthz`.
 
 ## Front end: `app/static/`
@@ -74,6 +102,7 @@
   - 1.8.0 modules, each in its own block: frost banner and checklist, watering and Today, read aloud and shortcuts (`addReadButtons()`, Web Speech API), timeline (filled by a `MutationObserver` on `#app`), copy for Claude (`forClaudeDialog()`), and the photo check (`photoCheck()`, which runs before every upload).
   - 1.10.0: the Audit log page (`viewHistory()`, state in `AUD`, filters remembered in localStorage `plantdb.auditf`), the Debug window (`debugDialog()`, settings in `DBG`, localStorage `plantdb.debug`, change events with `data-dbg`) and the console (`conPoll()` every 3 s via `/api/audit?after=`, `conAdd()`, `conLayout()`). `conLayout()` sizes the console to the newest 3, 4 or 5 rows, places it clear of the side menu and of every button pinned to the bottom, and sets `--console-space`, which `fitPanes()` and `main` use to leave room. `pinLayout()` stacks the Sections button and the job note above Debug and Display on phones when they would otherwise overlap.
   - 1.11.0: the Location button and window (`PLACE` in localStorage `plantdb.place`, sent by `api()` as `X-Place`; `placeDialog()`, `placeChanged()`, `paintPlace()`, `plcHomeRow()`; the L key). `META` is reloaded when the place changes, and `tempMarks()`/`humMarks()` come from `META.climate`. Fertilizer needs: `needLines()`, `loadNeeds()` (into `FERT.needs`), `productsBlock()` and `productDialog()`; `fertState0()` fills the feeding form from a plant's match.
+  - 1.12.0: `ME()` (from `META.me`), `paintWho()`, `whoDialog()` (name, and for owners the people list with role menus: `data-f="prole"`, `data-act="pdel"`). Viewers get `html[data-role=viewer]`, which hides change buttons in one CSS block. They also get a "View only" note, and a MutationObserver switches off menus that save straight away. `api()` refuses their changes before sending.
   - Templates use the `html` tagged template, which escapes values (`raw()` opts out, `rend()` renders).
   - Click, change and submit events are delegated to `acts`, `changeActs` and `formActs`.
   - `buildSideNav()` builds the "On this page" menu from the `section.blk > h2` headings.
