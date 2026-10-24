@@ -30,7 +30,7 @@ Asked for by Ethan on October 24, 2026. He saved photos and listing screenshots 
 - No plant fields change.
 
 ## Tests
-`dev/test/lights_check.py` (46 checks) covers:
+`dev/test/lights_check.py` (60 checks) covers:
 - the maths and the batch's lights and photos
 - the layout never using a light more than its count
 - spots set up, moved, changed and removed

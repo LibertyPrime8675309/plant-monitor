@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.13.1 (2026-10-24)
+- **Rooms and shelves** on the Grow lights page. Your rooms and shelves are listed, ready to use:
+  - Downstairs Living Room: Tall Black Shelf, Tall Brown Shelf, Short Brown Shelf, Large Brown Hutch and Side Table
+  - My Bedroom: Shelves
+  - Garage
+  - Upstairs Living Room
+
+  Add more at any time, for example each bedroom shelf you put up. A light spot now has **Where**, so you choose which room and shelf it is on.
+- **Manufacturer model** for every light, to fill in from its box or label.
+- **Your answers recorded:** all the bulbs use the E26 base, and the disk light is new and can go anywhere. Two new questions are in the open requests: what will hold the bulbs, and the model numbers.
+
 ## 1.13.0 (2026-10-24)
 - **Grow lights page.** Your 11 grow lights are in the app, from the photos and listings you saved:
   - each with a photo, how many you have, its timer and brightness steps, and the maker's light figures (or Claude's estimates, marked, where the maker gives none);

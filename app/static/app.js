@@ -3202,6 +3202,34 @@ function ltSetting(s) {
   return `${s.units > 1 ? s.units + ' side by side, ' : ''}${fmt(s.distance_in, 1)} in from the leaves, ${fmt(s.hours, 1)} hours a day${s.dim_pct < 100 ? `, at ${s.dim_pct}% brightness` : ''}`;
 }
 function ltLight(id) { return LT && LT.lights.find(L => L.id === +id); }
+function ltRooms() {                 // [[room, [places in it]], ...] in the order they were added
+  const m = new Map(); (LT ? LT.places : []).forEach(pl => { if (!m.has(pl.room)) m.set(pl.room, []); m.get(pl.room).push(pl); }); return [...m.entries()];
+}
+function ltRoomsBlock() {
+  const rooms = ltRooms();
+  if (!rooms.length) return html`<p class="muted">None yet. Add the rooms, shelves and tables where plants will go.</p>`;
+  return html`<div class="lt-rooms">${rooms.map(([room, ps]) => html`<section class="lt-room" aria-label="${room}"><h3>${room}</h3><ul>${ps.map(pl => {
+    const sp = LT.spots.filter(s => s.place_id === pl.id), n = sp.reduce((a, s) => a + s.plants.length, 0);
+    return html`<li><span><strong>${pl.name || 'The room itself'}</strong><br><span class="muted">${sp.length ? `${sp.map(s => s.name).join(', ')}: ${n} plant${n === 1 ? '' : 's'}` : 'No light spot here yet'}</span></span>
+      <span class="row noprint"><button class="btn ghost small" type="button" data-act="roomedit" data-id="${pl.id}">Rename</button><button class="btn ghost small" type="button" data-act="roomdel" data-id="${pl.id}">Remove</button></span></li>`; })}</ul></section>`)}</div>`;
+}
+async function roomDialog(pl) {
+  if (!(await needName())) return;
+  let x = { room: pl ? pl.room : '', name: pl ? pl.name : '' };
+  for (;;) {
+    const r = await modal(html`<form method="dialog"><h2>${pl ? 'Rename this room or shelf' : 'Add a room or shelf'}</h2>
+      <label class="f">Room<input type="text" name="room" maxlength="60" value="${x.room}" list="lt-roomlist" required autofocus><small>For example "My Bedroom". Pick one already listed to add a shelf to it.</small></label>
+      <datalist id="lt-roomlist">${ltRooms().map(([room]) => html`<option value="${room}"></option>`)}</datalist>
+      <label class="f">Shelf, table or spot in the room<input type="text" name="name" maxlength="60" value="${x.name}"><small>For example "Top shelf by the window". Leave it empty for the room as a whole.</small></label>
+      <div class="row"><button class="btn" value="ok">${pl ? 'Save changes' : 'Add it'}</button><button class="btn ghost" value="cancel" formnovalidate>Cancel</button></div></form>`);
+    if (r !== 'ok') return;
+    const f = dlg.querySelector('form'); x = { room: f.elements.room.value, name: f.elements.name.value };
+    try {
+      if (pl) await api('PUT', '/api/lights/places/' + pl.id, x); else await api('POST', '/api/lights/places', x);
+      toast(pl ? 'Renamed' : 'Added'); route(); return;
+    } catch (e) { toast(e.message, true); }
+  }
+}
 function ltSocketNote(L) {
   return L && L.specs.needs_socket && !L.fixture ? html`<p class="notice"><strong>Needs a socket.</strong> This bulb screws into a lamp or clamp light. Note which one under "Where it is" on the light (Your lights, below).</p>` : '';
 }
@@ -3214,6 +3242,7 @@ function ltSteps(steps) {
 function ltSpotCard(s, i, plan) {
   const L = ltLight(s.light_id);
   return html`<article class="lt-spot" aria-labelledby="lts-${plan ? 'p' : 's'}${i}"><h3 id="lts-${plan ? 'p' : 's'}${i}">${s.name}</h3>
+    ${!plan ? html`<p><strong>Where:</strong> ${s.place || html`<span class="muted">Not chosen yet</span>`}</p>` : ''}
     <p><strong>${s.light}</strong>: ${ltSetting(s)}.</p>
     <p>About <strong>${has(s.dli) ? s.dli : '?'} mol/m² a day</strong> at the leaves${has(s.ppfd) ? html` (${fmt(s.ppfd)} PAR while it is on)` : ''}${s.area_sqft ? html`, lighting about ${fmt(s.area_sqft, 1)} sq ft well` : ''}.
       ${s.crowded ? html`<strong>Crowded:</strong> the pots take about ${fmt(s.room_needed_sqft, 1)} sq ft, so the plants at the edge get less.` : ''}</p>
@@ -3234,6 +3263,7 @@ function ltLightCard(L) {
     <p><strong>You have ${L.count}.</strong> ${L.in_use ? `${L.in_use} in use in your spots.` : 'None in a spot yet.'}</p>
     <dl class="dl">
       ${S.kind ? html`<dt>Type</dt><dd>${S.kind}</dd>` : ''}
+      <dt>Manufacturer model</dt><dd>${S.model || html`<span class="muted">Not noted yet</span>`}</dd>
       ${bits.length ? html`<dt>Light</dt><dd>${bits.join(', ')}</dd>` : ''}
       ${sp ? html`<dt>Colour mix</dt><dd>Blue ${sp.blue}%, green ${sp.green}%, red ${sp.red}%, far red ${sp.far_red}%</dd>` : ''}
       ${S.power ? html`<dt>Power</dt><dd>${S.power}</dd>` : ''}
@@ -3263,6 +3293,8 @@ async function viewLights() {
       <div class="row noprint"><button class="btn" type="button" data-act="spotnew">Set up a spot</button><button class="btn ghost" type="button" data-act="lightnew">Add a light</button></div></div>
     <section class="blk" id="lt-spots"><h2>Your light spots</h2>
       ${LT.spots.length ? html`<div class="lt-grid">${LT.spots.map((s, i) => ltSpotCard(s, i, false))}</div>` : html`<p class="muted">None yet. Set one up from the suggested layout below with one press, or with "Set up a spot".</p>`}</section>
+    <section class="blk" id="lt-rooms"><h2>Rooms and shelves</h2><p>Where your plants go inside. Choose one for each light spot.</p>${ltRoomsBlock()}
+      <div class="row noprint"><button class="btn ghost" type="button" data-act="roomnew">Add a room or shelf</button></div></section>
     <section class="blk" id="lt-plan"><h2>Suggested layout</h2>
       <p>For the plants that are not in a spot yet. Plants that need the most light are placed first. Each goes under the smallest of your lights that can give it enough, sharing a light with plants whose needs overlap, while there is room under it. "Set up this spot" opens it so you can rename it or change anything before saving.</p>
       ${LT.plan.length ? html`<div class="lt-grid">${LT.plan.map((s, i) => ltSpotCard(s, i, true))}</div>` : html`<p class="muted">Every plant that needs a light is in a spot.</p>`}
@@ -3284,7 +3316,9 @@ async function spotDialog(x) {
     const L = ltLight(x.light_id) || lights[0], inSpot = new Set(x.codes || []);
     const others = Object.fromEntries(LT.spots.map(s => [s.id, s.name]));
     const shown = modal(html`<form method="dialog" data-spot class="spot-form"><h2>${editing ? 'Change this spot' : 'Set up a light spot'}</h2>
-      <label class="f">Name<input type="text" name="name" maxlength="60" value="${x.name || ''}" required autofocus><small>Where it is, for example "Living room shelf, top".</small></label>
+      <label class="f">Name<input type="text" name="name" maxlength="60" value="${x.name || ''}" required autofocus><small>A short name you will recognise, for example "Hutch, top shelf".</small></label>
+      <label class="f">Where<select name="place"><option value="">Not chosen yet</option>${ltRooms().map(([room, ps]) => html`<optgroup label="${room}">${ps.map(pl => html`<option value="${pl.id}" ${pl.id === x.place_id ? raw('selected') : ''}>${pl.label}</option>`)}</optgroup>`)}</select>
+        <small>Add rooms and shelves under "Rooms and shelves" on this page.</small></label>
       <label class="f">Light<select name="light">${lights.map(l => html`<option value="${l.id}" ${l.id === L.id ? raw('selected') : ''}>${l.name} (you have ${l.count}${l.in_use ? `, ${l.in_use} in use` : ''})</option>`)}</select></label>
       <div class="field-grid three"><label class="f">How many of this light<input type="number" name="units" min="1" max="50" step="1" value="${x.units || 1}" required><small>Side by side over these plants.</small></label>
         <label class="f">Distance from the leaves (inches)<input type="number" name="distance" min="1" max="120" step="0.5" value="${x.distance_in || 12}" required><small>From the light to the top leaves${L && L.specs.direction === 'side' ? ' (this light shines sideways)' : ''}.</small></label>
@@ -3300,13 +3334,13 @@ async function spotDialog(x) {
     spotPreview(true);
     if ((await shown) !== 'ok') return;
     const f = dlg.querySelector('form'), v = k => f.elements[k].value;
-    const body = { name: v('name'), light: v('light'), units: v('units'), distance: v('distance'), hours: v('hours'), dim: v('dim'), notes: v('notes'),
+    const body = { name: v('name'), place: v('place'), light: v('light'), units: v('units'), distance: v('distance'), hours: v('hours'), dim: v('dim'), notes: v('notes'),
       plants: [...f.querySelectorAll('input[name=plant]:checked')].map(i => i.value) };
     try {
       if (editing) await api('PUT', '/api/lights/spots/' + x.id, body); else await api('POST', '/api/lights/spots', body);
       toast(editing ? 'Spot changed' : `Spot "${body.name.trim()}" set up`);
       route(); return;
-    } catch (e) { toast(e.message, true); x = { ...x, name: body.name, light_id: +body.light, units: +body.units, distance_in: +body.distance, hours: +body.hours, dim_pct: +body.dim, notes: body.notes, codes: body.plants }; }
+    } catch (e) { toast(e.message, true); x = { ...x, name: body.name, place_id: body.place ? +body.place : null, light_id: +body.light, units: +body.units, distance_in: +body.distance, hours: +body.hours, dim_pct: +body.dim, notes: body.notes, codes: body.plants }; }
   }
 }
 function spotPreview(now) {
@@ -3331,11 +3365,12 @@ function spotPreview(now) {
 async function lightDialog(L) {
   if (!(await needName())) return;
   const S = (L && L.specs) || {}, pts = L ? L.points.map(p => `${fmt(p.distance_in, 2)} in ${fmt(p.ppfd, 2)}${p.area_sqft ? ` (${fmt(p.area_sqft, 2)} sq ft)` : ''}`).join(', ') : '';
-  let x = { name: L ? L.name : '', count: L ? L.count : 1, fixture: L ? L.fixture : '', notes: L ? L.notes : '', watts: S.watts == null ? '' : S.watts, points: pts,
+  let x = { name: L ? L.name : '', model: S.model || '', count: L ? L.count : 1, fixture: L ? L.fixture : '', notes: L ? L.notes : '', watts: S.watts == null ? '' : S.watts, points: pts,
     timer: S.timer || '', dimming: (S.dimming || [100]).join(', '), kind: S.kind || '' };
   for (;;) {
     const r = await modal(html`<form method="dialog"><h2>${L ? 'Change this light' : 'Add a light you have'}</h2>
       <label class="f">Name<input type="text" name="name" maxlength="80" value="${x.name}" required autofocus></label>
+      <label class="f">Manufacturer model<input type="text" name="model" maxlength="80" value="${x.model}"><small>The model number on the box or a label on the light.</small></label>
       <div class="field-grid three"><label class="f">How many you have<input type="number" name="count" min="0" max="100" step="1" value="${x.count}" required></label>
         <label class="f">Watts (each)<input type="number" name="watts" min="0" max="2000" step="any" value="${x.watts}"></label>
         <label class="f">Type<input type="text" name="kind" maxlength="40" value="${x.kind}"><small>For example bulb, strip or clamp light.</small></label></div>
@@ -3351,7 +3386,7 @@ async function lightDialog(L) {
       return;
     }
     if (r !== 'ok') return;
-    const f = dlg.querySelector('form'); x = Object.fromEntries(['name', 'count', 'watts', 'kind', 'fixture', 'points', 'timer', 'dimming', 'notes'].map(k => [k, f.elements[k].value]));
+    const f = dlg.querySelector('form'); x = Object.fromEntries(['name', 'model', 'count', 'watts', 'kind', 'fixture', 'points', 'timer', 'dimming', 'notes'].map(k => [k, f.elements[k].value]));
     try {
       if (L) await api('PUT', '/api/lights/' + L.id, x); else await api('POST', '/api/lights', x);
       toast(L ? 'Light changed' : `${x.name.trim()} added`); route(); return;
@@ -3365,7 +3400,7 @@ async function loadGrowPlant(code) {
     const g = await api('GET', '/api/lights?plant=' + enc(code));
     if (!g.lights || (!g.spot && !g.suggestion && !g.unplaced)) { el.innerHTML = ''; return; }
     const me = s => s.plants.find(p => p.code === code) || {};
-    el.innerHTML = rend(html`<h3>Grow light this winter</h3>${g.spot ? html`<p>In the spot <strong>${g.spot.name}</strong>${g.spot.name.includes(g.spot.light) ? '' : `, under the ${g.spot.light}`}: ${ltSetting(g.spot)}. About ${g.spot.dli} mol/m² a day. ${lvTag(me(g.spot).verdict, me(g.spot).verdict_word)}</p>`
+    el.innerHTML = rend(html`<h3>Grow light this winter</h3>${g.spot ? html`<p>In the spot <strong>${g.spot.name}</strong>${g.spot.place ? ` (${g.spot.place})` : ''}${g.spot.name.includes(g.spot.light) ? '' : `, under the ${g.spot.light}`}: ${ltSetting(g.spot)}. About ${g.spot.dli} mol/m² a day. ${lvTag(me(g.spot).verdict, me(g.spot).verdict_word)}</p>`
       : g.suggestion ? html`<p>Not in a light spot yet. The suggested layout puts it under the <strong>${g.suggestion.light}</strong>, ${ltSetting(g.suggestion)}: about ${g.suggestion.dli} mol/m² a day. ${lvTag(me(g.suggestion).verdict, me(g.suggestion).verdict_word)}</p>`
       : html`<p>Not in a light spot yet. ${g.unplaced.why}</p>`}<p class="noprint"><a href="#/lights">Open Grow lights</a></p>`);
   } catch (e) { el.innerHTML = ''; }
@@ -3396,6 +3431,13 @@ const acts = {
   },
   lightedit(el) { lightDialog(ltLight(el.dataset.id)); },
   lightnew() { lightDialog(null); },
+  roomnew() { roomDialog(null); },
+  roomedit(el) { roomDialog(LT.places.find(p => p.id === +el.dataset.id)); },
+  async roomdel(el) {
+    const pl = LT.places.find(p => p.id === +el.dataset.id); if (!pl) return;
+    if (!(await confirmBox('Remove this room or shelf?', `"${pl.label}" leaves the list.${pl.spots.length ? ` The ${pl.spots.length} light spot${pl.spots.length === 1 ? '' : 's'} there stay, with "Where" set to "Not chosen yet".` : ''}`, 'Remove it', true))) return;
+    await guard(async () => { await api('DELETE', '/api/lights/places/' + pl.id); toast('Removed'); route(); });
+  },
   async usethisbase() { await guard(async () => { await api('PUT', '/api/settings', { base_url: location.origin }); toast('Codes now open ' + location.origin); route(); }); },
   async whosave() {
     const f = dlg.querySelector('form'), m = document.getElementById('who-msg'), n = cleanName(f.elements.n.value);

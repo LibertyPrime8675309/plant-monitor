@@ -194,6 +194,9 @@ CREATE TABLE IF NOT EXISTS light_spots(
   created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_by TEXT, updated_at TEXT);
 CREATE TABLE IF NOT EXISTS light_assign(
   plant_code TEXT PRIMARY KEY, spot_id INTEGER NOT NULL, assigned_by TEXT, assigned_at TEXT);
+CREATE TABLE IF NOT EXISTS indoor_places(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, room TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', sort INTEGER NOT NULL DEFAULT 0,
+  created_by TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(room, name));
 """ % ',\n  '.join(f"{n} {SQLTYPE.get(k, 'TEXT')}" for n, k, _ in FIELDS)
 
 def init_db():
@@ -206,6 +209,7 @@ def init_db():
     for n, k, _ in FIELDS:                      # upgrade an older database: add any column this version needs
         if n not in have: c.execute(f"ALTER TABLE plants ADD COLUMN {n} {SQLTYPE.get(k, 'TEXT')}")
     if 'extra' not in {r[1] for r in c.execute('PRAGMA table_info(readings)')}: c.execute('ALTER TABLE readings ADD COLUMN extra TEXT')
+    if 'place_id' not in {r[1] for r in c.execute('PRAGMA table_info(light_spots)')}: c.execute('ALTER TABLE light_spots ADD COLUMN place_id INTEGER')   # 1.13.1
     migrate_places(c)
     if not c.execute('SELECT 1 FROM weather_runs LIMIT 1').fetchone():       # readings gathered before runs were logged (version 1.2)
         w = c.execute("SELECT MIN(ts),MAX(ts),COUNT(*) FROM readings WHERE source='weather'").fetchone()
@@ -360,6 +364,23 @@ def apply_batches(c):
                 c.execute('INSERT INTO lights(lkey,name,data,count,fixture,notes,sort,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?)',
                           (L['key'], L['name'], json.dumps(spec), L.get('count', 1), L.get('fixture', ''), L.get('notes', ''), i, who, ts))
                 audit_only(c, 'light', 'light', None, '%s (%d)' % (L['name'], L.get('count', 1)), who, 'Grow light added (%s): %s' % (label, L['name']))
+            for i, pl in enumerate(b.get('places_add', [])):    # 1.13.1: rooms and shelves inside, where light spots go
+                c.execute('INSERT OR IGNORE INTO indoor_places(room,name,sort,created_by,created_at) VALUES(?,?,?,?,?)',
+                          (pl['room'], pl.get('name', ''), pl.get('sort', i), who, ts))
+            for u in b.get('lights_update', []):                # guarded, like plant updates: only if the light still holds the old value
+                L = c.execute('SELECT * FROM lights WHERE lkey=?', (u['key'],)).fetchone()
+                if not L: continue
+                d, cols, done = light_specs(L), {}, []
+                for f, (old, new) in u['set'].items():
+                    cur = L[f] if f in ('fixture', 'notes', 'count') else d.get(f)
+                    if str(cur if cur is not None else '') != str(old if old is not None else ''): continue
+                    if f in ('fixture', 'notes', 'count'): cols[f] = new
+                    else: d[f] = new
+                    done.append(f)
+                if done:
+                    c.execute('UPDATE lights SET %s data=?, updated_by=?, updated_at=? WHERE id=?' % ''.join('%s=?, ' % k for k in cols),
+                              (*cols.values(), json.dumps(d), who, ts, L['id']))
+                    audit_only(c, 'light', 'light', None, ', '.join(done), who, 'Grow light updated (%s): %s, %s' % (label, L['name'], u.get('note') or ', '.join(done)))
             for pre in b.get('to_photograph_done', []):
                 c.execute('UPDATE to_photograph SET done=1 WHERE done=0 AND label LIKE ?', (pre.replace('%', '') + '%',))
             for t in b.get('to_photograph_add', []):
@@ -1540,7 +1561,8 @@ def audit_query(c, a, count=False):
 AUDIT_FIELD_LABEL = {'status': 'Status', 'photo': 'Photo', 'photo caption': 'Photo caption', 'main photo': 'Main photo', 'care_log': 'Care log',
                      'frost': 'Cold night', 'request': 'Request', 'to_photograph': '"Still to photograph" list', 'base_url': 'Label web address',
                      'backup_settings': 'Automatic backups', 'weather_place': 'Weather place', 'ingest_token': 'Sensor token', 'backup': 'Backup',
-                     'claude_copied_at': 'Copied for Claude', 'grow_light': 'Grow light spot', 'light_spot': 'Light spot', 'light': 'Grow light'}
+                     'claude_copied_at': 'Copied for Claude', 'grow_light': 'Grow light spot', 'light_spot': 'Light spot', 'light': 'Grow light',
+                     'indoor_place': 'Room or shelf'}
 
 def audit_label(field):
     if not field: return None
@@ -3385,6 +3407,7 @@ def lights_state(c):
         L = byid.get(s['light_id'])
         ev = spot_eval(c, s, L, ps)
         out_spots.append({'id': s['id'], 'name': s['name'], 'light_id': s['light_id'], 'light': L['name'] if L else 'A light that was removed',
+                          'place_id': s['place_id'], 'place': place_label(c, s['place_id']),
                           'units': s['units'], 'distance_in': s['distance_in'], 'hours': s['hours'], 'dim_pct': s['dim_pct'], 'notes': s['notes'],
                           'steps': step_down(L, s, ps, outdoor) if L else [], **ev})
     plan, unplaced = light_plan(c, lights, used, assigned)
@@ -3392,7 +3415,10 @@ def lights_state(c):
         p['steps'] = step_down(byid[p['light_id']], p, [c.execute('SELECT * FROM plants WHERE code=?', (x,)).fetchone() for x in p['codes']], outdoor)
     cands = [{'code': r['code'], 'name': r['common_name'], 'site': r['site'], 'winter_plan': r['winter_plan'], 'need': plant_need(r),
               'pot_size': r['pot_size']} for r in light_candidates(c)]
-    return {'lights': [light_dict(L, used.get(L['id'], 0)) for L in lights], 'spots': out_spots, 'plan': plan, 'unplaced': unplaced,
+    places = [{'id': r['id'], 'room': r['room'], 'name': r['name'], 'label': r['room'] + (', ' + r['name'] if r['name'] else ''),
+               'spots': [s['id'] for s in out_spots if s['place_id'] == r['id']]}
+              for r in c.execute('SELECT * FROM indoor_places ORDER BY sort, id')]
+    return {'lights': [light_dict(L, used.get(L['id'], 0)) for L in lights], 'spots': out_spots, 'plan': plan, 'unplaced': unplaced, 'places': places,
             'candidates': cands, 'assigned': {code: sid for sid, codes in assign.items() for code in codes}, 'outdoor_dli': outdoor,
             'verdicts': LIGHT_VERDICT}
 
@@ -3430,11 +3456,22 @@ def spot_fields(b, partial=False):
     dist = _num(b, 'distance', 1, 120, 'Distance from the leaves (inches)', required=True)
     hours = _num(b, 'hours', 1, 24, 'Hours a day', required=True)
     dim = int(_num(b, 'dim', 1, 100, 'Brightness (%)') or 100)
-    return {'name': name, 'units': units, 'distance_in': dist, 'hours': hours, 'dim_pct': dim, 'notes': str(b.get('notes', '')).strip()[:300]}
+    place = b.get('place')
+    try: place = int(place) if place not in (None, '', 'null') else None
+    except (TypeError, ValueError): abort(400, 'Choose a room or shelf from the list')
+    return {'name': name, 'units': units, 'distance_in': dist, 'hours': hours, 'dim_pct': dim, 'notes': str(b.get('notes', '')).strip()[:300], 'place_id': place}
 
-def spot_text(s, light_name):
-    return '%s: %s%s, %g in from the leaves, %g hours a day%s' % (s['name'], '%d x ' % s['units'] if s['units'] > 1 else '', light_name,
-                                                                  s['distance_in'], s['hours'], '' if s['dim_pct'] == 100 else ', %d%% brightness' % s['dim_pct'])
+def spot_text(s, light_name, c=None):
+    where = place_label(c, s['place_id']) if c is not None and s['place_id'] else None
+    return '%s%s: %s%s, %g in from the leaves, %g hours a day%s' % (s['name'], ' (%s)' % where if where else '', '%d x ' % s['units'] if s['units'] > 1 else '', light_name,
+                                                                    s['distance_in'], s['hours'], '' if s['dim_pct'] == 100 else ', %d%% brightness' % s['dim_pct'])
+
+def place_label(c, pid):
+    r = c.execute('SELECT room, name FROM indoor_places WHERE id=?', (pid,)).fetchone() if pid else None
+    return (r['room'] + (', ' + r['name'] if r['name'] else '')) if r else None
+
+def check_place(c, pid):
+    if pid is not None and not c.execute('SELECT 1 FROM indoor_places WHERE id=?', (pid,)).fetchone(): abort(400, 'That room or shelf is not in the list any more')
 
 def set_spot_plants(c, sid, spot_name, codes, who):
     old = {x for (x,) in c.execute('SELECT plant_code FROM light_assign WHERE spot_id=?', (sid,))}
@@ -3459,9 +3496,10 @@ def light_spot_add():
     L = c.execute('SELECT * FROM lights WHERE id=?', (int(_num(b, 'light', 1, 1e9, 'Light', required=True)),)).fetchone()
     if not L: abort(400, 'Choose one of your lights')
     who = editor()
-    sid = c.execute('INSERT INTO light_spots(name,light_id,units,distance_in,hours,dim_pct,notes,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?)',
-                    (s['name'], L['id'], s['units'], s['distance_in'], s['hours'], s['dim_pct'], s['notes'], who, now())).lastrowid
-    audit_only(c, 'light', 'light_spot', None, spot_text(s, L['name']), who, 'Grow light spot set up: ' + spot_text(s, L['name']))
+    check_place(c, s['place_id'])
+    sid = c.execute('INSERT INTO light_spots(name,light_id,units,distance_in,hours,dim_pct,notes,place_id,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                    (s['name'], L['id'], s['units'], s['distance_in'], s['hours'], s['dim_pct'], s['notes'], s['place_id'], who, now())).lastrowid
+    audit_only(c, 'light', 'light_spot', None, spot_text(s, L['name'], c), who, 'Grow light spot set up: ' + spot_text(s, L['name'], c))
     set_spot_plants(c, sid, s['name'], [str(x) for x in b.get('plants') or []], who)
     c.commit()
     return jsonify(id=sid), 201
@@ -3476,18 +3514,57 @@ def light_spot_one(i):
     if request.method == 'DELETE':
         set_spot_plants(c, i, old['name'], [], who)
         c.execute('DELETE FROM light_spots WHERE id=?', (i,))
-        audit_only(c, 'light', 'light_spot', spot_text(old, L0[0] if L0 else 'light'), None, who, 'Grow light spot removed: ' + old['name'])
+        audit_only(c, 'light', 'light_spot', spot_text(old, L0[0] if L0 else 'light', c), None, who, 'Grow light spot removed: ' + old['name'])
         c.commit()
         return jsonify(ok=True)
     b = request.get_json(silent=True) or {}
     s = spot_fields(b)
     L = c.execute('SELECT * FROM lights WHERE id=?', (int(_num(b, 'light', 1, 1e9, 'Light', required=True)),)).fetchone()
     if not L: abort(400, 'Choose one of your lights')
-    c.execute('UPDATE light_spots SET name=?,light_id=?,units=?,distance_in=?,hours=?,dim_pct=?,notes=?,updated_by=?,updated_at=? WHERE id=?',
-              (s['name'], L['id'], s['units'], s['distance_in'], s['hours'], s['dim_pct'], s['notes'], who, now(), i))
-    a, z = spot_text(old, L0[0] if L0 else 'light'), spot_text(s, L['name'])
+    check_place(c, s['place_id'])
+    c.execute('UPDATE light_spots SET name=?,light_id=?,units=?,distance_in=?,hours=?,dim_pct=?,notes=?,place_id=?,updated_by=?,updated_at=? WHERE id=?',
+              (s['name'], L['id'], s['units'], s['distance_in'], s['hours'], s['dim_pct'], s['notes'], s['place_id'], who, now(), i))
+    a, z = spot_text(old, L0[0] if L0 else 'light', c), spot_text(s, L['name'], c)
     if a != z: audit_only(c, 'light', 'light_spot', a, z, who, 'Grow light spot changed: ' + z)
     if 'plants' in b: set_spot_plants(c, i, s['name'], [str(x) for x in b.get('plants') or []], who)
+    c.commit()
+    return jsonify(ok=True)
+
+def place_fields(b):
+    room = re.sub(r'\s+', ' ', str(b.get('room', ''))).strip()[:60]
+    if not room: abort(400, 'Type the room, for example "Downstairs Living Room"')
+    return room, re.sub(r'\s+', ' ', str(b.get('name', ''))).strip()[:60]
+
+@app.route('/api/lights/places', methods=['POST'])
+def light_place_add():
+    """A room, or a shelf or table in a room, where light spots can go: {room, name}. Leave name empty for the room itself."""
+    c = db()
+    room, name = place_fields(request.get_json(silent=True) or {})
+    if c.execute('SELECT 1 FROM indoor_places WHERE room=? AND name=?', (room, name)).fetchone(): abort(409, f'"{room}{", " + name if name else ""}" is already in the list')
+    who = editor()
+    n = c.execute('SELECT COALESCE(MAX(sort),0)+1 FROM indoor_places').fetchone()[0]
+    pid = c.execute('INSERT INTO indoor_places(room,name,sort,created_by,created_at) VALUES(?,?,?,?,?)', (room, name, n, who, now())).lastrowid
+    audit_only(c, 'light', 'indoor_place', None, place_label(c, pid), who, 'Room or shelf added: ' + place_label(c, pid))
+    c.commit()
+    return jsonify(id=pid), 201
+
+@app.route('/api/lights/places/<int:i>', methods=['PUT', 'DELETE'])
+def light_place_one(i):
+    c = db()
+    old = place_label(c, i)
+    if not old: abort(404, 'That room or shelf is not in the list')
+    who = editor()
+    if request.method == 'DELETE':
+        n = c.execute('SELECT COUNT(*) FROM light_spots WHERE place_id=?', (i,)).fetchone()[0]
+        c.execute('UPDATE light_spots SET place_id=NULL WHERE place_id=?', (i,))
+        c.execute('DELETE FROM indoor_places WHERE id=?', (i,))
+        audit_only(c, 'light', 'indoor_place', old, None, who, 'Room or shelf removed: %s%s' % (old, ' (%d spot%s there now say "Not chosen yet")' % (n, 's' if n != 1 else '') if n else ''))
+        c.commit()
+        return jsonify(ok=True)
+    room, name = place_fields(request.get_json(silent=True) or {})
+    if c.execute('SELECT 1 FROM indoor_places WHERE room=? AND name=? AND id<>?', (room, name, i)).fetchone(): abort(409, f'"{room}{", " + name if name else ""}" is already in the list')
+    c.execute('UPDATE indoor_places SET room=?, name=? WHERE id=?', (room, name, i))
+    audit_only(c, 'light', 'indoor_place', old, place_label(c, i), who, 'Room or shelf renamed: ' + place_label(c, i))
     c.commit()
     return jsonify(ok=True)
 
@@ -3506,6 +3583,7 @@ def light_fields(b, old=None):
             pts.append([nums[0], nums[1], nums[2] if len(nums) > 2 else None])
         d['ppfd'] = pts
     if 'kind' in b: d['kind'] = str(b.get('kind') or '').strip()[:40]
+    if 'model' in b: d['model'] = str(b.get('model') or '').strip()[:80]       # 1.13.1: the maker's model number
     if 'timer' in b: d['timer'] = str(b.get('timer') or '').strip()[:120]
     if 'dimming' in b: d['dimming'] = sorted({int(x) for x in re.findall(r'\d+', str(b.get('dimming') or '')) if 0 < int(x) <= 100}) or [100]
     return name, count, str(b.get('fixture', '')).strip()[:120], str(b.get('notes', '')).strip()[:600], d

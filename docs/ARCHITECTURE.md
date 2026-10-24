@@ -113,6 +113,13 @@
     - `POST /api/lights`, `PUT/DELETE /api/lights/<id>` (409 while a spot uses it)
     - `POST /api/lights/spots`, `PUT/DELETE /api/lights/spots/<id>`
     - Audit action `light`, kind "Grow lights".
+  - **1.13.1:**
+    - Table `indoor_places(id, room, name, sort)`: `name` is '' for the room itself. `light_spots.place_id` is added by `init_db()`.
+    - Routes `POST /api/lights/places` and `PUT/DELETE /api/lights/places/<id>`. Removing a place sets its spots' `place_id` to NULL.
+    - Spots carry `place`/`place_id`, and `lights_state()` returns `places`.
+    - Lights have `data.model`.
+    - Batches can carry `places_add` and `lights_update` (`{key, set: {field: [old, new]}}`, guarded; the fields are `fixture`, `notes`, `count` or any spec key). `batchA4` adds Ethan's rooms and answers.
+    - Front end: `ltRooms()`, `ltRoomsBlock()`, `roomDialog()`, and the actions `roomnew`, `roomedit` and `roomdel`, which are in the viewer CSS block.
   - **Front end:** `viewLights()` (`#/lights`), `ltSpotCard()`, `ltLightCard()`, `spotDialog()` with live `spotPreview()` (`form[data-spot]`), `lightDialog()`, and `loadGrowPlant()` filling `#pl-grow` on plant pages. Change buttons (`spotnew`, `spotedit`, `spotdel`, `lightedit`, `lightnew`) are in the viewer CSS block.
 - **API:** `/api/plants`, `/api/plants/<code>` and its sub-routes (`site`, `status`, `history`, `timeline`, `versions`, `restore`, `photos`, `qr.svg`, `daily`, `day`), plus `/api/requests`, `/api/photos`, `/api/to-photograph`, `/api/fertilizer`, `/api/water`, `/api/care`, `/api/frost`, `/api/for-claude`, `/api/weather*`, `/api/places*`, `/api/current`, `/api/backups*`, `/api/export.json|csv`, `/api/audit*`, `/api/meta`, `/api/version` and `/healthz`.
 
