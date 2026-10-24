@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.12.2 (2026-10-24)
+- **Update zips have a folder of their own.** Release zips and photo packs now live in `versions_plant-database`, inside your Plants folder, instead of cluttering the Plants folder itself.
+  - The updater moves every `plant-database-….zip` it finds in the Plants folder into that folder, including your older ones, then looks for the newest version there.
+  - If a zip is already there under the same name, a copy that matches exactly is removed from the Plants folder. A copy that doesn't match is left where it is, and the updater says so.
+  - The updater, `Update Plant Database.cmd` and `update-log.txt` stay in the Plants folder, next to `plant-database`.
+
 ## 1.12.1 (2026-10-24)
 - **The app starts on any computer after updating.** On yours, 1.12.0 stopped straight away: its new ordinary user wasn't allowed to write to the photos folder that older versions made.
   - Now the app checks this itself each time it starts. If it may, it runs as that ordinary user. If not, it runs as root inside its container, as before 1.12.0.

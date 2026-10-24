@@ -71,9 +71,13 @@ On the first start the app adds anything new (from the first version: 26 plants,
 
 ### The updater (from 1.7.0)
 
-Save new release zips in the folder that holds `plant-database` (for example `C:\Users\Ethan\Documents\Claude\Plants`). The updater lives in that same folder: `Update Plant Database.cmd` and `update-plant-database.ps1`. Double-click **Update Plant Database.cmd**. It:
+The updater lives in the folder that holds `plant-database` (for example `C:\Users\Ethan\Documents\Claude\Plants`): `Update Plant Database.cmd` and `update-plant-database.ps1`.
 
-1. finds the newest `plant-database-vX.Y.Z-YYYYMMDD-HHMM.zip` in the folder and says which version is installed and which is running. If that version is already installed and running, it stops and changes nothing.
+From 1.12.2, release zips and photo packs are kept in a folder of their own beside it, **`versions_plant-database`**, so they don't clutter the Plants folder. Save new zips there. If you save one straight into the Plants folder instead, the updater moves it there for you. That's also how your older zips got moved.
+
+Double-click **Update Plant Database.cmd**. It:
+
+1. moves any `plant-database-….zip` files from the Plants folder into `versions_plant-database`. It finds the newest `plant-database-vX.Y.Z-YYYYMMDD-HHMM.zip` there and says which version is installed and which is running. If that version is already installed and running, it stops and changes nothing.
 2. asks "Update to X? Type Y" (type `Y`, press Enter).
 3. makes sure Docker Desktop is running, and starts it if not.
 4. makes a backup through the app (it appears on the Backups page as "Before update"). If the running app is older than 1.7.0, it stops the app and copies `data\plants.db` into `backups\` instead.
@@ -90,11 +94,11 @@ From 1.8.0, plant photos travel separately from the app, in **photo packs**. The
 - A pack never changes once it is made.
 - A release only comes with the packs for the plant updates that are new in it.
 
-Save any photo packs in the same folder as the release zip. The updater adds the photos your `plant-database` folder does not have yet. Packs you already have are skipped.
+Save any photo packs in `versions_plant-database` too (or in the Plants folder; the updater moves them). The updater adds the photos your `plant-database` folder does not have yet. Packs you already have are skipped.
 
 If a release needs a pack that is not in the folder, the updater lists it and stops before changing anything. If photos arrive after you have updated (because you used `-Force`), run the updater again; it adds them even though the version is already up to date. You can delete a pack once it has been added.
 
-Everything it does is written to `update-log.txt` in the same folder. Each new release carries the newest updater in `plant-database\tools`, and the updater copies it next to the zips, so it keeps itself current.
+Everything it does is written to `update-log.txt` in the Plants folder. Each new release carries the newest updater in `plant-database\tools`, and the updater copies it into the Plants folder, so it keeps itself current.
 
 To run it from a terminal in the Plants folder instead:
 
@@ -122,7 +126,7 @@ Options: `-Yes` (do not ask), `-Force` (re-apply the newest zip anyway), `-Remov
 
 ## Version
 
-The `VERSION` file holds this package's version, and `CHANGELOG.md` lists what changed in each one. Keep each zip you receive (the file name carries the version and build time) as your archive.
+The `VERSION` file holds this package's version, and `CHANGELOG.md` lists what changed in each one. Keep each zip you receive (the file name carries the version and build time) as your archive; they all collect in `versions_plant-database`.
 
 ### Which version is running?
 
