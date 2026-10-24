@@ -14,7 +14,10 @@
     4. Unzips the release and copies it over the plant-database folder. Your data and backups folders are never touched.
     5. Adds plant photos from any photo pack (plant-database-photos-*.zip) in this folder that the release needs
        and the plant-database folder does not have yet. From 1.8.0 photos travel in these packs, so release zips stay small.
-    6. Runs "docker compose up -d --build" and waits until the new version answers.
+    6. Builds the new version on a freshly downloaded base image (so security fixes arrive), fetches the newest Tailscale
+       container, starts everything ("docker compose up -d") and waits until the new version answers.
+       From 1.12.0 the app runs as an unprivileged user. If Docker will not let it write to the data folder that way,
+       the updater switches it back to the old way of running (docker-compose.override.yml) and says so.
 
   Options:
     -Yes              Do not ask before updating.
@@ -23,6 +26,7 @@
     -RemoveOldImage   Delete the previous version's Docker image afterwards to save disk space.
     -Password <text>  Only if you set PLANTDB_PASSWORD in docker-compose.yml.
     -Url <address>    Where the app answers (default http://localhost:8080).
+    -WaitSeconds <n>  How long to wait for the new version to answer (default 180).
     -ZipFolder, -AppFolder   Other locations, if you moved things.
 
   Works with Windows PowerShell 5.1 (built into Windows) and PowerShell 7.
@@ -36,7 +40,8 @@ param(
     [switch]$Yes,
     [switch]$Force,
     [switch]$SkipBackup,
-    [switch]$RemoveOldImage
+    [switch]$RemoveOldImage,
+    [int]$WaitSeconds = 180
 )
 
 $ErrorActionPreference = 'Stop'
@@ -223,20 +228,59 @@ try {
 }
 
 # ---- 6. rebuild and restart ------------------------------------------------------------------------
-Step 'Building and starting the new version (docker compose up -d --build)'
+# Docker output as text (for reading the app's own log), with Windows PowerShell 5.1's error handling relaxed as in Native.
+function Native-Text([scriptblock]$sb) {
+    $old = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    try { $t = (& $sb 2>&1 | Out-String) } finally { $ErrorActionPreference = $old }
+    return "$t"
+}
+function Wait-Version {
+    $t0 = Get-Date
+    do {
+        Start-Sleep -Seconds 3
+        $v = Running-Version
+    } while ($v -ne $newVersion -and ((Get-Date) - $t0).TotalSeconds -lt $WaitSeconds)
+    return $v
+}
+Step 'Building the new version with the newest security fixes'
+$tsState = JoinAll $AppFolder @('tailscale', 'state')
+if (-not (Test-Path $tsState)) { New-Item -ItemType Directory -Path $tsState -Force | Out-Null }      # 1.12.0: the Tailscale sign-in lives here
 Push-Location $AppFolder
-$code = Native { docker compose up -d --build }
+$code = Native { docker compose build --pull }
+if ($code -ne 0) { Say 'Could not download the newest base image (is the internet down?). Building with the one already on this computer.' 'Yellow'; $code = Native { docker compose build } }
+if ($code -eq 0) {
+    $pc = Native { docker compose pull --ignore-buildable }      # the Tailscale container's image; the app itself is built above
+    if ($pc -ne 0) { Say 'Could not download the newest Tailscale container. The one already on this computer is used.' 'Yellow' }
+    $code = Native { docker compose up -d }
+}
 Pop-Location
 if ($code -ne 0) { Say ("docker compose failed (code {0}). The new files are in place; fix the error above and run 'docker compose up -d --build' in the plant-database folder." -f $code) 'Red'; exit 1 }
 
 Step 'Waiting for the app to answer'
-$t0 = Get-Date
-do {
-    Start-Sleep -Seconds 3
-    $now = Running-Version
-} while ($now -ne $newVersion -and ((Get-Date) - $t0).TotalSeconds -lt 180)
+$now = Wait-Version
+$override = Join-Path $AppFolder 'docker-compose.override.yml'
+if ($now -ne $newVersion -and -not (Test-Path $override)) {
+    Push-Location $AppFolder
+    $applog = Native-Text { docker compose logs --tail 80 plants }
+    Pop-Location
+    if ($applog -match 'PLANTDB_NOT_WRITABLE') {
+        Say 'The app could not write to its data folder as its new unprivileged user, so it is switched back to running the way it did before' 'Yellow'
+        Say ('(the file {0}; delete it to try again after a future update).' -f $override) 'Yellow'
+        Set-Content -Path $override -Encoding ASCII -Value @(
+            '# Written by the updater: Docker would not let the app write to its data folder as an unprivileged user,',
+            '# so it runs as root inside its container again, with only the privileges it needs to use those folders.',
+            'services:', '  plants:', '    user: "0:0"', '    cap_add:', '      - CHOWN', '      - DAC_OVERRIDE', '      - FOWNER')
+        Push-Location $AppFolder
+        $null = Native { docker compose up -d }
+        Pop-Location
+        $now = Wait-Version
+    }
+}
 if ($now -eq $newVersion) { Say ("Done. Plant record version {0} is running at {1}" -f $now, $Url) 'Green' }
-else { Say ("The app has not answered with version {0} yet (it says: {1}). Give it a minute, then check {2}" -f $newVersion, $(if ($now) { $now } else { 'nothing' }), $Url) 'Yellow' }
+else { Say ("The app has not answered with version {0} yet (it says: {1}). Give it a minute, then check {2}. In Docker Desktop, Containers > plant-database > Logs shows why." -f $newVersion, $(if ($now) { $now } else { 'nothing' }), $Url) 'Yellow' }
+if ($now -eq $newVersion -and -not (Test-Path (JoinAll $AppFolder @('tailscale', 'state', 'tailscaled.state')))) {
+    Say 'To use the app away from home, run "Set Up Remote Access.cmd" in the plant-database\tools folder once (README: "Using the app away from home").' 'Cyan'
+}
 
 # ---- 7. tidy up old image ------------------------------------------------------------------------
 if ($installed -and $installed -ne $newVersion) {

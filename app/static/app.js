@@ -69,7 +69,14 @@ let memName = '';
 function getName() { try { return localStorage.getItem('plantdb.editor') || memName; } catch (e) { return memName; } }
 function setName(n) { memName = n; try { localStorage.setItem('plantdb.editor', n); } catch (e) { /* storage blocked */ } paintWho(); }
 const cleanName = n => String(n || '').replace(/[^\w .\-@]/g, '').trim().slice(0, 40);
-function paintWho() { const n = getName(); document.getElementById('who-name').textContent = n ? 'Editing as ' + n : 'Set your name'; }
+// 1.12.0: people who open the app through Tailscale are signed in by it; on this computer the name is typed in as before
+const ME = () => (META && META.me) || { via: 'local', role: 'owner', name: '', login: null, owner_name: '' };
+const viaTS = () => ME().via === 'tailscale';
+function paintWho() {
+  const n = viaTS() ? ME().name : getName(), el = document.getElementById('who-name');
+  if (el) el.textContent = viaTS() ? 'Signed in as ' + n : n ? 'Editing as ' + n : 'Set your name';
+  document.documentElement.dataset.role = ME().role;
+}
 
 // ---------- api ----------
 // the place this browser uses for weather, frost, watering and "today" (1.11.0); null = the home place
@@ -78,7 +85,10 @@ try { PLACE = localStorage.getItem('plantdb.place') || null; } catch (e) { /* ig
 async function api(method, url, body, form) {
   const opts = { method, headers: {} };
   if (PLACE) opts.headers['X-Place'] = PLACE;
-  if (method !== 'GET') opts.headers['X-Editor'] = cleanName(getName()) || 'Unknown';
+  if (method !== 'GET') opts.headers['X-Editor'] = cleanName(viaTS() ? ME().name : getName()) || 'Unknown';
+  if (method !== 'GET' && ME().role === 'viewer' && url !== '/api/me') {      // the server refuses these too; this just says so sooner
+    const e = new Error(`You can look at everything, but changes are turned off for you. Ask ${ME().owner_name || 'the owner'} if you would like to edit.`); e.status = 403; throw e;
+  }
   if (form) opts.body = form;
   else if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
   let r;
@@ -160,6 +170,32 @@ async function placeAdd(i) {
   } catch (e) { if (m) m.textContent = e.message; else toast(e.message, true); }
 }
 
+// ---------- you, and the people who can use the app (1.12.0) ----------
+async function whoDialog() {
+  const me = ME(), ts = viaTS(), owner = me.role === 'owner';
+  let P = null;
+  if (owner) { try { P = await api('GET', '/api/people'); } catch (e) { P = null; } }
+  modal(html`<form method="dialog" class="who-dlg"><h2>${ts ? 'You' : 'Who is editing?'}</h2>
+    ${ts ? html`<p>You are signed in through Tailscale as <strong>${me.login}</strong>. ${me.role === 'owner' ? 'You can do everything, including backups and choosing who can use the app.' : me.role === 'editor' ? 'You can look at everything and make changes.' : `You can look at everything, but not make changes. Ask ${me.owner_name} if you would like to edit.`}</p>`
+      : html`<p>On this computer you have full access. Your name goes into the audit log next to every change; it is typed in, not checked.</p>`}
+    <div class="todo-add who-name"><label class="f">${ts ? 'Your name in the audit log' : 'Your name'}<input type="text" name="n" maxlength="40" autocomplete="name" value="${ts ? me.name : getName()}"></label>
+      <button class="btn" type="button" data-act="whosave">Save name</button></div>
+    <p id="who-msg" class="dbg-msg" role="status" aria-live="polite"></p>
+    ${owner ? html`<fieldset class="opt-group"><legend>People who can use the app</legend><div id="people-box">${peopleRows(P)}</div>
+      <p class="hint"><strong>Can view only:</strong> sees everything, changes nothing. <strong>Can edit:</strong> also changes plants, care, photos and answers. <strong>Owner:</strong> also backups, settings and this list.</p>
+      <p class="hint">To let someone in from outside your home, share the plants device with them in Tailscale (README: "Using the app away from home"). They appear here the first time they open the app, as "Can view only". On this computer everything stays open.</p></fieldset>` : ''}
+    <div class="row"><button class="btn ghost" value="ok" autofocus>Done</button></div></form>`, 'who-dialog');
+}
+function peopleRows(P) {
+  if (!P) return html`<p class="muted">The list could not be loaded.</p>`;
+  if (!P.people.length) return html`<p class="muted">Nobody has opened the app through Tailscale yet.</p>`;
+  const self = ME().login;
+  return html`<ul class="people">${P.people.map(p => html`<li><span><strong>${p.name}</strong>${p.login === self ? ' (you)' : ''}<br><span class="hint">${p.login}. Last here ${when(p.last_seen)}.</span></span>
+    <label class="f">What ${p.name} can do<select data-f="prole" data-login="${p.login}">${P.roles.map(r => html`<option value="${r.key}" ${r.key === p.role ? raw('selected') : ''}>${r.label}</option>`)}</select></label>
+    ${p.login === self ? '' : html`<button class="btn small danger" type="button" data-act="pdel" data-login="${p.login}" data-name="${p.name}">Remove</button>`}</li>`)}</ul>`;
+}
+function peoplePaint(P) { const b = document.getElementById('people-box'); if (b) b.innerHTML = rend(peopleRows(P)); }
+
 // ---------- toast, dialog ----------
 function toast(msg, isErr) {
   const t = document.createElement('div');
@@ -188,6 +224,7 @@ async function confirmBox(title, text, okLabel, danger) {
   return r === 'ok';
 }
 async function askName(force) {
+  if (viaTS()) { if (force) whoDialog(); return ME().role !== 'viewer'; }
   if (getName() && !force) return true;
   const r = await modal(html`<form method="dialog"><h2>Who is editing?</h2>
     <p>Your name goes into the change log next to every edit you make. It is typed in by you and is not checked, so it records who says they made the change.</p>
@@ -217,7 +254,7 @@ async function route() {
   try {
     let view;
     await Promise.all([loadCodes(), loadFrost()]);
-    if (!META) { META = await api('GET', '/api/meta'); const v = document.getElementById('app-ver'); if (v && META.version) v.textContent = 'v' + META.version; paintPlace(); }
+    if (!META) { META = await api('GET', '/api/meta'); const v = document.getElementById('app-ver'); if (v && META.version) v.textContent = 'v' + META.version; paintPlace(); paintWho(); }
     if (parts[0] === 'plant' && parts[1] && parts[2] === 'edit') view = await viewEdit(decodeURIComponent(parts[1]));
     else if (parts[0] === 'plant' && parts[1]) view = await viewPlant(decodeURIComponent(parts[1]));
     else if (parts[0] === 'new') view = viewForm(null);
@@ -235,6 +272,7 @@ async function route() {
     if (my !== token) return;
     app.innerHTML = rend(view.html);
     if (parts[0] !== 'frost' && parts[0] !== 'plant') app.insertAdjacentHTML('afterbegin', rend(frostBanner()));   // plant pages have their own note
+    if (ME().role === 'viewer') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice vw-note noprint" role="note"><strong>View only.</strong> You can look at everything here, but changes are turned off. Ask ${ME().owner_name} if you would like to edit.</p>`));
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
     if (view.after) view.after();
     buildSideNav(); navLayout(); addReadButtons(); setTimeout(() => { buildSideNav(); navLayout(); addReadButtons(); }, 1200);
@@ -423,6 +461,10 @@ function fitNowTags() {         // 1.11.0: keep each "Now" label inside its stri
   });
 }
 new MutationObserver(() => requestAnimationFrame(fitNowTags)).observe(document.getElementById('app'), { childList: true, subtree: true });
+new MutationObserver(() => {                      // 1.12.0: for people who can only view, menus and tick boxes that save straight away are switched off
+  if (ME().role !== 'viewer') return;
+  document.querySelectorAll('#app select[data-act=site], #app select[data-act=plan], #app [data-act=preptrait], #app [data-act=preppest], #app input[type=file]').forEach(el => { if (!el.disabled) el.disabled = true; });
+}).observe(document.getElementById('app'), { childList: true, subtree: true });
 window.addEventListener('resize', () => requestAnimationFrame(fitNowTags));
 const keyOf = items => html`<div class="key" aria-hidden="true">${items.map(i => html`<span class="${i[0]}">${i[1]}</span>`)}</div>`;
 
@@ -1960,12 +2002,13 @@ async function viewWeather() {
   let W;
   try { W = await api('GET', '/api/weather?x=1' + locQS()); }
   catch (e) { if (e.status === 404) { savePlace(null); W = await api('GET', '/api/weather'); } else throw e; }
-  const [cond, plants, ing, monthly, ref, st] = await Promise.all([loadCond(), api('GET', '/api/plants'), api('GET', '/api/ingest'), api('GET', '/api/weather/monthly?x=1' + locQS()), api('GET', '/api/reference'), api('GET', '/api/settings')]);
+  const [cond, plants, ing, monthly, ref, st] = await Promise.all([loadCond(), api('GET', '/api/plants'), (ME().role === 'owner' ? api('GET', '/api/ingest').catch(() => null) : null), api('GET', '/api/weather/monthly?x=1' + locQS()), api('GET', '/api/reference'), api('GET', '/api/settings')]);
   WX.places = W.places || []; WX.place = W.location; WX.home = W.home;
   WX.compare = WX.compare.filter(id => WX.places.some(p => String(p.id) === id && String(p.id) !== String(W.location.id)));
   const atHome = W.location.is_home;
-  const base = st.base_url || location.origin, isLocal = /^https?:\/\/(localhost|127\.|\[::1\])/i.test(base);
-  const url = base.replace(/\/$/, '') + '/api/readings';
+  // 1.12.0: sensors send to their own port (8082), which only takes readings; it is closed until opened (README)
+  const lanIp = /^\d+\.\d+\.\d+\.\d+$/.test(location.hostname) && !location.hostname.startsWith('127.') ? location.hostname : '';
+  const netUrl = `http://${lanIp || '192.168.1.20'}:8082/api/readings`, url = 'http://localhost:8082/api/readings';
   const sample = '{"device":"porch","temp_f":71.2,"humidity":58,"par":240,"soil_moisture":31}';
   const S = W.status || {};
   return {
@@ -1988,17 +2031,17 @@ async function viewWeather() {
       ${wtControls()}<div id="wx-table"><p class="loading">Loading table</p></div></section>
     <section class="blk"><h2>Expected and tracked this season in ${W.location.name}</h2>${seasonTable(ref, monthly)}
       <p class="hint">${ref.applies !== false ? `Expected values are 30-year averages for ${W.location.name}. ` : ''}Tracked values come from the readings above: the average of each day's low and high, and how many nights fell to 32°F or below. Days with fewer than 12 readings are skipped.</p></section>
-    <section class="blk" id="sensor"><h2>Connect your sensor</h2>
+    ${ing ? html`<section class="blk" id="sensor"><h2>Connect your sensor</h2>
       <p>A sensor on your network can send readings to this app. Each reading becomes part of the history above, and "My sensor" can drive the current conditions on every plant page.</p>
-      ${isLocal ? html`<div class="notice">The address below uses <strong>${base}</strong>, which only works on this computer. A sensor on another device needs this computer's network address instead (for example http://192.168.1.20:8080). Set it on the Labels page; the README shows how to find it.</div>` : ''}
-      <dl class="dl"><dt>Address</dt><dd><span class="code">${url}</span></dd><dt>Token</dt><dd><span class="code" id="tok">${ing.token}</span></dd></dl>
+      <div class="notice">Sensors on your home network send to this computer's network address on port 8082${lanIp ? '' : ' (for example 192.168.1.20; the README shows how to find yours)'}. That port only takes readings with the token below; the rest of the app stays closed. It is shut until you open it: put the line <span class="code">PLANTDB_SENSOR_BIND=0.0.0.0</span> in a file named .env next to docker-compose.yml, then run docker compose up -d (README, "Connecting your own sensor").</div>
+      <dl class="dl"><dt>Address</dt><dd><span class="code">${netUrl}</span></dd><dt>Token</dt><dd><span class="code" id="tok">${ing.token}</span></dd></dl>
       <div class="row noprint" style="margin:.8rem 0"><button class="btn small" type="button" data-act="copytok">Copy token</button><button class="btn danger small" type="button" data-act="tokregen">Make a new token</button></div>
       <p>Send a POST with the header <span class="code">X-Ingest-Token</span> and a JSON body. Every field except one measurement is optional: <span class="code">device</span> (a name, such as porch), <span class="code">ts</span> (UTC time, otherwise now), <span class="code">temp_f</span> or <span class="code">temp_c</span>, <span class="code">humidity</span> (%), <span class="code">par</span> (µmol/m²/s) or <span class="code">lux</span>, <span class="code">soil_moisture</span> (%), <span class="code">soil_temp_f</span> or <span class="code">soil_temp_c</span>, <span class="code">soil_ph</span>. Send up to 500 at once as <span class="code">{"readings":[ ... ]}</span>. Lux is converted to PAR at 54 lux per PAR.</p>
       <h3>Try it from this computer</h3>
       <p>Windows (cmd.exe):</p><pre class="code">curl -X POST ${url} -H "X-Ingest-Token: ${ing.token}" -H "Content-Type: application/json" -d "{\\"device\\":\\"porch\\",\\"temp_f\\":71.2,\\"humidity\\":58,\\"par\\":240}"</pre>
       <p>Windows (PowerShell):</p><pre class="code">Invoke-RestMethod -Method Post -Uri ${url} -Headers @{"X-Ingest-Token"="${ing.token}"} -ContentType "application/json" -Body '${sample}'</pre>
       <p>macOS / Linux (bash):</p><pre class="code">curl -X POST ${url} -H "X-Ingest-Token: ${ing.token}" -H "Content-Type: application/json" -d '${sample}'</pre>
-      <p class="hint">Anyone on your network who has the token can add readings, so keep it private. If it leaks, make a new token and update your sensor.</p></section>
+      <p class="hint">Anyone on your network who has the token can add readings, so keep it private. If it leaks, make a new token and update your sensor.</p></section>` : html`<section class="blk" id="sensor"><h2>Connect your sensor</h2><p class="muted">Only ${ME().owner_name} can see the sensor address and token.</p></section>`}
     <section class="blk" id="sec-places"><h2>Places</h2>${placesBlock(W)}</section>
     <section class="blk"><h2>Updates for ${W.location.name}</h2>
       <div id="wx-job" data-running="${W.job && W.job.running ? '1' : '0'}">${jobPanel(W.job)}</div>
@@ -2847,6 +2890,7 @@ const BK_FREQ_WORDS = { '6h': 'Every 6 hours', '12h': 'Every 12 hours', daily: '
 const BK_KIND = { manual: 'Made by you', auto: 'Automatic', update: 'Before an update' };
 let BK = null;
 async function viewBackups() {
+  if (ME().role !== 'owner') return { title: 'Backups', html: html`<h1>Backups</h1><p class="notice">Backups are looked after by ${ME().owner_name}. They hold a copy of everything, so only the owner can make, download or restore them.</p>` };
   BK = await api('GET', '/api/backups');
   const S = BK.settings, hourOpt = h => new Date(2026, 0, 1, h).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const where = BK.mounted ? 'the backups folder inside your plant-database folder' : 'data\\backups inside your plant-database folder';
@@ -2914,7 +2958,10 @@ async function viewLabels() {
     <div class="noprint">
       <form class="todo-add" data-form="base"><label style="flex:1 1 320px;font-weight:700">Address the codes should open<input type="text" name="base" value="${st.base_url}" placeholder="http://192.168.1.20:8080" inputmode="url"></label>
         <button class="btn" type="submit" style="align-self:end">Save address</button></form>
-      ${local ? html`<div class="notice">The codes currently point to <strong>${base}</strong>, which only works on this computer. A phone cannot open that. Type your computer's network address here, for example http://192.168.1.20:8080 (the README shows how to find it).</div>` : html`<div class="notice ok">Codes open ${base}. The phone must be on the same Wi-Fi as this computer.</div>`}
+      ${/\.ts\.net$/i.test(base) ? html`<div class="notice ok">Codes open <strong>${base}</strong>, the app's Tailscale address. Any phone signed in to Tailscale can open them, at home or away, including people you have shared the app with.</div>`
+        : local ? html`<div class="notice">The codes currently point to <strong>${base}</strong>, which only works on this computer. A phone cannot open that. Use the app's Tailscale address (README: "Using the app away from home").</div>`
+        : html`<div class="notice">Codes open <strong>${base}</strong>. That address only works on your home network, and from version 1.12.0 the app is closed to the home network unless you open it again (README). The Tailscale address works everywhere.</div>`}
+      ${/\.ts\.net$/i.test(location.hostname) && base !== location.origin && ME().role === 'owner' ? html`<p><button class="btn ghost" type="button" data-act="usethisbase">Use this address for the codes: ${location.origin}</button></p>` : ''}
       <p><button class="btn" type="button" data-act="print">Print labels</button></p></div>
     <div class="lsheet">${list.map(p => labelCard(p, base, true))}</div>`,
   };
@@ -3160,7 +3207,21 @@ async function pickPlant(title, text, withNone) {
   return r === 'ok' ? dlg.querySelector('[name=t]').value : null;
 }
 const acts = {
-  async who() { await askName(true); },
+  who() { whoDialog(); },
+  async usethisbase() { await guard(async () => { await api('PUT', '/api/settings', { base_url: location.origin }); toast('Codes now open ' + location.origin); route(); }); },
+  async whosave() {
+    const f = dlg.querySelector('form'), m = document.getElementById('who-msg'), n = cleanName(f.elements.n.value);
+    if (!n) { m.textContent = 'Type a name first.'; return; }
+    if (viaTS()) {
+      try { const r = await api('PUT', '/api/me', { name: n }); META.me = r; paintWho(); m.textContent = `Saved. Your changes now show as ${r.name}.`; }
+      catch (e) { m.textContent = e.message; }
+    } else { setName(n); m.textContent = `Saved. Your changes now show as ${n}.`; }
+  },
+  async pdel(el) {
+    const m = document.getElementById('who-msg');
+    try { const r = await api('DELETE', '/api/people?login=' + enc(el.dataset.login)); peoplePaint(r); m.textContent = `${el.dataset.name} removed. If they open the app again, they come back as "Can view only".`; }
+    catch (e) { m.textContent = e.message; }
+  },
   fertlog(el) {
     const o = {};
     if (el.dataset.code) o.codes = [el.dataset.code];
@@ -3605,6 +3666,12 @@ document.addEventListener('change', e => {
     const k = el.dataset.dbg; DBG[k] = el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value; dbgSave(); conApply();
     const m = document.getElementById('dbg-msg');      // the usual pop-up notes are hidden while this window is open
     if (m) m.textContent = k === 'console' ? (el.checked ? 'The console is on, at the bottom of the screen.' : 'The console is off.') : k === 'lines' ? `It now shows ${el.value} changes before you scroll.` : el.checked ? 'Screen readers will announce new changes.' : 'Screen readers will not announce new changes.';
+    return;
+  }
+  if (el.dataset && el.dataset.f === 'prole') {
+    const m = document.getElementById('who-msg'), login = el.dataset.login, label = el.options[el.selectedIndex].text;
+    api('PUT', '/api/people', { login, role: el.value }).then(r => { peoplePaint(r); if (r.me) { META.me = r.me; paintWho(); } if (m) m.textContent = `Saved: ${label}.`; })
+      .catch(e => { if (m) m.textContent = e.message; api('GET', '/api/people').then(peoplePaint).catch(() => {}); });
     return;
   }
   if (el.dataset && el.dataset.f === 'aud') { AUD.f[el.name] = el.value; AUD.offset = 0; audSave(); audLoad(`[name="${el.name}"][data-f=aud]`); return; }

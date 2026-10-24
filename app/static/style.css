@@ -871,3 +871,25 @@ ul.todo .fn-need{font-size:.97rem;line-height:1.45}
 .npk{white-space:nowrap}
 .strip-wrap>.now-tag.nt-r{left:auto!important;right:0!important;transform:none!important}
 .strip-wrap>.now-tag.nt-l{left:0!important;right:auto!important;transform:none!important}
+
+/* ---- 1.12.0: signed in through Tailscale; people who can only view; the people list ---- */
+.vw-note{margin:0 0 1rem}
+/* buttons that make changes are hidden from people who can only view (the server refuses those changes anyway) */
+html[data-role=viewer] :is(a[href="#/new"], a[href$="/edit"], .quick-btns, label.quick-photo, label:has(> input[type=file]), form[data-form=todo], form[data-form=placesearch], form[data-form=placeadd],
+  form[data-form=wxloc], form[data-form=wxback], form[data-form=bknow], form[data-form=bkset],
+  [data-act=fertlog], [data-act=careother], [data-act=care], [data-act=careall], [data-act=caredel], [data-act=prepdone], [data-act=prepundo],
+  [data-act=reqanswer], [data-act=reqdone], [data-act=reqreopen], [data-act=archive], [data-act=restore], [data-act=movein], [data-act=moveout],
+  [data-act=frostin], [data-act=frostcover], [data-act=frostallin], [data-act=frostallcover], [data-act=frostundo],
+  [data-act=fzadd], [data-act=fzedit], [data-act=fzdel], [data-act=fertedit], [data-act=fertdel], [data-act=tododone], [data-act=tododel], [data-act=todoedit],
+  [data-act=mainphoto], [data-act=movephoto], [data-act=rmphoto], [data-act=capedit], [data-act=assign], [data-act=rmloose], [data-act=setcond], [data-act=wxrefresh],
+  [data-act=placehome], [data-act=placedel], [data-act=placeonoff], [data-act=plchome], [data-act=plcsearch], [data-act=plcadd], .plc-search, [data-act=tokregen], [data-act=forclaude]){display:none!important}
+/* only the owner changes the label address, places' settings and who is home */
+html:not([data-role=owner]) :is(form[data-form=base], form[data-form=wxloc], [data-act=placehome], [data-act=placedel], [data-act=placeonoff], [data-act=plchome]){display:none!important}
+.who-name{align-items:end;gap:.6rem;flex-wrap:wrap}
+.who-name .f{flex:1 1 14rem;margin:0}
+ul.people{list-style:none;padding:0;margin:0;display:grid;gap:.6rem}
+ul.people li{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto;gap:.5rem 1rem;align-items:end;padding:.6rem .8rem;border:2px solid var(--line);background:var(--sheet)}
+ul.people li .f{margin:0}
+ul.people li select{width:100%}
+html[data-narrow="1"] ul.people li{grid-template-columns:minmax(0,1fr)}
+html[data-narrow="1"] ul.people li .btn{justify-self:start}

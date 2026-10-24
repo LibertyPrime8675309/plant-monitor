@@ -6,21 +6,25 @@
 #   C  the same with the packs present                                               -> adds every photo
 #   D  -Force without packs, then one pack, then the rest                            -> adds photos as they arrive
 #   E  nothing left to do                                                            -> "Already up to date"
+#   F  (1.12.0) the app cannot write as its unprivileged user                       -> switches back (override file), then works
 set -u
 PWSH=${PWSH:-pwsh}; REPO=$(cd "$(dirname "$0")/../.." && pwd); T=$(mktemp -d); FAILS=0; PORT=8097
 cleanup() { kill $FAKE 2>/dev/null; rm -rf "$T"; }; trap cleanup EXIT
 mkdir -p "$T/bin" "$T/repo" "$T/Plants"
 (cd "$REPO" && git ls-files | grep -v '^dev/photos-raw' | tar -cf - -T -) | tar -xf - -C "$T/repo"
-for f in tools/make-release.py tools/update-plant-database.ps1 app/server.py; do cp "$REPO/$f" "$T/repo/$f"; done   # include uncommitted work
+for f in tools/make-release.py tools/update-plant-database.ps1 tools/setup-remote-access.ps1 app/server.py docker-compose.yml Dockerfile; do cp "$REPO/$f" "$T/repo/$f"; done   # include uncommitted work
+mkdir -p "$T/repo/tailscale/config"; cp -r "$REPO/tailscale/config/." "$T/repo/tailscale/config/"; cp "$REPO/tailscale/README.txt" "$T/repo/tailscale/" 2>/dev/null
 cp -r "$REPO/app/seed" "$T/repo/app/"
 (cd "$T/repo" && python3 tools/make-release.py --full >/dev/null && mv dist/plant-database-v*.zip "$T/full.zip" && python3 tools/make-release.py 99.0.0 >/dev/null) || exit 1
-printf '#!/bin/sh\necho "docker $*" >> "%s/docker.txt"\nexit 0\n' "$T" > "$T/bin/docker"; chmod +x "$T/bin/docker"
+printf '#!/bin/sh\necho "docker $*" >> "%s/docker.txt"\ncase "$*" in *"compose logs"*) [ -f "%s/logs" ] && cat "%s/logs";; esac\nexit 0\n' "$T" "$T" "$T" > "$T/bin/docker"; chmod +x "$T/bin/docker"
 cat > "$T/fake.py" <<PY
 import http.server, json
 class H(http.server.BaseHTTPRequestHandler):
     def do_GET(s):
         try: v = open('$T/Plants/plant-database/VERSION').read().strip()
         except Exception: v = None
+        import os
+        if os.path.exists('$T/stuck') and not os.path.exists('$T/Plants/plant-database/docker-compose.override.yml'): v = 'starting'
         s.send_response(200); s.send_header('Content-Type', 'application/json'); s.end_headers(); s.wfile.write(json.dumps({'version': v}).encode())
     def do_POST(s):
         s.rfile.read(int(s.headers.get('Content-Length') or 0)); s.send_response(201); s.end_headers(); s.wfile.write(b'{"file":"test.zip"}')
@@ -43,4 +47,10 @@ one=$(ls "$T/repo/dist"/plant-database-photos-*.zip | tail -1); cp "$one" "$T/Pl
 want "D2: one pack arrives later and its photos are added" '[[ "$out" == *"photo packs for it have arrived"* && $(photos) -gt 0 && $(photos) -lt $ALL ]]'
 cp "$T/repo/dist"/plant-database-photos-*.zip "$T/Plants/"; out=$(run); want "D3: the rest arrive: all photos present" '[[ $(photos) -eq $ALL ]]'
 out=$(run); want "E: nothing left to do" '[[ "$out" == *"Already up to date"* ]]'
+want "1.12.0: builds on a fresh base image and fetches the Tailscale container" 'grep -q "docker compose build --pull" "$T/docker.txt" && grep -q "docker compose pull --ignore-buildable" "$T/docker.txt"'
+rm -rf "$T/Plants"/*; (cd "$T/Plants" && unzip -q "$T/full.zip"); cp "$T/repo/dist"/plant-database-v*.zip "$T/repo/tools/update-plant-database.ps1" "$T/Plants/"
+touch "$T/stuck"; echo "PLANTDB_NOT_WRITABLE: the app cannot write to /data" > "$T/logs"
+out=$(run -WaitSeconds 6); rm -f "$T/stuck" "$T/logs"
+want "F: cannot write as the new user: switches back and then works" '[[ "$out" == *"switched back"* && -f "$T/Plants/plant-database/docker-compose.override.yml" && "$out" == *"Done. Plant record version 99.0.0"* ]]'
+want "F: the release carries the Tailscale setup but no sign-in state" 'unzip -l "$T/repo/dist"/plant-database-v99.0.0-*.zip | grep -q "tailscale/config/serve.json" && unzip -l "$T/repo/dist"/plant-database-v99.0.0-*.zip | grep -q "tools/setup-remote-access.ps1" && ! unzip -l "$T/repo/dist"/plant-database-v99.0.0-*.zip | grep -q "tailscale/state"'
 echo "$FAILS failed"; exit $FAILS
