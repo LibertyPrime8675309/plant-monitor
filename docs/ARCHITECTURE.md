@@ -23,7 +23,7 @@
 - **SQLite tables:**
   - `plants`: one row per plant. Columns come from the `FIELDS` list (name, kind, label); a new entry there adds the column on the next start.
   - `plant_versions`: a full snapshot per page version.
-  - `audit_log`: the change log.
+  - `audit_log`: the audit log (every change to every record). Written by `bump()`/`apply_changes()` for plant pages and by `audit_only()` for everything else.
   - `photos`
   - `requests`: things Claude needs from Ethan, shown as "Needed from you".
   - `to_photograph`
@@ -60,14 +60,16 @@
   - **Copy for Claude:** `GET /api/for-claude`, `GET /api/for-claude.txt`, `POST /api/for-claude/copied`. Rows signed "Claude (...)" (upgrade batches) are left out.
   - **Photos:** `repair_seed_photos()` copies seed photos that are missing from the data folder, for installs whose photos arrived in packs.
 - **1.9.0 additions:** getting plants ready to come inside. Plant fields `leaf_type` and `pot_size` (optional enums: `ENUMS`, `OPTIONAL_ENUMS`) and `pests_found` (list). `PREP_METHODS` holds the ten methods and their steps; `prep_rate()` rates each for a plant, `prep_plan()` adds progress, status and the keep-apart date. Steps are logged to `care_log` as `prep_*` kinds (a soak or repot counts as watering). `GET /api/prep`, `GET /api/plants/<code>/prep`, `POST /api/plants/<code>/prep-traits`.
+- **1.10.0 additions:** the Audit log page and console. `audit_query(c, args)` builds the filtered query (`q` searches notes, values, names, codes and field labels with `LIKE … ESCAPE`; `plant` (`-` = no plant), `who` (`~claude`, `~people` or a name), `kind` (a key of `AUDIT_KINDS`), `field`, `from`/`to` (local dates, turned into UTC with the home time zone), `after` (ids above N, oldest first), `order`). `audit_rows()` adds `label` (`audit_label()`) and `action_word` (`ACTION_WORD`). Routes: `GET /api/audit` (newest first; `?after=ID` for the live console), `GET /api/audit/search` (`{entries, total, offset, limit, max_id}`, up to 500 a page), `GET /api/audit/facets` (what the filters can choose from), and `GET /api/audit.csv`, which takes the same filters.
 - **API:** `/api/plants`, `/api/plants/<code>` and its sub-routes (`site`, `status`, `history`, `timeline`, `versions`, `restore`, `photos`, `qr.svg`, `daily`, `day`), plus `/api/requests`, `/api/photos`, `/api/to-photograph`, `/api/fertilizer`, `/api/water`, `/api/care`, `/api/frost`, `/api/for-claude`, `/api/weather*`, `/api/places*`, `/api/current`, `/api/backups*`, `/api/export.json|csv`, `/api/audit*`, `/api/meta`, `/api/version` and `/healthz`.
 
 ## Front end: `app/static/`
-- `index.html`: the shell, with the top bar, `#app`, the section menu (`#sidenav`) and the Display button.
+- `index.html`: the shell, with the top bar, `#app`, the section menu (`#sidenav`), the audit log console (`#console`) and `#corner`, which holds the Debug and Display buttons.
 - `prefs.js`: display preferences (size, spacing, contrast, theme, menu side, width, plant layout, read-aloud buttons, reading speed, voice, keyboard shortcuts), stored in localStorage `plantdb.display` and set as `data-*` attributes on `<html>`.
 - `app.js`:
   - A hash router (`route()`) and one `view*()` function per page: gallery, plant, edit, today, winter, frost, inside, weather, fertilizer, photos, labels, history and backups. Each returns `{title, html, after}`.
   - 1.8.0 modules, each in its own block: frost banner and checklist, watering and Today, read aloud and shortcuts (`addReadButtons()`, Web Speech API), timeline (filled by a `MutationObserver` on `#app`), copy for Claude (`forClaudeDialog()`), and the photo check (`photoCheck()`, which runs before every upload).
+  - 1.10.0: the Audit log page (`viewHistory()`, state in `AUD`, filters remembered in localStorage `plantdb.auditf`), the Debug window (`debugDialog()`, settings in `DBG`, localStorage `plantdb.debug`, change events with `data-dbg`) and the console (`conPoll()` every 3 s via `/api/audit?after=`, `conAdd()`, `conLayout()`). `conLayout()` sizes the console to the newest 3, 4 or 5 rows, places it clear of the side menu and of every button pinned to the bottom, and sets `--console-space`, which `fitPanes()` and `main` use to leave room. `pinLayout()` stacks the Sections button and the job note above Debug and Display on phones when they would otherwise overlap.
   - Templates use the `html` tagged template, which escapes values (`raw()` opts out, `rend()` renders).
   - Click, change and submit events are delegated to `acts`, `changeActs` and `formActs`.
   - `buildSideNav()` builds the "On this page" menu from the `section.blk > h2` headings.

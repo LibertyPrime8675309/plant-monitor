@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.10.0 (2026-10-24)
+- **Audit log page** (it replaces the Change log page, same place in the menu bar): every change to every record, with filters.
+  - Search by words, plant, who made the change (one person, people, or Claude's updates), kind of change, field, and dates.
+  - It shows 100 changes at a time with Previous and Next page, and says how many match.
+  - **Download these changes (CSV)** saves just the ones that match. The page remembers your filters until you press **Clear filters**.
+- **Debug button**, next to Display. It opens a window with:
+  - **Show the audit log console**: a small window at the bottom of the screen with the newest 3, 4 or 5 changes (you choose), updated every 3 seconds. Scroll it for older ones; **Pause**, **Open the audit log** and **Close** are on it.
+  - An option to let screen readers announce each new change, and details about the app and this browser.
+- On phones, the Debug button sits above Display, and the Sections button moves above them whenever they would not fit side by side.
+- The change log download no longer puts a stray `'` in empty cells.
+- "Today" now always means today in Round Rock. Before, a phone or computer set to another time zone could be told "That date is in the future" when logging care in the evening.
+
 ## 1.9.0 (2026-10-23)
 - **Getting ready to come inside.** Every plant page has a new section that helps keep ants, mites and other outdoor pests out of the house:
   - Choose the plant's **leaf type** and **pot size**, and tick any **pests you found**. The leaf type is filled in for every plant already; change it if it is wrong.

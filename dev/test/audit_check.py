@@ -1,0 +1,167 @@
+"""Checks the Audit log page (filters, pages, CSV), the Debug button and window, and the live audit log console.
+Start the mock server with a fresh data folder first, then:  python3 dev/test/audit_check.py [base-url]
+Screenshots: dev/tmp/shots/audit-*.png"""
+import csv, io, json, os, sys, time, urllib.parse, urllib.request
+from datetime import date, timedelta
+from playwright.sync_api import sync_playwright
+BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
+errs, fails = [], []
+def check(cond, what):
+    print(('ok   ' if cond else 'FAIL ') + what)
+    if not cond: fails.append(what)
+def call(m, url, body=None, who='Audit Test'):
+    req = urllib.request.Request(BASE + url, data=json.dumps(body).encode() if body is not None else None,
+                                 headers={'X-Editor': who, 'Content-Type': 'application/json'}, method=m)
+    return json.load(urllib.request.urlopen(req))
+def raw(url): return urllib.request.urlopen(BASE + url).read().decode('utf-8-sig')
+def edit(code, fields, who='Audit Test'):
+    v = call('GET', f'/api/plants/{code}')['version']
+    return call('PUT', f'/api/plants/{code}', {'base_version': v, 'fields': fields}, who)
+S = lambda **q: call('GET', '/api/audit/search?' + urllib.parse.urlencode(q))
+
+# ---- the server ----
+F = call('GET', '/api/audit/facets')
+all_ = S(limit=5)
+check(all_['total'] == F['total'] > 1000 and len(all_['entries']) == 5, f"search: {all_['total']} changes, 5 per page asked for")
+check(all_['entries'][0]['id'] == all_['max_id'] and all_['entries'][0]['id'] > all_['entries'][1]['id'], 'newest first')
+check(S(limit=5, order='asc')['entries'][0]['id'] < S(limit=5, order='asc')['entries'][1]['id'], 'oldest first when asked')
+p2 = S(limit=5, offset=5)
+check(p2['entries'][0]['id'] < all_['entries'][-1]['id'], 'second page carries on where the first stopped')
+h = S(q='hyacinth', limit=500)
+check(h['total'] > 0 and all('hyacinth' in json.dumps(e).lower() for e in h['entries']), f"search words: {h['total']} about the hyacinth")
+check(S(q='Water hyacinth', plant='P-050')['total'] >= 1, 'search matches the plant name')
+p = S(plant='P-024', limit=500)
+check(p['total'] > 0 and all(e['plant_code'] == 'P-024' for e in p['entries']), f"one plant: {p['total']} changes for P-024")
+n = S(plant='-', limit=500)
+check(n['total'] > 0 and all(not e['plant_code'] for e in n['entries']), 'not about one plant: no plant codes')
+c = S(who='~claude', limit=50); pe = S(who='~people', limit=500)
+check(c['total'] + pe['total'] == F['total'] and all(e['changed_by'].startswith('Claude') for e in c['entries'])
+      and not any(e['changed_by'].startswith('Claude') for e in pe['entries']), "Claude's updates and people add up to everything")
+k = S(kind='photos', limit=200)
+check(k['total'] > 0 and all(e['action'].startswith('photo_') for e in k['entries']), f"kind of change: {k['total']} photo changes")
+fh = S(field='health_rating', limit=200)
+check(fh['total'] > 0 and all(e['field'] == 'health_rating' for e in fh['entries']) and fh['entries'][0]['label'] == 'Health rating', 'field: health rating, with its label')
+today = date.today().isoformat()
+check(S(**{'from': (date.today() + timedelta(days=1)).isoformat()})['total'] == 0, 'from tomorrow: nothing')
+check(0 < S(**{'from': '2000-01-01', 'to': today})['total'] <= F['total'], 'from and to dates')
+check(S(q="'%_\\")['total'] == 0, 'odd characters in the search are taken literally')
+# the console's feed
+top = all_['max_id']
+edit('P-024', {'notes': 'Audit check ' + str(time.time())})
+new = call('GET', f'/api/audit?after={top}')
+check(len(new) >= 1 and new[0]['id'] == top + 1 and new[0]['plant_code'] == 'P-024' and new[0]['changed_by'] == 'Audit Test', 'after=ID gives only the new changes, oldest first')
+check(call('GET', f'/api/audit?after={new[-1]["id"]}') == [], 'and nothing when there is nothing new')
+# CSV
+rows = list(csv.reader(io.StringIO(raw('/api/audit.csv?plant=P-024&order=desc'))))
+check(rows[0][:2] == ['when_utc', 'plant'], 'CSV has the same columns as before')
+pc = rows[0].index('plant')
+check(pc is not None and len(rows) - 1 == S(plant='P-024')['total'] and all(r[pc] == 'P-024' for r in rows[1:]), 'CSV follows the filters')
+check(not any(cell == "'" for r in rows for cell in r), "CSV: empty cells stay empty (no stray ')")
+isc = [w['name'].startswith('Claude') for w in call('GET', '/api/audit/facets')['who']]
+check(len(F['plants']) >= 80 and isc == sorted(isc) and any(x['key'] == 'photos' for x in F['kinds']), 'facets: plants, people listed before Claude, kinds')
+
+with sync_playwright() as pw:
+    b = pw.chromium.launch()
+    pg = b.new_page(viewport={'width': 1280, 'height': 900}); pg.on('pageerror', lambda e: errs.append(str(e)))
+    pg.on('console', lambda m: m.type == 'error' and errs.append(m.text))
+    pg.add_init_script("localStorage.setItem('plantdb.editor','Audit Test');if(!sessionStorage.getItem('aud-init')){sessionStorage.setItem('aud-init','1');localStorage.removeItem('plantdb.auditf');localStorage.removeItem('plantdb.debug');localStorage.setItem('plantdb.display',JSON.stringify({navopen:'0'}))}")
+    pg.goto(f'{BASE}/#/audit'); pg.wait_for_timeout(2500)
+    check(pg.locator('h1').inner_text() == 'Audit log' and pg.locator('[data-nav=history]').inner_text() == 'Audit log', '#/audit opens the Audit log page; the menu says Audit log')
+    tot = call('GET', '/api/audit/facets')['total']
+    check(pg.locator('#aud-sum').inner_text().startswith(f'Showing 1 to 100 of {tot:,}'), 'summary: Showing 1 to 100 of all')
+    check(pg.locator('.aud-tbl tbody tr').count() == 100, '100 rows on a page')
+    pg.locator('[data-act=audpage][data-d="1"]').click(); pg.wait_for_timeout(900)
+    check(pg.locator('#aud-sum').inner_text().startswith('Showing 101 to 200'), 'Next page')
+    pg.fill('input[data-f=audq]', 'hyacinth'); pg.wait_for_timeout(1200)
+    s = pg.locator('#aud-sum').inner_text()
+    check(s.startswith('Showing 1 to') and 'containing "hyacinth"' in s, f'search box: "{s}"')
+    check(pg.evaluate("document.activeElement.dataset.f") == 'audq', 'focus stays in the search box')
+    pg.select_option('select[name=plant]', 'P-050'); pg.wait_for_timeout(1000)
+    check(all(t.startswith('P-050') for t in pg.locator('.aud-tbl td[data-label=Record]').all_inner_texts()), 'plant menu: only P-050')
+    check(pg.evaluate("document.activeElement.name") == 'plant', 'focus stays on the plant menu')
+    check('2 in use' in pg.locator('#aud-fbox summary').inner_text(), 'the Filters heading says 2 in use')
+    href = pg.locator('#aud-csv').get_attribute('href')
+    check('q=hyacinth' in href and 'plant=P-050' in href, 'Download these changes follows the filters')
+    pg.reload(); pg.wait_for_timeout(2500)
+    check(pg.locator('input[data-f=audq]').input_value() == 'hyacinth' and pg.locator('select[name=plant]').input_value() == 'P-050', 'filters are remembered')
+    pg.locator('[data-act=audclear]').first.click(); pg.wait_for_timeout(1500)
+    check(pg.locator('#aud-sum').inner_text().startswith('Showing 1 to 100 of'), 'Clear filters')
+    pg.select_option('select[name=who]', '~people'); pg.wait_for_timeout(900)
+    check(not any(t.startswith('Claude') for t in pg.locator('.aud-tbl td[data-label=Who]').all_inner_texts()), 'Who: people only')
+    pg.select_option('select[name=who]', ''); pg.select_option('select[name=field]', 'health_rating'); pg.wait_for_timeout(900)
+    check(all(t.startswith('Health rating') or 'Health rating' in t for t in pg.locator('.aud-tbl td[data-label=What]').all_inner_texts()), 'Field: health rating')
+    pg.select_option('select[name=field]', ''); pg.fill('input[name=from]', (date.today() + timedelta(days=1)).isoformat()); pg.dispatch_event('input[name=from]', 'change'); pg.wait_for_timeout(900)
+    check('No changes match' in pg.locator('#aud-list').inner_text(), 'From tomorrow: an empty message with Clear filters')
+    pg.locator('#aud-list [data-act=audclear]').click(); pg.wait_for_timeout(1500)
+    pg.screenshot(path=f'{OUT}/audit-page.png')
+    # the Debug window
+    pg.locator('#debug-btn').click(); pg.wait_for_timeout(400)
+    check(pg.locator('#dlg h2').inner_text() == 'Debug', 'Debug opens its window')
+    pg.wait_for_timeout(600)
+    check('since' in pg.locator('#dbg-total').inner_text(), 'it says how many changes are logged')
+    pg.screenshot(path=f'{OUT}/audit-debug-window.png')
+    pg.locator('input[data-dbg=console]').check(); pg.wait_for_timeout(300)
+    check('console is on' in pg.locator('#dbg-msg').inner_text(), 'the window says the console is on')
+    pg.locator('input[data-dbg=lines][value="3"]').check(); pg.wait_for_timeout(200)
+    pg.keyboard.press('Escape'); pg.wait_for_timeout(1500)
+    check(pg.locator('#console').is_visible(), 'the console shows')
+    fit = pg.evaluate("(() => { const b = document.getElementById('con-body'), r = [...b.querySelectorAll('.con-row')]; const h = r.slice(-3).reduce((t, x) => t + x.offsetHeight, 0); return [b.clientHeight, h, r.length]; })()")
+    check(abs(fit[0] - fit[1]) <= 2 and fit[2] > 3, f'it is tall enough for the newest 3 changes ({fit[0]}px for {fit[1]}px), with older ones above')
+    last = pg.locator('.con-row').last.get_attribute('data-id')
+    check(int(last) == call('GET', '/api/audit?limit=1')[0]['id'], 'the newest change is at the bottom')
+    LT = 'Live tester ' + str(int(time.time()))
+    edit('P-031', {'notes': 'Console check ' + str(time.time())}, LT)
+    pg.wait_for_timeout(4000)
+    lastrow = pg.locator('.con-row').last.inner_text()
+    check(LT in lastrow and 'P-031' in lastrow, f'a new change appears within 4 seconds: "{lastrow[:70]}"')
+    r = pg.evaluate("(() => { const b = document.getElementById('con-body'); return b.scrollTop + b.clientHeight >= b.scrollHeight - 6; })()")
+    check(r, 'and scrolls into view')
+    pg.evaluate("document.getElementById('con-body').scrollTop = 0"); pg.wait_for_timeout(300)
+    edit('P-031', {'notes': 'Console check two ' + str(time.time())}, LT)
+    pg.wait_for_timeout(4000)
+    check(pg.locator('#con-new').is_visible() and '1 new change' in pg.locator('#con-new').inner_text(), 'scrolled up: "1 new change below" instead of jumping')
+    pg.locator('#con-new').click(); pg.wait_for_timeout(300)
+    atb = pg.evaluate("(() => { const b = document.getElementById('con-body'); return b.scrollTop + b.clientHeight >= b.scrollHeight - 6; })()")
+    check(not pg.locator('#con-new').is_visible() and atb and 'Console check two' in pg.locator('.con-row').last.inner_text(), 'show takes you to it')
+    pg.locator('[data-act=conpause]').click()
+    PT = 'Paused tester ' + str(int(time.time()))          # a name used only this once
+    edit('P-031', {'notes': 'While paused ' + str(time.time())}, PT)
+    pg.wait_for_timeout(4000)
+    st, body = pg.locator('#con-state').inner_text(), pg.locator('#con-body').inner_text()
+    check(PT not in body and st == 'Paused', f'Pause stops it (state "{st}", new row shown: {PT in body})')
+    pg.locator('[data-act=conpause]').click(); pg.wait_for_timeout(1500)
+    check(PT in pg.locator('.con-row').last.inner_text(), 'Resume catches up')
+    # no covering the buttons, and the plant page halves leave room for it
+    ov = pg.evaluate("(() => { const a = document.getElementById('console').getBoundingClientRect(), b = document.getElementById('corner').getBoundingClientRect(); return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom; })()")
+    check(not ov, 'the console does not cover the Debug and Display buttons')
+    pg.goto(f'{BASE}/#/plant/P-024'); pg.wait_for_timeout(2500)
+    pane = pg.evaluate("(() => { const p = document.querySelector('.plant .pane:last-child').getBoundingClientRect(), c = document.getElementById('console').getBoundingClientRect(); return [Math.round(p.bottom), Math.round(c.top)]; })()")
+    pg.screenshot(path=f'{OUT}/audit-console-plant.png')
+    check(pane[0] <= pane[1] + 2 or pane[0] - pane[1] < 200, f'plant page halves end near the console ({pane[0]} vs {pane[1]})')
+    pg.locator('[data-act=conclose]').click(); pg.wait_for_timeout(400)
+    check(not pg.locator('#console').is_visible() and pg.evaluate("document.activeElement.id") == 'debug-btn', 'Close hides it and puts you on the Debug button')
+    check(json.loads(pg.evaluate("localStorage.getItem('plantdb.debug')"))['console'] == '0', 'and remembers it is off')
+    pg.emulate_media(media='print')
+    check(not pg.locator('#corner').is_visible(), 'printing leaves out the Debug and Display buttons')
+    pg.close()
+    # phones: every text size, console on, nothing covers anything and nothing scrolls sideways
+    for w in (390, 360):
+        for size in ('100', '115', '135', '160', '190'):
+            q = b.new_page(viewport={'width': w, 'height': 800}); q.on('pageerror', lambda e: errs.append(str(e)))
+            q.add_init_script("localStorage.setItem('plantdb.display',JSON.stringify({size:'%s',theme:'dark'}));localStorage.setItem('plantdb.debug',JSON.stringify({console:'1',lines:'4',announce:'1'}))" % size)
+            q.goto(f'{BASE}/#/history'); q.wait_for_timeout(2200)
+            res = q.evaluate('''(() => { const ids = ['console', 'nav-tab', 'debug-btn', 'display-btn'], R = {}, out = [];
+              ids.forEach(i => { const e = document.getElementById(i); if (e && e.getClientRects().length && getComputedStyle(e).display !== 'none') R[i] = e.getBoundingClientRect(); });
+              for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) { const a = R[ids[i]], b = R[ids[j]];
+                if (a && b && a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) out.push(ids[i] + '/' + ids[j]); }
+              return [out, document.documentElement.scrollWidth - document.documentElement.clientWidth, document.getElementById('con-body').getAttribute('aria-live'), R.console ? Math.round(R.console.top) : -1]; })()''')
+            check(not res[0] and res[1] <= 2 and res[3] >= 0, f'phone {w}px, text {size}%: console top at {res[3]}px, overlaps {res[0] or "none"}, sideways {res[1]}px')
+            if size == '190' and w == 390:
+                check(res[2] == 'polite', 'screen readers announce new changes when that is ticked')
+                q.screenshot(path=f'{OUT}/audit-phone-190.png')
+            if size == '115' and w == 390: q.screenshot(path=f'{OUT}/audit-phone-console.png')
+            q.close()
+    b.close()
+for e in errs: print('JS error:', e)
+sys.exit(1 if fails or errs else 0)

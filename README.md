@@ -167,7 +167,7 @@ If the version in the app is older than the newest zip in your folder, that upda
 
 ## Display settings and low vision
 
-Press the **Display** button (bottom right of every page; it stays on screen) to change how everything looks. Changes apply at once and are remembered in that browser (each computer or phone keeps its own).
+Press the **Display** button (bottom right of every page; it stays on screen) to change how everything looks. The **Debug** button beside it is described under "Audit log" below. Changes apply at once and are remembered in that browser (each computer or phone keeps its own).
 
 - **Text and button size**: Standard, Comfortable (the new default, a little bigger than before), Large, Larger, Largest. Buttons, bars, charts and spacing scale together.
 - **Spacing**: Normal or Roomy (more space between lines, letters and words).
@@ -177,7 +177,7 @@ Press the **Display** button (bottom right of every page; it stays on screen) to
 
 On a plant page in side-by-side view, the photos (left) and details (right) each scroll on their own: put the pointer over the half you want to move and scroll. A "Switch to one column" button at the top of the page does the same as the Display setting. With very large text or a narrow window the page switches to one column automatically. The row of section buttons (Now, Temperature, Humidity, Light, Water and soil, ...) jumps straight to a section; in side-by-side view it steps aside while the On this page menu is open, because the menu lists the same sections. All parts of the page can also be reached with the Tab key.
 
-On a phone the menu bar at the top scrolls away with the page (scroll back to the top to reach it), and every page fits the width of the screen at every text size. With the two largest text sizes, the Sections button sits just above the Display button.
+On a phone the menu bar at the top scrolls away with the page (scroll back to the top to reach it), and every page fits the width of the screen at every text size. The Debug button sits just above the Display button. When there is no room for the Sections button beside them (larger text, or a narrow phone), it sits above Debug.
 
 ### Read aloud and keyboard shortcuts (from 1.8.0)
 
@@ -439,7 +439,7 @@ macOS / Linux (bash):
 ls -lh data/plants.db
 ```
 
-For a spreadsheet, use the **Weather** page's table (any columns, any dates) or the **Change log** page: "Download weather and sensor readings (CSV)".
+For a spreadsheet, use the **Weather** page's table (any columns, any dates) or the **Audit log** page: "Download weather and sensor readings (CSV)".
 
 ## Plant links and previews
 
@@ -457,6 +457,35 @@ The first time you save something, the app asks for your name. It goes into the 
 
 If you want a password, uncomment `PLANTDB_PASSWORD` in `docker-compose.yml` and run `docker compose up -d`. The browser then asks for a password (leave the username blank or put anything). Do not expose port 8080 to the internet; this is built for your home network.
 
+## Audit log (from 1.10.0)
+
+The **Audit log** page (in the menu bar; it used to be called Change log) lists every change to every record, newest first: edits to plant pages, plants added or archived, photos added, moved or removed, feeding and care, requests and answers, the "Still to photograph" list, settings and backups. Each change shows when, which plant (with a link), who, what changed, and the value before and after.
+
+- **Filters** (at the top; on a phone, open **Filters** first):
+  - **Search**: any words, a plant code, a name or a value, for example `hyacinth`, `P-024` or `Poor`.
+  - **Plant**: one plant, or "Not about one plant" for settings, backups and the like.
+  - **Who**: one person, "People" (everyone but Claude's updates) or "Claude's updates".
+  - **Kind of change**: for example Photos, or Feeding, watering and care.
+  - **Field**: one detail, such as Health rating or Location.
+  - **From** and **To**: dates, in your time zone.
+  - **Order**: newest or oldest first.
+- The line under the filters says how many changes match, for example "Showing 1 to 100 of 2,253 changes". **Previous page** and **Next page** go through them 100 at a time.
+- **Clear filters** shows everything again. This browser remembers the filters until you clear them.
+- **Download these changes (CSV)** saves just the changes that match, for a spreadsheet.
+
+### Debug button and the audit log console (from 1.10.0)
+
+The **Debug** button sits next to **Display** at the bottom right of every page, and opens a window of tools for seeing what the app is doing:
+
+- **Show the audit log console**: a small window at the bottom of the screen with the newest changes to any record. It checks for new ones every 3 seconds, so you can watch a change appear as you, someone else or an update makes it.
+  - **Changes it shows before you scroll**: 3, 4 or 5. Scroll it up for older ones (it keeps the last 200), or click into it and use the arrow keys.
+  - If you have scrolled up when a new change comes in, it stays where you are and shows a **new changes below** button instead of jumping.
+  - **Pause** stops it checking until you press **Resume**. **Open the audit log** goes to the full page. **Close** turns it off.
+- **Let screen readers announce each new change**: off to start with, so a screen reader is not interrupted every time something is saved.
+- **About this browser and the app**: the version, window size, text size, layout and how many changes are logged.
+
+These choices are remembered in that browser. The console never covers the Debug, Display or Sections buttons, and plant pages leave room for it.
+
 ## What's in the pages
 
 - **Plants**: all pages, filterable by winter plan, health and ID confidence; sortable.
@@ -467,7 +496,7 @@ If you want a password, uncomment `PLANTDB_PASSWORD` in `docker-compose.yml` and
 - **Fertilizer**: today's feed / hold / rest verdict for every plant, a calendar, and the feeding log (see above).
 - **Photos**: wide shots not yet tied to a plant, and a "still to photograph" checklist.
 - **Labels**: printable QR labels.
-- **Change log**: every change to every plant, with CSV and JSON downloads.
+- **Audit log**: every change to every record, with filters and CSV and JSON downloads (see "Audit log" above).
 
 Editing a page saves a new version and keeps the old one. "Restore" puts an older version's text back as a new version (photos are not changed). Two people editing the same page at once: the second save is refused with a message, so nothing is overwritten.
 
@@ -561,7 +590,7 @@ cp -r data data-backup
 docker compose start
 ```
 
-You can also download everything from **Change log**: plants as CSV, the change log as CSV, or all data as JSON. To start over with the original 77 plants, stop the app, delete the contents of `data`, and start it again.
+You can also download everything from **Audit log**: plants as CSV, the change log as CSV, or all data as JSON. To start over with the original 77 plants, stop the app, delete the contents of `data`, and start it again.
 
 ## Notes
 

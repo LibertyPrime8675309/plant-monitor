@@ -137,7 +137,7 @@ async function route() {
   const my = ++token;
   const h = location.hash.replace(/^#/, '') || '/';
   const parts = h.split('/').filter(Boolean);
-  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' ? 'history' : parts[0] === 'backups' ? 'backups' : 'plants';
+  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : 'plants';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let view;
@@ -152,7 +152,7 @@ async function route() {
     else if (parts[0] === 'fertilizer') view = await viewFertilizer();
     else if (parts[0] === 'photos') view = await viewPhotos();
     else if (parts[0] === 'labels') view = await viewLabels();
-    else if (parts[0] === 'history') view = await viewHistory();
+    else if (parts[0] === 'history' || parts[0] === 'audit') view = await viewHistory();
     else if (parts[0] === 'backups') view = await viewBackups();
     else if (parts[0] === 'frost') view = await viewFrost();
     else if (parts[0] === 'inside') view = await viewInside();
@@ -1116,7 +1116,8 @@ function fitPanes() {
   const r = document.documentElement;
   if (r.dataset.layout === 'single' || r.dataset.narrow === '1') { pl.style.removeProperty('--pane-h'); return; }
   const topAbs = pl.getBoundingClientRect().top + window.scrollY;
-  const h = Math.max(window.innerHeight - topAbs - 12, 360);            // the two halves fill the window exactly, so the page itself never scrolls
+  const con = r.dataset.console === '1' ? (parseFloat(getComputedStyle(r).getPropertyValue('--console-space')) || 0) : 0;   // room for the audit log console
+  const h = Math.max(window.innerHeight - topAbs - 12 - con, 360);      // the two halves fill the window exactly, so the page itself never scrolls
   pl.style.setProperty('--pane-h', h + 'px');
 }
 function repaintPhotos() { const el = document.getElementById('photopanel'); if (el) el.innerHTML = rend(photoPanel(CUR.p)); }
@@ -1138,7 +1139,10 @@ const midDay = s => parseYmd(s).toLocaleDateString([], { weekday: 'short', month
 const MONTHN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MN = MONTHN.map(m => m.slice(0, 3));
 const DOWN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-const todayStr = () => ymd(new Date());
+function todayStr() {           // today at home (Round Rock), not in the browser's time zone, so care dates match the server's
+  try { if (META && META.home_tz) return new Intl.DateTimeFormat('en-CA', { timeZone: META.home_tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); } catch (e) { /* unknown zone */ }
+  return ymd(new Date());
+}
 
 // ---------- calendar (month grid, with a list version for narrow screens and big text) ----------
 const CALS = {};
@@ -2172,8 +2176,8 @@ async function wxPoll() {
 }
 function jobBadge(j) {
   let b = document.getElementById('job-badge');
-  if (!j || !j.running) { if (b) b.remove(); return; }
-  if (!b) { b = document.createElement('a'); b.id = 'job-badge'; b.href = '#/weather'; b.className = 'noprint'; document.body.appendChild(b); }
+  if (!j || !j.running) { if (b) { b.remove(); conLayout(); } return; }
+  if (!b) { b = document.createElement('a'); b.id = 'job-badge'; b.href = '#/weather'; b.className = 'noprint'; document.body.appendChild(b); setTimeout(conLayout, 0); }
   const n = jobNumbers(j);
   b.textContent = (j.trigger === 'load-history' ? 'Loading history' : 'Updating weather') + (j.place ? ` for ${j.place}` : '') + (j.places_total > 1 ? ` (${j.place_no} of ${j.places_total})` : '') + ': ' + (n.hist ? n.pct + '%' : '…') + (n.left != null ? ', about ' + dur(n.left) + ' left' : '');
   b.setAttribute('aria-label', b.textContent + '. Open the Weather page for details.');
@@ -2742,26 +2746,226 @@ async function viewLabels() {
   };
 }
 
-// ---------- change log page ----------
-let LOG = [];
-function logRows(q) {
-  q = (q || '').trim().toLowerCase();
-  const rows = LOG.filter(a => !q || [a.plant_code, a.changed_by, a.label, a.field, a.action, a.note, a.old_value, a.new_value].join(' ').toLowerCase().includes(q));
-  return rows.length ? html`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>When</th><th>Plant</th><th>Version</th><th>By</th><th>What</th><th>Before</th><th>After</th></tr></thead><tbody>
-    ${rows.map(a => html`<tr><td>${timeEl(a.changed_at)}</td><td>${a.plant_code ? html`<a href="#/plant/${enc(a.plant_code)}">${a.plant_code}</a>` : 'Setting'}</td><td>${a.version == null ? '' : a.version}</td><td>${a.changed_by}</td>
-      <td>${a.label || a.action}${a.note && !a.field ? html`<div class="muted">${a.note}</div>` : ''}</td><td class="old">${a.old_value || ''}</td><td class="new">${a.new_value || ''}</td></tr>`)}</tbody></table></div>`
-    : html`<div class="empty">No matching changes.</div>`;
+// ---------- audit log page: every change to every record, with filters (1.10.0; was the Change log page) ----------
+const AUD = { f: { q: '', plant: '', who: '', kind: '', field: '', from: '', to: '', order: 'desc' }, offset: 0, limit: 100, facets: null, total: 0, t: null };
+try { const s = JSON.parse(localStorage.getItem('plantdb.auditf') || '{}'); Object.keys(AUD.f).forEach(k => { if (typeof s[k] === 'string') AUD.f[k] = s[k]; }); } catch (e) { /* defaults */ }
+const audSave = () => { try { localStorage.setItem('plantdb.auditf', JSON.stringify(AUD.f)); } catch (e) { /* not remembered */ } };
+function audQS(extra) {
+  const p = new URLSearchParams();
+  Object.entries(AUD.f).forEach(([k, v]) => { if (v && !(k === 'order' && v === 'desc')) p.set(k, v); });
+  Object.entries(extra || {}).forEach(([k, v]) => p.set(k, v));
+  return p.toString();
+}
+const audClip = (v, n) => { v = v == null ? '' : String(v).replace(/\s+/g, ' ').trim(); return v.length > n ? v.slice(0, n - 1) + '…' : v; };
+const AUD_FIELD_ACTS = ['update', 'edit', 'restore', 'archive', 'unarchive'];
+function auditChange(a) {        // "Health rating: from Poor to Fair", for a change to one field of a plant page; '' for anything else
+  if (!a.field || !AUD_FIELD_ACTS.includes(a.action)) return '';
+  const o = audClip(a.old_value, 60), n = audClip(a.new_value, 60);
+  return `${a.label}: ${!o ? 'set to ' + (n || '(empty)') : !n ? 'cleared (it was ' + o + ')' : 'from ' + o + ' to ' + n}`;
+}
+const shortWho = w => { const m = /^Claude \((batch [^,)]+)/.exec(w || ''); return m ? 'Claude, ' + m[1] : w; };
+function audCell(v) {
+  if (v == null || v === '') return '';
+  const s = String(v);
+  return s.length > 160 ? html`<details class="aud-more"><summary>${s.slice(0, 120)}…</summary><div class="aud-full">${s}</div></details>` : s;
+}
+function audBefore(a) {         // a field that had no value before says so, rather than leaving a blank
+  if ((a.old_value == null || a.old_value === '') && auditChange(a)) return html`<td data-label="Before"><span class="muted">Not set</span></td>`;
+  return html`<td data-label="Before" class="old">${audCell(a.old_value)}</td>`;
+}
+function audRecord(a) {
+  if (a.plant_code) return html`<a href="#/plant/${enc(a.plant_code)}">${a.plant_code}</a>${a.plant_name ? html` <span class="muted">${a.plant_name}</span>` : ''}`;
+  return { setting: 'Setting', backup: 'Backup', request: 'General request', todo: '"Still to photograph" list', photo_add: 'Photos page', photo_remove: 'Photos page', photo_caption: 'Photos page', note: 'Update' }[a.action] || 'Not about one plant';
+}
+function audRows(list) {
+  if (!list.length) return html`<div class="empty">No changes match these filters.<p><button class="btn ghost small" type="button" data-act="audclear">Clear filters</button></p></div>`;
+  return html`<div class="tbl-wrap aud-wrap"><table class="tbl aud-tbl"><caption class="sr">Changes</caption>
+    <thead><tr><th scope="col">When</th><th scope="col">Record</th><th scope="col">Who</th><th scope="col">What</th><th scope="col">Before</th><th scope="col">After</th></tr></thead>
+    <tbody>${list.map(a => html`<tr><td data-label="When">${timeEl(a.changed_at)}</td><td data-label="Record">${audRecord(a)}${a.version != null ? html`<div class="muted">Version ${a.version}</div>` : ''}</td>
+      <td data-label="Who">${a.changed_by}</td>
+      <td data-label="What"><strong>${a.action_word}</strong>${a.label && a.label !== a.action_word ? html`: ${a.label}` : ''}${a.note && a.note !== a.action_word ? html`<div class="muted">${a.note}</div>` : ''}</td>
+      ${audBefore(a)}<td data-label="After" class="new">${audCell(a.new_value)}</td></tr>`)}</tbody></table></div>`;
+}
+const audInUse = () => Object.entries(AUD.f).filter(([k, v]) => v && k !== 'order').length;
+const audInUseWords = () => { const n = audInUse(); return n ? `: ${n} in use` : ''; };
+function audWords() {
+  const F = AUD.facets || {}, f = AUD.f, w = [];
+  if (f.q) w.push(`containing "${f.q}"`);
+  if (f.plant === '-') w.push('not about one plant'); else if (f.plant) w.push('for ' + f.plant);
+  if (f.who === '~people') w.push('by people'); else if (f.who === '~claude') w.push("from Claude's updates"); else if (f.who) w.push('by ' + f.who);
+  if (f.kind) w.push((((F.kinds || []).find(k => k.key === f.kind)) || { label: f.kind }).label.toLowerCase());
+  if (f.field) w.push('field: ' + (((F.fields || []).find(x => x.name === f.field)) || { label: f.field }).label);
+  if (f.from) w.push('from ' + midDay(f.from)); if (f.to) w.push('to ' + midDay(f.to));
+  return w.join(', ');
+}
+async function audLoad(focusSel) {
+  const box = document.getElementById('aud-list'); if (!box) return;
+  let r;
+  try { r = await api('GET', '/api/audit/search?' + audQS({ limit: AUD.limit, offset: AUD.offset })); }
+  catch (e) { box.innerHTML = rend(html`<p class="notice bad">Could not load the audit log: ${e.message}</p>`); return; }
+  AUD.total = r.total;
+  const end = Math.min(r.offset + r.entries.length, r.total), words = audWords();
+  document.getElementById('aud-sum').textContent = r.total ? `Showing ${(r.offset + 1).toLocaleString()} to ${end.toLocaleString()} of ${r.total.toLocaleString()} ${r.total === 1 ? 'change' : 'changes'}${words ? ' ' + words : ''}.` : `No changes${words ? ' ' + words : ''}.`;
+  box.innerHTML = rend(audRows(r.entries));
+  const pages = Math.max(1, Math.ceil(r.total / AUD.limit)), page = Math.floor(r.offset / AUD.limit) + 1;
+  const pager = document.getElementById('aud-pager');
+  if (pager) pager.innerHTML = rend(pages > 1 ? html`<button class="btn small ghost" type="button" data-act="audpage" data-d="-1" ${page <= 1 ? raw('disabled') : ''}>Previous page</button>
+    <span>Page ${page} of ${pages}</span><button class="btn small ghost" type="button" data-act="audpage" data-d="1" ${page >= pages ? raw('disabled') : ''}>Next page</button>` : '');
+  const csv = document.getElementById('aud-csv'); if (csv) csv.href = '/api/audit.csv?' + audQS();
+  const iu = document.getElementById('aud-inuse'); if (iu) iu.textContent = audInUseWords();
+  if (focusSel) { const el = document.querySelector(focusSel); if (el) el.focus({ preventScroll: true }); }
 }
 async function viewHistory() {
-  LOG = await api('GET', '/api/audit?limit=500');
+  AUD.facets = await api('GET', '/api/audit/facets');
+  const F = AUD.facets, f = AUD.f, sel = (k, v) => v === f[k] ? raw('selected') : '';
   return {
-    title: 'Change log',
-    html: html`<div class="hero"><div><h1>Change log</h1><p class="muted">Every edit to every plant: what changed, what it was before, who did it and when. Newest first. Times are shown in your time zone.</p></div>
-      <div class="row noprint"><a class="btn ghost small" href="/api/audit.csv">Download change log (CSV)</a><a class="btn ghost small" href="/api/export.csv">Download plants (CSV)</a><a class="btn ghost small" href="/api/readings.csv">Download weather and sensor readings (CSV)</a><a class="btn ghost small" href="/api/export.json">Download everything (JSON)</a></div></div>
-    <label class="f noprint" style="max-width:420px">Filter<input type="search" data-f="logq" placeholder="Plant code, name of editor, field"></label>
-    <div id="logbody">${logRows('')}</div>`,
+    title: 'Audit log',
+    html: html`<div class="hero"><div><h1>Audit log</h1><p class="muted">Every change to every record: plant pages, photos, feeding and care, requests, settings and backups. ${F.total.toLocaleString()} changes since ${F.first ? midDay(F.first.slice(0, 10)) : 'the start'}. Times are shown in your time zone.</p></div>
+      <div class="row noprint"><a class="btn ghost small" href="/api/export.csv">Download plants (CSV)</a><a class="btn ghost small" href="/api/readings.csv">Download weather and sensor readings (CSV)</a><a class="btn ghost small" href="/api/export.json">Download all data (JSON)</a></div></div>
+    <details class="aud-fbox noprint" id="aud-fbox" ${document.documentElement.dataset.narrow !== '1' || audInUse() ? raw('open') : ''}><summary>Filters<span id="aud-inuse">${audInUseWords()}</span></summary>
+    <form class="aud-filters" role="search" aria-label="Filter the audit log" data-form="audf">
+      <label class="f aud-q">Search<input type="search" name="q" data-f="audq" value="${f.q}" placeholder="Words, plant code or name"></label>
+      <label class="f">Plant<select name="plant" data-f="aud"><option value="">All plants</option><option value="-" ${sel('plant', '-')}>Not about one plant</option>
+        ${F.plants.map(p => html`<option value="${p.code}" ${sel('plant', p.code)}>${p.code} ${p.name}${p.status === 'archived' ? ' (archived)' : ''}</option>`)}</select></label>
+      <label class="f">Who<select name="who" data-f="aud"><option value="">Everyone</option><option value="~people" ${sel('who', '~people')}>People (not Claude's updates)</option><option value="~claude" ${sel('who', '~claude')}>Claude's updates (all)</option>
+        ${F.who.map(w => html`<option value="${w.name}" ${sel('who', w.name)}>${w.name} (${w.count})</option>`)}</select></label>
+      <label class="f">Kind of change<select name="kind" data-f="aud"><option value="">Any kind</option>${F.kinds.map(k => html`<option value="${k.key}" ${sel('kind', k.key)}>${k.label}</option>`)}</select></label>
+      <label class="f">Field<select name="field" data-f="aud"><option value="">Any field</option>${F.fields.map(x => html`<option value="${x.name}" ${sel('field', x.name)}>${x.label}</option>`)}</select></label>
+      <label class="f">From<input type="date" name="from" data-f="aud" value="${f.from}"></label>
+      <label class="f">To<input type="date" name="to" data-f="aud" value="${f.to}"></label>
+      <label class="f">Order<select name="order" data-f="aud"><option value="desc">Newest first</option><option value="asc" ${sel('order', 'asc')}>Oldest first</option></select></label>
+      <div class="row aud-acts"><button class="btn small ghost" type="button" data-act="audclear">Clear filters</button><a class="btn small ghost" id="aud-csv" href="/api/audit.csv">Download these changes (CSV)</a>
+        <button class="btn small ghost" type="button" data-act="audrefresh">Refresh</button></div></form></details>
+    <p class="hint noprint">To watch changes as they happen, turn on the audit log console with the Debug button.</p>
+    <p id="aud-sum" class="aud-sum" role="status" aria-live="polite">Loading the audit log</p>
+    <div id="aud-list"></div>
+    <nav class="pager aud-pager row" id="aud-pager" aria-label="Pages of changes"></nav>`,
+    after: () => audLoad(),
   };
 }
+
+// ---------- the Debug button and the live audit log console (added in 1.10.0) ----------
+const DBG = { console: '0', lines: '4', announce: '0' };
+try { const s = JSON.parse(localStorage.getItem('plantdb.debug') || '{}'); Object.keys(DBG).forEach(k => { if (typeof s[k] === 'string') DBG[k] = s[k]; }); } catch (e) { /* defaults */ }
+const dbgSave = () => { try { localStorage.setItem('plantdb.debug', JSON.stringify(DBG)); } catch (e) { /* not remembered */ } };
+const CON = { last: 0, timer: null, paused: false, unseen: 0, busy: false, failed: 0, stick: true };   // stick: the view is at the newest change, so new ones scroll into view
+function conEl(id) { return document.getElementById(id); }
+function conRow(a) {
+  const t = new Date(a.changed_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  return html`<div class="con-row" data-id="${a.id}"><time datetime="${a.changed_at}" title="${when(a.changed_at)}">${t}</time>
+    <span class="con-who" title="${a.changed_by}">${shortWho(a.changed_by)}</span>${a.plant_code ? html` <a href="#/plant/${enc(a.plant_code)}">${a.plant_code}</a>` : ''}
+    <span class="con-what">${auditChange(a) || html`<strong>${a.action_word}:</strong> ${a.note || a.label || ''}`}</span></div>`;
+}
+function conAtBottom() { return CON.stick; }
+function conScrolled() { const b = conEl('con-body'); CON.stick = !b || b.scrollTop + b.clientHeight >= b.scrollHeight - 6; if (CON.stick && CON.unseen) { CON.unseen = 0; const n = conEl('con-new'); if (n) n.hidden = true; } }
+function conAdd(rows, first) {
+  const b = conEl('con-body'); if (!b || !rows.length) return;
+  const stick = first || conAtBottom();
+  if (first) b.innerHTML = ''; else b.querySelectorAll('p.muted').forEach(x => x.remove());
+  b.insertAdjacentHTML('beforeend', rend(html`${rows.map(conRow)}`));
+  while (b.children.length > 200) b.firstElementChild.remove();
+  conLayout(); fitPanes();
+  if (stick) { b.scrollTop = b.scrollHeight; CON.unseen = 0; CON.stick = true; } else CON.unseen += first ? 0 : rows.length;
+  const n = conEl('con-new');
+  if (n) { n.hidden = !CON.unseen; n.textContent = `${CON.unseen} new ${CON.unseen === 1 ? 'change' : 'changes'} below: show`; }
+}
+function conState(text) { const s = conEl('con-state'); if (s && s.textContent !== text) s.textContent = text; }
+async function conPoll() {
+  if (CON.busy || CON.paused || document.hidden || DBG.console !== '1') return;
+  CON.busy = true;
+  try {
+    const first = !CON.started;
+    const rows = first ? (await api('GET', '/api/audit?limit=60')).reverse() : await api('GET', '/api/audit?after=' + CON.last + '&limit=100');
+    if (CON.paused || DBG.console !== '1') return;        // paused or closed while this check was on its way: Resume picks these up
+    if (rows.length) { CON.last = rows[rows.length - 1].id; conAdd(rows, first); }
+    else if (first) { const b = conEl('con-body'); if (b) b.innerHTML = rend(html`<p class="muted">Nothing logged yet.</p>`); }
+    CON.started = true;
+    CON.failed = 0; conState(CON.paused ? 'Paused' : 'Live');
+  } catch (e) { CON.failed++; if (!CON.paused) conState('Cannot reach the app, trying again'); }
+  finally { CON.busy = false; }
+}
+function pinLayout() {           // phones: the buttons pinned to the bottom of the screen stack up instead of covering each other
+  const r = document.documentElement, tab = conEl('nav-tab'), corner = conEl('corner'), job = conEl('job-badge');
+  const shown = e => e && e.getClientRects().length && getComputedStyle(e).display !== 'none';
+  if (r.dataset.narrow !== '1' || !corner) { r.dataset.tabup = '0'; if (tab) tab.style.bottom = ''; if (job) job.style.bottom = ''; return; }
+  const cr = corner.getBoundingClientRect();
+  let top = cr.top;
+  if (shown(tab)) {             // Sections sits beside Debug and Display when there is room, above them when not
+    const up = tab.getBoundingClientRect().right > cr.left - 8;
+    tab.style.bottom = up ? Math.round(innerHeight - cr.top + 8) + 'px' : '';
+    r.dataset.tabup = up ? '1' : '0';
+    top = Math.min(top, tab.getBoundingClientRect().top);
+  } else r.dataset.tabup = '0';
+  if (job) job.style.bottom = Math.round(innerHeight - top + 8) + 'px';
+}
+function conLayout() {
+  pinLayout();
+  const c = conEl('console'), r = document.documentElement; if (!c) return;
+  if (c.hidden) { r.style.setProperty('--console-space', '0px'); return; }
+  const narrow = r.dataset.narrow === '1', side = window.PlantPrefs.get().navside, navOpen = r.dataset.navopen === '1';
+  const navW = navOpen ? (conEl('sidenav') || { offsetWidth: 0 }).offsetWidth : 0, corner = conEl('corner');
+  let left = 12, right = 12;
+  if (!narrow) {               // bottom left, clear of the side menu and of the Debug and Display buttons
+    left = 16 + (side !== 'right' ? navW : 0);
+    right = (corner ? corner.offsetWidth : 0) + 32 + (side === 'right' ? navW : 0);
+  }
+  c.style.left = left + 'px'; c.style.right = right + 'px';
+  const body = conEl('con-body');            // tall enough for the newest 3, 4 or 5 changes; older ones are a scroll away
+  if (body) {
+    const stick = conAtBottom(), rows = [...body.querySelectorAll('.con-row')].slice(-Number(DBG.lines));
+    const h = rows.reduce((t, x) => t + x.offsetHeight, 0);
+    body.style.height = h ? h + 'px' : '';
+    if (stick) body.scrollTop = body.scrollHeight;
+  }
+  let bottom = 16;             // sit above any button pinned to the bottom of the screen that it would cover
+  ['corner', 'nav-tab', 'job-badge'].forEach(id => {
+    const e = conEl(id); if (!e || !e.getClientRects().length || getComputedStyle(e).display === 'none' || getComputedStyle(e).visibility === 'hidden') return;
+    const b = e.getBoundingClientRect();
+    if (b.top < innerHeight / 2 || b.right <= left || b.left >= innerWidth - right) return;
+    bottom = Math.max(bottom, Math.round(innerHeight - b.top + 8));
+  });
+  c.style.bottom = bottom + 'px';
+  r.style.setProperty('--console-space', Math.round(c.offsetHeight + bottom + 8) + 'px');
+}
+function conApply() {
+  const c = conEl('console'), on = DBG.console === '1'; if (!c) return;
+  c.hidden = !on; document.documentElement.dataset.console = on ? '1' : '0';
+  c.style.setProperty('--con-lines', DBG.lines);
+  const b = conEl('con-body'); if (b) b.setAttribute('aria-live', DBG.announce === '1' ? 'polite' : 'off');
+  clearInterval(CON.timer); CON.timer = null;
+  if (on && !CON.on) {          // just turned on: start again from the newest changes
+    Object.assign(CON, { started: false, last: 0, unseen: 0, stick: true, paused: false });
+    const p = c.querySelector('[data-act=conpause]'); if (p) { p.textContent = 'Pause'; p.setAttribute('aria-pressed', 'false'); }
+    const n = conEl('con-new'); if (n) n.hidden = true;
+  }
+  CON.on = on;
+  if (on) { conPoll(); CON.timer = setInterval(conPoll, 3000); }
+  conLayout(); fitPanes();
+}
+function debugDialog() {
+  const r = document.documentElement, P = window.PlantPrefs.get();
+  modal(html`<form method="dialog" class="dbg"><h2>Debug</h2>
+    <p class="muted">Tools for seeing what the app is doing. These choices are remembered in this browser.</p>
+    <fieldset class="opt-group"><legend>Audit log console</legend>
+      <label class="chk dbg-chk"><input type="checkbox" data-dbg="console" ${DBG.console === '1' ? raw('checked') : ''}>Show the audit log console</label>
+      <p class="hint">A small window at the bottom of the screen with the newest changes to any record, checked every 3 seconds. Scroll it to see older ones; the Audit log page has everything.</p>
+      <fieldset class="dbg-lines"><legend>Changes it shows before you scroll</legend><div class="opts">${['3', '4', '5'].map(n => html`<label><input type="radio" name="dbg-lines" data-dbg="lines" value="${n}" ${DBG.lines === n ? raw('checked') : ''}><span>${n}</span></label>`)}</div></fieldset>
+      <label class="chk dbg-chk"><input type="checkbox" data-dbg="announce" ${DBG.announce === '1' ? raw('checked') : ''}>Let screen readers announce each new change</label>
+      <p id="dbg-msg" class="dbg-msg" role="status" aria-live="polite"></p></fieldset>
+    <fieldset class="opt-group"><legend>About this browser and the app</legend><dl class="dl">
+      <dt>App version</dt><dd>${META && META.version ? META.version : 'unknown'}</dd>
+      <dt>Window</dt><dd>${innerWidth} by ${innerHeight} pixels</dd>
+      <dt>Text size</dt><dd>${P.size}%</dd>
+      <dt>Layout</dt><dd>${r.dataset.narrow === '1' ? 'Narrow: one column, buttons at the bottom' : 'Wide'}${P.layout === 'single' ? ', plant pages in one column' : ''}</dd>
+      <dt>Changes logged</dt><dd id="dbg-total">Counting</dd></dl></fieldset>
+    <div class="row"><button class="btn" value="ok" autofocus>Done</button></div></form>`);
+  api('GET', '/api/audit/facets').then(F => { const d = conEl('dbg-total'); if (d) d.textContent = `${F.total.toLocaleString()} since ${F.first ? midDay(F.first.slice(0, 10)) : 'the start'}`; }).catch(() => {});
+}
+new MutationObserver(() => conLayout()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-navopen', 'data-narrow', 'data-size', 'data-navside', 'data-space'] });
+if (window.ResizeObserver) { const ro = new ResizeObserver(() => conLayout()); ['corner', 'nav-tab'].forEach(id => { const e = conEl(id); if (e) ro.observe(e); }); }
+document.addEventListener('visibilitychange', () => { if (!document.hidden) conPoll(); });
+{ const b = conEl('con-body'); if (b) b.addEventListener('scroll', conScrolled, { passive: true }); }
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { conLayout(); fitPanes(); });   // rows grow a little once the fonts arrive
 
 // ---------- events ----------
 async function copyRequest() {
@@ -2823,6 +3027,13 @@ const acts = {
     await guard(async () => { await api('PUT', '/api/requests/' + r.id, { done: true, answer: a }); toast('Answer saved. Use Copy my answers for Claude to send it.'); reloadPlant(); });
   },
   forclaude() { forClaudeDialog(); },
+  debug() { debugDialog(); },
+  conclose() { DBG.console = '0'; dbgSave(); conApply(); toast('Audit log console off. Turn it back on with the Debug button.'); const d = document.getElementById('debug-btn'); if (d) d.focus(); },
+  conpause(el) { CON.paused = !CON.paused; el.setAttribute('aria-pressed', String(CON.paused)); el.textContent = CON.paused ? 'Resume' : 'Pause'; conState(CON.paused ? 'Paused' : 'Live'); if (!CON.paused) conPoll(); },
+  connew() { const b = document.getElementById('con-body'); if (b) { b.scrollTop = b.scrollHeight; b.focus(); } CON.unseen = 0; CON.stick = true; const n = document.getElementById('con-new'); if (n) n.hidden = true; },
+  audclear() { Object.assign(AUD.f, { q: '', plant: '', who: '', kind: '', field: '', from: '', to: '', order: 'desc' }); AUD.offset = 0; audSave(); route(); },
+  audrefresh() { audLoad('[data-act=audrefresh]'); },
+  audpage(el) { AUD.offset = Math.max(0, AUD.offset + Number(el.dataset.d) * AUD.limit); audLoad(); const s = document.getElementById('aud-sum'); if (s) { s.scrollIntoView({ block: 'start' }); s.setAttribute('tabindex', '-1'); s.focus({ preventScroll: true }); } },
   async prepdone(el) {
     if (!(await needName())) return;
     const k = el.dataset.k, code = el.dataset.code;
@@ -3124,6 +3335,7 @@ const changeActs = {
 function wtFocusTop() { const t = document.querySelector('#wx-table .pager'); if (t) t.scrollIntoView({ block: 'nearest' }); }
 let PLACE_RESULTS = [];
 const formActs = {
+  audf() { clearTimeout(AUD.t); AUD.offset = 0; audLoad(); },       // Enter in the search box searches straight away
   async bknow(form) {
     if (!(await needName())) return;
     const f = form.elements;
@@ -3184,6 +3396,13 @@ document.addEventListener('click', e => {
 document.addEventListener('change', e => {
   const el = e.target;
   if (el.dataset && el.dataset.act && changeActs[el.dataset.act]) { changeActs[el.dataset.act](el); return; }
+  if (el.dataset && el.dataset.dbg) {
+    const k = el.dataset.dbg; DBG[k] = el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value; dbgSave(); conApply();
+    const m = document.getElementById('dbg-msg');      // the usual pop-up notes are hidden while this window is open
+    if (m) m.textContent = k === 'console' ? (el.checked ? 'The console is on, at the bottom of the screen.' : 'The console is off.') : k === 'lines' ? `It now shows ${el.value} changes before you scroll.` : el.checked ? 'Screen readers will announce new changes.' : 'Screen readers will not announce new changes.';
+    return;
+  }
+  if (el.dataset && el.dataset.f === 'aud') { AUD.f[el.name] = el.value; AUD.offset = 0; audSave(); audLoad(`[name="${el.name}"][data-f=aud]`); return; }
   if (el.dataset && el.dataset.pref) { window.PlantPrefs.set(el.dataset.pref, el.value); if (el.dataset.pref === 'layout' && document.querySelector('.plant')) route(); return; }
   if (el.name === 'csrc') { const mf = document.getElementById('manual-fields'); if (mf) mf.hidden = el.value !== 'manual'; return; }
   const f = el.dataset && el.dataset.f;
@@ -3249,7 +3468,7 @@ document.addEventListener('input', e => {
   }
   const f = e.target.dataset && e.target.dataset.f;
   if (f === 'q') { G.q = e.target.value; drawGrid(); }
-  else if (f === 'logq') document.getElementById('logbody').innerHTML = rend(logRows(e.target.value));
+  else if (f === 'audq') { AUD.f.q = e.target.value; AUD.offset = 0; audSave(); clearTimeout(AUD.t); AUD.t = setTimeout(() => audLoad(), 400); }
 });
 document.addEventListener('submit', e => {
   const form = e.target.closest('form[data-form]');
@@ -3259,10 +3478,11 @@ document.addEventListener('submit', e => {
   if (fn) guard(() => fn(form));
 });
 
-document.addEventListener('prefs', () => { if (document.documentElement.dataset.narrow !== '1') NAVSESSION = null; navLayout(); fitPanes(); paintAllCharts(); Object.keys(CALS).forEach(id => calRender(id)); });
+document.addEventListener('prefs', () => { if (document.documentElement.dataset.narrow !== '1') NAVSESSION = null; navLayout(); conLayout(); fitPanes(); paintAllCharts(); Object.keys(CALS).forEach(id => calRender(id)); });
 let rzT = null;
-window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { navLayout(); fitPanes(); paintAllCharts(); Object.keys(CALS).forEach(id => calRender(id)); }, 120); });
+window.addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { navLayout(); conLayout(); fitPanes(); paintAllCharts(); Object.keys(CALS).forEach(id => calRender(id)); }, 120); });
 paintWho();
+conApply();
 // photo preview for plant links: pointer hover or keyboard focus
 const pop = document.createElement('div'); pop.id = 'plink-pop'; pop.setAttribute('role', 'tooltip'); pop.hidden = true; document.body.appendChild(pop);
 let popFor = null, popT = null;
