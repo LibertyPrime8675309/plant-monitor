@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.13.0 (2026-10-24)
+- **Grow lights page.** Your 11 grow lights are in the app, from the photos and listings you saved:
+  - each with a photo, how many you have, its timer and brightness steps, and the maker's light figures (or Claude's estimates, marked, where the maker gives none);
+  - the maker's charts open as pictures.
+- **Light spots.** Say which light is over which plants, how far away, for how many hours and how bright. The app works out the daily light at the leaves and says for each plant whether it is too dim, good or too bright, as you change the setting.
+- **Suggested layout.** For the 41 plants that live inside or are coming in, a plan that shares your lights out. Plants needing the most light go first, each under the smallest light that gives it enough, with room for its pot. Set up any suggested spot with one press and rename it.
+- **Easing plants in.** Each spot has a first and second week brighter and longer than its own setting, so plants used to the sun adjust.
+- **On each plant page**, under Sunlight: its light spot, or what the plan gives it.
+- **Questions for you** about the lights are in the open requests: which lamps the bulbs screw into, the T8 set, the disk light, and where the plants will go.
+
 ## 1.12.2 (2026-10-24)
 - **Update zips have a folder of their own.** Release zips and photo packs now live in `versions_plant-database`, inside your Plants folder, instead of cluttering the Plants folder itself.
   - The updater moves every `plant-database-….zip` it finds in the Plants folder into that folder, including your older ones, then looks for the newest version there.

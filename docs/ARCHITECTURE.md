@@ -92,6 +92,28 @@
     - On a busy port (`Start-App`): first tells the person to close Plant record tabs, then retries after 5, 10, 15 and 30 s. Then it moves the port (`PLANTDB_PORT` 8090–8099, `PLANTDB_SENSOR_PORT` 8180–8189, in `.env`).
     - `setup-remote-access.ps1` reads `PLANTDB_PORT`.
   - **Setup script:** `tools/setup-remote-access.ps1` reads `tailscale status --json` in the `plant-tailscale` container (AuthURL, CertDomains, Self.DNSName, User) and makes the signed-in login the owner via `PUT /api/people` on localhost. `tailscale/state` and `.env` are never in a release.
+- **1.13.0 additions (grow lights):**
+  - **Tables:**
+    - `lights(id, lkey, name, data JSON, count, fixture, notes, sort, ...)`. `data` holds the specs: `watts`, `ppfd` as `[[inches, PAR, area_sqft|null], ...]`, `estimated`/`area_estimated`, `dimming` (% steps), `timer_hours`/`timer_repeats`, `needs_socket`, `direction`, `photo`/`chart` (paths under `static/lights/`) with alt texts, and `url`.
+    - `light_spots(id, name, light_id, units, distance_in, hours, dim_pct, notes, ...)`.
+    - `light_assign(plant_code PK, spot_id)`: a plant is in at most one spot.
+  - **Upgrade batches:** a batch can carry `lights_add`. A light is added once, by `key` or name, and Ethan edits it afterwards. `batchA3` (built by `dev/seed_src/build_batchA3.py` from `dev/photos-raw/lights`) adds his 11 lights and 4 requests.
+  - **Maths:**
+    - `ppfd_at()` and `area_at()` draw straight lines on log-log axes through the maker's points, extending the nearest segment (exponent 1.6 for a single point).
+    - `dli_of()` is PAR × dim × hours × 0.0036.
+    - `light_verdict()` gives too_dim (<80% of low), dim, good, bright, or too_bright (>130% of high).
+    - `light_setting()` searches hours (12, 14, 16, 10, 8) and brightness steps for the distance (whole inches, within `light_range()`) that gives a target.
+  - **Planner:** `light_plan()`.
+    - Candidates are active plants inside or with winter plan Move indoors, not already in a spot. Highest target first.
+    - A plant joins a suggested spot when the ranges overlap and the area allows (`area_at` × units × `LIGHT_ROOM` 1.5, against pot footprints from `pot_size`). Otherwise it opens one on the light with the lowest (strain, watts), where strain counts settings at 16 h or the closest distance.
+    - A light is never used more times than its count. Spots are named "Bright/Medium/Low light N".
+  - **Easing in:** `step_down()` gives week 1 at up to the group's high at 16 h, week 2 halfway, then the spot's setting. There is a porch step first when plants are out in the open and the outdoor light (`outdoor_dli()`: 7-day mean of `shortwave_radiation_sum` × 2.1, ignored above 75) is well above their high.
+  - **Routes:**
+    - `GET /api/lights` (`?plant=CODE` for the plant page) and `GET /api/lights/preview`
+    - `POST /api/lights`, `PUT/DELETE /api/lights/<id>` (409 while a spot uses it)
+    - `POST /api/lights/spots`, `PUT/DELETE /api/lights/spots/<id>`
+    - Audit action `light`, kind "Grow lights".
+  - **Front end:** `viewLights()` (`#/lights`), `ltSpotCard()`, `ltLightCard()`, `spotDialog()` with live `spotPreview()` (`form[data-spot]`), `lightDialog()`, and `loadGrowPlant()` filling `#pl-grow` on plant pages. Change buttons (`spotnew`, `spotedit`, `spotdel`, `lightedit`, `lightnew`) are in the viewer CSS block.
 - **API:** `/api/plants`, `/api/plants/<code>` and its sub-routes (`site`, `status`, `history`, `timeline`, `versions`, `restore`, `photos`, `qr.svg`, `daily`, `day`), plus `/api/requests`, `/api/photos`, `/api/to-photograph`, `/api/fertilizer`, `/api/water`, `/api/care`, `/api/frost`, `/api/for-claude`, `/api/weather*`, `/api/places*`, `/api/current`, `/api/backups*`, `/api/export.json|csv`, `/api/audit*`, `/api/meta`, `/api/version` and `/healthz`.
 
 ## Front end: `app/static/`

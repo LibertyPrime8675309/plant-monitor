@@ -577,6 +577,22 @@ On this computer (`http://localhost:8080`), the first time you save something th
 
 If you open the app to your home network again (see "Using the app away from home"), you can also require a password there: uncomment `PLANTDB_PASSWORD` in `docker-compose.yml` and run `docker compose up -d`. The browser then asks for it (leave the username blank or put anything). Never open port 8080 to the internet.
 
+## Grow lights (from 1.13.0)
+
+The **Grow lights** page (in the top menu) holds your grow lights, the spots they light indoors, and how much light each plant gets there. Your 11 lights arrive with the update, from the photos and listings you saved in `Plants\Grow Lights`. Each has a photo, how many you have, its timer and brightness steps, and the maker's light figures. Where the maker gives none, Claude's estimates are used and marked.
+
+How much light a plant gets is its **daily light (DLI)**, in mol/m² a day: the light at its leaves while the light is on (PAR, in µmol/m²/s) times the hours it is on. 100 PAR for 12 hours is about 4.3. Each plant page lists the range it wants, under Sunlight.
+
+- **Light spots.** A spot is one of your lights over some plants: how many of that light side by side, how far it is from the top leaves, hours a day and brightness. Press **Set up a spot**. While you choose, the window shows the light at the leaves and says for every plant whether that is too dim, a bit dim, good, a bit bright or too bright. The setting is shown in words and with a symbol, not by colour alone.
+- **Suggested layout.** For plants that live inside or are coming in and are not in a spot yet. Plants that need the most light are placed first. Each goes under the smallest of your lights that can give it enough, sharing a light with plants whose needs overlap, while there is room under it. Pot sizes count, if they are set. **Set up this spot** opens the suggestion so you can rename it (for example "Living room shelf") or change anything first.
+- **No light left for these** lists the plants your lights cannot cover, with the reason.
+- **Easing them in.** Under a spot, "Easing them in from outdoor light" gives a first and second week brighter and longer than the spot's own setting, so plants used to the sun do not drop their leaves all at once.
+- **Timers.** Each spot says whether to use the light's own timer or a plug-in outlet timer. Some lights forget their timer after a power cut.
+- **Your lights.** Press **Change this light** to note where it is (for a bulb, the lamp or socket it screws into), correct how many you have, or fix its figures. **Add a light** adds one you buy later. Type its figures as distance and PAR, for example "12 in 719, 24 in 234".
+- **Plant pages** show the plant's spot, or what the suggested layout gives it, under Sunlight.
+
+Changes to lights and spots appear in the audit log under "Grow lights". People who can only view see everything but cannot change it.
+
 ## Audit log (from 1.10.0)
 
 The **Audit log** page (in the menu bar; it used to be called Change log) lists every change to every record, newest first: edits to plant pages, plants added or archived, photos added, moved or removed, feeding and care, requests and answers, the "Still to photograph" list, settings and backups. Each change shows when, which plant (with a link), who, what changed, and the value before and after.
