@@ -831,3 +831,43 @@ html[data-narrow="1"] .aud-tbl td{border:0;padding:.15rem 0}
 html[data-narrow="1"] .aud-tbl td::before{content:attr(data-label) ": ";font-weight:700;color:var(--ink)}
 html[data-narrow="1"] .aud-tbl td:empty{display:none}
 @media print{#corner,#console{display:none!important}.aud-tbl td.old,.aud-tbl td.new{max-width:none}}
+
+/* ---- 1.11.0: Location button and window; what each plant needs and your fertilizers ---- */
+.place-btn{display:inline-flex;align-items:center;gap:.45rem;background:transparent;color:inherit;border:2px solid color-mix(in srgb,var(--top-ink) 60%,transparent);
+  padding:.5rem .9rem;font:inherit;font-size:1rem;cursor:pointer;min-height:2.75rem;max-width:100%;text-align:left}
+.place-btn:hover{background:color-mix(in srgb,var(--top-ink) 14%,transparent)}
+.place-btn{flex-wrap:wrap;column-gap:.45rem;row-gap:.1rem}
+.place-btn #place-name{font-weight:700;overflow-wrap:break-word;min-width:0}
+.place-btn svg{flex:none}
+.top-acts{display:flex;flex-direction:column;align-items:stretch;gap:.4rem;max-width:100%}
+@media (max-width:640px){.top-acts{flex:1 1 100%}}
+/* Fertilizer page rows: photo, name and Log on the first line; what it needs and the best match below the name */
+ul.todo li.fn-li{grid-template-columns:3.5rem minmax(0,1fr) auto;align-items:start}
+ul.todo li.fn-li>:first-child{grid-row:1/3}
+ul.todo li.fn-li>.fn-row{grid-column:2/4;grid-row:2;min-width:0}
+ul.todo li.fn-li>.btn{grid-column:3;grid-row:1;margin-left:0}
+html[data-narrow="1"] ul.todo li.fn-li{grid-template-columns:min(3.5rem,20%) minmax(0,1fr)}
+html[data-narrow="1"] ul.todo li.fn-li>:first-child{grid-row:auto}
+html[data-narrow="1"] ul.todo li.fn-li>.fn-row{grid-column:1/-1;grid-row:auto}
+html[data-narrow="1"] ul.todo li.fn-li>.btn{grid-column:1/-1;grid-row:auto;justify-self:start}
+ul.todo li>.fn-row .fn-need{margin-top:0}
+.plc-list{display:grid;gap:.5rem}
+.plc-opt{display:flex;gap:.7rem;align-items:flex-start;padding:.6rem .8rem;border:2px solid var(--line);background:var(--sheet);cursor:pointer}
+.plc-opt:has(input:checked){border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan)}
+.plc-opt input{margin-top:.2rem;flex:none}
+.plc-opt .tag-home{margin-left:.5rem}
+.plc-search{align-items:end;gap:.6rem;flex-wrap:wrap}
+.plc-search .f{flex:1 1 14rem;margin:0}
+.fn-need{display:block;margin-top:.35rem}
+.fn-n,.fn-m{display:block}
+.fn-m{margin-top:.15rem}
+.fn-q{display:inline-block;font-weight:700;padding:0 .35rem;border:2px solid currentColor;border-radius:.3rem;margin:0 .2rem;white-space:nowrap}
+.q-good{color:var(--moss)} .q-ok{color:var(--ochre)} .q-bad{color:var(--madder)}
+ul.todo .fn-need{font-size:.97rem;line-height:1.45}
+.fn-plant{border:2px solid var(--line);background:var(--sheet);padding:.6rem .9rem;margin:.8rem 0}
+.fn-plant h3{margin-top:0}
+.fn-plant p{margin:.3rem 0}
+.fn-tbl td,.fn-tbl th{overflow-wrap:anywhere}
+.npk{white-space:nowrap}
+.strip-wrap>.now-tag.nt-r{left:auto!important;right:0!important;transform:none!important}
+.strip-wrap>.now-tag.nt-l{left:0!important;right:auto!important;transform:none!important}

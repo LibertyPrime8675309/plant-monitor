@@ -72,8 +72,12 @@ const cleanName = n => String(n || '').replace(/[^\w .\-@]/g, '').trim().slice(0
 function paintWho() { const n = getName(); document.getElementById('who-name').textContent = n ? 'Editing as ' + n : 'Set your name'; }
 
 // ---------- api ----------
+// the place this browser uses for weather, frost, watering and "today" (1.11.0); null = the home place
+let PLACE = null;
+try { PLACE = localStorage.getItem('plantdb.place') || null; } catch (e) { /* ignore */ }
 async function api(method, url, body, form) {
   const opts = { method, headers: {} };
+  if (PLACE) opts.headers['X-Place'] = PLACE;
   if (method !== 'GET') opts.headers['X-Editor'] = cleanName(getName()) || 'Unknown';
   if (form) opts.body = form;
   else if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
@@ -83,6 +87,77 @@ async function api(method, url, body, form) {
   try { data = await r.json(); } catch (e) { /* not json */ }
   if (!r.ok) { const e = new Error((data && data.error) || ('Request failed (' + r.status + ')')); e.status = r.status; e.data = data; throw e; }
   return data;
+}
+
+// ---------- location: the place whose weather this browser uses (1.11.0) ----------
+const placeName = () => (META && META.place && META.place.name) || 'your location';
+const placeShort = () => placeName().split(',')[0].trim();
+function savePlace(id) {
+  PLACE = id ? String(id) : null;
+  try { if (PLACE) localStorage.setItem('plantdb.place', PLACE); else localStorage.removeItem('plantdb.place'); } catch (e) { /* this visit only */ }
+}
+function placeChanged(id) {         // choosing the home place stores nothing, so the browser follows home if home changes later
+  const P = ((META && META.places) || []).find(x => String(x.id) === String(id));
+  savePlace(P && P.is_home ? null : id);
+  META = null; COND = null; FROST = null; FROST_AT = 0;          // all of these depend on the place
+  if (typeof WT !== 'undefined') WT.page = 1;
+  if (typeof WX !== 'undefined') WX.compare = WX.compare.filter(x => String(x) !== String(id));
+}
+function paintPlace() {
+  if (!META || !META.place) return;
+  if (PLACE && String(META.place.id) !== String(PLACE)) savePlace(null);   // the chosen place was removed: back to home
+  const n = document.getElementById('place-name'); if (n) n.textContent = META.place.name;
+  const b = document.getElementById('place-btn');
+  if (b) b.setAttribute('aria-label', `Location: ${META.place.name}${META.place.is_home ? ' (home)' : ''}. Choose another place`);
+}
+function placeDialog() {
+  const cur = META && META.place, list = (META && META.places) || [];
+  modal(html`<form method="dialog" class="plc"><h2>Location</h2>
+    <p class="muted">Weather, frost warnings, watering reminders, the Winter plan and "today" on every page use this place. This browser remembers it; other computers and phones keep their own.</p>
+    <fieldset class="opt-group"><legend>Use the weather for</legend><div class="plc-list">
+      ${list.map(p => html`<label class="plc-opt"><input type="radio" name="plc" data-plc="${p.id}" value="${p.id}" ${cur && String(cur.id) === String(p.id) ? raw('checked') : ''}>
+        <span><strong>${p.name}</strong>${p.is_home ? html`<span class="tag-home">Home</span>` : ''}${p.enabled ? '' : html`<span class="hint"> Hourly updates are off, so its weather may be old.</span>`}</span></label>`)}</div>
+      <p id="plc-msg" class="dbg-msg" role="status" aria-live="polite"></p><div id="plc-home">${plcHomeRow()}</div></fieldset>
+    <fieldset class="opt-group"><legend>Add a place</legend>
+      <div class="todo-add plc-search"><label class="f">Town or city<input type="text" name="plcq" placeholder="For example, Denver" autocomplete="off" enterkeyhint="search"></label>
+        <button class="btn" type="button" data-act="plcsearch">Search</button></div>
+      <div id="plc-results" aria-live="polite"></div>
+      <p class="hint">A new place gets its last 3 months of weather and its forecast straight away. To rename, remove or stop updating a place, use <a href="#/weather" data-act="plcweather">the Weather page</a>.</p></fieldset>
+    <div class="row"><button class="btn" value="ok" autofocus>Done</button></div></form>`, 'plc-dlg');
+}
+function plcHomeRow() {         // the home place is where a new browser starts, and what the hourly updates and backups use
+  const cur = META && META.place, home = ((META && META.places) || []).find(x => x.is_home);
+  if (!cur) return '';
+  if (cur.is_home) return html`<p class="hint">${cur.name} is the home place: other computers and phones use it until they choose their own location.</p>`;
+  return html`<p class="hint">Other computers and phones still use the home place${home ? `, ${home.name}` : ''}, until they choose their own.</p>
+    <p><button class="btn ghost small" type="button" data-act="plchome">Make ${cur.name} the home place for everyone</button></p>`;
+}
+async function placeSearch() {
+  const q = (dlg.querySelector('[name=plcq]') || {}).value || '', box = document.getElementById('plc-results'); if (!box) return;
+  if (q.trim().length < 2) { box.innerHTML = rend(html`<p class="bad-text">Type at least 2 letters.</p>`); return; }
+  box.innerHTML = rend(html`<p class="loading">Searching</p>`);
+  try {
+    const res = await api('GET', '/api/places/search?q=' + enc(q.trim()));
+    PLCRES = res;
+    box.innerHTML = rend(res.length ? html`<ul class="place-res">${res.map((r, i) => html`<li><span>${r.label}<span class="hint"> ${r.lat}, ${r.lon}</span></span>
+      <button class="btn small" type="button" data-act="plcadd" data-i="${i}">Add and use ${r.name}</button></li>`)}</ul>` : html`<p class="muted">No town by that name. Try another spelling, or add it on the Weather page by latitude and longitude.</p>`);
+    const first = box.querySelector('button'); if (first) first.focus();
+  } catch (e) { box.innerHTML = rend(html`<p class="bad-text">${e.message}</p>`); }
+}
+let PLCRES = [];
+async function placeAdd(i) {
+  const r = PLCRES[i]; if (!r || !(await needName())) return;
+  const m = document.getElementById('plc-msg');
+  try {
+    let res;
+    try { res = await api('POST', '/api/places', { name: r.name, lat: r.lat, lon: r.lon, tz: r.tz }); }
+    catch (e) { if (e.status === 409) res = await api('POST', '/api/places', { name: r.name, lat: r.lat, lon: r.lon, tz: r.tz, force: true }); else throw e; }
+    placeChanged(String(res.place.id));
+    await route();
+    if (dlg.open) dlg.close();
+    toast(`${res.place.name} added and in use. Fetching its weather now; it takes about a minute.`);
+    document.body.dataset.job = '1'; if (typeof wxPoll === 'function') wxPoll();
+  } catch (e) { if (m) m.textContent = e.message; else toast(e.message, true); }
 }
 
 // ---------- toast, dialog ----------
@@ -142,7 +217,7 @@ async function route() {
   try {
     let view;
     await Promise.all([loadCodes(), loadFrost()]);
-    if (!META) { META = await api('GET', '/api/meta'); const v = document.getElementById('app-ver'); if (v && META.version) v.textContent = 'v' + META.version; }
+    if (!META) { META = await api('GET', '/api/meta'); const v = document.getElementById('app-ver'); if (v && META.version) v.textContent = 'v' + META.version; paintPlace(); }
     if (parts[0] === 'plant' && parts[1] && parts[2] === 'edit') view = await viewEdit(decodeURIComponent(parts[1]));
     else if (parts[0] === 'plant' && parts[1]) view = await viewPlant(decodeURIComponent(parts[1]));
     else if (parts[0] === 'new') view = viewForm(null);
@@ -299,7 +374,7 @@ async function viewGallery() {
   return {
     title: '',
     html: html`<div class="hero"><div><h1>${G.archived ? 'Archived plants' : 'Outdoor plants'}</h1>
-      <p class="muted">${META.counts.plants} plants and ${META.counts.photos} photos in Round Rock, Texas. Each plant has its own page, version number and change log.</p></div>
+      <p class="muted">${META.counts.plants} plants and ${META.counts.photos} photos. Weather for ${placeName()}. Each plant has its own page, version number and change log.</p></div>
       <a class="btn" href="#/new">Add a plant</a></div>
     <div class="needs-bar" role="group" aria-label="What Claude needs from you">
       <button type="button" class="btn ${G.needs ? '' : 'ghost'}" data-act="needs" aria-pressed="${String(G.needs)}">${G.needs ? 'Showing plants that need something from you' : 'Show plants that need something from you'} (${needN})</button>
@@ -340,10 +415,30 @@ function strip(zones, marks, ticks, now) {
     <div class="ticks" aria-hidden="true">${ticks.map(t => html`<span style="left:${t[0]}%">${t[1]}</span>`)}</div>
     ${n ? html`<div class="now-space"></div>${n.line}${n.tag}` : ''}</div>`;
 }
+function fitNowTags() {         // 1.11.0: keep each "Now" label inside its strip; with large text a label near either end ran off the screen
+  document.querySelectorAll('.strip-wrap > .now-tag').forEach(t => {
+    t.classList.remove('nt-l', 'nt-r');
+    const w = t.parentElement.getBoundingClientRect(), r = t.getBoundingClientRect();
+    if (r.right > w.right + 1) t.classList.add('nt-r'); else if (r.left < w.left - 1) t.classList.add('nt-l');
+  });
+}
+new MutationObserver(() => requestAnimationFrame(fitNowTags)).observe(document.getElementById('app'), { childList: true, subtree: true });
+window.addEventListener('resize', () => requestAnimationFrame(fitNowTags));
 const keyOf = items => html`<div class="key" aria-hidden="true">${items.map(i => html`<span class="${i[0]}">${i[1]}</span>`)}</div>`;
 
-const TEMP_MARKS = [['A', 20, 'Round Rock design low'], ['B', 32, 'Freezing'], ['C', 38, 'Typical January night']];
-const HUM_MARKS = [['D', 71, 'Outdoors, November to February (average)'], ['E', 30, 'Indoors with the heater running']];
+// marks on the temperature and humidity strips: from the weather history of the place in use, when it has 3 years or more
+function tempMarks() {
+  const C = META && META.climate, here = placeShort();
+  if (!C) return [['A', 20, 'Hard freeze'], ['B', 32, 'Freezing']];
+  return [['A', C.winter_low, `Coldest night of a usual winter in ${here}`], ['B', 32, 'Freezing'], ['C', C.cold_month_low, `Usual ${MONTHN[C.cold_month - 1]} night in ${here}`]]
+    .sort((a, b) => a[1] - b[1]).map((m, i) => ['ABC'[i], m[1], m[2]]);
+}
+function humMarks() {
+  const C = META && META.climate, out = [];
+  if (C && C.winter_rh != null) { const cm = C.cold_month; out.push(['D', C.winter_rh, `Outdoors in ${placeShort()}, ${MONTHN[(cm + 10) % 12]} to ${MONTHN[cm % 12]} (average)`]); }   // the coldest month and the ones either side
+  out.push([out.length ? 'E' : 'D', 30, 'Indoors with the heater running']);
+  return out;
+}
 const LIGHT_MARKS = [['F', 1800, 'Full sun at midday'], ['G', 400, 'Open shade or a roofed porch'], ['H', 200, 'Indoors by a bright window']];
 
 function tempVerdict(p, t) {
@@ -367,9 +462,9 @@ function tempBlock(p, cur) {
   const st = t == null ? '' : (() => { const [k, txt] = tempVerdict(p, t); return html`<p class="nowstate v-${k}"><strong>Now ${t}°F.</strong> ${txt}</p>`; })();
   return html`<p>Comfortable between <strong>${deg(p.temp_ideal_low)}</strong> and <strong>${deg(p.temp_ideal_high)}</strong>. Damage below ${deg(p.temp_damage_below)}. Dies below ${deg(p.temp_lethal_below)}.${has(p.temp_damage_above) ? html` Heat damage from ${deg(p.temp_damage_above)}.` : ''}</p>
     ${st}
-    ${strip(zones, TEMP_MARKS.map(m => [m[1], m[0]]), [0, 20, 40, 60, 80, 100].map(x => [x, x + '°']), now)}
+    ${strip(zones, tempMarks().map(m => [m[1], m[0]]), [0, 20, 40, 60, 80, 100].map(x => [x, x + '°']), now)}
     ${keyOf([['z-fatal', 'Likely fatal'], ['z-damage', 'Damage'], ['z-cool', 'Cool but safe'], ['z-ok', 'Comfortable'], ['z-hot', 'Too hot'], ...(ha != null ? [['z-heat', 'Heat damage']] : []), ...(now ? [['z-now', 'Now']] : [])])}
-    <ul class="verdicts">${TEMP_MARKS.map(m => { const [k, txt] = tempVerdict(p, m[1]); return html`<li class="v-${k}"><span class="k">${m[0]}</span><span><strong>${m[2]}, ${m[1]}°F.</strong> ${txt}</span></li>`; })}</ul>`;
+    <ul class="verdicts">${tempMarks().map(m => { const [k, txt] = tempVerdict(p, m[1]); return html`<li class="v-${k}"><span class="k">${m[0]}</span><span><strong>${m[2]}, ${m[1]}°F.</strong> ${txt}</span></li>`; })}</ul>`;
 }
 function humBlock(p, cur) {
   const lo = p.humidity_low, hi = p.humidity_high;
@@ -380,9 +475,9 @@ function humBlock(p, cur) {
   const kk = k => k === 'dry' ? 'hot' : k === 'wet' ? 'cool' : 'ok';
   return html`<p>Comfortable between <strong>${lo}%</strong> and <strong>${hi}%</strong> relative humidity.${has(p.vpd_low) && has(p.vpd_high) ? html` Ideal air dryness (VPD) is <strong>${p.vpd_low} to ${p.vpd_high} kPa</strong>. VPD is how hard the air pulls water out of leaves; it rises when the air is warm and dry.` : ''}</p>
     ${h == null ? '' : (() => { const [k, txt] = verdict(h); return html`<p class="nowstate v-${kk(k)}"><strong>Now ${h}%.</strong> ${txt}${cur.vpd != null && has(p.vpd_low) ? html` Air dryness now: ${cur.vpd} kPa.` : ''}</p>`; })()}
-    ${strip([['z-dry', a], ['z-ok', b - a], ['z-wet', 100 - b]], HUM_MARKS.map(m => [m[1], m[0]]), [0, 25, 50, 75, 100].map(x => [x, x + '%']), h == null ? null : { pos: posLin(h, 0, 100), label: h + '%' })}
+    ${strip([['z-dry', a], ['z-ok', b - a], ['z-wet', 100 - b]], humMarks().map(m => [m[1], m[0]]), [0, 25, 50, 75, 100].map(x => [x, x + '%']), h == null ? null : { pos: posLin(h, 0, 100), label: h + '%' })}
     ${keyOf([['z-dry', 'Too dry'], ['z-ok', 'Comfortable'], ['z-wet', 'Too humid'], ...(h != null ? [['z-now', 'Now']] : [])])}
-    <ul class="verdicts">${HUM_MARKS.map(m => { const [k, txt] = verdict(m[1]); return html`<li class="v-${kk(k)}"><span class="k">${m[0]}</span><span><strong>${m[2]}, about ${m[1]}%.</strong> ${txt}</span></li>`; })}</ul>
+    <ul class="verdicts">${humMarks().map(m => { const [k, txt] = verdict(m[1]); return html`<li class="v-${kk(k)}"><span class="k">${m[0]}</span><span><strong>${m[2]}, about ${m[1]}%.</strong> ${txt}</span></li>`; })}</ul>
     ${paras(p.humidity_notes)}`;
 }
 function lightBlock(p, cur) {
@@ -503,7 +598,7 @@ function judge(p, cur) {
   if (has(PH) && has(p.soil_ph_low) && has(p.soil_ph_high)) {
     let level = 'ok', state = 'In range', detail = `pH ${PH} is inside the comfortable ${p.soil_ph_low} to ${p.soil_ph_high}.`, steps = [];
     if (PH < p.soil_ph_low) { level = 'near'; state = 'Soil too acidic'; detail = `pH ${PH} is below ${p.soil_ph_low}.`; steps = ['Water with plain rain water or let tap water stand, and stop acid-type fertilizers.', 'Mix in a small amount of dolomitic lime (about 1 teaspoon per gallon of mix) and test again in 2 weeks.', 'Or repot into fresh mix.']; }
-    else if (PH > p.soil_ph_high) { level = 'near'; state = 'Soil too alkaline'; detail = `pH ${PH} is above ${p.soil_ph_high}.`; steps = ['Water with rain water, because Round Rock tap water is alkaline.', 'Feed with an acid-type fertilizer, and add chelated iron if new leaves are pale with green veins.', 'Or repot into fresh mix, with pine bark or peat added.']; }
+    else if (PH > p.soil_ph_high) { level = 'near'; state = 'Soil too alkaline'; detail = `pH ${PH} is above ${p.soil_ph_high}.`; steps = ['Water with rain water: tap water is often alkaline.', 'Feed with an acid-type fertilizer, and add chelated iron if new leaves are pale with green veins.', 'Or repot into fresh mix, with pine bark or peat added.']; }
     out.push({ key: 'ph', label: 'Soil pH', value: 'pH ' + PH, level, state, detail, steps });
   }
   return out;
@@ -686,9 +781,10 @@ async function viewPlant(code) {
         <section class="blk" id="nutrients"><h2>Nutrients</h2>
           ${p.fertilizer ? html`<p><strong>Fertilizer:</strong> ${p.fertilizer}</p>` : ''}${paras(p.nutrients)}
           ${!p.fertilizer && !p.nutrients ? html`<p class="muted">Not filled in yet. Use Edit to add it.</p>` : ''}
+          <div id="fert-need"></div>
           <h3>Feeding schedule and log</h3><div id="fert-plant"><p class="loading">Loading</p></div></section>
 
-        <section class="blk" id="winter"><h2>Winter in Round Rock</h2>
+        <section class="blk" id="winter"><h2>Winter in ${placeShort()}</h2>
           <p>${planTag(p.winter_plan)}</p>${paras(p.winter_summary)}
           ${p.winter_triggers ? html`<h3>When to act</h3>${paras(p.winter_triggers)}` : ''}
           ${lines(p.winter_steps).length ? html`<h3>Steps</h3>${ol(p.winter_steps)}` : ''}
@@ -1139,7 +1235,7 @@ const midDay = s => parseYmd(s).toLocaleDateString([], { weekday: 'short', month
 const MONTHN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MN = MONTHN.map(m => m.slice(0, 3));
 const DOWN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-function todayStr() {           // today at home (Round Rock), not in the browser's time zone, so care dates match the server's
+function todayStr() {           // today at the place in use, not in the browser's time zone, so care dates match the server's
   try { if (META && META.home_tz) return new Intl.DateTimeFormat('en-CA', { timeZone: META.home_tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()); } catch (e) { /* unknown zone */ }
   return ymd(new Date());
 }
@@ -1288,11 +1384,11 @@ const ratioText = (n, p, k) => {
 };
 
 // ---------- fertilizer data shared by the plant page and the Fertilizer page ----------
-const FERT = { entries: [], products: [], plants: [], forecast: [] };
+const FERT = { entries: [], products: [], plants: [], forecast: [], needs: {} };
 async function loadFertData(withPlants) {
   const [entries, products, W] = await Promise.all([api('GET', '/api/fertilizer'), api('GET', '/api/fertilizer/products'), api('GET', '/api/weather').catch(() => null)]);
   FERT.entries = entries; FERT.products = products; FERT.forecast = (W && W.forecast && W.forecast.days) || [];
-  if (withPlants) FERT.plants = await api('GET', '/api/plants');
+  if (withPlants) { FERT.needs = {}; await Promise.all([api('GET', '/api/plants').then(x => { FERT.plants = x; }), loadNeeds()]); }
 }
 const entriesFor = code => FERT.entries.filter(e => e.plant_code === code);
 const fertCtx = () => ({ forecast: FERT.forecast });
@@ -1303,6 +1399,71 @@ function entryRows(list, plantsByCode, showPlant) {
     ${list.map(e => html`<tr><th scope="row">${midDay(e.applied_on)}</th>${showPlant ? html`<td><a href="#/plant/${enc(e.plant_code)}">${(plantsByCode[e.plant_code] || {}).common_name || e.plant_code}</a></td>` : ''}
       <td>${e.product}${e.note ? html`<div class="hint">${e.note}</div>` : ''}</td><td>${npkText(e)}</td><td>${doseText(e)}</td><td class="num">${e.ppm_n == null ? '' : fmt(e.ppm_n, 0)}</td><td>${e.method}</td>
       <td class="noprint"><button class="btn ghost small" type="button" data-act="fertedit" data-id="${e.id}">Change</button> <button class="btn danger small" type="button" data-act="fertdel" data-id="${e.id}">Remove</button></td></tr>`)}</tbody></table></div>`;
+}
+
+// ---------- what each plant needs, and the closest fertilizer you have (1.11.0) ----------
+const FZQ = { 'Matches': ['✔', 'q-good'], 'Close': ['✔', 'q-good'], 'Usable': ['▲', 'q-ok'], 'Not a good match': ['■', 'q-bad'] };
+const STRENGTH_WORD = { 'Quarter strength': 'quarter strength', 'Quarter to half strength': 'quarter to half strength', 'Half strength': 'half strength', 'Full strength': 'full strength' };
+function needLines(n, opts) {
+  if (!n) return '';
+  const o = opts || {}, m = n.match, none = n.strength === 'None needed';
+  const need = n.ratio
+    ? (none ? html`<strong>Needs little or no fertilizer.</strong> If you do feed it: N-P-K ratio <strong class="npk">${n.ratio_text}</strong>, lightly.`
+            : html`Needs N-P-K ratio <strong class="npk">${n.ratio_text}</strong>${n.strength ? html`, at ${STRENGTH_WORD[n.strength]}` : ''}.`)
+    : html`<span class="muted">${n.note}</span>`;
+  let match = '';
+  if (m) {
+    const q = FZQ[m.quality] || ['', ''], d = m.dose;
+    const dose = !d ? '' : d.kind === 'water' ? html` ${d.words}${d.ppm_n != null ? ` That is about ${fmt(d.ppm_n, 0)} ppm nitrogen.` : ''}` : html` ${d.words}`;
+    const last = m.last ? html` <span class="muted">Last time you used ${fmt(m.last.amount, 2)} ${m.last.amount_unit}${m.last.water_amount ? ` in ${fmt(m.last.water_amount, 2)} ${m.last.water_unit}` : ''}.</span>` : '';
+    match = html`<span class="fn-m">${m.quality === 'Not a good match' ? 'Closest you have' : 'Best match you have'}: <strong>${m.product}</strong> <span class="npk">${m.npk_text}</span>
+      <span class="fn-q ${q[1]}">${q[0]} ${m.quality}</span>${m.why ? ` ${m.why}` : ''}${m.quality === 'Not a good match' ? ` Look for a fertilizer labelled about ${n.ratio_text}, or add one you have.` : ''}${none ? '' : dose}${m.strength_assumed && d && d.kind === 'water' ? ' (No strength is set for this plant, so this is for half strength.)' : ''}${last}</span>`;
+  } else if (n.ratio && !none) match = html`<span class="fn-m muted">${n.note}</span>`;
+  return html`<span class="fn-need${o.block ? ' blk-need' : ''}"><span class="fn-n">${need}</span>${match}</span>`;
+}
+async function loadNeeds(code) {
+  try { const r = await api('GET', '/api/fertilizer/needs' + (code ? '?plant=' + enc(code) : '')); r.needs.forEach(n => { FERT.needs[n.code] = n; }); }
+  catch (e) { /* the page works without it */ }
+}
+
+// ---------- your fertilizers: saved ones and logged ones (1.11.0) ----------
+function productsBlock() {
+  const P = FERT.products;
+  return html`<p>The fertilizers you have. Each plant above is matched to the one whose N-P-K ratio is closest to what it needs. Add the ones in your shed even before you use them; ones you log are added by themselves.</p>
+    <p class="row noprint"><button class="btn" type="button" data-act="fzadd">Add a fertilizer you have</button></p>
+    ${P.length ? html`<div class="tbl-wrap"><table class="tbl fn-tbl"><caption class="sr">Your fertilizers</caption><thead><tr><th scope="col">Name</th><th scope="col">N-P-K</th><th scope="col">Type</th><th scope="col">Last used</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
+      ${P.map((x, i) => html`<tr><th scope="row">${x.product}${x.note ? html`<div class="hint">${x.note}</div>` : ''}</th>
+        <td>${npkText(x)}${ratioText(x.n, x.p, x.k) ? html`<div class="hint">ratio ${ratioText(x.n, x.p, x.k)}</div>` : ''}</td><td>${x.form}</td>
+        <td>${x.last_used ? html`${midDay(x.last_used)}<div class="hint">${doseText(x)}${x.uses > 1 ? `, ${x.uses} times in all` : ''}</div>` : html`<span class="muted">Not used yet</span>`}</td>
+        <td class="noprint"><div class="row" style="gap:.4rem"><button class="btn ghost small" type="button" data-act="fzedit" data-i="${i}">Change</button>${x.saved ? html`<button class="btn danger small" type="button" data-act="fzdel" data-i="${i}">Remove</button>` : ''}</div></td></tr>`)}</tbody></table></div>
+      <p class="hint">Amounts aim for about 150 ppm of the strongest of N, P and K at full strength, 75 at half and 40 at a quarter, which is a usual rate for plants in pots. If the label says to use less, use the label.</p>`
+    : html`<p class="muted">None yet.</p>`}`;
+}
+async function productDialog(x) {
+  if (!(await needName())) return;
+  const editing = x && x.saved, num = v => v == null ? '' : v;
+  for (;;) {
+    const r = await modal(html`<form method="dialog"><h2>${editing ? 'Change this fertilizer' : x ? 'Correct this fertilizer' : 'Add a fertilizer you have'}</h2>
+      ${x && !x.saved ? html`<p class="muted">This one came from your feeding log. Saving keeps your log as it is and uses these details for matching.</p>` : ''}
+      <label class="f">Name<input type="text" name="product" maxlength="80" value="${x ? x.product : ''}" required autofocus></label>
+      <label class="f">Type<select name="form">${['liquid', 'powder', 'granular', 'slow-release', 'spikes', 'organic liquid', 'organic solid', 'foliar spray', 'other'].map(v => html`<option ${v === (x ? x.form : 'liquid') ? raw('selected') : ''}>${v}</option>`)}</select>
+        <small>Liquid and powder are mixed into water. Granular, slow-release, spikes and organic solid go on or into the mix.</small></label>
+      <fieldset class="opt-group"><legend>What is printed on the package (N-P-K, in percent)</legend>
+        <div class="field-grid three"><label class="f">Nitrogen (N)<input type="number" step="any" min="0" max="100" name="n" value="${num(x && x.n)}" required></label>
+          <label class="f">Phosphate (P)<input type="number" step="any" min="0" max="100" name="p" value="${num(x && x.p)}" required></label>
+          <label class="f">Potash (K)<input type="number" step="any" min="0" max="100" name="k" value="${num(x && x.k)}" required></label></div>
+        <p class="hint">A bottle labelled 24-8-16 is 24% nitrogen, 8% phosphate and 16% potash.</p></fieldset>
+      <label class="f">Note<input type="text" name="note" maxlength="300" value="${x ? x.note || '' : ''}"><small>For example where it is kept, or "with iron".</small></label>
+      <div class="row"><button class="btn" value="ok">${editing ? 'Save changes' : 'Save fertilizer'}</button><button class="btn ghost" value="cancel" formnovalidate>Cancel</button></div></form>`);
+    if (r !== 'ok') return;
+    const f = dlg.querySelector('form'), v = n => f.elements[n].value;
+    const body = { product: v('product'), form: v('form'), n: v('n'), p: v('p'), k: v('k'), note: v('note') };
+    try {
+      if (editing) await api('PUT', '/api/fertilizer/products/' + x.id, body); else await api('POST', '/api/fertilizer/products', body);
+      toast(editing ? 'Fertilizer changed' : `${body.product.trim()} saved`);
+      await fertRefresh(); return;
+    } catch (e) { toast(e.message, true); x = { ...(x || {}), ...body, n: +body.n, p: +body.p, k: +body.k }; }
+  }
 }
 
 // ---------- fertilizer panel on a plant page ----------
@@ -1333,9 +1494,12 @@ function fertDayDetail(p, ds) {
 async function loadFertPlant() {
   const box = document.getElementById('fert-plant'); if (!box || !CUR) return;
   const p = CUR.p;
-  try { await loadFertData(false); } catch (e) { box.innerHTML = rend(html`<p class="notice bad">Could not load feeding data: ${e.message}</p>`); return; }
+  try { await Promise.all([loadFertData(false), loadNeeds(p.code)]); } catch (e) { box.innerHTML = rend(html`<p class="notice bad">Could not load feeding data: ${e.message}</p>`); return; }
   const es = entriesFor(p.code), today = todayStr(), st = fertState(p, es, today, fertCtx()), nd = nextDue(p, es);
   const prevSel = CALS.fp && CALS.fp.sel;
+  const nb = document.getElementById('fert-need');
+  if (nb) nb.innerHTML = rend(FERT.needs[p.code] ? html`<div class="fn-plant"><h3>What to feed it</h3><p>${needLines(FERT.needs[p.code], { block: true })}</p>
+      <p class="hint noprint"><a href="#/fertilizer">Your fertilizers</a> are listed on the Fertilizer page. Change this plant's ratio or strength with Edit, under Nutrients.</p></div>` : '');
   box.innerHTML = rend(html`<div class="verdict-box v-${st.state}" role="status"><h3>Today, ${longDay(today)}</h3><p class="verdict">${verdictLine(p, st)}</p><p>${fertWords(p, st, today)}</p>
       ${hasSeason(p) ? html`<p class="hint">Season: ${seasonText(p)}.${nd && st.state !== 'due' && st.state !== 'hold' ? ' Next feeding about ' + longDay(nd) + '.' : ''} Change these in Edit this page.</p>` : ''}</div>
     <div class="row noprint" style="margin:.8rem 0"><button class="btn" type="button" data-act="fertlog" data-code="${p.code}">Log a feeding for this plant</button></div>
@@ -1352,21 +1516,20 @@ async function viewFertilizer() {
   const rows = FERT.plants.map(p => ({ p, st: fertState(p, entriesFor(p.code), t, fertCtx()) }));
   const grp = k => rows.filter(r => r.st.state === k || (k === 'wait' && r.st.state === 'fed'));
   const G5 = [['due', 'Time to fertilize', true], ['hold', 'Hold off for now', true], ['wait', 'Fed recently', false], ['rest', 'Resting (out of season)', false], ['unknown', 'No feeding season set', false]];
-  const rowHtml = r => html`<li>${r.p.photo ? html`<img src="${thumbUrl(r.p.photo)}" alt="" loading="lazy">` : html`<span></span>`}
-    <span><a class="nm" href="#/plant/${enc(r.p.code)}">${r.p.common_name}</a><br><span class="muted">${r.p.code}. ${r.st.state === 'rest' ? 'Season opens ' + midDay(r.st.until) + '.' : r.st.state === 'hold' ? r.st.reason : r.st.state === 'unknown' ? '' : r.st.last ? `Last fed ${r.st.since} days ago.${r.st.state === 'wait' || r.st.state === 'fed' ? ' Next about ' + midDay(r.st.next) + '.' : r.st.over > 0 ? ' ' + r.st.over + ' days overdue.' : ''}` : 'Never logged.'}</span></span>
+  const rowHtml = r => html`<li class="${FERT.needs[r.p.code] ? 'fn-li' : ''}">${r.p.photo ? html`<img src="${thumbUrl(r.p.photo)}" alt="" loading="lazy">` : html`<span></span>`}
+    <span><a class="nm" href="#/plant/${enc(r.p.code)}">${r.p.common_name}</a><br><span class="muted">${r.p.code}. ${r.st.state === 'rest' ? 'Season opens ' + midDay(r.st.until) + '.' : r.st.state === 'hold' ? r.st.reason : r.st.state === 'unknown' ? '' : r.st.last ? `Last fed ${r.st.since} days ago.${r.st.state === 'wait' || r.st.state === 'fed' ? ' Next about ' + midDay(r.st.next) + '.' : r.st.over > 0 ? ' ' + r.st.over + ' days overdue.' : ''}` : 'Never logged.'}</span></span>${FERT.needs[r.p.code] ? html`<span class="fn-row">${needLines(FERT.needs[r.p.code])}</span>` : ''}
     <button class="btn ghost small noprint" type="button" data-act="fertlog" data-code="${r.p.code}">Log</button></li>`;
   const q = k => grp(k).length;
   return {
     title: 'Fertilizer',
     html: html`<h1>Fertilizer</h1>
-    <p class="muted">When to feed each plant, and a record of what you used. Every plant has its own feeding season for Round Rock (months it is growing) and a gap between feedings. Change them on a plant's Edit page.</p>
+    <p class="muted">When to feed each plant, and a record of what you used. Every plant has its own feeding season (the months it grows) and a gap between feedings, and the N-P-K ratio it needs. Change them on a plant's Edit page.</p>
     <div class="verdict-box" role="status"><h2 style="margin:0 0 .4rem">Today, ${longDay(t)}</h2>
       <p>${q('due')} plant${q('due') === 1 ? ' is' : 's are'} due for fertilizer${q('hold') ? `, ${q('hold')} should wait because of cold or health` : ''}. ${q('wait')} ${q('wait') === 1 ? 'was' : 'were'} fed recently and ${q('rest')} ${q('rest') === 1 ? 'is' : 'are'} resting for the season.</p>
       <div class="row noprint"><button class="btn" type="button" data-act="fertlog">Log fertilizer</button>${q('due') ? html`<button class="btn ghost" type="button" data-act="fertlog" data-group="due">Log fertilizer for the ${q('due')} due plants</button>` : ''}</div></div>
     ${G5.map(([k, title, open]) => grp(k).length ? html`<details class="grp" ${open ? raw('open') : ''}><summary><h2>${title} (${grp(k).length})</h2></summary><ul class="todo">${grp(k).map(rowHtml)}</ul></details>` : '')}
     <section class="blk"><h2>Calendar for all plants</h2><div id="cal-fa"></div><div id="fa-day"></div></section>
-    <section class="blk"><h2>Fertilizers you have used</h2>${FERT.products.length ? html`<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Name</th><th>N-P-K</th><th>Type</th><th>Last dose</th></tr></thead><tbody>
-      ${FERT.products.map(x => html`<tr><th scope="row">${x.product}</th><td>${npkText(x)}${ratioText(x.n, x.p, x.k) ? html`<div class="hint">ratio ${ratioText(x.n, x.p, x.k)}</div>` : ''}</td><td>${x.form}</td><td>${doseText(x)}</td></tr>`)}</tbody></table></div>` : html`<p class="muted">None yet. The first one you log is remembered here and fills in the form next time.</p>`}</section>
+    <section class="blk" id="fn-products"><h2>Your fertilizers</h2>${productsBlock()}</section>
     <section class="blk"><h2>Feeding seasons</h2><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Plant</th><th>Season</th><th class="num">Every (days)</th><th>Last fed</th><th>Next feeding</th></tr></thead><tbody>
       ${rows.map(r => { const es = entriesFor(r.p.code), nd = nextDue(r.p, es); return html`<tr><th scope="row"><a href="#/plant/${enc(r.p.code)}">${r.p.common_name}</a><div class="hint">${r.p.code}</div></th>
         <td>${hasSeason(r.p) ? MN[r.p.fert_from_month - 1] + ' to ' + MN[r.p.fert_to_month - 1] : 'Not set'}</td><td class="num">${r.p.fert_every_days || ''}</td><td>${es[0] ? midDay(es[0].applied_on) : 'Never logged'}</td><td>${nd ? midDay(nd) : ''}</td></tr>`; })}</tbody></table></div></section>
@@ -1399,6 +1562,12 @@ async function viewFertilizer() {
 let FD = null;   // state of the dialog, kept so a failed save does not lose what was typed
 function fertState0(opts) {
   const e = opts.entry, last = FERT.products[0];
+  const n = !e && opts.codes && opts.codes.length === 1 ? FERT.needs[opts.codes[0]] : null, m = n && n.match && n.match.quality !== 'Not a good match' && n.strength !== 'None needed' ? n.match : null;
+  if (m) {                     // logging for one plant: start from the fertilizer and amount the page suggests for it
+    const d = m.dose || {}, water = d.kind === 'water';
+    return { id: null, codes: opts.codes, applied_on: opts.date || todayStr(), product: m.product, form: m.form, n: m.n, p: m.p, k: m.k,
+      amount: water ? d.amount : null, amount_unit: water ? d.unit : 'tsp', water_amount: water ? d.water : null, water_unit: 'gal', method: water ? 'water in' : 'top-dress', note: '' };
+  }
   return e ? { id: e.id, codes: [e.plant_code], applied_on: e.applied_on, product: e.product, form: e.form, n: e.n, p: e.p, k: e.k, amount: e.amount, amount_unit: e.amount_unit || 'tsp', water_amount: e.water_amount, water_unit: e.water_unit || 'gal', method: e.method, note: e.note }
     : { id: null, codes: opts.codes || [], applied_on: opts.date || todayStr(), product: '', form: 'liquid', n: null, p: null, k: null, amount: null, amount_unit: 'tsp', water_amount: null, water_unit: 'gal', method: 'water in', note: '' };
 }
@@ -1561,7 +1730,7 @@ const GROUPS = [
   ['Humidity and air dryness', ['humidity_low', 'humidity_high', 'vpd_low', 'vpd_high', 'humidity_notes']],
   ['Sunlight', ['light_summary', 'light_hours', 'par_low', 'par_high', 'dli_low', 'dli_high', 'light_notes']],
   ['Water and soil', ['water_every_days', 'water_notes', 'soil_medium', 'soil_ph_low', 'soil_ph_high', 'soil_moisture_low', 'soil_moisture_high', 'soil_temp_low', 'soil_temp_high']],
-  ['Nutrients', ['fertilizer', 'nutrients', 'fert_from_month', 'fert_to_month', 'fert_every_days']],
+  ['Nutrients', ['fertilizer', 'npk_ratio', 'fert_strength', 'nutrients', 'fert_from_month', 'fert_to_month', 'fert_every_days']],
   ['Winter plan', ['winter_plan', 'winter_summary', 'winter_triggers', 'winter_steps', 'indoor_setup']],
   ['Health', ['health_rating', 'health_summary', 'health_observations', 'health_steps']],
   ['Pests and diseases', ['pests_watch', 'pest_steps', 'pests_current', 'pests_found', 'leaf_type', 'pot_size']],
@@ -1577,6 +1746,8 @@ const HINTS = {
   water_every_days: 'Leave empty to let the app work it out from the soil moisture range. Hot weather shortens the gap; cool weather and being indoors lengthen it.',
   winter_steps: 'One step per line, in order.',
   pests_found: 'One per line, from: Spider mites, Mealybugs, Scale, Aphids, Whiteflies, Thrips, Ants, Fungus gnats, Root mealybugs, Slugs or snails, Pill bugs or earwigs, Other. The plant page has tick boxes for these.',
+  npk_ratio: 'Three numbers for nitrogen, phosphate and potash, such as 3-1-2. The Fertilizer page finds your closest fertilizer.',
+  fert_strength: 'How strong to mix it. The Fertilizer page works out the amount per gallon from this.',
   leaf_type: 'Decides which pest treatments suit it before it comes inside.', pot_size: 'Whether the pot can be soaked in a bucket or tub.', health_steps: 'One step per line, in order.', indoor_setup: 'One item per line.',
 };
 const rangeOf = n => (META.int_ranges && META.int_ranges[n]) || (META.num_ranges && META.num_ranges[n]) || [-60, 150];
@@ -1748,9 +1919,14 @@ function paintAllCharts() { Object.keys(CHARTS).forEach(paintChart); }
 // ---------- forecast and season tables ----------
 const MONTHS = ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
 function seasonKeys() { const n = new Date(), y = n.getMonth() >= 6 ? n.getFullYear() : n.getFullYear() - 1; return MONTHS.map((m, i) => [m, (i < 3 ? y : y + 1) + '-' + String([10, 11, 12, 1, 2, 3][i]).padStart(2, '0')]); }
+function seasonExpected(ref) {     // the written reference where it applies (Round Rock), otherwise this place's own weather history
+  if (ref.applies !== false && (ref.climate || []).length) return { rows: ref.climate, src: 'ref' };
+  if (ref.normals) return { rows: ref.normals.months, src: 'history', years: ref.normals.years, since: ref.normals.since };
+  return { rows: [], src: 'none' };
+}
 function seasonTable(ref, monthly) {
   const obs = Object.fromEntries((monthly || []).map(x => [x.month, x]));
-  const exp = Object.fromEntries((ref.climate || []).map(c => [c.month, c]));
+  const E = seasonExpected(ref), exp = Object.fromEntries(E.rows.map(c => [c.month, c]));
   const keys = seasonKeys();
   return html`<div class="tbl-wrap"><table class="tbl"><caption class="sr">Expected weather compared with the weather tracked so far this season</caption>
     <thead><tr><th>Month</th><th>Expected low and high</th><th>Tracked low and high</th><th>Expected freezing nights</th><th>Tracked freezing nights</th><th>Expected humidity</th><th>Tracked humidity</th></tr></thead><tbody>
@@ -1758,19 +1934,20 @@ function seasonTable(ref, monthly) {
       return html`<tr><th scope="row">${mo}</th><td>${e.low != null ? e.low + ' to ' + e.high + '°F' : ''}</td>
         <td>${o ? html`${o.low} to ${o.high}°F<div class="hint">${o.days} days tracked</div>` : html`<span class="muted">Not tracked yet</span>`}</td>
         <td>${e.freeze_nights != null ? e.freeze_nights + ' on average' : ''}</td><td>${o ? o.freeze_nights + (o.days < 28 ? ' so far' : '') : ''}</td>
-        <td>${e.rh != null ? e.rh + '% morning, ' + e.rh_pm + '% afternoon' : ''}</td><td>${o && o.rh != null ? Math.round(o.rh) + '% average' : ''}</td></tr>`; })}</tbody></table></div>`;
+        <td>${e.rh != null ? (e.rh_pm != null ? e.rh + '% morning, ' + e.rh_pm + '% afternoon' : e.rh + '% average') : ''}</td><td>${o && o.rh != null ? Math.round(o.rh) + '% average' : ''}</td></tr>`; })}</tbody></table></div>
+    ${E.src === 'history' ? html`<p class="hint">Expected values for ${placeName()} are averages from its weather history since ${(E.since || '').slice(0, 4)} (${E.years} years or more of every month).</p>`
+      : E.src === 'none' ? html`<p class="hint">There is not enough weather history for ${placeName()} yet to fill in the Expected columns. Use Load history on the Weather page (3 years or more).</p>` : ''}`;
 }
 function forecastBlock(W, plants) {
   const days = (W.forecast && W.forecast.days) || [];
   if (!days.length) return html`<p class="muted">No forecast yet. ${W.status && W.status.error ? 'The last attempt failed: ' + W.status.error : 'The first update runs a few seconds after the app starts, then every hour.'}</p>`;
   const risk = low => plants.filter(p => p.temp_damage_below != null && low < p.temp_damage_below && !isInside(p));
-  const away = W.location && W.home && !W.location.is_home;
   const coldest = days.reduce((a, b) => (b.low < a.low ? b : a));
   const rs = risk(coldest.low);
   const dName = d => new Date(d + 'T12:00:00').toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
   return html`<p class="${coldest.low <= 32 ? 'notice bad' : coldest.low <= 38 ? 'notice' : 'notice ok'}" role="status"><strong>Coldest night in the forecast: ${coldest.low}°F on ${dName(coldest.date)}.</strong>
       ${coldest.low <= 32 ? ' That is a freeze.' : coldest.low <= 38 ? ' Frost is possible in low spots.' : ' No frost expected.'}
-      ${rs.length ? ` ${rs.length} of ${plants.filter(p => !isInside(p)).length} plants outside would be damaged by that if they were left outside uncovered${away ? ' there' : ''}.` : ' None of your plants would be damaged by that.'}${away ? ` (Your plants are at ${W.home.name}; this shows what this weather would do to them.)` : ''}</p>
+      ${rs.length ? ` ${rs.length} of ${plants.filter(p => !isInside(p)).length} plants outside would be damaged by that if they were left outside uncovered.` : ' None of your plants would be damaged by that.'}</p>
     <div class="tbl-wrap"><table class="tbl fc-table"><caption class="sr">Daily forecast</caption><thead><tr><th>Day</th><th class="num">Low</th><th class="num">High</th><th class="num">Humidity</th><th class="num">Daylight</th><th>Plants that would be damaged</th></tr></thead><tbody>
     ${days.map(d => { const r = risk(d.low); return html`<tr><th scope="row">${dName(d.date)}${d.hours < 20 ? html`<div class="hint">rest of the day</div>` : ''}</th>
       <td class="num ${d.low <= 32 ? 'cold' : ''}">${d.low}°F${d.low <= 32 ? ' (freeze)' : ''}</td><td class="num">${d.high}°F</td><td class="num">${d.rh == null ? '' : d.rh + '%'}</td><td class="num">${d.dli} mol/m²</td>
@@ -1782,7 +1959,7 @@ function forecastBlock(W, plants) {
 async function viewWeather() {
   let W;
   try { W = await api('GET', '/api/weather?x=1' + locQS()); }
-  catch (e) { if (e.status === 404) { WXP = null; try { localStorage.removeItem('plantdb.wxplace'); } catch (x) { /* ignore */ } W = await api('GET', '/api/weather'); } else throw e; }
+  catch (e) { if (e.status === 404) { savePlace(null); W = await api('GET', '/api/weather'); } else throw e; }
   const [cond, plants, ing, monthly, ref, st] = await Promise.all([loadCond(), api('GET', '/api/plants'), api('GET', '/api/ingest'), api('GET', '/api/weather/monthly?x=1' + locQS()), api('GET', '/api/reference'), api('GET', '/api/settings')]);
   WX.places = W.places || []; WX.place = W.location; WX.home = W.home;
   WX.compare = WX.compare.filter(id => WX.places.some(p => String(p.id) === id && String(p.id) !== String(W.location.id)));
@@ -1796,11 +1973,11 @@ async function viewWeather() {
     html: html`<h1>Weather and sensors</h1>
     <p class="muted">Tracks the weather for ${WX.places.length > 1 ? `${WX.places.length} places` : W.location.name} from Open-Meteo (free, no account), and takes readings from your own sensors. Everything is stored in your data folder, so the history keeps growing.</p>
     <div class="placebar noprint" role="group" aria-label="Place">
-      <label>Showing the weather for<select data-f="wxplace">${WX.places.map(p => html`<option value="${p.id}" ${String(p.id) === String(W.location.id) ? raw('selected') : ''}>${p.name}${p.is_home ? ' (home, where your plants are)' : ''}</option>`)}</select></label>
+      <label>Location<select data-f="wxplace">${WX.places.map(p => html`<option value="${p.id}" ${String(p.id) === String(W.location.id) ? raw('selected') : ''}>${p.name}${p.is_home ? ' (home)' : ''}</option>`)}</select></label>
       <a class="btn small ghost" href="#sec-places" data-act="gotoplaces">Add or manage places</a>
-      ${atHome ? '' : html`<p class="hint" style="flex-basis:100%;margin:0">Your plants are at ${W.home.name}, so plant pages, current conditions and the Winter plan keep using ${W.home.name}.</p>`}</div>
+      <p class="hint" style="flex-basis:100%;margin:0">The same choice as the Location button at the top of every page: plant pages, frost warnings, watering and the Winter plan all use ${W.location.name}${atHome ? '' : html`, not the home place (${W.home.name})`}.</p></div>
     ${condCard(null, cond)}
-    <section class="blk"><h2>Next 7 days${atHome ? '' : ` in ${W.location.name}`}</h2>${forecastBlock(W, plants)}</section>
+    <section class="blk"><h2>Next 7 days in ${W.location.name}</h2>${forecastBlock(W, plants)}</section>
     <section class="blk"><h2>Tracked history</h2>
       ${wxControls(plants)}
       <div id="wx-charts"><p class="loading">Loading charts</p></div>
@@ -1809,8 +1986,8 @@ async function viewWeather() {
     <section class="blk" id="wx-logged"><h2>All logged weather data${WX.places.length > 1 ? `: ${W.location.name}` : ''}</h2>
       <p class="hint">Every value saved so far, as a table. The first three columns (temperature, humidity, plant light) go back as far as your history does. The other measurements are kept hourly ${W.weather.detail_since ? 'from ' + dayLong(W.weather.detail_since) : 'once collected'} and as daily summaries for all of it.</p>
       ${wtControls()}<div id="wx-table"><p class="loading">Loading table</p></div></section>
-    <section class="blk"><h2>Expected and tracked this season${atHome ? '' : ` (tracked: ${W.location.name})`}</h2>${seasonTable(ref, monthly)}
-      <p class="hint">Expected values are 30-year averages for ${W.home.name}${atHome ? '' : `; the tracked columns are ${W.location.name}`}. Tracked values come from the readings above: the average of each day's low and high, and how many nights fell to 32°F or below. Days with fewer than 12 readings are skipped.</p></section>
+    <section class="blk"><h2>Expected and tracked this season in ${W.location.name}</h2>${seasonTable(ref, monthly)}
+      <p class="hint">${ref.applies !== false ? `Expected values are 30-year averages for ${W.location.name}. ` : ''}Tracked values come from the readings above: the average of each day's low and high, and how many nights fell to 32°F or below. Days with fewer than 12 readings are skipped.</p></section>
     <section class="blk" id="sensor"><h2>Connect your sensor</h2>
       <p>A sensor on your network can send readings to this app. Each reading becomes part of the history above, and "My sensor" can drive the current conditions on every plant page.</p>
       ${isLocal ? html`<div class="notice">The address below uses <strong>${base}</strong>, which only works on this computer. A sensor on another device needs this computer's network address instead (for example http://192.168.1.20:8080). Set it on the Labels page; the README shows how to find it.</div>` : ''}
@@ -1843,9 +2020,7 @@ async function viewWeather() {
     after: () => { wxCatalog().then(loadWxCharts); loadWxTable(); loadRunLog(); if (W.job && W.job.running) wxPoll(); },
   };
 }
-let WXP = null;                     // the place the Weather page shows (null = home); remembered on this computer
-try { WXP = localStorage.getItem('plantdb.wxplace') || null; } catch (e) { /* ignore */ }
-const locQS = () => WXP ? '&loc=' + enc(WXP) : '';
+const locQS = () => PLACE ? '&loc=' + enc(PLACE) : '';     // the Weather page shows the place in use (1.11.0)
 const WX = { days: 7, period: '7', from: '', to: '', src: 'both', plant: '', show: ['temp', 'hum', 'light'], vars: [], cols: 1, compare: [], places: [] };
 try { const v = JSON.parse(localStorage.getItem('plantdb.wxchart') || 'null'); if (v) Object.assign(WX, { period: v.period || '7', from: v.from || '', to: v.to || '', show: Array.isArray(v.show) ? v.show : WX.show, vars: Array.isArray(v.vars) ? v.vars : [], cols: [1, 2, 3].includes(+v.cols) ? +v.cols : 1, compare: Array.isArray(v.compare) ? v.compare.map(String) : [] }); } catch (e) { /* ignore */ }
 if (/^\d+$/.test(WX.period)) WX.days = +WX.period;
@@ -2056,15 +2231,15 @@ async function loadWxCharts() {
 // ---------- places ----------
 function placesBlock(W) {
   const P = W.places || [];
-  return html`<p>Track the weather for as many places as you like. Each place keeps its own hourly readings, daily summaries, forecast and update log. The home place is where your plants are: plant pages, current conditions and the Winter plan use it.</p>
+  return html`<p>Track the weather for as many places as you like. Each place keeps its own hourly readings, daily summaries, forecast and update log. The <strong>Location</strong> button at the top of every page chooses the place this browser uses for weather, frost warnings, watering and the Winter plan. The home place is the one a browser starts with, and the one hourly updates and backups use.</p>
     <div class="tbl-wrap"><table class="tbl"><caption class="sr">Places with tracked weather</caption><thead><tr><th scope="col">Place</th><th scope="col">Where</th><th scope="col">Stored</th><th scope="col">Last update</th><th scope="col">Hourly updates</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
-    ${P.map(p => html`<tr><th scope="row">${p.name}${p.is_home ? html`<div><strong class="tag-home">Home (your plants)</strong></div>` : ''}${String(p.id) === String(W.location.id) ? html`<div class="hint">Shown on this page</div>` : ''}</th>
+    ${P.map(p => html`<tr><th scope="row">${p.name}${p.is_home ? html`<div><strong class="tag-home">Home</strong></div>` : ''}${String(p.id) === String(W.location.id) ? html`<div class="hint">In use in this browser</div>` : ''}</th>
       <td>${p.lat}, ${p.lon}<div class="hint">${p.tz}</div></td>
       <td>${p.count ? `${num(p.count)} hourly readings from ${dayLong((p.first || '').slice(0, 10))}` : 'Nothing yet'}${p.daily_count ? html`<div class="hint">${num(p.daily_count)} daily summaries</div>` : ''}</td>
       <td>${p.last_update ? html`${when(p.last_update)}${p.last_ok === false ? html`<div class="bad-text"><strong>Failed:</strong> ${p.last_error}</div>` : ''}` : 'Not yet'}</td>
       <td>${p.enabled ? 'On' : 'Off'}</td>
       <td><div class="row" style="gap:.4rem">
-        ${String(p.id) === String(W.location.id) ? '' : html`<button class="btn small" type="button" data-act="placeshow" data-id="${p.id}">Show</button>`}
+        ${String(p.id) === String(W.location.id) ? '' : html`<button class="btn small" type="button" data-act="placeshow" data-id="${p.id}">Use this place</button>`}
         ${p.is_home ? '' : html`<button class="btn small ghost" type="button" data-act="placehome" data-id="${p.id}">Make home</button>`}
         <button class="btn small ghost" type="button" data-act="placeonoff" data-id="${p.id}" data-on="${p.enabled ? '0' : '1'}">${p.enabled ? 'Stop hourly updates' : 'Start hourly updates'}</button>
         ${p.is_home ? '' : html`<button class="btn small danger" type="button" data-act="placedel" data-id="${p.id}">Remove</button>`}</div></td></tr>`)}</tbody></table></div>
@@ -2086,15 +2261,13 @@ async function addPlace(body) {
     let r;
     try { r = await api('POST', '/api/places', body); }
     catch (e) { if (e.status === 409 && (await confirmBox('Add it anyway?', e.message + '. Add a second place at the same spot?', 'Add anyway'))) r = await api('POST', '/api/places', { ...body, force: true }); else throw e; }
-    WXP = String(r.place.id); try { localStorage.setItem('plantdb.wxplace', WXP); } catch (e) { /* ignore */ }
-    toast(`${r.place.name} added. Fetching its last 3 months and forecast now.`);
+    placeChanged(String(r.place.id));
+    toast(`${r.place.name} added and in use. Fetching its last 3 months and forecast now.`);
     document.body.dataset.job = '1'; await route(); wxPoll();
   });
 }
 function setPlace(id) {
-  WXP = id ? String(id) : null;
-  try { if (WXP) localStorage.setItem('plantdb.wxplace', WXP); else localStorage.removeItem('plantdb.wxplace'); } catch (e) { /* ignore */ }
-  WT.page = 1; WX.compare = WX.compare.filter(x => x !== WXP);
+  placeChanged(id);
   return route();
 }
 
@@ -2217,7 +2390,7 @@ async function loadWxTable() {
   const el = document.getElementById('wx-table'); if (!el) return;
   const hide = wtHidden();
   const q = new URLSearchParams({ kind: WT.kind === 'daily' ? 'daily' : 'hourly', source: WT.kind === 'sensor' ? 'sensor' : 'weather', order: WT.order, per: WT.per, page: WT.page });
-  if (WXP) q.set('loc', WXP);
+  if (PLACE) q.set('loc', PLACE);
   if (WT.from) q.set('from', WT.from); if (WT.to) q.set('to', WT.to);
   let T; try { T = await api('GET', '/api/weather/table?' + q); } catch (e) { el.innerHTML = rend(html`<p class="notice bad">${e.message}</p>`); return; }
   const cols = T.columns.filter(c => !hide.has(c.key));
@@ -2287,7 +2460,7 @@ function frostBanner() {
   const parts = [c.danger ? `${c.danger} could die` : '', c.damage ? `${c.damage} would be damaged` : '', c.watch ? `${c.watch} ${c.watch === 1 ? 'is a close call' : 'are close calls'}` : ''].filter(Boolean);
   const list = parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0];
   return html`<section class="fz-banner ${real ? 'bad' : ''} noprint" aria-labelledby="fz-h">
-    <p class="fz-title" id="fz-h">${!real ? 'Cold night ahead' : W.low <= 36 ? 'Frost warning' : 'Cold warning'}: down to ${W.low}°F ${fzDay(W.date, true)}</p>
+    <p class="fz-title" id="fz-h">${!real ? 'Cold night ahead' : W.low <= 36 ? 'Frost warning' : 'Cold warning'} for ${placeShort()}: down to ${W.low}°F ${fzDay(W.date, true)}</p>
     <p>Of your ${F.outdoor} plants outside, ${list} that night.${sameNight ? '' : ` The first cold night is ${fzDay(F.first.date, true)}, at ${F.first.low}°F.`}
       Bring them in or cover them <strong>${fzActBy(F.first.date)}</strong>.</p>
     <p class="row"><a class="btn" href="#/frost">Open the cold-night checklist</a>
@@ -2365,10 +2538,10 @@ async function viewWinter() {
   const [ref, list, W, monthly] = await Promise.all([api('GET', '/api/reference'), api('GET', '/api/plants'), api('GET', '/api/weather'), api('GET', '/api/weather/monthly')]);
   return {
     title: 'Winter plan',
-    html: html`<h1>Winter plan</h1><p class="muted">What to expect in Round Rock from October to March, when to act, and which plants go where.</p>
+    html: html`<h1>Winter plan</h1><p class="muted">What to expect in ${placeName()} from October to March, when to act, and which plants go where.</p>
     <section class="blk"><h2>The next 7 days</h2>${forecastBlock(W, list)}<p class="row"><a class="btn small" href="#/frost">Open the cold-night checklist</a><a class="btn small ghost" href="#/inside">Get plants ready to come inside</a><a class="btn ghost small" href="#/weather">Open the Weather page for charts and sensors</a></p></section>
     <section class="blk"><h2>Expected and tracked this season</h2>${seasonTable(ref, monthly)}
-      ${(ref.notes || []).map(n => html`<p class="hint">${n}</p>`)}</section>
+      ${ref.applies !== false ? (ref.notes || []).map(n => html`<p class="hint">${n}</p>`) : ''}</section>
     <section class="blk"><h2>When to act</h2><dl class="dl">${(ref.triggers || []).map(t => html`<dt>${t.temp}</dt><dd>${t.action}</dd>`)}</dl></section>
     <section class="blk"><h2>Ground rules</h2>${(ref.playbook || []).length ? html`<ul>${ref.playbook.map(x => html`<li>${x}</li>`)}</ul>` : ''}</section>
     <section class="blk"><h2>Plant by plant</h2><div class="cols">${META.winter_plans.map(pl => {
@@ -2384,7 +2557,7 @@ async function viewWinter() {
         <span><a class="nm" href="#/plant/${enc(p.code)}">${p.common_name}</a><br><span class="muted">${p.code}, ${p.site.toLowerCase()}, plan: ${p.winter_plan}</span>
         <br><button class="btn small ghost noprint" type="button" data-act="moveout" data-code="${p.code}" data-name="${p.common_name}">Moved back outside</button></span></li>`)}</ul>` : html`<p class="hint">When you bring a plant in, press its Moved indoors button. It leaves these lists and the frost warnings, and its page shows Location: Indoors.</p>`; })()}
     </section>
-    ${(ref.sources || []).length ? html`<section class="blk"><h2>Sources</h2><ul>${ref.sources.map(s => html`<li><a href="${s[1]}" target="_blank" rel="noopener noreferrer">${s[0]}</a></li>`)}</ul></section>` : ''}`,
+    ${ref.applies !== false && (ref.sources || []).length ? html`<section class="blk"><h2>Sources</h2><ul>${ref.sources.map(s => html`<li><a href="${s[1]}" target="_blank" rel="noopener noreferrer">${s[0]}</a></li>`)}</ul></section>` : ''}`,
   };
 }
 
@@ -2518,7 +2691,7 @@ function shortcutsDialog() {
       ${k('R', 'Read this page aloud (press again, or Escape, to stop)')}${k('Escape', 'Stop reading')}
       ${k('[', 'Previous plant (on a plant page)')}${k(']', 'Next plant (on a plant page)')}
       ${k('E', 'Edit this plant (on a plant page)')}${k('/', 'Search plants')}
-      ${k('H', 'Go to the Plants page')}${k('M', 'Open or fold the section menu')}${k('?', 'Show this list')}
+      ${k('H', 'Go to the Plants page')}${k('M', 'Open or fold the section menu')}${k('L', 'Choose the location for the weather')}${k('?', 'Show this list')}
     </tbody></table>
     <div class="row"><button class="btn" value="ok" autofocus>Close</button></div></form>`);
 }
@@ -2535,6 +2708,7 @@ document.addEventListener('keydown', e => {
     case 'e': case 'E': if (CUR && location.hash.startsWith('#/plant/') && !location.hash.endsWith('/edit')) { e.preventDefault(); location.hash = '#/plant/' + enc(CUR.p.code) + '/edit'; } break;
     case 'h': case 'H': e.preventDefault(); go('#/'); break;
     case 'm': case 'M': click('[data-act=navtoggle]:not([aria-hidden])'); break;
+    case 'l': case 'L': e.preventDefault(); placeDialog(); break;          // 1.11.0: choose the location
     case '?': e.preventDefault(); shortcutsDialog(); break;
     case '/': {
       e.preventDefault();
@@ -2954,6 +3128,7 @@ function debugDialog() {
       <p id="dbg-msg" class="dbg-msg" role="status" aria-live="polite"></p></fieldset>
     <fieldset class="opt-group"><legend>About this browser and the app</legend><dl class="dl">
       <dt>App version</dt><dd>${META && META.version ? META.version : 'unknown'}</dd>
+      <dt>Location</dt><dd>${placeName()}${META && META.place && META.place.is_home ? ' (home)' : ''}, time zone ${(META && META.place && META.place.tz) || ''}</dd>
       <dt>Window</dt><dd>${innerWidth} by ${innerHeight} pixels</dd>
       <dt>Text size</dt><dd>${P.size}%</dd>
       <dt>Layout</dt><dd>${r.dataset.narrow === '1' ? 'Narrow: one column, buttons at the bottom' : 'Wide'}${P.layout === 'single' ? ', plant pages in one column' : ''}</dd>
@@ -2964,6 +3139,9 @@ function debugDialog() {
 new MutationObserver(() => conLayout()).observe(document.documentElement, { attributes: true, attributeFilter: ['data-navopen', 'data-narrow', 'data-size', 'data-navside', 'data-space'] });
 if (window.ResizeObserver) { const ro = new ResizeObserver(() => conLayout()); ['corner', 'nav-tab'].forEach(id => { const e = conEl(id); if (e) ro.observe(e); }); }
 document.addEventListener('visibilitychange', () => { if (!document.hidden) conPoll(); });
+document.addEventListener('keydown', e => {      // Enter in the Location window's town box searches, rather than closing the window
+  if (e.key === 'Enter' && e.target && e.target.name === 'plcq') { e.preventDefault(); placeSearch(); }
+});
 { const b = conEl('con-body'); if (b) b.addEventListener('scroll', conScrolled, { passive: true }); }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { conLayout(); fitPanes(); });   // rows grow a little once the fonts arrive
 
@@ -2989,6 +3167,13 @@ const acts = {
     if (el.dataset.date) o.date = el.dataset.date;
     if (el.dataset.group === 'due') { const t = todayStr(); o.codes = FERT.plants.filter(p => fertState(p, entriesFor(p.code), t, fertCtx()).state === 'due').map(p => p.code); }
     return fertDialog(o);
+  },
+  fzadd() { return productDialog(null); },
+  fzedit(el) { const x = FERT.products[+el.dataset.i]; if (x) return productDialog(x); },
+  async fzdel(el) {
+    const x = FERT.products[+el.dataset.i]; if (!x || !x.saved || !(await needName())) return;
+    if (!(await confirmBox('Remove this fertilizer?', `${x.product} comes off your list. Feedings you logged with it stay in the log${x.uses ? ', so it stays in the list as a logged fertilizer' : ''}.`, 'Remove', true))) return;
+    await guard(async () => { await api('DELETE', '/api/fertilizer/products/' + x.id); toast(x.product + ' removed'); await fertRefresh(); });
   },
   fertedit(el) { const e = FERT.entries.find(x => x.id === +el.dataset.id); if (e) return fertDialog({ entry: e }); },
   async fertdel(el) {
@@ -3028,6 +3213,21 @@ const acts = {
   },
   forclaude() { forClaudeDialog(); },
   debug() { debugDialog(); },
+  place() { placeDialog(); },
+  plcsearch() { placeSearch(); },
+  plcadd(el) { placeAdd(+el.dataset.i); },
+  plcweather() { if (dlg.open) dlg.close(); },
+  async plchome() {
+    const cur = META && META.place; if (!cur || cur.is_home || !(await needName())) return;
+    const m = document.getElementById('plc-msg');
+    try {
+      await api('PUT', '/api/places/' + cur.id, { is_home: true });
+      savePlace(null); META = null; COND = null; FROST = null; FROST_AT = 0;
+      await route();
+      if (m) m.textContent = `${cur.name} is now the home place for everyone.`;
+      const h = document.getElementById('plc-home'); if (h) h.innerHTML = rend(plcHomeRow());
+    } catch (e) { if (m) m.textContent = e.message; }
+  },
   conclose() { DBG.console = '0'; dbgSave(); conApply(); toast('Audit log console off. Turn it back on with the Debug button.'); const d = document.getElementById('debug-btn'); if (d) d.focus(); },
   conpause(el) { CON.paused = !CON.paused; el.setAttribute('aria-pressed', String(CON.paused)); el.textContent = CON.paused ? 'Resume' : 'Pause'; conState(CON.paused ? 'Paused' : 'Live'); if (!CON.paused) conPoll(); },
   connew() { const b = document.getElementById('con-body'); if (b) { b.scrollTop = b.scrollHeight; b.focus(); } CON.unseen = 0; CON.stick = true; const n = document.getElementById('con-new'); if (n) n.hidden = true; },
@@ -3157,8 +3357,8 @@ const acts = {
   placeshow(el) { setPlace(el.dataset.id).then(() => window.scrollTo(0, 0)); },
   async placehome(el) {
     const p = WX.places.find(x => String(x.id) === el.dataset.id); if (!p || !(await needName())) return;
-    if (!(await confirmBox(`Make ${p.name} home?`, `Plant pages, current conditions ("Online weather"), frost warnings and the Winter plan will use the weather for ${p.name} instead of ${WX.home.name}.`, 'Make home'))) return;
-    await guard(async () => { await api('PUT', '/api/places/' + p.id, { is_home: true }); COND = null; toast(`${p.name} is now home`); route(); });
+    if (!(await confirmBox(`Make ${p.name} home?`, `Every computer or phone that has not chosen its own location will use the weather for ${p.name} instead of ${WX.home.name}, and so will the hourly updates and backups.`, 'Make home'))) return;
+    await guard(async () => { await api('PUT', '/api/places/' + p.id, { is_home: true }); if (String(PLACE) === String(p.id)) savePlace(null); META = null; COND = null; FROST = null; FROST_AT = 0; toast(`${p.name} is now home`); route(); });
   },
   async placeonoff(el) {
     if (!(await needName())) return;
@@ -3167,7 +3367,7 @@ const acts = {
   async placedel(el) {
     const p = WX.places.find(x => String(x.id) === el.dataset.id); if (!p || !(await needName())) return;
     if (!(await confirmBox(`Remove ${p.name}?`, `This deletes its ${num(p.count || 0)} hourly readings, its daily summaries and its update log. To keep them, use "Stop hourly updates" instead. This cannot be undone.`, 'Remove it and its weather', true))) return;
-    await guard(async () => { const r = await api('DELETE', '/api/places/' + p.id); toast(`${p.name} removed (${num(r.removed_readings)} readings)`); if (String(WXP) === String(p.id)) WXP = null; await setPlace(WXP); });
+    await guard(async () => { const r = await api('DELETE', '/api/places/' + p.id); toast(`${p.name} removed (${num(r.removed_readings)} readings)`); await setPlace(String(PLACE) === String(p.id) ? null : PLACE); });
   },
   async placepick(el) {
     const r = (PLACE_RESULTS || [])[+el.dataset.i]; if (!r) return;
@@ -3396,6 +3596,11 @@ document.addEventListener('click', e => {
 document.addEventListener('change', e => {
   const el = e.target;
   if (el.dataset && el.dataset.act && changeActs[el.dataset.act]) { changeActs[el.dataset.act](el); return; }
+  if (el.dataset && el.dataset.plc) {        // Location window: switch straight away, as Display settings do
+    placeChanged(el.dataset.plc);
+    route().then(() => { const m = document.getElementById('plc-msg'); if (m) m.textContent = `Now using the weather for ${placeName()}.`; const h = document.getElementById('plc-home'); if (h) h.innerHTML = rend(plcHomeRow()); });
+    return;
+  }
   if (el.dataset && el.dataset.dbg) {
     const k = el.dataset.dbg; DBG[k] = el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value; dbgSave(); conApply();
     const m = document.getElementById('dbg-msg');      // the usual pop-up notes are hidden while this window is open

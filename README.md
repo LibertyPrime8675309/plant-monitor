@@ -194,6 +194,7 @@ Keyboard shortcuts work on every page, except while you are typing in a box. **D
 | **/** | Search plants |
 | **H** | Go to the Plants page |
 | **M** | Open or fold the section menu |
+| **L** | Choose the location for the weather |
 | **?** | List the shortcuts |
 
 ### Section menu ("On this page")
@@ -290,6 +291,23 @@ Each plant page has a **Current conditions** box. Press **Set current conditions
 
 The setting is shared by all plant pages. Every gauge (temperature, humidity, light, soil moisture, soil temperature, soil pH) then shows a labelled **Now** marker. When a value is outside the plant's range, the page gets a **Getting this plant back in range** section with numbered steps for that plant and that situation (for example how to protect it from a cold night, or how to raise humidity). Readings that are old are flagged as out of date.
 
+## Location (from 1.11.0)
+
+Nothing in the app is tied to Round Rock any more. The **Location** button at the top right of every page (on a phone, at the top of the page) shows the place in use, for example "Location: Round Rock, TX". Press it, or press **L**, to choose another.
+
+- **Everything weather-related follows it:**
+  - the frost banner and the cold-night checklist ("Frost warning for Baraboo: …")
+  - current conditions and the "Now" marker on plant pages
+  - the marks on the temperature and humidity strips: the coldest night of a usual winter there, and its usual coldest-month night, worked out from that place's own weather history
+  - "Winter in …" on plant pages
+  - the Winter plan, the Today page's watering reminders and rain
+  - the Weather page
+  - what "today" means
+- **This browser remembers the choice.** Each computer or phone keeps its own, so someone else using the app somewhere else can pick their own place without changing yours.
+- **Add a place** in the same window: type a town or city, press **Search** (or Enter) and choose **Add and use** next to the right one. Its last 3 months of weather and its forecast arrive within a minute.
+- **Make … the home place for everyone**: the home place is what a computer or phone uses until it chooses its own location, and what the hourly updates and backups use.
+- The Winter plan's written notes, sources and expected-weather table are for Round Rock, so they show only when the place in use is Round Rock. For other places the expected columns come from that place's own weather history, once it has 3 years or more (use **Load history** on the Weather page).
+
 ## Weather and sensors
 
 The **Weather** page replaces the fixed weather table. It has:
@@ -308,9 +326,9 @@ Online weather comes from [Open-Meteo](https://open-meteo.com/) (free, no accoun
 The Weather page can track as many places as you like, for example Round Rock, TX and Baraboo, WI. Each place keeps its own hourly readings, daily summaries, forecast, Load history and update log.
 
 - **Add a place**: Weather page, **Places** section. Type a town or city, press **Search**, and pick the right one from the list (it shows the state or country, coordinates, time zone and elevation). You can also type the name, latitude, longitude and time zone yourself. A new place fetches its last 3 months and forecast straight away, then updates every hour like the others.
-- **Showing the weather for**: the menu at the top of the Weather page picks which place the page shows: forecast, charts, the table of logged data, the season table, Load history and the update log. The choice is remembered on that computer.
+- **Location**: the menu at the top of the Weather page is the same choice as the **Location** button at the top of every page (see "Location" below). It picks which place the page shows: forecast, charts, the table of logged data, the season table, Load history and the update log.
 - **Compare places**: in Tracked history, open **Choose what to chart and compare places** and tick other places. Every chart then has one line per place (up to 6 places). For daily, weekly or monthly steps there are also charts of each place's lowest and highest temperature.
-- **Home place**: the place your plants are at. Plant pages, current conditions ("Online weather"), frost warnings and the Winter plan use it. Round Rock is home after upgrading; **Make home** changes it.
+- **Home place**: the place a computer or phone uses until it chooses its own location, and the one the hourly updates and backups use. Round Rock is home after upgrading; **Make home** changes it.
 - **Stop hourly updates** keeps a place and its weather but stops fetching. **Remove** deletes the place and all its weather (it asks first). The home place cannot be removed.
 - **Update every place now** updates them one after another; the progress box names the place it is on.
 
@@ -387,10 +405,16 @@ Besides the temperature, humidity and light ranges, each plant now has: a feedin
 
 Open **Fertilizer** (top menu) for the whole collection, or look at the **Nutrients** section of any plant page.
 
-- **Should I feed today?** Every plant has a feeding season (first and last month it is fed) and a number of days between feedings, set for Round Rock by plant type. Each day is then one of: **Time to fertilize**, **Hold off** (a cold night is forecast at or below that plant's damage temperature, or its health is Poor or Critical), **Fed recently** (with the next date), **Resting** (out of season: do not fertilize), or **No feeding season set**. The Fertilizer page groups all plants this way, and each plant page shows the verdict for today and for any date you pick.
+- **Should I feed today?** Every plant has a feeding season (first and last month it is fed) and a number of days between feedings, set by plant type. Each day is then one of: **Time to fertilize**, **Hold off** (a cold night is forecast at or below that plant's damage temperature, or its health is Poor or Critical), **Fed recently** (with the next date), **Resting** (out of season: do not fertilize), or **No feeding season set**. The Fertilizer page groups all plants this way, and each plant page shows the verdict for today and for any date you pick.
 - **Calendar:** shaded days are in the plant's feeding season, hatched days are its resting season. "Fed" marks feedings you logged and "Due" the next suggested feeding. On the Fertilizer page the calendar covers all plants (how many were fed, how many are due). Click a day, or move with the arrow keys (PageUp and PageDown change month), for the details. "Show as a list" gives a plain list of days; with large text or a narrow screen it switches to the list by itself.
 - **Log a feeding:** press **Log fertilizer** (or **Log a feeding for this plant**). Choose the date, the plants (one, or many at once: "All that are due", "All in season"), the fertilizer name, its type, and the N-P-K numbers printed on the package, then the amount and how much water it was mixed into (for example 1 tsp in 1 gal) and how it was applied. The form shows an estimate of how strong the mix is: parts per million of nitrogen, phosphate and potash, and the N : P : K ratio. Spoon measures are converted at 4 g per teaspoon and 12 g per tablespoon for dry products and 4.9 ml and 14.8 ml for liquids, so treat the numbers as estimates. Most potted plants do well at 50 to 200 ppm nitrogen. Logging in a resting season asks you to confirm.
 - **Remembered fertilizers:** names you have used appear in a list and fill in the rest of the form next time. Entries can be changed or removed; the change log records each one.
+- **What each plant needs (from 1.11.0):** every plant on the Fertilizer page has a line under its code and "last fed" line, for example "Needs N-P-K ratio 2-7-7, at half strength". The same box, **What to feed it**, is in each plant page's Nutrients section.
+  - **Best match you have:** the fertilizer of yours whose N-P-K ratio is closest to what the plant needs, with its numbers and how close it is: **✔ Matches**, **✔ Close**, **▲ Usable** or **■ Not a good match** (it then says what to look for). It also says what is different, for example "It has more nitrogen (N) and less potash (K) than this plant needs".
+  - **How much:** for a liquid or powder, how much to mix into how much water, for example "Mix ⅝ tsp into 1 gallon of water (0.8 ml per liter)", and about how many ppm of nitrogen that gives. Full strength aims for about 150 ppm of the strongest of N, P and K, half strength 75 and a quarter 40, which is a usual rate for plants in pots. If the label says to use less, use the label. Granular, slow-release, spikes and organic solids go on or into the mix, so it says what share of the label amount to use.
+  - **Your fertilizers** (Fertilizer page): every fertilizer you have logged, plus any you add with **Add a fertilizer you have** (name, type and the N-P-K numbers from the package), even before you use it. **Change** corrects one; **Remove** takes off one you added.
+  - **Log** next to a plant starts the feeding form with its best match and the amount already filled in.
+  - Each plant's ratio and strength (None needed, Quarter strength, Quarter to half strength, Half strength or Full strength) are on its Edit page, under Nutrients. Claude filled them in for every plant from its fertilizer note (upgrade batch `batchA2`).
 - **Change a plant's season:** Edit this page, Nutrients group: "Feed from month", "Feed through month" (a season like October to April is fine) and "Feed every (days)". The starting values are Claude's guesses from the plant type.
 
 ## Past days: what the values were on a date
