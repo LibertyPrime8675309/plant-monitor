@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 from flask import Flask, Response, abort, g, has_request_context, jsonify, request, send_from_directory
 from PIL import Image, ImageOps
 import segno
+import writable                 # 1.12.1: the start-up write check, shared with start.py
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get('DATA_DIR', '/data')
@@ -24,17 +25,13 @@ PASSWORD = os.environ.get('PLANTDB_PASSWORD', '')
 BACKUP_DIR = os.environ.get('PLANTDB_BACKUP_DIR') or ('/backups' if os.path.isdir('/backups') else os.path.join(DATA_DIR, 'backups'))
 
 def _check_writable():
-    """1.12.0: the app runs as an unprivileged user. If Docker gives that user no write access to the data or backups
-    folder, say so plainly (the updater looks for PLANTDB_NOT_WRITABLE and switches back to the old way of running)."""
-    for d in (DATA_DIR, PHOTO_DIR, TRASH_DIR, THUMB_DIR, BACKUP_DIR):
-        try:
-            os.makedirs(d, exist_ok=True)
-            probe = os.path.join(d, '.write-test-%d' % os.getpid())
-            with open(probe, 'w') as fh: fh.write('ok')
-            os.remove(probe)
-        except OSError as e:
-            print(f'PLANTDB_NOT_WRITABLE: the app cannot write to {d} ({e}). See README, "If the app does not start after updating".', flush=True)
-            raise SystemExit(3)
+    """1.12.0: say plainly if Docker gives the app no write access to the data or backups folder. Since 1.12.1 start.py
+    already ran this check as the app's own user and switched to root inside the container if it failed, so this only
+    stops the app when even that cannot write (the updater looks for PLANTDB_NOT_WRITABLE)."""
+    bad = writable.problem(DATA_DIR, BACKUP_DIR)
+    if bad:
+        print('PLANTDB_NOT_WRITABLE: the app cannot write to %s (%s). See README, "If the app does not start after updating".' % bad, flush=True)
+        raise SystemExit(3)
 _check_writable()
 
 app = Flask(__name__, static_folder=os.path.join(APP_DIR, 'static'), static_url_path='')
@@ -749,6 +746,14 @@ def care_one(i):
     c.commit()
     return jsonify(ok=True)
 
+def runs_as():
+    """1.12.1: which user the app runs as inside its container (set by start.py), for the owner's Debug window."""
+    if (getattr(g, 'user', None) or {}).get('role') != 'owner': return None
+    v = os.environ.get('PLANTDB_RUNS_AS', '')
+    if v == 'user': return {'root': False, 'text': 'Its own user, without special privileges'}
+    if v.startswith('root:'): return {'root': True, 'text': 'Root inside its container, because ' + v[5:]}
+    return None
+
 @app.route('/api/version')
 def version(): return jsonify(version=APP_VERSION)
 
@@ -763,7 +768,7 @@ def meta():
                            'photos': c.execute('SELECT COUNT(*) FROM photos').fetchone()[0]},
                    password_protected=bool(PASSWORD), int_ranges=INT_RANGES, num_ranges=NUM_RANGES, version=APP_VERSION,
                    home_tz=L['tz'],              # the browser uses this for "today", so dates match the server's
-                   place=place_brief(L), climate=place_climate(c, L), me=me_dict(c),
+                   place=place_brief(L), climate=place_climate(c, L), me=me_dict(c), runs_as=runs_as(),
                    places=[place_brief(loc_dict(r)) for r in c.execute('SELECT * FROM locations ORDER BY is_home DESC, name')])
 
 REF_PLACE = (30.5083, -97.6789)       # the written winter reference (climate table and notes) is for Round Rock, TX

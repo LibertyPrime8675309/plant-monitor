@@ -197,10 +197,23 @@ The app itself checks every request, so hiding a button is only a convenience: a
 - **No open router ports.** Nothing is opened to the internet (Tailscale Funnel is switched off in `tailscale\config\serve.json`), and the router needs no changes.
 - **Only signed-in people get in.** That means your devices and people you have shared the plants device with, each with the role you chose.
 - **A tighter container:**
-  - The app runs as an ordinary user, not as root, with no special Linux privileges and read-only program files.
+  - Its program files are read-only, and it has almost no Linux privileges and can't gain any.
+  - It runs as an ordinary user when Docker allows that, and otherwise as root inside its container, as before (see "Which user the app runs as" below).
   - Each update rebuilds it on a freshly downloaded base image and fetches the newest Tailscale container, so security fixes keep arriving.
-  - If Docker won't let the app write to your data folder as an ordinary user, the updater switches it back to the old way of running (a `docker-compose.override.yml` file) and says so.
 - **Private files stay private.** The Tailscale sign-in is in `tailscale\state`. It never goes into a release or a backup zip, so keep that folder to yourself.
+
+### Which user the app runs as (from 1.12.1)
+
+Each time it starts, the app checks whether an ordinary user (called `plants`) may write to the `data` and `backups` folders.
+- **If it may,** the app runs as that user, with no special privileges at all. This is the safer way, and the usual one on a new install.
+- **If it may not,** the app runs as root inside its container, the way every version before 1.12.0 did. Nothing needs doing. This is normal on Windows for folders an older version wrote to: Docker Desktop doesn't let the new user write there and can't hand those folders over.
+
+Either way the program files stay read-only and only a few privileges are allowed. The first line of the app's log says which way it runs, and so does the **Debug** window (for the owner). To see the log line:
+- Windows (cmd.exe): `docker logs plant-database 2>&1 | findstr /C:"Plant record runs"`
+- Windows (PowerShell): `docker logs plant-database 2>&1 | Select-String 'Plant record runs'`
+- bash: `docker logs plant-database 2>&1 | grep 'Plant record runs'`
+
+Version 1.12.0 needed a `docker-compose.override.yml` file for the second case. The updater removes that file, because the app now decides by itself. To always run as root, put the line `PLANTDB_RUN_AS=root` in the `.env` file and run `docker compose up -d`.
 
 ### Opening it to your home network again (less safe)
 
@@ -226,7 +239,13 @@ Remove the line from `.env` and run `docker compose up -d` to close it again.
 
 - **The address doesn't open:** check that Tailscale is on for that phone or computer. Run Set Up Remote Access again: it says what is missing.
 - **"Open Plant record from a device that is signed in to Tailscale as a person":** the device uses a Tailscale tag or isn't signed in as a person. Sign it in with a personal account.
-- **If the app does not start after updating:** in Docker Desktop, open **Containers**, then **plant-database**, then **Logs**. A line starting with `PLANTDB_NOT_WRITABLE` means Docker wouldn't let the app write to its data folder as an ordinary user. The updater normally fixes this by itself. If it didn't, ask Claude.
+- **The updater says port 8080 is busy** ("ports are not available" or "Only one usage of each socket address"): close any browser tabs that have Plant record open, at `http://localhost:8080` or the old address. They can hold on to the port while the app restarts. The updater says so, waits and tries again for about a minute. If the port is still busy after that, it names the program that holds it and moves the app to a free port such as `http://localhost:8090`, saved as `PLANTDB_PORT` in the `.env` file. The Tailscale address doesn't change. To move it back later, close the program holding port 8080, delete the `PLANTDB_PORT` line from `.env`, and from the `plant-database` folder run:
+  - Windows (cmd.exe): `docker compose up -d`
+  - Windows (PowerShell): `docker compose up -d`
+  - bash: `docker compose up -d`
+- **If the app does not start after updating:** in Docker Desktop, open **Containers**, then **plant-database**, then **Logs**.
+  - A line starting with `PLANTDB_NOT_WRITABLE` means the app can't write to its data folder, even as root. Check that the `plant-database` folder isn't read-only (in File Explorer, right-click it, then **Properties**), then run the updater again.
+  - If that doesn't help, send the log to Claude. Your plants and photos aren't changed.
 
 ## Display settings and low vision
 

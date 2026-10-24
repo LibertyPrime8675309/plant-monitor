@@ -78,6 +78,19 @@
     - Routes: `GET/PUT /api/me`, `GET/PUT/DELETE /api/people`. `/api/meta` includes `me`. HSTS is sent on 8081.
   - **Container:** user 10001, `read_only`, tmpfs `/tmp`, `cap_drop: ALL`, `no-new-privileges`. `_check_writable()` prints `PLANTDB_NOT_WRITABLE` if the data folders can't be written. The updater then writes `docker-compose.override.yml` (user root plus the file capabilities it needs) and restarts.
   - **Updater:** runs `docker compose build --pull`, then `pull --ignore-buildable` (the tailscale image), then `up -d`.
+- **1.12.1 additions (starting the container):**
+  - **Which user:** the container starts as root and runs `app/start.py`.
+    - A brand-new, empty `data` or `backups` folder is chowned to 10001; nothing else is changed.
+    - A forked child switches to 10001 (`setgroups([])`, `setgid(0)`, `setuid(10001)`) and runs `writable.problem()`: every data folder takes a test file, and the database and its SQLite side files open read-write.
+    - If that passes, the process switches to 10001 and execs gunicorn with no capabilities left. If not, it stays root (logged as `PLANTDB_RUNNING_AS_ROOT: …`).
+    - `PLANTDB_RUN_AS=root` skips the check. `PLANTDB_RUNS_AS` passes the result to the app, and `/api/meta.runs_as` shows it to owners (Debug window).
+    - Compose grants SETUID and SETGID (to switch), plus CHOWN, DAC_OVERRIDE and FOWNER (for the root case), on top of `cap_drop: ALL`.
+  - `_check_writable()` in server.py uses the same `writable.problem()`. `PLANTDB_NOT_WRITABLE` now means even root can't write.
+  - **gunicorn settings** live in `app/gunicorn.conf.py`, so unknown settings are ignored by older versions. `control_socket_disable = True`: gunicorn 25.1+ otherwise tries to make `~/.gunicorn/gunicorn.ctl` on the read-only filesystem.
+  - **Updater:**
+    - removes the `docker-compose.override.yml` that 1.12.0 (or Claude) wrote, recognised by its first line; a person's own override is kept.
+    - On a busy port (`Start-App`): first tells the person to close Plant record tabs, then retries after 5, 10, 15 and 30 s. Then it moves the port (`PLANTDB_PORT` 8090–8099, `PLANTDB_SENSOR_PORT` 8180–8189, in `.env`).
+    - `setup-remote-access.ps1` reads `PLANTDB_PORT`.
   - **Setup script:** `tools/setup-remote-access.ps1` reads `tailscale status --json` in the `plant-tailscale` container (AuthURL, CertDomains, Self.DNSName, User) and makes the signed-in login the owner via `PUT /api/people` on localhost. `tailscale/state` and `.env` are never in a release.
 - **API:** `/api/plants`, `/api/plants/<code>` and its sub-routes (`site`, `status`, `history`, `timeline`, `versions`, `restore`, `photos`, `qr.svg`, `daily`, `day`), plus `/api/requests`, `/api/photos`, `/api/to-photograph`, `/api/fertilizer`, `/api/water`, `/api/care`, `/api/frost`, `/api/for-claude`, `/api/weather*`, `/api/places*`, `/api/current`, `/api/backups*`, `/api/export.json|csv`, `/api/audit*`, `/api/meta`, `/api/version` and `/healthz`.
 

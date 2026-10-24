@@ -19,7 +19,8 @@ Asked for by Ethan on October 24, 2026. He wanted to use the app away from home 
   - user 10001 instead of root
   - `read_only`, tmpfs `/tmp`, `cap_drop: ALL` and `no-new-privileges`
   - The updater now builds with `--pull` and fetches the newest Tailscale image.
-  - If the data folder isn't writable for the new user, the app prints `PLANTDB_NOT_WRITABLE`. The updater then writes `docker-compose.override.yml` to run it the old way, and says so.
+  - 1.12.0: if the data folder wasn't writable for the new user, the app printed `PLANTDB_NOT_WRITABLE`, and the updater wrote `docker-compose.override.yml` to run it the old way.
+  - 1.12.1: the container starts as root, and `app/start.py` switches to user 10001 only when that user can write to the data folders; otherwise it stays root. On Ethan's PC (Windows bind mounts written by older root-run versions) it stays root. The updater removes the 1.12.0 override file.
 - **Set Up Remote Access** (`tools\Set Up Remote Access.cmd`):
   - starts the containers and opens Tailscale's sign-in page
   - checks that HTTPS certificates are on (and opens the DNS page if not)

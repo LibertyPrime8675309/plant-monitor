@@ -16,8 +16,11 @@
        and the plant-database folder does not have yet. From 1.8.0 photos travel in these packs, so release zips stay small.
     6. Builds the new version on a freshly downloaded base image (so security fixes arrive), fetches the newest Tailscale
        container, starts everything ("docker compose up -d") and waits until the new version answers.
-       From 1.12.0 the app runs as an unprivileged user. If Docker will not let it write to the data folder that way,
-       the updater switches it back to the old way of running (docker-compose.override.yml) and says so.
+       Since 1.12.1 the app itself picks which user it runs as each time it starts (README: "Which user the app runs as"),
+       so the updater removes the docker-compose.override.yml that 1.12.0 wrote for that.
+       If the app's port on this computer (8080) is busy, often because Plant record is still open in a browser, it says so,
+       waits and tries again. If the port stays busy it says which program holds it and moves the app to a free port
+       (saved as PLANTDB_PORT in plant-database\.env).
 
   Options:
     -Yes              Do not ask before updating.
@@ -25,7 +28,7 @@
     -SkipBackup       Do not make a backup first (not recommended).
     -RemoveOldImage   Delete the previous version's Docker image afterwards to save disk space.
     -Password <text>  Only if you set PLANTDB_PASSWORD in docker-compose.yml.
-    -Url <address>    Where the app answers (default http://localhost:8080).
+    -Url <address>    Where the app answers (default http://localhost:8080, or the port saved as PLANTDB_PORT in plant-database\.env).
     -WaitSeconds <n>  How long to wait for the new version to answer (default 180).
     -ZipFolder, -AppFolder   Other locations, if you moved things.
 
@@ -47,6 +50,19 @@ param(
 $ErrorActionPreference = 'Stop'
 if (-not $AppFolder) { $AppFolder = Join-Path $ZipFolder 'plant-database' }
 $LogFile = Join-Path $ZipFolder 'update-log.txt'
+# 1.12.1: settings kept in plant-database\.env (PLANTDB_PORT, PLANTDB_BIND and others), one NAME=value per line
+$EnvFile = Join-Path $AppFolder '.env'
+function Get-EnvValue([string]$name) {
+    if (-not (Test-Path $EnvFile)) { return $null }
+    foreach ($l in (Get-Content $EnvFile)) { if ($l -match ('^\s*' + [regex]::Escape($name) + '\s*=\s*(.*?)\s*$')) { return $Matches[1] } }
+    return $null
+}
+function Set-EnvValue([string]$name, [string]$value) {
+    $lines = @(); if (Test-Path $EnvFile) { $lines = @(Get-Content $EnvFile | Where-Object { $_ -notmatch ('^\s*' + [regex]::Escape($name) + '\s*=') }) }
+    Set-Content -Path $EnvFile -Encoding ASCII -Value ($lines + "$name=$value")
+}
+$savedPort = Get-EnvValue 'PLANTDB_PORT'
+if (-not $PSBoundParameters.ContainsKey('Url') -and $savedPort -match '^\d+$') { $Url = "http://localhost:$savedPort" }
 
 function Say([string]$text, [string]$color = 'Gray') { Write-Host $text -ForegroundColor $color; Add-Content -Path $LogFile -Value ("{0}  {1}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $text) }
 function Step([string]$text) { Say ''; Say ("== " + $text) 'Cyan' }
@@ -242,7 +258,65 @@ function Wait-Version {
     } while ($v -ne $newVersion -and ((Get-Date) - $t0).TotalSeconds -lt $WaitSeconds)
     return $v
 }
+# docker output, logged line by line as in Native, and also kept as text
+function Native-Capture([scriptblock]$sb) {
+    $old = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    $lines = New-Object System.Collections.Generic.List[string]
+    try { & $sb 2>&1 | ForEach-Object { $l = "$_".Trim(); if ($l) { Say ("  " + $l); $lines.Add($l) } } } finally { $ErrorActionPreference = $old }
+    return @{ code = $LASTEXITCODE; text = ($lines -join "`n") }
+}
+function Port-Free([int]$p) {
+    try { $l = New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, $p); $l.Start(); $l.Stop(); return $true } catch { return $false }
+}
+function Port-Owner([int]$p) {     # which program listens on this port (Windows only; empty elsewhere)
+    try {
+        $c = @(Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction Stop)
+        return (($c | ForEach-Object { try { (Get-Process -Id $_.OwningProcess -ErrorAction Stop).ProcessName } catch { "process $($_.OwningProcess)" } }) | Select-Object -Unique) -join ', '
+    } catch { return '' }
+}
+# 1.12.1: start everything. If a port on this computer is busy, wait and try again (the old container can take a few seconds to
+# let go of it); if it stays busy, move that port to a free one and save it in .env.
+function Start-App {
+    $r = Native-Capture { docker compose up -d }
+    $waits = @(5, 10, 15, 30)
+    for ($i = 0; $r.code -ne 0 -and $i -le $waits.Count; $i++) {
+        if ($r.text -notmatch 'ports are not available|port is already allocated|address already in use|Only one usage of each socket address') { break }
+        $busy = $null
+        if ($r.text -match 'listen tcp\d?\s+[^\s]*?:(\d+):') { $busy = [int]$Matches[1] } elseif ($r.text -match 'Bind for [^\s]*?:(\d+) failed') { $busy = [int]$Matches[1] }
+        if ($i -lt $waits.Count) {
+            if ($i -eq 0) { Say ("Port {0} on this computer is still in use. If Plant record is open in a browser, close those tabs now." -f $busy) 'Yellow' }
+            Say ("Port {0} on this computer is still in use. Waiting {1} seconds and trying again." -f $busy, $waits[$i]) 'Yellow'
+            Start-Sleep -Seconds $waits[$i]
+        } else {
+            $owner = Port-Owner $busy
+            $appPort = $(if ($savedPort -match '^\d+$') { [int]$savedPort } else { 8080 })
+            $sensorPort = $(if ((Get-EnvValue 'PLANTDB_SENSOR_PORT') -match '^\d+$') { [int](Get-EnvValue 'PLANTDB_SENSOR_PORT') } else { 8082 })
+            if ($busy -eq $appPort) { $var = 'PLANTDB_PORT'; $range = 8090..8099 } elseif ($busy -eq $sensorPort) { $var = 'PLANTDB_SENSOR_PORT'; $range = 8180..8189 } else { break }
+            $free = $range | Where-Object { Port-Free $_ } | Select-Object -First 1
+            if (-not $free) { Say ("Port {0} stays busy{1}, and no free port was found to move to." -f $busy, $(if ($owner) { " (used by $owner)" } else { '' })) 'Red'; break }
+            Say ("Port {0} on this computer stays busy{1}. Moving the app's port {0} to {2} (saved as {3}={2} in plant-database\.env)." -f $busy, $(if ($owner) { ", used by $owner" } else { '' }), $free, $var) 'Yellow'
+            Set-EnvValue $var $free
+            if ($var -eq 'PLANTDB_PORT') {
+                $script:savedPort = "$free"
+                $script:Url = $(if ($Url -match ':\d+(/.*)?$') { $Url -replace ':\d+(/.*)?$', ":$free" } else { "http://localhost:$free" })
+                Say ("On this computer the app now answers at {0}. The Tailscale address does not change." -f $Url) 'Cyan'
+            }
+        }
+        $r = Native-Capture { docker compose up -d }
+    }
+    return $r.code
+}
 Step 'Building the new version with the newest security fixes'
+# 1.12.0 (or Claude) wrote docker-compose.override.yml to run the app as root when its own user could not write to the data folder.
+# Since 1.12.1 the app decides that by itself each time it starts, so that file is no longer needed. Only our own file is removed.
+$override = Join-Path $AppFolder 'docker-compose.override.yml'
+if (Test-Path $override) {
+    $first = (Get-Content $override -TotalCount 1)
+    if ("$first" -match '^# Written by (the updater|Claude \(same as the updater writes\)): Docker would not let the app write') {
+        Remove-Item $override -Force
+        Say 'Removed docker-compose.override.yml: since 1.12.1 the app picks the right way to run by itself.'
+    }
+}
 $tsState = JoinAll $AppFolder @('tailscale', 'state')
 if (-not (Test-Path $tsState)) { New-Item -ItemType Directory -Path $tsState -Force | Out-Null }      # 1.12.0: the Tailscale sign-in lives here
 Push-Location $AppFolder
@@ -251,33 +325,29 @@ if ($code -ne 0) { Say 'Could not download the newest base image (is the interne
 if ($code -eq 0) {
     $pc = Native { docker compose pull --ignore-buildable }      # the Tailscale container's image; the app itself is built above
     if ($pc -ne 0) { Say 'Could not download the newest Tailscale container. The one already on this computer is used.' 'Yellow' }
-    $code = Native { docker compose up -d }
+    $code = Start-App
 }
 Pop-Location
 if ($code -ne 0) { Say ("docker compose failed (code {0}). The new files are in place; fix the error above and run 'docker compose up -d --build' in the plant-database folder." -f $code) 'Red'; exit 1 }
 
 Step 'Waiting for the app to answer'
 $now = Wait-Version
-$override = Join-Path $AppFolder 'docker-compose.override.yml'
-if ($now -ne $newVersion -and -not (Test-Path $override)) {
+if ($now -ne $newVersion) {
     Push-Location $AppFolder
     $applog = Native-Text { docker compose logs --tail 80 plants }
     Pop-Location
-    if ($applog -match 'PLANTDB_NOT_WRITABLE') {
-        Say 'The app could not write to its data folder as its new unprivileged user, so it is switched back to running the way it did before' 'Yellow'
-        Say ('(the file {0}; delete it to try again after a future update).' -f $override) 'Yellow'
-        Set-Content -Path $override -Encoding ASCII -Value @(
-            '# Written by the updater: Docker would not let the app write to its data folder as an unprivileged user,',
-            '# so it runs as root inside its container again, with only the privileges it needs to use those folders.',
-            'services:', '  plants:', '    user: "0:0"', '    cap_add:', '      - CHOWN', '      - DAC_OVERRIDE', '      - FOWNER')
-        Push-Location $AppFolder
-        $null = Native { docker compose up -d }
-        Pop-Location
-        $now = Wait-Version
+    $bad = @($applog -split "`n" | Where-Object { $_ -match 'PLANTDB_NOT_WRITABLE' }) | Select-Object -Last 1
+    if ($bad) {      # since 1.12.1 the app already falls back to root by itself, so this means even root cannot write there
+        Say 'The app cannot write to its data folder, even running as root inside its container. Docker said:' 'Red'
+        Say ('  ' + ($bad -replace '^.*PLANTDB_NOT_WRITABLE:\s*', '').Trim()) 'Red'
+        Say 'Check that the plant-database folder and its data and backups folders are not read-only, then run this again. Your plants and photos are not changed.' 'Yellow'
     }
 }
 if ($now -eq $newVersion) { Say ("Done. Plant record version {0} is running at {1}" -f $now, $Url) 'Green' }
 else { Say ("The app has not answered with version {0} yet (it says: {1}). Give it a minute, then check {2}. In Docker Desktop, Containers > plant-database > Logs shows why." -f $newVersion, $(if ($now) { $now } else { 'nothing' }), $Url) 'Yellow' }
+if ((Get-EnvValue 'PLANTDB_BIND') -eq '0.0.0.0') {
+    Say 'Note: the app is open to your home network (PLANTDB_BIND=0.0.0.0 in plant-database\.env). Remove that line and run "docker compose up -d" there when you no longer need it.' 'Yellow'
+}
 if ($now -eq $newVersion -and -not (Test-Path (JoinAll $AppFolder @('tailscale', 'state', 'tailscaled.state')))) {
     Say 'To use the app away from home, run "Set Up Remote Access.cmd" in the plant-database\tools folder once (README: "Using the app away from home").' 'Cyan'
 }

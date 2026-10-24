@@ -39,6 +39,7 @@ This is Ethan's home plant database: a Flask + SQLite web app ("Plant record") t
   - Owner-only areas must be added to `OWNER_ONLY_PATHS` or `OWNER_ONLY_CHANGES` in `server.py`.
   - Buttons that make changes must also be added to the viewer CSS block in `style.css`.
   - Never publish 8081, and never trust `Tailscale-User-*` headers on any other port.
+  - The container starts as root and `app/start.py` picks the user (10001 if it can write to the data folders, else root). Don't add `USER` to the Dockerfile, and keep gunicorn settings in `app/gunicorn.conf.py`.
 - Keep the front end dependency-free (vanilla JS, one CSS file) and compatible with the strict Content Security Policy: **no inline scripts or inline event handlers**. Actions use `data-act` / `data-f` / `data-form` attributes, handled by delegation in `app.js`.
 - **Test before shipping:**
   1. Run the app with `dev/test/mock_server.py` (fake weather, no internet).

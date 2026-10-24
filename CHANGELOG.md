@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.12.1 (2026-10-24)
+- **The app starts on any computer after updating.** On yours, 1.12.0 stopped straight away: its new ordinary user wasn't allowed to write to the photos folder that older versions made.
+  - Now the app checks this itself each time it starts. If it may, it runs as that ordinary user. If not, it runs as root inside its container, as before 1.12.0.
+  - Nothing needs doing either way, and your plants and photos aren't changed.
+  - The first line of its log says which way it runs, and so does the **Debug** window (owner only). README: "Which user the app runs as".
+  - The `docker-compose.override.yml` file that fixed this by hand is no longer needed, and the updater removes it.
+- **A busy port no longer stops the update.** If port 8080 is still in use when the app restarts, the updater:
+  - tells you to close any browser tabs with Plant record open
+  - waits, and tries again for about a minute
+  - if the port is still busy, names the program that has it and moves the app to a free port (for example `http://localhost:8090`). The Tailscale address stays the same.
+- **No more "Control server error" lines in the log.** The new gunicorn version wanted to make a control file on the read-only container. That part is now switched off; the app never used it.
+
 ## 1.12.0 (2026-10-24)
 - **Use the app away from home, safely.** The app now has its own Tailscale device, "plants". With Tailscale on, you open it at `https://plants.<your-tailnet>.ts.net` from anywhere: encrypted, with a real certificate, and without opening anything on your router.
   - Run **Set Up Remote Access** once (in `plant-database\tools`; README: "Using the app away from home"). It signs the device in, checks HTTPS and makes you the owner.

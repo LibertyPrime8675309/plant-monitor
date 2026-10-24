@@ -3175,6 +3175,7 @@ function debugDialog() {
       <p id="dbg-msg" class="dbg-msg" role="status" aria-live="polite"></p></fieldset>
     <fieldset class="opt-group"><legend>About this browser and the app</legend><dl class="dl">
       <dt>App version</dt><dd>${META && META.version ? META.version : 'unknown'}</dd>
+      ${META && META.runs_as ? html`<dt>Runs as</dt><dd>${META.runs_as.text}</dd>` : ''}
       <dt>Location</dt><dd>${placeName()}${META && META.place && META.place.is_home ? ' (home)' : ''}, time zone ${(META && META.place && META.place.tz) || ''}</dd>
       <dt>Window</dt><dd>${innerWidth} by ${innerHeight} pixels</dd>
       <dt>Text size</dt><dd>${P.size}%</dd>

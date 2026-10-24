@@ -20,7 +20,7 @@
     -Yes          Do not ask questions (keeps the label address as it is).
     -NoBrowser    Print addresses instead of opening them.
     -AppFolder    The plant-database folder, if this script is somewhere else.
-    -Url          Where the app answers on this computer (default http://localhost:8080).
+    -Url          Where the app answers on this computer (default http://localhost:8080, or the port saved as PLANTDB_PORT in .env).
 
   Works with Windows PowerShell 5.1 (built into Windows) and PowerShell 7.
 #>
@@ -36,6 +36,10 @@ param(
 $ErrorActionPreference = 'Stop'
 if (-not $AppFolder) { $AppFolder = Split-Path -Parent $PSScriptRoot }
 $LogFile = Join-Path $AppFolder 'remote-access-log.txt'
+$EnvFile = Join-Path $AppFolder '.env'          # the updater saves PLANTDB_PORT here if port 8080 was busy
+if (-not $PSBoundParameters.ContainsKey('Url') -and (Test-Path $EnvFile)) {
+    foreach ($l in (Get-Content $EnvFile)) { if ($l -match '^\s*PLANTDB_PORT\s*=\s*(\d+)\s*$') { $Url = "http://localhost:" + $Matches[1] } }
+}
 
 function Say([string]$text, [string]$color = 'Gray') { Write-Host $text -ForegroundColor $color; Add-Content -Path $LogFile -Value ("{0}  {1}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $text) }
 function Step([string]$text) { Say ''; Say ("== " + $text) 'Cyan' }
@@ -153,7 +157,7 @@ try {
 # ---- 7. what next -----------------------------------------------------------------------------------
 Step 'Done. What to do next'
 Say ("  1. On this computer and your phone: with Tailscale on, open " + $addr + "  (bookmark it, or add it to your home screen).") 'Green'
-Say  '     http://localhost:8080 still works on this computer. The old address on your home network no longer does (README explains why).'
+Say ("     " + $Url + " still works on this computer. The old address on your home network no longer does (README explains why).")
 Say  '  2. Turn off key expiry for the plants device, so it never needs signing in again:'
 Say  '     Tailscale admin console > Machines > plants > the ... menu > Disable key expiry.'
 Say  '  3. To share it with someone (for example your girlfriend): Machines > plants > the ... menu > Share. Send them the invite link.'
