@@ -2,7 +2,7 @@
 
 One line each, most wanted first. A prototyping session takes the top one that is not already in progress, and marks it "(in progress: proto/<branch>)".
 
-- Calendar file (.ics) of feeding days and cold nights, to import into a phone or Outlook calendar. Cold nights come from `frost_report()` in server.py.
+- Calendar file (.ics) of feeding days and cold nights, to import into a phone or Outlook calendar. Cold nights come from `frost_report()` in server.py. (in progress: proto/calendar-file)
 - Spring "move back outside" list: when the nights stay above each indoor plant's comfortable low, list the plants that can go back out. Builds on `frost_report()` and the cold-night checklist.
 - Grow lights (Ethan's own lights, listed October 23): a light library, indoor spots, matching plants to lights by daily light, and a step-down plan from outdoor to indoor light. (in progress)
 - Undo right after a quick care button: "Watered" or "Still moist" pressed by mistake can be undone from the message that appears, without looking for it in the care log.

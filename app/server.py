@@ -3207,6 +3207,153 @@ def frost_mark():
     c.commit()
     return jsonify(frost_report(c))
 
+# ---------------------------------------------------------------- calendar file: feeding days and cold nights (prototype, proto/calendar-file)
+# GET /api/calendar.ics makes an iCalendar file to import into a phone, Outlook or Google calendar, or to subscribe to.
+# GET /api/calendar gives the same events as JSON, for the preview in the "Add to your calendar" window.
+# Options (query string): feed=1/0, cold=1/0, close=1/0 (include close calls), months=1..12 (how far ahead feeding days go),
+# remind=1/0, place=ID (the Location chosen in the browser; a download link cannot send the X-Place header).
+ICS_NAME = 'Plant record'
+
+def ics_text(s):
+    """Escape text for an iCalendar value (RFC 5545 section 3.3.11)."""
+    return str(s).replace('\\', '\\\\').replace(';', '\\;').replace(',', '\\,').replace('\r\n', '\n').replace('\n', '\\n')
+
+def ics_fold(line):
+    """Fold a content line at 75 octets, as the standard asks; continuation lines start with one space."""
+    b = line.encode('utf-8')
+    if len(b) <= 75: return line
+    out, cur = [], b''
+    for ch in line:
+        e = ch.encode('utf-8')
+        if len(cur) + len(e) > (75 if not out else 74):
+            out.append(cur.decode('utf-8')); cur = b''
+        cur += e
+    out.append(cur.decode('utf-8'))
+    return '\r\n '.join(out)
+
+def ics_season(r, m):
+    a, b = r['fert_from_month'], r['fert_to_month']
+    return a <= m <= b if a <= b else (m >= a or m <= b)
+
+def ics_season_start(r, d):
+    """The first day on or after d that falls in the plant's feeding season (d itself when it already does)."""
+    for _ in range(14):
+        if ics_season(r, d.month): return d
+        d = (d.replace(day=1) + timedelta(days=32)).replace(day=1)
+    return d
+
+def ics_feed_days(c, today, end):
+    """Projected feeding days per plant, the same way the Fertilizer page works out "Next feeding" (nextDue() in app.js),
+    then every "Feed every (days)" after that, skipping the resting months. Later dates assume each feeding is done on time."""
+    last = dict(c.execute('SELECT plant_code, MAX(applied_on) FROM fertilizer_log GROUP BY plant_code').fetchall())
+    rows = c.execute("""SELECT code, common_name, fert_from_month, fert_to_month, fert_every_days, site FROM plants WHERE status='active'
+                        AND fert_from_month IS NOT NULL AND fert_to_month IS NOT NULL AND fert_every_days IS NOT NULL ORDER BY code""").fetchall()
+    days = {}
+    for r in rows:
+        every = max(1, int(r['fert_every_days']))
+        lf = last.get(r['code'])
+        d = date.fromisoformat(lf) + timedelta(days=every) if lf else today
+        if d < today: d = today
+        d = ics_season_start(r, d)
+        for _ in range(400):
+            if d > end: break
+            days.setdefault(d.isoformat(), []).append({'code': r['code'], 'name': r['common_name'], 'every': every, 'last': lf})
+            d = ics_season_start(r, d + timedelta(days=every))
+    return [{'date': k, 'plants': v} for k, v in sorted(days.items())]
+
+def ics_options():
+    a = request.args
+    on = lambda k, dflt: a.get(k, dflt) not in ('0', 'false', 'no', '')
+    try: months = min(12, max(1, int(a.get('months', '3'))))
+    except ValueError: abort(400, 'months must be a number from 1 to 12')
+    return {'feed': on('feed', '1'), 'cold': on('cold', '1'), 'close': on('close', '1'), 'remind': on('remind', '1'), 'months': months}
+
+def ics_use_place():
+    """?place=ID works like the X-Place header (see location()), for links that cannot send headers."""
+    v = request.args.get('place', '').strip()
+    if v.isdigit() and not request.headers.get('X-Place'):
+        request.environ['HTTP_X_PLACE'] = v                  # Flask reads headers from the environ, so location() sees it
+
+def ics_events(c, o):
+    ics_use_place()
+    L = location(c)
+    tz = tzinfo(L['tz'])
+    today = local_today(c)
+    end = today + timedelta(days=round(30.5 * o['months']))
+    ev = []
+    if o['feed']:
+        for f in ics_feed_days(c, today, end):
+            ps = f['plants']; n = len(ps)
+            title = f'Feed {n} plant{"s" if n != 1 else ""}: ' + ', '.join(p['name'] for p in ps[:3]) + (f' and {n - 3} more' if n > 3 else '')
+            lines = [f'{p["name"]} ({p["code"]}), every {p["every"]} days.' + (f' Last fed {p["last"]}.' if p['last'] else ' No feeding logged yet.') for p in ps]
+            desc = ('Plants due for fertilizer on this day, from Plant record.\n\n' + '\n'.join(lines) +
+                    '\n\nOpen the Fertilizer page that morning before you feed: it says "Hold off" when a cold night is coming or a plant is unwell.'
+                    ' Later dates assume each feeding is done on the day it is due, so download a new file after you log feedings.')
+            ev.append({'kind': 'feed', 'uid': f'feed-{f["date"]}', 'date': f['date'], 'title': title, 'desc': desc,
+                       'plants': [p['code'] for p in ps], 'path': '#/fertilizer'})
+    if o['cold']:
+        F = frost_report(c)
+        words = {'danger': 'Could die', 'damage': 'Damaged', 'watch': 'Close call'}
+        for n in F['nights']:
+            at = [x for x in n['plants'] if o['close'] or x['level'] != 'watch']
+            if not at: continue
+            serious = [x for x in at if x['level'] != 'watch']
+            d = date.fromisoformat(n['date'])
+            start = datetime.combine(d - timedelta(days=1), datetime.min.time(), tz).replace(hour=18)   # the evening before: lows come just before dawn
+            stop = datetime.combine(d, datetime.min.time(), tz).replace(hour=8)
+            if stop < datetime.now(tz): continue                 # that night is over
+            k = len(at)
+            title = (f'Cold night, low {round(n["low"])}°F: protect {len(serious)} plant{"s" if len(serious) != 1 else ""}' if serious
+                     else f'Cold night, low {round(n["low"])}°F: {k} close call{"s" if k != 1 else ""}')
+            lines = []
+            for lv in ('danger', 'damage', 'watch'):
+                g = [x for x in at if x['level'] == lv]
+                if g: lines.append(words[lv] + ': ' + ', '.join(f'{x["name"]} ({x["code"]})' for x in g) + '.')
+            desc = (f'Forecast low of {round(n["low"])}°F before dawn on {d:%A}, {d:%B} {d.day}, in {F["place"]}. These plants are outside:\n\n' + '\n'.join(lines) +
+                    f'\n\nMove them in or cover them before dark, then tick them off on the cold-night checklist.'
+                    f' "Close call" means within {F["margin"]}°F of the plant\'s damage point. This comes from the forecast of {datetime.now(tz):%B} {datetime.now(tz).day}; forecasts change, so download a new file now and then.')
+            ev.append({'kind': 'cold', 'uid': f'cold-{n["date"]}', 'date': n['date'], 'title': title, 'desc': desc, 'level': n['level'] if serious else 'watch',
+                       'start': start.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ'), 'end': stop.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ'),
+                       'plants': [x['code'] for x in at], 'path': '#/frost'})
+    ev.sort(key=lambda e: (e['date'], e['kind']))
+    return {'place': L['name'], 'place_id': L['id'], 'today': today.isoformat(), 'until': end.isoformat(), 'options': o, 'events': ev,
+            'counts': {'feed': sum(1 for e in ev if e['kind'] == 'feed'), 'cold': sum(1 for e in ev if e['kind'] == 'cold')}}
+
+@app.route('/api/calendar')
+def calendar_preview():
+    return jsonify(ics_events(db(), ics_options()))
+
+@app.route('/api/calendar.ics')
+def calendar_ics():
+    c = db(); o = ics_options(); E = ics_events(c, o)
+    base = request.host_url.rstrip('/') + '/'
+    stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
+    host = 'plant-record-' + str(E['place_id'])
+    out = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Plant record//Calendar file ' + APP_VERSION + '//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+           'X-WR-CALNAME:' + ics_text(ICS_NAME), 'X-WR-CALDESC:' + ics_text('Feeding days and cold nights for ' + E['place']),
+           'REFRESH-INTERVAL;VALUE=DURATION:PT6H', 'X-PUBLISHED-TTL:PT6H']
+    for e in E['events']:
+        out += ['BEGIN:VEVENT', f'UID:{e["uid"]}@{host}', 'DTSTAMP:' + stamp]
+        if e['kind'] == 'feed':
+            d = date.fromisoformat(e['date'])
+            out += ['DTSTART;VALUE=DATE:' + d.strftime('%Y%m%d'), 'DTEND;VALUE=DATE:' + (d + timedelta(days=1)).strftime('%Y%m%d'),
+                    'TRANSP:TRANSPARENT', 'CATEGORIES:Plants,Feeding']
+        else:
+            out += ['DTSTART:' + e['start'], 'DTEND:' + e['end'], 'TRANSP:TRANSPARENT', 'CATEGORIES:Plants,Cold night']
+        out += ['SUMMARY:' + ics_text(e['title']), 'DESCRIPTION:' + ics_text(e['desc'] + '\n\n' + base + e['path']), 'URL:' + base + e['path']]
+        if o['remind']:
+            # feeding: 8 in the morning of the day; cold night: at 4 in the afternoon, two hours before the event starts at 6
+            trig = 'TRIGGER;RELATED=START:PT8H' if e['kind'] == 'feed' else 'TRIGGER:-PT2H'
+            out += ['BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + ics_text(e['title']), trig, 'END:VALARM']
+        out.append('END:VEVENT')
+    out.append('END:VCALENDAR')
+    body = '\r\n'.join(ics_fold(x) for x in out) + '\r\n'
+    resp = Response(body, mimetype='text/calendar')
+    resp.headers['Content-Type'] = 'text/calendar; charset=utf-8'
+    if request.args.get('download', '1') != '0':
+        resp.headers['Content-Disposition'] = f'attachment; filename="plant-record-calendar-{E["today"]}.ics"'
+    return resp
+
 # ---------------------------------------------------------------- backups
 import zipfile
 BACKUP_RE = re.compile(r'^plantdb-backup-\d{8}-\d{6}-(manual|auto|update)(-photos)?\.zip$')
