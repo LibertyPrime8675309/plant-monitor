@@ -137,7 +137,7 @@ async function route() {
   const my = ++token;
   const h = location.hash.replace(/^#/, '') || '/';
   const parts = h.split('/').filter(Boolean);
-  const nav = parts[0] === 'winter' || parts[0] === 'frost' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' ? 'history' : parts[0] === 'backups' ? 'backups' : 'plants';
+  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' ? 'history' : parts[0] === 'backups' ? 'backups' : 'plants';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let view;
@@ -155,6 +155,7 @@ async function route() {
     else if (parts[0] === 'history') view = await viewHistory();
     else if (parts[0] === 'backups') view = await viewBackups();
     else if (parts[0] === 'frost') view = await viewFrost();
+    else if (parts[0] === 'inside') view = await viewInside();
     else view = await viewGallery();
     if (my !== token) return;
     app.innerHTML = rend(view.html);
@@ -693,6 +694,8 @@ async function viewPlant(code) {
           ${lines(p.winter_steps).length ? html`<h3>Steps</h3>${ol(p.winter_steps)}` : ''}
           ${lines(p.indoor_setup).length ? html`<h3>Keeping it comfortable when the weather cannot</h3>${ul(p.indoor_setup)}` : ''}</section>
 
+        <section class="blk" id="inside"><h2>Getting ready to come inside</h2><div id="prep-box" data-code="${p.code}"><p class="loading">Loading the pest check plan</p></div></section>
+
         <section class="blk" id="health"><h2>Health</h2>
           <p>${healthTag(p.health_rating)}</p>${paras(p.health_summary)}
           ${lines(p.health_observations).length ? html`<h3>What I can see</h3>${ul(p.health_observations)}` : ''}
@@ -867,7 +870,8 @@ async function loadCarePlant() {
 async function careDialog(code, name) {
   if (!(await needName())) return;
   const r = await modal(html`<form method="dialog"><h2>Log care for ${name}</h2>
-    <label class="f">What did you do?<select name="kind">${Object.entries(CARE_WORD).map(([k, v]) => html`<option value="${k}" ${k === 'repot' ? raw('selected') : ''}>${v}</option>`)}</select></label>
+    <label class="f">What did you do?<select name="kind"><optgroup label="Care">${Object.entries(CARE_WORD).filter(([k]) => !k.startsWith('prep_')).map(([k, v]) => html`<option value="${k}" ${k === 'repot' ? raw('selected') : ''}>${v}</option>`)}</optgroup>
+      <optgroup label="Getting ready to come inside">${Object.entries(CARE_WORD).filter(([k]) => k.startsWith('prep_')).map(([k, v]) => html`<option value="${k}">${v}</option>`)}</optgroup></select></label>
     <label class="f">When<input type="date" name="day" value="${todayStr()}" max="${todayStr()}"></label>
     <label class="f">Note (optional)<input type="text" name="note" maxlength="500" placeholder="For example: moved to a 10 inch pot"></label>
     <div class="row"><button class="btn" value="ok">Save</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`);
@@ -886,8 +890,129 @@ function jobRow(p, words, btns) {
     <div class="job-txt"><a class="nm" href="#/plant/${enc(p.code)}">${p.common_name}</a> <span class="muted">${p.code}</span><div>${words}</div></div>
     <div class="job-acts">${btns}</div></li>`;
 }
+// ---------- getting plants ready to come inside (added in 1.9.0) ----------
+// Ten ways to keep outdoor pests out of the house. The server rates each one for each plant (from its leaf type, pot
+// size, the pests found, its health and the weather); this draws the plant page section, the Coming inside page and
+// the Today page jobs, and logs each step to the care log as a "prep_" entry.
+const PREP_CARE = { prep_inspect: 'Inspected for pests', prep_potclean: 'Cleaned the pot and saucer', prep_rinse: 'Rinsed with water', prep_wipe: 'Wiped the leaves',
+  prep_soap: 'Sprayed insecticidal soap', prep_oil: 'Sprayed horticultural oil', prep_alcohol: 'Dabbed pests with rubbing alcohol', prep_soak: 'Soaked the pot',
+  prep_topsoil: 'Refreshed the top of the soil', prep_repot: 'Repotted in fresh soil' };
+Object.assign(CARE_WORD, PREP_CARE);          // the care log and "Log other care" know these steps too
+const PR_SIGN = { 'Best': '★', 'Good': '✓', 'Use with care': '!', 'Not needed': '–', 'Not for this plant': '✕' };
+const prBadge = r => html`<span class="pr-badge pr-${r.toLowerCase().replace(/\s+/g, '-')}"><span aria-hidden="true">${PR_SIGN[r] || ''}</span> ${r}</span>`;
+const PREP = { data: null };
+function prepMethodItem(m, n, code) {
+  return html`<li class="pm" id="pm-${m.key}"><div class="pm-head"><h4 class="pm-title"><span class="pm-n">${n}.</span> ${m.title}</h4>${prBadge(m.rating)}</div>
+    <p class="pm-why">${m.reason}</p>
+    ${m.done.length ? html`<p class="pm-done"><strong>Done ${m.done.map(relDay).join(' and ')}.</strong>${m.next_due ? html` Round ${m.done.length + 1} is due ${relDay(m.next_due)}.` : ''}</p>` : ''}
+    ${m.steps ? html`<details class="pm-steps"><summary>How to do it</summary><ol>${m.steps.map(s => html`<li>${s}</li>`)}</ol></details>` : ''}
+    <p class="row pm-acts"><button class="btn small ${m.rank >= 3 && !m.complete ? '' : 'ghost'}" type="button" data-act="prepdone" data-code="${code}" data-k="${m.key}" aria-label="${m.title}: done today">Done today</button>
+      ${m.done.length ? html`<button class="btn small ghost" type="button" data-act="prepundo" data-code="${code}" data-k="${m.key}" aria-label="${m.title}: undo the last one">Undo the last one</button>` : ''}</p></li>`;
+}
+function prepRender() {
+  const box = document.getElementById('prep-box'), D = PREP.data; if (!box || !D || box.dataset.code !== D.code) return;
+  const o = D.options, main = D.methods.filter(m => m.rank >= 2), rest = D.methods.filter(m => m.rank < 2), num = m => D.methods.indexOf(m) + 1;
+  box.innerHTML = rend(html`
+    ${D.winter_plan !== 'Move indoors' ? html`<p class="hint">Its winter plan is ${D.winter_plan}, so it usually stays outside. If you do bring it in, this is how.</p>` : ''}
+    <div class="verdict-box pr-status" role="status"><p><strong>${D.status_word}.</strong> ${D.next}</p></div>
+    <fieldset class="pr-traits"><legend>About this plant</legend>
+      <p class="hint">These decide which methods suit it. Claude filled in the leaf type from the photos; change anything that is wrong.</p>
+      <div class="field-grid">
+        <label class="f">Leaf type<select data-act="preptrait" data-k="leaf_type"><option value="">Not set</option>${o.leaf_types.map(x => html`<option ${x === D.leaf_type ? raw('selected') : ''}>${x}</option>`)}</select></label>
+        <label class="f">Pot size<select data-act="preptrait" data-k="pot_size"><option value="">Not set</option>${o.pot_sizes.map(x => html`<option ${x === D.pot_size ? raw('selected') : ''}>${x}</option>`)}</select></label>
+      </div>
+      <fieldset class="pr-pests"><legend>Pests you found</legend>
+        <p class="hint">Tick what you see when you inspect it. Leave them all unticked if you found nothing.</p>
+        <div class="pr-checks">${o.pests.map(x => html`<label class="chk"><input type="checkbox" data-act="preppest" value="${x}" ${D.pests_found.includes(x) ? raw('checked') : ''}>${x}</label>`)}</div>
+      </fieldset>
+      ${D.watch.length ? html`<details class="pr-watch"><summary>What this plant often gets (${D.watch.length})</summary><ul>${D.watch.map(x => html`<li>${x}</li>`)}</ul></details>` : ''}
+      </fieldset>
+    ${D.best.length ? html`<p><strong>Best for this plant:</strong> ${D.best.join(', ')}.</p>` : ''}
+    <h3>Methods, in the order to do them</h3>
+    <ul class="pm-list">${main.map(m => prepMethodItem(m, num(m), D.code))}</ul>
+    ${rest.length ? html`<details class="pm-rest"><summary>${rest.length} more ${rest.length === 1 ? 'method is' : 'methods are'} not needed or not suitable for this plant</summary>
+      <ul class="pm-list">${rest.map(m => prepMethodItem(m, num(m), D.code))}</ul></details>` : ''}
+    <p class="hint">After it comes inside, keep it apart from your other houseplants for 3 weeks and check it at every watering. <a href="#/inside">See every plant that is coming inside</a>.</p>`);
+}
+async function loadPrep(box) {
+  try { PREP.data = await api('GET', '/api/plants/' + enc(box.dataset.code) + '/prep'); }
+  catch (e) { box.innerHTML = rend(html`<p class="notice bad">Could not load this: ${e.message}</p>`); return; }
+  prepRender();
+  let jump = null; try { jump = sessionStorage.getItem('plantdb.toprep'); sessionStorage.removeItem('plantdb.toprep'); } catch (e) { /* none */ }
+  if (jump === box.dataset.code) {          // from "Open its plan": go to this section, again once the page has settled
+    const to = () => { const s = document.getElementById('inside'); if (s) scrollToSection(s); };
+    to(); setTimeout(to, 600); setTimeout(to, 1500);
+  }
+}
+new MutationObserver(() => { const b = document.getElementById('prep-box'); if (b && !b.dataset.loaded) { b.dataset.loaded = '1'; loadPrep(b); } })
+  .observe(document.getElementById('app'), { childList: true });
+async function prepAfterChange(code, focusSel) {      // redraw whatever page is showing, and put focus back where it was
+  if (document.getElementById('prep-box')) {
+    try { PREP.data = await api('GET', '/api/plants/' + enc(code) + '/prep'); } catch (e) { toast(e.message, true); return; }
+    prepRender(); if (document.getElementById('care-plant')) loadCarePlant();
+  } else { const y = window.scrollY; await route(); window.scrollTo(0, y); }
+  const f = focusSel && document.querySelector(focusSel); if (f) f.focus({ preventScroll: true });
+}
+async function prepSaveTraits(body, focusSel, said) {
+  if (!(await needName())) { prepRender(); return; }
+  await guard(async () => {
+    const r = await api('POST', '/api/plants/' + enc(PREP.data.code) + '/prep-traits', body);
+    PREP.data = r; if (CUR && CUR.p && CUR.p.code === r.code) { CUR.p.version = r.version; Object.assign(CUR.p, { leaf_type: r.leaf_type, pot_size: r.pot_size }); }
+    prepRender(); toast(said);
+    const f = document.querySelector(focusSel); if (f) f.focus({ preventScroll: true });
+  });
+}
+function prepWords(p) {
+  const t = [p.leaf_type || 'leaf type not set', p.pot_size ? p.pot_size.split(':')[0].toLowerCase() + ' pot' : 'pot size not set',
+    p.pests_found.length ? 'found: ' + p.pests_found.join(', ').toLowerCase() : ''].filter(Boolean).join('; ');
+  return html`${p.next}<br><span class="pr-sub">${t.charAt(0).toUpperCase() + t.slice(1)}. Best: ${p.best.join(', ').toLowerCase()}.</span>`;
+}
+async function viewInside() {
+  const D = await api('GET', '/api/prep');
+  const c = D.counts, w = D.status_words;
+  const groups = ['doing', 'todo', 'ready', 'apart', 'settled'].map(k => [k, D.plants.filter(p => p.status === k)]).filter(g => g[1].length);
+  const open = p => html`<button class="btn small ghost" type="button" data-act="openprep" data-code="${p.code}">Open its plan</button>`;
+  const say = ['todo', 'doing', 'ready', 'apart', 'settled'].filter(k => c[k]).map(k => `${c[k]} ${w[k].toLowerCase()}`).join(', ');
+  return {
+    title: 'Getting plants ready to come inside',
+    html: html`<p class="crumb"><a href="#/winter">Winter plan</a></p><h1>Getting plants ready to come inside</h1>
+    <p class="muted">Ten ways to keep ants, mites and other outdoor pests out of the house, and where each plant that is coming inside is up to. Each plant's page rates the methods for that plant, with the steps.</p>
+    <div class="verdict-box" role="status"><p><strong>${D.plants.length} ${D.plants.length === 1 ? 'plant' : 'plants'} coming inside:</strong> ${say || 'none yet'}.</p>${D.weather.spray ? html`<p>${D.weather.spray}</p>` : ''}</div>
+    <section class="blk" id="in-order"><h2>The order of work</h2><ol class="steps">
+      <li>Outdoors, a week or two before the move, inspect each plant and tick what you find on its page.</li>
+      <li>Clean its pot, then do the methods rated Best for it.</li>
+      <li>If you found pests, spray again 5 to 7 days later. The Today page reminds you.</li>
+      <li>Bring it inside and change its Location to Indoors (or press Moved indoors).</li>
+      <li>Keep it apart from your other houseplants for ${D.keep_apart_days} days, with yellow sticky traps nearby, and check it at every watering.</li></ol></section>
+    ${groups.map(([k, list]) => html`<section class="blk" id="in-${k}"><h2>${w[k]} (${list.length})</h2>
+      <ul class="jobs">${list.map(p => jobRow({ code: p.code, common_name: p.name, photo: p.photo }, prepWords(p), open(p)))}</ul></section>`)}
+    <section class="blk" id="in-methods"><h2>How to do each method</h2>
+      <p class="hint">Not every method suits every plant: open a plant's plan to see which are best for it.</p>
+      ${D.methods.map((m, i) => html`<details class="pm-steps pm-ref"><summary>${i + 1}. ${m.title}</summary><ol>${m.steps.map(s => html`<li>${s}</li>`)}</ol></details>`)}</section>
+    <section class="blk" id="in-apart"><h2>Keeping them apart</h2>
+      <p>Pests often show up a week or two after the first treatment, when eggs hatch. So keep the plants that came in away from your long-term houseplants for ${D.keep_apart_days} days, and for 2 weeks after the last treatment if you found pests.</p>
+      <ul><li>Give any plant where you found pests its own "hospital" spot until two weekly checks come up clean.</li>
+        <li>Put yellow sticky traps beside each group. They catch fungus gnats, whiteflies and thrips, and show whether there are more or fewer each week.</li>
+        <li>Spider mites thrive in dry indoor air, so a humidifier helps the palms, calathea and alocasias.</li>
+        <li>Water less indoors, and let the top of the soil dry between waterings, so fungus gnats have nowhere to breed.</li>
+        <li>Predatory mites, sold online, eat spider mites indoors if they come back.</li></ul></section>`,
+  };
+}
+function todayPrep(PR, t) {
+  const again = [], free = [];
+  PR.plants.forEach(p => { p.methods.forEach(m => { if (m.next_due && m.next_due <= t) again.push({ p, m }); }); if (p.status === 'apart' && p.keep_until && p.keep_until <= t) free.push(p); });
+  const c = PR.counts, w = PR.status_words;
+  const say = ['todo', 'doing', 'ready', 'apart'].filter(k => c[k]).map(k => `${c[k]} ${w[k].toLowerCase()}`).join(', ');
+  const row = (p, words, btns) => jobRow({ code: p.code, common_name: p.name, photo: p.photo }, words, btns);
+  return html`<section class="blk" id="today-inside"><h2>Getting ready to come inside (${again.length + free.length})</h2>
+    <p>${PR.plants.length} coming inside${say ? ': ' + say : ''}. <a href="#/inside">Open the list</a></p>
+    ${again.length ? html`<ul class="jobs">${again.map(({ p, m }) => row(p, html`${m.title}, round ${m.done.length + 1}. The last round was ${relDay(m.done[m.done.length - 1])}.`,
+      html`<button class="btn small" type="button" data-act="prepdone" data-code="${p.code}" data-k="${m.key}" aria-label="${p.name}: ${m.title.toLowerCase()} done today">Done today</button>`))}</ul>` : ''}
+    ${free.length ? html`<ul class="jobs">${free.map(p => row(p, 'Its 3 weeks apart end today. If you have seen no pests, it can join your other houseplants.', html`<a class="btn small ghost" href="#/plant/${enc(p.code)}">Open its page</a>`))}</ul>` : ''}
+    ${!again.length && !free.length ? html`<p class="notice ok">No sprays due and nobody to move today.</p>` : ''}</section>`;
+}
 async function viewToday() {
-  const [W, reqs] = await Promise.all([api('GET', '/api/water'), api('GET', '/api/requests?open=1'), loadFertData(true)]);
+  const [W, reqs, , PR] = await Promise.all([api('GET', '/api/water'), api('GET', '/api/requests?open=1'), loadFertData(true), api('GET', '/api/prep').catch(() => null)]);
   const by = Object.fromEntries(FERT.plants.map(p => [p.code, p])), t = todayStr();
   const ws = W.plants.filter(w => by[w.code]);
   const due = ws.filter(w => w.state === 'due').sort((a, b) => b.overdue - a.overdue), soon = ws.filter(w => w.state === 'soon'), unk = ws.filter(w => w.state === 'unknown');
@@ -913,6 +1038,7 @@ async function viewToday() {
       ${feed.length ? html`${feed.length > 1 ? html`<p><button class="btn small ghost" type="button" data-act="fertlog" data-group="due">Log feeding for all ${feed.length}</button></p>` : ''}
         <ul class="jobs">${feed.map(r => jobRow(r.p, fertWords(r.p, r.st, t), html`<button class="btn small" type="button" data-act="fertlog" data-code="${r.p.code}">Log feeding</button>`))}</ul>`
         : html`<p class="notice ok">No plant is due for fertilizer today. The Fertilizer page has the calendar.</p>`}</section>
+    ${PR && PR.plants.length ? todayPrep(PR, t) : ''}
     <section class="blk" id="today-needs"><h2>Needed from you (${needs.length})</h2>
       ${reqs.length ? html`<ul class="jobs">${reqs.slice(0, 8).map(q => { const p = by[q.plant_code] || { code: q.plant_code || '', common_name: q.plant_code || 'General' };
         return jobRow(p, linkify(q.text), p.code ? html`<a class="btn small ghost" href="#/plant/${enc(p.code)}">Answer on its page</a>` : ''); })}</ul>
@@ -1434,7 +1560,7 @@ const GROUPS = [
   ['Nutrients', ['fertilizer', 'nutrients', 'fert_from_month', 'fert_to_month', 'fert_every_days']],
   ['Winter plan', ['winter_plan', 'winter_summary', 'winter_triggers', 'winter_steps', 'indoor_setup']],
   ['Health', ['health_rating', 'health_summary', 'health_observations', 'health_steps']],
-  ['Pests and diseases', ['pests_watch', 'pest_steps', 'pests_current']],
+  ['Pests and diseases', ['pests_watch', 'pest_steps', 'pests_current', 'pests_found', 'leaf_type', 'pot_size']],
   ['Notes', ['notes']],
 ];
 const HINTS = {
@@ -1445,7 +1571,9 @@ const HINTS = {
   par_low: 'PAR in umol/m2/s at the leaves. Full midday sun is about 1800.', dli_low: 'Mol of light per square metre per day.',
   soil_moisture_low: 'As read by your soil probe, 0 to 100.', soil_temp_low: 'Temperature of the root zone in F.',
   water_every_days: 'Leave empty to let the app work it out from the soil moisture range. Hot weather shortens the gap; cool weather and being indoors lengthen it.',
-  winter_steps: 'One step per line, in order.', health_steps: 'One step per line, in order.', indoor_setup: 'One item per line.',
+  winter_steps: 'One step per line, in order.',
+  pests_found: 'One per line, from: Spider mites, Mealybugs, Scale, Aphids, Whiteflies, Thrips, Ants, Fungus gnats, Root mealybugs, Slugs or snails, Pill bugs or earwigs, Other. The plant page has tick boxes for these.',
+  leaf_type: 'Decides which pest treatments suit it before it comes inside.', pot_size: 'Whether the pot can be soaked in a bucket or tub.', health_steps: 'One step per line, in order.', indoor_setup: 'One item per line.',
 };
 const rangeOf = n => (META.int_ranges && META.int_ranges[n]) || (META.num_ranges && META.num_ranges[n]) || [-60, 150];
 function fieldInput(f, val) {
@@ -1456,7 +1584,12 @@ function fieldInput(f, val) {
   if (f.kind === 'long' || f.kind === 'list') inp = html`<textarea name="${f.name}" rows="${f.kind === 'list' ? 5 : 4}">${v}</textarea>`;
   else if (f.kind === 'int') { const mm = rangeOf(f.name); inp = html`<input type="number" inputmode="numeric" step="1" min="${mm[0]}" max="${mm[1]}" name="${f.name}" value="${v}">`; }
   else if (f.kind === 'num') { const mm = rangeOf(f.name); inp = html`<input type="number" inputmode="decimal" step="any" min="${mm[0]}" max="${mm[1]}" name="${f.name}" value="${v}">`; }
-  else if (f.kind === 'enum') { const opts = f.name === 'winter_plan' ? META.winter_plans : f.name === 'site' ? (META.sites || ['Outdoors', 'Indoors']) : META.health; if (f.name === 'site' && !v) v = 'Outdoors'; inp = html`<select name="${f.name}">${opts.map(o => html`<option ${o === v ? raw('selected') : ''}>${o}</option>`)}</select>`; }
+  else if (f.kind === 'enum') {
+    const opts = (META.enums && META.enums[f.name]) || (f.name === 'winter_plan' ? META.winter_plans : f.name === 'site' ? (META.sites || ['Outdoors', 'Indoors']) : META.health);
+    const optional = (META.optional_enums || []).includes(f.name);
+    if (f.name === 'site' && !v) v = 'Outdoors';
+    inp = html`<select name="${f.name}">${optional ? html`<option value="" ${!v ? raw('selected') : ''}>Not set</option>` : ''}${opts.map(o => html`<option ${o === v ? raw('selected') : ''}>${o}</option>`)}</select>`;
+  }
   else inp = html`<input type="text" name="${f.name}" value="${v}" ${f.name === 'common_name' ? raw('required') : ''}>`;
   return html`<label class="f ${wide}">${f.label}${hint ? html`<small>${hint}</small>` : ''}${inp}</label>`;
 }
@@ -2192,6 +2325,7 @@ async function viewFrost() {
     <p class="muted">Plants that are outside and would be hurt by a night in the 7-day forecast for ${F.place}. "Could die" and "Damaged" use each plant's own temperatures;
       "Close call" means within ${F.margin}°F of its damage point, because forecasts often miss a clear, still night by a few degrees.
       Plants set to Indoors or Garage or shed are left out, so a plant leaves this list when you press Moved indoors.</p>
+    <p>Before a plant comes inside, check it for pests: <a href="#/inside">Getting plants ready to come inside</a>.</p>
     ${!F.nights.length ? html`<p class="notice">No forecast yet. It is fetched a few seconds after the app starts, then every hour.</p>` : ''}
     ${F.nights.length && !F.plants.length ? html`<p class="notice ok">No cold nights in the next 7 days for any plant that is outside.</p>` : ''}
     ${F.nights.length ? html`<section class="blk"><h2>The next 7 nights</h2><div class="tbl-wrap"><table class="tbl fz-tbl"><caption class="sr">Plants at risk each night</caption>
@@ -2228,7 +2362,7 @@ async function viewWinter() {
   return {
     title: 'Winter plan',
     html: html`<h1>Winter plan</h1><p class="muted">What to expect in Round Rock from October to March, when to act, and which plants go where.</p>
-    <section class="blk"><h2>The next 7 days</h2>${forecastBlock(W, list)}<p class="row"><a class="btn small" href="#/frost">Open the cold-night checklist</a><a class="btn ghost small" href="#/weather">Open the Weather page for charts and sensors</a></p></section>
+    <section class="blk"><h2>The next 7 days</h2>${forecastBlock(W, list)}<p class="row"><a class="btn small" href="#/frost">Open the cold-night checklist</a><a class="btn small ghost" href="#/inside">Get plants ready to come inside</a><a class="btn ghost small" href="#/weather">Open the Weather page for charts and sensors</a></p></section>
     <section class="blk"><h2>Expected and tracked this season</h2>${seasonTable(ref, monthly)}
       ${(ref.notes || []).map(n => html`<p class="hint">${n}</p>`)}</section>
     <section class="blk"><h2>When to act</h2><dl class="dl">${(ref.triggers || []).map(t => html`<dt>${t.temp}</dt><dd>${t.action}</dd>`)}</dl></section>
@@ -2689,6 +2823,18 @@ const acts = {
     await guard(async () => { await api('PUT', '/api/requests/' + r.id, { done: true, answer: a }); toast('Answer saved. Use Copy my answers for Claude to send it.'); reloadPlant(); });
   },
   forclaude() { forClaudeDialog(); },
+  async prepdone(el) {
+    if (!(await needName())) return;
+    const k = el.dataset.k, code = el.dataset.code;
+    await guard(async () => { await api('POST', '/api/care', { plant: code, kind: 'prep_' + k }); toast('Saved: ' + PREP_CARE['prep_' + k]); await prepAfterChange(code, `[data-act=prepdone][data-k="${k}"][data-code="${code}"]`); });
+  },
+  async prepundo(el) {
+    const k = el.dataset.k, code = el.dataset.code, D = PREP.data;
+    const last = D && D.code === code ? (D.log || []).filter(x => x.kind === 'prep_' + k).pop() : null; if (!last) return;
+    if (!(await needName())) return;
+    await guard(async () => { await api('DELETE', '/api/care/' + last.id); toast('Removed: ' + PREP_CARE['prep_' + k] + ', ' + relDay(last.done_on)); await prepAfterChange(code, `[data-act=prepdone][data-k="${k}"][data-code="${code}"]`); });
+  },
+  openprep(el) { try { sessionStorage.setItem('plantdb.toprep', el.dataset.code); } catch (e) { /* the page still opens */ } go('#/plant/' + enc(el.dataset.code)); },
   async fccopy() {
     const t = document.getElementById('fc-text'); if (!t) return;
     let ok = false;
@@ -2965,6 +3111,11 @@ const changeActs = {
     const files = await photoCheck([...el.files], el); if (!files) { el.value = ''; return; }
     const fd = new FormData(); files.forEach(f => fd.append('files', f));
     await guard(async () => { await api('POST', '/api/photos', undefined, fd); toast('Photos added'); route(); });
+  },
+  preptrait(el) { prepSaveTraits({ [el.dataset.k]: el.value }, `select[data-act=preptrait][data-k="${el.dataset.k}"]`, (el.dataset.k === 'leaf_type' ? 'Leaf type: ' : 'Pot size: ') + (el.value || 'not set')); },
+  preppest(el) {
+    const got = [...document.querySelectorAll('input[data-act=preppest]:checked')].map(x => x.value);
+    prepSaveTraits({ pests_found: got }, `input[data-act=preppest][value="${el.value}"]`, got.length ? 'Pests found: ' + got.join(', ') : 'No pests found');
   },
   fcrange(el) { FC.range = el.value; fcRefresh('select[data-act=fcrange]'); },
   fcopen(el) { FC.open = el.checked; fcRefresh('input[data-act=fcopen]'); },

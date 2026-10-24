@@ -4,6 +4,7 @@ One line each, most wanted first. A prototyping session takes the top one that i
 
 - Calendar file (.ics) of feeding days and cold nights, to import into a phone or Outlook calendar. Cold nights come from `frost_report()` in server.py.
 - Spring "move back outside" list: when the nights stay above each indoor plant's comfortable low, list the plants that can go back out. Builds on `frost_report()` and the cold-night checklist.
+- Grow lights (Ethan's own lights, listed October 23): a light library, indoor spots, matching plants to lights by daily light, and a step-down plan from outdoor to indoor light. (in progress)
 - Undo right after a quick care button: "Watered" or "Still moist" pressed by mistake can be undone from the message that appears, without looking for it in the care log.
 - Large-print care card: a printable page for one plant or a group, with its photo, name, and water, light and temperature needs in big type, to keep beside the plants indoors over winter.
 - Sensor dashboard for the DIY plant monitor (soil moisture, temperature, light) once hardware is posting to `/api/readings`.
@@ -19,3 +20,6 @@ Merged into 1.8.0 (October 23, 2026):
 - Photo check: when a photo is added, check it in the browser and say in plain words if it looks too dark, too bright or blurry, with "Use it anyway" and "Take another", so the photos sent for identification are usable.
 - Plant page in two columns: on a laptop with the On this page menu open, the sticky row of section buttons wraps to three or four lines and covers much of the right-hand column. Hide that row while the menu is open (the menu lists the same sections), or let it fold.
 - Fix: phones with large text (no sideways scrolling, the menu bar scrolls away).
+
+Asked for by Ethan and built in 1.9.0:
+- Getting plants ready to come inside: ten pest methods rated per plant, with steps, logging, second-round reminders and keep-apart dates.
