@@ -1,5 +1,40 @@
 # Changelog
 
+## 1.11.0 (2026-10-23)
+- **What each plant needs, on the Fertilizer page.** Under each plant's code and "last fed" line:
+  - the N-P-K ratio it needs and how strong to mix it, for example "Needs N-P-K ratio 2-7-7, at half strength";
+  - the fertilizer of yours that matches it best, with its N-P-K numbers and how close it is (✔ Matches, ✔ Close, ▲ Usable or ■ Not a good match);
+  - how much to use: for a liquid or powder, how much to mix into how much water ("Mix ⅝ tsp into 1 gallon of water"); for granular or slow-release, what share of the label amount.
+  - The same box, **What to feed it**, is in the Nutrients section of each plant page. **Log** for one plant starts with that fertilizer and amount filled in.
+- **Your fertilizers** (Fertilizer page): every fertilizer you have logged, plus any you add with **Add a fertilizer you have**, even before you use one. You have not logged any yet, so add the ones you own to see the matches.
+- Every plant has its ratio and strength filled in (upgrade batch `batchA2`). Change them on the Edit page, under Nutrients.
+- **Location, on every page.** A **Location** button at the top of every page (or the **L** key) chooses the place used for weather, frost warnings, watering, the Winter plan and "today". This browser remembers it; other computers and phones keep their own. You can also add a town by name there, and make a place the home place for everyone.
+  - Nothing is tied to Round Rock any more: headings say "Winter in Baraboo", the frost banner names the place, and the marks on the temperature and humidity strips come from that place's own weather history.
+  - The Winter plan's written Round Rock notes show only when Round Rock is in use. Elsewhere, its expected weather comes from that place's own history.
+- **Your answers of October 23** (upgrade batch `batchA2`):
+  - P-017 Majesty palm: the spear holds firm, so no bud rot. Health is now Fair.
+  - P-036 is not stevia (no sweetness). It is now "Young shrub with toothed leaves (not stevia)", with a new quick check: is the stem square or round, and does a crushed leaf smell?
+  - P-042 Agave: the yellow leaf is firm, an old leaf dying back, and the roots are healthy. Health is now Good.
+  - P-053 gourd vine: the black specks are insects, probably aphids, with steps to treat it.
+  - P-055 Black Cardinal: the specks are sun scorch, not pests.
+  - P-060 is Syngonium 'Black Velvet', from its tag.
+  - P-081 is Philodendron 'Ring of Fire', from its HEB tag.
+  - P-025, P-048 and P-066: blank, wrong or missing tags noted.
+  - Notes from the new photos of P-006, P-031 and P-061.
+  - The 10 answered requests are closed, and 2 items on "Still to photograph" are ticked off.
+
+## 1.10.0 (2026-10-24)
+- **Audit log page** (it replaces the Change log page, same place in the menu bar): every change to every record, with filters.
+  - Search by words, plant, who made the change (one person, people, or Claude's updates), kind of change, field, and dates.
+  - It shows 100 changes at a time with Previous and Next page, and says how many match.
+  - **Download these changes (CSV)** saves just the ones that match. The page remembers your filters until you press **Clear filters**.
+- **Debug button**, next to Display. It opens a window with:
+  - **Show the audit log console**: a small window at the bottom of the screen with the newest 3, 4 or 5 changes (you choose), updated every 3 seconds. Scroll it for older ones; **Pause**, **Open the audit log** and **Close** are on it.
+  - An option to let screen readers announce each new change, and details about the app and this browser.
+- On phones, the Debug button sits above Display, and the Sections button moves above them whenever they would not fit side by side.
+- The change log download no longer puts a stray `'` in empty cells.
+- "Today" now always means today in Round Rock. Before, a phone or computer set to another time zone could be told "That date is in the future" when logging care in the evening.
+
 ## 1.9.0 (2026-10-23)
 - **Getting ready to come inside.** Every plant page has a new section that helps keep ants, mites and other outdoor pests out of the house:
   - Choose the plant's **leaf type** and **pot size**, and tick any **pests you found**. The leaf type is filled in for every plant already; change it if it is wrong.

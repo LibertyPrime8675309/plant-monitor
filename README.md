@@ -167,7 +167,7 @@ If the version in the app is older than the newest zip in your folder, that upda
 
 ## Display settings and low vision
 
-Press the **Display** button (bottom right of every page; it stays on screen) to change how everything looks. Changes apply at once and are remembered in that browser (each computer or phone keeps its own).
+Press the **Display** button (bottom right of every page; it stays on screen) to change how everything looks. The **Debug** button beside it is described under "Audit log" below. Changes apply at once and are remembered in that browser (each computer or phone keeps its own).
 
 - **Text and button size**: Standard, Comfortable (the new default, a little bigger than before), Large, Larger, Largest. Buttons, bars, charts and spacing scale together.
 - **Spacing**: Normal or Roomy (more space between lines, letters and words).
@@ -177,7 +177,7 @@ Press the **Display** button (bottom right of every page; it stays on screen) to
 
 On a plant page in side-by-side view, the photos (left) and details (right) each scroll on their own: put the pointer over the half you want to move and scroll. A "Switch to one column" button at the top of the page does the same as the Display setting. With very large text or a narrow window the page switches to one column automatically. The row of section buttons (Now, Temperature, Humidity, Light, Water and soil, ...) jumps straight to a section; in side-by-side view it steps aside while the On this page menu is open, because the menu lists the same sections. All parts of the page can also be reached with the Tab key.
 
-On a phone the menu bar at the top scrolls away with the page (scroll back to the top to reach it), and every page fits the width of the screen at every text size. With the two largest text sizes, the Sections button sits just above the Display button.
+On a phone the menu bar at the top scrolls away with the page (scroll back to the top to reach it), and every page fits the width of the screen at every text size. The Debug button sits just above the Display button. When there is no room for the Sections button beside them (larger text, or a narrow phone), it sits above Debug.
 
 ### Read aloud and keyboard shortcuts (from 1.8.0)
 
@@ -194,6 +194,7 @@ Keyboard shortcuts work on every page, except while you are typing in a box. **D
 | **/** | Search plants |
 | **H** | Go to the Plants page |
 | **M** | Open or fold the section menu |
+| **L** | Choose the location for the weather |
 | **?** | List the shortcuts |
 
 ### Section menu ("On this page")
@@ -290,6 +291,23 @@ Each plant page has a **Current conditions** box. Press **Set current conditions
 
 The setting is shared by all plant pages. Every gauge (temperature, humidity, light, soil moisture, soil temperature, soil pH) then shows a labelled **Now** marker. When a value is outside the plant's range, the page gets a **Getting this plant back in range** section with numbered steps for that plant and that situation (for example how to protect it from a cold night, or how to raise humidity). Readings that are old are flagged as out of date.
 
+## Location (from 1.11.0)
+
+Nothing in the app is tied to Round Rock any more. The **Location** button at the top right of every page (on a phone, at the top of the page) shows the place in use, for example "Location: Round Rock, TX". Press it, or press **L**, to choose another.
+
+- **Everything weather-related follows it:**
+  - the frost banner and the cold-night checklist ("Frost warning for Baraboo: …")
+  - current conditions and the "Now" marker on plant pages
+  - the marks on the temperature and humidity strips: the coldest night of a usual winter there, and its usual coldest-month night, worked out from that place's own weather history
+  - "Winter in …" on plant pages
+  - the Winter plan, the Today page's watering reminders and rain
+  - the Weather page
+  - what "today" means
+- **This browser remembers the choice.** Each computer or phone keeps its own, so someone else using the app somewhere else can pick their own place without changing yours.
+- **Add a place** in the same window: type a town or city, press **Search** (or Enter) and choose **Add and use** next to the right one. Its last 3 months of weather and its forecast arrive within a minute.
+- **Make … the home place for everyone**: the home place is what a computer or phone uses until it chooses its own location, and what the hourly updates and backups use.
+- The Winter plan's written notes, sources and expected-weather table are for Round Rock, so they show only when the place in use is Round Rock. For other places the expected columns come from that place's own weather history, once it has 3 years or more (use **Load history** on the Weather page).
+
 ## Weather and sensors
 
 The **Weather** page replaces the fixed weather table. It has:
@@ -308,9 +326,9 @@ Online weather comes from [Open-Meteo](https://open-meteo.com/) (free, no accoun
 The Weather page can track as many places as you like, for example Round Rock, TX and Baraboo, WI. Each place keeps its own hourly readings, daily summaries, forecast, Load history and update log.
 
 - **Add a place**: Weather page, **Places** section. Type a town or city, press **Search**, and pick the right one from the list (it shows the state or country, coordinates, time zone and elevation). You can also type the name, latitude, longitude and time zone yourself. A new place fetches its last 3 months and forecast straight away, then updates every hour like the others.
-- **Showing the weather for**: the menu at the top of the Weather page picks which place the page shows: forecast, charts, the table of logged data, the season table, Load history and the update log. The choice is remembered on that computer.
+- **Location**: the menu at the top of the Weather page is the same choice as the **Location** button at the top of every page (see "Location" below). It picks which place the page shows: forecast, charts, the table of logged data, the season table, Load history and the update log.
 - **Compare places**: in Tracked history, open **Choose what to chart and compare places** and tick other places. Every chart then has one line per place (up to 6 places). For daily, weekly or monthly steps there are also charts of each place's lowest and highest temperature.
-- **Home place**: the place your plants are at. Plant pages, current conditions ("Online weather"), frost warnings and the Winter plan use it. Round Rock is home after upgrading; **Make home** changes it.
+- **Home place**: the place a computer or phone uses until it chooses its own location, and the one the hourly updates and backups use. Round Rock is home after upgrading; **Make home** changes it.
 - **Stop hourly updates** keeps a place and its weather but stops fetching. **Remove** deletes the place and all its weather (it asks first). The home place cannot be removed.
 - **Update every place now** updates them one after another; the progress box names the place it is on.
 
@@ -387,10 +405,16 @@ Besides the temperature, humidity and light ranges, each plant now has: a feedin
 
 Open **Fertilizer** (top menu) for the whole collection, or look at the **Nutrients** section of any plant page.
 
-- **Should I feed today?** Every plant has a feeding season (first and last month it is fed) and a number of days between feedings, set for Round Rock by plant type. Each day is then one of: **Time to fertilize**, **Hold off** (a cold night is forecast at or below that plant's damage temperature, or its health is Poor or Critical), **Fed recently** (with the next date), **Resting** (out of season: do not fertilize), or **No feeding season set**. The Fertilizer page groups all plants this way, and each plant page shows the verdict for today and for any date you pick.
+- **Should I feed today?** Every plant has a feeding season (first and last month it is fed) and a number of days between feedings, set by plant type. Each day is then one of: **Time to fertilize**, **Hold off** (a cold night is forecast at or below that plant's damage temperature, or its health is Poor or Critical), **Fed recently** (with the next date), **Resting** (out of season: do not fertilize), or **No feeding season set**. The Fertilizer page groups all plants this way, and each plant page shows the verdict for today and for any date you pick.
 - **Calendar:** shaded days are in the plant's feeding season, hatched days are its resting season. "Fed" marks feedings you logged and "Due" the next suggested feeding. On the Fertilizer page the calendar covers all plants (how many were fed, how many are due). Click a day, or move with the arrow keys (PageUp and PageDown change month), for the details. "Show as a list" gives a plain list of days; with large text or a narrow screen it switches to the list by itself.
 - **Log a feeding:** press **Log fertilizer** (or **Log a feeding for this plant**). Choose the date, the plants (one, or many at once: "All that are due", "All in season"), the fertilizer name, its type, and the N-P-K numbers printed on the package, then the amount and how much water it was mixed into (for example 1 tsp in 1 gal) and how it was applied. The form shows an estimate of how strong the mix is: parts per million of nitrogen, phosphate and potash, and the N : P : K ratio. Spoon measures are converted at 4 g per teaspoon and 12 g per tablespoon for dry products and 4.9 ml and 14.8 ml for liquids, so treat the numbers as estimates. Most potted plants do well at 50 to 200 ppm nitrogen. Logging in a resting season asks you to confirm.
 - **Remembered fertilizers:** names you have used appear in a list and fill in the rest of the form next time. Entries can be changed or removed; the change log records each one.
+- **What each plant needs (from 1.11.0):** every plant on the Fertilizer page has a line under its code and "last fed" line, for example "Needs N-P-K ratio 2-7-7, at half strength". The same box, **What to feed it**, is in each plant page's Nutrients section.
+  - **Best match you have:** the fertilizer of yours whose N-P-K ratio is closest to what the plant needs, with its numbers and how close it is: **✔ Matches**, **✔ Close**, **▲ Usable** or **■ Not a good match** (it then says what to look for). It also says what is different, for example "It has more nitrogen (N) and less potash (K) than this plant needs".
+  - **How much:** for a liquid or powder, how much to mix into how much water, for example "Mix ⅝ tsp into 1 gallon of water (0.8 ml per liter)", and about how many ppm of nitrogen that gives. Full strength aims for about 150 ppm of the strongest of N, P and K, half strength 75 and a quarter 40, which is a usual rate for plants in pots. If the label says to use less, use the label. Granular, slow-release, spikes and organic solids go on or into the mix, so it says what share of the label amount to use.
+  - **Your fertilizers** (Fertilizer page): every fertilizer you have logged, plus any you add with **Add a fertilizer you have** (name, type and the N-P-K numbers from the package), even before you use it. **Change** corrects one; **Remove** takes off one you added.
+  - **Log** next to a plant starts the feeding form with its best match and the amount already filled in.
+  - Each plant's ratio and strength (None needed, Quarter strength, Quarter to half strength, Half strength or Full strength) are on its Edit page, under Nutrients. Claude filled them in for every plant from its fertilizer note (upgrade batch `batchA2`).
 - **Change a plant's season:** Edit this page, Nutrients group: "Feed from month", "Feed through month" (a season like October to April is fine) and "Feed every (days)". The starting values are Claude's guesses from the plant type.
 
 ## Past days: what the values were on a date
@@ -439,7 +463,7 @@ macOS / Linux (bash):
 ls -lh data/plants.db
 ```
 
-For a spreadsheet, use the **Weather** page's table (any columns, any dates) or the **Change log** page: "Download weather and sensor readings (CSV)".
+For a spreadsheet, use the **Weather** page's table (any columns, any dates) or the **Audit log** page: "Download weather and sensor readings (CSV)".
 
 ## Plant links and previews
 
@@ -457,6 +481,35 @@ The first time you save something, the app asks for your name. It goes into the 
 
 If you want a password, uncomment `PLANTDB_PASSWORD` in `docker-compose.yml` and run `docker compose up -d`. The browser then asks for a password (leave the username blank or put anything). Do not expose port 8080 to the internet; this is built for your home network.
 
+## Audit log (from 1.10.0)
+
+The **Audit log** page (in the menu bar; it used to be called Change log) lists every change to every record, newest first: edits to plant pages, plants added or archived, photos added, moved or removed, feeding and care, requests and answers, the "Still to photograph" list, settings and backups. Each change shows when, which plant (with a link), who, what changed, and the value before and after.
+
+- **Filters** (at the top; on a phone, open **Filters** first):
+  - **Search**: any words, a plant code, a name or a value, for example `hyacinth`, `P-024` or `Poor`.
+  - **Plant**: one plant, or "Not about one plant" for settings, backups and the like.
+  - **Who**: one person, "People" (everyone but Claude's updates) or "Claude's updates".
+  - **Kind of change**: for example Photos, or Feeding, watering and care.
+  - **Field**: one detail, such as Health rating or Location.
+  - **From** and **To**: dates, in your time zone.
+  - **Order**: newest or oldest first.
+- The line under the filters says how many changes match, for example "Showing 1 to 100 of 2,253 changes". **Previous page** and **Next page** go through them 100 at a time.
+- **Clear filters** shows everything again. This browser remembers the filters until you clear them.
+- **Download these changes (CSV)** saves just the changes that match, for a spreadsheet.
+
+### Debug button and the audit log console (from 1.10.0)
+
+The **Debug** button sits next to **Display** at the bottom right of every page, and opens a window of tools for seeing what the app is doing:
+
+- **Show the audit log console**: a small window at the bottom of the screen with the newest changes to any record. It checks for new ones every 3 seconds, so you can watch a change appear as you, someone else or an update makes it.
+  - **Changes it shows before you scroll**: 3, 4 or 5. Scroll it up for older ones (it keeps the last 200), or click into it and use the arrow keys.
+  - If you have scrolled up when a new change comes in, it stays where you are and shows a **new changes below** button instead of jumping.
+  - **Pause** stops it checking until you press **Resume**. **Open the audit log** goes to the full page. **Close** turns it off.
+- **Let screen readers announce each new change**: off to start with, so a screen reader is not interrupted every time something is saved.
+- **About this browser and the app**: the version, window size, text size, layout and how many changes are logged.
+
+These choices are remembered in that browser. The console never covers the Debug, Display or Sections buttons, and plant pages leave room for it.
+
 ## What's in the pages
 
 - **Plants**: all pages, filterable by winter plan, health and ID confidence; sortable.
@@ -467,7 +520,7 @@ If you want a password, uncomment `PLANTDB_PASSWORD` in `docker-compose.yml` and
 - **Fertilizer**: today's feed / hold / rest verdict for every plant, a calendar, and the feeding log (see above).
 - **Photos**: wide shots not yet tied to a plant, and a "still to photograph" checklist.
 - **Labels**: printable QR labels.
-- **Change log**: every change to every plant, with CSV and JSON downloads.
+- **Audit log**: every change to every record, with filters and CSV and JSON downloads (see "Audit log" above).
 
 Editing a page saves a new version and keeps the old one. "Restore" puts an older version's text back as a new version (photos are not changed). Two people editing the same page at once: the second save is refused with a message, so nothing is overwritten.
 
@@ -561,7 +614,7 @@ cp -r data data-backup
 docker compose start
 ```
 
-You can also download everything from **Change log**: plants as CSV, the change log as CSV, or all data as JSON. To start over with the original 77 plants, stop the app, delete the contents of `data`, and start it again.
+You can also download everything from **Audit log**: plants as CSV, the change log as CSV, or all data as JSON. To start over with the original 77 plants, stop the app, delete the contents of `data`, and start it again.
 
 ## Notes
 

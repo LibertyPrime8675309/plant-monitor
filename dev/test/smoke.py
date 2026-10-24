@@ -1,4 +1,5 @@
-"""Browser smoke test: opens every main page at three screen sizes, and on a phone with the largest text, and fails on JavaScript errors or sideways scrolling.
+"""Browser smoke test: opens every main page at three screen sizes, and on a phone with the largest text, and fails on JavaScript errors,
+sideways scrolling or buttons pinned to the screen (Sections, Debug, Display) covering each other.
 Start the app first (dev/test/mock_server.py), then:  python3 dev/test/smoke.py [base-url]
 Screenshots go to dev/tmp/shots/ so you can look at them."""
 import json, os, sys
@@ -24,11 +25,15 @@ with sync_playwright() as p:
                 name = f"{size}-{theme}-{path.strip('#/').replace('/', '_') or 'plants'}.png"
                 pg.screenshot(path=os.path.join(OUT, name))
                 if over > 2: bad.append(f'{name}: page scrolls sideways by {over}px')
-                hit = pg.evaluate('''(() => { const a = document.getElementById('nav-tab'), b = document.getElementById('display-btn');
+                hits = pg.evaluate('''(() => {      // buttons pinned to the screen must never cover each other
                   const vis = e => e && getComputedStyle(e).display !== 'none' && getComputedStyle(e).visibility !== 'hidden' && e.getClientRects().length;
-                  if (!vis(a) || !vis(b)) return false; const r = a.getBoundingClientRect(), s = b.getBoundingClientRect();
-                  return r.left < s.right && s.left < r.right && r.top < s.bottom && s.top < r.bottom; })()''')
-                if hit: bad.append(f'{name}: the Sections and Display buttons overlap')
+                  const ids = ['nav-tab', 'debug-btn', 'display-btn', 'job-badge'], out = [];
+                  for (let i = 0; i < ids.length; i++) for (let j = i + 1; j < ids.length; j++) {
+                    const a = document.getElementById(ids[i]), b = document.getElementById(ids[j]);
+                    if (!vis(a) || !vis(b)) continue; const r = a.getBoundingClientRect(), s = b.getBoundingClientRect();
+                    if (r.left < s.right && s.left < r.right && r.top < s.bottom && s.top < r.bottom) out.push(ids[i] + ' and ' + ids[j]);
+                  } return out; })()''')
+                for x in hits: bad.append(f'{name}: the {x} buttons overlap')
                 for e in errs: bad.append(f'{name}: {e}')
                 errs.clear()
             pg.close()

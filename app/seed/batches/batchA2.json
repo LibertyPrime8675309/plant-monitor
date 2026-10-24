@@ -1,0 +1,1699 @@
+{
+ "id": "batchA2",
+ "created": "2026-10-23",
+ "author": "Claude (batch A2, fertilizer needs and your answers)",
+ "plants": [],
+ "existing_photos": [],
+ "updates": [
+  {
+   "code": "P-001",
+   "name": "Dieffenbachia (dumb cane), lime/cream form",
+   "photos": [
+    "img_1000021186.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-003",
+   "name": "Fig",
+   "photos": [
+    "img_1000021162.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-004",
+   "name": "Grape vine (young)",
+   "photos": [
+    "img_1000021164.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Quarter strength"
+    ]
+   }
+  },
+  {
+   "code": "P-005",
+   "name": "Ivy-leaf morning glory",
+   "photos": [
+    "img_1000021165.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-006",
+   "name": "Sweet potato vine (green-leaf, probable)",
+   "photos": [
+    "img_1000021202.jpg"
+   ],
+   "note": "Photo: roots showing at the base. Also set the fertilizer ratio and strength (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ],
+    "health_observations": [
+     "Even colour\nNo pests seen\nStrong climbing growth",
+     "Even colour\nNo pests seen\nStrong climbing growth\nRoots showing at the top of the mix (October 23 photo)\nSpurge weeds in the pot"
+    ],
+    "health_steps": [
+     "Keep supported on the trellis\nWater as the top inch dries",
+     "Cover the bare roots at the base with an inch of fresh mix.\nPull the spurge weeds.\nKeep supported on the trellis\nWater as the top inch dries"
+    ]
+   }
+  },
+  {
+   "code": "P-007",
+   "name": "Mexican bird of paradise",
+   "photos": [
+    "img_1000021166.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-008",
+   "name": "Bougainvillea",
+   "photos": [
+    "img_1000021167.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-009",
+   "name": "Philodendron 'Birkin'",
+   "photos": [
+    "img_1000021168.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-010",
+   "name": "Dieffenbachia (dumb cane)",
+   "photos": [
+    "img_1000021169.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-011",
+   "name": "Variegated peace lily",
+   "photos": [
+    "img_1000021170.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-012",
+   "name": "Aeonium (green/yellow rosette form)",
+   "photos": [
+    "img_1000021171.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-7-7"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-013",
+   "name": "Prickly pear (opuntia)",
+   "photos": [
+    "img_1000021172.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-7-7"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-014",
+   "name": "Aloe vera (probable), largest of three",
+   "photos": [
+    "img_1000021174.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-7-7"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-015",
+   "name": "Hardy aloe (Aloe striatula)",
+   "photos": [
+    "img_1000021175.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-7-7"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-016",
+   "name": "Zebra haworthia",
+   "photos": [
+    "img_1000021176.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-7-7"
+    ],
+    "fert_strength": [
+     "",
+     "Quarter to half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-017",
+   "name": "Majesty palm (black pot)",
+   "photos": [
+    "img_1000021177.jpg"
+   ],
+   "note": "Spear checked: holds firm, no rotting smell, so no bud rot. Also set the fertilizer ratio and strength (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "4-1-6"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ],
+    "health_rating": [
+     "Poor",
+     "Fair"
+    ],
+    "health_summary": [
+     "Only a few fronds, all pale yellow-green, and the newest leaf (the spear) in the centre is browning at the tip. A brown spear can be the start of bud rot, which is serious in palms, so check it soon.",
+     "Only a few fronds, all pale yellow-green. The browning spear in the centre holds firm and does not smell, so it is tip damage, not bud rot."
+    ],
+    "health_observations": [
+     "The new spear in the centre is green at the base but brown and dry at the tip, with dark spots\nA dead brown leaf stalk beside the spear\nRemaining fronds pale yellow-green with dry tips\nThick mat of spotted spurge weeds in and around the pot",
+     "The new spear in the centre is brown and dry at the tip, but holds firm when tugged and has no rotten smell (checked October 23)\nA dead brown leaf stalk beside the spear\nRemaining fronds pale yellow-green with dry tips\nThick mat of spotted spurge weeds in and around the pot"
+    ],
+    "health_steps": [
+     "Check the spear: tug it gently. If it holds firm, it is just tip damage. If it slides out easily and the base smells rotten, that is bud rot: cut away the rotten part, drench the crown with a copper fungicide and keep water out of the crown\nPull the spurge weeds out of the pot\nMove it out of hard afternoon sun\nFeed palm fertilizer with magnesium once before winter, then stop until March\nKeep the mix evenly moist, not soggy",
+     "Trim the dry brown tip of the spear if you like; leave the green part\nPull the spurge weeds out of the pot\nMove it out of hard afternoon sun\nFeed palm fertilizer with magnesium once before winter, then stop until March\nKeep the mix evenly moist, not soggy"
+    ],
+    "pests_current": [
+     "Spotted spurge (a weed) covers the pot. The browning spear needs checking for bud rot (see Health).",
+     "Spotted spurge (a weed) covers the pot. The spear was checked on October 23: firm, no rot."
+    ]
+   }
+  },
+  {
+   "code": "P-018",
+   "name": "Graptosedum (blush succulent)",
+   "photos": [
+    "img_1000021178.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-7-7"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-019",
+   "name": "Variegated elephant bush (rainbow bush)",
+   "photos": [
+    "img_1000021179.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-7-7"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-020",
+   "name": "Fiddle-leaf fig",
+   "photos": [
+    "img_1000021180.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-021",
+   "name": "Desert rose seedlings (6 cups)",
+   "photos": [
+    "img_1000021181.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-5-5"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-022",
+   "name": "Rose 'Queen of Elegance'",
+   "photos": [
+    "img_1000021182.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-3-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-023",
+   "name": "Cosmos (volunteers)",
+   "photos": [
+    "img_1000021183.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "fert_strength": [
+     "",
+     "None needed"
+    ]
+   }
+  },
+  {
+   "code": "P-024",
+   "name": "Boston fern 'Emina'",
+   "photos": [
+    "img_1000021187.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Quarter strength"
+    ]
+   }
+  },
+  {
+   "code": "P-025",
+   "name": "Begonia (lobed, bright green)",
+   "photos": [
+    "img_1000021188.jpg"
+   ],
+   "note": "Tag is blank. Also set the fertilizer ratio and strength (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ],
+    "id_improve": [
+     "A photo of the hand-written tag in the pot (only part of it shows)\nA flower",
+     "A flower (the tag in the pot is blank)\nWhether it dies back to a tuber in winter (tuberous begonia) or stays leafy"
+    ],
+    "notes": [
+     "",
+     "The tag in the pot is blank (Ethan, October 23)."
+    ]
+   }
+  },
+  {
+   "code": "P-026",
+   "name": "Polka-dot begonia 'Obsidian'",
+   "photos": [
+    "img_1000021189.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-027",
+   "name": "Coleus (deep red)",
+   "photos": [
+    "img_1000021190.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-028",
+   "name": "Chinese evergreen (red/pink)",
+   "photos": [
+    "img_1000021191.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-029",
+   "name": "Philodendron 'Pink Princess'",
+   "photos": [
+    "img_1000021192.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-030",
+   "name": "Pink Princess offshoot (in P-029's pot)",
+   "photos": [
+    "img_1000021193.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-031",
+   "name": "Calathea (feather-striped)",
+   "photos": [
+    "img_1000021194.jpg"
+   ],
+   "note": "Photo: older leaves fading. Also set the fertilizer ratio and strength (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Quarter to half strength"
+    ],
+    "health_observations": [
+     "Many brown crisped leaves\nSeveral clean new leaves\nNew shoots and white roots at the base\nDrip emitter in the pot",
+     "Many brown crisped leaves\nSeveral clean new leaves\nNew shoots and white roots at the base\nDrip emitter in the pot\nOlder leaves fading to yellow with brown tips (October 23 photo)"
+    ]
+   }
+  },
+  {
+   "code": "P-032",
+   "name": "Moth orchid in water",
+   "photos": [
+    "img_1000021195.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Quarter strength"
+    ]
+   }
+  },
+  {
+   "code": "P-033",
+   "name": "Coleus (lime and plum)",
+   "photos": [
+    "img_1000021196.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-034",
+   "name": "Peace lily (recovering, brown pot)",
+   "photos": [
+    "img_1000021197.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Quarter to half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-035",
+   "name": "Philodendron 'Pink Princess' (cutting, declining)",
+   "photos": [
+    "img_1000021198.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-036",
+   "name": "Possible stevia (young, serrated leaves)",
+   "photos": [
+    "img_1000021199.jpg"
+   ],
+   "note": "Not stevia: the leaves are not sweet. Also set the fertilizer ratio and strength (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ],
+    "common_name": [
+     "Possible stevia (young, serrated leaves)",
+     "Young shrub with toothed leaves (not stevia)"
+    ],
+    "scientific_name": [
+     "Stevia rebaudiana (possible)",
+     "Not identified (not Stevia: the leaves are not sweet)"
+    ],
+    "aliases": [
+     "Sweetleaf?",
+     ""
+    ],
+    "id_confidence": [
+     50,
+     25
+    ],
+    "id_basis": [
+     "Thin, woody brown stems with opposite pairs of light-green leaves that narrow to the base and are coarsely toothed toward the tip. That fits stevia. A taste test settles it: stevia leaves are intensely sweet.",
+     "Thin, woody brown stems with opposite pairs of light-green leaves that narrow to the base and are coarsely toothed toward the tip. It was taken for stevia, but the leaves have no sweetness at all (taste test, October 23), so it is not stevia. A square stem would point to the mint family (salvia); a round one to a hydrangea cutting or a eupatorium."
+    ],
+    "id_alternatives": [
+     "Hydrangea cutting\nSalvia\nEupatorium",
+     "Hydrangea cutting\nSalvia (mint family: square stems, scented leaves)\nEupatorium or Ageratina (boneset, snakeroot)\nChrysanthemum cutting"
+    ],
+    "id_improve": [
+     "Tear a leaf, touch it to your tongue and spit it out: stevia tastes very sweet\nA flower (stevia has small white flowers in autumn)",
+     "Roll the stem between your fingers: square or round?\nCrush a leaf: does it smell of sage, mint, or nothing?\nA flower\nWhere the cutting or seed came from"
+    ]
+   }
+  },
+  {
+   "code": "P-037",
+   "name": "ZZ plant",
+   "photos": [
+    "img_1000021200.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-038",
+   "name": "ZZ plant #2 (staked, new shoots)",
+   "photos": [
+    "img_1000021201.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-039",
+   "name": "Philodendron 'Painted Lady'",
+   "photos": [
+    "img_1000021173.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-040",
+   "name": "Crown of thorns",
+   "photos": [
+    "img_1000021173.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-7-7"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-041",
+   "name": "Moon cactus (red, grafted)",
+   "photos": [
+    "img_b2_02.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-7-7"
+    ],
+    "fert_strength": [
+     "",
+     "Quarter strength"
+    ]
+   }
+  },
+  {
+   "code": "P-042",
+   "name": "Agave (species not identified)",
+   "photos": [
+    "img_b2_03.jpg"
+   ],
+   "note": "Yellow lowest leaf is firm: an old leaf, not rot. Also set the fertilizer ratio and strength (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-7-7"
+    ],
+    "fert_strength": [
+     "",
+     "Quarter to half strength"
+    ],
+    "health_rating": [
+     "Fair",
+     "Good"
+    ],
+    "health_summary": [
+     "Firm overall, but one leaf has yellow-orange blotches, the lowest leaf base is yellow with a brown patch, and another leaf has a scar.",
+     "Firm, with healthy white roots showing through the clear pot. The yellow lowest leaf is firm, so it is an old leaf dying back, not rot."
+    ],
+    "health_observations": [
+     "Yellow-orange blotches on one leaf\nLowest leaf base yellow with a brown patch\nA leaf with a yellow streak and scar\nA small pink-flowered weed in the tub",
+     "Yellow-orange blotches on one leaf (sun scars)\nLowest leaf yellow but firm at the base (pressed, October 23): an old leaf dying back\nWhite, healthy roots visible through the clear pot\nA small pink-flowered weed in the tub"
+    ],
+    "health_steps": [
+     "Press the yellow lowest leaf near its base: firm means it is an old leaf dying back (cut it off); soft or smelly means rot (unpot and check the core).\nKeep it dry; water only when the mix is dry through.\nPull the weed.\nMove it under cover before nights reach 25°F.",
+     "Cut off the yellow lowest leaf when it has dried, close to the base.\nKeep it dry; water only when the mix is dry through.\nPull the weed.\nMove it under cover before nights reach 25°F."
+    ]
+   }
+  },
+  {
+   "code": "P-043",
+   "name": "Zebra haworthia",
+   "photos": [
+    "img_b2_04.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-7-7"
+    ],
+    "fert_strength": [
+     "",
+     "Quarter to half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-044",
+   "name": "Boobie cactus (Fukurokuryuzinboku)",
+   "photos": [
+    "img_b2_05.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-7-7"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-045",
+   "name": "Aeonium, burgundy rosettes",
+   "photos": [
+    "img_b2_06.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-7-7"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-046",
+   "name": "Vanilla orchid (young vine)",
+   "photos": [
+    "img_b2_07.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-047",
+   "name": "Purple heart",
+   "photos": [
+    "img_b2_08.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-048",
+   "name": "Arrowhead plant (pink)",
+   "photos": [
+    "img_b2_09.jpg"
+   ],
+   "note": "Tag is not accurate, so the cultivar stays unconfirmed. Also set the fertilizer ratio and strength (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ],
+    "id_improve": [
+     "Tag or receipt for the cultivar\nA mature leaf (pink usually fades to green with age)",
+     "A mature leaf (pink usually fades to green with age)"
+    ],
+    "notes": [
+     "",
+     "The tag in the pot is not accurate, so it is not used for the name (Ethan, October 23)."
+    ]
+   }
+  },
+  {
+   "code": "P-049",
+   "name": "Monstera (Swiss cheese plant)",
+   "photos": [
+    "img_b2_10.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-051",
+   "name": "Variegated tradescantia (lime, white-striped)",
+   "photos": [
+    "img_b2_12.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-052",
+   "name": "Gardenia",
+   "photos": [
+    "img_b2_13.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-053",
+   "name": "Gourd-family vine (red pot)",
+   "photos": [
+    "img_b2_14.jpg"
+   ],
+   "note": "Most black specks are insects, probably aphids. Also set the fertilizer ratio and strength (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ],
+    "pests_current": [
+     "October 21: clusters of tiny black specks on several leaves (seen against the light) and a small insect on a top leaf. Possibly black aphids or their droppings, or thrips. Not confirmed.",
+     "October 23: most of the black specks under the leaves are tiny insects that move when nudged (some are just dots). Most likely black aphids; thrips are possible. Insecticidal soap treats both."
+    ],
+    "pests_found": [
+     "",
+     "Aphids"
+    ],
+    "health_observations": [
+     "Clusters of tiny black specks on several leaves\nA small insect on a top leaf\nOlder leaves yellowing with brown spots\nTendrils and new growth at the top",
+     "Tiny black insects under several leaves (checked October 23)\nOlder leaves yellowing with brown spots\nTendrils and new growth at the top"
+    ],
+    "health_steps": [
+     "Look under the speckled leaves with a magnifier or phone zoom.\nHose the leaves (top and underside) with a strong spray.\nThen spray insecticidal soap every 5-7 days, three times.\nFeed with a balanced fertilizer: the perlite-heavy mix is hungry.\nIt is frost-tender; it will likely die back at the first frost.",
+     "Hose the leaves, top and underside, with a strong spray.\nThen spray insecticidal soap every 5-7 days, three times, covering the undersides.\nKeep it away from plants that are coming inside, so the insects do not spread to them.\nIt is a frost-tender annual near the end of its season: when frost kills it, bag it and put it in the trash rather than compost."
+    ]
+   }
+  },
+  {
+   "code": "P-054",
+   "name": "Purple fountain grass",
+   "photos": [
+    "img_b2_15.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-055",
+   "name": "Philodendron 'Black Cardinal'",
+   "photos": [
+    "img_b2_16.jpg"
+   ],
+   "note": "White specks are scorch marks, not pests. Also set the fertilizer ratio and strength (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ],
+    "health_summary": [
+     "Struggling: many leaves are yellow-orange with dead brown tips and droop, and the green leaves are covered in small white specks.",
+     "Struggling: many leaves are yellow-orange with dead brown tips and droop, and the green leaves have small white scorch marks from sun."
+    ],
+    "health_observations": [
+     "Small white specks over the leaves\nYellow-orange leaves with dead tips\nDrooping leaves\nPapery dead sheaths at the base",
+     "Small white marks on the leaves that do not wipe off: sun scorch (checked October 23)\nYellow-orange leaves with dead tips\nDrooping leaves\nPapery dead sheaths at the base"
+    ],
+    "health_steps": [
+     "Wipe one speckled leaf with a damp cloth: if the specks come off they are mineral spots from water; if not, look under the leaves for thrips or mites and treat with insecticidal soap.\nCut off the dead and mostly yellow leaves.\nBright indirect light, no direct sun.\nWater when the top inch is dry.\nBring it inside before nights reach 55°F.",
+     "Move it to bright shade: no direct sun at all.\nCut off the dead and mostly yellow leaves.\nWater when the top inch is dry.\nBring it inside before nights reach 55°F."
+    ],
+    "pests_current": [
+     "Small pale pin-dots on some leaves in the photos could be thrips or mites. Not confirmed.",
+     "None. The white specks are scorch marks, not insects (checked October 23)."
+    ]
+   }
+  },
+  {
+   "code": "P-056",
+   "name": "Alocasia (sold as 'Nigra')",
+   "photos": [
+    "img_b2_18.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-057",
+   "name": "Celosia 'Kelos Fire Purple'",
+   "photos": [
+    "img_b2_19.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-3-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-058",
+   "name": "Celosia 'Glorious Orange'",
+   "photos": [
+    "img_b2_20.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-3-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-059",
+   "name": "Wandering jew (silver-striped)",
+   "photos": [
+    "img_b2_21.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-060",
+   "name": "Arrowhead plant (green, white-veined)",
+   "photos": [
+    "img_b2_22.jpg"
+   ],
+   "note": "Tag reads Syngonium 'Black Velvet'. Also set the fertilizer ratio and strength (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ],
+    "common_name": [
+     "Arrowhead plant (green, white-veined)",
+     "Arrowhead plant 'Black Velvet'"
+    ],
+    "scientific_name": [
+     "Syngonium podophyllum",
+     "Syngonium 'Black Velvet'"
+    ],
+    "aliases": [
+     "",
+     "Exotic Angel Plants tag"
+    ],
+    "id_confidence": [
+     80,
+     85
+    ],
+    "id_basis": [
+     "Arrow-shaped leaves with a deep basal lobe and bright white-green midrib and side veins on a bushy, young plant. A marbled leaf lower in the pot suggests a second plant or a variegated cutting.",
+     "The Exotic Angel Plants tag in the pot reads 'Syngonium Black Velvet'. Arrow-shaped leaves with a bright white midrib and veins fit it; 'Black Velvet' leaves are dark and velvety in shade and turn lighter green in strong light, as these have."
+    ],
+    "id_alternatives": [
+     "'White Butterfly'\n'Albo variegatum' (the marbled leaf)\nOther green Syngonium podophyllum forms",
+     "Syngonium wendlandii (one of its parents)\nOther green Syngonium podophyllum forms"
+    ],
+    "id_improve": [
+     "The tag\nA side view of the whole pot\nA close-up of the marbled leaf",
+     "A newly opened leaf grown in shade (it should be dark and velvety)"
+    ],
+    "light_summary": [
+     "Bright indirect light",
+     "Medium to bright indirect light (the tag says medium light)"
+    ],
+    "notes": [
+     "",
+     "The pot also has a few purple-pink wandering-dude (Tradescantia) shoots."
+    ]
+   }
+  },
+  {
+   "code": "P-061",
+   "name": "Alocasia (lime-green, mottled stalks)",
+   "photos": [
+    "img_b2_23.jpg"
+   ],
+   "note": "Photos of the whole plant; the tag only says Alocasia. Also set the fertilizer ratio and strength (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ],
+    "id_improve": [
+     "A photo of the whole plant from the side",
+     "A newly opened leaf\nWriting on the back of the white Alocasia tag, if any (the front only says Alocasia)"
+    ]
+   }
+  },
+  {
+   "code": "P-062",
+   "name": "Philodendron 'White Knight'",
+   "photos": [
+    "img_b2_24.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-063",
+   "name": "Money tree",
+   "photos": [
+    "img_b2_25.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-064",
+   "name": "Bearded iris (potted)",
+   "photos": [
+    "img_b2_26.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-2-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-065",
+   "name": "Variegated rubber tree",
+   "photos": [
+    "img_b2_27.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-066",
+   "name": "Velvet-leaf philodendron (young)",
+   "photos": [
+    "img_b2_28.jpg"
+   ],
+   "note": "No accurate tag in the pot. Also set the fertilizer ratio and strength (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ],
+    "id_improve": [
+     "A mature leaf photo\nThe tag\nThe whole vine and stem",
+     "A mature leaf photo\nThe whole vine and stem (there is no accurate tag)"
+    ]
+   }
+  },
+  {
+   "code": "P-067",
+   "name": "Celosia 'Dracula Red' (crested)",
+   "photos": [
+    "img_b6_03.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-3-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-068",
+   "name": "Petunia 'Ray Black'",
+   "photos": [
+    "img_b6_04.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-069",
+   "name": "White sage (Texas native, Artemisia)",
+   "photos": [
+    "img_b6_08.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "None needed"
+    ]
+   }
+  },
+  {
+   "code": "P-070",
+   "name": "Bee balm (wild bergamot)",
+   "photos": [
+    "img_b6_10.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "None needed"
+    ]
+   }
+  },
+  {
+   "code": "P-071",
+   "name": "Zexmenia",
+   "photos": [
+    "img_b6_12.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "None needed"
+    ]
+   }
+  },
+  {
+   "code": "P-072",
+   "name": "Texas star hibiscus",
+   "photos": [
+    "img_b6_14.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "1-1-1"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-073",
+   "name": "Miniature rose, yellow (red pot)",
+   "photos": [
+    "img_b6_24.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-3-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-074",
+   "name": "Rose (green pot)",
+   "photos": [
+    "img_b6_18.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-3-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-075",
+   "name": "Rose (black pot, sparse)",
+   "photos": [
+    "img_b6_20.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-3-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-076",
+   "name": "Majesty palm (white pot)",
+   "photos": [
+    "img_b6_29.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "4-1-6"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-077",
+   "name": "Majesty palm (tall grey planter)",
+   "photos": [
+    "img_b6_31.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "4-1-6"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-078",
+   "name": "Aloe vera (probable), teal pot",
+   "photos": [
+    "img_b9_p014_1.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-7-7"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-079",
+   "name": "Aloe vera (probable), black pot by the prickly pear pad",
+   "photos": [
+    "img_b9_p014_2.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-7-7"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-080",
+   "name": "Speckled dwarf aloe (in the zebra haworthia pot)",
+   "photos": [
+    "img_b9_p016_5.jpg"
+   ],
+   "note": "Fertilizer ratio and strength set, for matching it to your fertilizers (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "2-7-7"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ]
+   }
+  },
+  {
+   "code": "P-081",
+   "name": "Yellow-marbled philodendron (self-heading, unidentified)",
+   "photos": [
+    "img_b2_17.jpg"
+   ],
+   "note": "Tag reads Philodendron 'Ring of Fire'. Also set the fertilizer ratio and strength (batch A2)",
+   "set": {
+    "npk_ratio": [
+     "",
+     "3-1-2"
+    ],
+    "fert_strength": [
+     "",
+     "Half strength"
+    ],
+    "common_name": [
+     "Yellow-marbled philodendron (self-heading, unidentified)",
+     "Philodendron 'Ring of Fire'"
+    ],
+    "scientific_name": [
+     "Philodendron sp. (unconfirmed)",
+     "Philodendron 'Ring of Fire' (sold as Philodendron serratum)"
+    ],
+    "aliases": [
+     "",
+     "HEB clearance, $1 (was $8), Sept 30 2026"
+    ],
+    "id_confidence": [
+     35,
+     85
+    ],
+    "id_basis": [
+     "Split from P-055: Ethan says this photo shows a different plant from the Black Cardinal. A broad, glossy, oval leaf marbled lime and yellow over green, on a long stalk from the base, so probably a self-heading philodendron. Not enough to name it from one photo.",
+     "The HEB tag in the pot reads 'Philodendron Ring of Fire, Philodendron serratum', and the clearance label 'HEB PHILO RNG OF FIRE 5IN'. Its leaves are marbled lime and yellow over green, which is how 'Ring of Fire' looks; young leaves are smooth-edged and later ones become long and jagged."
+    ],
+    "id_alternatives": [
+     "Philodendron 'Calypso' (lime-and-yellow marbled)\nPhilodendron 'Painted Lady' (young leaf)\nPhilodendron 'Golden Crocodile'\nPhilodendron 'Prince of Orange' (green-leaf stage)",
+     "Philodendron 'Calypso' (lime-and-yellow marbled)\nPhilodendron 'Painted Lady' (young leaf)"
+    ],
+    "id_improve": [
+     "A photo of the whole plant from the side\nA newly opened leaf (its colour as it opens)\nThe pot tag or price label",
+     "A newly opened leaf (they become longer and more jagged as the plant matures)"
+    ],
+    "health_summary": [
+     "Large leaf with brown, sunburned-looking patches along the edge and near the midrib; dried stalks at the base.",
+     "One big leaf with yellow and brown sun-scorched edges, and dried papery sheaths at the base. Bought on clearance and recovering."
+    ],
+    "health_observations": [
+     "Brown scorch patches on the big leaf\nPale yellow spots\nDried old leaf stalks at the base",
+     "Yellow and brown scorched edges on the big leaf\nDried papery sheaths (cataphylls) at the base, which is normal\nOne green stalk and a new shoot at the base"
+    ],
+    "health_steps": [
+     "Move it out of direct afternoon sun.\nRemove the dried stalks.\nWater when the top inch is dry.\nBring it inside before nights reach 55°F.",
+     "Move it to bright shade: the tag says full sun, but the leaf is scorched.\nPull off the dried sheaths once they come away easily.\nWater when the top inch is dry.\nBring it inside before nights reach 55°F."
+    ],
+    "light_summary": [
+     "Bright indirect light",
+     "Bright indirect light (the tag says full sun, but the leaf is scorched)"
+    ],
+    "notes": [
+     "Split from P-055 on October 23, 2026: Ethan said the photo img_b2_17 shows a different plant.",
+     "Split from P-055 on October 23, 2026. Identified from its HEB tag the same day."
+    ]
+   }
+  }
+ ],
+ "archive": [],
+ "requests_done": [
+  {
+   "key": "p017-spear",
+   "answer": "Holds firm, no rotting smell"
+  },
+  {
+   "key": "p025-tag-text",
+   "answer": "Tag is blank"
+  },
+  {
+   "key": "p036-taste",
+   "answer": "No sweetness or flavor of note"
+  },
+  {
+   "key": "p042-base",
+   "answer": "Firm"
+  },
+  {
+   "key": "p-048-tag-closeup",
+   "answer": "Tag is not accurate, ignore it"
+  },
+  {
+   "key": "p053-undersides",
+   "answer": "Some are dots, most are insects"
+  },
+  {
+   "key": "p055-wipe",
+   "answer": "No, the speckles seem to be scorch marks"
+  },
+  {
+   "key": "p-060-tag-closeup",
+   "answer": "Picture added"
+  },
+  {
+   "key": "p-066-pot-tag",
+   "answer": "No accurate plant tag present"
+  },
+  {
+   "key": "p081-whole-plant",
+   "answer": "Photos added"
+  }
+ ],
+ "requests_add": [
+  {
+   "key": "p036-stem-smell",
+   "code": "P-036",
+   "name": "Young shrub with toothed leaves (not stevia)",
+   "text": "Roll the stem between your fingers: is it square or round? Then crush a leaf: does it smell of sage, of mint, or of nothing?"
+  }
+ ],
+ "to_photograph_done": [
+  "Tag close-ups: both Alocasia pots",
+  "Each philodendron pot with its tag"
+ ],
+ "to_photograph_add": []
+}

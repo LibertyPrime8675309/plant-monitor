@@ -8,7 +8,7 @@ import csv, hmac, io, json, math, os, re, secrets, shutil, sqlite3, threading, t
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import urlparse
 
-from flask import Flask, Response, abort, g, jsonify, request, send_from_directory
+from flask import Flask, Response, abort, g, has_request_context, jsonify, request, send_from_directory
 from PIL import Image, ImageOps
 import segno
 
@@ -36,6 +36,7 @@ SITES = ['Outdoors', 'Covered porch', 'Indoors', 'Garage or shed']
 # 1.9.0: what decides which pest treatments suit a plant before it comes inside (chosen on its page)
 LEAF_TYPES = ['Large leaves', 'Small or many leaves', 'Fuzzy or velvety leaves', 'Succulent or cactus', 'Fern fronds', 'Palm fronds', 'Grows in water']
 POT_SIZES = ['Small: fits in a bucket', 'Medium: fits in a big tub', 'Large: too big to soak']
+FERT_STRENGTHS = ['None needed', 'Quarter strength', 'Quarter to half strength', 'Half strength', 'Full strength']   # 1.11.0
 PESTS = ['Spider mites', 'Mealybugs', 'Scale', 'Aphids', 'Whiteflies', 'Thrips', 'Ants', 'Fungus gnats', 'Root mealybugs',
          'Slugs or snails', 'Pill bugs or earwigs', 'Other']
 INSIDE_SITES = ['Indoors', 'Garage or shed']
@@ -79,9 +80,11 @@ FIELDS = [
     ('water_every_days', 'int', 'Check for water every (days)'),
     # ---- added in 1.9.0
     ('leaf_type', 'enum', 'Leaf type'), ('pot_size', 'enum', 'Pot size'), ('pests_found', 'list', 'Pests you found'),
+    # ---- added in 1.11.0: the fertilizer this plant needs, for matching it to the fertilizers you have
+    ('npk_ratio', 'text', 'Fertilizer ratio needed (N-P-K)'), ('fert_strength', 'enum', 'Fertilizer strength'),
 ]
-ENUMS = {'winter_plan': WINTER_PLANS, 'site': SITES, 'health_rating': HEALTH, 'leaf_type': LEAF_TYPES, 'pot_size': POT_SIZES}
-OPTIONAL_ENUMS = ('leaf_type', 'pot_size')        # may be left as "Not set"
+ENUMS = {'winter_plan': WINTER_PLANS, 'site': SITES, 'health_rating': HEALTH, 'leaf_type': LEAF_TYPES, 'pot_size': POT_SIZES, 'fert_strength': FERT_STRENGTHS}
+OPTIONAL_ENUMS = ('leaf_type', 'pot_size', 'fert_strength')        # may be left as "Not set"
 FIELD_NAMES = [f[0] for f in FIELDS]
 FIELD_KIND = {f[0]: f[1] for f in FIELDS}
 FIELD_LABEL = {f[0]: f[2] for f in FIELDS}
@@ -158,6 +161,9 @@ CREATE TABLE IF NOT EXISTS fertilizer_log(
   batch_id TEXT, created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_by TEXT, updated_at TEXT);
 CREATE INDEX IF NOT EXISTS fert_plant ON fertilizer_log(plant_code, applied_on);
 CREATE INDEX IF NOT EXISTS fert_day ON fertilizer_log(applied_on);
+CREATE TABLE IF NOT EXISTS fertilizers(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, product TEXT NOT NULL UNIQUE COLLATE NOCASE, form TEXT NOT NULL DEFAULT 'liquid',
+  n REAL, p REAL, k REAL, note TEXT NOT NULL DEFAULT '', created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_by TEXT, updated_at TEXT);
 CREATE TABLE IF NOT EXISTS care_log(
   id INTEGER PRIMARY KEY AUTOINCREMENT, plant_code TEXT NOT NULL, kind TEXT NOT NULL, done_on TEXT NOT NULL, note TEXT NOT NULL DEFAULT '',
   created_by TEXT NOT NULL, created_at TEXT NOT NULL);
@@ -399,6 +405,10 @@ def norm(name, v):
         if s == '' and name in OPTIONAL_ENUMS: return ''
         if s not in allowed: abort(400, f'{FIELD_LABEL[name]} must be one of: ' + ', '.join(allowed))
     if kind == 'list': s = '\n'.join(x.strip() for x in s.split('\n') if x.strip())
+    if name == 'npk_ratio' and s:
+        r = parse_ratio(s)
+        if not r: abort(400, 'Fertilizer ratio needed must be three numbers for N, P and K, such as 3-1-2')
+        s = '-'.join('%g' % x for x in r)
     return s
 
 def bump(c, pid, code, who, action, summary, changes=None):
@@ -608,16 +618,50 @@ def version(): return jsonify(version=APP_VERSION)
 @app.route('/api/meta')
 def meta():
     c = db()
+    L = location(c)
     return jsonify(fields=[{'name': n, 'kind': k, 'label': l} for n, k, l in FIELDS], winter_plans=WINTER_PLANS, health=HEALTH, sites=SITES, inside_sites=INSIDE_SITES,
                    enums=ENUMS, optional_enums=OPTIONAL_ENUMS, pests=PESTS,
                    counts={'plants': c.execute("SELECT COUNT(*) FROM plants WHERE status='active'").fetchone()[0],
                            'photos': c.execute('SELECT COUNT(*) FROM photos').fetchone()[0]},
-                   password_protected=bool(PASSWORD), int_ranges=INT_RANGES, num_ranges=NUM_RANGES, version=APP_VERSION)
+                   password_protected=bool(PASSWORD), int_ranges=INT_RANGES, num_ranges=NUM_RANGES, version=APP_VERSION,
+                   home_tz=L['tz'],              # the browser uses this for "today", so dates match the server's
+                   place=place_brief(L), climate=place_climate(c, L),
+                   places=[place_brief(loc_dict(r)) for r in c.execute('SELECT * FROM locations ORDER BY is_home DESC, name')])
+
+REF_PLACE = (30.5083, -97.6789)       # the written winter reference (climate table and notes) is for Round Rock, TX
 
 @app.route('/api/reference')
 def reference():
-    r = db().execute("SELECT value FROM settings WHERE key='reference'").fetchone()
-    return jsonify(json.loads(r[0]) if r else {})
+    """The written winter reference, plus (1.11.0) whether it is about the place in use, and that place's own monthly
+    averages from its weather history when it has 3 years or more, so the Winter plan works for any place."""
+    c = db()
+    r = c.execute("SELECT value FROM settings WHERE key='reference'").fetchone()
+    ref = json.loads(r[0]) if r else {}
+    L = location(c)
+    ref['applies'] = abs(L['lat'] - REF_PLACE[0]) < 0.5 and abs(L['lon'] - REF_PLACE[1]) < 0.5
+    ref['place'] = place_brief(L)
+    ref['normals'] = place_normals(c, L)
+    return jsonify(ref)
+
+PLACE_NORMALS = {}
+def place_normals(c, L):
+    """Average low, high, freezing nights and humidity for each month at a place, from its daily weather history."""
+    hit = PLACE_NORMALS.get(L['id'])
+    if hit and time.time() - hit[0] < 6 * 3600: return hit[1]
+    out = None
+    try:
+        rows = c.execute("""SELECT CAST(substr(date, 6, 2) AS INTEGER) m, COUNT(DISTINCT substr(date, 1, 4)) years,
+              AVG(json_extract(data, '$.temperature_2m_min')), AVG(json_extract(data, '$.temperature_2m_max')),
+              SUM(CASE WHEN json_extract(data, '$.temperature_2m_min') <= 32 THEN 1 ELSE 0 END), AVG(json_extract(data, '$.relative_humidity_2m_mean'))
+              FROM weather_daily WHERE loc_id=? AND kind='observed' GROUP BY m ORDER BY m""", (L['id'],)).fetchall()
+        if len(rows) == 12 and min(r[1] for r in rows) >= 3:
+            out = {'years': min(r[1] for r in rows), 'since': c.execute("SELECT MIN(date) FROM weather_daily WHERE loc_id=? AND kind='observed'", (L['id'],)).fetchone()[0],
+                   'months': [{'month': MONTH_ABBR[r[0] - 1], 'low': round(r[2]) if r[2] is not None else None, 'high': round(r[3]) if r[3] is not None else None,
+                               'freeze_nights': round(r[4] / r[1], 1), 'rh': round(r[5]) if r[5] is not None else None} for r in rows]}
+    except sqlite3.OperationalError: out = None
+    PLACE_NORMALS[L['id']] = (time.time(), out)
+    return out
+MONTH_ABBR = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 @app.route('/api/settings', methods=['GET', 'PUT'])
 def settings():
@@ -1278,13 +1322,109 @@ def restore(code, n):
     c.commit()
     return jsonify(plant_dict(c, plant_row(c, code)) | {'changed': changed})
 
+# ---------------------------------------------------------------- audit log: every change to every record (filters added in 1.10.0)
+AUDIT_KINDS = {                          # kind of change (the filter on the Audit log page) -> actions in audit_log
+    'edits': ('Changes to plant pages', ('update', 'edit', 'restore')),
+    'plants': ('Plants added, archived or brought back', ('create', 'archive', 'unarchive')),
+    'photos': ('Photos', ('photo_add', 'photo_assign', 'photo_move', 'photo_remove', 'photo_caption', 'photo_primary')),
+    'care': ('Feeding, watering and care', ('care', 'fertilizer', 'frost')),
+    'requests': ('Requests and answers', ('request',)),
+    'list': ('"Still to photograph" list', ('todo',)),
+    'settings': ('Settings and backups', ('setting', 'backup')),
+    'notes': ('Notes from updates', ('note',)),
+}
+ACTION_WORD = {'create': 'Page created', 'update': 'Edited', 'edit': 'Updated', 'restore': 'Restored', 'archive': 'Archived', 'unarchive': 'Brought back',
+               'photo_add': 'Photo added', 'photo_assign': 'Photo assigned', 'photo_move': 'Photo moved', 'photo_remove': 'Photo removed',
+               'photo_caption': 'Caption edited', 'photo_primary': 'Main photo changed', 'care': 'Care', 'fertilizer': 'Feeding', 'frost': 'Cold night',
+               'request': 'Request', 'todo': 'Photo list', 'setting': 'Setting', 'backup': 'Backup', 'note': 'Note'}
+
+def audit_query(c, a, count=False):
+    """SQL and arguments for the audit log with the filters in `a` (request.args): q, plant, who, kind, field, from, to,
+    after (id, for the live console) and order."""
+    w, args = [], []
+    q = (a.get('q') or '').strip()
+    if q:
+        like = '%' + q.replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_') + '%'      # match the text itself, wildcards included
+        fields = [n for n, l in FIELD_LABEL.items() if q.lower() in str(l).lower()]
+        cols = ('a.note', 'a.old_value', 'a.new_value', 'a.changed_by', 'a.plant_code', 'a.action', 'a.field', 'p.common_name')
+        w.append('(' + ' OR '.join(f"{col} LIKE ? ESCAPE '\\'" for col in cols)
+                 + (' OR a.field IN (%s)' % ','.join('?' * len(fields)) if fields else '') + ')')
+        args += [like] * len(cols) + fields
+    plant = (a.get('plant') or '').strip()
+    if plant == '-': w.append('a.plant_code IS NULL')
+    elif plant: w.append('a.plant_code = ?'); args.append(plant)
+    who = (a.get('who') or '').strip()
+    if who == '~claude': w.append("a.changed_by LIKE 'Claude%'")
+    elif who == '~people': w.append("a.changed_by NOT LIKE 'Claude%'")
+    elif who: w.append('a.changed_by = ?'); args.append(who)
+    kind = a.get('kind') or ''
+    if kind in AUDIT_KINDS:
+        acts = AUDIT_KINDS[kind][1]; w.append('a.action IN (%s)' % ','.join('?' * len(acts))); args += list(acts)
+    field = a.get('field') or ''
+    if field: w.append('a.field = ?'); args.append(field)
+    tz = tzinfo(location(c)['tz'])
+    for key, op, extra in (('from', '>=', 0), ('to', '<', 1)):
+        v = a.get(key) or ''
+        try: d = datetime.strptime(v, '%Y-%m-%d') + timedelta(days=extra)
+        except ValueError: continue
+        w.append(f'a.changed_at {op} ?'); args.append(d.replace(tzinfo=tz).astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))
+    if a.get('after'):
+        try: w.append('a.id > ?'); args.append(int(a['after']))
+        except ValueError: abort(400, 'after must be a number')
+    where = (' WHERE ' + ' AND '.join(w)) if w else ''
+    base = ' FROM audit_log a LEFT JOIN plants p ON p.code = a.plant_code' + where
+    if count: return 'SELECT COUNT(*)' + base, args
+    order = 'ASC' if a.get('order') == 'asc' or a.get('after') else 'DESC'
+    return 'SELECT a.*, p.common_name AS plant_name' + base + f' ORDER BY a.id {order}', args
+
+AUDIT_FIELD_LABEL = {'status': 'Status', 'photo': 'Photo', 'photo caption': 'Photo caption', 'main photo': 'Main photo', 'care_log': 'Care log',
+                     'frost': 'Cold night', 'request': 'Request', 'to_photograph': '"Still to photograph" list', 'base_url': 'Label web address',
+                     'backup_settings': 'Automatic backups', 'weather_place': 'Weather place', 'ingest_token': 'Sensor token', 'backup': 'Backup',
+                     'claude_copied_at': 'Copied for Claude'}
+
+def audit_label(field):
+    if not field: return None
+    return FIELD_LABEL.get(field) or AUDIT_FIELD_LABEL.get(field) or str(field).replace('_', ' ').capitalize()
+
+def audit_rows(c, sql, args):
+    rows = [dict(x) for x in c.execute(sql, args)]
+    for r in rows:
+        r['label'] = audit_label(r['field'])
+        r['action_word'] = ACTION_WORD.get(r['action'], r['action'])
+    return rows
+
 @app.route('/api/audit')
 def audit():
+    """The newest changes first (a list), with the same filters as /api/audit/search. ?after=<id> returns the changes
+    since that one, oldest first: the live console asks for this every few seconds."""
     c = db()
-    limit = min(int(request.args.get('limit', 200)), 2000)
-    rows = [dict(x) for x in c.execute('SELECT * FROM audit_log ORDER BY id DESC LIMIT ?', (limit,))]
-    for a in rows: a['label'] = FIELD_LABEL.get(a['field'], a['field'])
-    return jsonify(rows)
+    limit = max(1, min(int(request.args.get('limit', 200)), 2000))
+    sql, args = audit_query(c, request.args)
+    return jsonify(audit_rows(c, sql + ' LIMIT ?', args + [limit]))
+
+@app.route('/api/audit/search')
+def audit_search():
+    """One page of the audit log with filters, plus how many changes match in all."""
+    c = db()
+    limit = max(1, min(int(request.args.get('limit', 100)), 500))
+    offset = max(0, int(request.args.get('offset', 0) or 0))
+    sql, args = audit_query(c, request.args)
+    csql, cargs = audit_query(c, request.args, count=True)
+    total = c.execute(csql, cargs).fetchone()[0]
+    return jsonify(entries=audit_rows(c, sql + ' LIMIT ? OFFSET ?', args + [limit, offset]), total=total, offset=offset, limit=limit,
+                   max_id=c.execute('SELECT MAX(id) FROM audit_log').fetchone()[0] or 0)
+
+@app.route('/api/audit/facets')
+def audit_facets():
+    """What the filters on the Audit log page can choose from."""
+    c = db()
+    who = [{'name': r[0], 'count': r[1]} for r in c.execute('SELECT changed_by, COUNT(*) FROM audit_log GROUP BY changed_by ORDER BY changed_by LIKE ?, changed_by', ('Claude%',))]
+    used = {r[0] for r in c.execute('SELECT DISTINCT field FROM audit_log WHERE field IS NOT NULL')}
+    fields = [{'name': n, 'label': audit_label(n)} for n in used]
+    plants = [{'code': r['code'], 'name': r['common_name'], 'status': r['status']} for r in c.execute('SELECT code, common_name, status FROM plants ORDER BY code')]
+    first = c.execute('SELECT MIN(changed_at), COUNT(*) FROM audit_log').fetchone()
+    return jsonify(who=who, fields=sorted(fields, key=lambda f: str(f['label']).lower()), plants=plants,
+                   kinds=[{'key': k, 'label': v[0]} for k, v in AUDIT_KINDS.items()], first=first[0], total=first[1])
 
 # ---------------------------------------------------------------- photos
 def save_image(file_storage):
@@ -1452,7 +1592,7 @@ def export_json():
 
 def _csv_safe(v):
     s = '' if v is None else str(v)
-    return "'" + s if s[:1] in '=+-@\t\r' else s                 # neutralise spreadsheet formulas
+    return "'" + s if s and s[0] in '=+-@\t\r' else s           # neutralise spreadsheet formulas
 
 @app.route('/api/export.csv')
 def export_csv():
@@ -1481,8 +1621,10 @@ def export_audit():
     c = db()
     out = io.StringIO(); w = csv.writer(out)
     w.writerow(['when_utc', 'plant', 'version', 'action', 'field', 'before', 'after', 'by', 'note'])
-    for r in c.execute('SELECT * FROM audit_log ORDER BY id'):
-        w.writerow([_csv_safe(x) for x in (r['changed_at'], r['plant_code'], r['version'], r['action'], FIELD_LABEL.get(r['field'], r['field']), r['old_value'], r['new_value'], r['changed_by'], r['note'])])
+    sql, args = audit_query(c, request.args)                 # the Audit log page's filters, if any (all changes otherwise)
+    if request.args.get('order') != 'desc': sql = sql.replace(' ORDER BY a.id DESC', ' ORDER BY a.id ASC')
+    for r in c.execute(sql, args):
+        w.writerow([_csv_safe(x) for x in (r['changed_at'], r['plant_code'], r['version'], r['action'], audit_label(r['field']), r['old_value'], r['new_value'], r['changed_by'], r['note'])])
     return Response(out.getvalue(), mimetype='text/csv', headers={'Content-Disposition': 'attachment; filename=audit-log.csv'})
 
 # ---------------------------------------------------------------- weather, sensors and current conditions
@@ -1551,16 +1693,63 @@ def loc_set(c, loc_id, **kw):
         c.execute(f'UPDATE locations SET {k}=? WHERE id=?', (v, loc_id))
 
 def req_loc(c, key='loc'):
-    """The place a request is about (?loc=ID, or loc in a JSON body); the home place when not given."""
+    """The place a request is about (?loc=ID, or loc in a JSON body); otherwise the place in use (see location())."""
     v = request.args.get(key)
     if v is None and request.is_json: v = (request.get_json(silent=True) or {}).get(key)
+    if v in (None, ''): return location(c)
     L = loc_get(c, v)
     if L is None: abort(404, 'That place does not exist (it may have been removed)')
     return L
 
-def location(c):
-    """The home place: where your plants are. Plant pages, current conditions and frost warnings use it."""
+def home_place(c):
+    """The home place: the one every browser starts with, and the one background work (hourly updates, backups) uses."""
     return loc_get(c)
+
+def location(c):
+    """The place in use (1.11.0): the one chosen with the Location button in this browser, which the page sends as the
+    X-Place header on every request; the home place when none is chosen, or the chosen one has been removed.
+    Weather, frost warnings, watering, the Winter plan and "today" all follow it."""
+    if has_request_context():
+        v = request.headers.get('X-Place', '').strip()
+        if v.isdigit():
+            L = loc_get(c, v)
+            if L is not None: return L
+    return loc_get(c)
+
+PLACE_CLIMATE = {}
+def place_climate(c, L):
+    """Typical winter cold at a place, from its daily weather history: the average of each winter's coldest night, and the
+    average night in its coldest month. Needs at least 3 whole years of history; worked out at most every 6 hours."""
+    hit = PLACE_CLIMATE.get(L['id'])
+    if hit and time.time() - hit[0] < 6 * 3600: return hit[1]
+    lows, winters = {}, {}
+    try: rows = c.execute("SELECT date, json_extract(data, '$.temperature_2m_min') FROM weather_daily WHERE loc_id=? AND kind='observed'", (L['id'],)).fetchall()
+    except sqlite3.OperationalError:            # an SQLite without JSON functions
+        rows = [(d, (json.loads(x) if x else {}).get('temperature_2m_min')) for d, x in c.execute("SELECT date, data FROM weather_daily WHERE loc_id=? AND kind='observed'", (L['id'],))]
+    for d, t in rows:
+        if not isinstance(t, (int, float)): continue
+        y, m = int(d[:4]), int(d[5:7])
+        lows.setdefault(m, []).append(t)
+        winters.setdefault(y if m >= 7 else y - 1, []).append(t)        # a winter runs from July to June
+    whole = [v for v in winters.values() if len(v) >= 330]
+    out = None
+    if len(whole) >= 3 and len(lows) == 12:
+        cold = min(lows, key=lambda m: sum(lows[m]) / len(lows[m]))
+        warm = max(lows, key=lambda m: sum(lows[m]) / len(lows[m]))
+        winter = sorted(m for m in range(1, 13) if min(abs(m - cold), 12 - abs(m - cold)) <= 1)     # the coldest month and the ones either side
+        rh = None
+        try:
+            r = c.execute(f"SELECT AVG(json_extract(data, '$.relative_humidity_2m_mean')) FROM weather_daily WHERE loc_id=? AND kind='observed' "
+                          f"AND CAST(substr(date, 6, 2) AS INTEGER) IN ({','.join('?' * len(winter))})", (L['id'], *winter)).fetchone()
+            rh = round(r[0]) if r and r[0] is not None else None
+        except sqlite3.OperationalError: pass
+        out = {'winter_low': round(sum(min(v) for v in whole) / len(whole)), 'cold_month': cold, 'warm_month': warm,
+               'cold_month_low': round(sum(lows[cold]) / len(lows[cold])), 'winter_months': winter, 'winter_rh': rh, 'years': len(whole)}
+    PLACE_CLIMATE[L['id']] = (time.time(), out)
+    return out
+
+def place_brief(L):
+    return {k: L[k] for k in ('id', 'name', 'tz', 'is_home', 'enabled')}
 
 def tzinfo(name):
     try:
@@ -2169,7 +2358,7 @@ def weather_info():
     last_hist, last_ok_hist = q("kind='history'"), q("kind='history' AND ok=1 AND hourly_rows>0")
     last_auto, last_any = q("trigger IN ('auto','auto-first')"), q("kind!='earlier'")
     earlier = c.execute("SELECT * FROM weather_runs WHERE loc_id=? AND kind='earlier' ORDER BY id LIMIT 1", (L['id'],)).fetchone()
-    return jsonify(location=L, places=places_list(c), forecast=fc, status=st, enabled=L['enabled'], home=location(c),
+    return jsonify(location=L, places=places_list(c), forecast=fc, status=st, enabled=L['enabled'], home=home_place(c),
                    weather={'first': first[0], 'last': first[1], 'count': first[2], 'detail_since': L['detail_since'], 'detail_years': detail_years(c)},
                    daily={'first': dd[0], 'last': dd[1], 'count': dd[2]},
                    sensor={'first': sens[0], 'last': sens[1], 'count': sens[2], 'devices': sens[3]},
@@ -2588,17 +2777,177 @@ def fertilizer_one(i):
     c.commit()
     return jsonify(ok=True, **{x: f[x] for x in ('ppm_n', 'ppm_p2o5', 'ppm_k2o', 'n_grams')})
 
-@app.route('/api/fertilizer/products')
-def fertilizer_products():
-    """Fertilizers used before, newest first, with the values from the last time so the form can be pre-filled."""
-    c = db()
-    seen, out = set(), []
+# ---- 1.11.0: the fertilizers you have, and which one suits each plant
+def parse_ratio(s):
+    """'3-1-2', '3:1:2', '24 8 16' -> (3.0, 1.0, 2.0); None when it is not three numbers with at least one above 0."""
+    parts = [x for x in re.split(r'[\s\-:/,]+', str(s or '').strip()) if x]
+    if len(parts) != 3: return None
+    try: v = tuple(float(x) for x in parts)
+    except ValueError: return None
+    if any(x < 0 or x > 100 for x in v) or not sum(v): return None
+    return v
+
+FERT_LIQUID = ('liquid', 'organic liquid', 'foliar spray')
+FERT_SOIL = ('granular', 'slow-release', 'spikes', 'organic solid')        # go on or in the mix, not into water
+STRENGTH_PPM = {'Quarter strength': 40, 'Quarter to half strength': 55, 'Half strength': 75, 'Full strength': 150}
+STRENGTH_SHARE = {'Quarter strength': 'a quarter of', 'Quarter to half strength': 'a quarter to half of', 'Half strength': 'half', 'Full strength': 'all of'}
+NUTRIENT = ('nitrogen (N)', 'phosphate (P)', 'potash (K)')
+FRACTIONS = {0.125: '⅛', 0.25: '¼', 0.375: '⅜', 0.5: '½', 0.625: '⅝', 0.75: '¾', 0.875: '⅞'}
+
+def nice_amount(x):
+    """A spoon measure people can actually use: eighths under 1, quarters up to 3, halves above."""
+    step = 0.125 if x < 1 else 0.25 if x < 3 else 0.5
+    v = max(step, round(x / step) * step)
+    whole, frac = int(v), round(v - int(v), 3)
+    return v, (str(whole) if whole else '') + FRACTIONS.get(frac, '' if not frac else '%g' % frac)
+
+def ratio_words(v):
+    m = min(x for x in v if x > 0)
+    return ' : '.join('%g' % round(x / m, 1) for x in v)
+
+def fert_match(need, prod):
+    """How well a fertilizer's N-P-K fits the ratio a plant needs, compared as shares of the total."""
+    rs, fs = [x / sum(need) for x in need], [x / sum(prod) for x in prod]
+    diff = max(abs(a - b) for a, b in zip(rs, fs))
+    quality = 'Matches' if diff <= 0.05 else 'Close' if diff <= 0.12 else 'Usable' if diff <= 0.22 else 'Not a good match'
+    more = [NUTRIENT[i] for i in range(3) if fs[i] - rs[i] > 0.08]
+    less = [NUTRIENT[i] for i in range(3) if rs[i] - fs[i] > 0.08]
+    j = lambda xs: ' and '.join(xs)
+    why = ''
+    if more or less:
+        why = 'It has ' + ' and '.join(x for x in (('more ' + j(more)) if more else '', ('less ' + j(less)) if less else '') if x) + ' than this plant needs.'
+    return {'quality': quality, 'diff': round(diff, 3), 'why': why}
+
+def fert_dose(prod, strength):
+    """How much of this fertilizer to use for a plant that wants it at this strength. Mixed into water, the strongest of
+    N, P and K is aimed at about 150 ppm for full strength (75 for half, 40 for a quarter), close to typical label rates."""
+    if strength == 'None needed': return {'kind': 'none', 'words': 'This plant needs little or no fertilizer.'}
+    if strength not in STRENGTH_PPM: return None
+    share = STRENGTH_SHARE[strength]
+    if prod['form'] in FERT_SOIL:
+        return {'kind': 'soil', 'words': f"This one goes on or into the mix, not into water. Use {share} the amount on its label for the pot size."}
+    vals = [prod[x] for x in 'npk']
+    if any(x is None for x in vals) or not max(vals): return None
+    target, top = STRENGTH_PPM[strength], max(vals)
+    liquid = prod['form'] in FERT_LIQUID
+    per_tsp = 4.92892 if liquid else 4.0                 # grams per teaspoon, as in fert_calc
+    g_gal = target * WATER_L['gal'] / (top * 10)
+    water = 1
+    for w in (1, 2, 5):                                   # less than ⅛ tsp is hard to measure: make a bigger batch
+        water = w
+        if g_gal * w / per_tsp >= 0.125: break
+    amount, amt_txt = nice_amount(g_gal * water / per_tsp)
+    unit = 'tsp'
+    if amount >= 3: unit = 'tbsp'; amount, amt_txt = nice_amount(amount / 3)
+    calc = fert_calc(prod['form'], prod['n'], prod['p'], prod['k'], amount, unit, water, 'gal')
+    per_l = g_gal / WATER_L['gal']
+    metric = ('%s ml' if liquid else '%s g') % ('%.1f' % per_l if per_l < 10 else '%.0f' % per_l) + ' per liter'
+    return {'kind': 'water', 'amount': amount, 'unit': unit, 'amount_text': amt_txt + ' ' + unit, 'water': water, 'water_unit': 'gal', 'metric': metric, 'target_ppm': target,
+            'ppm_n': calc['ppm_n'], 'ppm_p2o5': calc['ppm_p2o5'], 'ppm_k2o': calc['ppm_k2o'],
+            'words': f"Mix {amt_txt} {unit} into {water} gallon{'s' if water > 1 else ''} of water ({metric})."}
+
+def fert_products(c):
+    """Fertilizers you have: the ones saved on the Fertilizer page, plus every one ever logged, newest first.
+    A saved one's N-P-K and type win over what was logged; the last logged dose is kept either way."""
+    out, by = [], {}
+    for r in c.execute('SELECT * FROM fertilizers ORDER BY COALESCE(updated_at, created_at) DESC'):
+        d = {'id': r['id'], 'product': r['product'], 'form': r['form'], 'n': r['n'], 'p': r['p'], 'k': r['k'], 'note': r['note'],
+             'saved': True, 'uses': 0, 'last_used': None, 'amount': None, 'amount_unit': None, 'water_amount': None, 'water_unit': None, 'method': None}
+        out.append(d); by[r['product'].lower()] = d
     for r in c.execute('SELECT * FROM fertilizer_log ORDER BY applied_on DESC, id DESC'):
         key = r['product'].lower()
-        if key in seen: continue
-        seen.add(key)
-        out.append({x: r[x] for x in ['product', 'form', 'n', 'p', 'k', 'amount', 'amount_unit', 'water_amount', 'water_unit', 'method']})
-    return jsonify(out)
+        d = by.get(key)
+        if d is None:
+            d = {'id': None, 'product': r['product'], 'form': r['form'], 'n': r['n'], 'p': r['p'], 'k': r['k'], 'note': '', 'saved': False,
+                 'uses': 0, 'last_used': None, 'amount': None, 'amount_unit': None, 'water_amount': None, 'water_unit': None, 'method': None}
+            out.append(d); by[key] = d
+        d['uses'] += 1
+        if d['last_used'] is None:
+            d.update(last_used=r['applied_on'], amount=r['amount'], amount_unit=r['amount_unit'], water_amount=r['water_amount'],
+                     water_unit=r['water_unit'], method=r['method'])
+    out.sort(key=lambda d: (d['last_used'] or '', d['saved']), reverse=True)
+    return out
+
+def fert_need(p, products):
+    """What a plant needs, and the fertilizer you have that fits it best."""
+    need = parse_ratio(p['npk_ratio'])
+    strength = p['fert_strength'] or ''
+    out = {'code': p['code'], 'ratio': list(need) if need else None, 'ratio_text': p['npk_ratio'] or '', 'ratio_words': ratio_words(need) if need else '',
+           'strength': strength, 'match': None, 'note': ''}
+    if strength == 'None needed' and not need:
+        out['note'] = 'This plant needs little or no fertilizer.'
+        return out
+    if not need:
+        out['note'] = 'No fertilizer ratio set yet. Add one on the Edit page, under Nutrients.'
+        return out
+    usable = [f for f in products if f['n'] is not None and f['p'] is not None and f['k'] is not None and (f['n'] + f['p'] + f['k']) > 0]
+    if not usable:
+        out['note'] = 'None of your fertilizers have their N-P-K numbers yet. Add the ones you have under "Your fertilizers".' if products else \
+                      'No fertilizers yet. Add the ones you have under "Your fertilizers", or log a feeding, and the closest one shows here.'
+        return out
+    best = min(usable, key=lambda f: (fert_match(need, (f['n'], f['p'], f['k']))['diff'], f['form'] in FERT_SOIL, -(f['uses'] or 0)))
+    m = fert_match(need, (best['n'], best['p'], best['k']))
+    out['match'] = {'product': best['product'], 'form': best['form'], 'n': best['n'], 'p': best['p'], 'k': best['k'],
+                    'npk_text': '-'.join('%g' % best[x] for x in 'npk'), 'ratio_words': ratio_words((best['n'], best['p'], best['k'])),
+                    **m, 'dose': fert_dose(best, strength or 'Half strength'), 'strength_assumed': not strength,
+                    'last': ({'amount': best['amount'], 'amount_unit': best['amount_unit'], 'water_amount': best['water_amount'], 'water_unit': best['water_unit'],
+                              'on': best['last_used']} if best['amount'] is not None else None)}
+    return out
+
+@app.route('/api/fertilizer/products', methods=['GET', 'POST'])
+def fertilizer_products():
+    """GET: fertilizers you have (saved and logged), newest first, with the last dose so the form can be filled in.
+    POST: save one you have, even before you use it: {product, form, n, p, k, note}."""
+    c = db()
+    if request.method == 'GET': return jsonify(fert_products(c))
+    f = fert_product_fields(request.get_json(silent=True) or {})
+    if c.execute('SELECT 1 FROM fertilizers WHERE product=?', (f['product'],)).fetchone(): abort(409, f'"{f["product"]}" is already in your fertilizers')
+    who = editor()
+    cur = c.execute('INSERT INTO fertilizers(product,form,n,p,k,note,created_by,created_at) VALUES(?,?,?,?,?,?,?,?)',
+                    (f['product'], f['form'], f['n'], f['p'], f['k'], f['note'], who, now()))
+    audit_only(c, 'fertilizer', 'fertilizer_product', None, fert_product_text(f), who, 'Fertilizer added to your list: ' + fert_product_text(f))
+    c.commit()
+    return jsonify(id=cur.lastrowid), 201
+
+def fert_product_fields(b):
+    product = re.sub(r'\s+', ' ', str(b.get('product', ''))).strip()[:80]
+    if not product: abort(400, 'Type the fertilizer name')
+    form = str(b.get('form') or 'liquid')
+    if form not in FERT_FORMS: abort(400, 'Type must be one of: ' + ', '.join(FERT_FORMS))
+    n, p, k = (_num(b, x, 0, 100, lab, required=True) for x, lab in (('n', 'Nitrogen (N) %'), ('p', 'Phosphate (P) %'), ('k', 'Potash (K) %')))
+    if not (n + p + k): abort(400, 'At least one of N, P and K must be above 0')
+    return {'product': product, 'form': form, 'n': n, 'p': p, 'k': k, 'note': str(b.get('note', '')).strip()[:300]}
+
+def fert_product_text(f):
+    return f"{f['product']} ({'-'.join('%g' % f[x] for x in 'npk')}, {f['form']})"
+
+@app.route('/api/fertilizer/products/<int:i>', methods=['PUT', 'DELETE'])
+def fertilizer_product_one(i):
+    c = db()
+    old = c.execute('SELECT * FROM fertilizers WHERE id=?', (i,)).fetchone()
+    if not old: abort(404, 'That fertilizer is not in your list')
+    who = editor()
+    if request.method == 'DELETE':
+        c.execute('DELETE FROM fertilizers WHERE id=?', (i,))
+        audit_only(c, 'fertilizer', 'fertilizer_product', fert_product_text(old), None, who, 'Fertilizer removed from your list: ' + fert_product_text(old))
+        c.commit()
+        return jsonify(ok=True)
+    f = fert_product_fields(request.get_json(silent=True) or {})
+    if c.execute('SELECT 1 FROM fertilizers WHERE product=? AND id<>?', (f['product'], i)).fetchone(): abort(409, f'"{f["product"]}" is already in your fertilizers')
+    c.execute('UPDATE fertilizers SET product=?,form=?,n=?,p=?,k=?,note=?,updated_by=?,updated_at=? WHERE id=?',
+              (f['product'], f['form'], f['n'], f['p'], f['k'], f['note'], who, now(), i))
+    audit_only(c, 'fertilizer', 'fertilizer_product', fert_product_text(old), fert_product_text(f), who, 'Fertilizer changed: ' + fert_product_text(f))
+    c.commit()
+    return jsonify(ok=True)
+
+@app.route('/api/fertilizer/needs')
+def fertilizer_needs():
+    """For every active plant (or ?plant=CODE): the N-P-K ratio and strength it needs, and the closest fertilizer you have."""
+    c = db()
+    products = fert_products(c)
+    q, a = "SELECT * FROM plants WHERE status='active'", []
+    if request.args.get('plant'): q += ' AND code=?'; a.append(request.args['plant'])
+    return jsonify(needs=[fert_need(r, products) for r in c.execute(q + ' ORDER BY code', a)], products=len(products))
 
 # ---------------------------------------------------------------- past days: what the values were, and what the ranges were then
 HIST = {  # metric -> (column, low field, high field, unit, label)

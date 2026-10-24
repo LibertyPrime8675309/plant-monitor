@@ -22,10 +22,11 @@
       <a href="#/fertilizer" data-nav="fertilizer">Fertilizer</a>
       <a href="#/photos" data-nav="photos">Photos</a>
       <a href="#/labels" data-nav="labels">Labels</a>
-      <a href="#/history" data-nav="history">Change log</a>
+      <a href="#/history" data-nav="history">Audit log</a>
       <a href="#/backups" data-nav="backups">Backups</a>
     </nav>
-    <button class="who" type="button" data-act="who" aria-label="Change who is editing"><span id="who-name"></span></button>
+    <div class="top-acts"><button class="place-btn" id="place-btn" type="button" data-act="place" aria-haspopup="dialog"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span class="pl-l">Location:</span> <span id="place-name">…</span></button>
+    <button class="who" type="button" data-act="who" aria-label="Change who is editing"><span id="who-name"></span></button></div>
   </div>
 </header>
 <aside id="sidenav" class="noprint" aria-label="Sections of this page">
@@ -36,7 +37,16 @@
 </aside>
 <button id="nav-tab" class="noprint" type="button" data-act="navtoggle" aria-controls="sidenav" aria-expanded="false"><span aria-hidden="true">&#9776;</span> Sections</button>
 <main id="app" tabindex="-1"><p class="loading">Loading plants</p></main>
+<section id="console" class="noprint" hidden aria-labelledby="con-title">
+  <div class="con-head"><h2 id="con-title">Audit log (live)</h2><span id="con-state" class="con-state">Starting</span>
+    <div class="con-tools"><button class="btn small ghost" type="button" data-act="conpause" aria-pressed="false">Pause</button><a class="btn small ghost con-open" href="#/history">Open the audit log</a><button class="btn small ghost" type="button" data-act="conclose">Close</button></div></div>
+  <div id="con-body" class="con-body" role="log" tabindex="0" aria-label="Newest changes, oldest at the top" aria-live="off"></div>
+  <button id="con-new" class="con-new" type="button" data-act="connew" hidden>New changes below: show</button>
+</section>
+<div id="corner" class="noprint">
+<button id="debug-btn" type="button" data-act="debug" aria-haspopup="dialog"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m7 10 3 2-3 2M12 15h5"/></svg>Debug</button>
 <button id="display-btn" type="button" data-act="display" aria-haspopup="dialog"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20 9 5l6 15M5.5 14h7M16 20l3.500-9 3.500 9M17.200 17h4.600"/></svg>Display</button>
+</div>
 <div id="toasts" role="status" aria-live="polite"></div>
 <dialog id="dlg"></dialog>
 <script src="/app.js"></script>
