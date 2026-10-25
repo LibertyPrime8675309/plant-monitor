@@ -121,6 +121,11 @@
     - Batches can carry `places_add` and `lights_update` (`{key, set: {field: [old, new]}}`, guarded; the fields are `fixture`, `notes`, `count` or any spec key). `batchA4` adds Ethan's rooms and answers.
     - Front end: `ltRooms()`, `ltRoomsBlock()`, `roomDialog()`, and the actions `roomnew`, `roomedit` and `roomdel`, which are in the viewer CSS block.
   - **Front end:** `viewLights()` (`#/lights`), `ltSpotCard()`, `ltLightCard()`, `spotDialog()` with live `spotPreview()` (`form[data-spot]`), `lightDialog()`, and `loadGrowPlant()` filling `#pl-grow` on plant pages. Change buttons (`spotnew`, `spotedit`, `spotdel`, `lightedit`, `lightnew`) are in the viewer CSS block.
+- **1.14.0: about this plant.**
+  - 23 new plant fields at the end of `FIELDS` (`growth_habit`, `kingdom`, `taxon_order`, `family`, `genus`, `height_ground`, `width_ground`, `height_pot`, `width_pot`, `growth_rate`, `lifespan`, `zone_low`, `zone_high`, `zone_notes`, `native_range`, `conservation_status`, `invasive`, `bloom`, `fruit`, `danger_humans`, `danger_animals`, `propagation`, `sources`). `init_db()` adds the columns. `sources` is a list field, one `Title | URL` per line.
+  - `usda_zone(f)` (half zones of 5°F from 1a at -60°F), `zone_num()`, and `place_zone(c, L)`, which uses `place_climate()`'s `winter_low` and, within 0.25° of `REF_PLACE`, the 2023 map's "8b to 9a". `/api/meta` returns it as `zone`.
+  - Front end: `aboutBlock()` in `<section id="about">`, `zoneHere()` (falls back to the colder end of the map zone when there is no weather history yet), `srcList()`, and the "About this plant" group in `GROUPS`.
+  - `batchA5` fills every plant (guarded, old value ''). It is built by `dev/seed_src/build_batchA5.py` from `profiles_A5.py` (one profile per species or group, with `MAP` from plant code) and `sources_A5.txt` (`key|title|url`, links taken only from web search results).
 - **API:** `/api/plants`, `/api/plants/<code>` and its sub-routes (`site`, `status`, `history`, `timeline`, `versions`, `restore`, `photos`, `qr.svg`, `daily`, `day`), plus `/api/requests`, `/api/photos`, `/api/to-photograph`, `/api/fertilizer`, `/api/water`, `/api/care`, `/api/frost`, `/api/for-claude`, `/api/weather*`, `/api/places*`, `/api/current`, `/api/backups*`, `/api/export.json|csv`, `/api/audit*`, `/api/meta`, `/api/version` and `/healthz`.
 
 ## Front end: `app/static/`
