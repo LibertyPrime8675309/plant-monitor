@@ -940,3 +940,13 @@ ul.sp-verdicts{list-style:none;padding:0;margin:.3rem 0;display:grid;gap:.25rem}
 .danger-box h4{margin:.6rem 0 .2rem}
 ul.srcs{padding-left:1.2rem}
 ul.srcs li{margin:.25rem 0;overflow-wrap:anywhere}
+
+/* 1.14.1: swipe between plants. A label slides in from the side the next page comes from; it turns solid once letting go will open it. */
+.swipe-hint{position:fixed;top:42%;z-index:70;max-width:min(80vw,26rem);padding:.8rem 1.1rem;background:var(--sheet);color:var(--ink);border:var(--bw) solid var(--ink);
+  font-weight:700;line-height:1.3;pointer-events:none;opacity:0;box-shadow:0 .3rem 1rem rgba(0,0,0,.25)}
+.swipe-hint[data-side=right]{right:.75rem} .swipe-hint[data-side=left]{left:.75rem}
+.swipe-hint.show{opacity:.85}
+.swipe-hint.ready{opacity:1;background:var(--ink);color:var(--paper)}
+@media (prefers-reduced-motion:no-preference){.swipe-hint{transition:opacity .12s,background-color .12s}}
+@media print{.swipe-hint{display:none!important}}
+.swipe-hint.ready::after{content:"Let go to open it";display:block;font-weight:400;margin-top:.15rem}
