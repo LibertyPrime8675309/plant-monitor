@@ -1147,6 +1147,105 @@ def plant_status(code):
         c.commit()
     return jsonify(plant_dict(c, plant_row(c, code)))
 
+# ---------------------------------------------------------------- back outside in spring (prototype: proto/move-outside)
+# Plants that are inside now (Indoors, Garage or shed), and whether the nights in the 7-day forecast are warm enough for each
+# to go back out. Levels, best first:
+#   ready  every night at or above the plant's ideal low
+#   safe   no night within FROST_MARGIN of its damage point, but some nights cooler than it likes
+#   early  the forecast is safe, but the place's weather history says colder nights usually still come at this time of year
+#   wait   a night in the forecast is below its damage point, or within FROST_MARGIN of it
+# Reads only; moving a plant uses the existing /api/plants/<code>/site.
+BO_LEVELS = ('ready', 'safe', 'early', 'wait')
+BO_LOWS = {}                 # place id -> (time worked out, {date: low})
+
+def bo_daily_lows(c, L):
+    hit = BO_LOWS.get(L['id'])
+    if hit and time.time() - hit[0] < 6 * 3600: return hit[1]
+    try: rows = c.execute("SELECT date, json_extract(data, '$.temperature_2m_min') FROM weather_daily WHERE loc_id=? AND kind='observed'", (L['id'],)).fetchall()
+    except sqlite3.OperationalError:            # an SQLite without JSON functions
+        rows = [(d, (json.loads(x) if x else {}).get('temperature_2m_min')) for d, x in c.execute("SELECT date, data FROM weather_daily WHERE loc_id=? AND kind='observed'", (L['id'],))]
+    lows = {d: t for d, t in rows if isinstance(t, (int, float))}
+    BO_LOWS[L['id']] = (time.time(), lows)
+    return lows
+
+def bo_md(d):
+    """A date as 'MM-DD' (Feb 29 counts as Feb 28), so days of different years compare."""
+    return '02-28' if d[5:] == '02-29' else d[5:]
+
+def bo_usual(lows, t):
+    """From the daily history, for nights below t°F: the day after the last one each spring (January to June) and the first one
+    each autumn (July to December). Medians over the years with enough days (150 in that half), and the latest spring date.
+    None for a half with fewer than 3 such years. A spring with no night below t counts as '01-01'; autumn medians only count
+    years that had one, and need at least half the years to have one."""
+    halves = {}
+    for d, v in lows.items():
+        y, m = int(d[:4]), int(d[5:7])
+        halves.setdefault((y, 'spring' if m <= 6 else 'autumn'), []).append((d, v))
+    spring, autumn, years_a = [], [], 0
+    for (y, h), vals in halves.items():
+        if len(vals) < 150: continue
+        cold = sorted(d for d, v in vals if v < t)
+        if h == 'spring':
+            if not cold: spring.append('01-01')
+            else:
+                nxt = (datetime.strptime(cold[-1], '%Y-%m-%d') + timedelta(days=1)).strftime('%Y-%m-%d')
+                spring.append(bo_md(nxt) if nxt[5:7] <= '06' else '07-01')
+        else:
+            years_a += 1
+            if cold: autumn.append(bo_md(cold[0]))
+    med = lambda xs: sorted(xs)[(len(xs) - 1) // 2] if xs else None
+    out = {}
+    if len(spring) >= 3:
+        out |= {'safe': med(spring), 'safe_latest': max(spring), 'spring_years': len(spring), 'spring_cold': sum(1 for x in spring if x != '01-01')}
+    if years_a >= 3:
+        out |= {'first': med(autumn) if len(autumn) * 2 >= years_a else None, 'autumn_years': years_a}
+    return out or None
+
+def outside_report(c):
+    L = location(c)
+    fc = loc_json(c, L['id'], 'forecast')
+    today = local_today(c)
+    td, tmd = today.isoformat(), bo_md(today.isoformat())
+    nights = [{'date': d['date'], 'low': d['low']} for d in (fc.get('days') or []) if d.get('date', '') >= td and d.get('low') is not None][:7]
+    spring = today.month <= 6
+    lows = bo_daily_lows(c, L)
+    usual_at = {}
+    photo = lambda pid: (c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC,id LIMIT 1', (pid,)).fetchone() or [None])[0]
+    rows = c.execute("SELECT * FROM plants WHERE status='active' ORDER BY code").fetchall()
+    out = []
+    for r in rows:
+        if (r['site'] or 'Outdoors') not in INSIDE_SITES: continue
+        dmg, ideal = r['temp_damage_below'], r['temp_ideal_low']
+        p = {'code': r['code'], 'name': r['common_name'], 'photo': photo(r['id']), 'site': r['site'], 'plan': r['winter_plan'],
+             'damage': dmg, 'lethal': r['temp_lethal_below'], 'ideal': ideal, 'level': None}
+        if dmg is None and ideal is None: out.append(p); continue
+        safe_at = dmg + FROST_MARGIN if dmg is not None else ideal
+        like = ideal if ideal is not None and ideal > safe_at else safe_at
+        if safe_at not in usual_at: usual_at[safe_at] = bo_usual(lows, safe_at)
+        u = usual_at[safe_at]
+        p |= {'safe_at': safe_at, 'like': like, 'usual': u}
+        if not nights: out.append(p); continue
+        cold = next((n for n in nights if n['low'] < safe_at), None)
+        cool = [n for n in nights if n['low'] < like]
+        p |= {'coldest': min(nights, key=lambda n: (n['low'], n['date'])), 'first_cold': cold, 'cool_nights': len(cool)}
+        if cold: p['level'] = 'wait'
+        else:
+            p['level'] = 'safe' if cool else 'ready'
+            if u and spring and u.get('safe') and tmd < u['safe']:
+                p |= {'level': 'early', 'why': 'spring'}
+            elif u and not spring and u.get('first') and tmd >= bo_md((datetime.strptime('2001-' + u['first'], '%Y-%m-%d') - timedelta(days=7)).strftime('%Y-%m-%d')):
+                p |= {'level': 'early', 'why': 'autumn'}
+        out.append(p)
+    rank = {k: i for i, k in enumerate(BO_LEVELS)}
+    out.sort(key=lambda p: (rank.get(p['level'], 9), (p['name'] or '').lower(), p['code']))
+    return {'place': L['name'], 'fetched_at': fc.get('fetched_at'), 'today': td, 'season': 'spring' if spring else 'autumn', 'margin': FROST_MARGIN,
+            'nights': nights, 'plants': out, 'history_days': len(lows),
+            'counts': {k: sum(1 for p in out if p['level'] == k) for k in BO_LEVELS} | {'unknown': sum(1 for p in out if not p['level'])}}
+
+@app.route('/api/outside')
+def outside_api():
+    return jsonify(outside_report(db()))
+
 # ---------------------------------------------------------------- getting plants ready to come inside (added in 1.9.0)
 # Ten ways to keep outdoor pests out of the house, rated for each plant from what is chosen on its page (leaf type,
 # pot size, pests found) and what the app knows (health, how dry it likes its soil, the pests it often gets, the weather).

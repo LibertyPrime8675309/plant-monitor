@@ -249,7 +249,7 @@ async function route() {
   const my = ++token;
   const h = location.hash.replace(/^#/, '') || '/';
   const parts = h.split('/').filter(Boolean);
-  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : 'plants';
+  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : 'plants';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let view;
@@ -269,6 +269,7 @@ async function route() {
     else if (parts[0] === 'backups') view = await viewBackups();
     else if (parts[0] === 'frost') view = await viewFrost();
     else if (parts[0] === 'inside') view = await viewInside();
+    else if (parts[0] === 'outside') view = await viewOutside();
     else view = await viewGallery();
     if (my !== token) return;
     app.innerHTML = rend(view.html);
@@ -2642,6 +2643,7 @@ async function viewWinter() {
     })}</div>
     ${(() => { const ins = list.filter(isInside).sort((a, b) => a.code.localeCompare(b.code)); return ins.length ? html`<h3 id="inside-list">Already inside (${ins.length})</h3>
       <p class="hint">These are left out of the lists above and the frost warnings. If one goes back out, press Moved back outside.</p>
+      <p><a class="btn small ghost" href="#/outside">Which can go back outside?</a></p>
       <ul class="todo winter-list inside-list">${ins.map(p => html`<li>${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : html`<span></span>`}
         <span><a class="nm" href="#/plant/${enc(p.code)}">${p.common_name}</a><br><span class="muted">${p.code}, ${p.site.toLowerCase()}, plan: ${p.winter_plan}</span>
         <br><button class="btn small ghost noprint" type="button" data-act="moveout" data-code="${p.code}" data-name="${p.common_name}">Moved back outside</button></span></li>`)}</ul>` : html`<p class="hint">When you bring a plant in, press its Moved indoors button. It leaves these lists and the frost warnings, and its page shows Location: Indoors.</p>`; })()}
@@ -2649,6 +2651,103 @@ async function viewWinter() {
     ${ref.applies !== false && (ref.sources || []).length ? html`<section class="blk"><h2>Sources</h2><ul>${ref.sources.map(s => html`<li><a href="${s[1]}" target="_blank" rel="noopener noreferrer">${s[0]}</a></li>`)}</ul></section>` : ''}`,
   };
 }
+
+// ---------- back outside in spring (prototype: proto/move-outside) ----------
+// #/outside lists the plants that are inside now and whether the forecast nights are warm enough for each to go back out
+// (GET /api/outside). In spring the Today page also gets a short note when some are ready (filled by a MutationObserver).
+let BO = null, BO_AT = 0;
+async function loadOutside(force) {
+  if (!force && BO && Date.now() - BO_AT < 5 * 60000) return BO;
+  BO = await api('GET', '/api/outside'); BO_AT = Date.now();
+  return BO;
+}
+const BO_WORD = { ready: 'Ready', safe: 'Safe, but cool', early: 'Too early', wait: 'Not yet' };
+const BO_GROUPS = [
+  ['ready', 'Ready to go back out', 'Every night in the forecast is at or above the low each of these likes.'],
+  ['safe', 'Safe to go out, but the nights are cool', 'No night in the forecast comes within 3°F of their damage point, but some nights are cooler than they like. Going out now is fine; they will grow slowly until the nights warm up.'],
+  ['early', 'A warm week, but it is early', 'The forecast is fine for these, but in most years colder nights still come after this date. Wait, or put them out and be ready to bring them back in.'],
+  ['wait', 'Not yet', 'A night in the forecast is too cold for these.'],
+];
+const boMd = md => new Date('2001-' + md + 'T12:00:00').toLocaleDateString([], { month: 'long', day: 'numeric' });
+function boUsual(p) {
+  const u = p.usual;
+  if (!u) return '';
+  if (p.why === 'autumn' && u.first) return `In most years the first night below ${p.safe_at}°F comes around ${boMd(u.first)}, so it would likely need to come back in soon.`;
+  if (!u.safe) return '';
+  if (u.safe === '01-01') return `In the last ${u.spring_years} springs, no night went below ${p.safe_at}°F.`;
+  return `In most of the last ${u.spring_years} years, the nights stayed above ${p.safe_at}°F from ${boMd(u.safe)} on${u.safe_latest !== u.safe ? ` (in the latest year, from ${boMd(u.safe_latest)})` : ''}.`;
+}
+function boRow(p) {
+  const lv = p.level, c = p.coldest;
+  const needs = p.damage != null ? `Damaged below ${p.damage}°F${p.like > p.safe_at ? `; likes nights of ${p.like}°F or more` : ''}.` : p.like != null ? `Likes nights of ${p.like}°F or more.` : 'No temperatures on its page yet, so it cannot be checked.';
+  let fc = '';
+  if (lv === 'wait') fc = `Too cold ${fzDay(p.first_cold.date, true)}: ${p.first_cold.low}°F. It needs ${p.safe_at}°F or more to be safe${c.date !== p.first_cold.date ? `; the coldest night is ${fzDay(c.date, true)}, ${c.low}°F` : ''}.`;
+  else if (c) fc = `Coldest night in the forecast: ${fzDay(c.date, true)}, ${c.low}°F.${p.cool_nights ? ` ${p.cool_nights} of the next ${BO.nights.length} nights are below ${p.like}°F.` : ''}`;
+  const usual = boUsual(p);
+  const go = lv && lv !== 'wait';
+  return html`<li class="fz-row bo-row" data-code="${p.code}">
+    ${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy" width="72" height="72">` : html`<span class="fz-nophoto" aria-hidden="true"></span>`}
+    <div class="fz-txt"><a class="nm" href="#/plant/${enc(p.code)}">${p.name}</a> <span class="muted"><span class="bo-code">${p.code}</span>, ${(p.site || '').toLowerCase()}</span>
+      <div>${lv ? html`<span class="bo-lv bo-${lv}">${BO_WORD[lv]}</span> ` : ''}${needs}</div>
+      ${fc ? html`<div>${fc}</div>` : ''}${usual ? html`<div class="hint">${usual}</div>` : ''}</div>
+    ${go ? html`<div class="fz-acts"><button class="btn small" type="button" data-act="boporch" data-code="${p.code}" data-name="${p.name}">Moved to the porch</button>
+      <button class="btn small ghost" type="button" data-act="boout" data-code="${p.code}" data-name="${p.name}">Moved outside</button></div>` : ''}</li>`;
+}
+async function viewOutside() {
+  const B = await loadOutside(true);
+  const ps = B.plants || [], n = B.counts, anyUsual = ps.some(p => p.usual);
+  const go = n.ready + n.safe;
+  return {
+    title: 'Back outside',
+    html: html`<p class="crumb"><a href="#/winter">Winter plan</a></p><h1>Back outside</h1>
+    <p class="muted">Plants that are inside now (Indoors, or Garage or shed), and whether the nights in the 7-day forecast for ${B.place} are warm enough for each to go back out.
+      Each plant is checked against its own temperatures: safe means no night within ${B.margin}°F of its damage point, and ready means every night is at or above the low it likes.</p>
+    ${B.season === 'autumn' ? html`<p class="notice">It is autumn, so most plants that came inside should stay in until spring. This page is most useful from late winter: each plant shows as ready as soon as the nights are warm enough for it.</p>` : ''}
+    ${!B.nights.length ? html`<p class="notice">No forecast yet. It is fetched a few seconds after the app starts, then every hour.</p>` : ''}
+    ${!ps.length ? html`<p class="notice ok">No plants are inside. When you bring one in, press its Moved indoors button and it shows here.</p>` : ''}
+    ${ps.length && B.nights.length ? html`<p class="notice ${go ? 'ok' : ''} bo-sum" role="status"><strong>${go ? `${go} of ${ps.length} plants inside can go back out now.` : `None of the ${ps.length} plants inside can go back out yet.`}</strong>
+      ${n.ready ? ` Ready: ${n.ready}.` : ''}${n.safe ? ` Safe, but cool: ${n.safe}.` : ''}${n.early ? ` Too early: ${n.early}.` : ''}${n.wait ? ` Not yet: ${n.wait}.` : ''}</p>` : ''}
+    ${B.nights.length && !anyUsual ? html`<p class="hint">To also see when the nights usually warm up each spring, load the weather history: <a href="#/weather">Weather page</a>, Load history. It needs 3 years or more.</p>` : ''}
+    ${BO_GROUPS.map(([id, title, sub]) => { const g = ps.filter(p => p.level === id); if (!g.length) return '';
+      return html`<section class="blk" id="bo-${id}"><h2>${title} (${g.length})</h2><p class="muted">${sub}</p><ul class="fz-list">${g.map(boRow)}</ul></section>`; })}
+    ${(() => { const g = ps.filter(p => !p.level); return g.length && B.nights.length ? html`<section class="blk" id="bo-unknown"><h2>Cannot be checked (${g.length})</h2>
+      <p class="muted">These have no damage point or ideal low on their page.</p><ul class="fz-list">${g.map(boRow)}</ul></section>` : ''; })()}
+    ${B.nights.length ? html`<section class="blk"><h2>The next 7 nights</h2><div class="tbl-wrap"><table class="tbl bo-tbl"><caption class="sr">Forecast lows</caption>
+      <thead><tr><th>Day</th><th class="num">Low</th></tr></thead><tbody>
+      ${B.nights.map(x => html`<tr><th scope="row">${fzDay(x.date)}</th><td class="num">${x.low}°F</td></tr>`)}</tbody></table></div>
+      <p class="hint">Forecast updated ${B.fetched_at ? when(B.fetched_at) : 'not yet'}. The low is usually reached just before dawn.</p></section>` : ''}
+    <section class="blk"><h2>Going back out</h2><ul>
+      <li>Ease plants in. Leaves that grew indoors scorch in full sun, so give them a week or two in shade or on the covered porch, then a few hours of morning sun, then their usual spot.</li>
+      <li>Moved to the porch sets the plant's Location to Covered porch. It then shows on the cold-night checklist if a cold night comes.</li>
+      <li>Pots dry out much faster outside, especially in wind and sun. Check them every day or two for the first weeks.</li>
+      <li>Start feeding again once new growth appears.</li></ul></section>`,
+  };
+}
+async function boMove(el, site) {
+  if (!(await needName())) return;
+  const code = el.dataset.code, y = window.scrollY;
+  await guard(async () => {
+    await api('POST', '/api/plants/' + enc(code) + '/site', { site });
+    toast(el.dataset.name + (site === 'Outdoors' ? ' moved outside' : ' moved to the covered porch'));
+    BO_AT = 0; FROST_AT = 0;
+    await route(); window.scrollTo(0, y);
+    const next = document.querySelector('.bo-row [data-act=boporch]');
+    (next || document.querySelector('main h1')).focus({ preventScroll: true });
+  });
+}
+// the Today page: in spring, a short note when plants inside can go back out
+new MutationObserver(() => {
+  if (!/^#\/today\b/.test(location.hash)) return;
+  const h = document.querySelector('#app h1');
+  if (!h || document.getElementById('bo-today')) return;
+  h.insertAdjacentHTML('afterend', '<div id="bo-today"></div>');
+  loadOutside().then(B => {
+    const box = document.getElementById('bo-today'), go = B.counts.ready + B.counts.safe;
+    if (!box || B.season !== 'spring' || !go) return;
+    box.innerHTML = rend(html`<p class="notice ok noprint"><strong>${go === 1 ? '1 plant inside can' : `${go} plants inside can`} go back outside.</strong>
+      The nights in the forecast are warm enough for ${go === 1 ? 'it' : 'them'}. <a href="#/outside">Open the Back outside list</a></p>`);
+  }).catch(() => { /* no note if it cannot be worked out */ });
+}).observe(document.getElementById('app'), { childList: true });
 
 // ---------- display settings and current-conditions dialogs ----------
 function displayDialog() {
@@ -3868,6 +3967,11 @@ const changeActs = {
   fcopen(el) { FC.open = el.checked; fcRefresh('input[data-act=fcopen]'); },
   async tododone(el) { if (!(await needName())) { el.checked = !el.checked; return; } await guard(async () => { await api('PATCH', '/api/to-photograph/' + el.dataset.id, { done: el.checked }); route(); }); },
 };
+// back outside (prototype: proto/move-outside)
+Object.assign(acts, {
+  async boporch(el) { await boMove(el, 'Covered porch'); },
+  async boout(el) { await boMove(el, 'Outdoors'); },
+});
 function wtFocusTop() { const t = document.querySelector('#wx-table .pager'); if (t) t.scrollIntoView({ block: 'nearest' }); }
 let PLACE_RESULTS = [];
 const formActs = {

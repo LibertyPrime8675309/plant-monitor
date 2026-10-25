@@ -732,6 +732,14 @@ a.pn:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 .fz-danger{color:var(--critical,var(--madder))}.fz-damage{color:var(--madder)}.fz-watch{color:var(--ink-2)}
 @media (max-width:640px){.fz-row{grid-template-columns:56px minmax(0,1fr)}.fz-row img,.fz-nophoto{width:56px;height:56px}.fz-acts{grid-column:1/-1;flex-direction:row;flex-wrap:wrap}.fz-acts .btn{flex:1 1 9rem}}
 
+/* ---- prototype (proto/move-outside): back outside in spring ---- */
+.bo-lv{display:inline-block;font-weight:700;border:2px solid currentColor;border-radius:4px;padding:0 .35rem;margin-right:.3rem;font-size:.9em}
+.bo-ready{color:var(--moss)}.bo-safe{color:var(--moss)}.bo-early{color:var(--ochre)}.bo-wait{color:var(--ink-2)}
+.bo-ready::before{content:"✔ "}
+.bo-row .muted{white-space:normal}.bo-row .bo-code{white-space:nowrap}
+.bo-tbl{max-width:24rem}
+html[data-role=viewer] :is([data-act=boporch], [data-act=boout]){display:none!important}
+
 /* ---- 1.9.0: getting plants ready to come inside ---- */
 .pr-status{margin:.4rem 0 1rem}
 fieldset.pr-traits{border:2px solid var(--line);border-radius:8px;padding:.6rem 1rem .4rem;margin:0 0 1rem;min-width:0}
