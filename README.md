@@ -71,9 +71,13 @@ On the first start the app adds anything new (from the first version: 26 plants,
 
 ### The updater (from 1.7.0)
 
-Save new release zips in the folder that holds `plant-database` (for example `C:\Users\Ethan\Documents\Claude\Plants`). The updater lives in that same folder: `Update Plant Database.cmd` and `update-plant-database.ps1`. Double-click **Update Plant Database.cmd**. It:
+The updater lives in the folder that holds `plant-database` (for example `C:\Users\Ethan\Documents\Claude\Plants`): `Update Plant Database.cmd` and `update-plant-database.ps1`.
 
-1. finds the newest `plant-database-vX.Y.Z-YYYYMMDD-HHMM.zip` in the folder and says which version is installed and which is running. If that version is already installed and running, it stops and changes nothing.
+From 1.12.2, release zips and photo packs are kept in a folder of their own beside it, **`versions_plant-database`**, so they don't clutter the Plants folder. Save new zips there. If you save one straight into the Plants folder instead, the updater moves it there for you. That's also how your older zips got moved.
+
+Double-click **Update Plant Database.cmd**. It:
+
+1. moves any `plant-database-….zip` files from the Plants folder into `versions_plant-database`. It finds the newest `plant-database-vX.Y.Z-YYYYMMDD-HHMM.zip` there and says which version is installed and which is running. If that version is already installed and running, it stops and changes nothing.
 2. asks "Update to X? Type Y" (type `Y`, press Enter).
 3. makes sure Docker Desktop is running, and starts it if not.
 4. makes a backup through the app (it appears on the Backups page as "Before update"). If the running app is older than 1.7.0, it stops the app and copies `data\plants.db` into `backups\` instead.
@@ -90,11 +94,11 @@ From 1.8.0, plant photos travel separately from the app, in **photo packs**. The
 - A pack never changes once it is made.
 - A release only comes with the packs for the plant updates that are new in it.
 
-Save any photo packs in the same folder as the release zip. The updater adds the photos your `plant-database` folder does not have yet. Packs you already have are skipped.
+Save any photo packs in `versions_plant-database` too (or in the Plants folder; the updater moves them). The updater adds the photos your `plant-database` folder does not have yet. Packs you already have are skipped.
 
 If a release needs a pack that is not in the folder, the updater lists it and stops before changing anything. If photos arrive after you have updated (because you used `-Force`), run the updater again; it adds them even though the version is already up to date. You can delete a pack once it has been added.
 
-Everything it does is written to `update-log.txt` in the same folder. Each new release carries the newest updater in `plant-database\tools`, and the updater copies it next to the zips, so it keeps itself current.
+Everything it does is written to `update-log.txt` in the Plants folder. Each new release carries the newest updater in `plant-database\tools`, and the updater copies it into the Plants folder, so it keeps itself current.
 
 To run it from a terminal in the Plants folder instead:
 
@@ -122,7 +126,7 @@ Options: `-Yes` (do not ask), `-Force` (re-apply the newest zip anyway), `-Remov
 
 ## Version
 
-The `VERSION` file holds this package's version, and `CHANGELOG.md` lists what changed in each one. Keep each zip you receive (the file name carries the version and build time) as your archive.
+The `VERSION` file holds this package's version, and `CHANGELOG.md` lists what changed in each one. Keep each zip you receive (the file name carries the version and build time) as your archive; they all collect in `versions_plant-database`.
 
 ### Which version is running?
 
@@ -153,17 +157,99 @@ curl http://localhost:8080/api/version
 
 If the version in the app is older than the newest zip in your folder, that update has not been applied yet. Each update leaves the previous image behind; to free the space, remove old ones with `docker image rm plant-database:1.6.1` (any shell), using the old version number.
 
-## Use it from your phone
+## Using the app away from home (from 1.12.0)
 
-1. Find your PC's address on the Wi-Fi.
-   - Windows (cmd.exe): `ipconfig` and look for "IPv4 Address" (for example `192.168.1.20`).
-   - Windows (PowerShell): `Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.*' -and $_.IPAddress -ne '127.0.0.1' } | Select-Object InterfaceAlias, IPAddress`
-   - macOS: `ipconfig getifaddr en0`
-   - Linux (bash): `hostname -I`
-2. On the phone (same Wi-Fi), open `http://192.168.1.20:8080` (use your address).
-3. If it does not load, Windows Firewall may be blocking port 8080. Allow Docker Desktop on private networks when Windows asks, or add a rule:
-   - Windows (cmd.exe, run as administrator): `netsh advfirewall firewall add rule name="Plant database" dir=in action=allow protocol=TCP localport=8080 profile=private`
-   - Windows (PowerShell, run as administrator): `New-NetFirewallRule -DisplayName "Plant database" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8080 -Profile Private`
+From version 1.12.0 the app has its own Tailscale device, called **plants**. You open it at an address like `https://plants.your-tailnet.ts.net` from any phone or computer that has Tailscale on, at home or away. It's encrypted all the way, with a real certificate, so browsers no longer say "Not secure". Nothing on your router is opened, and you can share just the app (not your whole computer) with someone else.
+
+What changed:
+- **Your home network can't reach the app any more.** Before 1.12.0, anyone on the house Wi-Fi could open `http://<your PC>:8080` and change things. Now only this computer can open `http://localhost:8080`, which the updater and backups use. Everyone else, including you on your phone, uses the `https://plants…ts.net` address with Tailscale on.
+- **Your old Tailscale address for the desktop (port 8080) stops working too.** Use the new address instead.
+- **People who come in through Tailscale are signed in by Tailscale.** The app knows who they are without a password. It names them in the audit log, and they can only do what you allow (see below).
+
+### One-time setup
+
+1. Update to 1.12.0 with the updater as usual.
+2. Run **Set Up Remote Access**: double-click `Set Up Remote Access.cmd` in the `plant-database\tools` folder, or from the Plants folder run:
+   - Windows (cmd.exe): `"plant-database\tools\Set Up Remote Access.cmd"`
+   - Windows (PowerShell): `powershell -ExecutionPolicy Bypass -File .\plant-database\tools\setup-remote-access.ps1`
+   - bash: `pwsh -File ./plant-database/tools/setup-remote-access.ps1`
+
+   It opens Tailscale's sign-in page. Sign in with your usual Tailscale account. If it says HTTPS is off, it opens the DNS page of the Tailscale admin console: turn on **MagicDNS** if it is off, press **Enable HTTPS**, and go back to the script. It then makes you the owner, prints the app's address, and offers to point the QR codes on labels at it. You can run it again any time to check everything; it changes nothing that is already right.
+3. In the [Tailscale admin console](https://login.tailscale.com/admin/machines), open **Machines**, then **plants**, then the **…** menu, and choose **Disable key expiry**. Otherwise Tailscale asks you to sign the device in again after a few months.
+4. On your phone: install the Tailscale app, sign in with the same account and switch it on. Open the `https://plants…ts.net` address and add it to your home screen.
+
+### Sharing it with someone (for example your girlfriend)
+
+1. In the Tailscale admin console, go to **Machines**, then **plants**, then the **…** menu, then **Share**. Copy the invite link (or invite by email) and send it.
+2. She installs Tailscale on her phone or computer and signs in with her own account (Google, Microsoft, Apple and others work). Then she opens the invite link and accepts it.
+3. With Tailscale on, she opens the same `https://plants…ts.net` address. She can reach the plant app and nothing else of yours: not your computer, its files or games.
+4. The first time she opens it, she appears in the app's people list as **Can view only**. Press your name at the top right to see the list, and change her to **Can edit** if she should make changes.
+5. To stop sharing: **Machines**, then **plants**, then **Share**, and remove her there. Then press **Remove** next to her in the app's list.
+
+### Who can do what
+
+- **Can view only**: sees everything (plants, photos, weather, the audit log) and changes nothing. A "View only" note sits at the top of each page, and buttons that would change something are hidden.
+- **Can edit**: also changes plant pages, care, feedings, photos, answers and the photo list.
+- **Owner**: also backups, settings (label address, weather places, the sensor token) and the people list. The setup script makes you the owner; if it couldn't, the first person to open the app through Tailscale is. There is always at least one owner.
+- On this computer (`http://localhost:8080`) everything stays open, as before, and your name is typed in.
+
+The app itself checks every request, so hiding a button is only a convenience: a change someone isn't allowed to make is refused even if they try it another way. The audit log shows each change under the Tailscale name of the person who made it. You can change the name shown for you in the same window.
+
+### Security, in short
+
+- **Encrypted all the way.** Traffic travels inside Tailscale's encryption, and the app adds HTTPS with a real certificate on top. Tailscale's servers never see your plant data.
+- **No open router ports.** Nothing is opened to the internet (Tailscale Funnel is switched off in `tailscale\config\serve.json`), and the router needs no changes.
+- **Only signed-in people get in.** That means your devices and people you have shared the plants device with, each with the role you chose.
+- **A tighter container:**
+  - Its program files are read-only, and it has almost no Linux privileges and can't gain any.
+  - It runs as an ordinary user when Docker allows that, and otherwise as root inside its container, as before (see "Which user the app runs as" below).
+  - Each update rebuilds it on a freshly downloaded base image and fetches the newest Tailscale container, so security fixes keep arriving.
+- **Private files stay private.** The Tailscale sign-in is in `tailscale\state`. It never goes into a release or a backup zip, so keep that folder to yourself.
+
+### Which user the app runs as (from 1.12.1)
+
+Each time it starts, the app checks whether an ordinary user (called `plants`) may write to the `data` and `backups` folders.
+- **If it may,** the app runs as that user, with no special privileges at all. This is the safer way, and the usual one on a new install.
+- **If it may not,** the app runs as root inside its container, the way every version before 1.12.0 did. Nothing needs doing. This is normal on Windows for folders an older version wrote to: Docker Desktop doesn't let the new user write there and can't hand those folders over.
+
+Either way the program files stay read-only and only a few privileges are allowed. The first line of the app's log says which way it runs, and so does the **Debug** window (for the owner). To see the log line:
+- Windows (cmd.exe): `docker logs plant-database 2>&1 | findstr /C:"Plant record runs"`
+- Windows (PowerShell): `docker logs plant-database 2>&1 | Select-String 'Plant record runs'`
+- bash: `docker logs plant-database 2>&1 | grep 'Plant record runs'`
+
+Version 1.12.0 needed a `docker-compose.override.yml` file for the second case. The updater removes that file, because the app now decides by itself. To always run as root, put the line `PLANTDB_RUN_AS=root` in the `.env` file and run `docker compose up -d`.
+
+### Opening it to your home network again (less safe)
+
+If you need the old `http://<your PC>:8080` address on your home Wi-Fi (for example for a device that can't run Tailscale), put a line in a file named `.env` next to `docker-compose.yml`, then restart. Anyone on the Wi-Fi can then change things, unless you also set `PLANTDB_PASSWORD` in `docker-compose.yml`. From the `plant-database` folder:
+
+- Windows (cmd.exe): `(echo PLANTDB_BIND=0.0.0.0)>>.env` then `docker compose up -d`
+- Windows (PowerShell): `Add-Content .env 'PLANTDB_BIND=0.0.0.0'; docker compose up -d`
+- bash: `echo 'PLANTDB_BIND=0.0.0.0' >> .env && docker compose up -d`
+
+Then find your PC's address on the Wi-Fi:
+- Windows (cmd.exe): `ipconfig` (look for "IPv4 Address", for example `192.168.1.20`)
+- Windows (PowerShell): `Get-NetIPAddress -AddressFamily IPv4 | Where-Object { $_.IPAddress -notlike '169.*' -and $_.IPAddress -ne '127.0.0.1' } | Select-Object InterfaceAlias, IPAddress`
+- bash: `hostname -I`
+
+If it doesn't load from the phone, Windows Firewall may be blocking port 8080. Allow Docker Desktop on private networks when Windows asks, or add a rule:
+- Windows (cmd.exe, run as administrator): `netsh advfirewall firewall add rule name="Plant database" dir=in action=allow protocol=TCP localport=8080 profile=private`
+- Windows (PowerShell, run as administrator): `New-NetFirewallRule -DisplayName "Plant database" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 8080 -Profile Private`
+- bash (Linux with ufw): `sudo ufw allow 8080/tcp`
+
+Remove the line from `.env` and run `docker compose up -d` to close it again.
+
+### If something doesn't work
+
+- **The address doesn't open:** check that Tailscale is on for that phone or computer. Run Set Up Remote Access again: it says what is missing.
+- **"Open Plant record from a device that is signed in to Tailscale as a person":** the device uses a Tailscale tag or isn't signed in as a person. Sign it in with a personal account.
+- **The updater says port 8080 is busy** ("ports are not available" or "Only one usage of each socket address"): close any browser tabs that have Plant record open, at `http://localhost:8080` or the old address. They can hold on to the port while the app restarts. The updater says so, waits and tries again for about a minute. If the port is still busy after that, it names the program that holds it and moves the app to a free port such as `http://localhost:8090`, saved as `PLANTDB_PORT` in the `.env` file. The Tailscale address doesn't change. To move it back later, close the program holding port 8080, delete the `PLANTDB_PORT` line from `.env`, and from the `plant-database` folder run:
+  - Windows (cmd.exe): `docker compose up -d`
+  - Windows (PowerShell): `docker compose up -d`
+  - bash: `docker compose up -d`
+- **If the app does not start after updating:** in Docker Desktop, open **Containers**, then **plant-database**, then **Logs**.
+  - A line starting with `PLANTDB_NOT_WRITABLE` means the app can't write to its data folder, even as root. Check that the `plant-database` folder isn't read-only (in File Explorer, right-click it, then **Properties**), then run the updater again.
+  - If that doesn't help, send the log to Claude. Your plants and photos aren't changed.
 
 ## Display settings and low vision
 
@@ -375,24 +461,32 @@ Open **Weather**, then **Connect your sensor**. It shows the address and a priva
 - `par` (umol/m2/s) or `lux` (converted at 54 lux per PAR)
 - `soil_moisture` (%), `soil_temp_f` or `soil_temp_c`, `soil_ph`
 
-Send up to 500 readings at once as `{"readings":[ ... ]}`. A reading with an impossible value is refused with an explanation. Use the PC's Wi-Fi address (step 1 under "Use it from your phone"), saved on the Labels page, so the address shown on the Weather page works from the sensor. Try it from the PC (replace `YOURTOKEN`):
+Send up to 500 readings at once as `{"readings":[ ... ]}`. A reading with an impossible value is refused with an explanation.
+
+From 1.12.0 sensors send to their own port, **8082**. It only takes readings with the token; nothing else of the app answers there. It is shut until you open it to your home network. Put the line `PLANTDB_SENSOR_BIND=0.0.0.0` in the `.env` file next to `docker-compose.yml` and run `docker compose up -d` (from the `plant-database` folder):
+
+- Windows (cmd.exe): `(echo PLANTDB_SENSOR_BIND=0.0.0.0)>>.env` then `docker compose up -d`
+- Windows (PowerShell): `Add-Content .env 'PLANTDB_SENSOR_BIND=0.0.0.0'; docker compose up -d`
+- bash: `echo 'PLANTDB_SENSOR_BIND=0.0.0.0' >> .env && docker compose up -d`
+
+The sensor then sends to `http://<your PC's Wi-Fi address>:8082/api/readings` ("Opening it to your home network again" shows how to find that address). Try it from the PC (replace `YOURTOKEN`):
 
 Windows (cmd.exe):
 
 ```
-curl -X POST http://localhost:8080/api/readings -H "X-Ingest-Token: YOURTOKEN" -H "Content-Type: application/json" -d "{\"device\":\"porch\",\"temp_f\":71.2,\"humidity\":58,\"par\":240}"
+curl -X POST http://localhost:8082/api/readings -H "X-Ingest-Token: YOURTOKEN" -H "Content-Type: application/json" -d "{\"device\":\"porch\",\"temp_f\":71.2,\"humidity\":58,\"par\":240}"
 ```
 
 Windows (PowerShell):
 
 ```
-Invoke-RestMethod -Method Post -Uri http://localhost:8080/api/readings -Headers @{"X-Ingest-Token"="YOURTOKEN"} -ContentType "application/json" -Body '{"device":"porch","temp_f":71.2,"humidity":58,"par":240}'
+Invoke-RestMethod -Method Post -Uri http://localhost:8082/api/readings -Headers @{"X-Ingest-Token"="YOURTOKEN"} -ContentType "application/json" -Body '{"device":"porch","temp_f":71.2,"humidity":58,"par":240}'
 ```
 
 macOS / Linux (bash):
 
 ```
-curl -X POST http://localhost:8080/api/readings -H "X-Ingest-Token: YOURTOKEN" -H "Content-Type: application/json" -d '{"device":"porch","temp_f":71.2,"humidity":58,"par":240}'
+curl -X POST http://localhost:8082/api/readings -H "X-Ingest-Token: YOURTOKEN" -H "Content-Type: application/json" -d '{"device":"porch","temp_f":71.2,"humidity":58,"par":240}'
 ```
 
 The token is the only thing protecting this address (the password option does not apply to it), so keep it private and use **Make a new token** if it leaks. When your sensor is working, choose "My sensor" in Current conditions.
@@ -532,9 +626,44 @@ Open **Labels**, type the address from step 1 into "Address the codes should ope
 
 ## Who made a change
 
-The first time you save something, the app asks for your name. It goes into the change log with the date and time. It is typed in, not a login, so it records who says they made the change. Click your name at the top right to change it.
+People who open the app through Tailscale (from 1.12.0) are named by Tailscale: the top right says "Signed in as …", and their changes show under that name. Press it to change the name shown for you, and (owner) to see who can use the app.
 
-If you want a password, uncomment `PLANTDB_PASSWORD` in `docker-compose.yml` and run `docker compose up -d`. The browser then asks for a password (leave the username blank or put anything). Do not expose port 8080 to the internet; this is built for your home network.
+On this computer (`http://localhost:8080`), the first time you save something the app asks for your name. It goes into the audit log with the date and time. It is typed in, not a login, so it records who says they made the change. Click your name at the top right to change it.
+
+If you open the app to your home network again (see "Using the app away from home"), you can also require a password there: uncomment `PLANTDB_PASSWORD` in `docker-compose.yml` and run `docker compose up -d`. The browser then asks for it (leave the username blank or put anything). Never open port 8080 to the internet.
+
+## Grow lights (from 1.13.0)
+
+The **Grow lights** page (in the top menu) holds your grow lights, the spots they light indoors, and how much light each plant gets there. Your 11 lights arrive with the update, from the photos and listings you saved in `Plants\Grow Lights`. Each has a photo, how many you have, its timer and brightness steps, and the maker's light figures. Where the maker gives none, Claude's estimates are used and marked.
+
+How much light a plant gets is its **daily light (DLI)**, in mol/m² a day: the light at its leaves while the light is on (PAR, in µmol/m²/s) times the hours it is on. 100 PAR for 12 hours is about 4.3. Each plant page lists the range it wants, under Sunlight.
+
+- **Light spots.** A spot is one of your lights over some plants: how many of that light side by side, how far it is from the top leaves, hours a day and brightness. Press **Set up a spot**. While you choose, the window shows the light at the leaves and says for every plant whether that is too dim, a bit dim, good, a bit bright or too bright. The setting is shown in words and with a symbol, not by colour alone.
+- **Suggested layout.** For plants that live inside or are coming in and are not in a spot yet. Plants that need the most light are placed first. Each goes under the smallest of your lights that can give it enough, sharing a light with plants whose needs overlap, while there is room under it. Pot sizes count, if they are set. **Set up this spot** opens the suggestion so you can rename it (for example "Living room shelf") or change anything first.
+- **No light left for these** lists the plants your lights cannot cover, with the reason.
+- **Easing them in.** Under a spot, "Easing them in from outdoor light" gives a first and second week brighter and longer than the spot's own setting, so plants used to the sun do not drop their leaves all at once.
+- **Timers.** Each spot says whether to use the light's own timer or a plug-in outlet timer. Some lights forget their timer after a power cut.
+- **Your lights.** Press **Change this light** to note where it is (for a bulb, the lamp or socket it screws into), correct how many you have, or fix its figures. **Add a light** adds one you buy later. Type its figures as distance and PAR, for example "12 in 719, 24 in 234".
+- **Plant pages** show the plant's spot, or what the suggested layout gives it, under Sunlight.
+- **Rooms and shelves (from 1.13.1).** The rooms, shelves and tables where plants go inside. Yours are listed already: the Downstairs Living Room (Tall Black Shelf, Tall Brown Shelf, Short Brown Shelf, Large Brown Hutch, Side Table), My Bedroom (Shelves), the Garage and the Upstairs Living Room. Press **Add a room or shelf** to add more, for example each new bedroom shelf, and choose one under **Where** when you set up a light spot.
+- **Manufacturer model (from 1.13.1).** Each light has a field for the model number on its box or label. Fill it in with **Change this light**.
+
+Changes to lights, spots, rooms and shelves appear in the audit log under "Grow lights". People who can only view see everything but cannot change it.
+
+## About this plant (from 1.14.0)
+
+Every plant page has an **About this plant** section after Identification (also in the jump row and the "On this page" menu):
+
+- **Type of plant and classification:** for example "Evergreen tropical tree", then kingdom, order, family, genus and species.
+- **Mature size:** a table of height and width in the ground and in a pot, plus growth rate and lifespan.
+- **Hardiness zones (USDA):** the coldest and warmest zones it grows in outdoors all year, and a line saying **✓ Hardy here** or **▼ Not hardy here** with how much colder a usual winter is than the plant can take. Your zone comes from the weather history the app keeps for your place: the average of each winter's coldest night, which is how the USDA defines zones. For Round Rock that is about 22°F, zone 9a. The 2023 USDA map puts Round Rock on the line between 8b and 9a; the link opens the map so you can look up a ZIP code. Annual plants have no zone.
+- **Native range, conservation status and invasive risk.** Conservation status is the IUCN Red List category where Claude could confirm one, and notes CITES (which only controls international trade, not growing a plant at home).
+- **Flowers and fruit,** including whether the fruit is edible.
+- **Dangers** to people and to pets, in a box with the Poison Control number (1-800-222-1222) and the ASPCA Animal Poison Control Center (888-426-4435).
+- **Propagation,** as numbered steps.
+- **Sources and further reading:** links to the pages the details came from. They open in a new tab.
+
+If the identification is less than 85% sure, a note says the details are for the closest match. Change anything with **Edit**, under "About this plant". In the **Sources** field, put one source per line as `Title | https://link`, and it shows as a link.
 
 ## Audit log (from 1.10.0)
 

@@ -21,7 +21,7 @@ This is Ethan's home plant database: a Flask + SQLite web app ("Plant record") t
   - The updater adds any photos his folder is missing from packs saved next to the release zip.
   - `--full` builds the old single zip with everything.
   - He installs it with the updater: `tools/Update Plant Database.cmd` / `update-plant-database.ps1`. It unzips over his folder, keeps `data/` and `backups/`, makes a backup first and runs `docker compose up -d --build`.
-  - He saves zips in `C:\Users\Ethan\Documents\Claude\Plants`. Files saved to his computer from a chat must be under 30 MB.
+  - Zips go in `C:\Users\Ethan\Documents\Claude\Plants\versions_plant-database` (from 1.12.2; the updater moves any zip saved in `Plants` there). Save releases and photo packs straight into that folder. Files saved to his computer from a chat must be under 30 MB.
 - **Versions:** bump the patch number for fixes and small additions, the minor number for new features. Update all of these together:
   - `VERSION`
   - the three places in `docker-compose.yml` (build arg, image tag, label)
@@ -34,6 +34,12 @@ This is Ethan's home plant database: a Flask + SQLite web app ("Plant record") t
 - **Plant facts go in upgrade batches** (`app/seed/batches/*.json`), never as hand edits to a database.
   - A field update states the value it expects to replace (`{field: [old, new]}`), so anything Ethan edited himself is left alone.
   - Batch files apply in **filename order**, once each. Name new ones so they sort last: `batch9d.json`, then `batchA1.json`. `batch10.json` would sort before `batch2.json`.
+- **Access (from 1.12.0).** People reach the app through its own Tailscale container: port 8081, with identity headers, roles owner/editor/viewer. This computer uses port 8080 (localhost only), and sensors use 8082 (readings only).
+  - Any new route that changes data is refused for viewers automatically.
+  - Owner-only areas must be added to `OWNER_ONLY_PATHS` or `OWNER_ONLY_CHANGES` in `server.py`.
+  - Buttons that make changes must also be added to the viewer CSS block in `style.css`.
+  - Never publish 8081, and never trust `Tailscale-User-*` headers on any other port.
+  - The container starts as root and `app/start.py` picks the user (10001 if it can write to the data folders, else root). Don't add `USER` to the Dockerfile, and keep gunicorn settings in `app/gunicorn.conf.py`.
 - Keep the front end dependency-free (vanilla JS, one CSS file) and compatible with the strict Content Security Policy: **no inline scripts or inline event handlers**. Actions use `data-act` / `data-f` / `data-form` attributes, handled by delegation in `app.js`.
 - **Test before shipping:**
   1. Run the app with `dev/test/mock_server.py` (fake weather, no internet).

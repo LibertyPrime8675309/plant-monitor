@@ -69,7 +69,14 @@ let memName = '';
 function getName() { try { return localStorage.getItem('plantdb.editor') || memName; } catch (e) { return memName; } }
 function setName(n) { memName = n; try { localStorage.setItem('plantdb.editor', n); } catch (e) { /* storage blocked */ } paintWho(); }
 const cleanName = n => String(n || '').replace(/[^\w .\-@]/g, '').trim().slice(0, 40);
-function paintWho() { const n = getName(); document.getElementById('who-name').textContent = n ? 'Editing as ' + n : 'Set your name'; }
+// 1.12.0: people who open the app through Tailscale are signed in by it; on this computer the name is typed in as before
+const ME = () => (META && META.me) || { via: 'local', role: 'owner', name: '', login: null, owner_name: '' };
+const viaTS = () => ME().via === 'tailscale';
+function paintWho() {
+  const n = viaTS() ? ME().name : getName(), el = document.getElementById('who-name');
+  if (el) el.textContent = viaTS() ? 'Signed in as ' + n : n ? 'Editing as ' + n : 'Set your name';
+  document.documentElement.dataset.role = ME().role;
+}
 
 // ---------- api ----------
 // the place this browser uses for weather, frost, watering and "today" (1.11.0); null = the home place
@@ -78,7 +85,10 @@ try { PLACE = localStorage.getItem('plantdb.place') || null; } catch (e) { /* ig
 async function api(method, url, body, form) {
   const opts = { method, headers: {} };
   if (PLACE) opts.headers['X-Place'] = PLACE;
-  if (method !== 'GET') opts.headers['X-Editor'] = cleanName(getName()) || 'Unknown';
+  if (method !== 'GET') opts.headers['X-Editor'] = cleanName(viaTS() ? ME().name : getName()) || 'Unknown';
+  if (method !== 'GET' && ME().role === 'viewer' && url !== '/api/me') {      // the server refuses these too; this just says so sooner
+    const e = new Error(`You can look at everything, but changes are turned off for you. Ask ${ME().owner_name || 'the owner'} if you would like to edit.`); e.status = 403; throw e;
+  }
   if (form) opts.body = form;
   else if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
   let r;
@@ -160,6 +170,32 @@ async function placeAdd(i) {
   } catch (e) { if (m) m.textContent = e.message; else toast(e.message, true); }
 }
 
+// ---------- you, and the people who can use the app (1.12.0) ----------
+async function whoDialog() {
+  const me = ME(), ts = viaTS(), owner = me.role === 'owner';
+  let P = null;
+  if (owner) { try { P = await api('GET', '/api/people'); } catch (e) { P = null; } }
+  modal(html`<form method="dialog" class="who-dlg"><h2>${ts ? 'You' : 'Who is editing?'}</h2>
+    ${ts ? html`<p>You are signed in through Tailscale as <strong>${me.login}</strong>. ${me.role === 'owner' ? 'You can do everything, including backups and choosing who can use the app.' : me.role === 'editor' ? 'You can look at everything and make changes.' : `You can look at everything, but not make changes. Ask ${me.owner_name} if you would like to edit.`}</p>`
+      : html`<p>On this computer you have full access. Your name goes into the audit log next to every change; it is typed in, not checked.</p>`}
+    <div class="todo-add who-name"><label class="f">${ts ? 'Your name in the audit log' : 'Your name'}<input type="text" name="n" maxlength="40" autocomplete="name" value="${ts ? me.name : getName()}"></label>
+      <button class="btn" type="button" data-act="whosave">Save name</button></div>
+    <p id="who-msg" class="dbg-msg" role="status" aria-live="polite"></p>
+    ${owner ? html`<fieldset class="opt-group"><legend>People who can use the app</legend><div id="people-box">${peopleRows(P)}</div>
+      <p class="hint"><strong>Can view only:</strong> sees everything, changes nothing. <strong>Can edit:</strong> also changes plants, care, photos and answers. <strong>Owner:</strong> also backups, settings and this list.</p>
+      <p class="hint">To let someone in from outside your home, share the plants device with them in Tailscale (README: "Using the app away from home"). They appear here the first time they open the app, as "Can view only". On this computer everything stays open.</p></fieldset>` : ''}
+    <div class="row"><button class="btn ghost" value="ok" autofocus>Done</button></div></form>`, 'who-dialog');
+}
+function peopleRows(P) {
+  if (!P) return html`<p class="muted">The list could not be loaded.</p>`;
+  if (!P.people.length) return html`<p class="muted">Nobody has opened the app through Tailscale yet.</p>`;
+  const self = ME().login;
+  return html`<ul class="people">${P.people.map(p => html`<li><span><strong>${p.name}</strong>${p.login === self ? ' (you)' : ''}<br><span class="hint">${p.login}. Last here ${when(p.last_seen)}.</span></span>
+    <label class="f">What ${p.name} can do<select data-f="prole" data-login="${p.login}">${P.roles.map(r => html`<option value="${r.key}" ${r.key === p.role ? raw('selected') : ''}>${r.label}</option>`)}</select></label>
+    ${p.login === self ? '' : html`<button class="btn small danger" type="button" data-act="pdel" data-login="${p.login}" data-name="${p.name}">Remove</button>`}</li>`)}</ul>`;
+}
+function peoplePaint(P) { const b = document.getElementById('people-box'); if (b) b.innerHTML = rend(peopleRows(P)); }
+
 // ---------- toast, dialog ----------
 function toast(msg, isErr) {
   const t = document.createElement('div');
@@ -188,6 +224,7 @@ async function confirmBox(title, text, okLabel, danger) {
   return r === 'ok';
 }
 async function askName(force) {
+  if (viaTS()) { if (force) whoDialog(); return ME().role !== 'viewer'; }
   if (getName() && !force) return true;
   const r = await modal(html`<form method="dialog"><h2>Who is editing?</h2>
     <p>Your name goes into the change log next to every edit you make. It is typed in by you and is not checked, so it records who says they made the change.</p>
@@ -212,12 +249,12 @@ async function route() {
   const my = ++token;
   const h = location.hash.replace(/^#/, '') || '/';
   const parts = h.split('/').filter(Boolean);
-  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : 'plants';
+  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : 'plants';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let view;
     await Promise.all([loadCodes(), loadFrost()]);
-    if (!META) { META = await api('GET', '/api/meta'); const v = document.getElementById('app-ver'); if (v && META.version) v.textContent = 'v' + META.version; paintPlace(); }
+    if (!META) { META = await api('GET', '/api/meta'); const v = document.getElementById('app-ver'); if (v && META.version) v.textContent = 'v' + META.version; paintPlace(); paintWho(); }
     if (parts[0] === 'plant' && parts[1] && parts[2] === 'edit') view = await viewEdit(decodeURIComponent(parts[1]));
     else if (parts[0] === 'plant' && parts[1]) view = await viewPlant(decodeURIComponent(parts[1]));
     else if (parts[0] === 'new') view = viewForm(null);
@@ -225,16 +262,19 @@ async function route() {
     else if (parts[0] === 'weather') view = await viewWeather();
     else if (parts[0] === 'today') view = await viewToday();
     else if (parts[0] === 'fertilizer') view = await viewFertilizer();
+    else if (parts[0] === 'lights') view = await viewLights();
     else if (parts[0] === 'photos') view = await viewPhotos();
     else if (parts[0] === 'labels') view = await viewLabels();
     else if (parts[0] === 'history' || parts[0] === 'audit') view = await viewHistory();
     else if (parts[0] === 'backups') view = await viewBackups();
     else if (parts[0] === 'frost') view = await viewFrost();
     else if (parts[0] === 'inside') view = await viewInside();
+    else if (parts[0] === 'outside') view = await viewOutside();
     else view = await viewGallery();
     if (my !== token) return;
     app.innerHTML = rend(view.html);
     if (parts[0] !== 'frost' && parts[0] !== 'plant') app.insertAdjacentHTML('afterbegin', rend(frostBanner()));   // plant pages have their own note
+    if (ME().role === 'viewer') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice vw-note noprint" role="note"><strong>View only.</strong> You can look at everything here, but changes are turned off. Ask ${ME().owner_name} if you would like to edit.</p>`));
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
     if (view.after) view.after();
     buildSideNav(); navLayout(); addReadButtons(); setTimeout(() => { buildSideNav(); navLayout(); addReadButtons(); }, 1200);
@@ -423,6 +463,10 @@ function fitNowTags() {         // 1.11.0: keep each "Now" label inside its stri
   });
 }
 new MutationObserver(() => requestAnimationFrame(fitNowTags)).observe(document.getElementById('app'), { childList: true, subtree: true });
+new MutationObserver(() => {                      // 1.12.0: for people who can only view, menus and tick boxes that save straight away are switched off
+  if (ME().role !== 'viewer') return;
+  document.querySelectorAll('#app select[data-act=site], #app select[data-act=plan], #app [data-act=preptrait], #app [data-act=preppest], #app input[type=file]').forEach(el => { if (!el.disabled) el.disabled = true; });
+}).observe(document.getElementById('app'), { childList: true, subtree: true });
 window.addEventListener('resize', () => requestAnimationFrame(fitNowTags));
 const keyOf = items => html`<div class="key" aria-hidden="true">${items.map(i => html`<span class="${i[0]}">${i[1]}</span>`)}</div>`;
 
@@ -479,6 +523,44 @@ function humBlock(p, cur) {
     ${keyOf([['z-dry', 'Too dry'], ['z-ok', 'Comfortable'], ['z-wet', 'Too humid'], ...(h != null ? [['z-now', 'Now']] : [])])}
     <ul class="verdicts">${humMarks().map(m => { const [k, txt] = verdict(m[1]); return html`<li class="v-${kk(k)}"><span class="k">${m[0]}</span><span><strong>${m[2]}, about ${m[1]}%.</strong> ${txt}</span></li>`; })}</ul>
     ${paras(p.humidity_notes)}`;
+}
+// ---------- 1.14.0: about this plant ----------
+const ABOUT_FIELDS = ['growth_habit', 'kingdom', 'taxon_order', 'family', 'genus', 'height_ground', 'width_ground', 'height_pot', 'width_pot', 'growth_rate', 'lifespan',
+  'zone_low', 'zone_high', 'zone_notes', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'propagation', 'sources'];
+function zoneNum(z) { const m = /^\s*(\d{1,2})\s*([ab])?\s*$/i.exec(String(z || '')); return m ? +m[1] + ((m[2] || '').toLowerCase() === 'b' ? 0.5 : 0) : null; }
+function zoneHere(p) {
+  const Z = META && META.zone, lo = zoneNum(p.zone_low), here = !Z ? null : Z.zone ? zoneNum(Z.zone) : zoneNum(String(Z.map_zone || '').split(' ')[0]);   // no weather history yet: the colder end of the map zone
+  const where = html`${Z && Z.zone ? html`<p>Where you are: the last ${Z.years} winters of weather at ${placeName()} averaged a coldest night of ${Z.winter_low}°F, which is <strong>zone ${Z.zone}</strong>.${Z.map_note ? ' ' + Z.map_note : ''} <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>`
+    : Z && Z.map_zone ? html`<p>Where you are: zone ${Z.map_zone} on the 2023 USDA map. <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>` : ''}`;
+  if (lo == null || here == null) return where;
+  const ok = here >= lo, gap = Math.round((lo - here) * 2);
+  return html`${where}<p class="nowstate ${ok ? 'v-ok' : 'v-cool'}"><strong>${ok ? '✓ Hardy here.' : '▼ Not hardy here.'}</strong> ${ok ? 'It can stay outside through a usual winter, though a rare hard freeze can still hurt it.'
+    : `A usual winter is about ${gap * 5}°F colder than it can take (${gap} half-zone${gap === 1 ? '' : 's'}), so it needs to come inside or be protected.`}</p>`;
+}
+function srcList(v) {
+  return lines(v).map(x => { const i = x.lastIndexOf('|'), t = i > 0 ? x.slice(0, i).trim() : x.trim(), u = i > 0 ? x.slice(i + 1).trim() : '';
+    return /^https?:\/\//.test(u) ? html`<li><a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a></li>` : html`<li>${x}</li>`; });
+}
+function aboutBlock(p) {
+  if (!ABOUT_FIELDS.some(f => has(p[f]) && p[f] !== '')) return html`<p class="muted">Not filled in yet. Use Edit to add it, under "About this plant".</p>`;
+  const row = (k, v) => has(v) && v !== '' ? html`<dt>${k}</dt><dd>${v}</dd>` : '';
+  const size = [['In the ground', p.height_ground, p.width_ground], ['In a pot', p.height_pot, p.width_pot]].filter(r => r[1] || r[2]);
+  const zones = p.zone_low || p.zone_high ? (p.zone_low && p.zone_high && p.zone_low !== p.zone_high ? `Zones ${p.zone_low} to ${p.zone_high}` : `Zone ${p.zone_low || p.zone_high}`) : '';
+  const unsure = p.id_confidence != null && p.id_confidence < 85 ? html`<p class="hint">The identification is ${p.id_confidence}% sure, so these details are for the closest match. Some may change if the ID does.</p>` : '';
+  return html`${unsure}<dl class="dl about-dl">${row('Type of plant', p.growth_habit)}${row('Kingdom', p.kingdom)}${row('Order', p.taxon_order)}${row('Family', p.family)}${row('Genus', p.genus)}
+      ${row('Species', p.scientific_name)}${row('Growth rate', p.growth_rate)}${row('Lifespan', p.lifespan)}</dl>
+    ${size.length ? html`<h3>Mature size</h3><div class="tbl-wrap"><table class="tbl"><thead><tr><th scope="col">Where</th><th scope="col">Height</th><th scope="col">Width</th></tr></thead>
+      <tbody>${size.map(r => html`<tr><th scope="row">${r[0]}</th><td>${r[1] || ''}</td><td>${r[2] || ''}</td></tr>`)}</tbody></table></div>` : ''}
+    ${zones || p.zone_notes ? html`<h3>Hardiness zones (USDA)</h3>${zones ? html`<p><strong>${zones}.</strong></p>` : ''}${paras(p.zone_notes)}${zoneHere(p)}` : ''}
+    ${p.native_range ? html`<h3>Native range</h3>${paras(p.native_range)}` : ''}
+    ${p.conservation_status ? html`<h3>Conservation status</h3>${paras(p.conservation_status)}` : ''}
+    ${p.invasive ? html`<h3>Invasive risk</h3>${paras(p.invasive)}` : ''}
+    ${p.bloom ? html`<h3>Flowers</h3>${paras(p.bloom)}` : ''}
+    ${p.fruit ? html`<h3>Fruit</h3>${paras(p.fruit)}` : ''}
+    ${p.danger_humans || p.danger_animals ? html`<div class="danger-box"><h3><span aria-hidden="true">⚠ </span>Dangers</h3>${p.danger_humans ? html`<h4>To people</h4>${paras(p.danger_humans)}` : ''}${p.danger_animals ? html`<h4>To pets and other animals</h4>${paras(p.danger_animals)}` : ''}
+      <p class="hint">If someone may have been poisoned, call Poison Control at 1-800-222-1222. For a pet, call your vet or the ASPCA Animal Poison Control Center at 888-426-4435.</p></div>` : ''}
+    ${lines(p.propagation).length ? html`<h3>Propagation</h3>${ol(p.propagation)}` : ''}
+    ${lines(p.sources).length ? html`<h3>Sources and further reading</h3><ul class="srcs">${srcList(p.sources)}</ul>` : ''}`;
 }
 function lightBlock(p, cur) {
   const lo = p.par_low, hi = p.par_high;
@@ -733,7 +815,7 @@ function slips(h) {
     </article>`;
   });
 }
-const JUMPS = [['needs', 'Needed'], ['sec-now', 'Now'], ['ident', 'Identification'], ['temp', 'Temperature'], ['hum', 'Humidity'], ['light', 'Light'], ['soil', 'Water and soil'], ['nutrients', 'Nutrients'], ['winter', 'Winter'], ['health', 'Health'], ['pests', 'Pests'], ['label', 'Label'], ['history', 'History']];
+const JUMPS = [['needs', 'Needed'], ['sec-now', 'Now'], ['ident', 'Identification'], ['about', 'About'], ['temp', 'Temperature'], ['hum', 'Humidity'], ['light', 'Light'], ['soil', 'Water and soil'], ['nutrients', 'Nutrients'], ['winter', 'Winter'], ['health', 'Health'], ['pests', 'Pests'], ['label', 'Label'], ['history', 'History']];
 async function viewPlant(code) {
   const [p, h, cur, st] = await Promise.all([api('GET', '/api/plants/' + enc(code)), api('GET', '/api/plants/' + enc(code) + '/history'), loadCond(), api('GET', '/api/settings').catch(() => ({}))]);
   CUR = { p, h, base: st.base_url || location.origin };
@@ -774,9 +856,11 @@ async function viewPlant(code) {
             <button class="btn small noprint" type="button" data-act="copyreq">Copy this as a request for Claude</button></div>` : ''}
         </section>
 
+        <section class="blk" id="about"><h2>About this plant</h2>${aboutBlock(p)}</section>
+
         <section class="blk" id="temp"><h2>Temperature</h2>${tempBlock(p, cur)}${paras(p.temp_notes)}${histBlock('temp')}</section>
         <section class="blk" id="hum"><h2>Humidity</h2>${humBlock(p, cur)}${histBlock('hum')}</section>
-        <section class="blk" id="light"><h2>Sunlight</h2>${lightBlock(p, cur)}${histBlock('light')}</section>
+        <section class="blk" id="light"><h2>Sunlight</h2>${lightBlock(p, cur)}<div id="pl-grow" class="pl-grow"></div>${histBlock('light')}</section>
         <section class="blk" id="soil"><h2>Water and soil</h2><div id="care-plant"><p class="loading">Loading the watering record</p></div>${soilBlock(p, cur)}${histBlock('soil')}</section>
         <section class="blk" id="nutrients"><h2>Nutrients</h2>
           ${p.fertilizer ? html`<p><strong>Fertilizer:</strong> ${p.fertilizer}</p>` : ''}${paras(p.nutrients)}
@@ -817,7 +901,7 @@ async function viewPlant(code) {
           ${slips(h)}</section>
       </div>
     </div>`,
-    after: () => { fitPanes(); loadFertPlant(); loadCarePlant(); pnavLayout(); setTimeout(pnavLayout, 300); },
+    after: () => { fitPanes(); loadFertPlant(); loadCarePlant(); loadGrowPlant(p.code); pnavLayout(); setTimeout(pnavLayout, 300); },
   };
 }
 // where the plant is now: a plain-looking menu in the plant's label; choosing saves straight away
@@ -1726,6 +1810,8 @@ const HMAP_RANGE = { temp: ['temp_ideal_low', 'temp_ideal_high'], humidity: ['hu
 const GROUPS = [
   ['Names and place', ['common_name', 'scientific_name', 'aliases', 'plant_type', 'site', 'location', 'container']],
   ['Identification', ['id_confidence', 'id_basis', 'id_alternatives', 'id_improve']],
+  ['About this plant', ['growth_habit', 'kingdom', 'taxon_order', 'family', 'genus', 'height_ground', 'width_ground', 'height_pot', 'width_pot', 'growth_rate', 'lifespan',
+    'zone_low', 'zone_high', 'zone_notes', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'propagation', 'sources']],
   ['Temperature', ['temp_ideal_low', 'temp_ideal_high', 'temp_damage_below', 'temp_lethal_below', 'temp_damage_above', 'temp_notes']],
   ['Humidity and air dryness', ['humidity_low', 'humidity_high', 'vpd_low', 'vpd_high', 'humidity_notes']],
   ['Sunlight', ['light_summary', 'light_hours', 'par_low', 'par_high', 'dli_low', 'dli_high', 'light_notes']],
@@ -1748,6 +1834,9 @@ const HINTS = {
   pests_found: 'One per line, from: Spider mites, Mealybugs, Scale, Aphids, Whiteflies, Thrips, Ants, Fungus gnats, Root mealybugs, Slugs or snails, Pill bugs or earwigs, Other. The plant page has tick boxes for these.',
   npk_ratio: 'Three numbers for nitrogen, phosphate and potash, such as 3-1-2. The Fertilizer page finds your closest fertilizer.',
   fert_strength: 'How strong to mix it. The Fertilizer page works out the amount per gallon from this.',
+  zone_low: 'USDA zone, such as 9b or 10. The page compares it with the zone where you are.', zone_high: 'USDA zone, such as 11.',
+  height_ground: 'For example 6 to 10 ft.', height_pot: 'For example 3 to 5 ft.', propagation: 'One method per line.',
+  sources: 'One per line: a title, a | and the web address, for example "NC State Extension: Aloe vera | https://...".',
   leaf_type: 'Decides which pest treatments suit it before it comes inside.', pot_size: 'Whether the pot can be soaked in a bucket or tub.', health_steps: 'One step per line, in order.', indoor_setup: 'One item per line.',
 };
 const rangeOf = n => (META.int_ranges && META.int_ranges[n]) || (META.num_ranges && META.num_ranges[n]) || [-60, 150];
@@ -1960,12 +2049,13 @@ async function viewWeather() {
   let W;
   try { W = await api('GET', '/api/weather?x=1' + locQS()); }
   catch (e) { if (e.status === 404) { savePlace(null); W = await api('GET', '/api/weather'); } else throw e; }
-  const [cond, plants, ing, monthly, ref, st] = await Promise.all([loadCond(), api('GET', '/api/plants'), api('GET', '/api/ingest'), api('GET', '/api/weather/monthly?x=1' + locQS()), api('GET', '/api/reference'), api('GET', '/api/settings')]);
+  const [cond, plants, ing, monthly, ref, st] = await Promise.all([loadCond(), api('GET', '/api/plants'), (ME().role === 'owner' ? api('GET', '/api/ingest').catch(() => null) : null), api('GET', '/api/weather/monthly?x=1' + locQS()), api('GET', '/api/reference'), api('GET', '/api/settings')]);
   WX.places = W.places || []; WX.place = W.location; WX.home = W.home;
   WX.compare = WX.compare.filter(id => WX.places.some(p => String(p.id) === id && String(p.id) !== String(W.location.id)));
   const atHome = W.location.is_home;
-  const base = st.base_url || location.origin, isLocal = /^https?:\/\/(localhost|127\.|\[::1\])/i.test(base);
-  const url = base.replace(/\/$/, '') + '/api/readings';
+  // 1.12.0: sensors send to their own port (8082), which only takes readings; it is closed until opened (README)
+  const lanIp = /^\d+\.\d+\.\d+\.\d+$/.test(location.hostname) && !location.hostname.startsWith('127.') ? location.hostname : '';
+  const netUrl = `http://${lanIp || '192.168.1.20'}:8082/api/readings`, url = 'http://localhost:8082/api/readings';
   const sample = '{"device":"porch","temp_f":71.2,"humidity":58,"par":240,"soil_moisture":31}';
   const S = W.status || {};
   return {
@@ -1988,17 +2078,17 @@ async function viewWeather() {
       ${wtControls()}<div id="wx-table"><p class="loading">Loading table</p></div></section>
     <section class="blk"><h2>Expected and tracked this season in ${W.location.name}</h2>${seasonTable(ref, monthly)}
       <p class="hint">${ref.applies !== false ? `Expected values are 30-year averages for ${W.location.name}. ` : ''}Tracked values come from the readings above: the average of each day's low and high, and how many nights fell to 32°F or below. Days with fewer than 12 readings are skipped.</p></section>
-    <section class="blk" id="sensor"><h2>Connect your sensor</h2>
+    ${ing ? html`<section class="blk" id="sensor"><h2>Connect your sensor</h2>
       <p>A sensor on your network can send readings to this app. Each reading becomes part of the history above, and "My sensor" can drive the current conditions on every plant page.</p>
-      ${isLocal ? html`<div class="notice">The address below uses <strong>${base}</strong>, which only works on this computer. A sensor on another device needs this computer's network address instead (for example http://192.168.1.20:8080). Set it on the Labels page; the README shows how to find it.</div>` : ''}
-      <dl class="dl"><dt>Address</dt><dd><span class="code">${url}</span></dd><dt>Token</dt><dd><span class="code" id="tok">${ing.token}</span></dd></dl>
+      <div class="notice">Sensors on your home network send to this computer's network address on port 8082${lanIp ? '' : ' (for example 192.168.1.20; the README shows how to find yours)'}. That port only takes readings with the token below; the rest of the app stays closed. It is shut until you open it: put the line <span class="code">PLANTDB_SENSOR_BIND=0.0.0.0</span> in a file named .env next to docker-compose.yml, then run docker compose up -d (README, "Connecting your own sensor").</div>
+      <dl class="dl"><dt>Address</dt><dd><span class="code">${netUrl}</span></dd><dt>Token</dt><dd><span class="code" id="tok">${ing.token}</span></dd></dl>
       <div class="row noprint" style="margin:.8rem 0"><button class="btn small" type="button" data-act="copytok">Copy token</button><button class="btn danger small" type="button" data-act="tokregen">Make a new token</button></div>
       <p>Send a POST with the header <span class="code">X-Ingest-Token</span> and a JSON body. Every field except one measurement is optional: <span class="code">device</span> (a name, such as porch), <span class="code">ts</span> (UTC time, otherwise now), <span class="code">temp_f</span> or <span class="code">temp_c</span>, <span class="code">humidity</span> (%), <span class="code">par</span> (µmol/m²/s) or <span class="code">lux</span>, <span class="code">soil_moisture</span> (%), <span class="code">soil_temp_f</span> or <span class="code">soil_temp_c</span>, <span class="code">soil_ph</span>. Send up to 500 at once as <span class="code">{"readings":[ ... ]}</span>. Lux is converted to PAR at 54 lux per PAR.</p>
       <h3>Try it from this computer</h3>
       <p>Windows (cmd.exe):</p><pre class="code">curl -X POST ${url} -H "X-Ingest-Token: ${ing.token}" -H "Content-Type: application/json" -d "{\\"device\\":\\"porch\\",\\"temp_f\\":71.2,\\"humidity\\":58,\\"par\\":240}"</pre>
       <p>Windows (PowerShell):</p><pre class="code">Invoke-RestMethod -Method Post -Uri ${url} -Headers @{"X-Ingest-Token"="${ing.token}"} -ContentType "application/json" -Body '${sample}'</pre>
       <p>macOS / Linux (bash):</p><pre class="code">curl -X POST ${url} -H "X-Ingest-Token: ${ing.token}" -H "Content-Type: application/json" -d '${sample}'</pre>
-      <p class="hint">Anyone on your network who has the token can add readings, so keep it private. If it leaks, make a new token and update your sensor.</p></section>
+      <p class="hint">Anyone on your network who has the token can add readings, so keep it private. If it leaks, make a new token and update your sensor.</p></section>` : html`<section class="blk" id="sensor"><h2>Connect your sensor</h2><p class="muted">Only ${ME().owner_name} can see the sensor address and token.</p></section>`}
     <section class="blk" id="sec-places"><h2>Places</h2>${placesBlock(W)}</section>
     <section class="blk"><h2>Updates for ${W.location.name}</h2>
       <div id="wx-job" data-running="${W.job && W.job.running ? '1' : '0'}">${jobPanel(W.job)}</div>
@@ -2553,6 +2643,7 @@ async function viewWinter() {
     })}</div>
     ${(() => { const ins = list.filter(isInside).sort((a, b) => a.code.localeCompare(b.code)); return ins.length ? html`<h3 id="inside-list">Already inside (${ins.length})</h3>
       <p class="hint">These are left out of the lists above and the frost warnings. If one goes back out, press Moved back outside.</p>
+      <p><a class="btn small ghost" href="#/outside">Which can go back outside?</a></p>
       <ul class="todo winter-list inside-list">${ins.map(p => html`<li>${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : html`<span></span>`}
         <span><a class="nm" href="#/plant/${enc(p.code)}">${p.common_name}</a><br><span class="muted">${p.code}, ${p.site.toLowerCase()}, plan: ${p.winter_plan}</span>
         <br><button class="btn small ghost noprint" type="button" data-act="moveout" data-code="${p.code}" data-name="${p.common_name}">Moved back outside</button></span></li>`)}</ul>` : html`<p class="hint">When you bring a plant in, press its Moved indoors button. It leaves these lists and the frost warnings, and its page shows Location: Indoors.</p>`; })()}
@@ -2560,6 +2651,122 @@ async function viewWinter() {
     ${ref.applies !== false && (ref.sources || []).length ? html`<section class="blk"><h2>Sources</h2><ul>${ref.sources.map(s => html`<li><a href="${s[1]}" target="_blank" rel="noopener noreferrer">${s[0]}</a></li>`)}</ul></section>` : ''}`,
   };
 }
+
+// ---------- back outside in spring (prototype: proto/move-outside) ----------
+// #/outside lists the plants that are inside now and whether the forecast nights are warm enough for each to go back out
+// (GET /api/outside). In spring the Today page also gets a short note when some are ready (filled by a MutationObserver).
+let BO = null, BO_AT = 0;
+async function loadOutside(force) {
+  if (!force && BO && Date.now() - BO_AT < 5 * 60000) return BO;
+  BO = await api('GET', '/api/outside'); BO_AT = Date.now();
+  return BO;
+}
+const BO_WORD = { ready: 'Ready', safe: 'Safe, but cool', early: 'Too early', wait: 'Not yet' };
+const BO_GROUPS = [
+  ['ready', 'Ready to go back out', 'Every night in the forecast is at or above the low each of these likes.'],
+  ['safe', 'Safe to go out, but the nights are cool', 'No night in the forecast comes within 3°F of their damage point, but some nights are cooler than they like. Going out now is fine; they will grow slowly until the nights warm up.'],
+  ['early', 'A warm week, but it is early', 'The forecast is fine for these, but in most years colder nights still come after this date. Wait, or put them out and be ready to bring them back in.'],
+  ['wait', 'Not yet', 'A night in the forecast is too cold for these.'],
+];
+const boMd = md => new Date('2001-' + md + 'T12:00:00').toLocaleDateString([], { month: 'long', day: 'numeric' });
+function boUsual(p) {
+  const u = p.usual;
+  if (!u) return '';
+  if (p.why === 'autumn' && u.first) return `In most years the first night below ${p.safe_at}°F comes around ${boMd(u.first)}, so it would likely need to come back in soon.`;
+  if (!u.safe) return '';
+  if (u.safe === '01-01') return `In the last ${u.spring_years} springs, no night went below ${p.safe_at}°F.`;
+  return `In most of the last ${u.spring_years} years, the nights stayed above ${p.safe_at}°F from ${boMd(u.safe)} on${u.safe_latest !== u.safe ? ` (in the latest year, from ${boMd(u.safe_latest)})` : ''}.`;
+}
+function boRow(p) {
+  const lv = p.level, c = p.coldest;
+  const needs = p.damage != null ? `Damaged below ${p.damage}°F${p.like > p.safe_at ? `; likes nights of ${p.like}°F or more` : ''}.` : p.like != null ? `Likes nights of ${p.like}°F or more.` : 'No temperatures on its page yet, so it cannot be checked.';
+  let fc = '';
+  if (lv === 'wait') fc = `Too cold ${fzDay(p.first_cold.date, true)}: ${p.first_cold.low}°F. It needs ${p.safe_at}°F or more to be safe${c.date !== p.first_cold.date ? `; the coldest night is ${fzDay(c.date, true)}, ${c.low}°F` : ''}.`;
+  else if (c) fc = `Coldest night in the forecast: ${fzDay(c.date, true)}, ${c.low}°F.${p.cool_nights ? ` ${p.cool_nights} of the next ${BO.nights.length} nights are below ${p.like}°F.` : ''}`;
+  const usual = boUsual(p);
+  const go = lv && lv !== 'wait';
+  return html`<li class="fz-row bo-row" data-code="${p.code}">
+    ${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy" width="72" height="72">` : html`<span class="fz-nophoto" aria-hidden="true"></span>`}
+    <div class="fz-txt"><a class="nm" href="#/plant/${enc(p.code)}">${p.name}</a> <span class="muted"><span class="bo-code">${p.code}</span>, ${(p.site || '').toLowerCase()}</span>
+      <div>${lv ? html`<span class="bo-lv bo-${lv}">${BO_WORD[lv]}</span> ` : ''}${needs}</div>
+      ${fc ? html`<div>${fc}</div>` : ''}${usual ? html`<div class="hint">${usual}</div>` : ''}
+      ${go ? html`<div class="hint">Porch first protects leaves that grew indoors from sun scorch. A reminder comes a week later.</div>` : ''}</div>
+    ${go ? html`<div class="fz-acts"><button class="btn small" type="button" data-act="boporch" data-code="${p.code}" data-name="${p.name}">Moved to the porch</button>
+      <button class="btn small ghost" type="button" data-act="boout" data-code="${p.code}" data-name="${p.name}">Moved outside</button></div>` : ''}</li>`;
+}
+const boPorchDay = d => new Date(d + 'T12:00:00').toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+function boPorchRow(p) {
+  return html`<li class="fz-row bo-row bo-porchrow" data-code="${p.code}">
+    ${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy" width="72" height="72">` : html`<span class="fz-nophoto" aria-hidden="true"></span>`}
+    <div class="fz-txt"><a class="nm" href="#/plant/${enc(p.code)}">${p.name}</a> <span class="muted"><span class="bo-code">${p.code}</span>, covered porch</span>
+      <div>${p.is_due ? html`<span class="bo-lv bo-ready">Time to move it</span> ` : ''}On the porch since ${boPorchDay(p.on)} (${p.days === 0 ? 'today' : p.days === 1 ? '1 day' : p.days + ' days'}).
+        ${p.is_due ? 'It has had its week out of full sun, so it can go to its summer spot.' : html`Move it to its summer spot on or after ${boPorchDay(p.due)}.`}</div></div>
+    <div class="fz-acts"><button class="btn small ${p.is_due ? '' : 'ghost'}" type="button" data-act="boout" data-code="${p.code}" data-name="${p.name}">Moved outside</button>
+      <button class="btn small ghost" type="button" data-act="boleave" data-code="${p.code}" data-name="${p.name}">Leave it on the porch</button></div></li>`;
+}
+async function viewOutside() {
+  const B = await loadOutside(true);
+  const ps = B.plants || [], n = B.counts, anyUsual = ps.some(p => p.usual);
+  const go = n.ready + n.safe;
+  return {
+    title: 'Back outside',
+    html: html`<p class="crumb"><a href="#/winter">Winter plan</a></p><h1>Back outside</h1>
+    <p class="muted">Plants that are inside now (Indoors, or Garage or shed), and whether the nights in the 7-day forecast for ${B.place} are warm enough for each to go back out.
+      Each plant is checked against its own temperatures: safe means no night within ${B.margin}°F of its damage point, and ready means every night is at or above the low it likes.</p>
+    ${B.season === 'autumn' ? html`<p class="notice">It is autumn, so most plants that came inside should stay in until spring. This page is most useful from late winter: each plant shows as ready as soon as the nights are warm enough for it.</p>` : ''}
+    ${!B.nights.length ? html`<p class="notice">No forecast yet. It is fetched a few seconds after the app starts, then every hour.</p>` : ''}
+    ${!ps.length ? html`<p class="notice ok">No plants are inside. When you bring one in, press its Moved indoors button and it shows here.</p>` : ''}
+    ${ps.length && B.nights.length ? html`<p class="notice ${go ? 'ok' : ''} bo-sum" role="status"><strong>${go ? `${go} of ${ps.length} plants inside can go back out now.` : `None of the ${ps.length} plants inside can go back out yet.`}</strong>
+      ${n.ready ? ` Ready: ${n.ready}.` : ''}${n.safe ? ` Safe, but cool: ${n.safe}.` : ''}${n.early ? ` Too early: ${n.early}.` : ''}${n.wait ? ` Not yet: ${n.wait}.` : ''}</p>` : ''}
+    ${B.nights.length && !anyUsual ? html`<p class="hint">To also see when the nights usually warm up each spring, load the weather history: <a href="#/weather">Weather page</a>, Load history. It needs 3 years or more.</p>` : ''}
+    ${(B.porch || []).filter(p => p.is_due).length ? html`<section class="blk" id="bo-porchdue"><h2>Time to move from the porch to their summer spot (${B.porch.filter(p => p.is_due).length})</h2>
+      <p class="muted">These have had a week on the porch, out of full sun. Press Moved outside once they are in their summer spot, or Leave it on the porch to stop the reminder.</p>
+      <ul class="fz-list">${B.porch.filter(p => p.is_due).map(boPorchRow)}</ul></section>` : ''}
+    ${ps.some(p => p.level && p.level !== 'wait') || (B.porch || []).length ? html`<p class="notice bo-why"><strong>Why the porch first?</strong> Leaves that grew indoors have never seen full sun, so they get sun scorch within a day or two if they go straight outside. The covered porch is bright but out of the direct sun. After a week, move the plant to its summer spot.</p>` : ''}
+    ${BO_GROUPS.map(([id, title, sub]) => { const g = ps.filter(p => p.level === id); if (!g.length) return '';
+      return html`<section class="blk" id="bo-${id}"><h2>${title} (${g.length})</h2><p class="muted">${sub}</p><ul class="fz-list">${g.map(boRow)}</ul></section>`; })}
+    ${(() => { const g = ps.filter(p => !p.level); return g.length && B.nights.length ? html`<section class="blk" id="bo-unknown"><h2>Cannot be checked (${g.length})</h2>
+      <p class="muted">These have no damage point or ideal low on their page.</p><ul class="fz-list">${g.map(boRow)}</ul></section>` : ''; })()}
+    ${B.nights.length ? html`<section class="blk"><h2>The next 7 nights</h2><div class="tbl-wrap"><table class="tbl bo-tbl"><caption class="sr">Forecast lows</caption>
+      <thead><tr><th>Day</th><th class="num">Low</th></tr></thead><tbody>
+      ${B.nights.map(x => html`<tr><th scope="row">${fzDay(x.date)}</th><td class="num">${x.low}°F</td></tr>`)}</tbody></table></div>
+      <p class="hint">Forecast updated ${B.fetched_at ? when(B.fetched_at) : 'not yet'}. The low is usually reached just before dawn.</p></section>` : ''}
+    ${(B.porch || []).filter(p => !p.is_due).length ? html`<section class="blk" id="bo-porchwait"><h2>On the porch for now (${B.porch.filter(p => !p.is_due).length})</h2>
+      <p class="muted">Getting used to the light, and out of full sun so the leaves do not scorch. A reminder comes after a week.</p>
+      <ul class="fz-list">${B.porch.filter(p => !p.is_due).map(boPorchRow)}</ul></section>` : ''}
+    <section class="blk"><h2>Going back out</h2><ul>
+      <li>Ease plants in. Leaves that grew indoors scorch in full sun, so give them a week on the covered porch, then a few hours of morning sun, then their usual spot.</li>
+      <li>Moved to the porch sets the plant's Location to Covered porch and sets a reminder for a week later. It shows on the cold-night checklist if a cold night comes.</li>
+      <li>Pots dry out much faster outside, especially in wind and sun. Check them every day or two for the first weeks.</li>
+      <li>Start feeding again once new growth appears.</li></ul></section>`,
+  };
+}
+async function boMove(el, site) {
+  if (!(await needName())) return;
+  const code = el.dataset.code, y = window.scrollY;
+  await guard(async () => {
+    if (site === 'Covered porch') await api('POST', '/api/outside/porch', { code, action: 'start' });
+    else await api('POST', '/api/plants/' + enc(code) + '/site', { site });
+    toast(el.dataset.name + (site === 'Outdoors' ? ' moved outside' : ' moved to the covered porch, out of full sun. A reminder comes in a week.'));
+    BO_AT = 0; FROST_AT = 0;
+    await route(); window.scrollTo(0, y);
+    const next = document.querySelector('.bo-row [data-act=boporch]') || document.querySelector('.bo-row [data-act=boout]');
+    (next || document.querySelector('main h1')).focus({ preventScroll: true });
+  });
+}
+// the Today page: in spring, a short note when plants inside can go back out
+new MutationObserver(() => {
+  if (!/^#\/today\b/.test(location.hash)) return;
+  const h = document.querySelector('#app h1');
+  if (!h || document.getElementById('bo-today')) return;
+  h.insertAdjacentHTML('afterend', '<div id="bo-today"></div>');
+  loadOutside().then(B => {
+    const box = document.getElementById('bo-today'), go = B.season === 'spring' ? B.counts.ready + B.counts.safe : 0, due = (B.porch || []).filter(p => p.is_due).length;
+    if (!box || (!go && !due)) return;
+    box.innerHTML = rend(html`<p class="notice ok noprint">${go ? html`<strong>${go === 1 ? '1 plant inside can' : `${go} plants inside can`} go back outside.</strong>
+      The nights in the forecast are warm enough for ${go === 1 ? 'it' : 'them'}. ` : ''}${due ? html`<strong>${due === 1 ? '1 plant on the porch is' : `${due} plants on the porch are`} ready for ${due === 1 ? 'its' : 'their'} summer spot.</strong> ${due === 1 ? 'It has' : 'They have'} had a week out of full sun. ` : ''}<a href="#/outside">Open the Back outside list</a></p>`);
+  }).catch(() => { /* no note if it cannot be worked out */ });
+}).observe(document.getElementById('app'), { childList: true });
 
 // ---------- display settings and current-conditions dialogs ----------
 function displayDialog() {
@@ -2847,6 +3054,7 @@ const BK_FREQ_WORDS = { '6h': 'Every 6 hours', '12h': 'Every 12 hours', daily: '
 const BK_KIND = { manual: 'Made by you', auto: 'Automatic', update: 'Before an update' };
 let BK = null;
 async function viewBackups() {
+  if (ME().role !== 'owner') return { title: 'Backups', html: html`<h1>Backups</h1><p class="notice">Backups are looked after by ${ME().owner_name}. They hold a copy of everything, so only the owner can make, download or restore them.</p>` };
   BK = await api('GET', '/api/backups');
   const S = BK.settings, hourOpt = h => new Date(2026, 0, 1, h).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const where = BK.mounted ? 'the backups folder inside your plant-database folder' : 'data\\backups inside your plant-database folder';
@@ -2914,7 +3122,10 @@ async function viewLabels() {
     <div class="noprint">
       <form class="todo-add" data-form="base"><label style="flex:1 1 320px;font-weight:700">Address the codes should open<input type="text" name="base" value="${st.base_url}" placeholder="http://192.168.1.20:8080" inputmode="url"></label>
         <button class="btn" type="submit" style="align-self:end">Save address</button></form>
-      ${local ? html`<div class="notice">The codes currently point to <strong>${base}</strong>, which only works on this computer. A phone cannot open that. Type your computer's network address here, for example http://192.168.1.20:8080 (the README shows how to find it).</div>` : html`<div class="notice ok">Codes open ${base}. The phone must be on the same Wi-Fi as this computer.</div>`}
+      ${/\.ts\.net$/i.test(base) ? html`<div class="notice ok">Codes open <strong>${base}</strong>, the app's Tailscale address. Any phone signed in to Tailscale can open them, at home or away, including people you have shared the app with.</div>`
+        : local ? html`<div class="notice">The codes currently point to <strong>${base}</strong>, which only works on this computer. A phone cannot open that. Use the app's Tailscale address (README: "Using the app away from home").</div>`
+        : html`<div class="notice">Codes open <strong>${base}</strong>. That address only works on your home network, and from version 1.12.0 the app is closed to the home network unless you open it again (README). The Tailscale address works everywhere.</div>`}
+      ${/\.ts\.net$/i.test(location.hostname) && base !== location.origin && ME().role === 'owner' ? html`<p><button class="btn ghost" type="button" data-act="usethisbase">Use this address for the codes: ${location.origin}</button></p>` : ''}
       <p><button class="btn" type="button" data-act="print">Print labels</button></p></div>
     <div class="lsheet">${list.map(p => labelCard(p, base, true))}</div>`,
   };
@@ -3128,6 +3339,7 @@ function debugDialog() {
       <p id="dbg-msg" class="dbg-msg" role="status" aria-live="polite"></p></fieldset>
     <fieldset class="opt-group"><legend>About this browser and the app</legend><dl class="dl">
       <dt>App version</dt><dd>${META && META.version ? META.version : 'unknown'}</dd>
+      ${META && META.runs_as ? html`<dt>Runs as</dt><dd>${META.runs_as.text}</dd>` : ''}
       <dt>Location</dt><dd>${placeName()}${META && META.place && META.place.is_home ? ' (home)' : ''}, time zone ${(META && META.place && META.place.tz) || ''}</dd>
       <dt>Window</dt><dd>${innerWidth} by ${innerHeight} pixels</dd>
       <dt>Text size</dt><dd>${P.size}%</dd>
@@ -3145,6 +3357,218 @@ document.addEventListener('keydown', e => {      // Enter in the Location window
 { const b = conEl('con-body'); if (b) b.addEventListener('scroll', conScrolled, { passive: true }); }
 if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { conLayout(); fitPanes(); });   // rows grow a little once the fonts arrive
 
+// ---------- grow lights (1.13.0) ----------
+let LT = null;                     // the last answer from /api/lights
+const LV_ICON = { too_dim: '▼▼', dim: '▼', good: '✓', bright: '▲', too_bright: '▲▲', unknown: '?' };
+function lvTag(v, word) { return html`<span class="lv lv-${v}"><span aria-hidden="true">${LV_ICON[v] || ''}</span> ${word}</span>`; }
+function ltSetting(s) {
+  return `${s.units > 1 ? s.units + ' side by side, ' : ''}${fmt(s.distance_in, 1)} in from the leaves, ${fmt(s.hours, 1)} hours a day${s.dim_pct < 100 ? `, at ${s.dim_pct}% brightness` : ''}`;
+}
+function ltLight(id) { return LT && LT.lights.find(L => L.id === +id); }
+function ltRooms() {                 // [[room, [places in it]], ...] in the order they were added
+  const m = new Map(); (LT ? LT.places : []).forEach(pl => { if (!m.has(pl.room)) m.set(pl.room, []); m.get(pl.room).push(pl); }); return [...m.entries()];
+}
+function ltRoomsBlock() {
+  const rooms = ltRooms();
+  if (!rooms.length) return html`<p class="muted">None yet. Add the rooms, shelves and tables where plants will go.</p>`;
+  return html`<div class="lt-rooms">${rooms.map(([room, ps]) => html`<section class="lt-room" aria-label="${room}"><h3>${room}</h3><ul>${ps.map(pl => {
+    const sp = LT.spots.filter(s => s.place_id === pl.id), n = sp.reduce((a, s) => a + s.plants.length, 0);
+    return html`<li><span><strong>${pl.name || 'The room itself'}</strong><br><span class="muted">${sp.length ? `${sp.map(s => s.name).join(', ')}: ${n} plant${n === 1 ? '' : 's'}` : 'No light spot here yet'}</span></span>
+      <span class="row noprint"><button class="btn ghost small" type="button" data-act="roomedit" data-id="${pl.id}">Rename</button><button class="btn ghost small" type="button" data-act="roomdel" data-id="${pl.id}">Remove</button></span></li>`; })}</ul></section>`)}</div>`;
+}
+async function roomDialog(pl) {
+  if (!(await needName())) return;
+  let x = { room: pl ? pl.room : '', name: pl ? pl.name : '' };
+  for (;;) {
+    const r = await modal(html`<form method="dialog"><h2>${pl ? 'Rename this room or shelf' : 'Add a room or shelf'}</h2>
+      <label class="f">Room<input type="text" name="room" maxlength="60" value="${x.room}" list="lt-roomlist" required autofocus><small>For example "My Bedroom". Pick one already listed to add a shelf to it.</small></label>
+      <datalist id="lt-roomlist">${ltRooms().map(([room]) => html`<option value="${room}"></option>`)}</datalist>
+      <label class="f">Shelf, table or spot in the room<input type="text" name="name" maxlength="60" value="${x.name}"><small>For example "Top shelf by the window". Leave it empty for the room as a whole.</small></label>
+      <div class="row"><button class="btn" value="ok">${pl ? 'Save changes' : 'Add it'}</button><button class="btn ghost" value="cancel" formnovalidate>Cancel</button></div></form>`);
+    if (r !== 'ok') return;
+    const f = dlg.querySelector('form'); x = { room: f.elements.room.value, name: f.elements.name.value };
+    try {
+      if (pl) await api('PUT', '/api/lights/places/' + pl.id, x); else await api('POST', '/api/lights/places', x);
+      toast(pl ? 'Renamed' : 'Added'); route(); return;
+    } catch (e) { toast(e.message, true); }
+  }
+}
+function ltSocketNote(L) {
+  return L && L.specs.needs_socket && !L.fixture ? html`<p class="notice"><strong>Needs a socket.</strong> This bulb screws into a lamp or clamp light. Note which one under "Where it is" on the light (Your lights, below).</p>` : '';
+}
+function ltSteps(steps) {
+  if (!steps || !steps.length) return '';
+  return html`<details class="lt-steps"><summary>Easing them in from outdoor light</summary>
+    <p class="hint">Plants used to the sun drop leaves if the light falls all at once. Start bright and long, then settle on the spot's setting.</p>
+    <ol>${steps.map(st => html`<li><strong>${st.when}:</strong> ${st.distance_in != null ? html`${fmt(st.distance_in, 1)} in from the leaves, ${fmt(st.hours, 1)} hours a day${st.dim_pct < 100 ? `, ${st.dim_pct}% brightness` : ''}, about ${st.dli} mol/m² a day. ` : ''}${st.text}</li>`)}</ol></details>`;
+}
+function ltSpotCard(s, i, plan) {
+  const L = ltLight(s.light_id);
+  return html`<article class="lt-spot" aria-labelledby="lts-${plan ? 'p' : 's'}${i}"><h3 id="lts-${plan ? 'p' : 's'}${i}">${s.name}</h3>
+    ${!plan ? html`<p><strong>Where:</strong> ${s.place || html`<span class="muted">Not chosen yet</span>`}</p>` : ''}
+    <p><strong>${s.light}</strong>: ${ltSetting(s)}.</p>
+    <p>About <strong>${has(s.dli) ? s.dli : '?'} mol/m² a day</strong> at the leaves${has(s.ppfd) ? html` (${fmt(s.ppfd)} PAR while it is on)` : ''}${s.area_sqft ? html`, lighting about ${fmt(s.area_sqft, 1)} sq ft well` : ''}.
+      ${s.crowded ? html`<strong>Crowded:</strong> the pots take about ${fmt(s.room_needed_sqft, 1)} sq ft, so the plants at the edge get less.` : ''}</p>
+    ${s.timer_note ? html`<p class="hint">${s.timer_note}</p>` : ''}
+    ${ltSocketNote(L)}
+    ${s.plants.length ? html`<ul class="lt-plants">${s.plants.map(p => html`<li>${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : html`<span></span>`}
+      <span><a class="nm" href="#/plant/${enc(p.code)}">${p.name}</a><br><span class="muted">${p.code}. Needs ${has(p.lo) ? `${fmt(p.lo, 1)} to ${fmt(p.hi, 1)}` : '(not set)'} mol/m² a day.</span></span>${lvTag(p.verdict, p.verdict_word)}</li>`)}</ul>` : html`<p class="muted">No plants in this spot yet.</p>`}
+    ${ltSteps(s.steps)}
+    <div class="row noprint">${plan ? html`<button class="btn" type="button" data-act="spotnew" data-plan="${i}">Set up this spot</button>`
+      : html`<button class="btn ghost" type="button" data-act="spotedit" data-id="${s.id}">Change this spot</button><button class="btn ghost" type="button" data-act="spotdel" data-id="${s.id}">Remove this spot</button>`}</div></article>`;
+}
+function ltLightCard(L) {
+  const S = L.specs, bits = [S.watts ? S.watts + ' W' : '', S.lumens ? fmt(S.lumens) + ' lumens' : '', S.kelvin ? S.kelvin + 'K ' + (S.kelvin >= 5000 ? 'cool white' : S.kelvin >= 3500 ? 'neutral white' : 'warm white') : '', S.cri ? 'colour rendering (CRI) ' + S.cri : ''].filter(Boolean);
+  const sp = S.spectrum;
+  return html`<article class="lt-light" aria-labelledby="ltl-${L.id}">
+    ${L.photo ? html`<img class="lt-photo" src="${L.photo}" alt="${S.photo_alt || ''}" loading="lazy">` : ''}
+    <div class="lt-body"><h3 id="ltl-${L.id}">${L.name}</h3>
+    <p><strong>You have ${L.count}.</strong> ${L.in_use ? `${L.in_use} in use in your spots.` : 'None in a spot yet.'}</p>
+    <dl class="dl">
+      ${S.kind ? html`<dt>Type</dt><dd>${S.kind}</dd>` : ''}
+      <dt>Manufacturer model</dt><dd>${S.model || html`<span class="muted">Not noted yet</span>`}</dd>
+      ${bits.length ? html`<dt>Light</dt><dd>${bits.join(', ')}</dd>` : ''}
+      ${sp ? html`<dt>Colour mix</dt><dd>Blue ${sp.blue}%, green ${sp.green}%, red ${sp.red}%, far red ${sp.far_red}%</dd>` : ''}
+      ${S.power ? html`<dt>Power</dt><dd>${S.power}</dd>` : ''}
+      ${S.timer ? html`<dt>Timer</dt><dd>${S.timer}</dd>` : ''}
+      <dt>Brightness</dt><dd>${S.dimming && S.dimming.length > 1 ? S.dimming.map(x => x + '%').join(', ') : 'Full only'}</dd>
+      ${S.size ? html`<dt>Size</dt><dd>${S.size}</dd>` : ''}
+      <dt>Where it is</dt><dd>${L.fixture || html`<span class="muted">Not noted yet</span>`}</dd>
+      ${L.notes ? html`<dt>Notes</dt><dd>${L.notes}</dd>` : ''}</dl>
+    ${L.points.length ? html`<div class="tbl-wrap"><table class="tbl lt-ppfd"><caption>${S.estimated ? "Claude's estimates" : "Maker's figures"}: light under its centre</caption>
+      <thead><tr><th scope="col">Distance</th><th scope="col" class="num">PAR (µmol/m²/s)</th><th scope="col" class="num">12 hours a day gives</th><th scope="col" class="num">Lights about</th></tr></thead>
+      <tbody>${L.points.map(p => html`<tr><th scope="row">${fmt(p.distance_in, 1)} in</th><td class="num">${fmt(p.ppfd, 1)}</td><td class="num">${fmt(p.ppfd * 12 * 0.0036, 1)} mol/m²</td><td class="num">${p.area_sqft ? fmt(p.area_sqft, 1) + ' sq ft' + (S.area_estimated && !S.estimated ? ' (estimate)' : '') : ''}</td></tr>`)}</tbody></table></div>` : ''}
+    ${S.ppfd_note ? html`<p class="hint">${S.ppfd_note}</p>` : ''}
+    ${L.chart ? html`<p class="hint"><a href="${L.chart}" target="_blank" rel="noopener">Open the maker's chart</a> (picture). ${S.chart_alt || ''}</p>` : ''}
+    ${S.url ? html`<p class="hint"><a href="${S.url}" target="_blank" rel="noopener noreferrer">Product page</a></p>` : ''}
+    <div class="row noprint"><button class="btn ghost small" type="button" data-act="lightedit" data-id="${L.id}">Change this light</button></div></div></article>`;
+}
+async function viewLights() {
+  LT = await api('GET', '/api/lights');
+  const n = LT.candidates.length, inSpots = Object.keys(LT.assigned).length, sug = LT.plan.reduce((a, s) => a + s.codes.length, 0);
+  return {
+    title: 'Grow lights',
+    html: html`<h1>Grow lights</h1>
+    <p class="muted">Your grow lights, the spots they light, and how much light each plant gets there. A plant's daily light (DLI, in mol/m² a day) is the light at its leaves while the light is on (PAR) times the hours it is on. Each plant page has the range it wants.</p>
+    <div class="verdict-box" role="status"><h2 style="margin:0 0 .4rem">This winter</h2>
+      <p>${n} plant${n === 1 ? ' lives' : 's live'} inside or ${n === 1 ? 'is' : 'are'} coming in. ${inSpots} ${inSpots === 1 ? 'is' : 'are'} in a light spot you set up.${LT.plan.length ? ` The suggested layout below places ${sug} more under your lights.` : ''}${LT.unplaced.length ? ` ${LT.unplaced.length} ${LT.unplaced.length === 1 ? 'has' : 'have'} no light left in it.` : ''}</p>
+      ${has(LT.outdoor_dli) ? html`<p>Outdoors in the open, the last 7 days averaged about <strong>${LT.outdoor_dli} mol/m² a day</strong>. Under the porch roof it is much less.</p>` : ''}
+      <div class="row noprint"><button class="btn" type="button" data-act="spotnew">Set up a spot</button><button class="btn ghost" type="button" data-act="lightnew">Add a light</button></div></div>
+    <section class="blk" id="lt-spots"><h2>Your light spots</h2>
+      ${LT.spots.length ? html`<div class="lt-grid">${LT.spots.map((s, i) => ltSpotCard(s, i, false))}</div>` : html`<p class="muted">None yet. Set one up from the suggested layout below with one press, or with "Set up a spot".</p>`}</section>
+    <section class="blk" id="lt-rooms"><h2>Rooms and shelves</h2><p>Where your plants go inside. Choose one for each light spot.</p>${ltRoomsBlock()}
+      <div class="row noprint"><button class="btn ghost" type="button" data-act="roomnew">Add a room or shelf</button></div></section>
+    <section class="blk" id="lt-plan"><h2>Suggested layout</h2>
+      <p>For the plants that are not in a spot yet. Plants that need the most light are placed first. Each goes under the smallest of your lights that can give it enough, sharing a light with plants whose needs overlap, while there is room under it. "Set up this spot" opens it so you can rename it or change anything before saving.</p>
+      ${LT.plan.length ? html`<div class="lt-grid">${LT.plan.map((s, i) => ltSpotCard(s, i, true))}</div>` : html`<p class="muted">Every plant that needs a light is in a spot.</p>`}
+      ${LT.unplaced.length ? html`<h3>No light left for these</h3><ul class="lt-plants">${LT.unplaced.map(u => html`<li>${u.photo ? html`<img src="${thumbUrl(u.photo)}" alt="" loading="lazy">` : html`<span></span>`}
+        <span><a class="nm" href="#/plant/${enc(u.code)}">${u.name}</a><br><span class="muted">${u.code}. Needs ${fmt(u.lo, 1)} to ${fmt(u.hi, 1)} mol/m² a day.</span> ${u.why}</span><span></span></li>`)}</ul>` : ''}</section>
+    <section class="blk" id="lt-lights"><h2>Your lights</h2><div class="lt-lights">${LT.lights.map(ltLightCard)}</div></section>
+    <section class="blk"><h2>How the numbers work</h2>
+      <p>Makers measure light straight under the centre of the light at a few distances. The app draws a smooth line through those figures to get the light at any distance, then multiplies by the hours a day: 100 PAR for 12 hours is about 4.3 mol/m².</p>
+      <p>The edges of a light's circle get less, and a window adds some. Plants that stretch or go pale want more; bleached or crisp leaves want less. Several of the same light side by side light a bigger area at about the same strength.</p></section>`,
+  };
+}
+// set up or change a spot
+let SP = null;
+function spotDims(L, cur) { const d = (L && L.specs.dimming && L.specs.dimming.length ? L.specs.dimming : [100]).slice().sort((a, b) => b - a); return d.map(x => html`<option value="${x}" ${x === +cur ? raw('selected') : ''}>${x === 100 ? 'Full (100%)' : x + '%'}</option>`); }
+async function spotDialog(x) {
+  if (!(await needName())) return;
+  const editing = x && x.id, lights = LT.lights;
+  for (;;) {
+    const L = ltLight(x.light_id) || lights[0], inSpot = new Set(x.codes || []);
+    const others = Object.fromEntries(LT.spots.map(s => [s.id, s.name]));
+    const shown = modal(html`<form method="dialog" data-spot class="spot-form"><h2>${editing ? 'Change this spot' : 'Set up a light spot'}</h2>
+      <label class="f">Name<input type="text" name="name" maxlength="60" value="${x.name || ''}" required autofocus><small>A short name you will recognise, for example "Hutch, top shelf".</small></label>
+      <label class="f">Where<select name="place"><option value="">Not chosen yet</option>${ltRooms().map(([room, ps]) => html`<optgroup label="${room}">${ps.map(pl => html`<option value="${pl.id}" ${pl.id === x.place_id ? raw('selected') : ''}>${pl.label}</option>`)}</optgroup>`)}</select>
+        <small>Add rooms and shelves under "Rooms and shelves" on this page.</small></label>
+      <label class="f">Light<select name="light">${lights.map(l => html`<option value="${l.id}" ${l.id === L.id ? raw('selected') : ''}>${l.name} (you have ${l.count}${l.in_use ? `, ${l.in_use} in use` : ''})</option>`)}</select></label>
+      <div class="field-grid three"><label class="f">How many of this light<input type="number" name="units" min="1" max="50" step="1" value="${x.units || 1}" required><small>Side by side over these plants.</small></label>
+        <label class="f">Distance from the leaves (inches)<input type="number" name="distance" min="1" max="120" step="0.5" value="${x.distance_in || 12}" required><small>From the light to the top leaves${L && L.specs.direction === 'side' ? ' (this light shines sideways)' : ''}.</small></label>
+        <label class="f">Hours a day<input type="number" name="hours" min="1" max="24" step="0.5" value="${x.hours || 12}" required></label></div>
+      <label class="f">Brightness<select name="dim">${spotDims(L, x.dim_pct || 100)}</select></label>
+      <div id="sp-prev" class="sp-prev" aria-live="polite"></div>
+      <fieldset class="opt-group"><legend>Plants in this spot</legend><p class="hint">Plants that live inside or are coming in. Ticking a plant that is in another spot moves it here.</p>
+        <div class="sp-plants">${LT.candidates.map(c => { const sid = LT.assigned[c.code], there = sid && sid !== x.id ? others[sid] : null;
+          return html`<label class="chk"><input type="checkbox" name="plant" value="${c.code}" ${inSpot.has(c.code) ? raw('checked') : ''}><span>${c.name} <span class="muted">${c.code}${c.need ? `, needs ${fmt(c.need.lo, 1)} to ${fmt(c.need.hi, 1)}` : ''}${there ? `, now in ${there}` : ''}</span></span></label>`; })}</div></fieldset>
+      <label class="f">Note<input type="text" name="notes" maxlength="300" value="${x.notes || ''}"></label>
+      <div class="row"><button class="btn" value="ok">${editing ? 'Save changes' : 'Save spot'}</button><button class="btn ghost" value="cancel" formnovalidate>Cancel</button></div></form>`, 'wide');
+    SP = { light: String(L.id) };
+    spotPreview(true);
+    if ((await shown) !== 'ok') return;
+    const f = dlg.querySelector('form'), v = k => f.elements[k].value;
+    const body = { name: v('name'), place: v('place'), light: v('light'), units: v('units'), distance: v('distance'), hours: v('hours'), dim: v('dim'), notes: v('notes'),
+      plants: [...f.querySelectorAll('input[name=plant]:checked')].map(i => i.value) };
+    try {
+      if (editing) await api('PUT', '/api/lights/spots/' + x.id, body); else await api('POST', '/api/lights/spots', body);
+      toast(editing ? 'Spot changed' : `Spot "${body.name.trim()}" set up`);
+      route(); return;
+    } catch (e) { toast(e.message, true); x = { ...x, name: body.name, place_id: body.place ? +body.place : null, light_id: +body.light, units: +body.units, distance_in: +body.distance, hours: +body.hours, dim_pct: +body.dim, notes: body.notes, codes: body.plants }; }
+  }
+}
+function spotPreview(now) {
+  clearTimeout(SP && SP.t);
+  const go = async () => {
+    const f = dlg.querySelector('form[data-spot]'), out = document.getElementById('sp-prev'); if (!f || !out) return;
+    if (f.elements.light.value !== SP.light) {           // a different light: its own brightness steps
+      SP.light = f.elements.light.value; const L = ltLight(SP.light);
+      f.elements.dim.innerHTML = rend(html`${spotDims(L, 100)}`);
+    }
+    const q = new URLSearchParams({ light: f.elements.light.value, units: f.elements.units.value, distance: f.elements.distance.value, hours: f.elements.hours.value, dim: f.elements.dim.value,
+      plants: [...f.querySelectorAll('input[name=plant]:checked')].map(i => i.value).join(',') });
+    try {
+      const e = await api('GET', '/api/lights/preview?' + q.toString());
+      out.innerHTML = rend(html`<p><strong>About ${has(e.dli) ? e.dli : '?'} mol/m² a day</strong> at the leaves${has(e.ppfd) ? `, ${fmt(e.ppfd)} PAR while it is on` : ''}${e.area_sqft ? `, lighting about ${fmt(e.area_sqft, 1)} sq ft` : ''}.${e.crowded ? ` Crowded: the pots take about ${fmt(e.room_needed_sqft, 1)} sq ft.` : ''}</p>
+        ${e.timer_note ? html`<p class="hint">${e.timer_note}</p>` : ''}
+        ${e.plants.length ? html`<ul class="sp-verdicts">${e.plants.map(p => html`<li>${lvTag(p.verdict, p.verdict_word)} ${p.name} <span class="muted">(needs ${has(p.lo) ? `${fmt(p.lo, 1)} to ${fmt(p.hi, 1)}` : 'not set'})</span></li>`)}</ul>` : ''}`);
+    } catch (err) { out.innerHTML = rend(html`<p class="muted">${err.message}</p>`); }
+  };
+  if (now) go(); else SP.t = setTimeout(go, 250);
+}
+async function lightDialog(L) {
+  if (!(await needName())) return;
+  const S = (L && L.specs) || {}, pts = L ? L.points.map(p => `${fmt(p.distance_in, 2)} in ${fmt(p.ppfd, 2)}${p.area_sqft ? ` (${fmt(p.area_sqft, 2)} sq ft)` : ''}`).join(', ') : '';
+  let x = { name: L ? L.name : '', model: S.model || '', count: L ? L.count : 1, fixture: L ? L.fixture : '', notes: L ? L.notes : '', watts: S.watts == null ? '' : S.watts, points: pts,
+    timer: S.timer || '', dimming: (S.dimming || [100]).join(', '), kind: S.kind || '' };
+  for (;;) {
+    const r = await modal(html`<form method="dialog"><h2>${L ? 'Change this light' : 'Add a light you have'}</h2>
+      <label class="f">Name<input type="text" name="name" maxlength="80" value="${x.name}" required autofocus></label>
+      <label class="f">Manufacturer model<input type="text" name="model" maxlength="80" value="${x.model}"><small>The model number on the box or a label on the light.</small></label>
+      <div class="field-grid three"><label class="f">How many you have<input type="number" name="count" min="0" max="100" step="1" value="${x.count}" required></label>
+        <label class="f">Watts (each)<input type="number" name="watts" min="0" max="2000" step="any" value="${x.watts}"></label>
+        <label class="f">Type<input type="text" name="kind" maxlength="40" value="${x.kind}"><small>For example bulb, strip or clamp light.</small></label></div>
+      <label class="f">Where it is<input type="text" name="fixture" maxlength="120" value="${x.fixture}"><small>The room, shelf or lamp it is in, or the socket a bulb screws into.</small></label>
+      <label class="f">Light at distances (PPFD)<textarea name="points" rows="2" maxlength="400">${x.points}</textarea><small>From the box or listing: distance in inches and PAR, separated by commas, for example "12 in 719, 24 in 234". Add the area it lights in brackets if the maker gives it.</small></label>
+      <div class="field-grid"><label class="f">Timer<input type="text" name="timer" maxlength="120" value="${x.timer}"></label>
+        <label class="f">Brightness steps (%)<input type="text" name="dimming" maxlength="40" value="${x.dimming}"><small>For example "25, 50, 75, 100", or "100" if it only has full.</small></label></div>
+      <label class="f">Notes<input type="text" name="notes" maxlength="600" value="${x.notes}"></label>
+      <div class="row"><button class="btn" value="ok">${L ? 'Save changes' : 'Save light'}</button>${L ? html`<button class="btn ghost" value="remove" formnovalidate>Remove this light</button>` : ''}<button class="btn ghost" value="cancel" formnovalidate>Cancel</button></div></form>`);
+    if (r === 'remove') {
+      if (!(await confirmBox('Remove this light?', `${L.name} leaves your list. Spots that use it must be changed or removed first.`, 'Remove light', true))) return;
+      try { await api('DELETE', '/api/lights/' + L.id); toast('Light removed'); route(); } catch (e) { toast(e.message, true); }
+      return;
+    }
+    if (r !== 'ok') return;
+    const f = dlg.querySelector('form'); x = Object.fromEntries(['name', 'model', 'count', 'watts', 'kind', 'fixture', 'points', 'timer', 'dimming', 'notes'].map(k => [k, f.elements[k].value]));
+    try {
+      if (L) await api('PUT', '/api/lights/' + L.id, x); else await api('POST', '/api/lights', x);
+      toast(L ? 'Light changed' : `${x.name.trim()} added`); route(); return;
+    } catch (e) { toast(e.message, true); }
+  }
+}
+// a plant's own page: its spot, or what the layout suggests
+async function loadGrowPlant(code) {
+  const el = document.getElementById('pl-grow'); if (!el) return;
+  try {
+    const g = await api('GET', '/api/lights?plant=' + enc(code));
+    if (!g.lights || (!g.spot && !g.suggestion && !g.unplaced)) { el.innerHTML = ''; return; }
+    const me = s => s.plants.find(p => p.code === code) || {};
+    el.innerHTML = rend(html`<h3>Grow light this winter</h3>${g.spot ? html`<p>In the spot <strong>${g.spot.name}</strong>${g.spot.place ? ` (${g.spot.place})` : ''}${g.spot.name.includes(g.spot.light) ? '' : `, under the ${g.spot.light}`}: ${ltSetting(g.spot)}. About ${g.spot.dli} mol/m² a day. ${lvTag(me(g.spot).verdict, me(g.spot).verdict_word)}</p>`
+      : g.suggestion ? html`<p>Not in a light spot yet. The suggested layout puts it under the <strong>${g.suggestion.light}</strong>, ${ltSetting(g.suggestion)}: about ${g.suggestion.dli} mol/m² a day. ${lvTag(me(g.suggestion).verdict, me(g.suggestion).verdict_word)}</p>`
+      : html`<p>Not in a light spot yet. ${g.unplaced.why}</p>`}<p class="noprint"><a href="#/lights">Open Grow lights</a></p>`);
+  } catch (e) { el.innerHTML = ''; }
+}
+
 // ---------- events ----------
 async function copyRequest() {
   const text = requestText(CUR.p);
@@ -3160,7 +3584,37 @@ async function pickPlant(title, text, withNone) {
   return r === 'ok' ? dlg.querySelector('[name=t]').value : null;
 }
 const acts = {
-  async who() { await askName(true); },
+  who() { whoDialog(); },
+  spotnew(el) { const p = el.dataset.plan != null ? LT.plan[+el.dataset.plan] : null; spotDialog(p ? { name: p.name, light_id: p.light_id, units: p.units, distance_in: p.distance_in, hours: p.hours, dim_pct: p.dim_pct, codes: p.codes } : { light_id: LT.lights[0] && LT.lights[0].id }); },
+  spotedit(el) { const s = LT.spots.find(x => x.id === +el.dataset.id); if (s) spotDialog({ ...s, codes: s.plants.map(p => p.code) }); },
+  async spotdel(el) {
+    const s = LT.spots.find(x => x.id === +el.dataset.id); if (!s) return;
+    if (!(await confirmBox('Remove this spot?', `"${s.name}" is removed and its ${s.plants.length} plant${s.plants.length === 1 ? '' : 's'} go back to the suggested layout. The light itself stays in your list.`, 'Remove spot', true))) return;
+    await guard(async () => { await api('DELETE', '/api/lights/spots/' + s.id); toast('Spot removed'); route(); });
+  },
+  lightedit(el) { lightDialog(ltLight(el.dataset.id)); },
+  lightnew() { lightDialog(null); },
+  roomnew() { roomDialog(null); },
+  roomedit(el) { roomDialog(LT.places.find(p => p.id === +el.dataset.id)); },
+  async roomdel(el) {
+    const pl = LT.places.find(p => p.id === +el.dataset.id); if (!pl) return;
+    if (!(await confirmBox('Remove this room or shelf?', `"${pl.label}" leaves the list.${pl.spots.length ? ` The ${pl.spots.length} light spot${pl.spots.length === 1 ? '' : 's'} there stay, with "Where" set to "Not chosen yet".` : ''}`, 'Remove it', true))) return;
+    await guard(async () => { await api('DELETE', '/api/lights/places/' + pl.id); toast('Removed'); route(); });
+  },
+  async usethisbase() { await guard(async () => { await api('PUT', '/api/settings', { base_url: location.origin }); toast('Codes now open ' + location.origin); route(); }); },
+  async whosave() {
+    const f = dlg.querySelector('form'), m = document.getElementById('who-msg'), n = cleanName(f.elements.n.value);
+    if (!n) { m.textContent = 'Type a name first.'; return; }
+    if (viaTS()) {
+      try { const r = await api('PUT', '/api/me', { name: n }); META.me = r; paintWho(); m.textContent = `Saved. Your changes now show as ${r.name}.`; }
+      catch (e) { m.textContent = e.message; }
+    } else { setName(n); m.textContent = `Saved. Your changes now show as ${n}.`; }
+  },
+  async pdel(el) {
+    const m = document.getElementById('who-msg');
+    try { const r = await api('DELETE', '/api/people?login=' + enc(el.dataset.login)); peoplePaint(r); m.textContent = `${el.dataset.name} removed. If they open the app again, they come back as "Can view only".`; }
+    catch (e) { m.textContent = e.message; }
+  },
   fertlog(el) {
     const o = {};
     if (el.dataset.code) o.codes = [el.dataset.code];
@@ -3532,6 +3986,16 @@ const changeActs = {
   fcopen(el) { FC.open = el.checked; fcRefresh('input[data-act=fcopen]'); },
   async tododone(el) { if (!(await needName())) { el.checked = !el.checked; return; } await guard(async () => { await api('PATCH', '/api/to-photograph/' + el.dataset.id, { done: el.checked }); route(); }); },
 };
+// back outside (prototype: proto/move-outside)
+Object.assign(acts, {
+  async boporch(el) { await boMove(el, 'Covered porch'); },
+  async boout(el) { await boMove(el, 'Outdoors'); },
+  async boleave(el) {
+    if (!(await needName())) return;
+    const y = window.scrollY;
+    await guard(async () => { await api('POST', '/api/outside/porch', { code: el.dataset.code, action: 'clear' }); toast(el.dataset.name + ' stays on the porch. The reminder is off.'); BO_AT = 0; await route(); window.scrollTo(0, y); (document.querySelector('.bo-porchrow button') || document.querySelector('main h1')).focus({ preventScroll: true }); });
+  },
+});
 function wtFocusTop() { const t = document.querySelector('#wx-table .pager'); if (t) t.scrollIntoView({ block: 'nearest' }); }
 let PLACE_RESULTS = [];
 const formActs = {
@@ -3607,6 +4071,12 @@ document.addEventListener('change', e => {
     if (m) m.textContent = k === 'console' ? (el.checked ? 'The console is on, at the bottom of the screen.' : 'The console is off.') : k === 'lines' ? `It now shows ${el.value} changes before you scroll.` : el.checked ? 'Screen readers will announce new changes.' : 'Screen readers will not announce new changes.';
     return;
   }
+  if (el.dataset && el.dataset.f === 'prole') {
+    const m = document.getElementById('who-msg'), login = el.dataset.login, label = el.options[el.selectedIndex].text;
+    api('PUT', '/api/people', { login, role: el.value }).then(r => { peoplePaint(r); if (r.me) { META.me = r.me; paintWho(); } if (m) m.textContent = `Saved: ${label}.`; })
+      .catch(e => { if (m) m.textContent = e.message; api('GET', '/api/people').then(peoplePaint).catch(() => {}); });
+    return;
+  }
   if (el.dataset && el.dataset.f === 'aud') { AUD.f[el.name] = el.value; AUD.offset = 0; audSave(); audLoad(`[name="${el.name}"][data-f=aud]`); return; }
   if (el.dataset && el.dataset.pref) { window.PlantPrefs.set(el.dataset.pref, el.value); if (el.dataset.pref === 'layout' && document.querySelector('.plant')) route(); return; }
   if (el.name === 'csrc') { const mf = document.getElementById('manual-fields'); if (mf) mf.hidden = el.value !== 'manual'; return; }
@@ -3667,6 +4137,7 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); const [Y, M] = b.dataset.date.split('-').map(Number); calGo(id, ymd(new Date(Y, e.key === 'Home' ? M - 1 : M, e.key === 'Home' ? 1 : 0, 12)), true); }
 });
 document.addEventListener('input', e => {
+  if (e.target.closest && e.target.closest('form[data-spot]')) spotPreview();
   if (e.target.closest && e.target.closest('form[data-fert]')) {
     if (e.target.name === 'product') { const x = FERT.products.find(q => q.product.toLowerCase() === e.target.value.trim().toLowerCase()); const f = e.target.form; if (x && !f.elements.n.value && !f.elements.amount.value) { ['form', 'n', 'p', 'k', 'amount', 'amount_unit', 'water_amount', 'water_unit', 'method'].forEach(k => { if (x[k] != null && f.elements[k]) f.elements[k].value = x[k]; }); } }
     fertPreview();

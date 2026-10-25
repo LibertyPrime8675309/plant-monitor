@@ -3,26 +3,79 @@ services:
     build:
       context: .
       args:
-        PLANTDB_VERSION: "1.11.0"
+        PLANTDB_VERSION: "1.14.0"
     # The tag is the release number, so Docker Desktop shows which version is running (Containers > Image column).
-    image: plant-database:1.11.0
+    image: plant-database:1.14.0
+    pull_policy: build              # built here from this folder; never looked for on Docker Hub
     container_name: plant-database
     labels:
-      plantdb.version: "1.11.0"
+      plantdb.version: "1.14.0"
     ports:
-      - "8080:8080"
+      # Since 1.12: only this computer can open http://localhost:8080 (the updater and backups use it). Everyone else, at home
+      # or away, comes in through Tailscale (the "tailscale" service below), signed in.
+      # To open it to your home network again, put the line PLANTDB_BIND=0.0.0.0 in a file named .env next to this one.
+      # That is less safe: anyone on the home Wi-Fi could then change things (see README).
+      # If another program on this computer already uses port 8080, the updater picks a free port and saves it as PLANTDB_PORT
+      # in .env; the app then answers at http://localhost:<that port> on this computer. The Tailscale address does not change.
+      - "${PLANTDB_BIND:-127.0.0.1}:${PLANTDB_PORT:-8080}:8080"
+      # Sensor readings only (POST /api/readings with the token; nothing else answers here). Closed to start with. To let a
+      # sensor on your home network send readings, put PLANTDB_SENSOR_BIND=0.0.0.0 in the .env file.
+      - "${PLANTDB_SENSOR_BIND:-127.0.0.1}:${PLANTDB_SENSOR_PORT:-8082}:8082"
+    expose:
+      - "8081"                      # the Tailscale container's way in; never published to this computer or the network
     volumes:
       - ./data:/data          # database and photos live here; back this folder up
       - ./backups:/backups    # backups made by the app (Backups page); copy some to another drive now and then
     environment:
-      # Optional: uncomment to require a password (any username) in the browser.
+      # Optional: uncomment to require a password (any username) for http://localhost:8080 (and the home network, if opened).
+      # People who come in through Tailscale are signed in by Tailscale instead.
       # PLANTDB_PASSWORD: "change-me"
       # Optional: uncomment to stop the hourly online weather lookup.
       # PLANTDB_WEATHER: "0"
       TZ: America/Chicago
+      PLANTDB_RUN_AS: ${PLANTDB_RUN_AS:-}
+    # Hardening (since 1.12): the app's own files cannot be changed, it has almost no Linux privileges and cannot gain
+    # any. It can only write to data, backups and its scratch space (/tmp).
+    # It starts as root with only the privileges below, and switches to its own user (which then has none at all) when
+    # Docker lets that user write to data and backups. On Windows, folders an older version wrote to usually do not allow
+    # that, so it stays root inside the container, as before 1.12. The log's first line says which; so does the Debug
+    # window. To always run as root, put PLANTDB_RUN_AS=root in the .env file.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID          # to switch to its own user
+      - SETGID
+      - CHOWN           # these three only matter if it stays root: using files an older version made
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request;urllib.request.urlopen('http://localhost:8080/healthz')"]
       interval: 30s
       timeout: 5s
       retries: 3
+
+  # Since 1.12: the app's own Tailscale device ("plants"), so it can be opened from anywhere at https://plants.<your-tailnet>.ts.net
+  # by people signed in to Tailscale, without opening anything on your router or sharing this whole computer.
+  # Sign it in once with tools\Set Up Remote Access.cmd. See README, "Using the app away from home".
+  tailscale:
+    image: tailscale/tailscale:stable
+    container_name: plant-tailscale
+    environment:
+      TS_HOSTNAME: plants
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SERVE_CONFIG: /config/serve.json
+      TS_USERSPACE: "true"          # needs no special devices or privileges
+      TS_AUTH_ONCE: "true"
+      TS_AUTHKEY: ${TS_AUTHKEY:-}   # optional; without one, the setup script opens Tailscale's sign-in page
+    volumes:
+      - ./tailscale/state:/var/lib/tailscale    # this device's sign-in: private, never in a release
+      - ./tailscale/config:/config:ro           # serve.json: HTTPS on port 443, passed to the app; Funnel off
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped

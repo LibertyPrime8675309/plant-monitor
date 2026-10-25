@@ -1,0 +1,103 @@
+dieffenbachia|Plants of the World Online (Kew): Dieffenbachia seguine|https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:86911-1
+dieffenbachia|NC State Extension Plant Toolbox: Dieffenbachia|https://plants.ces.ncsu.edu/plants/dieffenbachia-amoena/common-name/dieffenbachia
+spathiphyllum|NC State Extension Plant Toolbox: Spathiphyllum|https://plants.ces.ncsu.edu/plants/spathiphyllum
+spathiphyllum|Clemson HGIC: Peace lily|https://hgic.clemson.edu/factsheet/peace-lily/
+spathiphyllum|Queensland Poisons Information Centre: Peace lily|https://www.poisonsinfo.health.qld.gov.au/plants-and-mushrooms/peace-lily-spathiphyllum
+erubescens|Plants of the World Online (Kew): Philodendron erubescens|https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:87759-1
+erubescens|The University of Kansas Health System Poison Control: Philodendron|https://www.kansashealthsystem.com/care/centers/poison-control-center/poisonous-plants/philodendron
+hederaceum|Wikipedia: Philodendron hederaceum|https://en.wikipedia.org/wiki/Philodendron_hederaceum
+hederaceum|NC State Extension Plant Toolbox: Philodendron hederaceum|https://plants.ces.ncsu.edu/plants/philodendron-hederaceum/
+hederaceum|ASPCA: Heartleaf philodendron|https://aspca.org/node/4978
+monstera|Plants of the World Online (Kew): Monstera deliciosa|https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:87478-1/general-information
+monstera|Queensland Poisons Information Centre: Fruit salad plant|https://www.poisonsinfo.health.qld.gov.au/plants-and-mushrooms/fruit-salad-plant-monstera-deliciosa
+syngonium|Wikipedia: Syngonium|https://en.wikipedia.org/wiki/Syngonium
+syngonium|UF/IFAS Plant Directory: Syngonium podophyllum|https://plant-directory.ifas.ufl.edu/site/assets/files/2061/synpod.pdf
+syngonium|IUCN Global Invasive Species Database: Syngonium podophyllum|https://www.iucngisd.org/gisd/speciesname/Syngonium+podophyllum
+aglaonema|UF/IFAS EDIS: Aglaonema|https://ask.ifas.ufl.edu/publication/fp025
+alocasia|UF/IFAS EDIS: Alocasia|https://ask.ifas.ufl.edu/publication/fp033
+zz|NC State Extension Plant Toolbox: Zamioculcas zamiifolia|https://plants.ces.ncsu.edu/plants/zamioculcas-zamiifolia/common-name/zz-plant/
+zz|UF/IFAS EDIS: ZZ plant|https://ask.ifas.ufl.edu/publication/EP252/pdf
+zz|Wikipedia: Zamioculcas|https://en.wikipedia.org/wiki/Zamioculcas
+calathea|NC State Extension Plant Toolbox: Goeppertia roseopicta|https://plants.ces.ncsu.edu/plants/goeppertia-roseopicta
+phalaenopsis|Wikipedia: Phalaenopsis|https://en.wikipedia.org/wiki/Phalaenopsis
+nephrolepis|UF/IFAS EDIS: Nephrolepis exaltata|https://edis.ifas.ufl.edu/publication/FP427/pdf
+nephrolepis|Texas Tech Plant Resources: Boston fern|https://www.depts.ttu.edu/plantresources/Pages/directories/landscape-info-sheets/interior-info/Nephrolepis-exaltata.php
+coleus|Plants of the World Online (Kew): Coleus scutellarioides|https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:446165-1
+coleus|NC State Extension Plant Toolbox: Coleus scutellarioides|https://plants.ces.ncsu.edu/plants/coleus-scutellarioides/
+elastica|Wikipedia: Ficus elastica|https://en.wikipedia.org/wiki/Ficus_elastica
+elastica|UF/IFAS EDIS: Ficus elastica|https://ask.ifas.ufl.edu/publication/ST252
+pachira|NC State Extension Plant Toolbox: Pachira aquatica|https://plants.ces.ncsu.edu/plants/pachira-aquatica/
+lyrata|Wikipedia: Ficus lyrata|https://en.wikipedia.org/wiki/Ficus_lyrata
+lyrata|UF/IFAS EDIS: Ficus lyrata|https://ask.ifas.ufl.edu/publication/ST254
+ravenea|Wikipedia: Ravenea rivularis|https://en.wikipedia.org/wiki/Ravenea_rivularis
+vanilla|Wikipedia: Vanilla planifolia|https://en.wikipedia.org/wiki/Vanilla_planifolia
+adenium|Wikipedia: Adenium obesum|https://en.wikipedia.org/wiki/Adenium_obesum
+begonia|Gardenia.net: Begonia maculata (polka dot begonia)|https://www.gardenia.net/plant/begonia-maculata-pola-dot-begonia-grow-care-guide
+milii|NC State Extension Plant Toolbox: Euphorbia milii|https://plants.ces.ncsu.edu/plants/euphorbia-milii/common-name/crown-of-thorns-2/
+moon|Easyscape: Gymnocalycium mihanovichii|https://easyscape.com/species/Gymnocalycium-mihanovichii(Moon-Cactus)
+myrtillo|Wikipedia: Myrtillocactus geometrizans|https://en.wikipedia.org/wiki/Myrtillocactus_geometrizans
+myrtillo|LLIFLE: Myrtillocactus geometrizans cv. Fukurokuryuzinboku|https://llifle.com/Encyclopedia/CACTI/Family/Cactaceae/14991/Myrtillocactus_geometrizans_cv._Fukurokuryuzinboku
+haworthia|Royal Horticultural Society: Haworthiopsis attenuata|https://www.rhs.org.uk/plants/504241/haworthiopsis-attenuata/details
+haworthia|Penn State Extension: Zebra plant as a houseplant|https://extension.psu.edu/zebra-plant-as-a-houseplant
+aloe|NC State Extension Plant Toolbox: Aloe vera|https://plants.ces.ncsu.edu/plants/aloe-vera/common-name/aloe/
+aloe|Royal Horticultural Society: Aloe vera|https://www.rhs.org.uk/Plants/981/i-Aloe-vera-i/Details
+striatula|Wikipedia: Aloiampelos striatula|https://en.wikipedia.org/wiki/Aloiampelos_striatula
+striatula|SANBI PlantZAfrica: Aloiampelos striatula|https://pza.sanbi.org/node/11998
+portulacaria|University of Wisconsin Extension: Elephant bush|https://hort.extension.wisc.edu/articles/elephant-bush-portulacaria-afra/
+aeonium|Plants of the World Online (Kew): Aeonium arboreum|https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:272194-1
+aeonium|University of Wisconsin Extension: Aeonium|https://hort.extension.wisc.edu/articles/aeonium
+aeonium|NC State Extension Plant Toolbox: Aeonium|https://plants.ces.ncsu.edu/plants/all/aeonium/
+opuntia|Wikipedia: Opuntia|https://en.wikipedia.org/wiki/Opuntia
+opuntia|World Agroforestry: Opuntia ficus-indica|https://apps.worldagroforestry.org/treedb2/AFTPDFS/Opuntia_ficus-indica.PDF
+agave|UF/IFAS EDIS: Agave americana|https://ask.ifas.ufl.edu/publication/FP022/pdf
+agave|Gardenia.net: Agave americana|https://www.gardenia.net/plant/agave-americana-century-plant
+grapto|World of Succulents: Graptosedum 'Francesco Baldi'|https://worldofsucculents.com/graptosedum-francesco-baldi
+grapto|LLIFLE: x Graptosedum cv. Francesco Baldi|https://llifle.net/Encyclopedia/SUCCULENTS/Family/Crassulaceae/27659/x_Graptosedum_cv._Francesco_Baldi
+bougainvillea|Plants of the World Online (Kew): Bougainvillea glabra|https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:35444-2
+bougainvillea|BBC Gardeners' World: Bougainvillea glabra|https://www.gardenersworld.com/plants/bougainvillea-glabra
+fig|Texas A&M AgriLife Extension: Figs|https://agrilifeextension.tamu.edu/wp-content/uploads/2025/05/Figs.pdf
+fig|PlantVillage (Penn State): Fig|https://plantvillage.psu.edu/topics/fig/infos
+grape|Native Plant Society of Texas: Mustang grape|https://www.npsot.org/posts/native-plant/vitis-mustangensis/
+ivyleaf|USGS Plant ID: Ipomoea hederacea|https://warcapps.usgs.gov/PlantID/Species/Details/646
+ivyleaf|National Park Service NPSpecies: Ipomoea hederacea|https://irma.nps.gov/NPSpecies/Species/Profile/223774
+batatas|NC State Extension Plant Toolbox: Ipomoea batatas|https://plants.ces.ncsu.edu/plants/ipomoea-batatas
+batatas|UMass Extension: Ornamental sweet potato|https://www.umass.edu/agriculture-food-environment/landscape/publications-resources/plant-identification/ornamental-sweet-potato--ipomoea-batatas
+caesalpinia|UF/IFAS EDIS: Caesalpinia|https://ask.ifas.ufl.edu/publication/FP082/pdf
+caesalpinia|New York Botanical Garden: Caesalpinia mexicana|https://sweetgum.nybg.org/science/vh/monographs-details/?irn=23932
+rose|Texas A&M AgriLife: Earth-Kind roses|https://aggie-horticulture.tamu.edu/wp-content/uploads/sites/11/2012/06/36503_earthkind021010.pdf
+rose|Dallas County Master Gardeners: Earth-Kind roses|https://dallascountymastergardeners.org/wp-content/uploads/2021/12/GH-R-ONP-1-earth-kind_roses.-2016.pdf
+cosmos|Plants of the World Online (Kew): Cosmos bipinnatus|https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:198320-1
+cosmos|Missouri Plants: Cosmos sulphureus|https://missouriplants.com/Cosmos_sulphureus_page.html
+pallida|Wikipedia: Tradescantia pallida|https://en.wikipedia.org/wiki/Tradescantia_pallida
+pallida|NC State Extension Plant Toolbox: Tradescantia pallida|https://plants.ces.ncsu.edu/plants/tradescantia-pallida
+fluminensis|NC State Extension Plant Toolbox: Tradescantia fluminensis|https://plants.ces.ncsu.edu/plants/tradescantia-fluminensis/common-name/inch-plant/
+fluminensis|UF/IFAS Orange County: Invasive houseplants|https://blogs.ifas.ufl.edu/orangeco/2025/08/11/floridas-hidden-invaders-2/
+gardenia|NC State Extension Plant Toolbox: Gardenia jasminoides|https://plants.ces.ncsu.edu/plants/gardenia-jasminoides/
+gardenia|UF/IFAS EDIS: Gardenia jasminoides|https://edis.ifas.ufl.edu/publication/FP223/pdf
+fountain|UF/IFAS EDIS: Pennisetum setaceum 'Rubrum'|https://edis.ifas.ufl.edu/publication/FP464/pdf
+fountain|Texas Tech Plant Resources: Purple fountain grass|https://www.depts.ttu.edu/plantresources/Pages/directories/landscape-info-sheets/herbaceous-info/Pennisetum_setaceumRubrum.php
+celosia|Plants of the World Online (Kew): Celosia argentea|https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:316350-2
+celosia|UF/IFAS EDIS: Celosia|https://ask.ifas.ufl.edu/publication/FP114/pdf
+celosia|Texas Tech Plant Resources: Celosia argentea|https://www.depts.ttu.edu/plantresources/Pages/directories/landscape-info-sheets/herbaceous-info/Celosia_argentea.php
+iris|Clemson HGIC: Bearded iris|https://hgic.clemson.edu/bearded-iris/
+iris|Penn State Extension: Dividing irises|https://extension.psu.edu/dividing-irises
+petunia|Plants of the World Online (Kew): Petunia × atkinsiana (garden petunia)|https://powo.science.kew.org/taxon/331845-2
+artemisia|Lady Bird Johnson Wildflower Center: Artemisia ludoviciana|https://www.wildflower.org/plants/result.php?id_plant=ARLUL2
+artemisia|US Forest Service: Artemisia ludoviciana|https://www.fs.usda.gov/wildflowers/plant-of-the-week/artemisia_ludoviciana.shtml
+monarda|USGS Plant ID: Monarda fistulosa|https://warcapps.usgs.gov/PlantID/Species/Details/2628
+monarda|Montana State University: Monarda fistulosa|https://www.montana.edu/cdelphia/documents/Monarda%20fistulosa-v1-final.pdf
+zexmenia|Lady Bird Johnson Wildflower Center: Wedelia acapulcensis var. hispida|https://www.wildflower.org/plants/result.php?id_plant=WEACH
+zexmenia|Native Plant Society of Texas: Zexmenia|https://www.npsot.org/posts/native-plant/wedelia-acapulcensis-var-hispida/
+hibiscus|Lady Bird Johnson Wildflower Center: Hibiscus coccineus|https://www.wildflower.org/plants/result.php?id_plant=HICO2
+hibiscus|Wikipedia: Hibiscus coccineus|https://en.wikipedia.org/wiki/Hibiscus_coccineus
+hyacinth|Texas A&M AquaPlant: Water hyacinth|https://aquaplant.tamu.edu/plant-identification/water-hyacinth
+hyacinth|US Fish & Wildlife Service: Ecological risk screening, water hyacinth|https://www.fws.gov/sites/default/files/documents/Ecological-Risk-Screening-Summary-Water-Hyacinth.pdf
+zebrina|NC State Extension Plant Toolbox: Tradescantia zebrina|https://plants.ces.ncsu.edu/plants/tradescantia-zebrina/
+zebrina|Plants of the World Online (Kew): Tradescantia zebrina|https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:30049896-2/general-information
+moon|Wikipedia: Gymnocalycium mihanovichii|https://en.wikipedia.org/wiki/Gymnocalycium_mihanovichii
+moon|NC State Extension Plant Toolbox: Moon cactus|https://plants.ces.ncsu.edu/plants/gymnocalycium-mihanovichii/common-name/moon-cactus/
+birkin|NC State Extension Plant Toolbox: Philodendron 'Birkin'|https://plants.ces.ncsu.edu/plants/philodendron-birkin/common-name/philodendron-birkin/
+aeoniumh|Royal Horticultural Society: Aeonium haworthii|https://www.rhs.org.uk/Plants/504/Aeonium-haworthii/Details
+aeoniumh|Plants of the World Online (Kew): Aeonium haworthii|https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:272228-1
+cites|Kew: CITES resources|https://www.kew.org/science/our-science/science-services/UK-CITES/cites-resources
+hyacinth|Texas Invasives: Texas Parks and Wildlife prohibited exotic species|https://texasinvasives.org/plant_database/tpwd_results.php

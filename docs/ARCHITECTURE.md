@@ -64,6 +64,68 @@
 - **1.11.0 additions:**
   - **Place in use:** `location(c)` is now the place the browser chose, sent as the `X-Place` header on every request (falling back to the home place). `home_place(c)` is the home place, used outside requests (hourly updates). `req_loc()` falls back to `location(c)`. Everything that used the home place (frost, watering, prep weather, current conditions, `local_today`, `/api/reference`, `/api/meta`) follows the header. `/api/meta` returns `place`, `places` and `climate` (`place_climate()`: a usual winter's coldest night and coldest-month night, from 3+ years of `weather_daily`, cached 6 hours). `/api/reference` adds `applies` (the written notes are for Round Rock, `REF_PLACE`) and `normals` (`place_normals()`, monthly averages from history).
   - **Fertilizer needs:** plant fields `npk_ratio` (text, normalised to `a-b-c` by `parse_ratio()`) and `fert_strength` (optional enum `FERT_STRENGTHS`). Table `fertilizers` (saved products). `fert_products()` merges saved ones with every product in `fertilizer_log`; `fert_match()` compares N-P-K as shares of the total (largest difference: ≤0.05 Matches, ≤0.12 Close, ≤0.22 Usable); `fert_dose()` aims the strongest nutrient at `STRENGTH_PPM` (150/75/55/40 ppm) and rounds to spoon measures (`nice_amount()`). Routes: `GET/POST /api/fertilizer/products`, `PUT/DELETE /api/fertilizer/products/<id>`, `GET /api/fertilizer/needs[?plant=]`.
+- **1.12.0 additions (remote access):**
+  - **Ports:** gunicorn listens on three ports in the container.
+    - 8080 is "this computer". It is published on 127.0.0.1 only (`PLANTDB_BIND` in `.env` opens it). It has full access, with the optional `PLANTDB_PASSWORD`.
+    - 8081 (`TS_PORT`) is reached only by the `tailscale` container. It is never published.
+    - 8082 (`SENSOR_PORT`) accepts only `POST /api/readings`. It is published on 127.0.0.1 unless `PLANTDB_SENSOR_BIND` opens it.
+    - `via_tailscale()` compares `SERVER_PORT` (the real listener, not the Host header).
+  - **Identity:** Tailscale Serve (`tailscale/config/serve.json`: HTTPS on 443, proxy to `http://plants:8081`, Funnel off) adds `Tailscale-User-Login`/`-Name` and strips spoofed copies. `ts_user()` keeps the table `people(login, name, role, first_seen, last_seen)`. The first person is the owner (or the one the setup script sets); the rest start as `viewer`. Requests on 8081 with no login are refused.
+  - **Roles:** `role_refusal()` enforces them in `guard()`.
+    - Viewers can't make changes.
+    - `/api/backups*`, `/api/ingest*` and `/api/people` are owner only, as are changes to `/api/settings`, `/api/weather/settings` and `/api/places/<id>`.
+    - `editor()` returns the Tailscale name for Tailscale requests.
+    - Routes: `GET/PUT /api/me`, `GET/PUT/DELETE /api/people`. `/api/meta` includes `me`. HSTS is sent on 8081.
+  - **Container:** user 10001, `read_only`, tmpfs `/tmp`, `cap_drop: ALL`, `no-new-privileges`. `_check_writable()` prints `PLANTDB_NOT_WRITABLE` if the data folders can't be written. The updater then writes `docker-compose.override.yml` (user root plus the file capabilities it needs) and restarts.
+  - **Updater:** runs `docker compose build --pull`, then `pull --ignore-buildable` (the tailscale image), then `up -d`.
+- **1.12.1 additions (starting the container):**
+  - **Which user:** the container starts as root and runs `app/start.py`.
+    - A brand-new, empty `data` or `backups` folder is chowned to 10001; nothing else is changed.
+    - A forked child switches to 10001 (`setgroups([])`, `setgid(0)`, `setuid(10001)`) and runs `writable.problem()`: every data folder takes a test file, and the database and its SQLite side files open read-write.
+    - If that passes, the process switches to 10001 and execs gunicorn with no capabilities left. If not, it stays root (logged as `PLANTDB_RUNNING_AS_ROOT: …`).
+    - `PLANTDB_RUN_AS=root` skips the check. `PLANTDB_RUNS_AS` passes the result to the app, and `/api/meta.runs_as` shows it to owners (Debug window).
+    - Compose grants SETUID and SETGID (to switch), plus CHOWN, DAC_OVERRIDE and FOWNER (for the root case), on top of `cap_drop: ALL`.
+  - `_check_writable()` in server.py uses the same `writable.problem()`. `PLANTDB_NOT_WRITABLE` now means even root can't write.
+  - **gunicorn settings** live in `app/gunicorn.conf.py`, so unknown settings are ignored by older versions. `control_socket_disable = True`: gunicorn 25.1+ otherwise tries to make `~/.gunicorn/gunicorn.ctl` on the read-only filesystem.
+  - **Updater:**
+    - removes the `docker-compose.override.yml` that 1.12.0 (or Claude) wrote, recognised by its first line; a person's own override is kept.
+    - On a busy port (`Start-App`): first tells the person to close Plant record tabs, then retries after 5, 10, 15 and 30 s. Then it moves the port (`PLANTDB_PORT` 8090–8099, `PLANTDB_SENSOR_PORT` 8180–8189, in `.env`).
+    - `setup-remote-access.ps1` reads `PLANTDB_PORT`.
+  - **Setup script:** `tools/setup-remote-access.ps1` reads `tailscale status --json` in the `plant-tailscale` container (AuthURL, CertDomains, Self.DNSName, User) and makes the signed-in login the owner via `PUT /api/people` on localhost. `tailscale/state` and `.env` are never in a release.
+- **1.13.0 additions (grow lights):**
+  - **Tables:**
+    - `lights(id, lkey, name, data JSON, count, fixture, notes, sort, ...)`. `data` holds the specs: `watts`, `ppfd` as `[[inches, PAR, area_sqft|null], ...]`, `estimated`/`area_estimated`, `dimming` (% steps), `timer_hours`/`timer_repeats`, `needs_socket`, `direction`, `photo`/`chart` (paths under `static/lights/`) with alt texts, and `url`.
+    - `light_spots(id, name, light_id, units, distance_in, hours, dim_pct, notes, ...)`.
+    - `light_assign(plant_code PK, spot_id)`: a plant is in at most one spot.
+  - **Upgrade batches:** a batch can carry `lights_add`. A light is added once, by `key` or name, and Ethan edits it afterwards. `batchA3` (built by `dev/seed_src/build_batchA3.py` from `dev/photos-raw/lights`) adds his 11 lights and 4 requests.
+  - **Maths:**
+    - `ppfd_at()` and `area_at()` draw straight lines on log-log axes through the maker's points, extending the nearest segment (exponent 1.6 for a single point).
+    - `dli_of()` is PAR × dim × hours × 0.0036.
+    - `light_verdict()` gives too_dim (<80% of low), dim, good, bright, or too_bright (>130% of high).
+    - `light_setting()` searches hours (12, 14, 16, 10, 8) and brightness steps for the distance (whole inches, within `light_range()`) that gives a target.
+  - **Planner:** `light_plan()`.
+    - Candidates are active plants inside or with winter plan Move indoors, not already in a spot. Highest target first.
+    - A plant joins a suggested spot when the ranges overlap and the area allows (`area_at` × units × `LIGHT_ROOM` 1.5, against pot footprints from `pot_size`). Otherwise it opens one on the light with the lowest (strain, watts), where strain counts settings at 16 h or the closest distance.
+    - A light is never used more times than its count. Spots are named "Bright/Medium/Low light N".
+  - **Easing in:** `step_down()` gives week 1 at up to the group's high at 16 h, week 2 halfway, then the spot's setting. There is a porch step first when plants are out in the open and the outdoor light (`outdoor_dli()`: 7-day mean of `shortwave_radiation_sum` × 2.1, ignored above 75) is well above their high.
+  - **Routes:**
+    - `GET /api/lights` (`?plant=CODE` for the plant page) and `GET /api/lights/preview`
+    - `POST /api/lights`, `PUT/DELETE /api/lights/<id>` (409 while a spot uses it)
+    - `POST /api/lights/spots`, `PUT/DELETE /api/lights/spots/<id>`
+    - Audit action `light`, kind "Grow lights".
+  - **1.13.1:**
+    - Table `indoor_places(id, room, name, sort)`: `name` is '' for the room itself. `light_spots.place_id` is added by `init_db()`.
+    - Routes `POST /api/lights/places` and `PUT/DELETE /api/lights/places/<id>`. Removing a place sets its spots' `place_id` to NULL.
+    - Spots carry `place`/`place_id`, and `lights_state()` returns `places`.
+    - Lights have `data.model`.
+    - Batches can carry `places_add` and `lights_update` (`{key, set: {field: [old, new]}}`, guarded; the fields are `fixture`, `notes`, `count` or any spec key). `batchA4` adds Ethan's rooms and answers.
+    - Front end: `ltRooms()`, `ltRoomsBlock()`, `roomDialog()`, and the actions `roomnew`, `roomedit` and `roomdel`, which are in the viewer CSS block.
+  - **Front end:** `viewLights()` (`#/lights`), `ltSpotCard()`, `ltLightCard()`, `spotDialog()` with live `spotPreview()` (`form[data-spot]`), `lightDialog()`, and `loadGrowPlant()` filling `#pl-grow` on plant pages. Change buttons (`spotnew`, `spotedit`, `spotdel`, `lightedit`, `lightnew`) are in the viewer CSS block.
+- **1.14.0: about this plant.**
+  - 23 new plant fields at the end of `FIELDS` (`growth_habit`, `kingdom`, `taxon_order`, `family`, `genus`, `height_ground`, `width_ground`, `height_pot`, `width_pot`, `growth_rate`, `lifespan`, `zone_low`, `zone_high`, `zone_notes`, `native_range`, `conservation_status`, `invasive`, `bloom`, `fruit`, `danger_humans`, `danger_animals`, `propagation`, `sources`). `init_db()` adds the columns. `sources` is a list field, one `Title | URL` per line.
+  - `usda_zone(f)` (half zones of 5°F from 1a at -60°F), `zone_num()`, and `place_zone(c, L)`, which uses `place_climate()`'s `winter_low` and, within 0.25° of `REF_PLACE`, the 2023 map's "8b to 9a". `/api/meta` returns it as `zone`.
+  - Front end: `aboutBlock()` in `<section id="about">`, `zoneHere()` (falls back to the colder end of the map zone when there is no weather history yet), `srcList()`, and the "About this plant" group in `GROUPS`.
+  - `batchA5` fills every plant (guarded, old value ''). It is built by `dev/seed_src/build_batchA5.py` from `profiles_A5.py` (one profile per species or group, with `MAP` from plant code) and `sources_A5.txt` (`key|title|url`, links taken only from web search results).
 - **API:** `/api/plants`, `/api/plants/<code>` and its sub-routes (`site`, `status`, `history`, `timeline`, `versions`, `restore`, `photos`, `qr.svg`, `daily`, `day`), plus `/api/requests`, `/api/photos`, `/api/to-photograph`, `/api/fertilizer`, `/api/water`, `/api/care`, `/api/frost`, `/api/for-claude`, `/api/weather*`, `/api/places*`, `/api/current`, `/api/backups*`, `/api/export.json|csv`, `/api/audit*`, `/api/meta`, `/api/version` and `/healthz`.
 
 ## Front end: `app/static/`
@@ -74,6 +136,7 @@
   - 1.8.0 modules, each in its own block: frost banner and checklist, watering and Today, read aloud and shortcuts (`addReadButtons()`, Web Speech API), timeline (filled by a `MutationObserver` on `#app`), copy for Claude (`forClaudeDialog()`), and the photo check (`photoCheck()`, which runs before every upload).
   - 1.10.0: the Audit log page (`viewHistory()`, state in `AUD`, filters remembered in localStorage `plantdb.auditf`), the Debug window (`debugDialog()`, settings in `DBG`, localStorage `plantdb.debug`, change events with `data-dbg`) and the console (`conPoll()` every 3 s via `/api/audit?after=`, `conAdd()`, `conLayout()`). `conLayout()` sizes the console to the newest 3, 4 or 5 rows, places it clear of the side menu and of every button pinned to the bottom, and sets `--console-space`, which `fitPanes()` and `main` use to leave room. `pinLayout()` stacks the Sections button and the job note above Debug and Display on phones when they would otherwise overlap.
   - 1.11.0: the Location button and window (`PLACE` in localStorage `plantdb.place`, sent by `api()` as `X-Place`; `placeDialog()`, `placeChanged()`, `paintPlace()`, `plcHomeRow()`; the L key). `META` is reloaded when the place changes, and `tempMarks()`/`humMarks()` come from `META.climate`. Fertilizer needs: `needLines()`, `loadNeeds()` (into `FERT.needs`), `productsBlock()` and `productDialog()`; `fertState0()` fills the feeding form from a plant's match.
+  - 1.12.0: `ME()` (from `META.me`), `paintWho()`, `whoDialog()` (name, and for owners the people list with role menus: `data-f="prole"`, `data-act="pdel"`). Viewers get `html[data-role=viewer]`, which hides change buttons in one CSS block. They also get a "View only" note, and a MutationObserver switches off menus that save straight away. `api()` refuses their changes before sending.
   - Templates use the `html` tagged template, which escapes values (`raw()` opts out, `rend()` renders).
   - Click, change and submit events are delegated to `acts`, `changeActs` and `formActs`.
   - `buildSideNav()` builds the "On this page" menu from the `section.blk > h2` headings.

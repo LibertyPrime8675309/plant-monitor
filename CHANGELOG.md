@@ -1,5 +1,70 @@
 # Changelog
 
+## 1.14.0 (2026-10-25)
+- **About this plant**, a new section on every plant page, after Identification. For all 81 plants it gives:
+  - type of plant (tree, shrub, vine, succulent and so on) and its classification: kingdom, order, family, genus and species;
+  - mature height and width in the ground and in a pot, growth rate and lifespan;
+  - USDA hardiness zones, and whether it is hardy where you are. Round Rock works out to **zone 9a** from your own weather history (a coldest night of about 22°F in a usual winter), and is on the line between 8b and 9a on the 2023 USDA map;
+  - native range around the world, conservation status (IUCN Red List and CITES where they apply) and invasive risk;
+  - flowers, fruit (and whether it is edible), and propagation, step by step;
+  - dangers to people and to pets, in their own box with the Poison Control and ASPCA numbers.
+- **Sources with links** under every plant: the extension services, botanic gardens and references the details came from. They open in a new tab.
+- Where a plant's identification is less than 85% sure, the section says the details are for the closest match.
+- Everything here can be changed with **Edit**, under "About this plant". The update only fills fields that are empty, so nothing you typed is replaced.
+
+## 1.13.1 (2026-10-24)
+- **Rooms and shelves** on the Grow lights page. Your rooms and shelves are listed, ready to use:
+  - Downstairs Living Room: Tall Black Shelf, Tall Brown Shelf, Short Brown Shelf, Large Brown Hutch and Side Table
+  - My Bedroom: Shelves
+  - Garage
+  - Upstairs Living Room
+
+  Add more at any time, for example each bedroom shelf you put up. A light spot now has **Where**, so you choose which room and shelf it is on.
+- **Manufacturer model** for every light, to fill in from its box or label.
+- **Your answers recorded:** all the bulbs use the E26 base, and the disk light is new and can go anywhere. Two new questions are in the open requests: what will hold the bulbs, and the model numbers.
+
+## 1.13.0 (2026-10-24)
+- **Grow lights page.** Your 11 grow lights are in the app, from the photos and listings you saved:
+  - each with a photo, how many you have, its timer and brightness steps, and the maker's light figures (or Claude's estimates, marked, where the maker gives none);
+  - the maker's charts open as pictures.
+- **Light spots.** Say which light is over which plants, how far away, for how many hours and how bright. The app works out the daily light at the leaves and says for each plant whether it is too dim, good or too bright, as you change the setting.
+- **Suggested layout.** For the 41 plants that live inside or are coming in, a plan that shares your lights out. Plants needing the most light go first, each under the smallest light that gives it enough, with room for its pot. Set up any suggested spot with one press and rename it.
+- **Easing plants in.** Each spot has a first and second week brighter and longer than its own setting, so plants used to the sun adjust.
+- **On each plant page**, under Sunlight: its light spot, or what the plan gives it.
+- **Questions for you** about the lights are in the open requests: which lamps the bulbs screw into, the T8 set, the disk light, and where the plants will go.
+
+## 1.12.2 (2026-10-24)
+- **Update zips have a folder of their own.** Release zips and photo packs now live in `versions_plant-database`, inside your Plants folder, instead of cluttering the Plants folder itself.
+  - The updater moves every `plant-database-….zip` it finds in the Plants folder into that folder, including your older ones, then looks for the newest version there.
+  - If a zip is already there under the same name, a copy that matches exactly is removed from the Plants folder. A copy that doesn't match is left where it is, and the updater says so.
+  - The updater, `Update Plant Database.cmd` and `update-log.txt` stay in the Plants folder, next to `plant-database`.
+
+## 1.12.1 (2026-10-24)
+- **The app starts on any computer after updating.** On yours, 1.12.0 stopped straight away: its new ordinary user wasn't allowed to write to the photos folder that older versions made.
+  - Now the app checks this itself each time it starts. If it may, it runs as that ordinary user. If not, it runs as root inside its container, as before 1.12.0.
+  - Nothing needs doing either way, and your plants and photos aren't changed.
+  - The first line of its log says which way it runs, and so does the **Debug** window (owner only). README: "Which user the app runs as".
+  - The `docker-compose.override.yml` file that fixed this by hand is no longer needed, and the updater removes it.
+- **A busy port no longer stops the update.** If port 8080 is still in use when the app restarts, the updater:
+  - tells you to close any browser tabs with Plant record open
+  - waits, and tries again for about a minute
+  - if the port is still busy, names the program that has it and moves the app to a free port (for example `http://localhost:8090`). The Tailscale address stays the same.
+- **No more "Control server error" lines in the log.** The new gunicorn version wanted to make a control file on the read-only container. That part is now switched off; the app never used it.
+
+## 1.12.0 (2026-10-24)
+- **Use the app away from home, safely.** The app now has its own Tailscale device, "plants". With Tailscale on, you open it at `https://plants.<your-tailnet>.ts.net` from anywhere: encrypted, with a real certificate, and without opening anything on your router.
+  - Run **Set Up Remote Access** once (in `plant-database\tools`; README: "Using the app away from home"). It signs the device in, checks HTTPS and makes you the owner.
+- **Share it with someone.** Share just the plants device in Tailscale. They reach the plant app and nothing else of yours.
+- **Signed in by Tailscale.** The top right says "Signed in as …", and the audit log names people by their Tailscale account instead of a typed name.
+- **What people may do.** Press your name to see everyone who has opened the app and choose what each can do:
+  - **Can view only:** sees everything, changes nothing. Everyone starts here.
+  - **Can edit:** also makes changes.
+  - **Owner:** also backups, settings and this list.
+  - The app enforces this on every request, not just by hiding buttons.
+- **Closed to the home network.** Only this computer can open `http://localhost:8080` now; everyone else comes in through Tailscale. Your old `http://<your PC>:8080` address (on the Wi-Fi or through Tailscale) stops working. A line in a `.env` file opens it again if you need it (README).
+- **Sensors** get their own port (8082). It only takes readings with the token, and it stays shut until you open it.
+- **A tighter container.** The app no longer runs as root, has no special privileges, and its program files are read-only. Each update now rebuilds it on a freshly downloaded base image and fetches the newest Tailscale container, so the security fixes Docker warns about keep arriving.
+
 ## 1.11.0 (2026-10-23)
 - **What each plant needs, on the Fertilizer page.** Under each plant's code and "last fed" line:
   - the N-P-K ratio it needs and how strong to mix it, for example "Needs N-P-K ratio 2-7-7, at half strength";
