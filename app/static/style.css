@@ -991,3 +991,33 @@ ul.srcs li{margin:.25rem 0;overflow-wrap:anywhere}
 @media (prefers-reduced-motion:no-preference){.swipe-hint{transition:opacity .12s,background-color .12s}}
 @media print{.swipe-hint{display:none!important}}
 .swipe-hint.ready::after{content:"Let go to open it";display:block;font-weight:400;margin-top:.15rem}
+
+/* 1.16.0: groups of plants */
+.grp-new{margin:1rem 0 1.4rem}
+.grp-list{list-style:none;padding:0;margin:.6rem 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,22rem),1fr));gap:1rem}
+.grp-card{border:var(--bw) solid var(--line);background:var(--sheet);padding:.8rem 1rem;min-width:0;overflow-wrap:anywhere}
+.grp-card h3{margin:0 0 .4rem}
+.grp-card p{margin:.3rem 0}
+.grp-acts{list-style:none;padding:0;margin:.4rem 0;display:grid;gap:1rem}
+.grp-acts li .hint{margin:.3rem 0 0}
+.grp-recent{padding-left:1.2rem}
+.grp-recent li{margin:.5rem 0}
+.fit-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,24rem),1fr));gap:.4rem 1.6rem}
+.fit-item{border-top:1px solid var(--line);padding:.5rem 0;min-width:0;overflow-wrap:break-word}
+.fit-item h3{margin:0 0 .2rem;font-size:1.1rem}
+.fit-item p{margin:0}
+.fit-vals{margin:0;padding-left:1.1rem}
+.tick-list{border:var(--bw) solid var(--line);padding:.6rem .9rem;margin:0 0 1.2rem;min-width:0}
+.tick-list legend{font-weight:700;padding:0 .3rem}
+.tick-list ul{list-style:none;padding:0;margin:.4rem 0 0;max-height:min(22rem,45vh);overflow:auto}
+.tick-list li{padding:.15rem 0}
+.tick-list label.chk{display:flex;gap:.6rem;align-items:flex-start;font-weight:400}
+.tick-list label.chk input{width:1.3rem;height:1.3rem;margin:.15rem 0 0;flex:none}
+.tick-list .row{flex-wrap:wrap;align-items:flex-end;gap:.5rem}
+.tick-find{margin:0;flex:1 1 12rem}
+.rule-row{border:var(--bw) solid var(--line);padding:.6rem .9rem;margin:0 0 .8rem;min-width:0}
+.rule-row legend{font-weight:700;padding:0 .3rem}
+.gset-tbl input[type=checkbox]{width:1.4rem;height:1.4rem}
+html[data-role=viewer] :is([data-act=grpnew], [data-act=grpedit], [data-act=grpdel], [data-act=grpaddsug], [data-act=grpaddall], [data-act=grprm],
+  [data-act=grpcare], [data-act=grpmove], [data-act=grpset], [data-act=grpundo], [data-act=plgroups], #g-do){display:none!important}
+.rule-prev{border-left:.35rem solid var(--cyan);padding:.4rem .8rem;background:var(--cyan-soft)}

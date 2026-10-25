@@ -136,6 +136,24 @@
   - 1.8.0 modules, each in its own block: frost banner and checklist, watering and Today, read aloud and shortcuts (`addReadButtons()`, Web Speech API), timeline (filled by a `MutationObserver` on `#app`), copy for Claude (`forClaudeDialog()`), and the photo check (`photoCheck()`, which runs before every upload).
   - 1.10.0: the Audit log page (`viewHistory()`, state in `AUD`, filters remembered in localStorage `plantdb.auditf`), the Debug window (`debugDialog()`, settings in `DBG`, localStorage `plantdb.debug`, change events with `data-dbg`) and the console (`conPoll()` every 3 s via `/api/audit?after=`, `conAdd()`, `conLayout()`). `conLayout()` sizes the console to the newest 3, 4 or 5 rows, places it clear of the side menu and of every button pinned to the bottom, and sets `--console-space`, which `fitPanes()` and `main` use to leave room. `pinLayout()` stacks the Sections button and the job note above Debug and Display on phones when they would otherwise overlap.
   - 1.11.0: the Location button and window (`PLACE` in localStorage `plantdb.place`, sent by `api()` as `X-Place`; `placeDialog()`, `placeChanged()`, `paintPlace()`, `plcHomeRow()`; the L key). `META` is reloaded when the place changes, and `tempMarks()`/`humMarks()` come from `META.climate`. Fertilizer needs: `needLines()`, `loadNeeds()` (into `FERT.needs`), `productsBlock()` and `productDialog()`; `fertState0()` fills the feeding form from a plant's match.
+  - 1.16.0 groups:
+    - Tables `plant_groups(id, name UNIQUE NOCASE, kind 'smart'|'picked', rule JSON, notes)`, `group_members(group_id, plant_id)` and `bulk_changes(id, group_id, what, changes JSON, done_by/at, undone_by/at)`.
+    - A rule is `{match: all|any, conds: [{field, op, value}]}`. The fields are in `RULE_FIELDS` (including `name` and `light_spot`) and the ops in `RULE_OPS`. `rule_match()` compares case-insensitively.
+    - Members are worked out on request: `group_codes()` and `groups_of(code)`. Archived plants are never members.
+    - `group_suggestions()`: each genus with 2 or more plants, each family in `CARE_FAMILIES` with 2 or more genera, and each light spot. Names come from `GENUS_NAMES` and `FAMILY_NAMES`.
+    - Routes:
+      - `GET/POST /api/groups`, `POST /api/groups/match`
+      - `GET/PUT/DELETE /api/groups/<id>`, where GET adds `members`, `fit` (`group_fit()`, `best_band()`) and `recent`
+      - `POST /api/groups/<id>/members`, `GET/POST /api/plants/<code>/groups`
+      - `POST /api/groups/<id>/preview|apply|spot`, `POST /api/bulk/<id>/undo`
+    - `apply` only takes fields in `BULK_FIELDS`. It skips a plant whose value no longer matches the preview's `expect`, and records the before and after in `bulk_changes`. Undo restores a field only while it still holds the new value.
+    - Audit kind "groups" (action `group`). None of the routes are owner-only.
+    - Front end:
+      - `PGROUPS` cache from `loadGroups()`, loaded by `route()`.
+      - Pages `viewGroups()` (`#/groups`) and `viewGroup()` (`#/group/<id>`).
+      - Dialogs `groupDialog()` (rule rows with `ruleRow()`, live `rulePreview()`), `groupCare()`, `groupMove()`, `groupSet()` (two steps: value, then the preview table), and `plantGroupsDialog()`.
+      - `G.group` filter (`inGroupFilter()`, `groupFilter()`) and sort `group`.
+      - Change buttons are in the viewer CSS block.
   - 1.14.1:
     - `buildSideNav()` lists every visible `h2` (its section) plus any element with `data-section="Name"`, in page order. On plant pages these are `#photopanel` ("Photos") and the label card `#details` ("Name and details").
     - `buildJumpRow()` fills `#jumprow` from the same items inside `#pane-r`. It uses short names from `JUMP_SHORT` (or `data-short`), so new sections need no list to be kept up to date.
