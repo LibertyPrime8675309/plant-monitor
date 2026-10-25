@@ -6,7 +6,7 @@ import json, os, sys
 from playwright.sync_api import sync_playwright
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
-PAGES = ['#/', '#/plant/P-006', '#/plant/P-006/edit', '#/winter', '#/weather', '#/fertilizer', '#/lights', '#/photos', '#/labels', '#/history', '#/backups']
+PAGES = ['#/', '#/plant/P-006', '#/plant/P-006/edit', '#/winter', '#/outside', '#/weather', '#/fertilizer', '#/lights', '#/photos', '#/labels', '#/history', '#/backups']
 SIZES = {'wide': (1920, 1080, ''), 'laptop': (1280, 800, ''), 'phone': (390, 844, ''), 'phone-bigtext': (390, 844, '190')}   # 190 = the largest text size
 bad = []
 with sync_playwright() as p:
