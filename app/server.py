@@ -184,6 +184,19 @@ CREATE TABLE IF NOT EXISTS requests(
 CREATE INDEX IF NOT EXISTS requests_plant ON requests(plant_code, done);
 CREATE TABLE IF NOT EXISTS to_photograph(
   id INTEGER PRIMARY KEY AUTOINCREMENT, label TEXT NOT NULL, note TEXT NOT NULL DEFAULT '', done INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS lights(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, lkey TEXT UNIQUE, name TEXT NOT NULL, data TEXT NOT NULL DEFAULT '{}', count INTEGER NOT NULL DEFAULT 1,
+  fixture TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '', sort INTEGER NOT NULL DEFAULT 0,
+  created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_by TEXT, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS light_spots(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, light_id INTEGER NOT NULL, units INTEGER NOT NULL DEFAULT 1,
+  distance_in REAL NOT NULL, hours REAL NOT NULL, dim_pct INTEGER NOT NULL DEFAULT 100, notes TEXT NOT NULL DEFAULT '',
+  created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_by TEXT, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS light_assign(
+  plant_code TEXT PRIMARY KEY, spot_id INTEGER NOT NULL, assigned_by TEXT, assigned_at TEXT);
+CREATE TABLE IF NOT EXISTS indoor_places(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, room TEXT NOT NULL, name TEXT NOT NULL DEFAULT '', sort INTEGER NOT NULL DEFAULT 0,
+  created_by TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE(room, name));
 """ % ',\n  '.join(f"{n} {SQLTYPE.get(k, 'TEXT')}" for n, k, _ in FIELDS)
 
 def init_db():
@@ -196,6 +209,7 @@ def init_db():
     for n, k, _ in FIELDS:                      # upgrade an older database: add any column this version needs
         if n not in have: c.execute(f"ALTER TABLE plants ADD COLUMN {n} {SQLTYPE.get(k, 'TEXT')}")
     if 'extra' not in {r[1] for r in c.execute('PRAGMA table_info(readings)')}: c.execute('ALTER TABLE readings ADD COLUMN extra TEXT')
+    if 'place_id' not in {r[1] for r in c.execute('PRAGMA table_info(light_spots)')}: c.execute('ALTER TABLE light_spots ADD COLUMN place_id INTEGER')   # 1.13.1
     migrate_places(c)
     if not c.execute('SELECT 1 FROM weather_runs LIMIT 1').fetchone():       # readings gathered before runs were logged (version 1.2)
         w = c.execute("SELECT MIN(ts),MAX(ts),COUNT(*) FROM readings WHERE source='weather'").fetchone()
@@ -344,6 +358,29 @@ def apply_batches(c):
             for k in b.get('requests_done', []):   # a key, or {"key": ..., "answer": ...}
                 k, ans = (k['key'], k.get('answer')) if isinstance(k, dict) else (k, None)
                 c.execute("UPDATE requests SET done=1, done_by=?, done_at=?, answer=COALESCE(answer,?,'Settled by a later update') WHERE rkey=? AND done=0", (who, ts, ans, k))
+            for i, L in enumerate(b.get('lights_add', [])):     # 1.13.0: grow lights; added once, then yours to edit
+                if c.execute('SELECT 1 FROM lights WHERE lkey=? OR name=?', (L['key'], L['name'])).fetchone(): continue
+                spec = {k: v for k, v in L.items() if k not in ('key', 'name', 'count', 'fixture', 'notes')}
+                c.execute('INSERT INTO lights(lkey,name,data,count,fixture,notes,sort,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?)',
+                          (L['key'], L['name'], json.dumps(spec), L.get('count', 1), L.get('fixture', ''), L.get('notes', ''), i, who, ts))
+                audit_only(c, 'light', 'light', None, '%s (%d)' % (L['name'], L.get('count', 1)), who, 'Grow light added (%s): %s' % (label, L['name']))
+            for i, pl in enumerate(b.get('places_add', [])):    # 1.13.1: rooms and shelves inside, where light spots go
+                c.execute('INSERT OR IGNORE INTO indoor_places(room,name,sort,created_by,created_at) VALUES(?,?,?,?,?)',
+                          (pl['room'], pl.get('name', ''), pl.get('sort', i), who, ts))
+            for u in b.get('lights_update', []):                # guarded, like plant updates: only if the light still holds the old value
+                L = c.execute('SELECT * FROM lights WHERE lkey=?', (u['key'],)).fetchone()
+                if not L: continue
+                d, cols, done = light_specs(L), {}, []
+                for f, (old, new) in u['set'].items():
+                    cur = L[f] if f in ('fixture', 'notes', 'count') else d.get(f)
+                    if str(cur if cur is not None else '') != str(old if old is not None else ''): continue
+                    if f in ('fixture', 'notes', 'count'): cols[f] = new
+                    else: d[f] = new
+                    done.append(f)
+                if done:
+                    c.execute('UPDATE lights SET %s data=?, updated_by=?, updated_at=? WHERE id=?' % ''.join('%s=?, ' % k for k in cols),
+                              (*cols.values(), json.dumps(d), who, ts, L['id']))
+                    audit_only(c, 'light', 'light', None, ', '.join(done), who, 'Grow light updated (%s): %s, %s' % (label, L['name'], u.get('note') or ', '.join(done)))
             for pre in b.get('to_photograph_done', []):
                 c.execute('UPDATE to_photograph SET done=1 WHERE done=0 AND label LIKE ?', (pre.replace('%', '') + '%',))
             for t in b.get('to_photograph_add', []):
@@ -1474,12 +1511,13 @@ AUDIT_KINDS = {                          # kind of change (the filter on the Aud
     'requests': ('Requests and answers', ('request',)),
     'list': ('"Still to photograph" list', ('todo',)),
     'settings': ('Settings and backups', ('setting', 'backup')),
+    'lights': ('Grow lights', ('light',)),
     'notes': ('Notes from updates', ('note',)),
 }
 ACTION_WORD = {'create': 'Page created', 'update': 'Edited', 'edit': 'Updated', 'restore': 'Restored', 'archive': 'Archived', 'unarchive': 'Brought back',
                'photo_add': 'Photo added', 'photo_assign': 'Photo assigned', 'photo_move': 'Photo moved', 'photo_remove': 'Photo removed',
                'photo_caption': 'Caption edited', 'photo_primary': 'Main photo changed', 'care': 'Care', 'fertilizer': 'Feeding', 'frost': 'Cold night',
-               'request': 'Request', 'todo': 'Photo list', 'setting': 'Setting', 'backup': 'Backup', 'note': 'Note'}
+               'request': 'Request', 'todo': 'Photo list', 'setting': 'Setting', 'backup': 'Backup', 'note': 'Note', 'light': 'Grow light'}
 
 def audit_query(c, a, count=False):
     """SQL and arguments for the audit log with the filters in `a` (request.args): q, plant, who, kind, field, from, to,
@@ -1523,7 +1561,8 @@ def audit_query(c, a, count=False):
 AUDIT_FIELD_LABEL = {'status': 'Status', 'photo': 'Photo', 'photo caption': 'Photo caption', 'main photo': 'Main photo', 'care_log': 'Care log',
                      'frost': 'Cold night', 'request': 'Request', 'to_photograph': '"Still to photograph" list', 'base_url': 'Label web address',
                      'backup_settings': 'Automatic backups', 'weather_place': 'Weather place', 'ingest_token': 'Sensor token', 'backup': 'Backup',
-                     'claude_copied_at': 'Copied for Claude'}
+                     'claude_copied_at': 'Copied for Claude', 'grow_light': 'Grow light spot', 'light_spot': 'Light spot', 'light': 'Grow light',
+                     'indoor_place': 'Room or shelf'}
 
 def audit_label(field):
     if not field: return None
@@ -3091,6 +3130,500 @@ def fertilizer_needs():
     q, a = "SELECT * FROM plants WHERE status='active'", []
     if request.args.get('plant'): q += ' AND code=?'; a.append(request.args['plant'])
     return jsonify(needs=[fert_need(r, products) for r in c.execute(q + ' ORDER BY code', a)], products=len(products))
+
+# ---------------------------------------------------------------- grow lights (1.13.0)
+# Ethan's own lights (table lights, specs in a JSON column so a light can carry whatever its maker publishes), the spots
+# they light (table light_spots: one kind of light, how many of it, how far above or beside the plants, hours a day and
+# brightness) and which plants sit in which spot (table light_assign). From the maker's PPFD-at-distance figures the
+# app works out the daily light (DLI) at the leaves and compares it with each plant's dli_low..dli_high.
+LIGHT_FOOTPRINT = {'Small': 0.75, 'Medium': 1.5, 'Large': 3.0}       # square feet of light a pot takes, by pot size (prep traits)
+LIGHT_HOURS = (12, 14, 16, 10, 8)                                     # hours a day to try, in this order
+LIGHT_VERDICT = {'too_dim': 'Too dim', 'dim': 'A bit dim', 'good': 'Good', 'bright': 'A bit bright', 'too_bright': 'Too bright', 'unknown': 'Needs not set'}
+
+def light_specs(r):
+    try: d = json.loads(r['data'] or '{}')
+    except ValueError: d = {}
+    return d
+
+def light_points(d):
+    """[(inches, ppfd, area_sqft or None)], nearest first. Points without a distance or PPFD are dropped."""
+    out = []
+    for p in d.get('ppfd') or []:
+        try:
+            x, y = float(p[0]), float(p[1])
+            a = float(p[2]) if len(p) > 2 and p[2] not in (None, '') else None
+        except (TypeError, ValueError, IndexError): continue
+        if x > 0 and y > 0: out.append((x, y, a))
+    return sorted(out)
+
+def _loglog(pairs, d):
+    """Value at distance d from (distance, value) pairs, straight lines on log-log axes (light falls off as a power of distance).
+    Outside the measured range the nearest segment is extended; with one point, an exponent of 1.6 is assumed."""
+    pairs = [(x, y) for x, y in pairs if x > 0 and y and y > 0]
+    if not pairs: return None
+    if len(pairs) == 1:
+        x0, y0 = pairs[0]
+        return y0 * (x0 / d) ** 1.6
+    if d <= pairs[0][0]: (x1, y1), (x2, y2) = pairs[0], pairs[1]
+    elif d >= pairs[-1][0]: (x1, y1), (x2, y2) = pairs[-2], pairs[-1]
+    else:
+        i = next(i for i in range(1, len(pairs)) if pairs[i][0] >= d)
+        (x1, y1), (x2, y2) = pairs[i - 1], pairs[i]
+    if x2 == x1: return y1
+    k = math.log(y2 / y1) / math.log(x2 / x1)
+    return y1 * (d / x1) ** k
+
+def ppfd_at(pts, d): return _loglog([(x, y) for x, y, _ in pts], d)
+
+def area_at(pts, d):
+    ar = [(x, a) for x, _, a in pts if a]
+    if not ar: return None
+    if len(ar) == 1: return ar[0][1] * (d / ar[0][0]) ** 2
+    return _loglog(ar, d)
+
+def light_range(pts):
+    """Practical distances for a light: a little closer than the nearest figure, a little past the farthest."""
+    if not pts: return None, None
+    return max(3.0, round(pts[0][0] * 0.75)), round(pts[-1][0] * 1.25)
+
+def dli_of(ppfd, hours, dim=100): return round(ppfd * dim / 100 * hours * 3600 / 1e6, 1)
+
+def light_verdict(dli, lo, hi):
+    if dli is None or (lo is None and hi is None): return 'unknown'
+    if lo is not None and dli < lo: return 'too_dim' if dli < lo * 0.8 else 'dim'
+    if hi is not None and dli > hi: return 'too_bright' if dli > hi * 1.3 else 'bright'
+    return 'good'
+
+def plant_need(r):
+    lo, hi = r['dli_low'], r['dli_high']
+    if lo is None and hi is None: return None
+    lo = lo if lo is not None else hi * 0.5
+    hi = hi if hi is not None else lo * 2
+    return {'lo': lo, 'hi': hi, 'target': round(lo + (hi - lo) * 0.4, 1)}
+
+def light_timer_note(d, hours):
+    hrs = d.get('timer_hours') or []
+    if hours in hrs and d.get('timer_repeats'): return 'Set its own timer to %g hours.' % hours
+    if hours in hrs: return "Its timer has a %g-hour setting, but it may not repeat every day; a plug-in outlet timer is surer." % hours
+    return 'Use a plug-in outlet timer set to %g hours a day.' % hours
+
+def light_setting(d, target, lo=None, hi=None, hours_first=None):
+    """Distance, hours and brightness that give about `target` mol/day under one light. Returns a dict, with reach='ok',
+    'weak' (cannot give that much, so the strongest setting) or 'strong' (too much even at the gentlest setting)."""
+    pts = light_points(d)
+    if not pts: return None
+    dmin, dmax = light_range(pts)
+    dims = sorted({int(x) for x in (d.get('dimming') or [100]) if 0 < int(x) <= 100} | {100}, reverse=True)
+    order = ([hours_first] if hours_first else []) + [h for h in LIGHT_HOURS if h != hours_first]
+    for h in order:
+        for dim in dims:
+            need = target * 1e6 / (h * 3600) / (dim / 100)
+            if ppfd_at(pts, dmin) < need or ppfd_at(pts, dmax) > need: continue
+            a, b = dmin, dmax                      # PPFD falls with distance: halve the interval until it gives `need`
+            for _ in range(40):
+                m = (a + b) / 2
+                if ppfd_at(pts, m) > need: a = m
+                else: b = m
+            exact = (a + b) / 2
+            for dist in dict.fromkeys(max(dmin, min(dmax, x)) for x in (round(exact), math.floor(exact), math.ceil(exact))):
+                p = ppfd_at(pts, dist)                 # whole inches: the nearest, else the next one closer or farther that still suits
+                dl = dli_of(p, h, dim)
+                if lo is None or hi is None or lo <= dl <= hi: break
+            else: continue
+            return {'distance_in': dist, 'hours': h, 'dim_pct': dim, 'ppfd': round(p), 'dli': dl, 'reach': 'ok',
+                    'area_sqft': round(area_at(pts, dist), 1) if area_at(pts, dist) else None}
+    best = max(((dli_of(ppfd_at(pts, dmin), 16), 'weak', dmin, 16, 100), (dli_of(ppfd_at(pts, dmax), 8, dims[-1]), 'strong', dmax, 8, dims[-1])),
+               key=lambda t: -abs(math.log(max(t[0], 0.01) / max(target, 0.01))))
+    dl, reach, dist, h, dim = best
+    return {'distance_in': dist, 'hours': h, 'dim_pct': dim, 'ppfd': round(ppfd_at(pts, dist)), 'dli': dl, 'reach': reach,
+            'area_sqft': round(area_at(pts, dist), 1) if area_at(pts, dist) else None}
+
+def light_dict(r, used=0):
+    d = light_specs(r)
+    pts = light_points(d)
+    dmin, dmax = light_range(pts)
+    return {'id': r['id'], 'key': r['lkey'], 'name': r['name'], 'count': r['count'], 'in_use': used, 'fixture': r['fixture'], 'notes': r['notes'],
+            'specs': d, 'points': [{'distance_in': x, 'ppfd': y, 'area_sqft': a} for x, y, a in pts], 'min_in': dmin, 'max_in': dmax,
+            'max_dli': dli_of(ppfd_at(pts, dmin), 16) if pts else None,
+            'photo': d.get('photo'), 'chart': d.get('chart'), 'updated_by': r['updated_by'] or r['created_by'], 'updated_at': r['updated_at'] or r['created_at']}
+
+def spot_eval(c, s, L, plants):
+    d = light_specs(L) if L is not None else {}
+    pts = light_points(d)
+    p = ppfd_at(pts, s['distance_in']) if pts else None
+    dl = dli_of(p, s['hours'], s['dim_pct']) if p else None
+    area = area_at(pts, s['distance_in']) if pts else None
+    rows, need = [], 0.0
+    for r in plants:
+        n = plant_need(r)
+        need += LIGHT_FOOTPRINT.get((r['pot_size'] or '').split(':')[0], 1.0)
+        v = light_verdict(dl, n and n['lo'], n and n['hi'])
+        rows.append({'code': r['code'], 'name': r['common_name'], 'lo': n and n['lo'], 'hi': n and n['hi'], 'verdict': v, 'verdict_word': LIGHT_VERDICT[v],
+                     'photo': plant_photo(c, r['id'])})
+    cover = round(area * s['units'], 1) if area else None
+    return {'ppfd': round(p) if p else None, 'dli': dl, 'area_sqft': cover, 'plants': rows, 'room_needed_sqft': round(need, 1),
+            'crowded': bool(cover and need > cover * LIGHT_ROOM * 1.1), 'timer_note': light_timer_note(d, s['hours']) if L is not None else ''}
+
+def plant_photo(c, pid):
+    r = c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC, id LIMIT 1', (pid,)).fetchone()
+    return r[0] if r else None
+
+def light_candidates(c):
+    """Plants that live inside or are going inside for the winter."""
+    q = "SELECT * FROM plants WHERE status='active' AND (site IN (%s) OR winter_plan='Move indoors') ORDER BY code" % ','.join('?' * len(INSIDE_SITES))
+    return c.execute(q, INSIDE_SITES).fetchall()
+
+LIGHT_ROOM = 1.5     # a light lights usefully about this much more than the circle its maker measured (the edges get less, but enough)
+
+def light_plan(c, lights, spots_used, assigned):
+    """A suggested layout for plants that are not in a spot yet. Each free unit of a light can be one spot with one
+    setting. Plants needing the most light are placed first. A plant joins a suggested spot when its light needs overlap
+    with everyone already there and there is room under the light (area it lights at that distance, against each pot's
+    size), adding another unit of the same light if one is free; otherwise it starts a new spot under the smallest of your
+    lights that can give it enough."""
+    free = {L['id']: max(0, L['count'] - spots_used.get(L['id'], 0)) for L in lights}
+    specs = {L['id']: light_specs(L) for L in lights}
+    todo = [r for r in light_candidates(c) if r['code'] not in assigned and plant_need(r)]
+    todo.sort(key=lambda r: (-plant_need(r)['target'], r['code']))
+    foot = lambda r: LIGHT_FOOTPRINT.get((r['pot_size'] or '').split(':')[0], 1.0)
+    slots, unplaced = [], []
+
+    def fit(L, lo, hi, used, units, maxu=None):
+        """Setting for a spot under light L serving [lo, hi] with `used` square feet of pots, and how many units it then
+        needs (None if it cannot). Aims near the middle of the range; when that needs more units than `maxu`, it aims
+        lower, which raises the light so it covers more."""
+        first = None
+        for frac in (0.45, 0.3, 0.15, 0.05):
+            st = light_setting(specs[L['id']], round(lo + (hi - lo) * frac, 1), lo, hi)
+            if not st or st['reach'] != 'ok': continue
+            need = max(units, math.ceil(used / ((st['area_sqft'] or 1.0) * LIGHT_ROOM) - 1e-9))
+            if first is None: first = (st, need)
+            if maxu is None or need <= maxu: return st, need
+        return first if first else (None, None)
+
+    for r in todo:
+        n, f = plant_need(r), foot(r)
+        best = None
+        for sl in slots:
+            lo, hi = max(sl['lo'], n['lo']), min(sl['hi'], n['hi'])
+            if lo > hi: continue
+            st, units = fit(sl['L'], lo, hi, sl['used'] + f, sl['units'], sl['units'] + free[sl['L']['id']])
+            if st is None or units - sl['units'] > free[sl['L']['id']]: continue
+            key = (units - sl['units'], specs[sl['L']['id']].get('watts') or 999)
+            if best is None or key < best[0]: best = (key, sl, lo, hi, units)
+        if best and best[0][0] == 0:
+            pass                                     # joins a spot without needing another light
+        else:
+            new = None
+            for L in lights:
+                if not free[L['id']]: continue
+                st, units = fit(L, n['lo'], n['hi'], f, 1, free[L['id']])
+                if st is None or units > free[L['id']]: continue
+                dmin = light_range(light_points(specs[L['id']]))[0]
+                strain = (st['hours'] > 14) + (st['distance_in'] <= dmin + 1)       # only reaches it at its limits
+                key = (strain, specs[L['id']].get('watts') or 999, L['id'])
+                if new is None or key < new[2]: new = (L, units, key)
+            if new and (best is None or (specs[new[0]['id']].get('watts') or 999) <= (specs[best[1]['L']['id']].get('watts') or 999)):
+                L, units, _ = new
+                free[L['id']] -= units
+                slots.append({'L': L, 'lo': n['lo'], 'hi': n['hi'], 'used': f, 'units': units, 'members': [r]})
+                continue
+        if best:
+            _, sl, lo, hi, units = best
+            free[sl['L']['id']] -= units - sl['units']
+            sl.update(lo=lo, hi=hi, used=sl['used'] + f, units=units); sl['members'].append(r)
+            continue
+        strongest = max((dli_of(ppfd_at(light_points(specs[L['id']]), light_range(light_points(specs[L['id']]))[0]), 16)
+                         for L in lights if light_points(specs[L['id']])), default=0)
+        why = ('None of your lights can give it %g mol/day: the strongest gives about %g at its closest, 16 hours a day.' % (n['lo'], strongest)
+               if strongest < n['lo'] else 'The lights that suit it are full in this layout. Another light, a spot already set up with room, or a bright window would do.')
+        unplaced.append({'code': r['code'], 'name': r['common_name'], 'lo': n['lo'], 'hi': n['hi'], 'why': why, 'photo': plant_photo(c, r['id'])})
+    out = []
+    for sl in slots:
+        L, g = sl['L'], sl['members']
+        st, _ = fit(L, sl['lo'], sl['hi'], sl['used'], sl['units'], sl['units'])
+        st = st or light_setting(specs[L['id']], (sl['lo'] + sl['hi']) / 2)
+        s = {'units': sl['units'], 'distance_in': st['distance_in'], 'hours': st['hours'], 'dim_pct': st['dim_pct']}
+        ev = spot_eval(c, s, L, g)
+        out.append({**s, 'light_id': L['id'], 'light': L['name'], 'band': spot_band(g), 'codes': [x['code'] for x in g], **ev})
+    out.sort(key=lambda s: (-(s['dli'] or 0), s['light']))
+    seen = {}
+    for sp in out:                                   # "Bright light 1", "Medium light 2" ...: Ethan renames them to the room or shelf
+        seen[sp['band']] = seen.get(sp['band'], 0) + 1
+        sp['name'] = '%s light %d' % (sp['band'], seen[sp['band']])
+    return out, unplaced
+
+def spot_band(g):
+    lo = min(plant_need(x)['lo'] for x in g)
+    return 'Bright' if lo >= 12 else 'Medium' if lo >= 6 else 'Low'
+
+def outdoor_dli(c):
+    """Average daily light over the last 7 observed days at home, open sky (mol/m2/day), from the weather's solar radiation."""
+    L = home_place(c)
+    rows = c.execute("SELECT data FROM weather_daily WHERE loc_id=? AND kind='observed' ORDER BY date DESC LIMIT 7", (L['id'],)).fetchall()
+    vals = []
+    for (x,) in rows:
+        try: v = (json.loads(x) or {}).get('shortwave_radiation_sum')
+        except ValueError: v = None
+        if v is not None: vals.append(v * PAR_PER_WM2)       # MJ/m2 of sunlight -> mol/m2 of PAR (same 2.1 factor as hourly)
+    avg = sum(vals) / len(vals) if vals else None
+    return round(avg, 1) if avg is not None and avg <= 75 else None      # above 75 mol/m2 a day is not possible outdoors: bad data
+
+def step_down(L, s, plants, outdoor):
+    """Easing plants from outdoor light into this spot: the first week as bright as the light allows without going over
+    any plant's high, then halfway, then the spot's own setting."""
+    d = light_specs(L)
+    ns = [plant_need(r) for r in plants if plant_need(r)]
+    if not ns: return []
+    hi = min(n['hi'] for n in ns)
+    pts = light_points(d)
+    final = dli_of(ppfd_at(pts, s['distance_in']), s['hours'], s['dim_pct'])
+    first = light_setting(d, hi * 0.95, None, hi, hours_first=16)
+    if not first or first['dli'] < final * 1.2: return []
+    mid = light_setting(d, round((first['dli'] + final) / 2, 1), None, hi, hours_first=14)
+    steps = []
+    if any(r['site'] == 'Outdoors' for r in plants) and outdoor and outdoor > hi * 1.5:
+        steps.append({'when': 'Before moving in', 'text': 'Give the plants that are out in the open 5 to 7 days on the covered porch or in bright shade first, so the drop in light is smaller.'})
+    for when, st in (('First week inside', first), ('Second week', mid)):
+        if st: steps.append({'when': when, 'distance_in': st['distance_in'], 'hours': st['hours'], 'dim_pct': st['dim_pct'], 'dli': st['dli'],
+                             'text': light_timer_note(d, st['hours'])})
+    steps.append({'when': 'From the third week', 'distance_in': s['distance_in'], 'hours': s['hours'], 'dim_pct': s['dim_pct'], 'dli': final,
+                  'text': "The spot's own setting."})
+    return steps
+
+def lights_state(c):
+    lights = c.execute('SELECT * FROM lights ORDER BY sort, id').fetchall()
+    byid = {L['id']: L for L in lights}
+    spots = c.execute('SELECT * FROM light_spots ORDER BY id').fetchall()
+    used = {}
+    for s in spots: used[s['light_id']] = used.get(s['light_id'], 0) + s['units']
+    assign = {}
+    for code, sid in c.execute('SELECT plant_code, spot_id FROM light_assign'): assign.setdefault(sid, []).append(code)
+    assigned = {code for codes in assign.values() for code in codes}
+    outdoor = outdoor_dli(c)
+    out_spots = []
+    for s in spots:
+        ps = [r for r in (c.execute('SELECT * FROM plants WHERE code=?', (code,)).fetchone() for code in assign.get(s['id'], [])) if r]
+        L = byid.get(s['light_id'])
+        ev = spot_eval(c, s, L, ps)
+        out_spots.append({'id': s['id'], 'name': s['name'], 'light_id': s['light_id'], 'light': L['name'] if L else 'A light that was removed',
+                          'place_id': s['place_id'], 'place': place_label(c, s['place_id']),
+                          'units': s['units'], 'distance_in': s['distance_in'], 'hours': s['hours'], 'dim_pct': s['dim_pct'], 'notes': s['notes'],
+                          'steps': step_down(L, s, ps, outdoor) if L else [], **ev})
+    plan, unplaced = light_plan(c, lights, used, assigned)
+    for p in plan:
+        p['steps'] = step_down(byid[p['light_id']], p, [c.execute('SELECT * FROM plants WHERE code=?', (x,)).fetchone() for x in p['codes']], outdoor)
+    cands = [{'code': r['code'], 'name': r['common_name'], 'site': r['site'], 'winter_plan': r['winter_plan'], 'need': plant_need(r),
+              'pot_size': r['pot_size']} for r in light_candidates(c)]
+    places = [{'id': r['id'], 'room': r['room'], 'name': r['name'], 'label': r['room'] + (', ' + r['name'] if r['name'] else ''),
+               'spots': [s['id'] for s in out_spots if s['place_id'] == r['id']]}
+              for r in c.execute('SELECT * FROM indoor_places ORDER BY sort, id')]
+    return {'lights': [light_dict(L, used.get(L['id'], 0)) for L in lights], 'spots': out_spots, 'plan': plan, 'unplaced': unplaced, 'places': places,
+            'candidates': cands, 'assigned': {code: sid for sid, codes in assign.items() for code in codes}, 'outdoor_dli': outdoor,
+            'verdicts': LIGHT_VERDICT}
+
+@app.route('/api/lights')
+def lights_get():
+    """Everything the Grow lights page shows: your lights, your spots, a suggested layout for the rest, and the step-down plans.
+    ?plant=CODE gives just that plant's spot (or suggestion), for its own page."""
+    c = db()
+    st = lights_state(c)
+    code = request.args.get('plant')
+    if not code: return jsonify(st)
+    sid = st['assigned'].get(code)
+    spot = next((s for s in st['spots'] if s['id'] == sid), None) if sid else None
+    sug = next((s for s in st['plan'] if code in s['codes']), None)
+    un = next((u for u in st['unplaced'] if u['code'] == code), None)
+    return jsonify(spot=spot, suggestion=sug, unplaced=un, candidate=any(x['code'] == code for x in st['candidates']), lights=len(st['lights']))
+
+@app.route('/api/lights/preview')
+def lights_preview():
+    """Light at the leaves for a spot that is being set up: ?light=ID&distance=IN&hours=H&dim=PCT&units=N&plants=P-001,P-002"""
+    c = db()
+    try: lid = int(request.args.get('light', 0))
+    except ValueError: abort(400, 'light must be a number')
+    L = c.execute('SELECT * FROM lights WHERE id=?', (lid,)).fetchone()
+    if not L: abort(404, 'That light is not in your list')
+    s = spot_fields(request.args, partial=True)
+    codes = [x for x in (request.args.get('plants') or '').split(',') if x]
+    ps = [r for r in (c.execute('SELECT * FROM plants WHERE code=?', (x,)).fetchone() for x in codes) if r]
+    return jsonify(spot_eval(c, s, L, ps))
+
+def spot_fields(b, partial=False):
+    name = re.sub(r'\s+', ' ', str(b.get('name', ''))).strip()[:60]
+    if not name and not partial: abort(400, 'Give the spot a name, for example "Living room shelf"')
+    units = int(_num(b, 'units', 1, 50, 'How many of this light') or 1)
+    dist = _num(b, 'distance', 1, 120, 'Distance from the leaves (inches)', required=True)
+    hours = _num(b, 'hours', 1, 24, 'Hours a day', required=True)
+    dim = int(_num(b, 'dim', 1, 100, 'Brightness (%)') or 100)
+    place = b.get('place')
+    try: place = int(place) if place not in (None, '', 'null') else None
+    except (TypeError, ValueError): abort(400, 'Choose a room or shelf from the list')
+    return {'name': name, 'units': units, 'distance_in': dist, 'hours': hours, 'dim_pct': dim, 'notes': str(b.get('notes', '')).strip()[:300], 'place_id': place}
+
+def spot_text(s, light_name, c=None):
+    where = place_label(c, s['place_id']) if c is not None and s['place_id'] else None
+    return '%s%s: %s%s, %g in from the leaves, %g hours a day%s' % (s['name'], ' (%s)' % where if where else '', '%d x ' % s['units'] if s['units'] > 1 else '', light_name,
+                                                                    s['distance_in'], s['hours'], '' if s['dim_pct'] == 100 else ', %d%% brightness' % s['dim_pct'])
+
+def place_label(c, pid):
+    r = c.execute('SELECT room, name FROM indoor_places WHERE id=?', (pid,)).fetchone() if pid else None
+    return (r['room'] + (', ' + r['name'] if r['name'] else '')) if r else None
+
+def check_place(c, pid):
+    if pid is not None and not c.execute('SELECT 1 FROM indoor_places WHERE id=?', (pid,)).fetchone(): abort(400, 'That room or shelf is not in the list any more')
+
+def set_spot_plants(c, sid, spot_name, codes, who):
+    old = {x for (x,) in c.execute('SELECT plant_code FROM light_assign WHERE spot_id=?', (sid,))}
+    new = set(codes)
+    for code in sorted(new - old):
+        r = c.execute('SELECT id, code FROM plants WHERE code=?', (code,)).fetchone()
+        if not r: abort(400, f'There is no plant {code}')
+        prev = c.execute('SELECT s.name FROM light_assign a JOIN light_spots s ON s.id=a.spot_id WHERE a.plant_code=?', (code,)).fetchone()
+        c.execute('INSERT OR REPLACE INTO light_assign(plant_code,spot_id,assigned_by,assigned_at) VALUES(?,?,?,?)', (code, sid, who, now()))
+        audit_only(c, 'light', 'grow_light', prev[0] if prev else None, spot_name, who, 'Grow light: now in the spot ' + spot_name, r['id'], code)
+    for code in sorted(old - new):
+        r = c.execute('SELECT id FROM plants WHERE code=?', (code,)).fetchone()
+        c.execute('DELETE FROM light_assign WHERE plant_code=? AND spot_id=?', (code, sid))
+        audit_only(c, 'light', 'grow_light', spot_name, None, who, 'Grow light: taken out of the spot ' + spot_name, r['id'] if r else None, code)
+
+@app.route('/api/lights/spots', methods=['POST'])
+def light_spot_add():
+    """Set up a spot: {name, light, units, distance, hours, dim, notes, plants: [codes]}"""
+    c = db()
+    b = request.get_json(silent=True) or {}
+    s = spot_fields(b)
+    L = c.execute('SELECT * FROM lights WHERE id=?', (int(_num(b, 'light', 1, 1e9, 'Light', required=True)),)).fetchone()
+    if not L: abort(400, 'Choose one of your lights')
+    who = editor()
+    check_place(c, s['place_id'])
+    sid = c.execute('INSERT INTO light_spots(name,light_id,units,distance_in,hours,dim_pct,notes,place_id,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                    (s['name'], L['id'], s['units'], s['distance_in'], s['hours'], s['dim_pct'], s['notes'], s['place_id'], who, now())).lastrowid
+    audit_only(c, 'light', 'light_spot', None, spot_text(s, L['name'], c), who, 'Grow light spot set up: ' + spot_text(s, L['name'], c))
+    set_spot_plants(c, sid, s['name'], [str(x) for x in b.get('plants') or []], who)
+    c.commit()
+    return jsonify(id=sid), 201
+
+@app.route('/api/lights/spots/<int:i>', methods=['PUT', 'DELETE'])
+def light_spot_one(i):
+    c = db()
+    old = c.execute('SELECT * FROM light_spots WHERE id=?', (i,)).fetchone()
+    if not old: abort(404, 'That spot is not set up any more')
+    L0 = c.execute('SELECT name FROM lights WHERE id=?', (old['light_id'],)).fetchone()
+    who = editor()
+    if request.method == 'DELETE':
+        set_spot_plants(c, i, old['name'], [], who)
+        c.execute('DELETE FROM light_spots WHERE id=?', (i,))
+        audit_only(c, 'light', 'light_spot', spot_text(old, L0[0] if L0 else 'light', c), None, who, 'Grow light spot removed: ' + old['name'])
+        c.commit()
+        return jsonify(ok=True)
+    b = request.get_json(silent=True) or {}
+    s = spot_fields(b)
+    L = c.execute('SELECT * FROM lights WHERE id=?', (int(_num(b, 'light', 1, 1e9, 'Light', required=True)),)).fetchone()
+    if not L: abort(400, 'Choose one of your lights')
+    check_place(c, s['place_id'])
+    c.execute('UPDATE light_spots SET name=?,light_id=?,units=?,distance_in=?,hours=?,dim_pct=?,notes=?,place_id=?,updated_by=?,updated_at=? WHERE id=?',
+              (s['name'], L['id'], s['units'], s['distance_in'], s['hours'], s['dim_pct'], s['notes'], s['place_id'], who, now(), i))
+    a, z = spot_text(old, L0[0] if L0 else 'light', c), spot_text(s, L['name'], c)
+    if a != z: audit_only(c, 'light', 'light_spot', a, z, who, 'Grow light spot changed: ' + z)
+    if 'plants' in b: set_spot_plants(c, i, s['name'], [str(x) for x in b.get('plants') or []], who)
+    c.commit()
+    return jsonify(ok=True)
+
+def place_fields(b):
+    room = re.sub(r'\s+', ' ', str(b.get('room', ''))).strip()[:60]
+    if not room: abort(400, 'Type the room, for example "Downstairs Living Room"')
+    return room, re.sub(r'\s+', ' ', str(b.get('name', ''))).strip()[:60]
+
+@app.route('/api/lights/places', methods=['POST'])
+def light_place_add():
+    """A room, or a shelf or table in a room, where light spots can go: {room, name}. Leave name empty for the room itself."""
+    c = db()
+    room, name = place_fields(request.get_json(silent=True) or {})
+    if c.execute('SELECT 1 FROM indoor_places WHERE room=? AND name=?', (room, name)).fetchone(): abort(409, f'"{room}{", " + name if name else ""}" is already in the list')
+    who = editor()
+    n = c.execute('SELECT COALESCE(MAX(sort),0)+1 FROM indoor_places').fetchone()[0]
+    pid = c.execute('INSERT INTO indoor_places(room,name,sort,created_by,created_at) VALUES(?,?,?,?,?)', (room, name, n, who, now())).lastrowid
+    audit_only(c, 'light', 'indoor_place', None, place_label(c, pid), who, 'Room or shelf added: ' + place_label(c, pid))
+    c.commit()
+    return jsonify(id=pid), 201
+
+@app.route('/api/lights/places/<int:i>', methods=['PUT', 'DELETE'])
+def light_place_one(i):
+    c = db()
+    old = place_label(c, i)
+    if not old: abort(404, 'That room or shelf is not in the list')
+    who = editor()
+    if request.method == 'DELETE':
+        n = c.execute('SELECT COUNT(*) FROM light_spots WHERE place_id=?', (i,)).fetchone()[0]
+        c.execute('UPDATE light_spots SET place_id=NULL WHERE place_id=?', (i,))
+        c.execute('DELETE FROM indoor_places WHERE id=?', (i,))
+        audit_only(c, 'light', 'indoor_place', old, None, who, 'Room or shelf removed: %s%s' % (old, ' (%d spot%s there now say "Not chosen yet")' % (n, 's' if n != 1 else '') if n else ''))
+        c.commit()
+        return jsonify(ok=True)
+    room, name = place_fields(request.get_json(silent=True) or {})
+    if c.execute('SELECT 1 FROM indoor_places WHERE room=? AND name=? AND id<>?', (room, name, i)).fetchone(): abort(409, f'"{room}{", " + name if name else ""}" is already in the list')
+    c.execute('UPDATE indoor_places SET room=?, name=? WHERE id=?', (room, name, i))
+    audit_only(c, 'light', 'indoor_place', old, place_label(c, i), who, 'Room or shelf renamed: ' + place_label(c, i))
+    c.commit()
+    return jsonify(ok=True)
+
+def light_fields(b, old=None):
+    d = dict(old or {})
+    name = re.sub(r'\s+', ' ', str(b.get('name', ''))).strip()[:80]
+    if not name: abort(400, 'Type the name of the light')
+    count = int(_num(b, 'count', 0, 100, 'How many you have', required=True))
+    if 'watts' in b: d['watts'] = _num(b, 'watts', 0, 2000, 'Watts')
+    if 'points' in b:                  # "12 in 719, 24 in 234 ..." or "12: 719 (0.5 sq ft)"
+        pts = []
+        for part in re.split(r'[,;\n]+', str(b.get('points') or '')):
+            nums = [float(x) for x in re.findall(r'\d+(?:\.\d+)?', part)]
+            if not part.strip(): continue
+            if len(nums) < 2: abort(400, f'"{part.strip()}" needs a distance in inches and a PPFD, like "12 in 719"')
+            pts.append([nums[0], nums[1], nums[2] if len(nums) > 2 else None])
+        d['ppfd'] = pts
+    if 'kind' in b: d['kind'] = str(b.get('kind') or '').strip()[:40]
+    if 'model' in b: d['model'] = str(b.get('model') or '').strip()[:80]       # 1.13.1: the maker's model number
+    if 'timer' in b: d['timer'] = str(b.get('timer') or '').strip()[:120]
+    if 'dimming' in b: d['dimming'] = sorted({int(x) for x in re.findall(r'\d+', str(b.get('dimming') or '')) if 0 < int(x) <= 100}) or [100]
+    return name, count, str(b.get('fixture', '')).strip()[:120], str(b.get('notes', '')).strip()[:600], d
+
+def light_text(name, count, fixture):
+    return '%s (%d)%s' % (name, count, ', ' + fixture if fixture else '')
+
+@app.route('/api/lights', methods=['POST'])
+def light_add():
+    """A light you have: {name, count, watts, points, kind, timer, dimming, fixture, notes}"""
+    c = db()
+    name, count, fixture, notes, d = light_fields(request.get_json(silent=True) or {})
+    if c.execute('SELECT 1 FROM lights WHERE name=?', (name,)).fetchone(): abort(409, f'"{name}" is already in your lights')
+    who = editor()
+    lid = c.execute('INSERT INTO lights(lkey,name,data,count,fixture,notes,sort,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?)',
+                    (None, name, json.dumps(d), count, fixture, notes, 1000, who, now())).lastrowid
+    audit_only(c, 'light', 'light', None, light_text(name, count, fixture), who, 'Grow light added: ' + light_text(name, count, fixture))
+    c.commit()
+    return jsonify(id=lid), 201
+
+@app.route('/api/lights/<int:i>', methods=['PUT', 'DELETE'])
+def light_one(i):
+    c = db()
+    old = c.execute('SELECT * FROM lights WHERE id=?', (i,)).fetchone()
+    if not old: abort(404, 'That light is not in your list')
+    who = editor()
+    if request.method == 'DELETE':
+        n = c.execute('SELECT COUNT(*) FROM light_spots WHERE light_id=?', (i,)).fetchone()[0]
+        if n: abort(409, f'"{old["name"]}" is used by {n} spot{"s" if n != 1 else ""}. Change or remove those spots first.')
+        c.execute('DELETE FROM lights WHERE id=?', (i,))
+        audit_only(c, 'light', 'light', light_text(old['name'], old['count'], old['fixture']), None, who, 'Grow light removed: ' + old['name'])
+        c.commit()
+        return jsonify(ok=True)
+    name, count, fixture, notes, d = light_fields(request.get_json(silent=True) or {}, light_specs(old))
+    if c.execute('SELECT 1 FROM lights WHERE name=? AND id<>?', (name, i)).fetchone(): abort(409, f'"{name}" is already in your lights')
+    c.execute('UPDATE lights SET name=?,count=?,fixture=?,notes=?,data=?,updated_by=?,updated_at=? WHERE id=?', (name, count, fixture, notes, json.dumps(d), who, now(), i))
+    a, z = light_text(old['name'], old['count'], old['fixture']), light_text(name, count, fixture)
+    audit_only(c, 'light', 'light', a, z, who, 'Grow light changed: ' + z + ('' if light_specs(old) == d else ' (specs changed)'))
+    c.commit()
+    return jsonify(ok=True)
 
 # ---------------------------------------------------------------- past days: what the values were, and what the ranges were then
 HIST = {  # metric -> (column, low field, high field, unit, label)
