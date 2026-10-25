@@ -1,0 +1,42 @@
+{
+ "id": "batchA6",
+ "author": "Claude (Ethan's answers, Oct 25, 2026)",
+ "lights_update": [
+  {
+   "key": "sansi-80w",
+   "set": {
+    "fixture": [
+     "",
+     "Suggested: the bare socket on the long (about 25 ft) cable, rated 150 W. Hang it bare above the plants: the bulb is 17 in across with its wings open, too big for a clamp lamp shade."
+    ]
+   },
+   "note": "what holds it"
+  },
+  {
+   "key": "sansi-30w",
+   "set": {
+    "fixture": [
+     "",
+     "Suggested: two of the three clamp-on bendy lamps. The shade can stay on to aim the light down; take it off if the bulb does not fit."
+    ]
+   },
+   "note": "what holds them"
+  },
+  {
+   "key": "sansi-10w",
+   "set": {
+    "fixture": [
+     "",
+     "Suggested: the third clamp-on lamp and five of the ten bare sockets on 6 ft cables (each rated 4 A, far more than a 10 W bulb needs). Five bare sockets are left spare."
+    ]
+   },
+   "note": "what holds them"
+  }
+ ],
+ "requests_done": [
+  {
+   "key": "lights-lamps",
+   "answer": "3 clamp-on bendy lamps (120 V, own switches, removable shades); 1 bare E26 socket on a long cable (about 25 ft, 150 W, own switch); 10 bare E26 sockets on 6 ft cables (250 V, 4 A, own switches). 14 sockets for 9 bulbs, so there are enough."
+  }
+ ]
+}
