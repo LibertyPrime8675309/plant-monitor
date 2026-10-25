@@ -1201,6 +1201,26 @@ def bo_usual(lows, t):
         out |= {'first': med(autumn) if len(autumn) * 2 >= years_a else None, 'autumn_years': years_a}
     return out or None
 
+BO_PORCH_DAYS = 7           # a week on the porch, out of full sun, before the move to the summer spot
+
+def bo_porch_state(c):
+    try: return json.loads(setting(c, 'bo_porch', '{}') or '{}')
+    except ValueError: return {}
+
+def bo_porch_list(c, today, photo):
+    """Plants moved to the porch with "Moved to the porch" that are still on it, and when each is due its move to the summer spot."""
+    out = []
+    for code, v in sorted(bo_porch_state(c).items()):
+        r = c.execute("SELECT * FROM plants WHERE code=? AND status='active'", (code,)).fetchone()
+        if not r or r['site'] != 'Covered porch': continue          # it has moved on: nothing to remind about
+        try: on = datetime.strptime(v.get('on', ''), '%Y-%m-%d').date()
+        except ValueError: continue
+        due = on + timedelta(days=BO_PORCH_DAYS)
+        out.append({'code': code, 'name': r['common_name'], 'photo': photo(r['id']), 'on': on.isoformat(), 'due': due.isoformat(),
+                    'days': (today - on).days, 'is_due': today >= due, 'by': v.get('by')})
+    out.sort(key=lambda p: (p['due'], p['code']))
+    return out
+
 def outside_report(c):
     L = location(c)
     fc = loc_json(c, L['id'], 'forecast')
@@ -1236,15 +1256,35 @@ def outside_report(c):
             elif u and not spring and u.get('first') and tmd >= bo_md((datetime.strptime('2001-' + u['first'], '%Y-%m-%d') - timedelta(days=7)).strftime('%Y-%m-%d')):
                 p |= {'level': 'early', 'why': 'autumn'}
         out.append(p)
+    porch = bo_porch_list(c, today, photo)
     rank = {k: i for i, k in enumerate(BO_LEVELS)}
     out.sort(key=lambda p: (rank.get(p['level'], 9), (p['name'] or '').lower(), p['code']))
     return {'place': L['name'], 'fetched_at': fc.get('fetched_at'), 'today': td, 'season': 'spring' if spring else 'autumn', 'margin': FROST_MARGIN,
-            'nights': nights, 'plants': out, 'history_days': len(lows),
+            'nights': nights, 'plants': out, 'porch': porch, 'history_days': len(lows),
             'counts': {k: sum(1 for p in out if p['level'] == k) for k in BO_LEVELS} | {'unknown': sum(1 for p in out if not p['level'])}}
 
 @app.route('/api/outside')
 def outside_api():
     return jsonify(outside_report(db()))
+
+@app.route('/api/outside/porch', methods=['POST'])
+def outside_porch():
+    """'start': move a plant to the covered porch (out of full sun, so leaves that grew indoors do not scorch) and remind
+    in a week; 'clear': leave it on the porch and stop the reminder. Leaving the porch needs nothing: the reminder follows the Location."""
+    c = db()
+    b = request.get_json(silent=True) or {}
+    r = plant_row(c, str(b.get('code', '')))
+    act = b.get('action')
+    if act not in ('start', 'clear'): abort(400, "action must be 'start' or 'clear'")
+    keep = {k: v for k, v in bo_porch_state(c).items() if k != r['code']}
+    if act == 'start':
+        apply_changes(c, r, {'site': 'Covered porch'}, editor(), 'update', 'Moved to covered porch (sun protection first)')
+        keep[r['code']] = {'on': local_today(c).isoformat(), 'by': editor()}
+    else:
+        audit_only(c, 'care', 'porch', None, 'stay', editor(), 'Staying on the porch: reminder to move it to its summer spot turned off', r['id'], r['code'])
+    set_setting(c, 'bo_porch', json.dumps(keep))
+    c.commit()
+    return jsonify(outside_report(c))
 
 # ---------------------------------------------------------------- getting plants ready to come inside (added in 1.9.0)
 # Ten ways to keep outdoor pests out of the house, rated for each plant from what is chosen on its page (leaf type,

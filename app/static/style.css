@@ -738,7 +738,8 @@ a.pn:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 .bo-ready::before{content:"✔ "}
 .bo-row .muted{white-space:normal}.bo-row .bo-code{white-space:nowrap}
 .bo-tbl{max-width:24rem}
-html[data-role=viewer] :is([data-act=boporch], [data-act=boout]){display:none!important}
+html[data-role=viewer] :is([data-act=boporch], [data-act=boout], [data-act=boleave]){display:none!important}
+.bo-why{max-width:75ch}
 
 /* ---- 1.9.0: getting plants ready to come inside ---- */
 .pr-status{margin:.4rem 0 1rem}

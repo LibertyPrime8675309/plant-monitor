@@ -2689,9 +2689,20 @@ function boRow(p) {
     ${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy" width="72" height="72">` : html`<span class="fz-nophoto" aria-hidden="true"></span>`}
     <div class="fz-txt"><a class="nm" href="#/plant/${enc(p.code)}">${p.name}</a> <span class="muted"><span class="bo-code">${p.code}</span>, ${(p.site || '').toLowerCase()}</span>
       <div>${lv ? html`<span class="bo-lv bo-${lv}">${BO_WORD[lv]}</span> ` : ''}${needs}</div>
-      ${fc ? html`<div>${fc}</div>` : ''}${usual ? html`<div class="hint">${usual}</div>` : ''}</div>
+      ${fc ? html`<div>${fc}</div>` : ''}${usual ? html`<div class="hint">${usual}</div>` : ''}
+      ${go ? html`<div class="hint">Porch first protects leaves that grew indoors from sun scorch. A reminder comes a week later.</div>` : ''}</div>
     ${go ? html`<div class="fz-acts"><button class="btn small" type="button" data-act="boporch" data-code="${p.code}" data-name="${p.name}">Moved to the porch</button>
       <button class="btn small ghost" type="button" data-act="boout" data-code="${p.code}" data-name="${p.name}">Moved outside</button></div>` : ''}</li>`;
+}
+const boPorchDay = d => new Date(d + 'T12:00:00').toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
+function boPorchRow(p) {
+  return html`<li class="fz-row bo-row bo-porchrow" data-code="${p.code}">
+    ${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy" width="72" height="72">` : html`<span class="fz-nophoto" aria-hidden="true"></span>`}
+    <div class="fz-txt"><a class="nm" href="#/plant/${enc(p.code)}">${p.name}</a> <span class="muted"><span class="bo-code">${p.code}</span>, covered porch</span>
+      <div>${p.is_due ? html`<span class="bo-lv bo-ready">Time to move it</span> ` : ''}On the porch since ${boPorchDay(p.on)} (${p.days === 0 ? 'today' : p.days === 1 ? '1 day' : p.days + ' days'}).
+        ${p.is_due ? 'It has had its week out of full sun, so it can go to its summer spot.' : html`Move it to its summer spot on or after ${boPorchDay(p.due)}.`}</div></div>
+    <div class="fz-acts"><button class="btn small ${p.is_due ? '' : 'ghost'}" type="button" data-act="boout" data-code="${p.code}" data-name="${p.name}">Moved outside</button>
+      <button class="btn small ghost" type="button" data-act="boleave" data-code="${p.code}" data-name="${p.name}">Leave it on the porch</button></div></li>`;
 }
 async function viewOutside() {
   const B = await loadOutside(true);
@@ -2708,6 +2719,10 @@ async function viewOutside() {
     ${ps.length && B.nights.length ? html`<p class="notice ${go ? 'ok' : ''} bo-sum" role="status"><strong>${go ? `${go} of ${ps.length} plants inside can go back out now.` : `None of the ${ps.length} plants inside can go back out yet.`}</strong>
       ${n.ready ? ` Ready: ${n.ready}.` : ''}${n.safe ? ` Safe, but cool: ${n.safe}.` : ''}${n.early ? ` Too early: ${n.early}.` : ''}${n.wait ? ` Not yet: ${n.wait}.` : ''}</p>` : ''}
     ${B.nights.length && !anyUsual ? html`<p class="hint">To also see when the nights usually warm up each spring, load the weather history: <a href="#/weather">Weather page</a>, Load history. It needs 3 years or more.</p>` : ''}
+    ${(B.porch || []).filter(p => p.is_due).length ? html`<section class="blk" id="bo-porchdue"><h2>Time to move from the porch to their summer spot (${B.porch.filter(p => p.is_due).length})</h2>
+      <p class="muted">These have had a week on the porch, out of full sun. Press Moved outside once they are in their summer spot, or Leave it on the porch to stop the reminder.</p>
+      <ul class="fz-list">${B.porch.filter(p => p.is_due).map(boPorchRow)}</ul></section>` : ''}
+    ${ps.some(p => p.level && p.level !== 'wait') || (B.porch || []).length ? html`<p class="notice bo-why"><strong>Why the porch first?</strong> Leaves that grew indoors have never seen full sun, so they get sun scorch within a day or two if they go straight outside. The covered porch is bright but out of the direct sun. After a week, move the plant to its summer spot.</p>` : ''}
     ${BO_GROUPS.map(([id, title, sub]) => { const g = ps.filter(p => p.level === id); if (!g.length) return '';
       return html`<section class="blk" id="bo-${id}"><h2>${title} (${g.length})</h2><p class="muted">${sub}</p><ul class="fz-list">${g.map(boRow)}</ul></section>`; })}
     ${(() => { const g = ps.filter(p => !p.level); return g.length && B.nights.length ? html`<section class="blk" id="bo-unknown"><h2>Cannot be checked (${g.length})</h2>
@@ -2716,9 +2731,12 @@ async function viewOutside() {
       <thead><tr><th>Day</th><th class="num">Low</th></tr></thead><tbody>
       ${B.nights.map(x => html`<tr><th scope="row">${fzDay(x.date)}</th><td class="num">${x.low}°F</td></tr>`)}</tbody></table></div>
       <p class="hint">Forecast updated ${B.fetched_at ? when(B.fetched_at) : 'not yet'}. The low is usually reached just before dawn.</p></section>` : ''}
+    ${(B.porch || []).filter(p => !p.is_due).length ? html`<section class="blk" id="bo-porchwait"><h2>On the porch for now (${B.porch.filter(p => !p.is_due).length})</h2>
+      <p class="muted">Getting used to the light, and out of full sun so the leaves do not scorch. A reminder comes after a week.</p>
+      <ul class="fz-list">${B.porch.filter(p => !p.is_due).map(boPorchRow)}</ul></section>` : ''}
     <section class="blk"><h2>Going back out</h2><ul>
-      <li>Ease plants in. Leaves that grew indoors scorch in full sun, so give them a week or two in shade or on the covered porch, then a few hours of morning sun, then their usual spot.</li>
-      <li>Moved to the porch sets the plant's Location to Covered porch. It then shows on the cold-night checklist if a cold night comes.</li>
+      <li>Ease plants in. Leaves that grew indoors scorch in full sun, so give them a week on the covered porch, then a few hours of morning sun, then their usual spot.</li>
+      <li>Moved to the porch sets the plant's Location to Covered porch and sets a reminder for a week later. It shows on the cold-night checklist if a cold night comes.</li>
       <li>Pots dry out much faster outside, especially in wind and sun. Check them every day or two for the first weeks.</li>
       <li>Start feeding again once new growth appears.</li></ul></section>`,
   };
@@ -2727,11 +2745,12 @@ async function boMove(el, site) {
   if (!(await needName())) return;
   const code = el.dataset.code, y = window.scrollY;
   await guard(async () => {
-    await api('POST', '/api/plants/' + enc(code) + '/site', { site });
-    toast(el.dataset.name + (site === 'Outdoors' ? ' moved outside' : ' moved to the covered porch'));
+    if (site === 'Covered porch') await api('POST', '/api/outside/porch', { code, action: 'start' });
+    else await api('POST', '/api/plants/' + enc(code) + '/site', { site });
+    toast(el.dataset.name + (site === 'Outdoors' ? ' moved outside' : ' moved to the covered porch, out of full sun. A reminder comes in a week.'));
     BO_AT = 0; FROST_AT = 0;
     await route(); window.scrollTo(0, y);
-    const next = document.querySelector('.bo-row [data-act=boporch]');
+    const next = document.querySelector('.bo-row [data-act=boporch]') || document.querySelector('.bo-row [data-act=boout]');
     (next || document.querySelector('main h1')).focus({ preventScroll: true });
   });
 }
@@ -2742,10 +2761,10 @@ new MutationObserver(() => {
   if (!h || document.getElementById('bo-today')) return;
   h.insertAdjacentHTML('afterend', '<div id="bo-today"></div>');
   loadOutside().then(B => {
-    const box = document.getElementById('bo-today'), go = B.counts.ready + B.counts.safe;
-    if (!box || B.season !== 'spring' || !go) return;
-    box.innerHTML = rend(html`<p class="notice ok noprint"><strong>${go === 1 ? '1 plant inside can' : `${go} plants inside can`} go back outside.</strong>
-      The nights in the forecast are warm enough for ${go === 1 ? 'it' : 'them'}. <a href="#/outside">Open the Back outside list</a></p>`);
+    const box = document.getElementById('bo-today'), go = B.season === 'spring' ? B.counts.ready + B.counts.safe : 0, due = (B.porch || []).filter(p => p.is_due).length;
+    if (!box || (!go && !due)) return;
+    box.innerHTML = rend(html`<p class="notice ok noprint">${go ? html`<strong>${go === 1 ? '1 plant inside can' : `${go} plants inside can`} go back outside.</strong>
+      The nights in the forecast are warm enough for ${go === 1 ? 'it' : 'them'}. ` : ''}${due ? html`<strong>${due === 1 ? '1 plant on the porch is' : `${due} plants on the porch are`} ready for ${due === 1 ? 'its' : 'their'} summer spot.</strong> ${due === 1 ? 'It has' : 'They have'} had a week out of full sun. ` : ''}<a href="#/outside">Open the Back outside list</a></p>`);
   }).catch(() => { /* no note if it cannot be worked out */ });
 }).observe(document.getElementById('app'), { childList: true });
 
@@ -3971,6 +3990,11 @@ const changeActs = {
 Object.assign(acts, {
   async boporch(el) { await boMove(el, 'Covered porch'); },
   async boout(el) { await boMove(el, 'Outdoors'); },
+  async boleave(el) {
+    if (!(await needName())) return;
+    const y = window.scrollY;
+    await guard(async () => { await api('POST', '/api/outside/porch', { code: el.dataset.code, action: 'clear' }); toast(el.dataset.name + ' stays on the porch. The reminder is off.'); BO_AT = 0; await route(); window.scrollTo(0, y); (document.querySelector('.bo-porchrow button') || document.querySelector('main h1')).focus({ preventScroll: true }); });
+  },
 });
 function wtFocusTop() { const t = document.querySelector('#wx-table .pager'); if (t) t.scrollIntoView({ block: 'nearest' }); }
 let PLACE_RESULTS = [];
