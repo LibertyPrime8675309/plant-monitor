@@ -8,6 +8,7 @@
 #   E  nothing left to do                                                            -> "Already up to date"
 #   F  (1.12.1) the app cannot write to its data folder even as root                -> says so plainly; writes no override file
 #   I  (1.12.1) the 1.12.0 fallback file is there                                    -> removed (the app now decides); a person's own override is kept
+#   J  (1.12.2) zips in the Plants folder                                          -> moved into versions_plant-database; zips saved there are found
 #   G  (1.12.1) port 8080 busy for a moment after the old container stops             -> waits, tries again, works
 #   H  (1.12.1) port 8080 stays busy (another program)                               -> moves the app to a free port, saved in .env
 set -u
@@ -81,5 +82,14 @@ want "G: port busy for a moment: waits, tries again, works" '[[ "$out" == *"stil
 rm -rf "$T/Plants"/*; (cd "$T/Plants" && unzip -q "$T/full.zip"); cp "$T/repo/dist"/plant-database-v*.zip "$T/repo/tools/update-plant-database.ps1" "$T/Plants/"
 touch "$T/busy-always"; out=$(run -WaitSeconds 6); rm -f "$T/busy-always"
 want "H: port stays busy: moves to a free port, saved in .env, and says the new address" '[[ "$out" == *"stays busy"* && "$out" == *"now answers at http://127.0.0.1:809"* ]] && grep -q "^PLANTDB_PORT=809[0-9]$" "$T/Plants/plant-database/.env"'
+rm -rf "$T/Plants"/*; (cd "$T/Plants" && unzip -q "$T/full.zip"); cp "$T/repo/tools/update-plant-database.ps1" "$T/Plants/"
+echo old > "$T/Plants/plant-database-1.zip"; mkdir -p "$T/Plants/versions_plant-database"; cp "$T/repo/dist"/plant-database-v*.zip "$T/Plants/versions_plant-database/"
+cp "$T/repo/dist"/plant-database-photos-*.zip "$T/Plants/"; z=$(basename "$T"/repo/dist/plant-database-v*.zip); echo different > "$T/Plants/$z"
+out=$(run)
+want "J1: zips saved in versions_plant-database are found and installed" '[[ "$out" == *"Done. Plant record version 99.0.0"* ]]'
+want "J2: other zips in Plants move into versions_plant-database" '[[ -f "$T/Plants/versions_plant-database/plant-database-1.zip" && ! -f "$T/Plants/plant-database-1.zip" && -z "$(ls "$T/Plants"/plant-database-photos-*.zip 2>/dev/null)" && -n "$(ls "$T/Plants/versions_plant-database"/plant-database-photos-*.zip)" ]]'
+want "J3: a different file with the same name is left in place, not overwritten" '[[ "$out" == *"Left $z in place"* && $(cat "$T/Plants/$z") == different && $(stat -c %s "$T/Plants/versions_plant-database/$z") -gt 1000 ]]'
+cp "$T/Plants/versions_plant-database/$z" "$T/Plants/$z"; out=$(run)
+want "J4: an identical copy in Plants is removed" '[[ ! -f "$T/Plants/$z" && "$out" == *"removed 1 copies"* ]]'
 want "F: the release carries the Tailscale setup but no sign-in state" 'unzip -l "$T/repo/dist"/plant-database-v99.0.0-*.zip | grep -q "tailscale/config/serve.json" && unzip -l "$T/repo/dist"/plant-database-v99.0.0-*.zip | grep -q "tools/setup-remote-access.ps1" && ! unzip -l "$T/repo/dist"/plant-database-v99.0.0-*.zip | grep -q "tailscale/state"'
 echo "$FAILS failed"; exit $FAILS

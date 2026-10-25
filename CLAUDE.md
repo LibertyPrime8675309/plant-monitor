@@ -21,7 +21,7 @@ This is Ethan's home plant database: a Flask + SQLite web app ("Plant record") t
   - The updater adds any photos his folder is missing from packs saved next to the release zip.
   - `--full` builds the old single zip with everything.
   - He installs it with the updater: `tools/Update Plant Database.cmd` / `update-plant-database.ps1`. It unzips over his folder, keeps `data/` and `backups/`, makes a backup first and runs `docker compose up -d --build`.
-  - He saves zips in `C:\Users\Ethan\Documents\Claude\Plants`. Files saved to his computer from a chat must be under 30 MB.
+  - Zips go in `C:\Users\Ethan\Documents\Claude\Plants\versions_plant-database` (from 1.12.2; the updater moves any zip saved in `Plants` there). Save releases and photo packs straight into that folder. Files saved to his computer from a chat must be under 30 MB.
 - **Versions:** bump the patch number for fixes and small additions, the minor number for new features. Update all of these together:
   - `VERSION`
   - the three places in `docker-compose.yml` (build arg, image tag, label)

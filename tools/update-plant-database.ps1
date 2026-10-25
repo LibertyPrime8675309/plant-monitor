@@ -1,18 +1,20 @@
 <#
   Plant database updater.
 
-  Put this script (and "Update Plant Database.cmd") in the folder that holds the release zips,
-  for example C:\Users\Ethan\Documents\Claude\Plants, next to the plant-database folder.
+  Put this script (and "Update Plant Database.cmd") next to the plant-database folder,
+  for example in C:\Users\Ethan\Documents\Claude\Plants. Since 1.12.2 the release zips and photo packs live in the
+  versions_plant-database folder beside it. Zips saved straight into the Plants folder are moved there each time this runs.
   Double-click "Update Plant Database.cmd", or run it from PowerShell:
 
       powershell -ExecutionPolicy Bypass -File .\update-plant-database.ps1
 
   What it does:
-    1. Finds the newest plant-database-vX.Y.Z-*.zip in this folder.
+    1. Moves any plant-database-*.zip in this folder into versions_plant-database, then finds the newest
+       plant-database-vX.Y.Z-*.zip there.
     2. Compares it with the version installed and the version running.
     3. Asks the running app for a backup (Backups page), or copies the database itself if the app is too old to do that.
     4. Unzips the release and copies it over the plant-database folder. Your data and backups folders are never touched.
-    5. Adds plant photos from any photo pack (plant-database-photos-*.zip) in this folder that the release needs
+    5. Adds plant photos from any photo pack (plant-database-photos-*.zip) in versions_plant-database that the release needs
        and the plant-database folder does not have yet. From 1.8.0 photos travel in these packs, so release zips stay small.
     6. Builds the new version on a freshly downloaded base image (so security fixes arrive), fetches the newest Tailscale
        container, starts everything ("docker compose up -d") and waits until the new version answers.
@@ -30,7 +32,8 @@
     -Password <text>  Only if you set PLANTDB_PASSWORD in docker-compose.yml.
     -Url <address>    Where the app answers (default http://localhost:8080, or the port saved as PLANTDB_PORT in plant-database\.env).
     -WaitSeconds <n>  How long to wait for the new version to answer (default 180).
-    -ZipFolder, -AppFolder   Other locations, if you moved things.
+    -ZipFolder, -AppFolder, -VersionsFolder   Other locations, if you moved things (the folder holding plant-database,
+                      the plant-database folder, and the folder for release zips and photo packs).
 
   Works with Windows PowerShell 5.1 (built into Windows) and PowerShell 7.
 #>
@@ -44,11 +47,13 @@ param(
     [switch]$Force,
     [switch]$SkipBackup,
     [switch]$RemoveOldImage,
-    [int]$WaitSeconds = 180
+    [int]$WaitSeconds = 180,
+    [string]$VersionsFolder = ''
 )
 
 $ErrorActionPreference = 'Stop'
 if (-not $AppFolder) { $AppFolder = Join-Path $ZipFolder 'plant-database' }
+if (-not $VersionsFolder) { $VersionsFolder = Join-Path $ZipFolder 'versions_plant-database' }   # 1.12.2: release zips and photo packs
 $LogFile = Join-Path $ZipFolder 'update-log.txt'
 # 1.12.1: settings kept in plant-database\.env (PLANTDB_PORT, PLANTDB_BIND and others), one NAME=value per line
 $EnvFile = Join-Path $AppFolder '.env'
@@ -94,7 +99,7 @@ function Pending-Packs([string]$root) {
     foreach ($pp in $m.packs.PSObject.Properties) {
         $miss = @($pp.Value.files | Where-Object { -not (Test-Path (Join-Path $mine $_)) -and -not (Test-Path (Join-Path $theirs $_)) })
         if ($miss.Count -eq 0) { continue }
-        $pz = Join-Path $ZipFolder $pp.Value.zip
+        $pz = Join-Path $VersionsFolder $pp.Value.zip
         $out += [pscustomobject]@{ Name = $pp.Name; Zip = $pp.Value.zip; Path = $pz; Missing = $miss.Count; Present = (Test-Path $pz) }
     }
     return $out
@@ -109,13 +114,28 @@ Say ('Plant database updater, ' + (Get-Date -Format 'yyyy-MM-dd HH:mm')) 'Green'
 
 # ---- 1. newest zip -------------------------------------------------------------------------------
 Step 'Looking for the newest release zip'
+# 1.12.2: keep the Plants folder tidy. Release zips and photo packs (and the very first plant-database-1.zip style zips)
+# go into versions_plant-database. A zip that is already there with the same size and contents is just removed here.
+if (-not (Test-Path $VersionsFolder)) { New-Item -ItemType Directory -Path $VersionsFolder -Force | Out-Null; Say ("Made the folder " + $VersionsFolder) }
+$moved = 0; $dupes = 0
+foreach ($f in @(Get-ChildItem -Path $ZipFolder -Filter 'plant-database-*.zip' -File)) {
+    $dest = Join-Path $VersionsFolder $f.Name
+    if (Test-Path $dest) {
+        $same = ((Get-Item $dest).Length -eq $f.Length) -and ((Get-FileHash $dest).Hash -eq (Get-FileHash $f.FullName).Hash)
+        if ($same) { Remove-Item $f.FullName -Force; $dupes++ }
+        else { Say ("Left {0} in place: a different file with that name is already in versions_plant-database." -f $f.Name) 'Yellow' }
+        continue
+    }
+    Move-Item $f.FullName $dest; $moved++
+}
+if ($moved -or $dupes) { Say ("Moved {0} zip file(s) into versions_plant-database{1}." -f $moved, $(if ($dupes) { " (and removed $dupes copies that were already there)" } else { '' })) 'Green' }
 $zips = @()
-foreach ($f in Get-ChildItem -Path $ZipFolder -Filter 'plant-database-v*.zip' -File) {
+foreach ($f in Get-ChildItem -Path $VersionsFolder -Filter 'plant-database-v*.zip' -File) {
     if ($f.Name -match '^plant-database-v(\d+)\.(\d+)\.(\d+)-(\d{8})-(\d{4})\.zip$') {
         $zips += [pscustomobject]@{ File = $f; Version = [version]("{0}.{1}.{2}" -f $Matches[1], $Matches[2], $Matches[3]); Stamp = $Matches[4] + $Matches[5] }
     }
 }
-if ($zips.Count -eq 0) { Fail "No plant-database-vX.Y.Z-YYYYMMDD-HHMM.zip found in $ZipFolder" }
+if ($zips.Count -eq 0) { Fail "No plant-database-vX.Y.Z-YYYYMMDD-HHMM.zip found in $VersionsFolder (or in $ZipFolder)" }
 $latest = $zips | Sort-Object Version, Stamp | Select-Object -Last 1
 Say ("Newest zip: {0} (version {1})" -f $latest.File.Name, $latest.Version)
 
@@ -131,7 +151,7 @@ Say ("Running app:     {0}" -f $(if ($running) { $running } else { 'not answerin
 $upToDate = $installed -and ([version]$installed -ge $latest.Version) -and ($running -eq $installed)
 $photosOnly = $false
 if ($upToDate -and -not $Force -and @(Pending-Packs $AppFolder | Where-Object { $_.Present }).Count) {
-    Say 'Version is up to date, but photo packs for it have arrived in this folder: adding their photos.' 'Yellow'
+    Say 'Version is up to date, but photo packs for it have arrived in versions_plant-database: adding their photos.' 'Yellow'
     $upToDate = $false; $photosOnly = $true
 }
 if ($upToDate -and -not $Force) {
@@ -206,9 +226,9 @@ try {
     $packs = @(Pending-Packs $src)
     $absent = @($packs | Where-Object { -not $_.Present })
     if ($absent.Count) {
-        Say 'This release needs plant photos that are not in the plant-database folder yet, and these photo packs are not in this folder:' 'Yellow'
+        Say 'This release needs plant photos that are not in the plant-database folder yet, and these photo packs are not in versions_plant-database:' 'Yellow'
         foreach ($a in $absent) { Say ("  {0}  ({1} photos)" -f $a.Zip, $a.Missing) 'Yellow' }
-        if (-not $Force -and -not $photosOnly) { Fail 'Save those photo packs next to the release zip and run the updater again. Nothing has been changed. (To update without them, run it with -Force; the photos appear after you add the packs and run the updater again.)' }
+        if (-not $Force -and -not $photosOnly) { Fail 'Save those photo packs in versions_plant-database (or the Plants folder) and run the updater again. Nothing has been changed. (To update without them, run it with -Force; the photos appear after you add the packs and run the updater again.)' }
         Say $(if ($photosOnly) { 'Adding the packs that are here now. Save the others next to the release zip and run the updater again.' } else { 'Carrying on without them (-Force).' }) 'Yellow'
     }
 
