@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.14.1 (2026-10-25)
+- **Swipe between plants.** On a phone or tablet, swipe left on a plant page for the next plant, or right for the previous one.
+  - A label shows which plant is coming, and says "Let go to open it" once the swipe is far enough.
+  - It ignores up-and-down scrolling, short nudges, swipes that start on a menu or the photo, and swipes from the very edge of the screen, which your phone uses for Back.
+  - Turn it off in **Display** if it gets in your way.
+- **The section menu lists every part of a plant page.** It now includes **Photos** and **Name and details**, the card at the top with the name, location and ID.
+  - The row of section buttons now has every section too, including "Details", "Coming inside" and "Timeline", which were missing.
+  - Both lists are made from the page itself, so sections added in future updates appear in them by themselves.
+
 ## 1.14.0 (2026-10-25)
 - **About this plant**, a new section on every plant page, after Identification. For all 81 plants it gives:
   - type of plant (tree, shrub, vine, succulent and so on) and its classification: kingdom, order, family, genus and species;

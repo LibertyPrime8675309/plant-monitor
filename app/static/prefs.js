@@ -1,7 +1,8 @@
 /* Display settings, applied before the page paints. Stored in this browser only. */
 (function () {
   var D = { size: '115', space: 'normal', contrast: 'normal', layout: 'split', theme: 'auto', navside: 'left', navopen: '1', width: 'normal',
-            readbtns: '1', rate: '1', voice: 'auto', keys: '1' };   // 1.8.0: read aloud, reading speed and voice, keyboard shortcuts
+            readbtns: '1', rate: '1', voice: 'auto', keys: '1',   // 1.8.0: read aloud, reading speed and voice, keyboard shortcuts
+            swipe: '1' };                                         // 1.14.1: swipe between plants
   var p = {};
   try { p = JSON.parse(localStorage.getItem('plantdb.display') || '{}') || {}; } catch (e) { p = {}; }
   var r = document.documentElement;

@@ -136,6 +136,14 @@
   - 1.8.0 modules, each in its own block: frost banner and checklist, watering and Today, read aloud and shortcuts (`addReadButtons()`, Web Speech API), timeline (filled by a `MutationObserver` on `#app`), copy for Claude (`forClaudeDialog()`), and the photo check (`photoCheck()`, which runs before every upload).
   - 1.10.0: the Audit log page (`viewHistory()`, state in `AUD`, filters remembered in localStorage `plantdb.auditf`), the Debug window (`debugDialog()`, settings in `DBG`, localStorage `plantdb.debug`, change events with `data-dbg`) and the console (`conPoll()` every 3 s via `/api/audit?after=`, `conAdd()`, `conLayout()`). `conLayout()` sizes the console to the newest 3, 4 or 5 rows, places it clear of the side menu and of every button pinned to the bottom, and sets `--console-space`, which `fitPanes()` and `main` use to leave room. `pinLayout()` stacks the Sections button and the job note above Debug and Display on phones when they would otherwise overlap.
   - 1.11.0: the Location button and window (`PLACE` in localStorage `plantdb.place`, sent by `api()` as `X-Place`; `placeDialog()`, `placeChanged()`, `paintPlace()`, `plcHomeRow()`; the L key). `META` is reloaded when the place changes, and `tempMarks()`/`humMarks()` come from `META.climate`. Fertilizer needs: `needLines()`, `loadNeeds()` (into `FERT.needs`), `productsBlock()` and `productDialog()`; `fertState0()` fills the feeding form from a plant's match.
+  - 1.14.1:
+    - `buildSideNav()` lists every visible `h2` (its section) plus any element with `data-section="Name"`, in page order. On plant pages these are `#photopanel` ("Photos") and the label card `#details` ("Name and details").
+    - `buildJumpRow()` fills `#jumprow` from the same items inside `#pane-r`. It uses short names from `JUMP_SHORT` (or `data-short`), so new sections need no list to be kept up to date.
+    - Swipe between plants: passive touch listeners clicking `#pnav a.pn-next` / `a.pn-prev`.
+      - A swipe must cover at least 22% of the width (70 to 140 px) and be at least twice as wide as it is tall.
+      - It is ignored within 28 px of the screen edges, on form fields, menus, dialogs, charts, the photo and anything that scrolls sideways.
+      - `#swipe-hint` shows the plant that is coming.
+      - It is turned off with the Display setting `swipe` ('0').
   - 1.12.0: `ME()` (from `META.me`), `paintWho()`, `whoDialog()` (name, and for owners the people list with role menus: `data-f="prole"`, `data-act="pdel"`). Viewers get `html[data-role=viewer]`, which hides change buttons in one CSS block. They also get a "View only" note, and a MutationObserver switches off menus that save straight away. `api()` refuses their changes before sending.
   - Templates use the `html` tagged template, which escapes values (`raw()` opts out, `rend()` renders).
   - Click, change and submit events are delegated to `acts`, `changeActs` and `formActs`.

@@ -2,6 +2,7 @@
 
 One line each, most wanted first. A prototyping session takes the top one that is not already in progress, and marks it "(in progress: proto/<branch>)".
 
+- Plant groups and bulk actions (asked for by Ethan on October 25, 2026. Waiting on his choices, so a prototyping session should skip it for now). Named groups, a plant in several: smart groups from a rule (genus, family, location, light spot) and hand-picked ones. Filter and group the Plants page by them. Bulk care log (watered, fed, sprayed, repotted with a mix), bulk move and light spot, labels and copy-for-Claude for a group. Bulk field edits with a per-plant preview and one undo. A group page with the range that suits every member, and the plants that differ.
 - Calendar file (.ics) of feeding days and cold nights, to import into a phone or Outlook calendar. Cold nights come from `frost_report()` in server.py.
 - Spring "move back outside" list: when the nights stay above each indoor plant's comfortable low, list the plants that can go back out. Builds on `frost_report()` and the cold-night checklist. (in progress: proto/move-outside)
 - Undo right after a quick care button: "Watered" or "Still moist" pressed by mistake can be undone from the message that appears, without looking for it in the care log.
@@ -10,6 +11,7 @@ One line each, most wanted first. A prototyping session takes the top one that i
 - Sensor dashboard for the DIY plant monitor (soil moisture, temperature, light) once hardware is posting to `/api/readings`.
 
 ## Done
+1.14.1 (October 25, 2026, pull request #19): swipe between plants on phones, and every part of a plant page in the section menu and the row of section buttons.
 1.14.0 (October 25, 2026, pull request #17): About this plant. Classification, mature size, hardiness zones with the local zone, native range, conservation status, flowers, fruit, dangers and propagation for every plant, with linked sources.
 
 1.13.0 (October 24, 2026, pull request #16): grow lights. A light library from Ethan's photos, light spots, a suggested layout matching plants to lights by daily light, and a step-down plan from outdoor to indoor light.
