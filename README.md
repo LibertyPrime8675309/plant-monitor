@@ -514,6 +514,61 @@ Open **Fertilizer** (top menu) for the whole collection, or look at the **Nutrie
   - Each plant's ratio and strength (None needed, Quarter strength, Quarter to half strength, Half strength or Full strength) are on its Edit page, under Nutrients. Claude filled them in for every plant from its fertilizer note (upgrade batch `batchA2`).
 - **Change a plant's season:** Edit this page, Nutrients group: "Feed from month", "Feed through month" (a season like October to April is fine) and "Feed every (days)". The starting values are Claude's guesses from the plant type.
 
+## Your plant calendar (prototype)
+
+Feeding days and cold nights can go into Google, Outlook, Samsung or Apple calendars, with reminders. Open **Today**, **Fertilizer** or the **Cold-night checklist**, go to **Add to your calendar** at the bottom, and press **Set up your calendar**.
+
+- **Choices** (saved as you make them):
+  - feeding days, cold nights and close calls
+  - one feeding day a week on the day you choose, or each day a plant is due. A plant is never moved earlier than it is due.
+  - how far ahead (1 to 12 months)
+  - your own reminder times: one on feeding days, one on the day before a cold night
+- **Subscribe** with the calendar link, so the calendar updates by itself. The link works without your password. Keep it private; **Make a new link** stops the old one working.
+- Google Calendar uses its own reminder settings for subscribed calendars: in Google Calendar's Settings, choose Plant record under "Other calendars" and set its notifications.
+- **Save calendar file** adds the events once instead, without updates.
+
+### Reaching the calendar from the internet with Tailscale Funnel
+
+Google Calendar, Outlook.com and iCloud fetch the link from the internet. Tailscale Funnel lets them reach the calendar link only (the `/cal/` path on port 8443), not the rest of Plant record. Anything you share in your tailnet on port 443 with Tailscale Serve stays private.
+
+1. Turn on Funnel for the calendar, on the PC that runs Plant record. If Tailscale says Funnel or HTTPS is not turned on for your tailnet, open the link it shows, turn it on, and run the command again.
+
+   Windows (cmd.exe):
+
+   ```
+   tailscale funnel --bg --https=8443 --set-path=/cal http://127.0.0.1:8080/cal
+   ```
+
+   Windows (PowerShell):
+
+   ```
+   tailscale funnel --bg --https=8443 --set-path=/cal http://127.0.0.1:8080/cal
+   ```
+
+   macOS / Linux (bash):
+
+   ```
+   tailscale funnel --bg --https=8443 --set-path=/cal http://127.0.0.1:8080/cal
+   ```
+
+   If Windows says `tailscale` is not recognized, use the full path: `"C:\Program Files\Tailscale\tailscale.exe"` in cmd.exe, or `& "C:\Program Files\Tailscale\tailscale.exe"` in PowerShell, followed by the same words from `funnel` on.
+
+2. See the address it made. The command is the same in cmd.exe, PowerShell and bash:
+
+   ```
+   tailscale funnel status
+   ```
+
+   It looks like `https://your-pc.tail1234.ts.net:8443`. Type it into **Internet address of this PC** in the calendar window and press **Save address**. The calendar link then starts with it.
+3. Check it: on your phone, turn Wi-Fi off and open the calendar link in the browser. It should show or download a calendar file.
+4. Subscribe with that link. The window's "How to subscribe in each calendar" has the steps.
+
+Funnel keeps running after a restart. To turn it off (the same in cmd.exe, PowerShell and bash):
+
+```
+tailscale funnel --https=8443 --set-path=/cal off
+```
+
 ## Past days: what the values were on a date
 
 Temperature, Humidity (and air dryness), Light, and Water and soil (soil moisture, root-zone temperature, pH) each have a **Past days** box. Open it, pick the date on the calendar (or use the arrow keys), and you see that day's lowest, average and highest value, how many hours were in range, a chart of the day, and the plant's comfortable range **as it was recorded on that date** (if you changed the range later, both are shown). Each day on the calendar is marked in range, a little out, out of range or danger, and "Fed" where fertilizer was applied. Pick where the readings come from: your sensor, numbers you typed into Current conditions, or the online weather (outdoors, so for plants kept inside it only shows what the weather was). Days before any data was stored are blank; the online weather loads about 3 months back the first time, and more from the Weather page.
