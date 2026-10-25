@@ -523,6 +523,44 @@ function humBlock(p, cur) {
     <ul class="verdicts">${humMarks().map(m => { const [k, txt] = verdict(m[1]); return html`<li class="v-${kk(k)}"><span class="k">${m[0]}</span><span><strong>${m[2]}, about ${m[1]}%.</strong> ${txt}</span></li>`; })}</ul>
     ${paras(p.humidity_notes)}`;
 }
+// ---------- 1.14.0: about this plant ----------
+const ABOUT_FIELDS = ['growth_habit', 'kingdom', 'taxon_order', 'family', 'genus', 'height_ground', 'width_ground', 'height_pot', 'width_pot', 'growth_rate', 'lifespan',
+  'zone_low', 'zone_high', 'zone_notes', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'propagation', 'sources'];
+function zoneNum(z) { const m = /^\s*(\d{1,2})\s*([ab])?\s*$/i.exec(String(z || '')); return m ? +m[1] + ((m[2] || '').toLowerCase() === 'b' ? 0.5 : 0) : null; }
+function zoneHere(p) {
+  const Z = META && META.zone, lo = zoneNum(p.zone_low), here = !Z ? null : Z.zone ? zoneNum(Z.zone) : zoneNum(String(Z.map_zone || '').split(' ')[0]);   // no weather history yet: the colder end of the map zone
+  const where = html`${Z && Z.zone ? html`<p>Where you are: the last ${Z.years} winters of weather at ${placeName()} averaged a coldest night of ${Z.winter_low}°F, which is <strong>zone ${Z.zone}</strong>.${Z.map_note ? ' ' + Z.map_note : ''} <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>`
+    : Z && Z.map_zone ? html`<p>Where you are: zone ${Z.map_zone} on the 2023 USDA map. <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>` : ''}`;
+  if (lo == null || here == null) return where;
+  const ok = here >= lo, gap = Math.round((lo - here) * 2);
+  return html`${where}<p class="nowstate ${ok ? 'v-ok' : 'v-cool'}"><strong>${ok ? '✓ Hardy here.' : '▼ Not hardy here.'}</strong> ${ok ? 'It can stay outside through a usual winter, though a rare hard freeze can still hurt it.'
+    : `A usual winter is about ${gap * 5}°F colder than it can take (${gap} half-zone${gap === 1 ? '' : 's'}), so it needs to come inside or be protected.`}</p>`;
+}
+function srcList(v) {
+  return lines(v).map(x => { const i = x.lastIndexOf('|'), t = i > 0 ? x.slice(0, i).trim() : x.trim(), u = i > 0 ? x.slice(i + 1).trim() : '';
+    return /^https?:\/\//.test(u) ? html`<li><a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a></li>` : html`<li>${x}</li>`; });
+}
+function aboutBlock(p) {
+  if (!ABOUT_FIELDS.some(f => has(p[f]) && p[f] !== '')) return html`<p class="muted">Not filled in yet. Use Edit to add it, under "About this plant".</p>`;
+  const row = (k, v) => has(v) && v !== '' ? html`<dt>${k}</dt><dd>${v}</dd>` : '';
+  const size = [['In the ground', p.height_ground, p.width_ground], ['In a pot', p.height_pot, p.width_pot]].filter(r => r[1] || r[2]);
+  const zones = p.zone_low || p.zone_high ? (p.zone_low && p.zone_high && p.zone_low !== p.zone_high ? `Zones ${p.zone_low} to ${p.zone_high}` : `Zone ${p.zone_low || p.zone_high}`) : '';
+  const unsure = p.id_confidence != null && p.id_confidence < 85 ? html`<p class="hint">The identification is ${p.id_confidence}% sure, so these details are for the closest match. Some may change if the ID does.</p>` : '';
+  return html`${unsure}<dl class="dl about-dl">${row('Type of plant', p.growth_habit)}${row('Kingdom', p.kingdom)}${row('Order', p.taxon_order)}${row('Family', p.family)}${row('Genus', p.genus)}
+      ${row('Species', p.scientific_name)}${row('Growth rate', p.growth_rate)}${row('Lifespan', p.lifespan)}</dl>
+    ${size.length ? html`<h3>Mature size</h3><div class="tbl-wrap"><table class="tbl"><thead><tr><th scope="col">Where</th><th scope="col">Height</th><th scope="col">Width</th></tr></thead>
+      <tbody>${size.map(r => html`<tr><th scope="row">${r[0]}</th><td>${r[1] || ''}</td><td>${r[2] || ''}</td></tr>`)}</tbody></table></div>` : ''}
+    ${zones || p.zone_notes ? html`<h3>Hardiness zones (USDA)</h3>${zones ? html`<p><strong>${zones}.</strong></p>` : ''}${paras(p.zone_notes)}${zoneHere(p)}` : ''}
+    ${p.native_range ? html`<h3>Native range</h3>${paras(p.native_range)}` : ''}
+    ${p.conservation_status ? html`<h3>Conservation status</h3>${paras(p.conservation_status)}` : ''}
+    ${p.invasive ? html`<h3>Invasive risk</h3>${paras(p.invasive)}` : ''}
+    ${p.bloom ? html`<h3>Flowers</h3>${paras(p.bloom)}` : ''}
+    ${p.fruit ? html`<h3>Fruit</h3>${paras(p.fruit)}` : ''}
+    ${p.danger_humans || p.danger_animals ? html`<div class="danger-box"><h3><span aria-hidden="true">⚠ </span>Dangers</h3>${p.danger_humans ? html`<h4>To people</h4>${paras(p.danger_humans)}` : ''}${p.danger_animals ? html`<h4>To pets and other animals</h4>${paras(p.danger_animals)}` : ''}
+      <p class="hint">If someone may have been poisoned, call Poison Control at 1-800-222-1222. For a pet, call your vet or the ASPCA Animal Poison Control Center at 888-426-4435.</p></div>` : ''}
+    ${lines(p.propagation).length ? html`<h3>Propagation</h3>${ol(p.propagation)}` : ''}
+    ${lines(p.sources).length ? html`<h3>Sources and further reading</h3><ul class="srcs">${srcList(p.sources)}</ul>` : ''}`;
+}
 function lightBlock(p, cur) {
   const lo = p.par_low, hi = p.par_high;
   const old = html`${p.light_summary ? html`<p><strong>${p.light_summary}</strong>${p.light_hours ? html`, about ${p.light_hours}` : ''}.</p>` : ''}${paras(p.light_notes)}`;
@@ -776,7 +814,7 @@ function slips(h) {
     </article>`;
   });
 }
-const JUMPS = [['needs', 'Needed'], ['sec-now', 'Now'], ['ident', 'Identification'], ['temp', 'Temperature'], ['hum', 'Humidity'], ['light', 'Light'], ['soil', 'Water and soil'], ['nutrients', 'Nutrients'], ['winter', 'Winter'], ['health', 'Health'], ['pests', 'Pests'], ['label', 'Label'], ['history', 'History']];
+const JUMPS = [['needs', 'Needed'], ['sec-now', 'Now'], ['ident', 'Identification'], ['about', 'About'], ['temp', 'Temperature'], ['hum', 'Humidity'], ['light', 'Light'], ['soil', 'Water and soil'], ['nutrients', 'Nutrients'], ['winter', 'Winter'], ['health', 'Health'], ['pests', 'Pests'], ['label', 'Label'], ['history', 'History']];
 async function viewPlant(code) {
   const [p, h, cur, st] = await Promise.all([api('GET', '/api/plants/' + enc(code)), api('GET', '/api/plants/' + enc(code) + '/history'), loadCond(), api('GET', '/api/settings').catch(() => ({}))]);
   CUR = { p, h, base: st.base_url || location.origin };
@@ -816,6 +854,8 @@ async function viewPlant(code) {
           ${lines(p.id_improve).length ? html`<div class="ask"><h3 style="margin-top:0">To reach 100%, send</h3>${ul(p.id_improve)}
             <button class="btn small noprint" type="button" data-act="copyreq">Copy this as a request for Claude</button></div>` : ''}
         </section>
+
+        <section class="blk" id="about"><h2>About this plant</h2>${aboutBlock(p)}</section>
 
         <section class="blk" id="temp"><h2>Temperature</h2>${tempBlock(p, cur)}${paras(p.temp_notes)}${histBlock('temp')}</section>
         <section class="blk" id="hum"><h2>Humidity</h2>${humBlock(p, cur)}${histBlock('hum')}</section>
@@ -1769,6 +1809,8 @@ const HMAP_RANGE = { temp: ['temp_ideal_low', 'temp_ideal_high'], humidity: ['hu
 const GROUPS = [
   ['Names and place', ['common_name', 'scientific_name', 'aliases', 'plant_type', 'site', 'location', 'container']],
   ['Identification', ['id_confidence', 'id_basis', 'id_alternatives', 'id_improve']],
+  ['About this plant', ['growth_habit', 'kingdom', 'taxon_order', 'family', 'genus', 'height_ground', 'width_ground', 'height_pot', 'width_pot', 'growth_rate', 'lifespan',
+    'zone_low', 'zone_high', 'zone_notes', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'propagation', 'sources']],
   ['Temperature', ['temp_ideal_low', 'temp_ideal_high', 'temp_damage_below', 'temp_lethal_below', 'temp_damage_above', 'temp_notes']],
   ['Humidity and air dryness', ['humidity_low', 'humidity_high', 'vpd_low', 'vpd_high', 'humidity_notes']],
   ['Sunlight', ['light_summary', 'light_hours', 'par_low', 'par_high', 'dli_low', 'dli_high', 'light_notes']],
@@ -1791,6 +1833,9 @@ const HINTS = {
   pests_found: 'One per line, from: Spider mites, Mealybugs, Scale, Aphids, Whiteflies, Thrips, Ants, Fungus gnats, Root mealybugs, Slugs or snails, Pill bugs or earwigs, Other. The plant page has tick boxes for these.',
   npk_ratio: 'Three numbers for nitrogen, phosphate and potash, such as 3-1-2. The Fertilizer page finds your closest fertilizer.',
   fert_strength: 'How strong to mix it. The Fertilizer page works out the amount per gallon from this.',
+  zone_low: 'USDA zone, such as 9b or 10. The page compares it with the zone where you are.', zone_high: 'USDA zone, such as 11.',
+  height_ground: 'For example 6 to 10 ft.', height_pot: 'For example 3 to 5 ft.', propagation: 'One method per line.',
+  sources: 'One per line: a title, a | and the web address, for example "NC State Extension: Aloe vera | https://...".',
   leaf_type: 'Decides which pest treatments suit it before it comes inside.', pot_size: 'Whether the pot can be soaked in a bucket or tub.', health_steps: 'One step per line, in order.', indoor_setup: 'One item per line.',
 };
 const rangeOf = n => (META.int_ranges && META.int_ranges[n]) || (META.num_ranges && META.num_ranges[n]) || [-60, 150];

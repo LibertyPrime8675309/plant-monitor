@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.14.0 (2026-10-25)
+- **About this plant**, a new section on every plant page, after Identification. For all 81 plants it gives:
+  - type of plant (tree, shrub, vine, succulent and so on) and its classification: kingdom, order, family, genus and species;
+  - mature height and width in the ground and in a pot, growth rate and lifespan;
+  - USDA hardiness zones, and whether it is hardy where you are. Round Rock works out to **zone 9a** from your own weather history (a coldest night of about 22°F in a usual winter), and is on the line between 8b and 9a on the 2023 USDA map;
+  - native range around the world, conservation status (IUCN Red List and CITES where they apply) and invasive risk;
+  - flowers, fruit (and whether it is edible), and propagation, step by step;
+  - dangers to people and to pets, in their own box with the Poison Control and ASPCA numbers.
+- **Sources with links** under every plant: the extension services, botanic gardens and references the details came from. They open in a new tab.
+- Where a plant's identification is less than 85% sure, the section says the details are for the closest match.
+- Everything here can be changed with **Edit**, under "About this plant". The update only fills fields that are empty, so nothing you typed is replaced.
+
 ## 1.13.1 (2026-10-24)
 - **Rooms and shelves** on the Grow lights page. Your rooms and shelves are listed, ready to use:
   - Downstairs Living Room: Tall Black Shelf, Tall Brown Shelf, Short Brown Shelf, Large Brown Hutch and Side Table

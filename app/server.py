@@ -90,6 +90,17 @@ FIELDS = [
     ('leaf_type', 'enum', 'Leaf type'), ('pot_size', 'enum', 'Pot size'), ('pests_found', 'list', 'Pests you found'),
     # ---- added in 1.11.0: the fertilizer this plant needs, for matching it to the fertilizers you have
     ('npk_ratio', 'text', 'Fertilizer ratio needed (N-P-K)'), ('fert_strength', 'enum', 'Fertilizer strength'),
+    # ---- added in 1.14.0: more about the plant itself (About this plant on its page), with sources
+    ('growth_habit', 'text', 'Type of plant'), ('kingdom', 'text', 'Kingdom'), ('taxon_order', 'text', 'Order'),
+    ('family', 'text', 'Family'), ('genus', 'text', 'Genus'),
+    ('height_ground', 'text', 'Mature height in the ground'), ('width_ground', 'text', 'Mature width in the ground'),
+    ('height_pot', 'text', 'Mature height in a pot'), ('width_pot', 'text', 'Mature width in a pot'),
+    ('growth_rate', 'text', 'Growth rate'), ('lifespan', 'text', 'Lifespan'),
+    ('zone_low', 'text', 'Hardiness zone, coldest (USDA)'), ('zone_high', 'text', 'Hardiness zone, warmest (USDA)'), ('zone_notes', 'long', 'Hardiness notes'),
+    ('native_range', 'long', 'Native range'), ('conservation_status', 'long', 'Conservation status'), ('invasive', 'long', 'Invasive risk'),
+    ('bloom', 'long', 'Flowers'), ('fruit', 'long', 'Fruit'),
+    ('danger_humans', 'long', 'Dangers to people'), ('danger_animals', 'long', 'Dangers to pets and other animals'),
+    ('propagation', 'list', 'Propagation'), ('sources', 'list', 'Sources'),
 ]
 ENUMS = {'winter_plan': WINTER_PLANS, 'site': SITES, 'health_rating': HEALTH, 'leaf_type': LEAF_TYPES, 'pot_size': POT_SIZES, 'fert_strength': FERT_STRENGTHS}
 OPTIONAL_ENUMS = ('leaf_type', 'pot_size', 'fert_strength')        # may be left as "Not set"
@@ -805,7 +816,7 @@ def meta():
                            'photos': c.execute('SELECT COUNT(*) FROM photos').fetchone()[0]},
                    password_protected=bool(PASSWORD), int_ranges=INT_RANGES, num_ranges=NUM_RANGES, version=APP_VERSION,
                    home_tz=L['tz'],              # the browser uses this for "today", so dates match the server's
-                   place=place_brief(L), climate=place_climate(c, L), me=me_dict(c), runs_as=runs_as(),
+                   place=place_brief(L), climate=place_climate(c, L), zone=place_zone(c, L), me=me_dict(c), runs_as=runs_as(),
                    places=[place_brief(loc_dict(r)) for r in c.execute('SELECT * FROM locations ORDER BY is_home DESC, name')])
 
 REF_PLACE = (30.5083, -97.6789)       # the written winter reference (climate table and notes) is for Round Rock, TX
@@ -1899,6 +1910,30 @@ def location(c):
     return loc_get(c)
 
 PLACE_CLIMATE = {}
+USDA_MAP_URL = 'https://planthardiness.ars.usda.gov/'
+
+def usda_zone(f):
+    """USDA hardiness zone for an average yearly coldest night (F): zone 1a starts at -60 F, each half zone is 5 F."""
+    if f is None: return None
+    n = math.floor((f + 60) / 5)
+    if n < 0: return '1a'
+    if n > 25: return '13b'
+    return '%d%s' % (n // 2 + 1, 'ab'[n % 2])
+
+def zone_num(z):
+    """'9a' -> 9.0, '9b' -> 9.5, '10' -> 10.0; None if it is not a zone."""
+    m = re.match(r'^\s*(\d{1,2})\s*([ab])?\s*$', str(z or ''), re.I)
+    return int(m.group(1)) + (0.5 if (m.group(2) or '').lower() == 'b' else 0.0) if m else None
+
+def place_zone(c, L):
+    """1.14.0: the hardiness zone where the plants are, from the place's own weather history (the average of each winter's
+    coldest night, which is how the USDA defines zones), and for the Round Rock area the 2023 USDA map's zone too."""
+    cl = place_climate(c, L)
+    near_ref = L.get('lat') is not None and abs(L['lat'] - REF_PLACE[0]) < 0.25 and abs(L['lon'] - REF_PLACE[1]) < 0.25
+    return {'zone': usda_zone(cl['winter_low']) if cl else None, 'winter_low': cl['winter_low'] if cl else None, 'years': cl['years'] if cl else 0,
+            'map_zone': '8b to 9a' if near_ref else None, 'map_note': 'Round Rock is on the line between zones 8b and 9a on the 2023 USDA map.' if near_ref else None,
+            'map_url': USDA_MAP_URL}
+
 def place_climate(c, L):
     """Typical winter cold at a place, from its daily weather history: the average of each winter's coldest night, and the
     average night in its coldest month. Needs at least 3 whole years of history; worked out at most every 6 hours."""

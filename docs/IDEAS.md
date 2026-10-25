@@ -6,9 +6,12 @@ One line each, most wanted first. A prototyping session takes the top one that i
 - Spring "move back outside" list: when the nights stay above each indoor plant's comfortable low, list the plants that can go back out. Builds on `frost_report()` and the cold-night checklist.
 - Undo right after a quick care button: "Watered" or "Still moist" pressed by mistake can be undone from the message that appears, without looking for it in the care log.
 - Large-print care card: a printable page for one plant or a group, with its photo, name, and water, light and temperature needs in big type, to keep beside the plants indoors over winter.
+- Summer heat: an AHS heat-zone style "days above 86°F" count from the weather history, next to the USDA zone on About this plant, for plants that struggle in Texas summers.
 - Sensor dashboard for the DIY plant monitor (soil moisture, temperature, light) once hardware is posting to `/api/readings`.
 
 ## Done
+1.14.0 (October 25, 2026, pull request #17): About this plant. Classification, mature size, hardiness zones with the local zone, native range, conservation status, flowers, fruit, dangers and propagation for every plant, with linked sources.
+
 1.13.0 (October 24, 2026, pull request #16): grow lights. A light library from Ethan's photos, light spots, a suggested layout matching plants to lights by daily light, and a step-down plan from outdoor to indoor light.
 
 Merged into 1.8.0 (October 23, 2026):

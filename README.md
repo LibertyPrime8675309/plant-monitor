@@ -595,6 +595,21 @@ How much light a plant gets is its **daily light (DLI)**, in mol/m² a day: the 
 
 Changes to lights, spots, rooms and shelves appear in the audit log under "Grow lights". People who can only view see everything but cannot change it.
 
+## About this plant (from 1.14.0)
+
+Every plant page has an **About this plant** section after Identification (also in the jump row and the "On this page" menu):
+
+- **Type of plant and classification:** for example "Evergreen tropical tree", then kingdom, order, family, genus and species.
+- **Mature size:** a table of height and width in the ground and in a pot, plus growth rate and lifespan.
+- **Hardiness zones (USDA):** the coldest and warmest zones it grows in outdoors all year, and a line saying **✓ Hardy here** or **▼ Not hardy here** with how much colder a usual winter is than the plant can take. Your zone comes from the weather history the app keeps for your place: the average of each winter's coldest night, which is how the USDA defines zones. For Round Rock that is about 22°F, zone 9a. The 2023 USDA map puts Round Rock on the line between 8b and 9a; the link opens the map so you can look up a ZIP code. Annual plants have no zone.
+- **Native range, conservation status and invasive risk.** Conservation status is the IUCN Red List category where Claude could confirm one, and notes CITES (which only controls international trade, not growing a plant at home).
+- **Flowers and fruit,** including whether the fruit is edible.
+- **Dangers** to people and to pets, in a box with the Poison Control number (1-800-222-1222) and the ASPCA Animal Poison Control Center (888-426-4435).
+- **Propagation,** as numbered steps.
+- **Sources and further reading:** links to the pages the details came from. They open in a new tab.
+
+If the identification is less than 85% sure, a note says the details are for the closest match. Change anything with **Edit**, under "About this plant". In the **Sources** field, put one source per line as `Title | https://link`, and it shows as a link.
+
 ## Audit log (from 1.10.0)
 
 The **Audit log** page (in the menu bar; it used to be called Change log) lists every change to every record, newest first: edits to plant pages, plants added or archived, photos added, moved or removed, feeding and care, requests and answers, the "Still to photograph" list, settings and backups. Each change shows when, which plant (with a link), who, what changed, and the value before and after.
