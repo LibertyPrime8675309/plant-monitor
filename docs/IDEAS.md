@@ -11,7 +11,7 @@ One line each, most wanted first. A prototyping session takes the top one that i
 - Sensor dashboard for the DIY plant monitor (soil moisture, temperature, light) once hardware is posting to `/api/readings`.
 
 ## Done
-1.14.1 (October 25, 2026, pull request #18): swipe between plants on phones, and every part of a plant page in the section menu and the row of section buttons.
+1.14.1 (October 25, 2026, pull request #19): swipe between plants on phones, and every part of a plant page in the section menu and the row of section buttons.
 1.14.0 (October 25, 2026, pull request #17): About this plant. Classification, mature size, hardiness zones with the local zone, native range, conservation status, flowers, fruit, dangers and propagation for every plant, with linked sources.
 
 1.13.0 (October 24, 2026, pull request #16): grow lights. A light library from Ethan's photos, light spots, a suggested layout matching plants to lights by daily light, and a step-down plan from outdoor to indoor light.
