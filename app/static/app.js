@@ -3717,17 +3717,16 @@ window.addEventListener('scroll', () => { if (!pop.hidden) placePop(); }, { capt
 window.addEventListener('hashchange', hidePop);
 // ---------- calendar file: feeding days and cold nights (prototype, proto/calendar-file) ----------
 // A section at the foot of the Today, Fertilizer and Cold-night checklist pages opens a window that makes a .ics file
-// (GET /api/calendar.ics) to add to a phone, Outlook or Google calendar. The preview comes from GET /api/calendar.
-const ICS = { feed: true, cold: true, close: true, remind: true, months: 3, data: null };
-try { Object.assign(ICS, JSON.parse(localStorage.getItem('plantdb.ics') || '{}'), { data: null }); } catch (e) { /* defaults */ }
-const icsQuery = () => `feed=${ICS.feed ? 1 : 0}&cold=${ICS.cold ? 1 : 0}&close=${ICS.close ? 1 : 0}&remind=${ICS.remind ? 1 : 0}&months=${ICS.months}`;
-const icsLink = () => location.origin + '/api/calendar.ics?' + icsQuery() + '&download=0';
+// (GET /api/calendar.ics) or gives a link to subscribe to (/cal/<token>.ics). The choices are saved on the server
+// (GET/PUT /api/calendar/settings), so the file and the subscribed calendar match. The preview comes from GET /api/calendar.
+const ICS = { o: null, links: null, days: [], data: null };
 const icsSay = msg => { const s = document.getElementById('ics-status'); if (s) s.textContent = msg; };
 const ICS_PAGES = ['today', 'fertilizer', 'frost'];
+const icsTime = t => { const [h, m] = t.split(':').map(Number); return new Date(2000, 0, 1, h, m).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
 function icsSection() {
   return html`<section class="blk noprint" id="ics-box"><h2>Add to your calendar</h2>
-    <p>Put feeding days and cold nights in the calendar on your phone or in Outlook, with a reminder, so you hear about them without opening Plant record.</p>
-    <p><button class="btn" type="button" data-act="icsopen">Make a calendar file</button></p></section>`;
+    <p>Put feeding days and cold nights in the calendar on your phone or computer, with a reminder, so you hear about them without opening Plant record.</p>
+    <p><button class="btn" type="button" data-act="icsopen">Set up your calendar</button></p></section>`;
 }
 new MutationObserver(() => {
   const page = (location.hash.replace(/^#\/?/, '').split('/')[0]) || '';
@@ -3736,74 +3735,126 @@ new MutationObserver(() => {
 }).observe(app, { childList: true });
 function icsPreview(D) {
   if (!D) return html`<p class="loading">Working out the dates</p>`;
-  const n = D.counts, list = D.events.slice(0, 8);
-  const what = [];
-  if (ICS.feed) what.push(`${n.feed} feeding day${n.feed === 1 ? '' : 's'} up to ${midDay(D.until)}`);
-  if (ICS.cold) what.push(`${n.cold} cold night${n.cold === 1 ? '' : 's'} in the 7-day forecast`);
+  const o = ICS.o, n = D.counts, list = D.events.slice(0, 8), what = [];
+  if (o.feed) what.push(`${n.feed} ${o.weekly ? 'weekly feeding day' : 'feeding day'}${n.feed === 1 ? '' : 's'} up to ${midDay(D.until)}`);
+  if (o.cold) what.push(`${n.cold} cold night${n.cold === 1 ? '' : 's'} in the 7-day forecast`);
   if (!what.length) return html`<p class="notice bad">Choose feeding days, cold nights or both.</p>`;
-  return html`<p><strong>The file will have ${what.join(' and ')}</strong>, for ${D.place}.</p>
+  const rem = [o.feed && o.feed_remind ? `at ${icsTime(o.feed_at)} on feeding days` : '', o.cold && o.cold_remind ? `at ${icsTime(o.cold_at)} the day before a cold night` : ''].filter(Boolean);
+  return html`<p><strong>Your calendar will have ${what.join(' and ')}</strong>, for ${D.place}.${rem.length ? ' Reminders ' + rem.join(' and ') + '.' : ' No reminders.'}</p>
     ${list.length ? html`<ul class="ics-list">${list.map(e => html`<li><span class="ics-k ${e.kind === 'cold' ? 'k-cold' : 'k-feed'}">${e.kind === 'cold' ? '❄ Cold night' : '● Feeding'}</span>
       <span><b>${e.kind === 'cold' ? 'Night before ' + midDay(e.date) : midDay(e.date)}</b><br>${e.title}</span></li>`)}</ul>
       ${D.events.length > list.length ? html`<p class="hint">And ${D.events.length - list.length} more.</p>` : ''}`
-      : html`<p class="notice ok">Nothing to add right now${ICS.cold && !ICS.feed ? ': no cold nights in the forecast' : ''}.</p>`}`;
+      : html`<p class="notice ok">Nothing to add right now${o.cold && !o.feed ? ': no cold nights in the forecast' : ''}.</p>`}`;
 }
 async function icsLoad() {
-  try { ICS.data = await api('GET', '/api/calendar?' + icsQuery()); }
-  catch (e) { const b = document.getElementById('ics-prev'); if (b) b.innerHTML = rend(html`<p class="notice bad">Could not work out the dates: ${e.message}</p>`); return; }
-  const b = document.getElementById('ics-prev'); if (b) b.innerHTML = rend(icsPreview(ICS.data));
+  const b = document.getElementById('ics-prev');
+  try { ICS.data = await api('GET', '/api/calendar'); }
+  catch (e) { if (b) b.innerHTML = rend(html`<p class="notice bad">Could not work out the dates: ${e.message}</p>`); return; }
+  ICS.links = ICS.data.links;
+  if (b) b.innerHTML = rend(icsPreview(ICS.data));
+  icsPaintLink();
+}
+const icsLink = () => (ICS.links && (ICS.links.public || ICS.links.local)) || '';
+function icsPaintLink() {
   const l = document.getElementById('ics-link'); if (l) l.value = icsLink();
+  const w = document.getElementById('ics-linkwhere');
+  if (w) w.textContent = ICS.links && ICS.links.public ? 'This link uses the internet address below, so calendar services such as Google and Outlook.com can reach it.'
+    : 'This link only works on your home network until the internet address below is filled in. Google Calendar, Outlook.com and iCloud need that address.';
+}
+const ck = (k) => ICS.o[k] ? raw('checked') : '';
+function icsForm() {
+  const o = ICS.o;
+  return html`<form method="dialog" class="ics"><h2>Add to your calendar</h2>
+    <p>Your feeding days and cold nights as calendar events. Subscribe to keep them up to date by themselves, or save a file to add them once.</p>
+    <fieldset><legend>What to put in it</legend>
+      <label class="chk"><input type="checkbox" data-act="icsopt" name="feed" autofocus ${ck('feed')}> Feeding days</label>
+      <label class="chk"><input type="checkbox" data-act="icsopt" name="cold" ${ck('cold')}> Cold nights that would hurt plants that are outside (6 in the evening to 8 the next morning)</label>
+      <label class="chk"><input type="checkbox" data-act="icsopt" name="close" ${ck('close')}> Include close calls (a night within a few degrees of a plant's damage point)</label>
+    </fieldset>
+    <fieldset><legend>Feeding days</legend>
+      <label class="chk"><input type="radio" data-act="icsopt" name="weekly" value="1" ${o.weekly ? raw('checked') : ''}> One feeding day a week, listing every plant due around then</label>
+      <label class="f ics-sub">Day of the week<select data-act="icsopt" name="day">${ICS.days.map((d, i) => html`<option value="${i}" ${o.day === i ? raw('selected') : ''}>${d}</option>`)}</select></label>
+      <label class="chk"><input type="radio" data-act="icsopt" name="weekly" value="0" ${o.weekly ? '' : raw('checked')}> Each day a plant is due, following its own schedule</label>
+      <label class="f">How far ahead to list feeding days<select data-act="icsopt" name="months">
+        ${[1, 3, 6, 12].map(m => html`<option value="${m}" ${o.months === m ? raw('selected') : ''}>${m} month${m === 1 ? '' : 's'}</option>`)}</select></label>
+    </fieldset>
+    <fieldset><legend>Reminders</legend>
+      <div class="ics-rem"><label class="chk"><input type="checkbox" data-act="icsopt" name="feed_remind" ${ck('feed_remind')}> On feeding days</label>
+        <label class="f">Time<input type="time" data-act="icsopt" name="feed_at" value="${o.feed_at}" required></label></div>
+      <div class="ics-rem"><label class="chk"><input type="checkbox" data-act="icsopt" name="cold_remind" ${ck('cold_remind')}> The day before a cold night</label>
+        <label class="f">Time<input type="time" data-act="icsopt" name="cold_at" value="${o.cold_at}" required></label></div>
+      <p class="hint">Apple Calendar, Outlook and Samsung Calendar use these times. Google Calendar uses its own reminder settings for a subscribed calendar: on a computer, open Google Calendar's Settings, choose Plant record under "Other calendars" and set its notifications there.</p>
+    </fieldset>
+    <div id="ics-prev" class="ics-prev" aria-live="polite">${icsPreview(null)}</div>
+    <p id="ics-status" class="fc-status" role="status" aria-live="polite"></p>
+    <section class="ics-part"><h3>Subscribe (updates by itself)</h3>
+      <p>Your calendar checks this link now and then (Apple and Outlook every few hours, Google about once a day) and picks up new feeding days and cold nights. Your PC needs to be on for that; while it is off, the calendar keeps what it last saw.</p>
+      <label class="f">Calendar link<input type="text" id="ics-link" readonly value="${icsLink()}" spellcheck="false"></label>
+      <p class="hint" id="ics-linkwhere"></p>
+      <div class="row"><button class="btn" type="button" data-act="icscopy">Copy calendar link</button><button class="btn ghost" type="button" data-act="icsnewlink">Make a new link</button></div>
+      <p class="hint">Anyone with the link can see your feeding days and cold nights (not the rest of Plant record), so keep it private. Make a new link stops the old one working.</p>
+      <label class="f">Internet address of this PC<input type="url" id="ics-pub" value="${o.public_base}" placeholder="https://my-pc.example.ts.net" spellcheck="false" autocomplete="off"></label>
+      <p><button class="btn small ghost" type="button" data-act="icspub">Save address</button></p>
+      <details class="ics-how"><summary>How to subscribe in each calendar</summary>
+        <ul><li><b>Google Calendar</b> (also shows in Samsung Calendar when your Google account syncs to it): on a computer, open calendar.google.com, press the plus next to "Other calendars", choose From URL, paste the link and press Add calendar.</li>
+          <li><b>Apple Calendar on iPhone:</b> Settings, Apps, Calendar, Calendar Accounts, Add Account, Other, Add Subscribed Calendar, then paste the link.</li>
+          <li><b>Outlook</b> (Outlook.com or the new Outlook on the PC): Add calendar, Subscribe from web, paste the link and press Import. Outlook on your phone then shows it too.</li>
+          <li><b>Samsung Calendar</b> on its own: it shows calendars from your Google or Samsung account, so subscribe in Google Calendar as above.</li></ul></details>
+    </section>
+    <section class="ics-part"><h3>Or save a file</h3>
+      <p>Adds the events as they are today. It does not update, so save a new one now and then.</p>
+      <p><button class="btn ghost" type="button" data-act="icssave">Save calendar file</button></p></section>
+    <div class="row"><button class="btn ghost" value="close">Close</button></div>
+  </form>`;
 }
 async function icsDialog() {
+  try { const r = await api('GET', '/api/calendar/settings'); ICS.o = r.options; ICS.links = r.links; ICS.days = r.days; }
+  catch (e) { toast('Could not open the calendar choices: ' + e.message, true); return; }
   ICS.data = null;
-  const p = modal(html`<form method="dialog" class="ics"><h2>Add to your calendar</h2>
-    <p>A calendar file holds your plant jobs as calendar events. Open it on your phone or in Outlook and they are added to your calendar.</p>
-    <fieldset><legend>What to put in it</legend>
-      <label class="chk"><input type="checkbox" data-act="icsopt" name="feed" autofocus ${ICS.feed ? raw('checked') : ''}> Feeding days (one event a day, listing the plants due)</label>
-      <label class="chk"><input type="checkbox" data-act="icsopt" name="cold" ${ICS.cold ? raw('checked') : ''}> Cold nights that would hurt plants that are outside (from 6 in the evening)</label>
-      <label class="chk"><input type="checkbox" data-act="icsopt" name="close" ${ICS.close ? raw('checked') : ''}> Include close calls (a night within a few degrees of a plant's damage point)</label>
-      <label class="chk"><input type="checkbox" data-act="icsopt" name="remind" ${ICS.remind ? raw('checked') : ''}> Remind me: 8 in the morning on feeding days, 4 in the afternoon before a cold night</label>
-    </fieldset>
-    <label class="f">How far ahead to list feeding days<select data-act="icsopt" name="months">
-      ${[1, 3, 6, 12].map(m => html`<option value="${m}" ${ICS.months === m ? raw('selected') : ''}>${m} month${m === 1 ? '' : 's'}</option>`)}</select></label>
-    <div id="ics-prev" class="ics-prev" aria-live="polite">${icsPreview(null)}</div>
-    <div class="row"><button class="btn" type="button" data-act="icssave">Save calendar file</button><button class="btn ghost" value="close">Close</button></div>
-    <p id="ics-status" class="fc-status" role="status" aria-live="polite"></p>
-    <details class="ics-how"><summary>How to add the file to your calendar</summary>
-      <ul><li><b>iPhone:</b> open Plant record in Safari and press Save calendar file, then Add All. Or send the file to yourself and tap it.</li>
-        <li><b>Android:</b> open the saved file from Downloads and choose your calendar app.</li>
-        <li><b>Outlook on this PC:</b> open the file from your Downloads folder (double-click it) and choose Import or Save and close.</li>
-        <li><b>Google Calendar:</b> on a computer, go to Settings, Import and export, choose the file and press Import.</li></ul>
-      <p>Saving the file again later replaces the same days rather than adding copies in most calendars. Cold nights come from the 7-day forecast, so save a new file every few days in autumn and winter.</p></details>
-    <details class="ics-how"><summary>Keep it up to date by itself (subscribe)</summary>
-      <p>Some calendar apps can check this link every few hours and pick up new feeding days and cold nights. It only works for a calendar on this PC or on a phone on your home Wi-Fi that can reach this PC. Google Calendar and Outlook.com fetch it from the internet and cannot reach it.</p>
-      <label class="f">Calendar link<input type="text" id="ics-link" readonly value="${icsLink()}" spellcheck="false"></label>
-      <p><button class="btn small ghost" type="button" data-act="icscopy">Copy calendar link</button></p>
-      <p class="hint">In Outlook on this PC: Add calendar, From internet, then paste the link. The link uses your home location.</p></details>
-  </form>`, 'ics-dlg');
-  icsLoad();
+  const p = modal(icsForm(), 'ics-dlg');
+  icsPaintLink(); icsLoad();
   await p;
 }
-function icsKeep() { try { const { data, ...o } = ICS; localStorage.setItem('plantdb.ics', JSON.stringify(o)); } catch (e) { /* this visit only */ } }
+async function icsPut(change, msg) {
+  try { const r = await api('PUT', '/api/calendar/settings', change); ICS.o = r.options; ICS.links = r.links; }
+  catch (e) { icsSay('Not saved: ' + e.message); return false; }
+  icsSay(msg || 'Saved. Your subscribed calendar picks this up the next time it checks.');
+  icsLoad();
+  return true;
+}
 Object.assign(acts, {
   icsopen() { icsDialog(); },
   icssave() {
-    if (!ICS.feed && !ICS.cold) { icsSay('Choose feeding days, cold nights or both first.'); return; }
+    if (!ICS.o.feed && !ICS.o.cold) { icsSay('Choose feeding days, cold nights or both first.'); return; }
     const a = document.createElement('a');
-    a.href = '/api/calendar.ics?' + icsQuery() + (PLACE ? '&place=' + enc(PLACE) : ''); a.download = ''; document.body.appendChild(a); a.click(); a.remove();
-    icsSay('Saved to your Downloads folder. Open it to add the events to your calendar; the steps are under "How to add the file to your calendar" below.');
+    a.href = '/api/calendar.ics' + (PLACE ? '?place=' + enc(PLACE) : ''); a.download = ''; document.body.appendChild(a); a.click(); a.remove();
+    icsSay('Saved to your Downloads folder. Open it to add the events to your calendar.');
   },
   async icscopy() {
     const t = document.getElementById('ics-link'); if (!t) return;
     let ok = false;
     try { await navigator.clipboard.writeText(t.value); ok = true; }
     catch (e) { t.focus(); t.select(); try { ok = document.execCommand('copy'); } catch (e2) { ok = false; } }
-    icsSay(ok ? 'Link copied. Paste it into your calendar app.' : 'This browser would not copy it. The link is selected: press Ctrl+C to copy it.');
+    icsSay(ok ? 'Link copied. Paste it into your calendar app; "How to subscribe in each calendar" has the steps.' : 'This browser would not copy it. The link is selected: press Ctrl+C to copy it.');
+  },
+  async icsnewlink() {
+    try { const r = await api('POST', '/api/calendar/new-link'); ICS.links = r.links; }
+    catch (e) { icsSay('No new link made: ' + e.message); return; }
+    icsPaintLink(); icsSay('New link made. The old one has stopped working, so subscribe again with this one.');
+  },
+  async icspub() {
+    const v = (document.getElementById('ics-pub') || {}).value || '';
+    if (await icsPut({ public_base: v.trim() }, v.trim() ? 'Address saved. The calendar link now uses it.' : 'Address removed. The link only works on your home network now.')) icsPaintLink();
   },
 });
 Object.assign(changeActs, {
   icsopt(el) {
-    if (el.name === 'months') ICS.months = +el.value; else ICS[el.name] = el.checked;
-    icsKeep(); icsLoad();
+    let v;
+    if (el.type === 'checkbox') v = el.checked;
+    else if (el.type === 'radio') v = el.value === '1';
+    else if (el.type === 'time') { if (!el.value) return; v = el.value; }
+    else v = +el.value;
+    icsPut({ [el.name]: v });
   },
 });
 

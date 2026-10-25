@@ -448,6 +448,8 @@ def guard():
         tok = setting(db(), 'ingest_token', '')
         if not tok or not hmac.compare_digest(request.headers.get('X-Ingest-Token', ''), tok): abort(403, 'missing or wrong X-Ingest-Token')
         return None
+    if request.path.startswith('/cal/') and request.method in ('GET', 'HEAD'):
+        return None                  # the subscribed calendar: calendar services cannot type a password, so its link carries a private token instead
     if PASSWORD:
         a = request.authorization
         if not (a and hmac.compare_digest(a.password or '', PASSWORD)):
@@ -3208,11 +3210,16 @@ def frost_mark():
     return jsonify(frost_report(c))
 
 # ---------------------------------------------------------------- calendar file: feeding days and cold nights (prototype, proto/calendar-file)
-# GET /api/calendar.ics makes an iCalendar file to import into a phone, Outlook or Google calendar, or to subscribe to.
-# GET /api/calendar gives the same events as JSON, for the preview in the "Add to your calendar" window.
-# Options (query string): feed=1/0, cold=1/0, close=1/0 (include close calls), months=1..12 (how far ahead feeding days go),
-# remind=1/0, place=ID (the Location chosen in the browser; a download link cannot send the X-Place header).
+# GET /api/calendar.ics makes an iCalendar file to import into a phone, Outlook or Google calendar.
+# GET /cal/<token>.ics is the same calendar for subscribing: it needs no password, only the private token in the link, so a
+# calendar service on the internet can fetch it (guard() lets /cal/ through; the token is checked here).
+# GET /api/calendar gives the events as JSON, for the preview in the "Add to your calendar" window.
+# The choices are kept in settings 'ics_options' (GET/PUT /api/calendar/settings), so the file and the subscribed
+# calendar always match the window. Query arguments of the same names override them for one request (used by the tests).
 ICS_NAME = 'Plant record'
+ICS_DEFAULTS = {'feed': True, 'cold': True, 'close': True, 'months': 3, 'weekly': True, 'day': 5,      # day: 0 = Monday ... 5 = Saturday
+                'feed_remind': True, 'feed_at': '08:00', 'cold_remind': True, 'cold_at': '16:00', 'public_base': ''}
+ICS_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 def ics_text(s):
     """Escape text for an iCalendar value (RFC 5545 section 3.3.11)."""
@@ -3242,31 +3249,72 @@ def ics_season_start(r, d):
         d = (d.replace(day=1) + timedelta(days=32)).replace(day=1)
     return d
 
-def ics_feed_days(c, today, end):
+def ics_feed_days(c, today, end, weekday=None):
     """Projected feeding days per plant, the same way the Fertilizer page works out "Next feeding" (nextDue() in app.js),
-    then every "Feed every (days)" after that, skipping the resting months. Later dates assume each feeding is done on time."""
+    then every "Feed every (days)" after that, skipping the resting months. Later dates assume each feeding is done on time.
+    With a weekday (0 = Monday), each feeding moves to the nearest feeding day of the week (never one already past), and
+    the next one is counted from that day, since that is when the plant will be fed."""
     last = dict(c.execute('SELECT plant_code, MAX(applied_on) FROM fertilizer_log GROUP BY plant_code').fetchall())
     rows = c.execute("""SELECT code, common_name, fert_from_month, fert_to_month, fert_every_days, site FROM plants WHERE status='active'
                         AND fert_from_month IS NOT NULL AND fert_to_month IS NOT NULL AND fert_every_days IS NOT NULL ORDER BY code""").fetchall()
+    first = today + timedelta(days=(weekday - today.weekday()) % 7) if weekday is not None else today
+    def snap(d):
+        if weekday is None: return d
+        back = d - timedelta(days=(d.weekday() - weekday) % 7)                  # the feeding day on or before d
+        s = back if (d - back).days < 4 else back + timedelta(days=7)          # the nearest one; 3.5 days either way
+        return max(s, first)
     days = {}
     for r in rows:
         every = max(1, int(r['fert_every_days']))
         lf = last.get(r['code'])
         d = date.fromisoformat(lf) + timedelta(days=every) if lf else today
         if d < today: d = today
-        d = ics_season_start(r, d)
         for _ in range(400):
+            d = snap(ics_season_start(r, d))
+            while not ics_season(r, d.month): d += timedelta(days=7)          # snapped back across the start of the season
             if d > end: break
             days.setdefault(d.isoformat(), []).append({'code': r['code'], 'name': r['common_name'], 'every': every, 'last': lf})
-            d = ics_season_start(r, d + timedelta(days=every))
+            d = d + timedelta(days=every)
     return [{'date': k, 'plants': v} for k, v in sorted(days.items())]
 
-def ics_options():
-    a = request.args
-    on = lambda k, dflt: a.get(k, dflt) not in ('0', 'false', 'no', '')
-    try: months = min(12, max(1, int(a.get('months', '3'))))
-    except ValueError: abort(400, 'months must be a number from 1 to 12')
-    return {'feed': on('feed', '1'), 'cold': on('cold', '1'), 'close': on('close', '1'), 'remind': on('remind', '1'), 'months': months}
+def ics_clean(o):
+    """Check and fill in a set of choices; anything missing or wrong falls back to the default."""
+    out = dict(ICS_DEFAULTS)
+    for k, v in (o or {}).items():
+        if k not in ICS_DEFAULTS: continue
+        d = ICS_DEFAULTS[k]
+        if isinstance(d, bool): out[k] = v if isinstance(v, bool) else str(v).lower() not in ('0', 'false', 'no', '')
+        elif k == 'months':
+            try: out[k] = min(12, max(1, int(v)))
+            except (TypeError, ValueError): abort(400, 'How far ahead must be a number of months from 1 to 12')
+        elif k == 'day':
+            try: out[k] = int(v) % 7
+            except (TypeError, ValueError): abort(400, 'The feeding day must be a day of the week')
+        elif k in ('feed_at', 'cold_at'):
+            if not re.match(r'^([01]\d|2[0-3]):[0-5]\d$', str(v)): abort(400, 'Reminder times look like 08:00 or 16:30')
+            out[k] = str(v)
+        elif k == 'public_base':
+            v = str(v or '').strip().rstrip('/')
+            if v and not re.match(r'^https?://[A-Za-z0-9.\-]+(:\d+)?(/[\w.\-/]*)?$', v): abort(400, 'The internet address should look like https://my-pc.example.ts.net')
+            out[k] = v
+    return out
+
+def ics_saved(c):
+    try: return ics_clean(json.loads(setting(c, 'ics_options', '{}') or '{}'))
+    except ValueError: return dict(ICS_DEFAULTS)
+
+def ics_options(c):
+    """The saved choices, with any query arguments of the same names on top."""
+    o = ics_saved(c)
+    over = {k: request.args[k] for k in ICS_DEFAULTS if k in request.args and k != 'public_base'}
+    if 'remind' in request.args: over['feed_remind'] = over['cold_remind'] = request.args['remind']     # older one-switch form
+    return ics_clean({**o, **over}) if over else o
+
+def ics_token(c):
+    t = setting(c, 'ics_token')
+    if not t:
+        t = secrets.token_urlsafe(18); set_setting(c, 'ics_token', t); c.commit()
+    return t
 
 def ics_use_place():
     """?place=ID works like the X-Place header (see location()), for links that cannot send headers."""
@@ -3282,13 +3330,16 @@ def ics_events(c, o):
     end = today + timedelta(days=round(30.5 * o['months']))
     ev = []
     if o['feed']:
-        for f in ics_feed_days(c, today, end):
+        weekly = o['weekly']
+        for f in ics_feed_days(c, today, end, o['day'] if weekly else None):
             ps = f['plants']; n = len(ps)
-            title = f'Feed {n} plant{"s" if n != 1 else ""}: ' + ', '.join(p['name'] for p in ps[:3]) + (f' and {n - 3} more' if n > 3 else '')
+            names = ', '.join(p['name'] for p in ps[:3]) + (f' and {n - 3} more' if n > 3 else '')
+            title = (f'Feeding day: {n} plant{"s" if n != 1 else ""} ({names})' if weekly
+                     else f'Feed {n} plant{"s" if n != 1 else ""}: {names}')
             lines = [f'{p["name"]} ({p["code"]}), every {p["every"]} days.' + (f' Last fed {p["last"]}.' if p['last'] else ' No feeding logged yet.') for p in ps]
-            desc = ('Plants due for fertilizer on this day, from Plant record.\n\n' + '\n'.join(lines) +
+            desc = (('Your weekly feeding day. These plants are due around now' if weekly else 'Plants due for fertilizer on this day') + ', from Plant record.\n\n' + '\n'.join(lines) +
                     '\n\nOpen the Fertilizer page that morning before you feed: it says "Hold off" when a cold night is coming or a plant is unwell.'
-                    ' Later dates assume each feeding is done on the day it is due, so download a new file after you log feedings.')
+                    ' Later dates assume each feeding is done on the day shown.')
             ev.append({'kind': 'feed', 'uid': f'feed-{f["date"]}', 'date': f['date'], 'title': title, 'desc': desc,
                        'plants': [p['code'] for p in ps], 'path': '#/fertilizer'})
     if o['cold']:
@@ -3311,7 +3362,7 @@ def ics_events(c, o):
                 if g: lines.append(words[lv] + ': ' + ', '.join(f'{x["name"]} ({x["code"]})' for x in g) + '.')
             desc = (f'Forecast low of {round(n["low"])}°F before dawn on {d:%A}, {d:%B} {d.day}, in {F["place"]}. These plants are outside:\n\n' + '\n'.join(lines) +
                     f'\n\nMove them in or cover them before dark, then tick them off on the cold-night checklist.'
-                    f' "Close call" means within {F["margin"]}°F of the plant\'s damage point. This comes from the forecast of {datetime.now(tz):%B} {datetime.now(tz).day}; forecasts change, so download a new file now and then.')
+                    f' "Close call" means within {F["margin"]}°F of the plant\'s damage point. This comes from the forecast of {datetime.now(tz):%B} {datetime.now(tz).day}; forecasts change, so a subscribed calendar is the way to keep this current.')
             ev.append({'kind': 'cold', 'uid': f'cold-{n["date"]}', 'date': n['date'], 'title': title, 'desc': desc, 'level': n['level'] if serious else 'watch',
                        'start': start.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ'), 'end': stop.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ'),
                        'plants': [x['code'] for x in at], 'path': '#/frost'})
@@ -3319,16 +3370,11 @@ def ics_events(c, o):
     return {'place': L['name'], 'place_id': L['id'], 'today': today.isoformat(), 'until': end.isoformat(), 'options': o, 'events': ev,
             'counts': {'feed': sum(1 for e in ev if e['kind'] == 'feed'), 'cold': sum(1 for e in ev if e['kind'] == 'cold')}}
 
-@app.route('/api/calendar')
-def calendar_preview():
-    return jsonify(ics_events(db(), ics_options()))
-
-@app.route('/api/calendar.ics')
-def calendar_ics():
-    c = db(); o = ics_options(); E = ics_events(c, o)
-    base = request.host_url.rstrip('/') + '/'
+def ics_body(c, o, E, base):
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')
     host = 'plant-record-' + str(E['place_id'])
+    tz = tzinfo(location(c)['tz'])
+    fh, fm = map(int, o['feed_at'].split(':')); ch, cm = map(int, o['cold_at'].split(':'))
     out = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Plant record//Calendar file ' + APP_VERSION + '//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
            'X-WR-CALNAME:' + ics_text(ICS_NAME), 'X-WR-CALDESC:' + ics_text('Feeding days and cold nights for ' + E['place']),
            'REFRESH-INTERVAL;VALUE=DURATION:PT6H', 'X-PUBLISHED-TTL:PT6H']
@@ -3341,18 +3387,73 @@ def calendar_ics():
         else:
             out += ['DTSTART:' + e['start'], 'DTEND:' + e['end'], 'TRANSP:TRANSPARENT', 'CATEGORIES:Plants,Cold night']
         out += ['SUMMARY:' + ics_text(e['title']), 'DESCRIPTION:' + ics_text(e['desc'] + '\n\n' + base + e['path']), 'URL:' + base + e['path']]
-        if o['remind']:
-            # feeding: 8 in the morning of the day; cold night: at 4 in the afternoon, two hours before the event starts at 6
-            trig = 'TRIGGER;RELATED=START:PT8H' if e['kind'] == 'feed' else 'TRIGGER:-PT2H'
-            out += ['BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + ics_text(e['title']), trig, 'END:VALARM']
+        trig = None
+        if e['kind'] == 'feed' and o['feed_remind']:
+            trig = f'TRIGGER;RELATED=START:PT{fh}H{fm}M'                     # that time on the feeding day
+        elif e['kind'] == 'cold' and o['cold_remind']:
+            d = date.fromisoformat(e['date']) - timedelta(days=1)            # that time on the day before the cold morning
+            at = datetime.combine(d, datetime.min.time(), tz).replace(hour=ch, minute=cm).astimezone(timezone.utc)
+            trig = 'TRIGGER;VALUE=DATE-TIME:' + at.strftime('%Y%m%dT%H%M%SZ')
+        if trig: out += ['BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + ics_text(e['title']), trig, 'END:VALARM']
         out.append('END:VEVENT')
     out.append('END:VCALENDAR')
-    body = '\r\n'.join(ics_fold(x) for x in out) + '\r\n'
+    return '\r\n'.join(ics_fold(x) for x in out) + '\r\n'
+
+def ics_response(body, filename=None):
     resp = Response(body, mimetype='text/calendar')
     resp.headers['Content-Type'] = 'text/calendar; charset=utf-8'
-    if request.args.get('download', '1') != '0':
-        resp.headers['Content-Disposition'] = f'attachment; filename="plant-record-calendar-{E["today"]}.ics"'
+    resp.headers['Cache-Control'] = 'no-store'
+    if filename: resp.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
     return resp
+
+def ics_links(c, o):
+    tok = ics_token(c)
+    local = setting(c, 'base_url', '') or request.host_url.rstrip('/')        # the address set for labels, when there is one
+    return {'local': f'{local}/cal/{tok}.ics', 'public': f'{o["public_base"]}/cal/{tok}.ics' if o['public_base'] else None}
+
+@app.route('/api/calendar')
+def calendar_preview():
+    c = db(); o = ics_options(c)
+    return jsonify(ics_events(c, o) | {'links': ics_links(c, o)})
+
+@app.route('/api/calendar/settings', methods=['GET', 'PUT'])
+def calendar_settings():
+    c = db()
+    if request.method == 'PUT':
+        old = ics_saved(c)
+        new = ics_clean({**old, **(request.get_json(silent=True) or {})})
+        if new != old:
+            set_setting(c, 'ics_options', json.dumps(new))
+            what = ', '.join(k for k in ICS_DEFAULTS if new[k] != old[k])
+            audit_only(c, 'setting', 'ics_options', None, None, editor(), 'Calendar choices changed: ' + what)
+            c.commit()
+    o = ics_saved(c)
+    return jsonify(options=o, links=ics_links(c, o), days=ICS_DAYS)
+
+@app.route('/api/calendar/new-link', methods=['POST'])
+def calendar_new_link():
+    c = db()
+    set_setting(c, 'ics_token', secrets.token_urlsafe(18))
+    audit_only(c, 'setting', 'ics_token', None, None, editor(), 'New calendar link made; the old one stopped working')
+    c.commit()
+    o = ics_saved(c)
+    return jsonify(options=o, links=ics_links(c, o))
+
+@app.route('/api/calendar.ics')
+def calendar_ics():
+    c = db(); o = ics_options(c); E = ics_events(c, o)
+    body = ics_body(c, o, E, request.host_url.rstrip('/') + '/')
+    return ics_response(body, None if request.args.get('download') == '0' else f'plant-record-calendar-{E["today"]}.ics')
+
+@app.route('/cal/<tok>.ics')
+def calendar_subscribed(tok):
+    """The subscribed calendar. No password (guard() lets /cal/ through), so the private token is the only key."""
+    c = db()
+    if not hmac.compare_digest(tok.encode(), ics_token(c).encode()): abort(404)
+    o = ics_saved(c)
+    E = ics_events(c, o)
+    base = (o['public_base'] if o['public_base'] and not request.host.startswith(('127.0.0.1', 'localhost')) else request.host_url.rstrip('/')) + '/'
+    return ics_response(ics_body(c, o, E, base))
 
 # ---------------------------------------------------------------- backups
 import zipfile
