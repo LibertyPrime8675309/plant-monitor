@@ -3252,17 +3252,16 @@ def ics_season_start(r, d):
 def ics_feed_days(c, today, end, weekday=None):
     """Projected feeding days per plant, the same way the Fertilizer page works out "Next feeding" (nextDue() in app.js),
     then every "Feed every (days)" after that, skipping the resting months. Later dates assume each feeding is done on time.
-    With a weekday (0 = Monday), each feeding moves to the nearest feeding day of the week (never one already past), and
-    the next one is counted from that day, since that is when the plant will be fed."""
+    With a weekday (0 = Monday), each feeding moves to the first feeding day of the week on or after the day it is due
+    (never earlier: Ethan asked that a plant is never fed too early), and the next one is counted from that day, since that
+    is when the plant will be fed."""
     last = dict(c.execute('SELECT plant_code, MAX(applied_on) FROM fertilizer_log GROUP BY plant_code').fetchall())
     rows = c.execute("""SELECT code, common_name, fert_from_month, fert_to_month, fert_every_days, site FROM plants WHERE status='active'
                         AND fert_from_month IS NOT NULL AND fert_to_month IS NOT NULL AND fert_every_days IS NOT NULL ORDER BY code""").fetchall()
     first = today + timedelta(days=(weekday - today.weekday()) % 7) if weekday is not None else today
     def snap(d):
         if weekday is None: return d
-        back = d - timedelta(days=(d.weekday() - weekday) % 7)                  # the feeding day on or before d
-        s = back if (d - back).days < 4 else back + timedelta(days=7)          # the nearest one; 3.5 days either way
-        return max(s, first)
+        return max(d + timedelta(days=(weekday - d.weekday()) % 7), first)    # the feeding day on or after d
     days = {}
     for r in rows:
         every = max(1, int(r['fert_every_days']))
@@ -3294,8 +3293,8 @@ def ics_clean(o):
             if not re.match(r'^([01]\d|2[0-3]):[0-5]\d$', str(v)): abort(400, 'Reminder times look like 08:00 or 16:30')
             out[k] = str(v)
         elif k == 'public_base':
-            v = str(v or '').strip().rstrip('/')
-            if v and not re.match(r'^https?://[A-Za-z0-9.\-]+(:\d+)?(/[\w.\-/]*)?$', v): abort(400, 'The internet address should look like https://my-pc.example.ts.net')
+            v = re.sub(r'/cal$', '', str(v or '').strip().rstrip('/'))          # a pasted link with /cal on the end still works
+            if v and not re.match(r'^https?://[A-Za-z0-9.\-]+(:\d+)?(/[\w.\-/]*)?$', v): abort(400, 'The internet address should look like https://your-pc.tail1234.ts.net:8443')
             out[k] = v
     return out
 
@@ -3337,7 +3336,7 @@ def ics_events(c, o):
             title = (f'Feeding day: {n} plant{"s" if n != 1 else ""} ({names})' if weekly
                      else f'Feed {n} plant{"s" if n != 1 else ""}: {names}')
             lines = [f'{p["name"]} ({p["code"]}), every {p["every"]} days.' + (f' Last fed {p["last"]}.' if p['last'] else ' No feeding logged yet.') for p in ps]
-            desc = (('Your weekly feeding day. These plants are due around now' if weekly else 'Plants due for fertilizer on this day') + ', from Plant record.\n\n' + '\n'.join(lines) +
+            desc = (('Your weekly feeding day. These plants are due by now' if weekly else 'Plants due for fertilizer on this day') + ', from Plant record.\n\n' + '\n'.join(lines) +
                     '\n\nOpen the Fertilizer page that morning before you feed: it says "Hold off" when a cold night is coming or a plant is unwell.'
                     ' Later dates assume each feeding is done on the day shown.')
             ev.append({'kind': 'feed', 'uid': f'feed-{f["date"]}', 'date': f['date'], 'title': title, 'desc': desc,
@@ -3386,7 +3385,7 @@ def ics_body(c, o, E, base):
                     'TRANSP:TRANSPARENT', 'CATEGORIES:Plants,Feeding']
         else:
             out += ['DTSTART:' + e['start'], 'DTEND:' + e['end'], 'TRANSP:TRANSPARENT', 'CATEGORIES:Plants,Cold night']
-        out += ['SUMMARY:' + ics_text(e['title']), 'DESCRIPTION:' + ics_text(e['desc'] + '\n\n' + base + e['path']), 'URL:' + base + e['path']]
+        out += ['SUMMARY:' + ics_text(e['title']), 'DESCRIPTION:' + ics_text(e['desc'] + ('\n\n' + base + e['path'] if base else ''))] + (['URL:' + base + e['path']] if base else [])
         trig = None
         if e['kind'] == 'feed' and o['feed_remind']:
             trig = f'TRIGGER;RELATED=START:PT{fh}H{fm}M'                     # that time on the feeding day
@@ -3445,14 +3444,21 @@ def calendar_ics():
     body = ics_body(c, o, E, request.host_url.rstrip('/') + '/')
     return ics_response(body, None if request.args.get('download') == '0' else f'plant-record-calendar-{E["today"]}.ics')
 
-@app.route('/cal/<tok>.ics')
-def calendar_subscribed(tok):
-    """The subscribed calendar. No password (guard() lets /cal/ through), so the private token is the only key."""
+@app.route('/cal/<path:p>')
+def calendar_subscribed(p):
+    """The subscribed calendar. No password (guard() lets /cal/ through), so the private token is the only key.
+    Only the last part of the path counts (<token>.ics), so it works the same behind a proxy that adds or keeps a
+    /cal prefix, such as Tailscale Funnel with --set-path=/cal."""
     c = db()
-    if not hmac.compare_digest(tok.encode(), ics_token(c).encode()): abort(404)
+    name = p.rsplit('/', 1)[-1]
+    if not name.endswith('.ics') or not hmac.compare_digest(name[:-4].encode(), ics_token(c).encode()): abort(404)
     o = ics_saved(c)
     E = ics_events(c, o)
-    base = (o['public_base'] if o['public_base'] and not request.host.startswith(('127.0.0.1', 'localhost')) else request.host_url.rstrip('/')) + '/'
+    # links in the events go to the app itself, which the public address does not open (it only shares /cal/):
+    # use the address set for labels, or the one this request came in on unless that is the public one
+    pub = urlparse(o['public_base']).hostname if o['public_base'] else None
+    base = setting(c, 'base_url', '') or ('' if pub and request.host.split(':')[0] == pub else request.host_url.rstrip('/'))
+    base = base + '/' if base else ''
     return ics_response(ics_body(c, o, E, base))
 
 # ---------------------------------------------------------------- backups

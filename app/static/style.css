@@ -900,3 +900,6 @@ html[data-narrow="1"] dialog.ics-dlg fieldset{padding:.4rem .5rem}
 html[data-narrow="1"] dialog.ics-dlg .ics-sub,html[data-narrow="1"] dialog.ics-dlg .ics-rem .f{margin-left:0;max-width:none}
 html[data-narrow="1"] .ics-prev{padding:.4rem .5rem;border-width:1px}
 html[data-narrow="1"] .ics-list li{grid-template-columns:minmax(0,1fr)}
+.ics-cmd{font-family:ui-monospace,Consolas,monospace;font-size:.9em;background:var(--paper);border:1px solid var(--line);padding:.5rem .7rem;margin:.4rem 0 .6rem;white-space:pre-wrap;overflow-wrap:anywhere;user-select:all}
+.ics-how ol li{margin:.5rem 0}
+html[data-narrow="1"] .ics-how ol{padding-left:1.4rem} html[data-narrow="1"] .ics-cmd{padding:.4rem .5rem}

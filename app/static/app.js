@@ -3759,7 +3759,7 @@ function icsPaintLink() {
   const l = document.getElementById('ics-link'); if (l) l.value = icsLink();
   const w = document.getElementById('ics-linkwhere');
   if (w) w.textContent = ICS.links && ICS.links.public ? 'This link uses the internet address below, so calendar services such as Google and Outlook.com can reach it.'
-    : 'This link only works on your home network until the internet address below is filled in. Google Calendar, Outlook.com and iCloud need that address.';
+    : 'This link only works on your home network until the internet address below is filled in. Google Calendar, Outlook.com and iCloud need that address: see "Get an internet address with Tailscale Funnel" below.';
 }
 const ck = (k) => ICS.o[k] ? raw('checked') : '';
 function icsForm() {
@@ -3772,7 +3772,7 @@ function icsForm() {
       <label class="chk"><input type="checkbox" data-act="icsopt" name="close" ${ck('close')}> Include close calls (a night within a few degrees of a plant's damage point)</label>
     </fieldset>
     <fieldset><legend>Feeding days</legend>
-      <label class="chk"><input type="radio" data-act="icsopt" name="weekly" value="1" ${o.weekly ? raw('checked') : ''}> One feeding day a week, listing every plant due around then</label>
+      <label class="chk"><input type="radio" data-act="icsopt" name="weekly" value="1" ${o.weekly ? raw('checked') : ''}> One feeding day a week, listing every plant due by then</label>
       <label class="f ics-sub">Day of the week<select data-act="icsopt" name="day">${ICS.days.map((d, i) => html`<option value="${i}" ${o.day === i ? raw('selected') : ''}>${d}</option>`)}</select></label>
       <label class="chk"><input type="radio" data-act="icsopt" name="weekly" value="0" ${o.weekly ? '' : raw('checked')}> Each day a plant is due, following its own schedule</label>
       <label class="f">How far ahead to list feeding days<select data-act="icsopt" name="months">
@@ -3793,8 +3793,24 @@ function icsForm() {
       <p class="hint" id="ics-linkwhere"></p>
       <div class="row"><button class="btn" type="button" data-act="icscopy">Copy calendar link</button><button class="btn ghost" type="button" data-act="icsnewlink">Make a new link</button></div>
       <p class="hint">Anyone with the link can see your feeding days and cold nights (not the rest of Plant record), so keep it private. Make a new link stops the old one working.</p>
-      <label class="f">Internet address of this PC<input type="url" id="ics-pub" value="${o.public_base}" placeholder="https://my-pc.example.ts.net" spellcheck="false" autocomplete="off"></label>
+      <label class="f">Internet address of this PC<input type="url" id="ics-pub" value="${o.public_base}" placeholder="https://your-pc.tail1234.ts.net:8443" spellcheck="false" autocomplete="off"></label>
       <p><button class="btn small ghost" type="button" data-act="icspub">Save address</button></p>
+      <details class="ics-how"><summary>Get an internet address with Tailscale Funnel</summary>
+        <p>Funnel lets the internet reach the calendar link only, not the rest of Plant record. It uses port 8443, so anything you already share in your tailnet with Tailscale Serve stays private.</p>
+        <ol><li>Open a terminal on the PC that runs Plant record and turn on Funnel for the calendar. The command is the same in Windows cmd.exe, PowerShell and bash:
+            <pre class="ics-cmd">tailscale funnel --bg --https=8443 --set-path=/cal http://127.0.0.1:8080/cal</pre>
+            If Tailscale says Funnel or HTTPS is not turned on for your tailnet, open the link it shows, turn it on, and run the command again.
+            If Windows says tailscale is not recognized, use the full path. In cmd.exe:
+            <pre class="ics-cmd">"C:\\Program Files\\Tailscale\\tailscale.exe" funnel --bg --https=8443 --set-path=/cal http://127.0.0.1:8080/cal</pre>
+            In PowerShell:
+            <pre class="ics-cmd">&amp; "C:\\Program Files\\Tailscale\\tailscale.exe" funnel --bg --https=8443 --set-path=/cal http://127.0.0.1:8080/cal</pre></li>
+          <li>See the address it made:
+            <pre class="ics-cmd">tailscale funnel status</pre>
+            It looks like https://your-pc.tail1234.ts.net:8443. Type that into "Internet address of this PC" above and press Save address.</li>
+          <li>Check it: on your phone, turn Wi-Fi off and open the calendar link in the browser. It should show or download a calendar file.</li>
+          <li>Subscribe with that link in each calendar (steps below).</li></ol>
+        <p>Funnel keeps running after a restart. To turn it off:</p>
+        <pre class="ics-cmd">tailscale funnel --https=8443 --set-path=/cal off</pre></details>
       <details class="ics-how"><summary>How to subscribe in each calendar</summary>
         <ul><li><b>Google Calendar</b> (also shows in Samsung Calendar when your Google account syncs to it): on a computer, open calendar.google.com, press the plus next to "Other calendars", choose From URL, paste the link and press Add calendar.</li>
           <li><b>Apple Calendar on iPhone:</b> Settings, Apps, Calendar, Calendar Accounts, Add Account, Other, Add Subscribed Calendar, then paste the link.</li>
