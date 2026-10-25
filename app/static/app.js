@@ -321,15 +321,34 @@ function buildSideNav() {
   NAVITEMS = [];
   const h1 = app.querySelector('h1');
   if (h1) NAVITEMS.push({ el: h1, text: 'Top of the page', id: null, top: true });
-  app.querySelectorAll('h2').forEach(h => {
+  // 1.14.1: every section title (h2) plus any part marked data-section="Its name", in page order, so new sections join by themselves
+  const seen = new Set();
+  app.querySelectorAll('h2, [data-section]').forEach(h => {
     if (h.closest('dialog,.chart-card,#sidenav') || !h.offsetParent) return;
-    const sec = h.closest('section') || h;
-    if (!sec.id) { sec.id = slug(h.textContent); sec.dataset.navid = '1'; }
-    NAVITEMS.push({ el: sec, head: h, text: h.textContent.trim(), id: sec.id });
+    const marked = h.matches("[data-section]"), sec = marked ? h : (h.closest('section') || h);
+    if (seen.has(sec) || (!marked && sec.closest("[data-section]") && sec.closest("[data-section]") !== sec)) return;
+    seen.add(sec);
+    const text = marked ? h.dataset.section : h.textContent.trim();
+    if (!sec.id) { sec.id = slug(text); sec.dataset.navid = '1'; }
+    NAVITEMS.push({ el: sec, head: marked ? sec : h, text, id: sec.id });
   });
+  buildJumpRow();
   list.innerHTML = rend(html`${NAVITEMS.map((it, i) => html`<li><a href="#${it.id || 'app'}" data-act="navgo" data-i="${i}">${it.text}</a></li>`)}`);
   if (!NAVITEMS.length) list.innerHTML = rend(html`<li class="muted">This page has no sections.</li>`);
   navActive();
+}
+// the row of section buttons on plant pages: the same sections as the menu, with shorter names where the title is long
+const JUMP_SHORT = { 'Name and details': 'Details', 'Current conditions': 'Now', 'Needed from you': 'Needed', 'Requests (all answered)': 'Requests',
+  'Getting this plant back in range': 'Back in range', 'In range': 'In range', 'Plant identification': 'Identification', 'About this plant': 'About',
+  'Sunlight': 'Light', 'Getting ready to come inside': 'Coming inside', 'Pests and diseases': 'Pests', 'Page history': 'History' };
+function buildJumpRow() {
+  const row = document.getElementById('jumprow'), pane = document.getElementById('pane-r'); if (!row || !pane) return;
+  const items = NAVITEMS.filter(it => !it.top && pane.contains(it.el) && !row.contains(it.el));
+  const name = it => it.el.dataset.short || JUMP_SHORT[it.text] || (/^Winter in /.test(it.text) ? 'Winter' : it.text);
+  const want = items.map(it => it.id + '|' + name(it)).join(',');
+  if (row.dataset.built === want) return;          // unchanged: keep the buttons (and any focus on them)
+  row.dataset.built = want;
+  row.innerHTML = rend(html`${items.map(it => html`<button class="btn ghost small" type="button" data-act="jump" data-id="${it.id}">${name(it)}</button>`)}`);
 }
 function scrollToSection(t) {
   const beh = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', pane = t.closest('.pane');
@@ -338,8 +357,8 @@ function scrollToSection(t) {
     const jb = pane.querySelector('.jump'), off = jb ? jb.offsetHeight + 8 : 8;
     pane.scrollTo({ top: pane.scrollTop + t.getBoundingClientRect().top - pane.getBoundingClientRect().top - off, behavior: beh });
   } else t.scrollIntoView({ behavior: beh, block: 'start' });
-  const h = t.matches('h1,h2') ? t : t.querySelector('h2,h1');
-  if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
+  const h = t.matches('h1,h2') ? t : (t.querySelector('h2,h1') || t);
+  if (h) { if (!h.hasAttribute('tabindex')) h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
 }
 let navRaf = 0;
 function navActive() {
@@ -815,7 +834,6 @@ function slips(h) {
     </article>`;
   });
 }
-const JUMPS = [['needs', 'Needed'], ['sec-now', 'Now'], ['ident', 'Identification'], ['about', 'About'], ['temp', 'Temperature'], ['hum', 'Humidity'], ['light', 'Light'], ['soil', 'Water and soil'], ['nutrients', 'Nutrients'], ['winter', 'Winter'], ['health', 'Health'], ['pests', 'Pests'], ['label', 'Label'], ['history', 'History']];
 async function viewPlant(code) {
   const [p, h, cur, st] = await Promise.all([api('GET', '/api/plants/' + enc(code)), api('GET', '/api/plants/' + enc(code) + '/history'), loadCond(), api('GET', '/api/settings').catch(() => ({}))]);
   CUR = { p, h, base: st.base_url || location.origin };
@@ -830,10 +848,10 @@ async function viewPlant(code) {
       <button class="btn ghost small noprint" type="button" data-act="layout">${single ? 'Show photos and details side by side' : 'Switch to one column'}</button></p>
     ${archived ? html`<div class="notice">This record is archived. It is hidden from the main list.</div>` : ''}
     <div class="plant">
-      <div class="pane" id="pane-l" tabindex="0" role="region" aria-label="Photos"><div id="photopanel">${photoPanel(p)}</div></div>
+      <div class="pane" id="pane-l" tabindex="0" role="region" aria-label="Photos"><div id="photopanel" data-section="Photos">${photoPanel(p)}</div></div>
       <div class="pane" id="pane-r" tabindex="0" role="region" aria-label="Details">
-        <nav class="jump noprint" aria-label="Jump to a section">${JUMPS.filter(j => j[0] !== 'needs' || (p.requests || []).length || (p.id_confidence != null && p.id_confidence < 70)).map(j => html`<button class="btn ghost small" type="button" data-act="jump" data-id="${j[0]}">${j[1]}</button>`)}</nav>
-        <div class="label">
+        <nav class="jump noprint" id="jumprow" aria-label="Jump to a section"></nav>
+        <div class="label" id="details" data-section="Name and details">
           <div class="l-top"><b>${p.code}</b><span>Page version ${p.version}</span><span>Updated ${timeEl(p.updated_at)} by ${p.updated_by}</span></div>
           <div class="l-body"><h1>${p.common_name}</h1><p class="sci latin">${p.scientific_name || 'Scientific name not set'}</p>
             <dl><dt id="site-lbl">Location</dt><dd>${sitePicker(p)}</dd>
@@ -2788,9 +2806,66 @@ function displayDialog() {
     <fieldset class="opt-group"><legend>Voice</legend><label class="f">Voice<select data-pref="voice" id="pref-voice">${voiceOptions(P.voice)}</select></label>
       <p class="row"><button class="btn ghost small" type="button" data-act="voicetest">Try this voice</button></p>
       <p class="hint">"Natural" or "Online" voices in Microsoft Edge sound the most human.</p></fieldset>` : ''}
+    ${group('swipe', 'Swipe between plants', [['1', 'On'], ['0', 'Off']], 'On a phone or tablet, swipe left on a plant page for the next plant, or right for the previous one. Start away from the edges of the screen, which your phone uses for Back.')}
     ${group('keys', 'Keyboard shortcuts', [['1', 'On'], ['0', 'Off']], 'R reads the page aloud, [ and ] go to the previous and next plant, ? lists them all.')}
     <div class="row"><button class="btn" value="ok" autofocus>Done</button><button class="btn ghost" type="button" data-act="prefreset">Reset to defaults</button></div></form>`);
 }
+// ---------- swipe between plants on touch screens (added in 1.14.1) ----------
+// A quick sideways swipe on a plant page opens the next plant (swipe left) or the previous one (swipe right), the same as
+// the Previous / Next Plant buttons. It stays out of the way of scrolling, zooming, tables and charts that scroll sideways,
+// form fields, open windows and menus, and the screen edges (Back on Android, iPhone and iPad).
+const SWIPE = { x: 0, y: 0, t: 0, on: false, dir: 0 };
+const SWIPE_EDGE = 28, SWIPE_MIN = 70;
+function swipeBlocked(el) {
+  for (let n = el; n && n !== document.body && n.nodeType === 1; n = n.parentElement) {
+    if (n.matches('input,select,textarea,button.main-photo,[contenteditable],dialog,#sidenav,#corner,#console,.pnav,.chart-card,canvas,.thumbs')) return true;
+    const cs = getComputedStyle(n);
+    if (/(auto|scroll)/.test(cs.overflowX) && n.scrollWidth > n.clientWidth + 2) return true;     // something here scrolls sideways
+  }
+  return false;
+}
+function swipeHint() {
+  let h = document.getElementById('swipe-hint');
+  if (!h) { h = document.createElement('div'); h.id = 'swipe-hint'; h.className = 'swipe-hint'; h.setAttribute('aria-hidden', 'true'); document.body.appendChild(h); }
+  return h;
+}
+function swipeHide() { const h = document.getElementById('swipe-hint'); if (h) { h.classList.remove('show', 'ready'); h.removeAttribute('data-side'); } SWIPE.on = false; SWIPE.dir = 0; }
+document.addEventListener('touchstart', e => {
+  SWIPE.on = false;
+  if (e.touches.length !== 1 || window.PlantPrefs.get().swipe === '0' || !/^#\/plant\/[^/]+$/.test(location.hash) || !document.getElementById('pnav')) return;
+  if (document.querySelector('dialog[open]') || (document.documentElement.dataset.narrow === '1' && navOpen())) return;
+  const t = e.touches[0];
+  if (t.clientX < SWIPE_EDGE || t.clientX > window.innerWidth - SWIPE_EDGE || swipeBlocked(e.target)) return;
+  Object.assign(SWIPE, { x: t.clientX, y: t.clientY, t: Date.now(), on: true, dir: 0 });
+}, { passive: true });
+document.addEventListener('touchmove', e => {
+  if (!SWIPE.on) return;
+  if (e.touches.length !== 1) { swipeHide(); return; }
+  const t = e.touches[0], dx = t.clientX - SWIPE.x, dy = t.clientY - SWIPE.y;
+  if (Math.abs(dy) > 40 && Math.abs(dy) > Math.abs(dx)) { swipeHide(); return; }              // they are scrolling
+  if (Math.abs(dx) < 24 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+  const dir = dx < 0 ? 1 : -1, link = document.querySelector(dir > 0 ? '#pnav a.pn-next' : '#pnav a.pn-prev'), h = swipeHint();
+  if (dir !== SWIPE.dir) {
+    SWIPE.dir = dir;
+    const name = link ? (link.querySelector('.pn-name') || link).textContent.trim() : '';
+    h.textContent = link ? (dir > 0 ? `Next plant: ${name} →` : `← Previous plant: ${name}`) : (dir > 0 ? 'This is the last plant in the list' : 'This is the first plant in the list');
+    h.dataset.side = dir > 0 ? 'right' : 'left';
+  }
+  h.classList.add('show');
+  h.classList.toggle('ready', !!link && Math.abs(dx) >= swipeNeed());
+}, { passive: true });
+const swipeNeed = () => Math.max(SWIPE_MIN, Math.min(140, window.innerWidth * 0.22));
+document.addEventListener('touchend', e => {
+  if (!SWIPE.on) return;
+  const t = e.changedTouches[0], dx = t.clientX - SWIPE.x, dy = t.clientY - SWIPE.y, quick = Date.now() - SWIPE.t < 1200;
+  const go = quick && Math.abs(dx) >= swipeNeed() && Math.abs(dx) > Math.abs(dy) * 2 && !(window.getSelection && String(window.getSelection()).trim());
+  const link = go ? document.querySelector(dx < 0 ? '#pnav a.pn-next' : '#pnav a.pn-prev') : null;
+  swipeHide();
+  if (link) link.click();
+}, { passive: true });
+document.addEventListener('touchcancel', swipeHide, { passive: true });
+window.addEventListener('hashchange', swipeHide);
+
 // ---------- read aloud and keyboard shortcuts (added in 1.8.0) ----------
 // Uses the browser's own voices (Edge and Chrome on Windows have several English voices); nothing leaves the computer
 // except with "online" voices, which the browser itself provides.

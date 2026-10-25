@@ -26,15 +26,17 @@ def fake(url, tries=3):
     return {kind:{'time':ts, **{n:[round(base + 12*math.sin((t/3600 % 24)/24*6.283) + 6*math.cos(t/86400*1.3),1) for t in ts] for n in names}}, kind+'_units':{n:('°F' if ('temp' in n or 'dew' in n) else 'inch' if ('precip' in n or 'rain' in n) else 'u') for n in names}}
 S.http_json=fake
 S.init_db()
-# rain: dry, except about 0.6 in every fifth day (so watering reminders can be tested)
+# rain: dry, except about 0.6 in every fifth day, and never in the last 9 days, so some plants are always due for water
+# whatever the date (watering reminders can be tested)
 _fake_weather = S.http_json
+import time as _time
 def _with_rain(url, tries=3):
     d = _fake_weather(url, tries)
     for kind in ('hourly', 'daily'):
         if kind not in d: continue
         for n, vals in d[kind].items():
             if n == 'time' or 'probability' in n or not any(w in n for w in ('precip', 'rain', 'showers', 'snowfall')): continue
-            d[kind][n] = [(0.6 if kind == 'daily' or int(t // 3600) % 24 == 15 else 0.0) if int(t // 86400) % 5 == 0 else 0.0 for t in d[kind]['time']]
+            d[kind][n] = [(0.6 if kind == 'daily' or int(t // 3600) % 24 == 15 else 0.0) if int(t // 86400) % 5 == 0 and t < _time.time() - 9 * 86400 else 0.0 for t in d[kind]['time']]
     return d
 S.http_json = _with_rain
 # 1.12.0: a second port that stands in for the Tailscale container (MOCK_TS=1). Requests to it are treated as coming through
