@@ -120,7 +120,8 @@ fieldset legend{font-family:var(--serif);font-weight:600;font-size:1.4rem;paddin
 .ledger button[aria-pressed=true]{background:var(--bar,var(--ink));color:#fff;border-color:var(--bar,var(--ink))}
 :root[data-theme=dark] .ledger button[aria-pressed=true]{color:#0e2233}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]) .ledger button[aria-pressed=true]{color:#0e2233}}
-.filters{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:.9rem;align-items:end;margin-bottom:1.8rem}
+.filters{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,14rem),1fr));gap:.9rem;align-items:end;margin-bottom:1.8rem}
+html:not([data-narrow="1"]) .filters>label:first-child{grid-column:span 2}
 .filters label{font-weight:700}
 .filters .chk{display:flex;gap:.6rem;align-items:center;font-weight:400;padding-bottom:.6rem}
 html[data-narrow="1"] .filters{grid-template-columns:1fr 1fr}
@@ -1021,3 +1022,4 @@ ul.srcs li{margin:.25rem 0;overflow-wrap:anywhere}
 html[data-role=viewer] :is([data-act=grpnew], [data-act=grpedit], [data-act=grpdel], [data-act=grpaddsug], [data-act=grpaddall], [data-act=grprm],
   [data-act=grpcare], [data-act=grpmove], [data-act=grpset], [data-act=grpundo], [data-act=plgroups], #g-do){display:none!important}
 .rule-prev{border-left:.35rem solid var(--cyan);padding:.4rem .8rem;background:var(--cyan-soft)}
+.tag.tag-arch{border-style:dashed;color:var(--ink-2)}

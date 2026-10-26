@@ -293,13 +293,25 @@ Every page has a menu down the side listing its sections (for example on the Wea
 - On phones, narrow windows and very large text the menu starts folded, the Sections button sits at the bottom left, and the menu closes after you choose a section.
 - On plant pages (from 1.14.1) it lists every part of the page: **Photos**, **Name and details** (the card at the top), and each section below. The row of section buttons has the same sections with shorter names. Both are made from the page itself, so new sections join them by themselves.
 
+## Plants page filters
+
+The filter row on the Plants page narrows the list. Every filter is remembered in this browser, and **Clear filters** resets them.
+
+- **Search:** name, code, location or plant type.
+- **Health** and **winter plan** (the coloured buttons above the filters).
+- **Location (from 1.16.2):** outdoors, covered porch, indoors, or garage or shed.
+- **Group (from 1.16.0):** only the plants in one group.
+- **Show (from 1.16.2):** active plants only (the usual), active and archived together, or archived only. Archived plants say "Archived" on their card. Archiving hides a plant without deleting anything; **Move back to the main list** on its page undoes it.
+- **Sort by:** code, health, ID confidence, recently updated, name, or group.
+- **Needs something from you** and **ID confidence under 70%.**
+
 ## Previous and next plant (from 1.7.5)
 
 Every plant page has **Previous Plant** and **Next Plant** buttons, each showing the name and code of the plant it leads to. On a wide screen they sit in the margins either side of the page; on smaller screens and phones they sit at the top of the page.
 
 **Swipe (from 1.14.1).** On a phone or tablet, swipe left anywhere on a plant page for the next plant, or right for the previous one. While you swipe, a label names the plant that is coming; once it says "Let go to open it", lifting your finger opens it. Start the swipe away from the very edge of the screen, because your phone uses edge swipes for Back. Swipes that start on a menu, a form field or the photo are left alone, and so is scrolling up and down. To turn it off, open **Display** and set **Swipe between plants** to Off.
 
-They follow the Plants page filters and sort order. The fold-out **Filters for Previous / Next** panel at the top of each plant page has the same filters (search, winter plan, health, sort, "needs something from you", ID under 70%) and shows where the plant falls in the list. Changing a filter in either place changes it in both, and this browser remembers it.
+They follow the Plants page filters and sort order. The fold-out **Filters for Previous / Next** panel at the top of each plant page has the same filters (search, winter plan, health, location, group, show, sort, "needs something from you", ID under 70%) and shows where the plant falls in the list. Changing a filter in either place changes it in both, and this browser remembers it.
 
 ## Location: outdoors or indoors (from 1.7.0)
 

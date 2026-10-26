@@ -4,6 +4,112 @@
  "author": "Claude (Ethan's porch shelf photos, Oct 25, 2026)",
  "plants": [
   {
+   "common_name": "Chinese evergreen, red speckled (second)",
+   "scientific_name": "Aglaonema sp. (red speckled cultivar)",
+   "aliases": "Possibly 'Red Peacock' or a similar speckled red cultivar",
+   "plant_type": "Tropical foliage",
+   "location": "Covered porch pallet shelf",
+   "container": "Black nursery pot on a black saucer",
+   "id_confidence": 80,
+   "id_basis": "Red-pink leaf margins, pink leaf stalks and heavy yellow-green and red speckling over green are typical of the red Aglaonema cultivars. The speckling fits 'Red Peacock' and similar speckled kinds better than 'Siam Aurora', whose leaf centres are plain green. This is a second plant on the same shelf as P-028. Without a tag the exact cultivar stays open.",
+   "id_alternatives": "Aglaonema 'Red Peacock'\nAglaonema 'Super Red'\nAglaonema 'Siam Aurora' (less likely: plain green leaf centres)\nAglaonema 'Lady Valentine' (mostly pink leaves)",
+   "id_improve": "Tag or receipt, if there was one",
+   "temp_ideal_low": 65,
+   "temp_ideal_high": 85,
+   "temp_damage_below": 55,
+   "temp_lethal_below": 40,
+   "temp_notes": "Leaf chilling damage at about 50-55 F; a freeze kills it.",
+   "humidity_low": 40,
+   "humidity_high": 60,
+   "humidity_notes": "Tolerant of average indoor air.",
+   "light_summary": "Low to medium indirect",
+   "light_hours": "3-4 h filtered",
+   "light_notes": "Red cultivars colour best with brighter indirect light; no direct sun.",
+   "winter_plan": "Move indoors",
+   "winter_summary": "Cold-sensitive. Bring in early.",
+   "winter_triggers": "Move by Oct 28.",
+   "winter_steps": "Target: indoors by about Oct 28, before the first night forecast under 55 F.\nPre-move: rinse the leaves with a hose, check undersides and stem nodes for spider mites, mealybugs, scale and fungus gnats, treat with insecticidal soap or neem, then quarantine 2 weeks away from other houseplants.\nAcclimate in two steps to limit leaf drop: about a week on the covered porch or in the garage, then inside.\nDo not repot or fertilize for the move; trim only dead tissue.",
+   "indoor_setup": "Indoors: within 3 ft of an east or south window, or under a full-spectrum grow light 12-14 h/day at 6-12 in. Winter sun in Round Rock is only ~4.5-6 hours of real sunshine per day in Dec-Jan, so supplement.\nWater when the top 2 in are dry.",
+   "health_rating": "Good",
+   "health_summary": "Healthy: bright speckled colour, firm leaves and a new pink shoot at the base. The mix has dried hard and shrunk away from the pot wall, and white mineral crust is building up on the pot.",
+   "health_observations": "Bright red-edged, speckled leaves\nA new pink shoot (offset) coming up at the base\nBare lower stem with dry, papery old leaf bases (normal as lower leaves drop)\nMix shrunk away from the pot edge (it dried out completely)\nWhite crust on the pot rim and sides (minerals from tap water or fertilizer)\nOne leaf with a torn edge",
+   "health_steps": "Water slowly, let it drain, and water again, so the shrunken mix soaks up water. Or stand the pot in water for 15 minutes.\nOnce a month, water heavily to flush the minerals through, and wipe the white crust off the pot.\nBring it in before nights fall below 55°F, and keep it out of cold drafts.\nLeave the dry papery leaf bases; they come away by themselves.\nFeed at half strength in spring and summer only.",
+   "notes": "A second red Chinese evergreen on the porch shelf (not P-028), photographed on October 25, 2026, beside the PP-1 cutting (P-035).",
+   "temp_damage_above": 100,
+   "vpd_low": 0.4,
+   "vpd_high": 1.0,
+   "par_low": 50,
+   "par_high": 250,
+   "dli_low": 3.0,
+   "dli_high": 8.0,
+   "water_notes": "Water when the top 2 in (5 cm) of mix is dry. These tolerate missed waterings better than too much water. Indoors in winter, every 2-3 weeks is often enough.",
+   "soil_medium": "Well-draining potting mix with about 25% perlite or bark so the roots can breathe. The pot must have drainage holes.",
+   "soil_ph_low": 5.5,
+   "soil_ph_high": 6.5,
+   "soil_moisture_low": 30,
+   "soil_moisture_high": 55,
+   "soil_temp_low": 65,
+   "soil_temp_high": 85,
+   "fertilizer": "Balanced liquid at half strength",
+   "nutrients": "Feed every 4-6 weeks from March to September at half strength; none in winter. Slow growth in low light is normal and needs less food, not more. Brown tips can mean salt build-up or fluoride in tap water: flush with plain water every 2-3 months.",
+   "pests_watch": "Spider mites: fine webbing and stippled leaves, worst in dry heated air\nThrips: silvery streaks and black specks on leaves\nMealybugs: white cottony clumps in leaf joints\nFungus gnats: small flies over damp mix\nRoot rot from cold, soggy mix\nBacterial or fungal leaf spot: brown, water-soaked spots",
+   "pest_steps": "Check leaf undersides and leaf joints once a week, and before any plant comes indoors.\nKeep newly moved plants apart from the others for 2 weeks.\nWipe leaves with a damp cloth to remove dust and mites.\nFor mites, thrips or mealybugs: spray insecticidal soap or neem oil every 5-7 days for three rounds. Test one leaf first and do not spray in hot sun.\nFor mealybugs on a few spots: touch each with a swab of 70% rubbing alcohol.\nFor fungus gnats: let the top inch of mix dry, add yellow sticky traps, and water once with Bti (Mosquito Bits) soaked water.\nRemove leaves with leaf spot, keep the foliage dry and give the plant airflow.",
+   "pests_current": "No pests identified in the photos so far. Note here anything you see, with the date.",
+   "fert_from_month": 4,
+   "fert_to_month": 9,
+   "fert_every_days": 42,
+   "site": "Covered porch",
+   "water_every_days": null,
+   "leaf_type": "Large leaves",
+   "pot_size": null,
+   "pests_found": null,
+   "npk_ratio": "1-1-1",
+   "fert_strength": "Half strength",
+   "growth_habit": "Evergreen clump-forming tropical perennial (an aroid)",
+   "kingdom": "Plantae (plants)",
+   "taxon_order": "Alismatales",
+   "family": "Araceae",
+   "genus": "Aglaonema",
+   "height_ground": "1 to 3 ft",
+   "width_ground": "1 to 3 ft",
+   "height_pot": "1 to 2 ft",
+   "width_pot": "1 to 2 ft",
+   "growth_rate": "Slow",
+   "lifespan": "Many years",
+   "zone_low": "10b",
+   "zone_high": "12",
+   "zone_notes": "Damaged below about 50°F, and red kinds can be hurt by cold drafts even above that.",
+   "native_range": "Tropical and subtropical Asia, from India and southern China to New Guinea, on shady forest floors. Red kinds are cultivated hybrids.",
+   "conservation_status": "Not applicable for cultivated hybrids. No IUCN Red List assessment that Claude could confirm.",
+   "invasive": "Not a risk here.",
+   "bloom": "A small greenish-white spathe, occasionally indoors.",
+   "fruit": "Red berries after flowering, sometimes indoors. Not edible.",
+   "danger_humans": "All parts contain needle-like calcium oxalate crystals. Chewing them causes burning pain and swelling of the mouth, tongue and throat, drooling and trouble swallowing; the sap can irritate skin and eyes. Rarely serious, but keep it from children and wash your hands after pruning.",
+   "danger_animals": "Toxic to cats and dogs (ASPCA): the calcium oxalate crystals cause pawing at the mouth, drooling, mouth swelling, vomiting and trouble swallowing.",
+   "propagation": "Division of the clump when repotting.\nStem or tip cuttings, in water or moist mix.",
+   "sources": "UF/IFAS EDIS: Aglaonema | https://ask.ifas.ufl.edu/publication/fp025\nASPCA Animal Poison Control: Toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants",
+   "photos": [
+    {
+     "file": "img_a7_agla_1.jpg",
+     "caption": "October 25: on the porch shelf, beside the PP-1 cutting",
+     "primary": true,
+     "source": "Ethan, October 25"
+    },
+    {
+     "file": "img_a7_agla_2.jpg",
+     "caption": "October 25: from above",
+     "primary": false,
+     "source": "Ethan, October 25"
+    },
+    {
+     "file": "img_a7_agla_3.jpg",
+     "caption": "October 25: stem base: a new pink shoot and dry old leaf bases",
+     "primary": false,
+     "source": "Ethan, October 25"
+    }
+   ]
+  },
+  {
    "common_name": "Boston fern, curly (grey bowl)",
    "scientific_name": "Nephrolepis exaltata, curly cultivar (probably 'Emina')",
    "aliases": "Second curly Boston fern",
@@ -218,27 +324,6 @@
  ],
  "existing_photos": [
   {
-   "code": "P-028",
-   "file": "img_a7_agla_1.jpg",
-   "caption": "October 25: on the porch shelf, beside the PP-1 cutting",
-   "primary": false,
-   "source": "Ethan, October 25"
-  },
-  {
-   "code": "P-028",
-   "file": "img_a7_agla_2.jpg",
-   "caption": "October 25: from above",
-   "primary": false,
-   "source": "Ethan, October 25"
-  },
-  {
-   "code": "P-028",
-   "file": "img_a7_agla_3.jpg",
-   "caption": "October 25: stem base: a new pink shoot and dry old leaf bases",
-   "primary": false,
-   "source": "Ethan, October 25"
-  },
-  {
    "code": "P-035",
    "file": "img_a7_pp1_tag.jpg",
    "caption": "October 25: tag reads 'PP-1'; the stake is still in the stem",
@@ -247,44 +332,6 @@
   }
  ],
  "updates": [
-  {
-   "code": "P-028",
-   "name": "Chinese evergreen (red/pink)",
-   "photos": [
-    "img_1000021191.jpg"
-   ],
-   "note": "New photos from the porch shelf (batch A7)",
-   "set": {
-    "aliases": [
-     "Possibly 'Siam Aurora' or similar",
-     "Possibly 'Red Peacock' or a similar speckled red cultivar"
-    ],
-    "id_basis": [
-     "Red-pink leaf margins and green-pink speckling are typical of red Aglaonema. Exact cultivar not determined.",
-     "Red-pink leaf margins, pink leaf stalks and heavy yellow-green and red speckling over green are typical of the red Aglaonema cultivars. The October 25 photos show the speckling clearly, which fits 'Red Peacock' and similar speckled kinds better than 'Siam Aurora', whose leaf centres are plain green. Without a tag the exact cultivar stays open."
-    ],
-    "id_alternatives": [
-     "Aglaonema 'Siam Aurora'\nAglaonema 'Lady Valentine'\nAglaonema 'Red Peacock'",
-     "Aglaonema 'Red Peacock'\nAglaonema 'Super Red'\nAglaonema 'Siam Aurora' (less likely: plain green leaf centres)\nAglaonema 'Lady Valentine' (mostly pink leaves)"
-    ],
-    "id_improve": [
-     "Tag or receipt\nPhoto of the stem base from the side",
-     "Tag or receipt, if there was one"
-    ],
-    "health_summary": [
-     "Vivid colour and upright growth; no spotting or pests seen.",
-     "Healthy: bright speckled colour, firm leaves and a new pink shoot at the base. The mix has dried hard and shrunk away from the pot wall, and white mineral crust is building up on the pot."
-    ],
-    "health_observations": [
-     "Rich red/green foliage\nPot is clean and drained",
-     "Bright red-edged, speckled leaves\nA new pink shoot (offset) coming up at the base\nBare lower stem with dry, papery old leaf bases (normal as lower leaves drop)\nMix shrunk away from the pot edge (it dried out completely)\nWhite crust on the pot rim and sides (minerals from tap water or fertilizer)\nOne leaf with a torn edge"
-    ],
-    "health_steps": [
-     "Keep out of cold drafts\nFeed at half strength in spring",
-     "Water slowly, let it drain, and water again, so the shrunken mix soaks up water. Or stand the pot in water for 15 minutes.\nOnce a month, water heavily to flush the minerals through, and wipe the white crust off the pot.\nBring it in before nights fall below 55°F, and keep it out of cold drafts.\nLeave the dry papery leaf bases; they come away by themselves.\nFeed at half strength in spring and summer only."
-    ]
-   }
-  },
   {
    "code": "P-035",
    "name": "Philodendron 'Pink Princess' (cutting, declining)",

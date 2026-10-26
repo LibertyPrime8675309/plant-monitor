@@ -881,8 +881,8 @@ def settings():
 def list_plants():
     c = db()
     q = request.args.get('q', '').strip().lower()
-    status = request.args.get('status', 'active')
-    rows = c.execute('SELECT * FROM plants WHERE status=? ORDER BY code', (status,)).fetchall()
+    status = request.args.get('status', 'active')          # 'active', 'archived', or 'all' (1.16.2: both, for the Status filter)
+    rows = c.execute('SELECT * FROM plants ORDER BY code').fetchall() if status == 'all' else c.execute('SELECT * FROM plants WHERE status=? ORDER BY code', (status,)).fetchall()
     open_req = {k: n for k, n in c.execute('SELECT plant_code, COUNT(*) FROM requests WHERE done=0 AND plant_code IS NOT NULL GROUP BY plant_code')}
     out = []
     for r in rows:
@@ -894,7 +894,7 @@ def list_plants():
                     'site': r['site'] or 'Outdoors', 'version': r['version'], 'updated_at': r['updated_at'], 'updated_by': r['updated_by'], 'photo': p['file'] if p else None,
                     'temp_damage_below': r['temp_damage_below'], 'temp_ideal_low': r['temp_ideal_low'], 'temp_ideal_high': r['temp_ideal_high'],
                     'fert_from_month': r['fert_from_month'], 'fert_to_month': r['fert_to_month'], 'fert_every_days': r['fert_every_days'], 'fertilizer': r['fertilizer'],
-                    'requests_open': open_req.get(r['code'], 0)})
+                    'requests_open': open_req.get(r['code'], 0), 'status': r['status']})
     return jsonify(out)
 
 @app.route('/api/plants/<code>')

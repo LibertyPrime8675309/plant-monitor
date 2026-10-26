@@ -24,7 +24,7 @@ const enc = encodeURIComponent;
 let PCODES = new Map(), PCODES_AT = 0;
 async function loadCodes(force) {
   if (!force && Date.now() - PCODES_AT < 15000) return;
-  try { const list = await api('GET', '/api/plants'); PCODES = new Map(list.map(p => [p.code, p])); PCODES_AT = Date.now(); } catch (e) { /* links just stay plain text */ }
+  try { const list = await api('GET', '/api/plants?status=all'); PCODES = new Map(list.map(p => [p.code, p])); PCODES_AT = Date.now(); } catch (e) { /* links just stay plain text */ }
 }
 function linkify(text) {
   const t = String(text == null ? '' : text);
@@ -375,11 +375,14 @@ function navActive() {
 window.addEventListener('scroll', navActive, { capture: true, passive: true });
 
 // ---------- gallery ----------
-const G = { q: '', plan: '', health: '', low: false, needs: false, sort: 'code', archived: false, group: '' };
+const G = { q: '', plan: '', health: '', low: false, needs: false, sort: 'code', group: '', status: 'active', site: '' };   // 1.16.2: status and site
 // the Plants page filters are remembered in this browser and also decide where Previous / Next plant go on plant pages
-try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort', 'group']) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ }
-function gSave() { try { localStorage.setItem('plantdb.filters', JSON.stringify({ q: G.q, plan: G.plan, health: G.health, low: G.low, needs: G.needs, sort: G.sort, group: G.group })); } catch (e) { /* not saved */ } }
-const gActive = () => !!(G.q.trim() || G.plan || G.health || G.low || G.needs || (G.group && groupById(G.group)));
+try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort', 'group', 'status', 'site']) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ }
+function gSave() { try { localStorage.setItem('plantdb.filters', JSON.stringify({ q: G.q, plan: G.plan, health: G.health, low: G.low, needs: G.needs, sort: G.sort, group: G.group, status: G.status, site: G.site })); } catch (e) { /* not saved */ } }
+const gActive = () => !!(G.q.trim() || G.plan || G.health || G.low || G.needs || (G.group && groupById(G.group)) || G.status !== 'active' || G.site);
+const STATUS_WORD = { active: 'Active only', all: 'Active and archived', archived: 'Archived only' };
+const isArch = p => p.status === 'archived';
+const statusOk = p => G.status === 'all' || (G.status === 'archived' ? isArch(p) : !isArch(p));
 const needsYou = p => (p.requests_open || 0) > 0 || (p.id_confidence != null && p.id_confidence < 70);
 let ALL = [];
 const SORTS = { code: 'Code', health: 'Health, worst first', conf: 'ID confidence, lowest first', updated: 'Recently updated', name: 'Name A to Z', group: 'Group A to Z' };
@@ -387,6 +390,7 @@ const SORTS = { code: 'Code', health: 'Health, worst first', conf: 'ID confidenc
 function filteredPlants(list) {
   const q = G.q.trim().toLowerCase();
   let r = (list || ALL).filter(p =>
+    statusOk(p) && (!G.site || (p.site || 'Outdoors') === G.site) &&
     (!G.plan || p.winter_plan === G.plan) && (!G.health || p.health_rating === G.health) &&
     (!G.low || (p.id_confidence != null && p.id_confidence < 70)) && (!G.needs || needsYou(p)) && inGroupFilter(p.code) &&
     (!q || [p.code, p.common_name, p.scientific_name, p.aliases, p.plant_type, p.location].join(' ').toLowerCase().includes(q)));
@@ -408,7 +412,7 @@ function sheet(p) {
       <span class="acc">${p.code}</span><div class="bar" style="--hb:${HEALTH_COLOR[p.health_rating] || 'var(--line)'}"></div></div>
     <h3 class="name">${p.common_name}</h3>
     <p class="sci latin">${p.scientific_name || 'Scientific name not set'}</p>
-    <div class="tags">${planTag(p.winter_plan)}${healthTag(p.health_rating)}</div>
+    <div class="tags">${isArch(p) ? html`<span class="tag tag-arch">Archived</span>` : ''}${planTag(p.winter_plan)}${healthTag(p.health_rating)}</div>
     ${needsYou(p) ? html`<p class="needs-badge">Needs from you: ${[p.requests_open ? `${p.requests_open} request${p.requests_open === 1 ? '' : 's'}` : '', p.id_confidence != null && p.id_confidence < 70 ? 'ID info' : ''].filter(Boolean).join(', ')}</p>` : ''}
     <div class="meter"><span>ID ${p.id_confidence == null ? 'not rated' : p.id_confidence + '%'}</span><i style="--v:${p.id_confidence || 0}%;--mc:${confColor(p.id_confidence)}"></i></div>
   </a>`;
@@ -417,25 +421,29 @@ function drawGrid() {
   gSave();
   if (!document.getElementById('grid')) { drawPnav(); return; }
   const r = filteredPlants();
-  document.getElementById('count').textContent = r.length + ' of ' + ALL.length + ' plants shown';
+  const pool = ALL.filter(statusOk).length;
+  const led = document.querySelector('.ledger'); if (led) led.innerHTML = rend(ledger());
+  const gt = document.getElementById('g-title'); if (gt) gt.textContent = G.status === 'archived' ? 'Archived plants' : 'Outdoor plants';
+  document.getElementById('count').textContent = `${r.length} of ${pool} ${G.status === 'archived' ? 'archived ' : G.status === 'all' ? '' : 'active '}plants shown`;
   document.getElementById('grid').innerHTML = r.length
     ? rend(r.map(sheet))
     : rend(html`<div class="empty" style="grid-column:1/-1"><p>No plants match these filters.</p><button class="btn ghost" type="button" data-act="clearfilters">Clear filters</button></div>`);
 }
 function ledger() {
-  const n = pl => ALL.filter(p => p.winter_plan === pl).length;
+  const n = pl => ALL.filter(p => statusOk(p) && p.winter_plan === pl).length;
   return html`${META.winter_plans.map(pl => html`<button type="button" data-act="plan" data-plan="${pl}" style="--bar:${PLAN_COLOR[pl]}" aria-pressed="${String(G.plan === pl)}"><b>${n(pl)}</b>${pl}</button>`)}`;
 }
 async function viewGallery() {
-  ALL = await api('GET', '/api/plants' + (G.archived ? '?status=archived' : ''));
-  const lowN = ALL.filter(p => p.id_confidence != null && p.id_confidence < 70).length;
-  const needN = ALL.filter(needsYou).length;
+  ALL = await api('GET', '/api/plants?status=all');
+  const ACT = ALL.filter(p => !isArch(p)), archN = ALL.length - ACT.length;
+  const lowN = ACT.filter(p => p.id_confidence != null && p.id_confidence < 70).length;
+  const needN = ACT.filter(needsYou).length;
   let todoN = 0, fcN = 0;
   await Promise.all([api('GET', '/api/to-photograph').then(t => { todoN = t.filter(x => !x.done).length; }).catch(() => {}),
     api('GET', '/api/for-claude?range=last').then(d => { fcN = d.counts.answers; }).catch(() => {})]);
   return {
     title: '',
-    html: html`<div class="hero"><div><h1>${G.archived ? 'Archived plants' : 'Outdoor plants'}</h1>
+    html: html`<div class="hero"><div><h1 id="g-title">${G.status === 'archived' ? 'Archived plants' : 'Outdoor plants'}</h1>
       <p class="muted">${META.counts.plants} plants and ${META.counts.photos} photos. Weather for ${placeName()}. Each plant has its own page, version number and change log.</p></div>
       <a class="btn" href="#/new">Add a plant</a></div>
     <div class="needs-bar" role="group" aria-label="What Claude needs from you">
@@ -446,13 +454,13 @@ async function viewGallery() {
     <div class="filters">
       <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
       <label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
-      ${groupFilter()}
+      ${siteFilter()}${groupFilter()}${statusFilter()}
       <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
       <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70% (${lowN})</label>
     </div>
     <p id="count" class="muted" aria-live="polite"></p>
     <div class="grid" id="grid"></div>
-    <p style="margin-top:36px"><label class="chk" style="display:inline-flex;gap:8px;align-items:center"><input type="checkbox" data-f="archived" ${G.archived ? raw('checked') : ''} style="width:20px;height:20px;margin:0">Show archived plants instead</label></p>`,
+    ${archN ? html`<p class="hint" style="margin-top:2rem">${archN} archived plant${archN === 1 ? ' is' : 's are'} hidden from this list. Choose <strong>Show: Active and archived</strong> in the filters to see ${archN === 1 ? 'it' : 'them'} too.</p>` : ''}`,
     after: drawGrid,
   };
 }
@@ -471,6 +479,12 @@ const groupById = id => (PGROUPS && PGROUPS.groups.find(g => String(g.id) === St
 const groupsOf = code => (PGROUPS ? PGROUPS.groups.filter(g => g.codes.includes(code)) : []);
 const groupNames = code => groupsOf(code).map(g => g.name).sort((a, b) => a.localeCompare(b));
 function inGroupFilter(code) { const g = G.group && groupById(G.group); return !g || g.codes.includes(code); }
+function statusFilter() {
+  return html`<label>Show<select data-f="status">${Object.entries(STATUS_WORD).map(([k, v]) => html`<option value="${k}" ${G.status === k ? raw('selected') : ''}>${v}</option>`)}</select></label>`;
+}
+function siteFilter() {
+  return html`<label>Location<select data-f="site"><option value="">Any</option>${(META.sites || []).map(s => html`<option ${G.site === s ? raw('selected') : ''}>${s}</option>`)}</select></label>`;
+}
 function groupFilter() {
   const gs = (PGROUPS && PGROUPS.groups) || [];
   if (!gs.length) return '';
@@ -592,7 +606,7 @@ async function groupDialog(g, kind, preset) {
   if (!(await needName())) return;
   await loadGroups();
   kind = g ? g.kind : kind;
-  const all = [...PCODES.keys()].sort();
+  const all = [...PCODES.values()].filter(p => !isArch(p)).map(p => p.code).sort();
   const conds = g && g.rule ? g.rule.conds : (preset && preset.conds) || [{ field: 'genus', op: 'is', value: '' }];
   const r = await modal(html`<form method="dialog" data-grp="1" class="grp-form"><h2>${g ? 'Change the group ' + g.name : kind === 'smart' ? 'Make a smart group' : 'Make a hand-picked group'}</h2>
     <label class="f">Name<input type="text" name="name" maxlength="60" required value="${g ? g.name : (preset && preset.name) || ''}" placeholder="${kind === 'smart' ? 'For example: Philodendrons' : 'For example: Tall Black Shelf'}"></label>
@@ -1235,6 +1249,8 @@ function filterWords() {
   if (G.needs) w.push('needs something from you'); if (G.plan) w.push(G.plan); if (G.health) w.push('health ' + G.health);
   if (G.low) w.push('ID under 70%'); if (G.q.trim()) w.push('"' + G.q.trim() + '"');
   if (G.group && groupById(G.group)) w.push('group ' + groupById(G.group).name);
+  if (G.site) w.push(G.site.toLowerCase());
+  if (G.status !== 'active') w.push(G.status === 'all' ? 'archived included' : 'archived only');
   return (w.length ? w.join(', ') : 'all plants') + '; sorted by ' + (SORTS[G.sort] || 'code').toLowerCase();
 }
 function pnavBlock(code) {
@@ -1246,7 +1262,7 @@ function pnavBlock(code) {
         <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
         <label>Winter plan<select data-f="pnplan"><option value="">Any</option>${META.winter_plans.map(pl => html`<option ${G.plan === pl ? raw('selected') : ''}>${pl}</option>`)}</select></label>
         <label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
-        ${groupFilter()}
+        ${siteFilter()}${groupFilter()}${statusFilter()}
         <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
         <label class="chk"><input type="checkbox" data-f="pnneeds" ${G.needs ? raw('checked') : ''}>Needs something from you</label>
         <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70%</label>
@@ -4217,7 +4233,7 @@ const acts = {
   },
   grprulerm(el) { const row = el.closest('.rule-row'); const box = row.parentElement; row.remove();
     box.querySelectorAll('.rule-row').forEach((r, i) => { r.dataset.row = i; r.querySelector('legend').textContent = 'Part ' + (i + 1); }); rulePreview(); box.querySelector('select').focus(); },
-  clearfilters() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '' }); gSave(); route(); },
+  clearfilters() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '', status: 'active', site: '' }); gSave(); route(); },
   plan(el) { G.plan = G.plan === el.dataset.plan ? '' : el.dataset.plan; document.querySelectorAll('.ledger button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.plan === G.plan))); drawGrid(); },
   pick(el) { PIDX = +el.dataset.i; repaintPhotos(); },
   zoom() { const c = curPhoto(); if (c) modal(html`<form method="dialog"><img src="${photoUrl(c.file)}" alt="${c.caption || CUR.p.common_name}"><p class="cap">${c.caption}</p><button class="btn" value="ok" autofocus>Close</button></form>`, 'photo'); },
@@ -4514,7 +4530,8 @@ document.addEventListener('change', e => {
   else if (f === 'pnneeds') { G.needs = el.checked; drawGrid(); }
   else if (f === 'sort') { G.sort = el.value; drawGrid(); }
   else if (f === 'low') { G.low = el.checked; drawGrid(); }
-  else if (f === 'archived') { G.archived = el.checked; G.plan = ''; route(); }
+  else if (f === 'status') { G.status = el.value; drawGrid(); }
+  else if (f === 'site') { G.site = el.value; drawGrid(); }
 });
 document.addEventListener('toggle', e => { const d = e.target; if (d.classList && d.classList.contains('histbox') && d.open) histOpen(d.dataset.hist); }, true);
 document.addEventListener('keydown', e => {

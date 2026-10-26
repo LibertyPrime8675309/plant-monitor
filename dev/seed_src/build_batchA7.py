@@ -1,10 +1,10 @@
 """Batch A7 (1.16.1): Ethan's photos of October 25, 2026 from the covered porch shelf.
-- P-028 Chinese evergreen: three new photos (whole plant, from above, and the stem base it asked for), health and ID notes.
+- New page: a second red Chinese evergreen (not P-028, as Ethan said on October 26), with three photos and health notes.
 - P-035 Pink Princess cutting: its tag reads 'PP-1' (cropped from the Chinese evergreen photo); the stake is still in the stem.
 - New page: a second curly Boston fern (grey pot in a darker grey bowl, its own hand-written tag), mostly dead with new fronds.
 - New page: a young Monstera in a wide beige pot, regrowing from an old knot of roots.
 Old values for the guarded updates come from a database with batches up to A6 applied (argv[1]). The new pages start from the
-P-024 fern and P-049 Monstera pages (their care and About details), with their own name, place, ID and health.
+P-028 Chinese evergreen, P-024 fern and P-049 Monstera pages (their care and About details), with their own name, place, ID and health.
 Run: python3 dev/seed_src/build_batchA7.py <plants.db>"""
 import json, os, sqlite3, sys
 from PIL import Image
@@ -30,16 +30,17 @@ def update(code, note, **new):
     s = {f: [r[f], v] for f, v in new.items() if r[f] != v}
     updates.append({'code': code, 'name': r['common_name'], 'photos': [first_photo(code)], 'note': note, 'set': s})
 
-# ---------------------------------------------------------------- P-028 Chinese evergreen
-for key, cap in (('agla_1', 'on the porch shelf, beside the PP-1 cutting'), ('agla_2', 'from above'), ('agla_3', 'stem base: a new pink shoot and dry old leaf bases')):
-    existing_photos.append({'code': 'P-028', 'file': pic(key), 'caption': f'{D}: {cap}', 'primary': False, 'source': f'Ethan, {D}'})
-update('P-028', 'New photos from the porch shelf (batch A7)',
-    aliases="Possibly 'Red Peacock' or a similar speckled red cultivar",
+# ---------------------------------------------------------------- new: a second red Chinese evergreen (not P-028: Ethan, October 26)
+agl = {k: row('P-028')[k] for k in FIELD_NAMES}
+agl.update(
+    common_name='Chinese evergreen, red speckled (second)', scientific_name='Aglaonema sp. (red speckled cultivar)',
+    aliases="Possibly 'Red Peacock' or a similar speckled red cultivar", id_confidence=80,
     id_basis=("Red-pink leaf margins, pink leaf stalks and heavy yellow-green and red speckling over green are typical of the red Aglaonema "
-              "cultivars. The October 25 photos show the speckling clearly, which fits 'Red Peacock' and similar speckled kinds better than "
-              "'Siam Aurora', whose leaf centres are plain green. Without a tag the exact cultivar stays open."),
+              "cultivars. The speckling fits 'Red Peacock' and similar speckled kinds better than 'Siam Aurora', whose leaf centres are plain "
+              "green. This is a second plant on the same shelf as P-028. Without a tag the exact cultivar stays open."),
     id_alternatives=L("Aglaonema 'Red Peacock'", "Aglaonema 'Super Red'", "Aglaonema 'Siam Aurora' (less likely: plain green leaf centres)", "Aglaonema 'Lady Valentine' (mostly pink leaves)"),
     id_improve=L('Tag or receipt, if there was one'),
+    location='Covered porch pallet shelf', container='Black nursery pot on a black saucer', site='Covered porch', health_rating='Good',
     health_summary=('Healthy: bright speckled colour, firm leaves and a new pink shoot at the base. The mix has dried hard and shrunk away from '
                     'the pot wall, and white mineral crust is building up on the pot.'),
     health_observations=L('Bright red-edged, speckled leaves', 'A new pink shoot (offset) coming up at the base',
@@ -48,7 +49,12 @@ update('P-028', 'New photos from the porch shelf (batch A7)',
     health_steps=L('Water slowly, let it drain, and water again, so the shrunken mix soaks up water. Or stand the pot in water for 15 minutes.',
                    'Once a month, water heavily to flush the minerals through, and wipe the white crust off the pot.',
                    'Bring it in before nights fall below 55°F, and keep it out of cold drafts.',
-                   'Leave the dry papery leaf bases; they come away by themselves.', 'Feed at half strength in spring and summer only.'))
+                   'Leave the dry papery leaf bases; they come away by themselves.', 'Feed at half strength in spring and summer only.'),
+    notes=f'A second red Chinese evergreen on the porch shelf (not P-028), photographed on {D}, 2026, beside the PP-1 cutting (P-035).', pot_size=None)
+agl['photos'] = [{'file': pic(k), 'caption': f'{D}: {cap}', 'primary': p, 'source': f'Ethan, {D}'}
+                 for k, cap, p in (('agla_1', 'on the porch shelf, beside the PP-1 cutting', True), ('agla_2', 'from above', False),
+                                   ('agla_3', 'stem base: a new pink shoot and dry old leaf bases', False))]
+new_plants.append(agl)
 
 # ---------------------------------------------------------------- P-035 Pink Princess cutting: the tag
 existing_photos.append({'code': 'P-035', 'file': pic('pp1_tag'), 'caption': f"{D}: tag reads 'PP-1'; the stake is still in the stem", 'primary': False, 'source': f'Ethan, {D}'})
