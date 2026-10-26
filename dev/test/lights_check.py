@@ -99,7 +99,9 @@ d7 = {L['key']: L for L in j7['lights']}
 check(d7['disk-light']['fixture'].startswith('New, still in its box') and 'E26' in d7['sansi-gooseneck']['notes'], "the disk light and gooseneck carry his answers")
 st, rq2 = call('GET', '/api/requests')
 done = {r['rkey']: r for r in rq2 if r.get('rkey')}
-check(all(done[k]['done'] for k in ('lights-disk', 'lights-spots', 'lights-sockets')) and not done['lights-lamps']['done'] and not done['lights-models']['done'], 'answered questions are closed, the new ones are open')
+check(all(done[k]['done'] for k in ('lights-disk', 'lights-spots', 'lights-sockets', 'lights-lamps')) and not done['lights-models']['done'], 'answered questions are closed (lamps from batch A6), the model numbers are still open')
+check(d7['sansi-80w']['fixture'].startswith('Suggested: the bare socket on the long') and 'clamp-on' in d7['sansi-30w']['fixture'] and 'Five bare sockets are left spare' in d7['sansi-10w']['fixture'],
+      'each bulb has a suggested lamp or socket from his answer (batch A6)')
 pid = next(pl['id'] for pl in j7['places'] if pl['label'] == 'Downstairs Living Room, Large Brown Hutch')
 st, _ = call('PUT', '/api/lights/spots/%d' % sid, {'name': 'Living room window', 'place': pid, 'light': p0['light_id'], 'units': p0['units'], 'distance': p0['distance_in'], 'hours': p0['hours'], 'dim': p0['dim_pct']})
 sp = next(s for s in call('GET', '/api/lights')[1]['spots'] if s['id'] == sid)

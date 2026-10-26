@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.15.0 (2026-10-25)
+- **Your plant calendar.** Feeding days and cold nights can go into Google, Outlook, Samsung or Apple calendars, with reminders at times you choose.
+  - Find it at the bottom of the **Today**, **Fertilizer** and **Cold-night checklist** pages: **Set up your calendar**.
+  - One feeding day a week on the day you choose. A plant is never fed early: it goes on the first feeding day on or after it is due.
+  - Subscribe with a private link so it updates by itself. For Google, Outlook.com and iCloud to reach it, the README and the window have the Tailscale Funnel steps. Funnel shares only the calendar link.
+- **Back outside.** A spring page, from **Winter plan**, that says which indoor plants can go back out, using each plant's own temperatures and the 7-day forecast: Ready, Safe but cool, Too early, or Not yet.
+- **Your lamps and sockets recorded.** You have 14 sockets for 9 bulbs, so every bulb can be used. Each bulb's "Where it is" has a suggestion you can change:
+  - the 80 W bulb on the long-cable socket, hung bare;
+  - the two 30 W bulbs in two clamp lamps;
+  - the six 10 W bulbs in the third clamp lamp and five bare sockets, leaving five bare sockets spare.
+
 ## 1.14.1 (2026-10-25)
 - **Swipe between plants.** On a phone or tablet, swipe left on a plant page for the next plant, or right for the previous one.
   - A label shows which plant is coming, and says "Let go to open it" once the swipe is far enough.

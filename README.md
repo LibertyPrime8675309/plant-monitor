@@ -356,6 +356,17 @@ The page **Getting plants ready to come inside** (button on the Winter plan page
 
 Pots are never cleaned with bleach: use hot soapy water, a brush and a day in the sun, or for extra cleaning 10 minutes in 3% hydrogen peroxide (never mixed with vinegar or other cleaners), then rinse. A new pot works too.
 
+## Back outside in spring (from 1.15.0)
+
+In spring, open **Winter plan** and press **Which can go back outside?** (or go to the **Back outside** page). It checks every plant whose Location is Indoors, or Garage or shed, against its own temperatures and the 7-day forecast:
+
+- **Ready:** every night in the forecast is at or above the low it likes.
+- **Safe, but cool:** no night comes within 3°F of its damage point, but some nights are cooler than it likes.
+- **Too early:** this week is fine, but in most years colder nights still come after this date.
+- **Not yet:** a night in the forecast is too cold. The page says which night and how cold.
+
+Each label is a word in a box, not just a colour. With 3 or more years of weather history, each plant also gets the date the nights usually stay warm enough. **Moved to the porch** and **Moved outside** change its Location, like the Moved indoors button. From late autumn to winter the page says plants should stay in until spring, and in spring the Today page says how many can go back out.
+
 ## Photo check (from 1.8.0)
 
 When you add photos, each one is checked in your browser first. Photos that look fine are added straight away. If any look **blurry**, **too dark**, **too bright (washed out)** or are a **very small picture**, a box shows them with what to do, and these buttons: **Take a new one** (opens the camera or file picker again), **Add only the good ones**, **Add it anyway** and **Cancel**. Nothing extra is sent anywhere.
@@ -514,7 +525,7 @@ Open **Fertilizer** (top menu) for the whole collection, or look at the **Nutrie
   - Each plant's ratio and strength (None needed, Quarter strength, Quarter to half strength, Half strength or Full strength) are on its Edit page, under Nutrients. Claude filled them in for every plant from its fertilizer note (upgrade batch `batchA2`).
 - **Change a plant's season:** Edit this page, Nutrients group: "Feed from month", "Feed through month" (a season like October to April is fine) and "Feed every (days)". The starting values are Claude's guesses from the plant type.
 
-## Your plant calendar (prototype)
+## Your plant calendar (from 1.15.0)
 
 Feeding days and cold nights can go into Google, Outlook, Samsung or Apple calendars, with reminders. Open **Today**, **Fertilizer** or the **Cold-night checklist**, go to **Add to your calendar** at the bottom, and press **Set up your calendar**.
 
