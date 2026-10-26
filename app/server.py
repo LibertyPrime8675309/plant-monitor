@@ -44,6 +44,7 @@ SITES = ['Outdoors', 'Covered porch', 'Indoors', 'Garage or shed']
 # 1.9.0: what decides which pest treatments suit a plant before it comes inside (chosen on its page)
 LEAF_TYPES = ['Large leaves', 'Small or many leaves', 'Fuzzy or velvety leaves', 'Succulent or cactus', 'Fern fronds', 'Palm fronds', 'Grows in water']
 POT_SIZES = ['Small: fits in a bucket', 'Medium: fits in a big tub', 'Large: too big to soak']
+PET_SAFETY = ['Toxic to pets', 'Mildly toxic to pets', 'Not known to be toxic', 'Safe for pets (ASPCA)']    # 1.17.0
 FERT_STRENGTHS = ['None needed', 'Quarter strength', 'Quarter to half strength', 'Half strength', 'Full strength']   # 1.11.0
 PESTS = ['Spider mites', 'Mealybugs', 'Scale', 'Aphids', 'Whiteflies', 'Thrips', 'Ants', 'Fungus gnats', 'Root mealybugs',
          'Slugs or snails', 'Pill bugs or earwigs', 'Other']
@@ -101,9 +102,10 @@ FIELDS = [
     ('bloom', 'long', 'Flowers'), ('fruit', 'long', 'Fruit'),
     ('danger_humans', 'long', 'Dangers to people'), ('danger_animals', 'long', 'Dangers to pets and other animals'),
     ('propagation', 'list', 'Propagation'), ('sources', 'list', 'Sources'),
+    ('pet_safety', 'enum', 'Safety for pets'),                                                          # 1.17.0, for the pets filter
 ]
-ENUMS = {'winter_plan': WINTER_PLANS, 'site': SITES, 'health_rating': HEALTH, 'leaf_type': LEAF_TYPES, 'pot_size': POT_SIZES, 'fert_strength': FERT_STRENGTHS}
-OPTIONAL_ENUMS = ('leaf_type', 'pot_size', 'fert_strength')        # may be left as "Not set"
+ENUMS = {'winter_plan': WINTER_PLANS, 'site': SITES, 'health_rating': HEALTH, 'leaf_type': LEAF_TYPES, 'pot_size': POT_SIZES, 'fert_strength': FERT_STRENGTHS, 'pet_safety': PET_SAFETY}
+OPTIONAL_ENUMS = ('leaf_type', 'pot_size', 'fert_strength', 'pet_safety')        # may be left as "Not set"
 FIELD_NAMES = [f[0] for f in FIELDS]
 FIELD_KIND = {f[0]: f[1] for f in FIELDS}
 FIELD_LABEL = {f[0]: f[2] for f in FIELDS}
@@ -884,17 +886,23 @@ def list_plants():
     status = request.args.get('status', 'active')          # 'active', 'archived', or 'all' (1.16.2: both, for the Status filter)
     rows = c.execute('SELECT * FROM plants ORDER BY code').fetchall() if status == 'all' else c.execute('SELECT * FROM plants WHERE status=? ORDER BY code', (status,)).fetchall()
     open_req = {k: n for k, n in c.execute('SELECT plant_code, COUNT(*) FROM requests WHERE done=0 AND plant_code IS NOT NULL GROUP BY plant_code')}
+    spots = plant_spots(c)
     out = []
     for r in rows:
         hay = ' '.join(str(r[n] or '') for n in ('code', 'common_name', 'scientific_name', 'aliases', 'location', 'container', 'plant_type', 'notes')).lower()
         if q and q not in hay: continue
         p = c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC,id LIMIT 1', (r['id'],)).fetchone()
+        pn, pat = c.execute('SELECT COUNT(*), MAX(added_at) FROM photos WHERE plant_id=?', (r['id'],)).fetchone()
         out.append({'code': r['code'], 'common_name': r['common_name'], 'scientific_name': r['scientific_name'], 'plant_type': r['plant_type'],
                     'location': r['location'], 'aliases': r['aliases'], 'id_confidence': r['id_confidence'], 'winter_plan': r['winter_plan'], 'health_rating': r['health_rating'],
                     'site': r['site'] or 'Outdoors', 'version': r['version'], 'updated_at': r['updated_at'], 'updated_by': r['updated_by'], 'photo': p['file'] if p else None,
                     'temp_damage_below': r['temp_damage_below'], 'temp_ideal_low': r['temp_ideal_low'], 'temp_ideal_high': r['temp_ideal_high'],
                     'fert_from_month': r['fert_from_month'], 'fert_to_month': r['fert_to_month'], 'fert_every_days': r['fert_every_days'], 'fertilizer': r['fertilizer'],
-                    'requests_open': open_req.get(r['code'], 0), 'status': r['status']})
+                    'requests_open': open_req.get(r['code'], 0), 'status': r['status'],
+                    # 1.17.0: for the filters on the Plants page
+                    'dli_low': r['dli_low'], 'dli_high': r['dli_high'], 'zone_low': r['zone_low'], 'pet_safety': r['pet_safety'] or '',
+                    'leaf_type': r['leaf_type'] or '', 'pot_size': r['pot_size'] or '', 'photo_count': pn, 'photo_at': pat,
+                    'light_spot': spots.get(r['code'])})
     return jsonify(out)
 
 @app.route('/api/plants/<code>')

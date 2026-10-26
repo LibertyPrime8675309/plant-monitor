@@ -39,6 +39,37 @@ with sync_playwright() as p:
     check('archived included' in pg.inner_text('#pn-sum') and pg.locator('#pn-pos').inner_text().startswith('plant '), 'Previous and Next include archived plants when the filter does')
     check(pg.locator('#pn-filters select[data-f=status]').count() == 1 and pg.locator('#pn-filters select[data-f=site]').count() == 1, 'the Previous / Next panel has the same filters')
     pg.goto(BASE + '/'); pg.wait_for_timeout(1500); pg.click('[data-act=clearfilters]') if pg.locator('[data-act=clearfilters]').count() else None
+    # ---- 1.17.0: more filters
+    pg.goto(BASE + '/'); pg.wait_for_timeout(2000)
+    pg.select_option('select[data-f=status]', 'active'); pg.wait_for_timeout(300)
+    check(pg.locator('#more-f select[data-f=more]').count() == 8, 'More filters has 8 choices')
+    if not pg.locator('#more-f').evaluate('d => d.open'): pg.click('#more-f > summary')
+    def more(key, val):
+        pg.select_option(f'#more-f select[data-key={key}]', val); pg.wait_for_timeout(700); return n()
+    full = [p for p in act if (p.get('dli_low') or 0) >= 25]
+    check(more('light', 'full') == len(full) and len(full) > 5, f'Light needs: full sun ({len(full)})')
+    check('(1 on)' in pg.inner_text('#more-f > summary'), 'the fold-out says how many are on')
+    more('light', '')
+    safe = [p for p in act if p.get('pet_safety') == 'Safe for pets (ASPCA)']
+    check(more('pets', 'safe') == len(safe) and len(safe) > 5, f'Pets: safe for pets ({len(safe)})')
+    more('pets', '')
+    tender, hardy = more('hardy', 'tender'), more('hardy', 'hardy')
+    check(tender > 20 and hardy > 5, f'Winter here: {hardy} hardy, {tender} not hardy')
+    more('hardy', '')
+    w = get('/api/water'); due = {x['code'] for x in w['plants'] if x['state'] == 'due'}
+    got = more('care', 'water')
+    check(got == len(due & {p['code'] for p in act}) and got > 0, f'Care today: water due ({got})')
+    more('care', '')
+    check(more('grow', 'yes') == 0 and 'No plants match' in pg.inner_text('#grid'), 'Grow light: none are under a spot yet, and the page says so')
+    more('grow', '')
+    check(more('leaf', 'Succulent or cactus') == len([p for p in act if p.get('leaf_type') == 'Succulent or cactus']), 'Leaf type works')
+    more('leaf', '')
+    check(more('photo', 'none') == len([p for p in act if not p.get('photo_count')]), 'Photos: no photo yet')
+    more('photo', '')
+    pg.goto(BASE + '/#/plant/P-020'); pg.wait_for_timeout(2000)
+    check(pg.locator('#pn-filters select[data-f=more]').count() == 8, 'the Previous / Next panel has the same 8 filters')
+    pg.goto(BASE + '/#/plant/P-020'); pg.wait_for_timeout(1500)
+    check('Toxic to pets' in pg.inner_text('#about'), 'the fiddle-leaf fig page says it is toxic to pets')
     ph = b.new_page(viewport={'width': 390, 'height': 844})
     ph.add_init_script("localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
     ph.goto(BASE + '/'); ph.wait_for_timeout(2500)

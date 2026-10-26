@@ -1023,3 +1023,9 @@ html[data-role=viewer] :is([data-act=grpnew], [data-act=grpedit], [data-act=grpd
   [data-act=grpcare], [data-act=grpmove], [data-act=grpset], [data-act=grpundo], [data-act=plgroups], #g-do){display:none!important}
 .rule-prev{border-left:.35rem solid var(--cyan);padding:.4rem .8rem;background:var(--cyan-soft)}
 .tag.tag-arch{border-style:dashed;color:var(--ink-2)}
+/* 1.17.0: more filters on the Plants page */
+.more-f{margin:-.8rem 0 1.8rem;border:var(--bw) solid var(--line);padding:.5rem .9rem;background:var(--sheet)}
+.more-f>summary{font-weight:700;cursor:pointer;padding:.3rem 0}
+.more-f .filters{margin:.6rem 0 .4rem}
+.more-f .hint{margin:0}
+html:not([data-narrow="1"]) .more-f .filters>label:first-child{grid-column:auto}

@@ -253,7 +253,7 @@ async function route() {
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let view;
-    await Promise.all([loadCodes(), loadFrost(), loadGroups(parts[0] === 'groups' || parts[0] === 'group' || !parts.length)]);
+    await Promise.all([loadCodes(), loadFrost(), loadGroups(parts[0] === 'groups' || parts[0] === 'group' || !parts.length), G.care && !CAREDUE ? loadCareDue() : null]);
     if (!META) { META = await api('GET', '/api/meta'); const v = document.getElementById('app-ver'); if (v && META.version) v.textContent = 'v' + META.version; paintPlace(); paintWho(); }
     if (parts[0] === 'plant' && parts[1] && parts[2] === 'edit') view = await viewEdit(decodeURIComponent(parts[1]));
     else if (parts[0] === 'plant' && parts[1]) view = await viewPlant(decodeURIComponent(parts[1]));
@@ -314,7 +314,7 @@ function navLayout() {
   document.querySelectorAll('.pane').forEach(p => { const j = p.querySelector('.jump'); p.style.setProperty('--jump-h', (j ? j.offsetHeight : 0) + 'px'); });
   pnavLayout();
 }
-document.addEventListener('toggle', e => { if (e.target && e.target.id === 'pn-filters') PNOPEN = e.target.open; }, true);
+document.addEventListener('toggle', e => { if (e.target && e.target.id === 'pn-filters') PNOPEN = e.target.open; if (e.target && e.target.id === 'more-f') MOREOPEN = e.target.open; }, true);
 let NAVITEMS = [];
 function buildSideNav() {
   const list = document.getElementById('sn-list'); if (!list) return;
@@ -375,11 +375,13 @@ function navActive() {
 window.addEventListener('scroll', navActive, { capture: true, passive: true });
 
 // ---------- gallery ----------
-const G = { q: '', plan: '', health: '', low: false, needs: false, sort: 'code', group: '', status: 'active', site: '' };   // 1.16.2: status and site
+const G = { q: '', plan: '', health: '', low: false, needs: false, sort: 'code', group: '', status: 'active', site: '',   // 1.16.2: status and site
+  light: '', pets: '', hardy: '', care: '', grow: '', leaf: '', pot: '', photo: '' };                                      // 1.17.0: more filters
+const MORE_KEYS = ['light', 'pets', 'hardy', 'care', 'grow', 'leaf', 'pot', 'photo'];     // the More filters (defined further down)
 // the Plants page filters are remembered in this browser and also decide where Previous / Next plant go on plant pages
-try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort', 'group', 'status', 'site']) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ }
-function gSave() { try { localStorage.setItem('plantdb.filters', JSON.stringify({ q: G.q, plan: G.plan, health: G.health, low: G.low, needs: G.needs, sort: G.sort, group: G.group, status: G.status, site: G.site })); } catch (e) { /* not saved */ } }
-const gActive = () => !!(G.q.trim() || G.plan || G.health || G.low || G.needs || (G.group && groupById(G.group)) || G.status !== 'active' || G.site);
+try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort', 'group', 'status', 'site', ...MORE_KEYS]) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ }
+function gSave() { try { localStorage.setItem('plantdb.filters', JSON.stringify({ q: G.q, plan: G.plan, health: G.health, low: G.low, needs: G.needs, sort: G.sort, group: G.group, status: G.status, site: G.site, ...Object.fromEntries(MORE_KEYS.map(k => [k, G[k]])) })); } catch (e) { /* not saved */ } }
+const gActive = () => !!(G.q.trim() || G.plan || G.health || G.low || G.needs || (G.group && groupById(G.group)) || G.status !== 'active' || G.site || moreOn());
 const STATUS_WORD = { active: 'Active only', all: 'Active and archived', archived: 'Archived only' };
 const isArch = p => p.status === 'archived';
 const statusOk = p => G.status === 'all' || (G.status === 'archived' ? isArch(p) : !isArch(p));
@@ -390,7 +392,7 @@ const SORTS = { code: 'Code', health: 'Health, worst first', conf: 'ID confidenc
 function filteredPlants(list) {
   const q = G.q.trim().toLowerCase();
   let r = (list || ALL).filter(p =>
-    statusOk(p) && (!G.site || (p.site || 'Outdoors') === G.site) &&
+    statusOk(p) && (!G.site || (p.site || 'Outdoors') === G.site) && moreOk(p) &&
     (!G.plan || p.winter_plan === G.plan) && (!G.health || p.health_rating === G.health) &&
     (!G.low || (p.id_confidence != null && p.id_confidence < 70)) && (!G.needs || needsYou(p)) && inGroupFilter(p.code) &&
     (!q || [p.code, p.common_name, p.scientific_name, p.aliases, p.plant_type, p.location].join(' ').toLowerCase().includes(q)));
@@ -423,6 +425,7 @@ function drawGrid() {
   const r = filteredPlants();
   const pool = ALL.filter(statusOk).length;
   const led = document.querySelector('.ledger'); if (led) led.innerHTML = rend(ledger());
+  const mf = document.querySelector('#more-f > summary'); if (mf) { const n = moreOn(); mf.textContent = 'More filters' + (n ? ` (${n} on)` : ''); }
   const gt = document.getElementById('g-title'); if (gt) gt.textContent = G.status === 'archived' ? 'Archived plants' : 'Outdoor plants';
   document.getElementById('count').textContent = `${r.length} of ${pool} ${G.status === 'archived' ? 'archived ' : G.status === 'all' ? '' : 'active '}plants shown`;
   document.getElementById('grid').innerHTML = r.length
@@ -458,6 +461,7 @@ async function viewGallery() {
       <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
       <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70% (${lowN})</label>
     </div>
+    ${moreFilters()}
     <p id="count" class="muted" aria-live="polite"></p>
     <div class="grid" id="grid"></div>
     ${archN ? html`<p class="hint" style="margin-top:2rem">${archN} archived plant${archN === 1 ? ' is' : 's are'} hidden from this list. Choose <strong>Show: Active and archived</strong> in the filters to see ${archN === 1 ? 'it' : 'them'} too.</p>` : ''}`,
@@ -479,6 +483,56 @@ const groupById = id => (PGROUPS && PGROUPS.groups.find(g => String(g.id) === St
 const groupsOf = code => (PGROUPS ? PGROUPS.groups.filter(g => g.codes.includes(code)) : []);
 const groupNames = code => groupsOf(code).map(g => g.name).sort((a, b) => a.localeCompare(b));
 function inGroupFilter(code) { const g = G.group && groupById(G.group); return !g || g.codes.includes(code); }
+// ---------- 1.17.0: more filters (light needs, pets, winter, care today, grow light, leaf type, pot size, photos) ----------
+const MORE = [
+  { key: 'light', label: 'Light needs', opts: [['low', 'Low light'], ['indirect', 'Bright indirect light'], ['sun', 'Some direct sun'], ['full', 'Full sun']] },
+  { key: 'pets', label: 'Pets', opts: [['safe', 'Safe for pets (ASPCA)'], ['notknown', 'Not known to be toxic'], ['mild', 'Mildly toxic to pets'], ['toxic', 'Toxic to pets'], ['unset', 'Pet safety not set']] },
+  { key: 'hardy', label: 'Winter here', opts: [['hardy', 'Hardy here'], ['tender', 'Not hardy here'], ['nozone', 'Annual or no zone set']] },
+  { key: 'care', label: 'Care today', opts: [['any', 'Water or feeding due'], ['water', 'Water due'], ['feed', 'Feeding due']] },
+  { key: 'grow', label: 'Grow light', opts: [['yes', 'Under a grow light spot'], ['no', 'Not under a grow light']] },
+  { key: 'leaf', label: 'Leaf type', opts: () => [...((META.enums || {}).leaf_type || []).map(x => [x, x]), ['unset', 'Leaf type not set']] },
+  { key: 'pot', label: 'Pot size', opts: () => [...((META.enums || {}).pot_size || []).map(x => [x, x]), ['unset', 'Pot size not set']] },
+  { key: 'photo', label: 'Photos', opts: [['none', 'No photo yet'], ['old', 'Newest photo over a month old']] },
+];
+const moreOpts = d => typeof d.opts === 'function' ? d.opts() : d.opts;
+const moreOn = () => MORE_KEYS.filter(k => G[k]).length;
+let MOREOPEN = false, CAREDUE = null;
+function lightBand(p) { const d = p.dli_low; return d == null ? '' : d < 6 ? 'low' : d < 12 ? 'indirect' : d < 25 ? 'sun' : 'full'; }
+const PET_KEY = { 'Toxic to pets': 'toxic', 'Mildly toxic to pets': 'mild', 'Not known to be toxic': 'notknown', 'Safe for pets (ASPCA)': 'safe' };
+function hereZone() { const Z = META && META.zone; return !Z ? null : Z.zone ? zoneNum(Z.zone) : zoneNum(String(Z.map_zone || '').split(' ')[0]); }
+function hardyKey(p) { const lo = zoneNum(p.zone_low), here = hereZone(); return lo == null || here == null ? 'nozone' : here >= lo ? 'hardy' : 'tender'; }
+async function loadCareDue() {
+  try {
+    const [W] = await Promise.all([api('GET', '/api/water'), loadFertData(false)]);
+    const t = todayStr(), m = new Map();
+    for (const w of W.plants) m.set(w.code, { water: w.state === 'due', feed: false });
+    for (const p of PCODES.values()) { const x = m.get(p.code) || { water: false, feed: false }; x.feed = fertState(p, entriesFor(p.code), t, fertCtx()).state === 'due'; m.set(p.code, x); }
+    CAREDUE = m;
+  } catch (e) { CAREDUE = new Map(); }
+  return CAREDUE;
+}
+function moreOk(p) {
+  const k = G;
+  if (k.light && lightBand(p) !== k.light) return false;
+  if (k.pets && (k.pets === 'unset' ? !!p.pet_safety : PET_KEY[p.pet_safety] !== k.pets)) return false;
+  if (k.hardy && hardyKey(p) !== k.hardy) return false;
+  if (k.care && CAREDUE) { const c = CAREDUE.get(p.code) || {}; if (k.care === 'water' ? !c.water : k.care === 'feed' ? !c.feed : !(c.water || c.feed)) return false; }
+  if (k.grow && (k.grow === 'yes') !== !!p.light_spot) return false;
+  if (k.leaf && (k.leaf === 'unset' ? !!p.leaf_type : p.leaf_type !== k.leaf)) return false;
+  if (k.pot && (k.pot === 'unset' ? !!p.pot_size : p.pot_size !== k.pot)) return false;
+  if (k.photo === 'none' && p.photo_count) return false;
+  if (k.photo === 'old' && (!p.photo_count || (p.photo_at && Date.now() - Date.parse(p.photo_at) < 30 * 864e5))) return false;
+  return true;
+}
+function moreSelects() {
+  return html`${MORE.map(d => html`<label>${d.label}<select data-f="more" data-key="${d.key}"><option value="">Any</option>${moreOpts(d).map(([v, l]) => html`<option value="${v}" ${G[d.key] === v ? raw('selected') : ''}>${l}</option>`)}</select></label>`)}`;
+}
+function moreFilters() {
+  const n = moreOn();
+  return html`<details class="more-f" id="more-f" ${MOREOPEN || n ? raw('open') : ''}><summary>More filters${n ? ` (${n} on)` : ''}</summary>
+    <div class="filters">${moreSelects()}</div>
+    <p class="hint">Light needs come from each plant's daily light range. "Winter here" compares the plant's coldest zone with yours. Care today follows the Today page.</p></details>`;
+}
 function statusFilter() {
   return html`<label>Show<select data-f="status">${Object.entries(STATUS_WORD).map(([k, v]) => html`<option value="${k}" ${G.status === k ? raw('selected') : ''}>${v}</option>`)}</select></label>`;
 }
@@ -820,7 +874,7 @@ function humBlock(p, cur) {
 }
 // ---------- 1.14.0: about this plant ----------
 const ABOUT_FIELDS = ['growth_habit', 'kingdom', 'taxon_order', 'family', 'genus', 'height_ground', 'width_ground', 'height_pot', 'width_pot', 'growth_rate', 'lifespan',
-  'zone_low', 'zone_high', 'zone_notes', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'propagation', 'sources'];
+  'zone_low', 'zone_high', 'zone_notes', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'pet_safety', 'propagation', 'sources'];
 function zoneNum(z) { const m = /^\s*(\d{1,2})\s*([ab])?\s*$/i.exec(String(z || '')); return m ? +m[1] + ((m[2] || '').toLowerCase() === 'b' ? 0.5 : 0) : null; }
 function zoneHere(p) {
   const Z = META && META.zone, lo = zoneNum(p.zone_low), here = !Z ? null : Z.zone ? zoneNum(Z.zone) : zoneNum(String(Z.map_zone || '').split(' ')[0]);   // no weather history yet: the colder end of the map zone
@@ -851,7 +905,7 @@ function aboutBlock(p) {
     ${p.invasive ? html`<h3>Invasive risk</h3>${paras(p.invasive)}` : ''}
     ${p.bloom ? html`<h3>Flowers</h3>${paras(p.bloom)}` : ''}
     ${p.fruit ? html`<h3>Fruit</h3>${paras(p.fruit)}` : ''}
-    ${p.danger_humans || p.danger_animals ? html`<div class="danger-box"><h3><span aria-hidden="true">⚠ </span>Dangers</h3>${p.danger_humans ? html`<h4>To people</h4>${paras(p.danger_humans)}` : ''}${p.danger_animals ? html`<h4>To pets and other animals</h4>${paras(p.danger_animals)}` : ''}
+    ${p.danger_humans || p.danger_animals || p.pet_safety ? html`<div class="danger-box"><h3><span aria-hidden="true">⚠ </span>Dangers</h3>${p.danger_humans ? html`<h4>To people</h4>${paras(p.danger_humans)}` : ''}${p.danger_animals ? html`<h4>To pets and other animals</h4>${paras(p.danger_animals)}${p.pet_safety ? html`<p><strong>In short: ${p.pet_safety}.</strong></p>` : ''}` : ''}
       <p class="hint">If someone may have been poisoned, call Poison Control at 1-800-222-1222. For a pet, call your vet or the ASPCA Animal Poison Control Center at 888-426-4435.</p></div>` : ''}
     ${lines(p.propagation).length ? html`<h3>Propagation</h3>${ol(p.propagation)}` : ''}
     ${lines(p.sources).length ? html`<h3>Sources and further reading</h3><ul class="srcs">${srcList(p.sources)}</ul>` : ''}`;
@@ -1251,6 +1305,7 @@ function filterWords() {
   if (G.group && groupById(G.group)) w.push('group ' + groupById(G.group).name);
   if (G.site) w.push(G.site.toLowerCase());
   if (G.status !== 'active') w.push(G.status === 'all' ? 'archived included' : 'archived only');
+  for (const d of MORE) if (G[d.key]) { const o = moreOpts(d).find(x => x[0] === G[d.key]); if (o) w.push(o[1].toLowerCase()); }
   return (w.length ? w.join(', ') : 'all plants') + '; sorted by ' + (SORTS[G.sort] || 'code').toLowerCase();
 }
 function pnavBlock(code) {
@@ -1262,7 +1317,7 @@ function pnavBlock(code) {
         <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
         <label>Winter plan<select data-f="pnplan"><option value="">Any</option>${META.winter_plans.map(pl => html`<option ${G.plan === pl ? raw('selected') : ''}>${pl}</option>`)}</select></label>
         <label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
-        ${siteFilter()}${groupFilter()}${statusFilter()}
+        ${siteFilter()}${groupFilter()}${statusFilter()}${moreSelects()}
         <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
         <label class="chk"><input type="checkbox" data-f="pnneeds" ${G.needs ? raw('checked') : ''}>Needs something from you</label>
         <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70%</label>
@@ -2110,7 +2165,7 @@ const GROUPS = [
   ['Names and place', ['common_name', 'scientific_name', 'aliases', 'plant_type', 'site', 'location', 'container']],
   ['Identification', ['id_confidence', 'id_basis', 'id_alternatives', 'id_improve']],
   ['About this plant', ['growth_habit', 'kingdom', 'taxon_order', 'family', 'genus', 'height_ground', 'width_ground', 'height_pot', 'width_pot', 'growth_rate', 'lifespan',
-    'zone_low', 'zone_high', 'zone_notes', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'propagation', 'sources']],
+    'zone_low', 'zone_high', 'zone_notes', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'pet_safety', 'propagation', 'sources']],
   ['Temperature', ['temp_ideal_low', 'temp_ideal_high', 'temp_damage_below', 'temp_lethal_below', 'temp_damage_above', 'temp_notes']],
   ['Humidity and air dryness', ['humidity_low', 'humidity_high', 'vpd_low', 'vpd_high', 'humidity_notes']],
   ['Sunlight', ['light_summary', 'light_hours', 'par_low', 'par_high', 'dli_low', 'dli_high', 'light_notes']],
@@ -2133,6 +2188,7 @@ const HINTS = {
   pests_found: 'One per line, from: Spider mites, Mealybugs, Scale, Aphids, Whiteflies, Thrips, Ants, Fungus gnats, Root mealybugs, Slugs or snails, Pill bugs or earwigs, Other. The plant page has tick boxes for these.',
   npk_ratio: 'Three numbers for nitrogen, phosphate and potash, such as 3-1-2. The Fertilizer page finds your closest fertilizer.',
   fert_strength: 'How strong to mix it. The Fertilizer page works out the amount per gallon from this.',
+  pet_safety: 'Used by the Pets filter on the Plants page. "Safe for pets" only where the ASPCA lists the plant as non-toxic.',
   zone_low: 'USDA zone, such as 9b or 10. The page compares it with the zone where you are.', zone_high: 'USDA zone, such as 11.',
   height_ground: 'For example 6 to 10 ft.', height_pot: 'For example 3 to 5 ft.', propagation: 'One method per line.',
   sources: 'One per line: a title, a | and the web address, for example "NC State Extension: Aloe vera | https://...".',
@@ -4233,7 +4289,7 @@ const acts = {
   },
   grprulerm(el) { const row = el.closest('.rule-row'); const box = row.parentElement; row.remove();
     box.querySelectorAll('.rule-row').forEach((r, i) => { r.dataset.row = i; r.querySelector('legend').textContent = 'Part ' + (i + 1); }); rulePreview(); box.querySelector('select').focus(); },
-  clearfilters() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '', status: 'active', site: '' }); gSave(); route(); },
+  clearfilters() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '', status: 'active', site: '' }, Object.fromEntries(MORE_KEYS.map(k => [k, '']))); MOREOPEN = false; gSave(); route(); },
   plan(el) { G.plan = G.plan === el.dataset.plan ? '' : el.dataset.plan; document.querySelectorAll('.ledger button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.plan === G.plan))); drawGrid(); },
   pick(el) { PIDX = +el.dataset.i; repaintPhotos(); },
   zoom() { const c = curPhoto(); if (c) modal(html`<form method="dialog"><img src="${photoUrl(c.file)}" alt="${c.caption || CUR.p.common_name}"><p class="cap">${c.caption}</p><button class="btn" value="ok" autofocus>Close</button></form>`, 'photo'); },
@@ -4532,6 +4588,7 @@ document.addEventListener('change', e => {
   else if (f === 'low') { G.low = el.checked; drawGrid(); }
   else if (f === 'status') { G.status = el.value; drawGrid(); }
   else if (f === 'site') { G.site = el.value; drawGrid(); }
+  else if (f === 'more') { G[el.dataset.key] = el.value; if (el.dataset.key === 'care' && el.value && !CAREDUE) loadCareDue().then(drawGrid); drawGrid(); }
 });
 document.addEventListener('toggle', e => { const d = e.target; if (d.classList && d.classList.contains('histbox') && d.open) histOpen(d.dataset.hist); }, true);
 document.addEventListener('keydown', e => {

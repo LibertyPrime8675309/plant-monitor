@@ -302,6 +302,14 @@ The filter row on the Plants page narrows the list. Every filter is remembered i
 - **Location (from 1.16.2):** outdoors, covered porch, indoors, or garage or shed.
 - **Group (from 1.16.0):** only the plants in one group.
 - **Show (from 1.16.2):** active plants only (the usual), active and archived together, or archived only. Archived plants say "Archived" on their card. Archiving hides a plant without deleting anything; **Move back to the main list** on its page undoes it.
+- **More filters (from 1.17.0),** in the fold-out under the filter row:
+  - **Light needs:** low light, bright indirect light, some direct sun, or full sun, from each plant's daily light range.
+  - **Pets:** safe for pets (only where the ASPCA lists the plant as non-toxic), not known to be toxic, mildly toxic, or toxic. This comes from the plant's "Safety for pets" field (Edit, "About this plant").
+  - **Winter here:** hardy here, not hardy here, or annual / no zone set. It compares the plant's coldest zone with yours.
+  - **Care today:** water or feeding due, the same as the Today page.
+  - **Grow light:** under a grow light spot, or not.
+  - **Leaf type** and **pot size.**
+  - **Photos:** no photo yet, or the newest photo is over a month old.
 - **Sort by:** code, health, ID confidence, recently updated, name, or group.
 - **Needs something from you** and **ID confidence under 70%.**
 

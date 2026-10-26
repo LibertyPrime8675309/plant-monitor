@@ -1,0 +1,1215 @@
+{
+ "id": "batchA8",
+ "created": "2026-10-26",
+ "author": "Claude (pet safety; Ethan's answers, Oct 26, 2026)",
+ "updates": [
+  {
+   "code": "P-001",
+   "name": "Dieffenbachia (dumb cane), lime/cream form",
+   "photos": [
+    "img_1000021186.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-002",
+   "name": "Boobie cactus (Fukurokuryuzinboku)",
+   "photos": [
+    "img_1000021088.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-003",
+   "name": "Fig",
+   "photos": [
+    "img_1000021162.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-004",
+   "name": "Grape vine (young)",
+   "photos": [
+    "img_1000021164.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-005",
+   "name": "Ivy-leaf morning glory",
+   "photos": [
+    "img_1000021165.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-006",
+   "name": "Sweet potato vine (green-leaf, probable)",
+   "photos": [
+    "img_1000021202.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-007",
+   "name": "Mexican bird of paradise",
+   "photos": [
+    "img_1000021166.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Mildly toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-008",
+   "name": "Bougainvillea",
+   "photos": [
+    "img_1000021167.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Mildly toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-009",
+   "name": "Philodendron 'Birkin'",
+   "photos": [
+    "img_1000021168.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-010",
+   "name": "Dieffenbachia (dumb cane)",
+   "photos": [
+    "img_1000021169.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-011",
+   "name": "Variegated peace lily",
+   "photos": [
+    "img_1000021170.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-012",
+   "name": "Aeonium (green/yellow rosette form)",
+   "photos": [
+    "img_1000021171.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-013",
+   "name": "Prickly pear (opuntia)",
+   "photos": [
+    "img_1000021172.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-014",
+   "name": "Aloe vera (probable), largest of three",
+   "photos": [
+    "img_1000021174.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-015",
+   "name": "Hardy aloe (Aloe striatula)",
+   "photos": [
+    "img_1000021175.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-016",
+   "name": "Zebra haworthia",
+   "photos": [
+    "img_1000021176.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Safe for pets (ASPCA)"
+    ]
+   }
+  },
+  {
+   "code": "P-017",
+   "name": "Majesty palm (black pot)",
+   "photos": [
+    "img_1000021177.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-018",
+   "name": "Graptosedum (blush succulent)",
+   "photos": [
+    "img_1000021178.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-019",
+   "name": "Variegated elephant bush (rainbow bush)",
+   "photos": [
+    "img_1000021179.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-020",
+   "name": "Fiddle-leaf fig",
+   "photos": [
+    "img_1000021180.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-021",
+   "name": "Desert rose seedlings (6 cups)",
+   "photos": [
+    "img_1000021181.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-022",
+   "name": "Rose 'Queen of Elegance'",
+   "photos": [
+    "img_1000021182.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Safe for pets (ASPCA)"
+    ]
+   }
+  },
+  {
+   "code": "P-023",
+   "name": "Cosmos (volunteers)",
+   "photos": [
+    "img_1000021183.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-024",
+   "name": "Boston fern 'Emina'",
+   "photos": [
+    "img_1000021187.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Safe for pets (ASPCA)"
+    ]
+   }
+  },
+  {
+   "code": "P-025",
+   "name": "Begonia (lobed, bright green)",
+   "photos": [
+    "img_1000021188.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-026",
+   "name": "Polka-dot begonia 'Obsidian'",
+   "photos": [
+    "img_1000021189.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-027",
+   "name": "Coleus (deep red)",
+   "photos": [
+    "img_1000021190.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-028",
+   "name": "Chinese evergreen (red/pink)",
+   "photos": [
+    "img_1000021191.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-029",
+   "name": "Philodendron 'Pink Princess'",
+   "photos": [
+    "img_1000021192.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-030",
+   "name": "Pink Princess offshoot (in P-029's pot)",
+   "photos": [
+    "img_1000021193.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-031",
+   "name": "Calathea (feather-striped)",
+   "photos": [
+    "img_1000021194.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Safe for pets (ASPCA)"
+    ]
+   }
+  },
+  {
+   "code": "P-032",
+   "name": "Moth orchid in water",
+   "photos": [
+    "img_1000021195.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Safe for pets (ASPCA)"
+    ]
+   }
+  },
+  {
+   "code": "P-033",
+   "name": "Coleus (lime and plum)",
+   "photos": [
+    "img_1000021196.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-034",
+   "name": "Peace lily (recovering, brown pot)",
+   "photos": [
+    "img_1000021197.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-035",
+   "name": "Philodendron 'Pink Princess' (cutting, declining)",
+   "photos": [
+    "img_1000021198.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-036",
+   "name": "Young shrub with toothed leaves (not stevia)",
+   "photos": [
+    "img_1000021199.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-037",
+   "name": "ZZ plant",
+   "photos": [
+    "img_1000021200.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-038",
+   "name": "ZZ plant #2 (staked, new shoots)",
+   "photos": [
+    "img_1000021201.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-039",
+   "name": "Philodendron 'Painted Lady'",
+   "photos": [
+    "img_1000021173.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-040",
+   "name": "Crown of thorns",
+   "photos": [
+    "img_1000021173.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-041",
+   "name": "Moon cactus (red, grafted)",
+   "photos": [
+    "img_b2_02.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-042",
+   "name": "Agave (species not identified)",
+   "photos": [
+    "img_b2_03.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Mildly toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-043",
+   "name": "Zebra haworthia",
+   "photos": [
+    "img_b2_04.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Safe for pets (ASPCA)"
+    ]
+   }
+  },
+  {
+   "code": "P-044",
+   "name": "Boobie cactus (Fukurokuryuzinboku)",
+   "photos": [
+    "img_b2_05.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-045",
+   "name": "Aeonium, burgundy rosettes",
+   "photos": [
+    "img_b2_06.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-046",
+   "name": "Vanilla orchid (young vine)",
+   "photos": [
+    "img_b2_07.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-047",
+   "name": "Purple heart",
+   "photos": [
+    "img_b2_08.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Mildly toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-048",
+   "name": "Arrowhead plant (pink)",
+   "photos": [
+    "img_b2_09.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-049",
+   "name": "Monstera (Swiss cheese plant)",
+   "photos": [
+    "img_b2_10.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-050",
+   "name": "Water hyacinth",
+   "photos": [
+    "img_b2_11.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-051",
+   "name": "Variegated tradescantia (lime, white-striped)",
+   "photos": [
+    "img_b2_12.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Mildly toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-052",
+   "name": "Gardenia",
+   "photos": [
+    "img_b2_13.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Mildly toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-053",
+   "name": "Gourd-family vine (red pot)",
+   "photos": [
+    "img_b2_14.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-054",
+   "name": "Purple fountain grass",
+   "photos": [
+    "img_b2_15.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-055",
+   "name": "Philodendron 'Black Cardinal'",
+   "photos": [
+    "img_b2_16.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-056",
+   "name": "Alocasia (sold as 'Nigra')",
+   "photos": [
+    "img_b2_18.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-057",
+   "name": "Celosia 'Kelos Fire Purple'",
+   "photos": [
+    "img_b2_19.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Safe for pets (ASPCA)"
+    ]
+   }
+  },
+  {
+   "code": "P-058",
+   "name": "Celosia 'Glorious Orange'",
+   "photos": [
+    "img_b2_20.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Safe for pets (ASPCA)"
+    ]
+   }
+  },
+  {
+   "code": "P-059",
+   "name": "Wandering jew (silver-striped)",
+   "photos": [
+    "img_b2_21.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Mildly toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-060",
+   "name": "Arrowhead plant 'Black Velvet'",
+   "photos": [
+    "img_b2_22.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-061",
+   "name": "Alocasia (lime-green, mottled stalks)",
+   "photos": [
+    "img_b2_23.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-062",
+   "name": "Philodendron 'White Knight'",
+   "photos": [
+    "img_b2_24.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-063",
+   "name": "Money tree",
+   "photos": [
+    "img_b2_25.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Safe for pets (ASPCA)"
+    ]
+   }
+  },
+  {
+   "code": "P-064",
+   "name": "Bearded iris (potted)",
+   "photos": [
+    "img_b2_26.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-065",
+   "name": "Variegated rubber tree",
+   "photos": [
+    "img_b2_27.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-066",
+   "name": "Velvet-leaf philodendron (young)",
+   "photos": [
+    "img_b2_28.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-067",
+   "name": "Celosia 'Dracula Red' (crested)",
+   "photos": [
+    "img_b6_03.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Safe for pets (ASPCA)"
+    ]
+   }
+  },
+  {
+   "code": "P-068",
+   "name": "Petunia 'Ray Black'",
+   "photos": [
+    "img_b6_04.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Safe for pets (ASPCA)"
+    ]
+   }
+  },
+  {
+   "code": "P-069",
+   "name": "White sage (Texas native, Artemisia)",
+   "photos": [
+    "img_b6_08.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-070",
+   "name": "Bee balm (wild bergamot)",
+   "photos": [
+    "img_b6_10.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-071",
+   "name": "Zexmenia",
+   "photos": [
+    "img_b6_12.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-072",
+   "name": "Texas star hibiscus",
+   "photos": [
+    "img_b6_14.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-073",
+   "name": "Miniature rose, yellow (red pot)",
+   "photos": [
+    "img_b6_24.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Safe for pets (ASPCA)"
+    ]
+   }
+  },
+  {
+   "code": "P-074",
+   "name": "Rose (green pot)",
+   "photos": [
+    "img_b6_18.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Safe for pets (ASPCA)"
+    ]
+   }
+  },
+  {
+   "code": "P-075",
+   "name": "Rose (black pot, sparse)",
+   "photos": [
+    "img_b6_20.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Safe for pets (ASPCA)"
+    ]
+   }
+  },
+  {
+   "code": "P-076",
+   "name": "Majesty palm (white pot)",
+   "photos": [
+    "img_b6_29.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-077",
+   "name": "Majesty palm (tall grey planter)",
+   "photos": [
+    "img_b6_31.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Not known to be toxic"
+    ]
+   }
+  },
+  {
+   "code": "P-078",
+   "name": "Aloe vera (probable), teal pot",
+   "photos": [
+    "img_b9_p014_1.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-079",
+   "name": "Aloe vera (probable), black pot by the prickly pear pad",
+   "photos": [
+    "img_b9_p014_2.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-080",
+   "name": "Speckled dwarf aloe (in the zebra haworthia pot)",
+   "photos": [
+    "img_b9_p016_5.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-081",
+   "name": "Philodendron 'Ring of Fire'",
+   "photos": [
+    "img_b2_17.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-082",
+   "name": "Chinese evergreen, red speckled (second)",
+   "photos": [
+    "img_a7_agla_1.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-083",
+   "name": "Boston fern, curly (grey bowl)",
+   "photos": [
+    "img_a7_fern_1.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Safe for pets (ASPCA)"
+    ]
+   }
+  },
+  {
+   "code": "P-084",
+   "name": "Monstera, young (beige pot)",
+   "photos": [
+    "img_a7_mon_1.jpg"
+   ],
+   "note": "Safety for pets set, for the Pets filter (batch A8)",
+   "set": {
+    "pet_safety": [
+     "",
+     "Toxic to pets"
+    ]
+   }
+  },
+  {
+   "code": "P-084",
+   "name": "Monstera, young (beige pot)",
+   "photos": [
+    "img_a7_mon_1.jpg"
+   ],
+   "note": "Ethan's answer: how it started (batch A8)",
+   "set": {
+    "notes": [
+     "Photographed on October 25, 2026, on the porch shelf.",
+     "Photographed on October 25, 2026, on the porch shelf. It started with at least five larger leaves without holes; an animal ate them all some months before October 2026, and these fenestrated leaves are the regrowth. It had no tag."
+    ],
+    "id_basis": [
+     "Heart-shaped young leaves that already have holes near the midrib and notches at the edge, the way young Monstera deliciosa leaves begin. The shoots come up from an old knot of roots, so it is probably regrowing from a stem cutting or an older plant that was cut back.",
+     "Heart-shaped young leaves that already have holes near the midrib and notches at the edge, the way young Monstera deliciosa leaves begin. The shoots come up from an old knot of roots, so it is probably regrowing from a stem cutting or an older plant that was cut back. Ethan says it had at least five larger leaves without holes before an animal ate them, and the new leaves came up with holes. Monstera deliciosa can do that when it regrows from an established stem and roots."
+    ],
+    "id_improve": [
+     "How it started: a cutting, seeds, or an older plant cut back\nA daylight photo once the next leaf opens\nA tag, if it had one",
+     "A daylight photo once the next leaf opens"
+    ]
+   }
+  }
+ ],
+ "requests_done": [
+  {
+   "key": "a7-fern-tag",
+   "answer": "Ethan: the tag can be ignored."
+  },
+  {
+   "key": "a7-monstera-start",
+   "answer": "It started with at least five larger leaves without holes; an animal ate them all some months back. No tag."
+  }
+ ]
+}

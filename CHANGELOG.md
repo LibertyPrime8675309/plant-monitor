@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.17.0 (2026-10-26)
+- **More filters on the Plants page,** in a fold-out under the filter row (it says how many are on):
+  - **Light needs:** low light, bright indirect light, some direct sun, or full sun.
+  - **Pets:** safe for pets (only where the ASPCA lists the plant as non-toxic), not known to be toxic, mildly toxic, or toxic.
+  - **Winter here:** hardy here, not hardy here, or annual / no zone set, comparing each plant's zone with yours.
+  - **Care today:** water or feeding due, as on the Today page.
+  - **Grow light:** under a grow light spot, or not.
+  - **Leaf type** and **pot size.**
+  - **Photos:** no photo yet, or the newest photo is over a month old.
+
+  They are also in the Previous / Next panel on plant pages, and are remembered like the other filters.
+- **Safety for pets** is a new field on every plant, filled in for all of them. It shows in the Dangers box on each plant page, and you can change it under Edit, "About this plant".
+- **Your answers:** the young Monstera's page now says it started with at least five larger leaves without holes, before an animal ate them. The fern's tag request is closed.
+
 ## 1.16.2 (2026-10-26)
 - **Plants page filters:**
   - **Show:** active plants only (the usual), active and archived together, or archived only. Archived plants say "Archived" on their card. It replaces the "Show archived plants instead" box at the bottom of the page.
