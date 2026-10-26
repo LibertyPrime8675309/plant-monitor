@@ -800,7 +800,8 @@ def care_one(i):
     c.execute('DELETE FROM care_log WHERE id=?', (i,))
     r = c.execute('SELECT id FROM plants WHERE code=?', (old['plant_code'],)).fetchone()
     audit_only(c, 'care', 'care_log', f"{CARE_KINDS.get(old['kind'], old['kind'])} {old['done_on']}", None, editor(),
-               'Removed from the care log: ' + CARE_KINDS.get(old['kind'], old['kind']) + ', ' + day_words(old['done_on']), r['id'] if r else None, old['plant_code'])
+               ('Undone right after it was logged: ' if request.args.get('undo') == '1' else 'Removed from the care log: ')     # ?undo=1: the Undo button (prototype)
+               + CARE_KINDS.get(old['kind'], old['kind']) + ', ' + day_words(old['done_on']), r['id'] if r else None, old['plant_code'])
     c.commit()
     return jsonify(ok=True)
 

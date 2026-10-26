@@ -1021,3 +1021,12 @@ ul.srcs li{margin:.25rem 0;overflow-wrap:anywhere}
 html[data-role=viewer] :is([data-act=grpnew], [data-act=grpedit], [data-act=grpdel], [data-act=grpaddsug], [data-act=grpaddall], [data-act=grprm],
   [data-act=grpcare], [data-act=grpmove], [data-act=grpset], [data-act=grpundo], [data-act=plgroups], #g-do){display:none!important}
 .rule-prev{border-left:.35rem solid var(--cyan);padding:.4rem .8rem;background:var(--cyan-soft)}
+/* prototype proto/undo-care: the message with an Undo button after a care button */
+#toasts .undo-toast{pointer-events:auto;display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;width:min(40rem,calc(100vw - 2rem));max-width:none;box-sizing:border-box;border:2px solid var(--paper)}
+.undo-toast .undo-msg{flex:1 1 12rem}
+.undo-toast .undo-acts{display:flex;gap:.5rem;flex-wrap:wrap}
+.undo-toast .btn{background:var(--paper);color:var(--ink);border-color:var(--paper)}
+.undo-toast .btn.ghost{background:transparent;color:var(--paper)}
+.undo-toast .btn:focus-visible{outline-color:var(--paper);outline-offset:3px}
+.undo-toast .undo-left{flex-basis:100%;font-weight:400;font-size:.9em}
+html[data-role=viewer] .undo-toast .undo-acts [data-undo=undo]{display:none!important}
