@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.17.1 (2026-10-26)
+- **Fixed: "Add a plant" works again.** The form stopped with "Something went wrong: Assignment to constant variable" instead of opening. It had been broken for a while; plants added by upgrade batches were not affected.
+- Includes everything in 1.17.0 below.
+
 ## 1.17.0 (2026-10-26)
 - **More filters on the Plants page,** in a fold-out under the filter row (it says how many are on):
   - **Light needs:** low light, bright indirect light, some direct sun, or full sun.

@@ -2198,7 +2198,7 @@ const rangeOf = n => (META.int_ranges && META.int_ranges[n]) || (META.num_ranges
 function fieldInput(f, val) {
   const hint = HINTS[f.name] || (f.kind === 'list' ? 'One item per line.' : '');
   const wide = (f.kind === 'long' || f.kind === 'list') ? 'wide' : '';
-  const v = val == null ? '' : val;
+  let v = val == null ? '' : val;          // let: the location defaults to Outdoors below (1.17.1 fixes "Add a plant", which stopped on it)
   let inp;
   if (f.kind === 'long' || f.kind === 'list') inp = html`<textarea name="${f.name}" rows="${f.kind === 'list' ? 5 : 4}">${v}</textarea>`;
   else if (f.kind === 'int') { const mm = rangeOf(f.name); inp = html`<input type="number" inputmode="numeric" step="1" min="${mm[0]}" max="${mm[1]}" name="${f.name}" value="${v}">`; }
