@@ -3,13 +3,13 @@ services:
     build:
       context: .
       args:
-        PLANTDB_VERSION: "1.17.1"
+        PLANTDB_VERSION: "1.18.0"
     # The tag is the release number, so Docker Desktop shows which version is running (Containers > Image column).
-    image: plant-database:1.17.1
+    image: plant-database:1.18.0
     pull_policy: build              # built here from this folder; never looked for on Docker Hub
     container_name: plant-database
     labels:
-      plantdb.version: "1.17.1"
+      plantdb.version: "1.18.0"
     ports:
       # Since 1.12: only this computer can open http://localhost:8080 (the updater and backups use it). Everyone else, at home
       # or away, comes in through Tailscale (the "tailscale" service below), signed in.
@@ -59,6 +59,32 @@ services:
       interval: 30s
       timeout: 5s
       retries: 3
+
+  # Since 1.18: identifies plants in camera pictures and holds the plant species list, on this computer (no internet needed after
+  # its first start, when it downloads the BioCLIP model and lists into data/vision, about 5 GB). Only the app talks to it,
+  # on Docker's private network: it has no ports on this computer, the home network or Tailscale. It reads the database and
+  # photos but cannot change them. It can be stopped on its own (see README, "Identify a plant"); the rest of the app does not need it.
+  vision:
+    build:
+      context: .
+      dockerfile: vision/Dockerfile
+    image: plant-database-vision:1.18.0
+    pull_policy: build
+    container_name: plant-vision
+    volumes:
+      - ./data:/data:ro               # the database and photos, read only
+      - ./data/vision:/cache          # the model, species lists and photo fingerprints (safe to delete; it downloads them again)
+    environment:
+      VISION_MODEL: ${PLANTDB_VISION_MODEL:-bioclip-2.5-vith14}   # or bioclip-2: smaller and faster, weaker at naming species
+      PLANTDB_VISION: ${PLANTDB_VISION:-1}      # PLANTDB_VISION=0 in the .env file turns it off (it then loads nothing)
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
 
   # Since 1.12: the app's own Tailscale device ("plants"), so it can be opened from anywhere at https://plants.<your-tailnet>.ts.net
   # by people signed in to Tailscale, without opening anything on your router or sharing this whole computer.

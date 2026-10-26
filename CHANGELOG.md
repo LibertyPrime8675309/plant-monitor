@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.18.0 (2026-10-26)
+- **Identify a plant** (new page in the top menu). Point your phone or computer camera at a plant:
+  - If it's one of yours, a window names it and says how sure it is, for example "Very likely P-020: Fiddle-leaf fig, 93% sure". It shows your picture next to the plant's closest photo, with **Open its page** and **Add this picture to its photos**.
+  - When it is unsure between a few of your plants, it asks **Which one is it?** with their photos.
+  - When it's probably not one of yours, it suggests what it could be. You choose the list it names from: Texas plants, plants with a common name and all US plants, US plants, or all plants worldwide. Each suggestion links to USDA PLANTS, Kew and Wikipedia, and has **Add as a new plant**, which fills in the names and attaches the picture.
+  - It also reads the QR codes on plant labels.
+  - **Use a photo instead** checks a photo you already have.
+- **It all runs on this computer**, in a new container called `plant-vision`, with the free BioCLIP 2.5 model. The first start downloads about 5 GB into `data\vision` and takes 20 to 40 minutes; the page shows how far it has got. After that it needs no internet. See README, "Identify a plant and the plant library", which also says how to stop it or use a smaller model.
+- **Second opinions:** when it is unsure you can press **Ask Pl@ntNet** (free key, 500 pictures a day) or **Ask Claude** (your Anthropic API key, a cent or two a picture). Save the keys once at the bottom of the Identify page. They are never shown again, only their last 4 characters.
+- **Plant library** (new page in the top menu): look up any of 349,000 plant species by scientific or common name. It shows the family, whether the plant grows wild in Texas or other US states, and whether you have it. It has the same links and an **Add to my plants** button.
+- People who can only view can use Identify and the library, but can't add pictures or plants or ask for second opinions.
+- If the picture checker can't be built during an update (for example, the internet drops), the updater now starts the rest of Plant record without it and says so.
+
 ## 1.17.1 (2026-10-26)
 - **Fixed: "Add a plant" works again.** The form stopped with "Something went wrong: Assignment to constant variable" instead of opening. It had been broken for a while; plants added by upgrade batches were not affected.
 - Includes everything in 1.17.0 below.

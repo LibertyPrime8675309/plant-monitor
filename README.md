@@ -688,6 +688,99 @@ Each group's page has:
 
 Removing a group never changes the plants in it. Group changes appear in the audit log under "Groups and changes to a whole group", and each plant's page history shows its own changes.
 
+## Identify a plant and the plant library (from 1.18.0)
+
+**Identify** (in the top menu) tells you which of your plants the camera is pointing at, and how sure it is. If the plant isn't one of yours, it suggests what it could be. **Library** looks up any plant species by name.
+
+Everything is worked out on this computer, by a second container called `plant-vision`. It runs **BioCLIP 2.5 Huge**, a free AI model (MIT licence) trained on over 200 million pictures of living things. It runs on the processor and doesn't need the graphics card. Only the app can talk to it; it has no address of its own on this computer, your network or Tailscale. It can read your database and photos but can't change them.
+
+### The first start
+
+The first update to 1.18.0 takes longer than usual:
+
+1. **Building the container** downloads about 1 GB of Python packages (PyTorch). The updater waits for this.
+2. **Its first start** downloads about 5 GB into `data\vision`:
+   - the BioCLIP 2.5 model (3.9 GB);
+   - its fingerprints for 349,000 plant species (0.7 GB), from the Tree of Life list;
+   - the USDA PLANTS lists of which plants grow wild in each state (9 MB).
+
+   It then fingerprints your photos, well under a second each on your processor. The Identify page shows how far it has got. Plan on 20 to 40 minutes in all, mostly downloading. After that it starts in under a minute and needs no internet.
+
+`data\vision` is safe to delete; it downloads everything again on the next start. Backups leave it out.
+
+### Using the camera
+
+- Open **Identify** and press **Start camera**. It checks about once a second.
+- When it has seen the same plant twice and is at least 80% sure, a window names it: for example "Very likely P-020: Fiddle-leaf fig, 93% sure". It shows your picture next to that plant's closest photo. From there you can:
+  - press **Open its page**;
+  - press **Add this picture to its photos**;
+  - press **Not this one** to keep looking.
+- **Check this picture** holds the picture still and shows everything it found:
+  - **Which one is it?** with three photos when it is unsure between plants;
+  - **Probably not one of your plants** with species suggestions when it doesn't recognise the plant.
+- **Use a photo instead** checks a photo you already have. On a phone it can also open the camera app.
+- **Plant labels:** the QR codes on labels from the Labels page are read too, and open the plant straight away.
+
+**How sure is "sure"?** The percentage comes from tests on your own 213 photos, each checked against all the others. It said 80% or more for a third of them, and was right 92% of those times. Over all your photos, the right plant came first 70% of the time and was in the top three 80% of the time. If a picture looks unlike all your photos, it says it is probably not one of yours. Similar plants are the hard cases, such as your Monsteras or two plants of the same kind. A clear daylight photo of the leaves, from about the distance of your other photos, works best.
+
+**The browser only allows the camera on a secure address:** `http://localhost:8080` on this computer, or the Tailscale address `https://plants...` on your phone. On any other address, use **Use a photo instead**.
+
+### Names for plants that aren't yours
+
+Under **When it is not one of your plants, suggest names from**, choose:
+
+- **Texas plants** (about 4,750 species, from the USDA list). Best for wild plants and weeds in your yard.
+- **Plants with a common name, and all US plants** (about 34,000; the usual choice). Good for houseplants and garden plants.
+- **US plants** (about 19,000).
+- **All plants worldwide** (about 349,000).
+
+Names guessed from a picture are often wrong at the species level; the genus is right more often. In tests on your photos with the usual list, the right species came first 43% of the time and was in the top five 65% of the time. The right genus came first 56% of the time. With the Texas list, for plants that grow wild in Texas, the right species came first 74% of the time. So treat the names as leads, and check them with the links (USDA PLANTS, Kew's Plants of the World Online and Wikipedia) or a second opinion.
+
+**Add as a new plant** opens the Add a plant form with the names filled in and the picture attached when you save.
+
+### Second opinions: Pl@ntNet and Claude
+
+When this computer is unsure, the results have **Ask Pl@ntNet** and **Ask Claude** buttons. Ask Pl@ntNet first: it is free and very good with plants. They only see a picture when you press their button. You set them up once, as the owner, under **Second opinions** at the bottom of the Identify page:
+
+- **Pl@ntNet:** a free account at my.plantnet.org gives an API key for 500 pictures a day. Pl@ntNet doesn't keep the pictures.
+- **Claude:** an Anthropic API key from console.anthropic.com. It is billed to that account, about a cent or two per picture. Claude also says what it based its answer on, and what photo would make it surer.
+
+The keys are kept in the database on this computer, and so in its backups. The app never shows them again, only their last 4 characters. People who can only view can use Identify and the library, but not the second opinions.
+
+### The plant library
+
+**Library** searches the 349,000 species by scientific or common name, in any of the four lists. Each result shows its family, whether it grows wild in Texas (or how many US states), and whether you have it or a plant of the same genus. It also has links to USDA PLANTS, Kew and Wikipedia, and an **Add to my plants** button. The names come from the Tree of Life list that BioCLIP was trained with (Imageomics Institute, free to use) and the USDA PLANTS state lists (public domain).
+
+### Stopping the picture checker
+
+The rest of the app works without it. Identify and Library then say it isn't running. It uses about 6 GB of memory while running, and no processor time when idle. From the `plant-database` folder:
+
+Windows (cmd.exe):
+
+```
+docker compose stop vision
+docker compose start vision
+docker compose logs --tail 30 vision
+```
+
+Windows (PowerShell) and bash: the same commands.
+
+`docker compose up -d` (and the updater) starts it again. To keep it stopped for good, put the line `PLANTDB_VISION=0` in the `.env` file:
+
+- Windows (cmd.exe): `(echo PLANTDB_VISION=0)>>.env` then `docker compose up -d`
+- Windows (PowerShell): `Add-Content .env 'PLANTDB_VISION=0'; docker compose up -d`
+- bash: `echo 'PLANTDB_VISION=0' >> .env && docker compose up -d`
+
+### A smaller, faster model
+
+If the computer is busy or short of memory, BioCLIP 2 is about half the size. It recognises your own plants nearly as well, but is much weaker at naming plants that aren't yours: with the usual list, the right species came first 17% of the time instead of 43%. To use it, put `PLANTDB_VISION_MODEL=bioclip-2` in the `.env` file and restart. It downloads its own 2.2 GB the first time.
+
+- Windows (cmd.exe): `(echo PLANTDB_VISION_MODEL=bioclip-2)>>.env` then `docker compose up -d`
+- Windows (PowerShell): `Add-Content .env 'PLANTDB_VISION_MODEL=bioclip-2'; docker compose up -d`
+- bash: `echo 'PLANTDB_VISION_MODEL=bioclip-2' >> .env && docker compose up -d`
+
+To go back, delete that line from `.env` and run `docker compose up -d` again.
+
 ## Grow lights (from 1.13.0)
 
 The **Grow lights** page (in the top menu) holds your grow lights, the spots they light indoors, and how much light each plant gets there. Your 11 lights arrive with the update, from the photos and listings you saved in `Plants\Grow Lights`. Each has a photo, how many you have, its timer and brightness steps, and the maker's light figures. Where the maker gives none, Claude's estimates are used and marked.
@@ -758,6 +851,7 @@ These choices are remembered in that browser. The console never covers the Debug
 - **Winter plan**: the 7-day forecast, expected versus tracked weather for October to March, when to act, every plant grouped by what it needs, and the cold-night checklist.
 - **Weather**: forecast, charts, sensor connection and location (see above).
 - **Fertilizer**: today's feed / hold / rest verdict for every plant, a calendar, and the feeding log (see above).
+- **Identify** and **Library**: which plant the camera is pointing at, and every plant species by name (see "Identify a plant and the plant library").
 - **Photos**: wide shots not yet tied to a plant, and a "still to photograph" checklist.
 - **Labels**: printable QR labels.
 - **Audit log**: every change to every record, with filters and CSV and JSON downloads (see "Audit log" above).
