@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.16.1 (2026-10-25)
+- **Your porch shelf photos are in.**
+  - **Chinese evergreen (P-028):** three new photos, including the stem base it was waiting for. It is healthy and has a new pink shoot at the base. The mix has dried hard and shrunk from the pot wall, and white mineral crust is building up on the pot; its steps say how to fix both. The speckled leaves point to a cultivar like 'Red Peacock'.
+  - **Pink Princess cutting (P-035):** its tag reads "PP-1", so that request is answered. The bamboo stake is still down in the hollow stem; pulling it out is still the first step.
+  - **New page, P-082: Boston fern, curly (grey bowl).** A second curly fern, mostly dead fronds but with healthy new ones coming. Spurge weed is growing in its pot.
+  - **New page, P-083: Monstera, young (beige pot).** Young shoots with their first holes, coming from an old knot of roots.
+- Two new requests: a close photo of the fern's tag, and how the young Monstera started.
+- Smart groups such as Aroids pick up the new plants by themselves.
+- Photos come in a new photo pack, `plant-database-photos-batchA7.zip`. Save it in `versions_plant-database` with the release zip.
+
 ## 1.16.0 (2026-10-25)
 - **Groups of plants.** A new **Groups** page, in the top menu. A plant can be in several groups.
   - **Smart groups** have a rule, such as "Genus is Philodendron" or "Location is Covered porch". Plants that fit join by themselves. While you make one, the window lists the plants that fit.
