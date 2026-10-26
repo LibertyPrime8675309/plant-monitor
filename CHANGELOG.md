@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.16.0 (2026-10-25)
+- **Groups of plants.** A new **Groups** page, in the top menu. A plant can be in several groups.
+  - **Smart groups** have a rule, such as "Genus is Philodendron" or "Location is Covered porch". Plants that fit join by themselves. While you make one, the window lists the plants that fit.
+  - **Hand-picked groups** hold the plants you choose.
+  - **Suggested groups** are ready to add with one press. They cover plants of the same genus (Philodendrons, Roses, Majesty palms and more), families that share care (Aroids, Cacti, Aloes and haworthias) and plants under the same grow light.
+- **On the Plants page,** choose a group to see only its plants, or sort by group. Previous and Next Plant follow the same choice.
+- **On each plant page,** the card at the top lists the plant's groups. **Change groups** adds it to hand-picked groups or makes a new one.
+- **Each group's page** shows its plants and what suits all of them: temperature, humidity, light, soil, how warm to keep them, and their potting mixes and fertilizer. Where the plants disagree, it names the odd ones out.
+- **Do something to all of them:**
+  - **Log care** (watered, fed, repotted, sprayed and so on) for every plant you tick.
+  - **Move them:** a new Location or Spot, or under a grow light spot.
+  - **Change a setting**, such as the potting mix or how often to water. You see each plant's current value first and choose which to change. **Undo this change** puts them back, except any plant changed again since.
+- Anyone who can edit can make and change groups. People who can only view see them.
+
 ## 1.15.0 (2026-10-25)
 - **Your plant calendar.** Feeding days and cold nights can go into Google, Outlook, Samsung or Apple calendars, with reminders at times you choose.
   - Find it at the bottom of the **Today**, **Fertilizer** and **Cold-night checklist** pages: **Set up your calendar**.

@@ -249,11 +249,11 @@ async function route() {
   const my = ++token;
   const h = location.hash.replace(/^#/, '') || '/';
   const parts = h.split('/').filter(Boolean);
-  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : 'plants';
+  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : 'plants';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let view;
-    await Promise.all([loadCodes(), loadFrost()]);
+    await Promise.all([loadCodes(), loadFrost(), loadGroups(parts[0] === 'groups' || parts[0] === 'group' || !parts.length)]);
     if (!META) { META = await api('GET', '/api/meta'); const v = document.getElementById('app-ver'); if (v && META.version) v.textContent = 'v' + META.version; paintPlace(); paintWho(); }
     if (parts[0] === 'plant' && parts[1] && parts[2] === 'edit') view = await viewEdit(decodeURIComponent(parts[1]));
     else if (parts[0] === 'plant' && parts[1]) view = await viewPlant(decodeURIComponent(parts[1]));
@@ -263,6 +263,8 @@ async function route() {
     else if (parts[0] === 'today') view = await viewToday();
     else if (parts[0] === 'fertilizer') view = await viewFertilizer();
     else if (parts[0] === 'lights') view = await viewLights();
+    else if (parts[0] === 'groups') view = await viewGroups();
+    else if (parts[0] === 'group' && parts[1]) view = await viewGroup(parts[1]);
     else if (parts[0] === 'photos') view = await viewPhotos();
     else if (parts[0] === 'labels') view = await viewLabels();
     else if (parts[0] === 'history' || parts[0] === 'audit') view = await viewHistory();
@@ -373,20 +375,20 @@ function navActive() {
 window.addEventListener('scroll', navActive, { capture: true, passive: true });
 
 // ---------- gallery ----------
-const G = { q: '', plan: '', health: '', low: false, needs: false, sort: 'code', archived: false };
+const G = { q: '', plan: '', health: '', low: false, needs: false, sort: 'code', archived: false, group: '' };
 // the Plants page filters are remembered in this browser and also decide where Previous / Next plant go on plant pages
-try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort']) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ }
-function gSave() { try { localStorage.setItem('plantdb.filters', JSON.stringify({ q: G.q, plan: G.plan, health: G.health, low: G.low, needs: G.needs, sort: G.sort })); } catch (e) { /* not saved */ } }
-const gActive = () => !!(G.q.trim() || G.plan || G.health || G.low || G.needs);
+try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort', 'group']) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ }
+function gSave() { try { localStorage.setItem('plantdb.filters', JSON.stringify({ q: G.q, plan: G.plan, health: G.health, low: G.low, needs: G.needs, sort: G.sort, group: G.group })); } catch (e) { /* not saved */ } }
+const gActive = () => !!(G.q.trim() || G.plan || G.health || G.low || G.needs || (G.group && groupById(G.group)));
 const needsYou = p => (p.requests_open || 0) > 0 || (p.id_confidence != null && p.id_confidence < 70);
 let ALL = [];
-const SORTS = { code: 'Code', health: 'Health, worst first', conf: 'ID confidence, lowest first', updated: 'Recently updated', name: 'Name A to Z' };
+const SORTS = { code: 'Code', health: 'Health, worst first', conf: 'ID confidence, lowest first', updated: 'Recently updated', name: 'Name A to Z', group: 'Group A to Z' };
 
 function filteredPlants(list) {
   const q = G.q.trim().toLowerCase();
   let r = (list || ALL).filter(p =>
     (!G.plan || p.winter_plan === G.plan) && (!G.health || p.health_rating === G.health) &&
-    (!G.low || (p.id_confidence != null && p.id_confidence < 70)) && (!G.needs || needsYou(p)) &&
+    (!G.low || (p.id_confidence != null && p.id_confidence < 70)) && (!G.needs || needsYou(p)) && inGroupFilter(p.code) &&
     (!q || [p.code, p.common_name, p.scientific_name, p.aliases, p.plant_type, p.location].join(' ').toLowerCase().includes(q)));
   return r.sort(plantCmp());
 }
@@ -397,6 +399,7 @@ function plantCmp() {
     conf: (a, b) => ((a.id_confidence ?? 101) - (b.id_confidence ?? 101)) || a.code.localeCompare(b.code),
     updated: (a, b) => String(b.updated_at).localeCompare(String(a.updated_at)),
     name: (a, b) => a.common_name.localeCompare(b.common_name),
+    group: (a, b) => { const x = groupNames(a.code)[0], y = groupNames(b.code)[0]; return (!x - !y) || (x || '').localeCompare(y || '') || a.code.localeCompare(b.code); },
   }[G.sort] || ((a, b) => a.code.localeCompare(b.code));
 }
 function sheet(p) {
@@ -443,6 +446,7 @@ async function viewGallery() {
     <div class="filters">
       <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
       <label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
+      ${groupFilter()}
       <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
       <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70% (${lowN})</label>
     </div>
@@ -451,6 +455,263 @@ async function viewGallery() {
     <p style="margin-top:36px"><label class="chk" style="display:inline-flex;gap:8px;align-items:center"><input type="checkbox" data-f="archived" ${G.archived ? raw('checked') : ''} style="width:20px;height:20px;margin:0">Show archived plants instead</label></p>`,
     after: drawGrid,
   };
+}
+
+// ---------- groups of plants (added in 1.16.0) ----------
+// A group is hand-picked (a list) or smart (a rule such as "Genus is Philodendron", so plants that fit join by themselves).
+// The Plants page and Previous / Next can filter and sort by group. A group's page shows what suits every plant in it and
+// does things to all of them at once: log care, move them, or change a setting (with a preview, and one press to undo).
+let PGROUPS = null;
+async function loadGroups(force) {
+  if (PGROUPS && !force) return PGROUPS;
+  try { PGROUPS = await api('GET', '/api/groups'); } catch (e) { PGROUPS = PGROUPS || { groups: [], suggestions: [], fields: [], ops: {}, values: {}, bulk_fields: [] }; }
+  return PGROUPS;
+}
+const groupById = id => (PGROUPS && PGROUPS.groups.find(g => String(g.id) === String(id))) || null;
+const groupsOf = code => (PGROUPS ? PGROUPS.groups.filter(g => g.codes.includes(code)) : []);
+const groupNames = code => groupsOf(code).map(g => g.name).sort((a, b) => a.localeCompare(b));
+function inGroupFilter(code) { const g = G.group && groupById(G.group); return !g || g.codes.includes(code); }
+function groupFilter() {
+  const gs = (PGROUPS && PGROUPS.groups) || [];
+  if (!gs.length) return '';
+  return html`<label>Group<select data-f="group"><option value="">Any</option>${gs.map(g => html`<option value="${g.id}" ${String(G.group) === String(g.id) ? raw('selected') : ''}>${g.name} (${g.count})</option>`)}</select></label>`;
+}
+const plantName = code => (PCODES.get(code) || {}).common_name || code;
+function nameList(codes, max = 6) {
+  const names = codes.slice(0, max).map(plantName);
+  return names.join(', ') + (codes.length > max ? `, and ${codes.length - max} more` : '');
+}
+const groupKindWords = g => g.kind === 'smart' ? `Smart group: plants join when ${g.rule_words}.` : 'Hand-picked group.';
+
+async function viewGroups() {
+  const G2 = await loadGroups(true), gs = G2.groups, sug = G2.suggestions;
+  return {
+    title: 'Groups',
+    html: html`<h1>Groups</h1>
+    <p class="muted">Groups gather plants that are alike or kept together, so you can see what suits all of them and look after them in one go. A plant can be in several groups.</p>
+    <div class="row noprint grp-new"><button class="btn" type="button" data-act="grpnew" data-kind="smart">Make a smart group</button>
+      <button class="btn ghost" type="button" data-act="grpnew" data-kind="picked">Make a hand-picked group</button></div>
+    <section class="blk" id="grp-yours"><h2>Your groups (${gs.length})</h2>
+      ${gs.length ? html`<ul class="grp-list">${gs.map(g => html`<li class="grp-card"><h3><a href="#/group/${g.id}">${g.name}</a></h3>
+          <p>${groupKindWords(g)}</p><p><strong>${g.count} plant${g.count === 1 ? '' : 's'}</strong>${g.count ? ': ' + nameList(g.codes) : ''}</p></li>`)}</ul>`
+        : html`<p>No groups yet. Start with a suggestion below, or make your own.</p>`}</section>
+    ${sug.length ? html`<section class="blk" id="grp-suggest"><h2>Suggested groups (${sug.length})</h2>
+      <p>Plants of the same family or genus, and plants under the same grow light. Each is a smart group, so new plants that fit join by themselves.</p>
+      <p class="noprint"><button class="btn" type="button" data-act="grpaddall">Add all ${sug.length} suggested groups</button></p>
+      <ul class="grp-list">${sug.map((x, i) => html`<li class="grp-card"><h3>${x.name}</h3><p>Plants join when ${x.rule_words}.</p>
+        <p><strong>${x.count} plants</strong>: ${nameList(x.codes)}</p>
+        <p class="noprint"><button class="btn small" type="button" data-act="grpaddsug" data-i="${i}" aria-label="Add the group ${x.name}">Add this group</button></p></li>`)}</ul></section>` : ''}
+    <section class="blk" id="grp-how"><h2>How groups work</h2><ul>
+      <li><strong>Smart groups</strong> have a rule, such as "Genus is Philodendron" or "Location is Indoors". Plants that fit join by themselves, and leave when they stop fitting.</li>
+      <li><strong>Hand-picked groups</strong> hold the plants you choose. Add or take out plants on the group's page or on a plant's own page.</li>
+      <li>On the <a href="#/">Plants page</a>, choose a group under <strong>Group</strong> to see only those plants, or sort by group. Previous and Next Plant follow the same choice.</li>
+      <li>A group's page shows the conditions that suit every plant in it, and lets you log care, move the plants, or change a setting for all of them. A change to a setting shows each plant first, and can be undone.</li>
+      <li>Removing a group never changes the plants in it.</li></ul></section>`,
+  };
+}
+
+function fitItem(x) {
+  const u = x.unit === '°F' || x.unit === '%' ? x.unit : x.unit ? ' ' + x.unit : '';
+  let body;
+  if (x.key === 'cold') body = html`<p><strong>${x.value}${u}</strong>, because ${x.by.map(b => b.name).join(', ')} ${x.by.length === 1 ? 'is' : 'are'} damaged below that.</p>`;
+  else if (x.spread) body = html`<p><strong>Every ${x.lo === x.hi ? x.lo : x.lo + ' to ' + x.hi} ${x.unit}</strong>. ${x.lo === x.hi ? 'The same for all of them.' : 'Each plant keeps its own watering schedule.'}</p>`;
+  else if (x.values) body = x.values.length === 1 ? html`<p><strong>The same for all ${x.n}:</strong> ${x.values[0].value}</p>`
+    : html`<ul class="fit-vals">${x.values.map(v => html`<li><strong>${v.codes.length} plant${v.codes.length === 1 ? '' : 's'}:</strong> ${v.value}${v.codes.length < x.n ? html` <span class="muted">(${nameList(v.codes, 4)})</span>` : ''}</li>`)}</ul>`;
+  else {
+    const all = x.fits === x.n;
+    body = html`<p><strong>${x.lo} to ${x.hi}${u}</strong>: ${all ? html`<span aria-hidden="true">✓ </span>suits all ${x.n}.` : html`<span aria-hidden="true">▲ </span>suits ${x.fits} of ${x.n}.`}
+      ${x.odd.length ? html`Not right for ${x.odd.map((o, i) => html`${i ? '; ' : ''}<a href="#/plant/${enc(o.code)}">${o.name}</a> (${o.lo} to ${o.hi}${u})`)}.` : ''}
+      ${x.missing ? html` <span class="muted">${x.missing} plant${x.missing === 1 ? ' has' : 's have'} no figures for this.</span>` : ''}</p>`;
+  }
+  return html`<div class="fit-item"><h3>${x.label}</h3>${body}</div>`;
+}
+async function viewGroup(id) {
+  const d = await api('GET', '/api/groups/' + enc(id));
+  CURG = d;
+  const picked = d.kind === 'picked';
+  return {
+    title: d.name,
+    html: html`<p class="crumb"><a href="#/groups">All groups</a></p>
+    <h1>${d.name}</h1><p>${groupKindWords(d)}</p>${paras(d.notes)}
+    <div class="row noprint"><button class="btn ghost" type="button" data-act="grpedit">${picked ? 'Change the name, notes or plants' : 'Change the name, notes or rule'}</button>
+      <a class="btn ghost" href="#/" data-act="grpshow" data-id="${d.id}">Show them on the Plants page</a>
+      <button class="btn ghost danger" type="button" data-act="grpdel">Remove this group</button></div>
+    <section class="blk" id="g-plants"><h2>Plants in this group (${d.members.length})</h2>
+      ${d.members.length ? html`<ul class="jobs">${d.members.map(m => html`<li class="job" data-code="${m.code}">${m.photo ? html`<img src="${thumbUrl(m.photo)}" alt="" loading="lazy" width="64" height="64">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}
+          <div class="job-txt"><a class="nm" href="#/plant/${enc(m.code)}">${m.common_name}</a> <span class="muted">${m.code}</span>
+            <div>${m.site}${m.location ? ', ' + m.location : ''}${m.light_spot ? html`. Under the grow light spot ${m.light_spot}` : ''}.</div></div>
+          ${picked ? html`<div class="job-acts noprint"><button class="btn small ghost" type="button" data-act="grprm" data-code="${m.code}" aria-label="Take ${m.common_name} out of this group">Take out</button></div>` : ''}</li>`)}</ul>`
+        : html`<p>${picked ? 'No plants yet. Use "Change the name, notes or plants" to add some.' : 'No plants fit this rule at the moment.'}</p>`}</section>
+    <section class="blk" id="g-fit"><h2>What suits all of them</h2>
+      ${d.fit.length ? html`<p>From each plant's own page. Where the plants disagree, the range shown suits the most of them, and the odd ones out are named.</p>
+        <div class="fit-list">${d.fit.map(fitItem)}</div>` : html`<p>There are no figures to compare yet.</p>`}</section>
+    ${d.members.length ? html`<section class="blk noprint" id="g-do"><h2>Do something to all of them</h2>
+      <ul class="grp-acts">
+        <li><button class="btn" type="button" data-act="grpcare">Log care for all of them</button><p class="hint">Watered, fed, repotted, sprayed and so on, for every plant you tick, on one date.</p></li>
+        <li><button class="btn" type="button" data-act="grpmove">Move them</button><p class="hint">Change their Location and Spot, or put them under a grow light spot.</p></li>
+        <li><button class="btn" type="button" data-act="grpset">Change a setting for all of them</button><p class="hint">For example the potting mix or how often to water. You see each plant's current value first, and can undo it.</p></li></ul></section>` : ''}
+    ${d.recent.length ? html`<section class="blk" id="g-recent"><h2>Recent changes to the whole group</h2><ul class="grp-recent">${d.recent.map(x => html`<li>
+      <strong>${x.what}</strong>: ${x.count} plant${x.count === 1 ? '' : 's'}, by ${x.done_by}, ${when(x.done_at)}.
+      ${x.undone_at ? html` <span class="muted">Undone by ${x.undone_by}, ${when(x.undone_at)}.</span>` : html` <button class="btn small ghost noprint" type="button" data-act="grpundo" data-id="${x.id}">Undo this change</button>`}</li>`)}</ul></section>` : ''}`,
+  };
+}
+let CURG = null;
+
+// a list of plants to tick, with "Tick all" and a search box
+function tickList(codes, ticked, legend) {
+  const on = new Set(ticked);
+  return html`<fieldset class="tick-list"><legend>${legend}</legend>
+    <div class="row"><button class="btn small ghost" type="button" data-act="tickall" data-on="1">Tick all</button><button class="btn small ghost" type="button" data-act="tickall" data-on="0">Untick all</button>
+      ${codes.length > 12 ? html`<label class="f tick-find">Find a plant<input type="search" data-tickfind="1" placeholder="Name or code"></label>` : ''}</div>
+    <ul>${codes.map(c => html`<li><label class="chk"><input type="checkbox" name="code" value="${c}" ${on.has(c) ? raw('checked') : ''}><span>${plantName(c)} <span class="muted">${c}</span></span></label></li>`)}</ul></fieldset>`;
+}
+const tickedCodes = f => [...f.querySelectorAll('input[name=code]:checked')].map(x => x.value);
+function ruleRow(c, i) {
+  const F = PGROUPS.fields, f = F.find(x => x.key === c.field) || F[0], vals = PGROUPS.values[f.key] || [];
+  return html`<fieldset class="rule-row" data-row="${i}"><legend>Part ${i + 1}</legend>
+    <label class="f">Look at<select name="rf" data-act="grprulefield">${F.map(x => html`<option value="${x.key}" ${x.key === f.key ? raw('selected') : ''}>${x.label}</option>`)}</select></label>
+    <label class="f">How<select name="ro">${Object.entries(PGROUPS.ops).filter(([k]) => f.how === 'text' ? k.includes('contains') : true).map(([k, v]) => html`<option value="${k}" ${k === (c.op || (f.how === 'text' ? 'contains' : 'is')) ? raw('selected') : ''}>${v}</option>`)}</select></label>
+    <label class="f">Value<input type="text" name="rv" value="${c.value || ''}" list="rv-${f.key}" autocomplete="off"></label>
+    ${vals.length ? html`<datalist id="rv-${f.key}">${vals.map(v => html`<option value="${v}">`)}</datalist>` : ''}
+    ${i ? html`<button class="btn small ghost" type="button" data-act="grprulerm" data-i="${i}">Remove this part</button>` : ''}</fieldset>`;
+}
+function readRule(f) {
+  const conds = [...f.querySelectorAll('.rule-row')].map(r => ({ field: r.querySelector('[name=rf]').value, op: r.querySelector('[name=ro]').value, value: r.querySelector('[name=rv]').value.trim() })).filter(x => x.value);
+  return { match: f.elements.match ? f.elements.match.value : 'all', conds };
+}
+let RULE_T = 0;
+function rulePreview() {
+  const f = dlg.querySelector('form[data-grp]'), out = document.getElementById('rule-prev'); if (!f || !out) return;
+  const rule = readRule(f);
+  clearTimeout(RULE_T);
+  if (!rule.conds.length) { out.textContent = 'Fill in a value to see which plants fit.'; return; }
+  RULE_T = setTimeout(() => api('POST', '/api/groups/match', { rule }).then(r => { out.textContent = r.codes.length ? `${r.codes.length} plant${r.codes.length === 1 ? ' fits' : 's fit'} now: ${nameList(r.codes, 8)}.` : 'No plants fit this rule at the moment.'; })
+    .catch(e => { out.textContent = e.message; }), 350);
+}
+async function groupDialog(g, kind, preset) {
+  if (!(await needName())) return;
+  await loadGroups();
+  kind = g ? g.kind : kind;
+  const all = [...PCODES.keys()].sort();
+  const conds = g && g.rule ? g.rule.conds : (preset && preset.conds) || [{ field: 'genus', op: 'is', value: '' }];
+  const r = await modal(html`<form method="dialog" data-grp="1" class="grp-form"><h2>${g ? 'Change the group ' + g.name : kind === 'smart' ? 'Make a smart group' : 'Make a hand-picked group'}</h2>
+    <label class="f">Name<input type="text" name="name" maxlength="60" required value="${g ? g.name : (preset && preset.name) || ''}" placeholder="${kind === 'smart' ? 'For example: Philodendrons' : 'For example: Tall Black Shelf'}"></label>
+    <label class="f">Notes (optional)<textarea name="notes" rows="2" maxlength="500">${g ? g.notes : ''}</textarea></label>
+    ${kind === 'smart' ? html`<label class="f">Plants join when<select name="match" data-act="grprulematch"><option value="all" ${!g || !g.rule || g.rule.match !== 'any' ? raw('selected') : ''}>every part below fits</option><option value="any" ${g && g.rule && g.rule.match === 'any' ? raw('selected') : ''}>any part below fits</option></select></label>
+      <div id="rule-rows">${conds.map(ruleRow)}</div>
+      <p><button class="btn small ghost" type="button" data-act="grprulerow">Add another part</button></p>
+      <p id="rule-prev" class="rule-prev" aria-live="polite"></p>`
+    : tickList(all, g ? g.codes : (preset && preset.codes) || [], 'Plants in this group')}
+    <div class="row"><button class="btn" value="ok">${g ? 'Save changes' : 'Make the group'}</button><button class="btn ghost" value="cancel" formnovalidate>Cancel</button></div></form>`, 'wide');
+  if (kind === 'smart') rulePreview();
+  if (r !== 'ok') return;
+  const f = dlg.querySelector('form');
+  const body = { name: f.elements.name.value, notes: f.elements.notes.value };
+  if (kind === 'smart') body.rule = readRule(f);
+  return guard(async () => {
+    if (g) {
+      await api('PUT', '/api/groups/' + g.id, body);
+      if (kind === 'picked') {
+        const now = new Set(tickedCodes(f)), was = new Set(g.codes);
+        await api('POST', `/api/groups/${g.id}/members`, { add: [...now].filter(c => !was.has(c)), remove: [...was].filter(c => !now.has(c)) });
+      }
+      toast('Saved: ' + body.name); await loadGroups(true); route();
+    } else {
+      const made = await api('POST', '/api/groups', { ...body, kind, codes: kind === 'picked' ? tickedCodes(f) : undefined });
+      toast('Group made: ' + made.name); await loadGroups(true); go('#/group/' + made.id);
+    }
+  });
+}
+function careKinds() {
+  return html`<optgroup label="Care">${Object.entries(CARE_WORD).filter(([k]) => !k.startsWith('prep_')).map(([k, v]) => html`<option value="${k}" ${k === 'water' ? raw('selected') : ''}>${v}</option>`)}</optgroup>
+    <optgroup label="Getting ready to come inside">${Object.entries(CARE_WORD).filter(([k]) => k.startsWith('prep_')).map(([k, v]) => html`<option value="${k}">${v}</option>`)}</optgroup>`;
+}
+async function groupCare() {
+  const d = CURG; if (!d || !(await needName())) return;
+  const r = await modal(html`<form method="dialog"><h2>Log care for ${d.name}</h2>
+    <label class="f">What did you do?<select name="kind">${careKinds()}</select></label>
+    <label class="f">When<input type="date" name="day" value="${todayStr()}" max="${todayStr()}"></label>
+    <label class="f">Note (optional)<input type="text" name="note" maxlength="500" placeholder="For example: repotted in the aroid mix"></label>
+    ${tickList(d.codes, d.codes, 'For these plants')}
+    <div class="row"><button class="btn" value="ok">Save for the ticked plants</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`, 'wide');
+  if (r !== 'ok') return;
+  const f = dlg.querySelector('form'), codes = tickedCodes(f);
+  if (!codes.length) { toast('Tick at least one plant.', true); return; }
+  await guard(async () => { await api('POST', '/api/care', { plants: codes, kind: f.elements.kind.value, done_on: f.elements.day.value, note: f.elements.note.value });
+    toast(`Saved for ${codes.length} plant${codes.length === 1 ? '' : 's'}: ${CARE_WORD[f.elements.kind.value]}`); route(); });
+}
+async function groupMove() {
+  const d = CURG; if (!d || !(await needName())) return;
+  let spots = [];
+  try { spots = (await api('GET', '/api/lights')).spots || []; } catch (e) { /* no lights page data: leave the choice out */ }
+  const r = await modal(html`<form method="dialog"><h2>Move plants in ${d.name}</h2>
+    <label class="f">Location<select name="site"><option value="">Leave each plant where it is</option>${(META.sites || []).map(s => html`<option>${s}</option>`)}</select></label>
+    <label class="f">Spot<small>For example "Tall Black Shelf". Leave empty to keep each plant's own spot.</small><input type="text" name="spot" maxlength="200"></label>
+    ${spots.length ? html`<label class="f">Grow light spot<select name="light"><option value="">Do not change</option><option value="none">Take them out of their grow light spots</option>${spots.map(s => html`<option value="${s.id}">${s.name}</option>`)}</select></label>` : ''}
+    ${tickList(d.codes, d.codes, 'Move these plants')}
+    <div class="row"><button class="btn" value="ok">Move the ticked plants</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`, 'wide');
+  if (r !== 'ok') return;
+  const f = dlg.querySelector('form'), codes = tickedCodes(f), set = {};
+  if (f.elements.site.value) set.site = f.elements.site.value;
+  if (f.elements.spot.value.trim()) set.location = f.elements.spot.value.trim();
+  const light = f.elements.light ? f.elements.light.value : '';
+  if (!codes.length) { toast('Tick at least one plant.', true); return; }
+  if (!Object.keys(set).length && !light) { toast('Choose a Location, type a Spot or choose a grow light spot.', true); return; }
+  await guard(async () => {
+    let msg = [];
+    if (Object.keys(set).length) { const a = await api('POST', `/api/groups/${d.id}/apply`, { set, codes }); msg.push(`${a.changed.length} moved`); }
+    if (light) { await api('POST', `/api/groups/${d.id}/spot`, { spot: light === 'none' ? null : +light, codes }); msg.push(light === 'none' ? 'taken out of their grow light spots' : 'under the grow light spot'); }
+    toast('Done: ' + msg.join(', ')); await loadCodes(true); route();
+  });
+}
+async function groupSet(field) {
+  const d = CURG; if (!d || !(await needName())) return;
+  const F = Object.fromEntries(META.fields.map(x => [x.name, x])), list = PGROUPS.bulk_fields.filter(n => F[n]);
+  field = field || list.find(n => n === 'soil_medium') || list[0];
+  const r = await modal(html`<form method="dialog" data-gset="1"><h2>Change a setting for ${d.name}</h2>
+    <label class="f">Setting<select name="field" data-act="grpsetfield">${list.map(n => html`<option value="${n}" ${n === field ? raw('selected') : ''}>${F[n].label}</option>`)}</select></label>
+    <div id="gset-input">${fieldInput(F[field], '')}</div>
+    <p class="hint">Next you see what each plant has now, and choose which plants to change.</p>
+    <div class="row"><button class="btn" value="ok">Show each plant first</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`, 'wide');
+  if (r !== 'ok') return;
+  const f = dlg.querySelector('form'), name = f.elements.field.value, val = f.elements[name].value;
+  const pv = await guard(() => api('POST', `/api/groups/${d.id}/preview`, { set: { [name]: val } }));
+  if (!pv) return;
+  const show = v => v == null || v === '' ? html`<span class="muted">Not set</span>` : String(v);
+  const r2 = await modal(html`<form method="dialog"><h2>${F[name].label}: check each plant</h2>
+    <p>New value: <strong>${show(pv.set[name])}</strong>. Plants already set to it are not ticked. ${pv.rows.some(x => x.differs.length) ? 'Plants marked "Different from the rest" have their own value now: tick them only if the new one suits them too.' : ''}</p>
+    <div class="tbl-wrap"><table class="tbl gset-tbl"><thead><tr><th scope="col">Change?</th><th scope="col">Plant</th><th scope="col">Now</th></tr></thead><tbody>
+      ${pv.rows.map(x => html`<tr><td><input type="checkbox" name="code" value="${x.code}" aria-label="Change ${x.common_name}" ${x.same ? '' : raw('checked')}></td>
+        <th scope="row">${x.common_name} <span class="muted">${x.code}</span></th>
+        <td>${show(x.current[name])}${x.same ? html`<br><strong>Already this</strong>` : x.differs.length ? html`<br><strong><span aria-hidden="true">▲ </span>Different from the rest</strong>` : ''}</td></tr>`)}</tbody></table></div>
+    <div class="row"><button class="btn" value="ok">Change the ticked plants</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`, 'wide');
+  if (r2 !== 'ok') return;
+  const codes = tickedCodes(dlg.querySelector('form'));
+  if (!codes.length) { toast('Nothing was ticked, so nothing changed.'); return; }
+  const expect = Object.fromEntries(pv.rows.map(x => [x.code, x.current]));
+  await guard(async () => {
+    const a = await api('POST', `/api/groups/${d.id}/apply`, { set: pv.set, codes, expect });
+    toast(`${F[name].label} changed for ${a.changed.length} plant${a.changed.length === 1 ? '' : 's'}` + (a.skipped.length ? `. ${a.skipped.length} skipped: changed by someone else since you looked` : '') + '. You can undo it under "Recent changes".');
+    await loadCodes(true); route();
+  });
+}
+async function plantGroupsDialog() {
+  const p = CUR && CUR.p; if (!p || !(await needName())) return;
+  await loadGroups(true);
+  const picked = PGROUPS.groups.filter(g => g.kind === 'picked'), smart = groupsOf(p.code).filter(g => g.kind === 'smart');
+  const r = await modal(html`<form method="dialog"><h2>Groups for ${p.common_name}</h2>
+    ${picked.length ? html`<fieldset class="tick-list"><legend>Hand-picked groups</legend><ul>${picked.map(g => html`<li><label class="chk"><input type="checkbox" name="gid" value="${g.id}" ${g.codes.includes(p.code) ? raw('checked') : ''}><span>${g.name} <span class="muted">(${g.count})</span></span></label></li>`)}</ul></fieldset>`
+      : html`<p>You have no hand-picked groups yet.</p>`}
+    <label class="f">Make a new hand-picked group with this plant (optional)<input type="text" name="newg" maxlength="60" placeholder="Group name"></label>
+    ${smart.length ? html`<p>It is also in ${smart.length === 1 ? 'the smart group' : 'these smart groups'} ${smart.map(g => g.name).join(', ')}, by ${smart.length === 1 ? 'its rule' : 'their rules'}.</p>` : ''}
+    <div class="row"><button class="btn" value="ok">Save changes</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`);
+  if (r !== 'ok') return;
+  const f = dlg.querySelector('form');
+  await guard(async () => {
+    await api('POST', `/api/plants/${enc(p.code)}/groups`, { picked: [...f.querySelectorAll('input[name=gid]:checked')].map(x => +x.value) });
+    if (f.elements.newg.value.trim()) await api('POST', '/api/groups', { name: f.elements.newg.value, kind: 'picked', codes: [p.code] });
+    toast('Groups saved'); await loadGroups(true); KEEP = PIDX; route();
+  });
 }
 
 // ---------- current conditions ----------
@@ -857,7 +1118,9 @@ async function viewPlant(code) {
             <dl><dt id="site-lbl">Location</dt><dd>${sitePicker(p)}</dd>
               ${dl.map(x => html`<dt>${x[0]}</dt><dd>${x[1]}</dd>`)}
               <dt>ID confidence</dt><dd>${p.id_confidence == null ? 'Not rated' : p.id_confidence + '%'}</dd>
-              <dt>Winter plan</dt><dd>${planTag(p.winter_plan)}</dd><dt>Health</dt><dd>${healthTag(p.health_rating)}</dd></dl>
+              <dt>Winter plan</dt><dd>${planTag(p.winter_plan)}</dd><dt>Health</dt><dd>${healthTag(p.health_rating)}</dd>
+              <dt>Groups</dt><dd id="pl-groups">${groupsOf(p.code).length ? groupsOf(p.code).map((g, i) => html`${i ? ', ' : ''}<a href="#/group/${g.id}">${g.name}</a>`) : 'None yet'}
+                <button class="btn small ghost noprint" type="button" data-act="plgroups">Change groups</button></dd></dl>
             <div class="row acts noprint"><a class="btn" href="#/plant/${enc(p.code)}/edit">Edit this page</a>
               <button class="btn ghost" type="button" data-act="archive" data-to="${archived ? '0' : '1'}">${archived ? 'Move back to the main list' : 'Archive'}</button></div></div>
         </div>
@@ -971,6 +1234,7 @@ function filterWords() {
   const w = [];
   if (G.needs) w.push('needs something from you'); if (G.plan) w.push(G.plan); if (G.health) w.push('health ' + G.health);
   if (G.low) w.push('ID under 70%'); if (G.q.trim()) w.push('"' + G.q.trim() + '"');
+  if (G.group && groupById(G.group)) w.push('group ' + groupById(G.group).name);
   return (w.length ? w.join(', ') : 'all plants') + '; sorted by ' + (SORTS[G.sort] || 'code').toLowerCase();
 }
 function pnavBlock(code) {
@@ -982,6 +1246,7 @@ function pnavBlock(code) {
         <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
         <label>Winter plan<select data-f="pnplan"><option value="">Any</option>${META.winter_plans.map(pl => html`<option ${G.plan === pl ? raw('selected') : ''}>${pl}</option>`)}</select></label>
         <label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
+        ${groupFilter()}
         <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
         <label class="chk"><input type="checkbox" data-f="pnneeds" ${G.needs ? raw('checked') : ''}>Needs something from you</label>
         <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70%</label>
@@ -3912,7 +4177,47 @@ const acts = {
   wtpage(el) { WT.page = el.dataset.to ? +el.dataset.to : Math.max(1, WT.page + (+el.dataset.d)); loadWxTable().then(wtFocusTop); },
   async wtallcols() { wtHidden().clear(); wtSave(); loadWxTable(); },
   async wtnocols() { const T = await api('GET', '/api/weather/table?per=10&kind=' + (WT.kind === 'daily' ? 'daily' : 'hourly') + '&source=' + (WT.kind === 'sensor' ? 'sensor' : 'weather')); WT.hide = new Set(T.columns.map(c => c.key).filter(k => !['temperature_2m', 'relative_humidity_2m', 'par', 'temperature_2m_max', 'temperature_2m_min', 'precipitation_sum', 'relative_humidity_2m_mean'].includes(k) && WT.kind !== 'sensor')); wtSave(); loadWxTable(); },
-  clearfilters() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false }); gSave(); route(); },
+  // 1.16.0: groups
+  grpnew(el) { groupDialog(null, el.dataset.kind); },
+  grpedit() { if (CURG) groupDialog(CURG); },
+  async grpdel() {
+    const d = CURG; if (!d || !(await needName())) return;
+    if (!(await confirmBox('Remove the group ' + d.name + '?', 'The group goes away. The plants in it are not changed.', 'Remove the group', true))) return;
+    await guard(async () => { await api('DELETE', '/api/groups/' + d.id); toast('Group removed: ' + d.name); if (String(G.group) === String(d.id)) { G.group = ''; gSave(); } await loadGroups(true); go('#/groups'); });
+  },
+  async grpaddsug(el) {
+    const x = PGROUPS && PGROUPS.suggestions[+el.dataset.i]; if (!x || !(await needName())) return;
+    await guard(async () => { await api('POST', '/api/groups', { name: x.name, kind: 'smart', rule: x.rule }); toast('Group made: ' + x.name); await loadGroups(true); await route();
+      const h = document.querySelector('#grp-suggest h2') || document.querySelector('#grp-yours h2'); if (h) { h.setAttribute('tabindex', '-1'); h.focus(); } });
+  },
+  async grpaddall() {
+    const list = (PGROUPS && PGROUPS.suggestions) || []; if (!list.length || !(await needName())) return;
+    await guard(async () => { for (const x of list) await api('POST', '/api/groups', { name: x.name, kind: 'smart', rule: x.rule }); toast(`${list.length} groups made`); await loadGroups(true); route(); });
+  },
+  async grprm(el) {
+    const d = CURG; if (!d || !(await needName())) return;
+    await guard(async () => { await api('POST', `/api/groups/${d.id}/members`, { remove: [el.dataset.code] }); toast(`${plantName(el.dataset.code)} taken out of ${d.name}`); await loadGroups(true); route(); });
+  },
+  grpcare() { groupCare(); },
+  grpmove() { groupMove(); },
+  grpset() { groupSet(); },
+  async grpundo(el) {
+    if (!(await needName())) return;
+    if (!(await confirmBox('Undo this change?', 'Each plant goes back to what it had before, unless it has been changed again since.', 'Undo the change'))) return;
+    await guard(async () => { const r = await api('POST', `/api/bulk/${el.dataset.id}/undo`); toast(`Undone for ${r.undone.length} plant${r.undone.length === 1 ? '' : 's'}` + (r.kept.length ? `. ${r.kept.length} left as they are: changed again since` : '')); await loadCodes(true); route(); });
+  },
+  grpshow(el, e) { if (e) e.preventDefault(); G.group = String(el.dataset.id); gSave(); go('#/'); },
+  plgroups() { plantGroupsDialog(); },
+  tickall(el) { const fs = el.closest('fieldset'); fs.querySelectorAll('li:not([hidden]) input[name=code]').forEach(x => { x.checked = el.dataset.on === '1'; }); },
+  grprulerow() {
+    const box = document.getElementById('rule-rows'); if (!box) return;
+    const n = box.querySelectorAll('.rule-row').length; if (n >= 8) { toast('A rule can have up to 8 parts.', true); return; }
+    box.insertAdjacentHTML('beforeend', rend(ruleRow({ field: 'genus', op: 'is', value: '' }, n)));
+    box.querySelector('.rule-row:last-child select').focus();
+  },
+  grprulerm(el) { const row = el.closest('.rule-row'); const box = row.parentElement; row.remove();
+    box.querySelectorAll('.rule-row').forEach((r, i) => { r.dataset.row = i; r.querySelector('legend').textContent = 'Part ' + (i + 1); }); rulePreview(); box.querySelector('select').focus(); },
+  clearfilters() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '' }); gSave(); route(); },
   plan(el) { G.plan = G.plan === el.dataset.plan ? '' : el.dataset.plan; document.querySelectorAll('.ledger button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.plan === G.plan))); drawGrid(); },
   pick(el) { PIDX = +el.dataset.i; repaintPhotos(); },
   zoom() { const c = curPhoto(); if (c) modal(html`<form method="dialog"><img src="${photoUrl(c.file)}" alt="${c.caption || CUR.p.common_name}"><p class="cap">${c.caption}</p><button class="btn" value="ok" autofocus>Close</button></form>`, 'photo'); },
@@ -4030,6 +4335,14 @@ const acts = {
   async tododel(el) { if (!(await needName())) return; await guard(async () => { await api('DELETE', '/api/to-photograph/' + el.dataset.id); route(); }); },
 };
 const changeActs = {
+  grprulefield(el) {      // a different thing to look at: redraw this part with the right comparisons and value suggestions
+    const row = el.closest('.rule-row'), i = +row.dataset.row;
+    row.outerHTML = rend(ruleRow({ field: el.value, value: '' }, i));
+    const again = document.querySelector(`.rule-row[data-row="${i}"] select[name=rf]`); if (again) again.focus();
+    rulePreview();
+  },
+  grprulematch() { rulePreview(); },
+  grpsetfield(el) { const F = Object.fromEntries(META.fields.map(x => [x.name, x])), box = document.getElementById('gset-input'); if (box) box.innerHTML = rend(fieldInput(F[el.value], '')); },
   tlsel(el) { TL[el.dataset.side] = el.value; tlRender(); const s = document.querySelector(`select[data-act=tlsel][data-side="${el.dataset.side}"]`); if (s) s.focus(); },
   tlkind(el) { if (el.checked) TL.hide.delete(el.value); else TL.hide.add(el.value); tlRender(); const c = document.querySelector(`input[data-act=tlkind][value="${el.value}"]`); if (c) c.focus(); },
   async site(el) {
@@ -4196,6 +4509,7 @@ document.addEventListener('change', e => {
   else if (f === 'wtcol') { const h = wtHidden(); if (el.checked) h.delete(el.dataset.key); else h.add(el.dataset.key); wtSave(); const d = document.querySelector('.colpick'); const open = d && d.open; loadWxTable().then(() => { const n = document.querySelector('.colpick'); if (n && open) n.open = true; }); }
   else if (f === 'histsrc') { HS[el.dataset.kind].source = el.value; histCal(el.dataset.kind); }
   else if (f === 'health') { G.health = el.value; drawGrid(); }
+  else if (f === 'group') { G.group = el.value; drawGrid(); }
   else if (f === 'pnplan') { G.plan = el.value; drawGrid(); }
   else if (f === 'pnneeds') { G.needs = el.checked; drawGrid(); }
   else if (f === 'sort') { G.sort = el.value; drawGrid(); }
@@ -4216,6 +4530,11 @@ document.addEventListener('input', e => {
   if (e.target.closest && e.target.closest('form[data-fert]')) {
     if (e.target.name === 'product') { const x = FERT.products.find(q => q.product.toLowerCase() === e.target.value.trim().toLowerCase()); const f = e.target.form; if (x && !f.elements.n.value && !f.elements.amount.value) { ['form', 'n', 'p', 'k', 'amount', 'amount_unit', 'water_amount', 'water_unit', 'method'].forEach(k => { if (x[k] != null && f.elements[k]) f.elements[k].value = x[k]; }); } }
     fertPreview();
+  }
+  if (e.target.name === 'rv' || (e.target.closest && e.target.closest('.rule-row'))) rulePreview();
+  if (e.target.dataset && e.target.dataset.tickfind) {      // narrow a long list of plants to tick
+    const q = e.target.value.trim().toLowerCase();
+    e.target.closest('fieldset').querySelectorAll('li').forEach(li => { li.hidden = !!q && !li.textContent.toLowerCase().includes(q); });
   }
   const f = e.target.dataset && e.target.dataset.f;
   if (f === 'q') { G.q = e.target.value; drawGrid(); }

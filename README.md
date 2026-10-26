@@ -646,6 +646,28 @@ On this computer (`http://localhost:8080`), the first time you save something th
 
 If you open the app to your home network again (see "Using the app away from home"), you can also require a password there: uncomment `PLANTDB_PASSWORD` in `docker-compose.yml` and run `docker compose up -d`. The browser then asks for it (leave the username blank or put anything). Never open port 8080 to the internet.
 
+## Groups of plants (from 1.16.0)
+
+The **Groups** page (in the top menu) gathers plants that are alike or kept together, so you can see what suits all of them and look after them in one go. A plant can be in several groups.
+
+- **Smart groups** have a rule. For example "Genus is Philodendron", "Location is Covered porch", or "Name contains palm". A rule can have several parts, and plants join when every part fits, or when any part fits. Plants that fit join by themselves, and leave when they stop fitting. While you make or change the rule, the window lists the plants that fit.
+- **Hand-picked groups** hold the plants you tick. Add or take out plants on the group's page, or from a plant's own page with **Change groups**.
+- **Suggested groups** are listed under your own. They cover plants of the same genus, families whose plants share care (such as the Aroids, which use the same chunky potting mix), and plants under the same grow light. Press **Add this group**, or **Add all suggested groups**.
+- **On the Plants page,** choose a group under **Group** to show only its plants, or choose **Sort by: Group A to Z**. Previous and Next Plant on plant pages follow the same choice.
+- **On a plant page,** the card at the top lists the plant's groups, with links.
+
+Each group's page has:
+
+- **Plants in this group**, with where each one is.
+- **What suits all of them**: the temperature, humidity, light, soil pH and soil moisture that suit the most plants, with the odd ones out named. It also shows how warm to keep the group, and because of which plants, and their winter plans, fertilizer ratios and potting mixes.
+- **Do something to all of them** (for people who can edit):
+  - **Log care for all of them:** what you did, the date, an optional note, and which plants (all are ticked to start with).
+  - **Move them:** a new Location, a Spot such as "Tall Black Shelf", or a grow light spot (or take them out of their grow light spots).
+  - **Change a setting for all of them:** choose the setting and the new value, and the next window shows each plant's current value. Plants already set to it are not ticked. Plants with a value different from the rest are marked, so you can leave them out. Only the ticked plants change. If someone changed a plant in the meantime, it is skipped so nothing is overwritten unseen.
+- **Recent changes to the whole group,** each with **Undo this change**. Undo puts each plant back as it was, unless it was changed again since.
+
+Removing a group never changes the plants in it. Group changes appear in the audit log under "Groups and changes to a whole group", and each plant's page history shows its own changes.
+
 ## Grow lights (from 1.13.0)
 
 The **Grow lights** page (in the top menu) holds your grow lights, the spots they light indoors, and how much light each plant gets there. Your 11 lights arrive with the update, from the photos and listings you saved in `Plants\Grow Lights`. Each has a photo, how many you have, its timer and brightness steps, and the maker's light figures. Where the maker gives none, Claude's estimates are used and marked.
