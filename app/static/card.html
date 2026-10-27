@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Care card | Plant record</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231b4b72'/%3E%3Cpath d='M16 27V13M16 17c-5 0-8-3-8-8 5 0 8 3 8 8zm0 4c4 0 7-2.500 7-7-4 0-7 2.500-7 7z' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/style.css">
+<script src="/prefs.js"></script>
+</head>
+<body class="pc-body">
+<a class="skip" href="#pc-cards">Skip to the cards</a>
+<main id="pc-main" class="pc-main" tabindex="-1">
+  <div class="pc-tools noprint" id="pc-tools">
+    <p class="crumb"><a id="pc-back" href="/#/">Back to Plant record</a></p>
+    <h1 id="pc-title">Large-print care card</h1>
+    <p id="pc-intro">Loading…</p>
+    <form id="pc-opts" class="pc-opts" hidden>
+      <fieldset class="opt-group"><legend>Notes</legend>
+        <label class="pc-opt"><input type="radio" name="notes" value="short" checked> Short: the first sentence of each note</label>
+        <label class="pc-opt"><input type="radio" name="notes" value="full"> Full: every note in full</label>
+      </fieldset>
+      <fieldset class="opt-group"><legend>Also show</legend>
+        <label class="pc-opt"><input type="checkbox" name="photo" checked> The plant's main photo</label>
+        <label class="pc-opt"><input type="checkbox" name="qr" checked> A code to scan that opens the plant's page</label>
+        <label class="pc-opt"><input type="checkbox" name="pets"> Dangers to pets and people</label>
+      </fieldset>
+      <p class="row"><button class="btn" type="button" id="pc-print">Print</button>
+        <span class="hint" id="pc-count"></span></p>
+      <p class="hint">The printout is always black on white, whatever your Display settings. Below is how the cards will look.</p>
+    </form>
+  </div>
+  <div id="pc-cards" class="pc-cards" aria-live="polite"></div>
+</main>
+<script src="/card.js"></script>
+</body>
+</html>

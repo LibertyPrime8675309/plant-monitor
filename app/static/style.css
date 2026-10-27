@@ -992,6 +992,62 @@ ul.srcs li{margin:.25rem 0;overflow-wrap:anywhere}
 @media print{.swipe-hint{display:none!important}}
 .swipe-hint.ready::after{content:"Let go to open it";display:block;font-weight:400;margin-top:.15rem}
 
+/* ---- prototype proto/care-card: large-print care cards (card.html, card.js) ---- */
+.pc-main{max-width:62rem;margin:0 auto;padding:1.4rem 1rem 4rem}
+.pc-tools h1{margin:.2rem 0 .5rem;overflow-wrap:anywhere}
+.pc-opts{border:2px solid var(--line);border-radius:8px;padding:1rem 1.1rem .4rem;margin:1rem 0 1.6rem;background:var(--sheet)}
+.pc-opt{display:flex;gap:.6rem;align-items:flex-start;margin:.35rem 0;min-height:2.5rem;cursor:pointer}
+.pc-opt input{width:1.4rem;height:1.4rem;margin:.15rem 0 0;flex:none;accent-color:var(--cyan)}
+.pc-cards{display:grid;gap:1.6rem}
+.pc-card{background:var(--sheet);color:var(--ink);border:2px solid var(--ink);border-radius:8px;padding:1.1rem 1.2rem;font-size:1.1rem;line-height:1.45;min-width:0}
+.pc-head{display:flex;gap:1rem;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;border-bottom:3px solid var(--ink);padding-bottom:.7rem;margin-bottom:.9rem}
+.pc-names{flex:1 1 16rem;min-width:0}
+.pc-card h2{font-family:var(--serif);font-size:2.3rem;line-height:1.15;margin:0;overflow-wrap:anywhere}
+.pc-sci{font-size:1.3rem;margin:.2rem 0 .3rem}
+.pc-where{margin:.15rem 0;font-size:1.15rem}
+.pc-photo{width:14rem;max-width:100%;min-width:0;flex:0 1 14rem;aspect-ratio:1;object-fit:cover;border:2px solid var(--ink);border-radius:6px}
+.pc-boxes{display:flex;flex-wrap:wrap;gap:.8rem;align-items:flex-start}
+.pc-col{flex:1 1 17rem;min-width:0;display:flex;flex-direction:column;gap:.8rem}
+.pc-col:empty{display:none}
+.pc-boxes>.pc-box{flex:1 1 100%}
+.pc-box{border:2px solid var(--line);border-left:.45rem solid var(--ink);border-radius:6px;padding:.55rem .8rem .6rem;break-inside:avoid;min-width:0}
+.pc-box h3{margin:0 0 .2rem;font-size:1.05rem;text-transform:uppercase;letter-spacing:.06em}
+.pc-box p{margin:.25rem 0;overflow-wrap:anywhere}
+.pc-main-fact{font-size:1.4rem;font-weight:700;line-height:1.25}
+.pc-printed{margin:.3rem 0 0;font-size:1rem;color:var(--ink-2)}
+.pc-scan{margin:0;flex:none;width:7rem;text-align:center;font-size:.95rem;line-height:1.25}
+.pc-qr{display:block;width:6rem;height:6rem;margin:0 auto .2rem;background:#fff;padding:.2rem;border-radius:4px}
+/* phones and very large text: smaller margins and headings so words are not split */
+html[data-narrow="1"] .pc-main{padding:1rem .5rem 3rem}
+html[data-narrow="1"] .pc-card{padding:.7rem .6rem;font-size:1rem}
+html[data-narrow="1"] .pc-card h2{font-size:1.6rem}
+html[data-narrow="1"] .pc-box{padding:.4rem .5rem;border-left-width:.3rem}
+html[data-narrow="1"] .pc-box h3{font-size:.9rem;letter-spacing:0}
+html[data-narrow="1"] .pc-main-fact{font-size:1.15rem}
+html[data-narrow="1"] .pc-opts{padding:.7rem .7rem .2rem}
+@media print{
+  html:has(body.pc-body){font-size:15.5pt}
+  body.pc-body{background:#fff;color:#000}
+  @page{margin:.45in}
+  .pc-main{max-width:none;padding:0}
+  .pc-cards{display:block}
+  .pc-card{--ink:#000;--ink-2:#000;--line:#000;--sheet:#fff;background:#fff;color:#000;border:0;border-radius:0;padding:0;font-size:1.05rem;line-height:1.3;break-before:page}
+  .pc-card:first-child{break-before:auto}
+  .pc-head{flex-wrap:nowrap;padding-bottom:.08in;margin-bottom:.12in}
+  .pc-card h2{font-size:1.9rem}
+  .pc-main-fact{font-size:1.3rem}
+  .pc-box h3{margin:0}
+  .pc-where{margin:0}
+  .pc-photo{width:1.6in;flex:0 0 1.6in}
+  .pc-boxes,.pc-col{gap:.14in}
+  .pc-col{flex:1 1 0}
+  .pc-box{padding:.06in .12in .08in}
+  .pc-box p{margin:.04in 0}
+  .pc-printed{font-size:.8rem}
+  .pc-scan{width:1.15in;font-size:.75rem}
+  .pc-qr{width:1in;height:1in;padding:0}
+}
+
 /* 1.16.0: groups of plants */
 .grp-new{margin:1rem 0 1.4rem}
 .grp-list{list-style:none;padding:0;margin:.6rem 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,22rem),1fr));gap:1rem}

@@ -3,7 +3,7 @@
 One line each, most wanted first. A prototyping session takes the top one that is not already in progress, and marks it "(in progress: proto/<branch>)".
 
 - Undo right after a quick care button: "Watered" or "Still moist" pressed by mistake can be undone from the message that appears, without looking for it in the care log.
-- Large-print care card: a printable page for one plant or a group, with its photo, name, and water, light and temperature needs in big type, to keep beside the plants indoors over winter.
+- Large-print care card: a printable page for one plant or a group, with its photo, name, and water, light and temperature needs in big type, to keep beside the plants indoors over winter. (in progress: proto/care-card)
 - Summer heat: an AHS heat-zone style "days above 86°F" count from the weather history, next to the USDA zone on About this plant, for plants that struggle in Texas summers.
 - Sensor dashboard for the DIY plant monitor (soil moisture, temperature, light) once hardware is posting to `/api/readings`.
 
