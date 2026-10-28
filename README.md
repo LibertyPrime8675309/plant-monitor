@@ -781,6 +781,22 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
 
+## Undo right after a care button (from 1.19.0)
+
+After you press **Watered** or **Still moist** (on the Today page or a plant page), **Watered all**, or save **Log other care**, the message at the bottom says what was saved and has **Undo** and **Close** buttons. It stays for 30 seconds, and says how long is left. The countdown pauses while the pointer or the keyboard focus is on the message. With a keyboard, press **U** while it shows (Display settings can turn keyboard shortcuts off).
+
+Undo removes only the entries that press made, so the rest of the care log is untouched. For "Watered all" it removes all of them and says how many. If someone else already removed the entry, it says "Nothing to undo". The change log records it as "Undone right after it was logged". To remove an older entry, use the care log on the plant's page.
+
+## Large-print care cards (from 1.19.0)
+
+A printable card with a plant's needs in big type, to keep beside the plants indoors and read without opening the app.
+
+- On a plant page, press **Large-print care card**. On a group's page, **Large-print care cards** makes one card for each plant in the group.
+- Each card has the plant's name, Latin name, code, where it is and its winter plan, its main photo, and a code to scan that opens its page. Under that are boxes headed **Water** (how often to check, the same figure as the Today list), **Light**, **Temperature**, **Humidity**, **Feeding** and, if you tick it, **Careful** (dangers to pets and people). The main fact in each box is in bold, with a short note under it.
+- Above the cards, choose short or full notes, and whether to show the photo, the scan code and the dangers. The choices are remembered in this browser. **Print** opens the browser's print window, where you can pick a printer or "Save as PDF".
+- The printout is always black on white and large print: notes about 16 point, main facts about 20 point, the name about 30 point. Each plant starts on a new page, and most fit on one.
+- People who can only view the app can print cards too.
+
 ## Grow lights (from 1.13.0)
 
 The **Grow lights** page (in the top menu) holds your grow lights, the spots they light indoors, and how much light each plant gets there. Your 11 lights arrive with the update, from the photos and listings you saved in `Plants\Grow Lights`. Each has a photo, how many you have, its timer and brightness steps, and the maker's light figures. Where the maker gives none, Claude's estimates are used and marked.
