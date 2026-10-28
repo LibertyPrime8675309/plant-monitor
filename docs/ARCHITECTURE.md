@@ -1,7 +1,7 @@
 # How Plant record is built
 
 ## Runtime
-- **Docker:** `docker-compose.yml` has one service, `plants`, with container `plant-database`. It is built from the `Dockerfile` on python:3.12-slim and runs gunicorn with 1 worker and 4 threads on port 8080. The image is tagged `plant-database:<version>` with label `plantdb.version`, and the build arg `PLANTDB_VERSION` writes `/app/VERSION`.
+- **Docker:** `docker-compose.yml` has the services `plants` (container `plant-database`), `tailscale` and, from 1.18.0, `vision` (container `plant-vision`, see "Identify" below). It is built from the `Dockerfile` on python:3.12-slim and runs gunicorn with 1 worker and 4 threads on port 8080. The image is tagged `plant-database:<version>` with label `plantdb.version`, and the build arg `PLANTDB_VERSION` writes `/app/VERSION`.
 - **Volumes:** `./data:/data` holds the database and photos; `./backups:/backups` holds backups made by the app.
 - **Environment:**
 
@@ -167,6 +167,29 @@
   - Click, change and submit events are delegated to `acts`, `changeActs` and `formActs`.
   - `buildSideNav()` builds the "On this page" menu from the `section.blk > h2` headings.
   - `linkify()` turns plant codes into links with photo previews.
+- **1.18.0 Identify and the plant library:**
+  - **Vision service** (`vision/service.py`, `vision/Dockerfile`, compose service `vision`, container `plant-vision`): Flask + gunicorn (1 worker, 4 threads) on port 8090, on the compose network only (no `ports`). Read-only root, `cap_drop: ALL`. Mounts `./data:/data:ro` and `./data/vision:/cache`. Env: `VISION_MODEL` (from `PLANTDB_VISION_MODEL`, default `bioclip-2.5-vith14`, or `bioclip-2`) and `PLANTDB_VISION=0` (answers `state: off`, loads nothing).
+    - On start, `load_all()` runs in a thread and reports progress in `S` (`/status`). It loads the open_clip model from `hf-hub:imageomics/<model>`, with weights memory-mapped from safetensors.
+    - `fetch_names()` downloads the Plantae block of the TreeOfLife-200M text embeddings (`txt_emb_<model>.json` and `.npy`, CC0). It fetches one HTTP Range request per embedding dimension, because the `.npy` is stored D x N, and saves `names.json` plus `names.npy` (float16, unit rows).
+    - `fetch_usda()` reads the 52 USDA PLANTS state CSVs (HF mirror `Solshine/USDA_Plants_Database_By_State_WorkingGroupList`) into `usda_states.json`.
+    - Scopes are masks over the species rows: `world`, `us`, `texas`, `common` (has a common name, or is in the US).
+    - `index_photos()` embeds every active plant's photos into `photos-<model>.npz` (saved every 25 photos). `watch_photos()` re-checks every minute when `plants.db` changes.
+    - `POST /identify`: the best photo per plant (top 5). The first gets `confidence` from `CONF[model]`, a logistic fit on Ethan's photos of margin to the second plant and score. `likely_new` is set when the best score is under `NOVEL[model]`. It returns species top 5 (softmax over the top 50 of the scope) and `genera` (summed). `GET /names?q=&scope=` does a substring search over scientific, BioCLIP common and USDA common names.
+    - The tests behind the numbers are in `dev/vision/` (see its README).
+  - **App routes** (`server.py`, block "1.18.0"):
+    - `POST /api/identify?scope=` (`VIEWER_POSTS`: allowed for viewers, since it changes nothing) forwards to `PLANTDB_VISION_URL` (default `http://vision:8090`). It adds plant names and photos (`plant_brief()`) and `yours` / `yours_genus` (`mark_owned()`).
+    - `GET /api/identify/status`, `GET /api/library`.
+    - `GET/PUT /api/identify/settings` (PUT in `OWNER_ONLY_CHANGES`) keeps `plantnet_key` and `claude_key` in `settings`. Only `key_hint()` (the last 4 characters) is ever returned or audited.
+    - `POST /api/identify/plantnet` (Pl@ntNet v2 `identify/all`, organs auto) and `POST /api/identify/claude` (Messages API, model `CLAUDE_MODEL`, asks for JSON). Their URLs can be overridden with `PLANTDB_PLANTNET_URL` and `PLANTDB_CLAUDE_URL` (the tests use these).
+    - Errors 502 and 503 come back as JSON. `Permissions-Policy` allows `camera=(self)`.
+  - **Front end** (`app.js`, block "1.18.0"):
+    - `viewIdentify()` (`#/identify`), with state in `ID`. Camera through `getUserMedia` (rear camera). `idTick()` sends an 800 px frame about every 0.9 s, one at a time, paused while a dialog is open or the tab is hidden. It also reads label QR codes with `BarcodeDetector` when the browser has it.
+    - `idLive()` shows the popup when the same plant is first twice in a row at 80% or more. `idPopup()` has three cases: sure (75% or more), "Which one is it?" (45% or more and not `likely_new`), and "Probably not one of your plants".
+    - `idPaint()` draws the results. `idAskOutside()` asks for second opinions. `idAddPic()` posts to `/api/plants/<code>/photos`.
+    - `viewLibrary(qs)` (`#/library?q=&scope=`): `route()` now splits off `?query` into `qs`.
+    - `NEWFILL` pre-fills the Add a plant form (and attaches `__pic` after saving). It is cleared on any other route.
+    - Change buttons are in the viewer CSS block.
+  - **Tests:** `dev/test/mock_vision.py` is a fake service (decides by picture colour, and also fakes Pl@ntNet and Claude), started by `mock_server.py` unless `MOCK_VISION=real`. `dev/test/identify_check.py` uses a fake red camera (`.y4m`).
 - **Plants page filters:** the state lives in `G` and is remembered in localStorage `plantdb.filters`. It also drives Previous / Next on plant pages.
 - `style.css`: colour tokens on `:root`, overridden for dark mode and high contrast. Additions are appended in blocks headed with the version that added them.
 - **Charts:** hand-drawn SVG using a palette checked for colour-blind readers (see the CHANGELOG for 1.5.0).

@@ -44,6 +44,7 @@ SITES = ['Outdoors', 'Covered porch', 'Indoors', 'Garage or shed']
 # 1.9.0: what decides which pest treatments suit a plant before it comes inside (chosen on its page)
 LEAF_TYPES = ['Large leaves', 'Small or many leaves', 'Fuzzy or velvety leaves', 'Succulent or cactus', 'Fern fronds', 'Palm fronds', 'Grows in water']
 POT_SIZES = ['Small: fits in a bucket', 'Medium: fits in a big tub', 'Large: too big to soak']
+PET_SAFETY = ['Toxic to pets', 'Mildly toxic to pets', 'Not known to be toxic', 'Safe for pets (ASPCA)']    # 1.17.0
 FERT_STRENGTHS = ['None needed', 'Quarter strength', 'Quarter to half strength', 'Half strength', 'Full strength']   # 1.11.0
 PESTS = ['Spider mites', 'Mealybugs', 'Scale', 'Aphids', 'Whiteflies', 'Thrips', 'Ants', 'Fungus gnats', 'Root mealybugs',
          'Slugs or snails', 'Pill bugs or earwigs', 'Other']
@@ -101,9 +102,10 @@ FIELDS = [
     ('bloom', 'long', 'Flowers'), ('fruit', 'long', 'Fruit'),
     ('danger_humans', 'long', 'Dangers to people'), ('danger_animals', 'long', 'Dangers to pets and other animals'),
     ('propagation', 'list', 'Propagation'), ('sources', 'list', 'Sources'),
+    ('pet_safety', 'enum', 'Safety for pets'),                                                          # 1.17.0, for the pets filter
 ]
-ENUMS = {'winter_plan': WINTER_PLANS, 'site': SITES, 'health_rating': HEALTH, 'leaf_type': LEAF_TYPES, 'pot_size': POT_SIZES, 'fert_strength': FERT_STRENGTHS}
-OPTIONAL_ENUMS = ('leaf_type', 'pot_size', 'fert_strength')        # may be left as "Not set"
+ENUMS = {'winter_plan': WINTER_PLANS, 'site': SITES, 'health_rating': HEALTH, 'leaf_type': LEAF_TYPES, 'pot_size': POT_SIZES, 'fert_strength': FERT_STRENGTHS, 'pet_safety': PET_SAFETY}
+OPTIONAL_ENUMS = ('leaf_type', 'pot_size', 'fert_strength', 'pet_safety')        # may be left as "Not set"
 FIELD_NAMES = [f[0] for f in FIELDS]
 FIELD_KIND = {f[0]: f[1] for f in FIELDS}
 FIELD_LABEL = {f[0]: f[2] for f in FIELDS}
@@ -547,7 +549,8 @@ def owner_name(c):
     return r[0] if r else 'the owner'
 
 OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people')        # any request (the people list shows everyone's login)
-OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings')           # changes only
+OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings')   # changes only
+VIEWER_POSTS = ('/api/identify',)            # 1.18.0: asks this computer what a picture shows; changes nothing, so viewers may use it
 
 def role_refusal(u):
     """Why this person may not make this request, or None. The server decides; the page only hides what would be refused."""
@@ -556,7 +559,7 @@ def role_refusal(u):
     if path == '/api/me': return None                                    # your own name
     if path.startswith(OWNER_ONLY_PATHS) or (change and path.startswith(OWNER_ONLY_CHANGES)) or (change and re.match(r'^/api/places/\d+$', path)):
         return f'Only {owner_name(db())} can do this.'
-    if role == 'viewer' and change:
+    if role == 'viewer' and change and path not in VIEWER_POSTS:
         return f'You can look at everything, but changes are turned off for you. Ask {owner_name(db())} if you would like to edit.'
     return None
 
@@ -651,7 +654,7 @@ def guard():
 def headers(resp):
     if via_tailscale():                              # always HTTPS (Tailscale Serve), so browsers can be told to stay on HTTPS
         resp.headers['Strict-Transport-Security'] = 'max-age=31536000'
-    resp.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), payment=(), usb=()'
+    resp.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), payment=(), usb=(), camera=(self)'
     resp.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
     resp.headers['X-Content-Type-Options'] = 'nosniff'
     resp.headers['X-Frame-Options'] = 'DENY'
@@ -664,6 +667,8 @@ def headers(resp):
 @app.errorhandler(404)
 @app.errorhandler(409)
 @app.errorhandler(413)
+@app.errorhandler(502)
+@app.errorhandler(503)
 def err(e):
     return jsonify(error=getattr(e, 'description', str(e))), e.code
 
@@ -800,7 +805,8 @@ def care_one(i):
     c.execute('DELETE FROM care_log WHERE id=?', (i,))
     r = c.execute('SELECT id FROM plants WHERE code=?', (old['plant_code'],)).fetchone()
     audit_only(c, 'care', 'care_log', f"{CARE_KINDS.get(old['kind'], old['kind'])} {old['done_on']}", None, editor(),
-               'Removed from the care log: ' + CARE_KINDS.get(old['kind'], old['kind']) + ', ' + day_words(old['done_on']), r['id'] if r else None, old['plant_code'])
+               ('Undone right after it was logged: ' if request.args.get('undo') == '1' else 'Removed from the care log: ')     # ?undo=1: the Undo button (prototype)
+               + CARE_KINDS.get(old['kind'], old['kind']) + ', ' + day_words(old['done_on']), r['id'] if r else None, old['plant_code'])
     c.commit()
     return jsonify(ok=True)
 
@@ -876,25 +882,217 @@ def settings():
     r = c.execute("SELECT value FROM settings WHERE key='base_url'").fetchone()
     return jsonify(base_url=r[0] if r else '')
 
+# ---------------------------------------------------------------- 1.18.0: identify a plant from a picture, and the plant library
+# The pictures go to the vision service (container "plant-vision", vision/service.py) on Docker's private network. It runs
+# BioCLIP on this computer and compares the picture with your own photos and with its species list. Pl@ntNet and Claude
+# are optional second opinions, asked only when you press their buttons, with keys the owner saves on the Identify page.
+VISION_URL = os.environ.get('PLANTDB_VISION_URL', 'http://vision:8090').rstrip('/')
+PLANTNET_URL = os.environ.get('PLANTDB_PLANTNET_URL', 'https://my-api.plantnet.org/v2/identify/all')
+CLAUDE_URL = os.environ.get('PLANTDB_CLAUDE_URL', 'https://api.anthropic.com/v1/messages')
+CLAUDE_MODEL = 'claude-sonnet-5-5'
+ID_SCOPES = ('common', 'texas', 'us', 'world')
+
+def vision_call(path, data=None, ctype=None, timeout=60):
+    req = urllib.request.Request(VISION_URL + path, data=data, headers={'Content-Type': ctype} if ctype else {}, method='POST' if data is not None else 'GET')
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r: return json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        try: body = json.loads(e.read())
+        except Exception: body = {}
+        if e.code == 503: abort(503, body.get('error') or 'The picture checker is still setting up. Try again in a few minutes.')
+        abort(502, body.get('error') or f'The picture checker could not read that ({e.code}).')
+    except (urllib.error.URLError, OSError, TimeoutError):
+        abort(503, 'The picture checker is not running. Start it with the updater, or see README, "Identify a plant".')
+
+def picture_bytes(max_side=None):
+    """The picture sent with the request (field 'image'), checked, turned upright and saved as JPEG."""
+    f = request.files.get('image')
+    if not f: abort(400, 'Send a picture')
+    try:
+        im = ImageOps.exif_transpose(Image.open(f.stream)); im.load(); im = im.convert('RGB')
+    except Exception:
+        abort(400, 'That is not a picture this can read (use JPG or PNG)')
+    if max_side: im.thumbnail((max_side, max_side))
+    b = io.BytesIO(); im.save(b, 'JPEG', quality=88); return b.getvalue()
+
+def multipart(fields, files):
+    """A small multipart/form-data body: fields {name: value}, files [(name, filename, bytes, type)]."""
+    bd = 'plantdb' + uuid.uuid4().hex
+    out = io.BytesIO()
+    for k, v in fields.items():
+        out.write(f'--{bd}\r\nContent-Disposition: form-data; name="{k}"\r\n\r\n{v}\r\n'.encode())
+    for k, fn, data, ct in files:
+        out.write(f'--{bd}\r\nContent-Disposition: form-data; name="{k}"; filename="{fn}"\r\nContent-Type: {ct}\r\n\r\n'.encode() + data + b'\r\n')
+    out.write(f'--{bd}--\r\n'.encode())
+    return out.getvalue(), 'multipart/form-data; boundary=' + bd
+
+def plant_brief(c, code):
+    r = c.execute('SELECT id, code, common_name, scientific_name, location, site, status FROM plants WHERE code=?', (code,)).fetchone()
+    if not r: return None
+    ph = c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC, id LIMIT 1', (r['id'],)).fetchone()
+    return {'code': r['code'], 'common_name': r['common_name'], 'scientific_name': r['scientific_name'], 'location': r['location'],
+            'site': r['site'], 'photo': ph[0] if ph else None}
+
+def species_owned(c):
+    """{'genus species' (lower case): [codes]} and {'genus': [codes]} for the plants in the record, to say "You have this"."""
+    sp, gn = {}, {}
+    for code, sci in c.execute("SELECT code, scientific_name FROM plants WHERE status='active'"):
+        m = re.match(r'^\s*([A-Z][a-z]+)(?:\s+([a-z][a-z\-]+))?', sci or '')
+        if not m: continue
+        gn.setdefault(m.group(1).lower(), []).append(code)
+        if m.group(2) and m.group(2) not in ('sp', 'spp', 'x'): sp.setdefault((m.group(1) + ' ' + m.group(2)).lower(), []).append(code)
+    return sp, gn
+
+def mark_owned(c, items, key='scientific_name'):
+    sp, gn = species_owned(c)
+    for x in items:
+        n = (x.get(key) or '').lower()
+        x['yours'] = sp.get(n, []); x['yours_genus'] = [] if x['yours'] else gn.get(n.split(' ')[0], [])
+    return items
+
+@app.route('/api/identify', methods=['POST'])
+def identify():
+    """A picture (field 'image') in; the closest plants in the record and the likeliest species out (from this computer)."""
+    scope = request.args.get('scope', 'common')
+    if scope not in ID_SCOPES: scope = 'common'
+    body, ct = multipart({}, [('image', 'picture.jpg', picture_bytes(1024), 'image/jpeg')])
+    out = vision_call('/identify?scope=' + scope, body, ct, timeout=90)
+    c = db()
+    matches = []
+    for m in out.get('matches', []):
+        b = plant_brief(c, m['code'])
+        if b: matches.append(b | {'score': m['score'], 'confidence': m.get('confidence'), 'matched_photo': m.get('photo')})
+    out['matches'] = matches
+    mark_owned(c, out.get('species', []))
+    return jsonify(out)
+
+@app.route('/api/identify/status')
+def identify_status():
+    try: st = vision_call('/status', timeout=5)
+    except Exception as e:
+        st = {'state': 'off', 'step': getattr(e, 'description', 'The picture checker is not running.')}
+    c = db()
+    st['plantnet'] = bool(setting(c, 'plantnet_key')); st['claude'] = bool(setting(c, 'claude_key'))
+    return jsonify(st)
+
+@app.route('/api/library')
+def library():
+    """Search the species list (?q=, &scope=texas|us|common|world)."""
+    q, scope = request.args.get('q', '').strip()[:80], request.args.get('scope', 'world')
+    if scope not in ID_SCOPES: scope = 'world'
+    if len(q) < 2: return jsonify(results=[], total=0)
+    out = vision_call('/names?' + urllib.parse.urlencode({'q': q, 'scope': scope, 'limit': 60}), timeout=30)
+    mark_owned(db(), out.get('results', []))
+    out['results'].sort(key=lambda x: (not x['yours'], not x['yours_genus']))      # yours first (a stable sort keeps the rest in order)
+    return jsonify(out)
+
+def key_hint(k):
+    return ('…' + k[-4:]) if k else ''
+
+@app.route('/api/identify/settings', methods=['GET', 'PUT'])
+def identify_settings():
+    """The Pl@ntNet and Claude keys (owner only to change). The keys never leave the server: only their last 4 characters."""
+    c = db()
+    if request.method == 'PUT':
+        b = request.get_json(silent=True) or {}
+        for name, word in (('plantnet_key', 'Pl@ntNet'), ('claude_key', 'Claude')):
+            if name not in b: continue
+            k = str(b.get(name) or '').strip()
+            if k and not re.match(r'^[A-Za-z0-9_\-]{10,200}$', k): abort(400, f'That does not look like a {word} key. Copy it again, without spaces.')
+            set_setting(c, name, k)
+            audit_only(c, 'setting', name, None, key_hint(k) or '(removed)', editor(), f'{word} key ' + ('saved' if k else 'removed'))
+        c.commit()
+    pk, ck = setting(c, 'plantnet_key', ''), setting(c, 'claude_key', '')
+    return jsonify(plantnet=bool(pk), plantnet_hint=key_hint(pk), claude=bool(ck), claude_hint=key_hint(ck), claude_model=CLAUDE_MODEL)
+
+def outside_call(url, data, headers, timeout=60):
+    req = urllib.request.Request(url, data=data, headers=headers | {'User-Agent': 'plant-database (home garden record)'}, method='POST')
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r: return r.status, json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        try: return e.code, json.loads(e.read())
+        except Exception: return e.code, {}
+    except (urllib.error.URLError, OSError, TimeoutError):
+        return 0, {}
+
+@app.route('/api/identify/plantnet', methods=['POST'])
+def identify_plantnet():
+    """Second opinion from Pl@ntNet (free key: 500 pictures a day). Pl@ntNet does not keep the pictures, by its terms."""
+    c = db()
+    key = setting(c, 'plantnet_key', '')
+    if not key: abort(400, 'Pl@ntNet is not set up. The owner can save a key on the Identify page, under "Second opinions".')
+    body, ct = multipart({'organs': 'auto'}, [('images', 'picture.jpg', picture_bytes(1280), 'image/jpeg')])
+    url = PLANTNET_URL + '?' + urllib.parse.urlencode({'api-key': key, 'lang': 'en', 'nb-results': 5, 'include-related-images': 'false'})
+    st, j = outside_call(url, body, {'Content-Type': ct})
+    if st == 404: return jsonify(species=[], note='Pl@ntNet did not recognise a plant in that picture.')
+    if st in (401, 403): abort(502, 'Pl@ntNet refused the key. Check it on my.plantnet.org and save it again.')
+    if st == 429: abort(502, 'The Pl@ntNet key has used all of today\'s pictures. It resets tomorrow.')
+    if st != 200: abort(502, 'Could not reach Pl@ntNet. Check the internet connection and try again.')
+    out = []
+    for r in (j.get('results') or [])[:5]:
+        sp = r.get('species') or {}
+        out.append({'scientific_name': sp.get('scientificNameWithoutAuthor', ''), 'author': sp.get('scientificNameAuthorship', ''),
+                    'genus': (sp.get('genus') or {}).get('scientificNameWithoutAuthor', ''), 'family': (sp.get('family') or {}).get('scientificNameWithoutAuthor', ''),
+                    'common_name': ', '.join((sp.get('commonNames') or [])[:3]), 'probability': round(float(r.get('score') or 0), 3)})
+    mark_owned(c, out)
+    return jsonify(species=out, remaining=j.get('remainingIdentificationRequests'), source='Pl@ntNet')
+
+CLAUDE_ASK = ('Identify the plant in this photo. It is one of the potted or garden plants of a home grower in Round Rock, Texas '
+              '(USDA zone 8b/9a). Reply with JSON only, no other text: {"plant": true or false (is there a plant in the photo), '
+              '"guesses": [up to 3 of {"scientific_name": "Genus species", "common_name": "...", "family": "...", '
+              '"probability": 0 to 1, "why": "one short sentence on the features you used"}], '
+              '"photo_tip": "one short sentence on what photo would make you surer, or empty"}')
+
+@app.route('/api/identify/claude', methods=['POST'])
+def identify_claude():
+    """Second opinion from Claude, with the owner's Anthropic API key (paid per picture, a cent or two)."""
+    import base64
+    c = db()
+    key = setting(c, 'claude_key', '')
+    if not key: abort(400, 'Claude is not set up. The owner can save an Anthropic API key on the Identify page, under "Second opinions".')
+    pic = base64.b64encode(picture_bytes(1280)).decode()
+    body = json.dumps({'model': CLAUDE_MODEL, 'max_tokens': 800, 'messages': [{'role': 'user', 'content': [
+        {'type': 'image', 'source': {'type': 'base64', 'media_type': 'image/jpeg', 'data': pic}}, {'type': 'text', 'text': CLAUDE_ASK}]}]}).encode()
+    st, j = outside_call(CLAUDE_URL, body, {'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01'}, timeout=90)
+    if st in (401, 403): abort(502, 'Anthropic refused the key. Check it at console.anthropic.com and save it again.')
+    if st == 429 or st == 529: abort(502, 'Claude is busy or the key has reached its limit. Try again in a minute.')
+    if st != 200: abort(502, 'Could not reach Claude. Check the internet connection and try again.')
+    text = ''.join(b.get('text', '') for b in j.get('content', []) if b.get('type') == 'text')
+    m = re.search(r'\{.*\}', text, re.S)
+    try: a = json.loads(m.group(0)) if m else {}
+    except ValueError: a = {}
+    out = [{'scientific_name': str(x.get('scientific_name', ''))[:120], 'common_name': str(x.get('common_name', ''))[:120], 'family': str(x.get('family', ''))[:80],
+            'probability': max(0.0, min(1.0, float(x.get('probability') or 0))), 'why': str(x.get('why', ''))[:300]}
+           for x in (a.get('guesses') or [])[:3] if isinstance(x, dict)]
+    mark_owned(c, out)
+    return jsonify(species=out, plant=a.get('plant', True), tip=str(a.get('photo_tip', ''))[:300], source='Claude (' + CLAUDE_MODEL + ')',
+                   note='' if out or a else 'Claude did not give an answer this could read. Try again.')
+
 # ---------------------------------------------------------------- api: plants
 @app.route('/api/plants')
 def list_plants():
     c = db()
     q = request.args.get('q', '').strip().lower()
-    status = request.args.get('status', 'active')
-    rows = c.execute('SELECT * FROM plants WHERE status=? ORDER BY code', (status,)).fetchall()
+    status = request.args.get('status', 'active')          # 'active', 'archived', or 'all' (1.16.2: both, for the Status filter)
+    rows = c.execute('SELECT * FROM plants ORDER BY code').fetchall() if status == 'all' else c.execute('SELECT * FROM plants WHERE status=? ORDER BY code', (status,)).fetchall()
     open_req = {k: n for k, n in c.execute('SELECT plant_code, COUNT(*) FROM requests WHERE done=0 AND plant_code IS NOT NULL GROUP BY plant_code')}
+    spots = plant_spots(c)
     out = []
     for r in rows:
         hay = ' '.join(str(r[n] or '') for n in ('code', 'common_name', 'scientific_name', 'aliases', 'location', 'container', 'plant_type', 'notes')).lower()
         if q and q not in hay: continue
         p = c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC,id LIMIT 1', (r['id'],)).fetchone()
+        pn, pat = c.execute('SELECT COUNT(*), MAX(added_at) FROM photos WHERE plant_id=?', (r['id'],)).fetchone()
         out.append({'code': r['code'], 'common_name': r['common_name'], 'scientific_name': r['scientific_name'], 'plant_type': r['plant_type'],
                     'location': r['location'], 'aliases': r['aliases'], 'id_confidence': r['id_confidence'], 'winter_plan': r['winter_plan'], 'health_rating': r['health_rating'],
                     'site': r['site'] or 'Outdoors', 'version': r['version'], 'updated_at': r['updated_at'], 'updated_by': r['updated_by'], 'photo': p['file'] if p else None,
                     'temp_damage_below': r['temp_damage_below'], 'temp_ideal_low': r['temp_ideal_low'], 'temp_ideal_high': r['temp_ideal_high'],
                     'fert_from_month': r['fert_from_month'], 'fert_to_month': r['fert_to_month'], 'fert_every_days': r['fert_every_days'], 'fertilizer': r['fertilizer'],
-                    'requests_open': open_req.get(r['code'], 0)})
+                    'requests_open': open_req.get(r['code'], 0), 'status': r['status'],
+                    # 1.17.0: for the filters on the Plants page
+                    'dli_low': r['dli_low'], 'dli_high': r['dli_high'], 'zone_low': r['zone_low'], 'pet_safety': r['pet_safety'] or '',
+                    'leaf_type': r['leaf_type'] or '', 'pot_size': r['pot_size'] or '', 'photo_count': pn, 'photo_at': pat,
+                    'light_spot': spots.get(r['code'])})
     return jsonify(out)
 
 @app.route('/api/plants/<code>')

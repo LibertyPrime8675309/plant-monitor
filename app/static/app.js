@@ -24,7 +24,7 @@ const enc = encodeURIComponent;
 let PCODES = new Map(), PCODES_AT = 0;
 async function loadCodes(force) {
   if (!force && Date.now() - PCODES_AT < 15000) return;
-  try { const list = await api('GET', '/api/plants'); PCODES = new Map(list.map(p => [p.code, p])); PCODES_AT = Date.now(); } catch (e) { /* links just stay plain text */ }
+  try { const list = await api('GET', '/api/plants?status=all'); PCODES = new Map(list.map(p => [p.code, p])); PCODES_AT = Date.now(); } catch (e) { /* links just stay plain text */ }
 }
 function linkify(text) {
   const t = String(text == null ? '' : text);
@@ -86,7 +86,7 @@ async function api(method, url, body, form) {
   const opts = { method, headers: {} };
   if (PLACE) opts.headers['X-Place'] = PLACE;
   if (method !== 'GET') opts.headers['X-Editor'] = cleanName(viaTS() ? ME().name : getName()) || 'Unknown';
-  if (method !== 'GET' && ME().role === 'viewer' && url !== '/api/me') {      // the server refuses these too; this just says so sooner
+  if (method !== 'GET' && ME().role === 'viewer' && url !== '/api/me' && !url.startsWith('/api/identify?')) {      // the server refuses these too; this just says so sooner
     const e = new Error(`You can look at everything, but changes are turned off for you. Ask ${ME().owner_name || 'the owner'} if you would like to edit.`); e.status = 403; throw e;
   }
   if (form) opts.body = form;
@@ -248,12 +248,15 @@ window.addEventListener('hashchange', route);
 async function route() {
   const my = ++token;
   const h = location.hash.replace(/^#/, '') || '/';
-  const parts = h.split('/').filter(Boolean);
-  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : 'plants';
+  const [hp, hq] = h.split('?');                     // 1.18.0: #/library?q=... keeps the search in the address
+  const parts = hp.split('/').filter(Boolean), qs = new URLSearchParams(hq || '');
+  if (parts[0] !== 'identify') idStop();
+  if (parts[0] !== 'new') NEWFILL = null;
+  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' ? 'library' : 'plants';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let view;
-    await Promise.all([loadCodes(), loadFrost(), loadGroups(parts[0] === 'groups' || parts[0] === 'group' || !parts.length)]);
+    await Promise.all([loadCodes(), loadFrost(), loadGroups(parts[0] === 'groups' || parts[0] === 'group' || !parts.length), G.care && !CAREDUE ? loadCareDue() : null]);
     if (!META) { META = await api('GET', '/api/meta'); const v = document.getElementById('app-ver'); if (v && META.version) v.textContent = 'v' + META.version; paintPlace(); paintWho(); }
     if (parts[0] === 'plant' && parts[1] && parts[2] === 'edit') view = await viewEdit(decodeURIComponent(parts[1]));
     else if (parts[0] === 'plant' && parts[1]) view = await viewPlant(decodeURIComponent(parts[1]));
@@ -272,6 +275,8 @@ async function route() {
     else if (parts[0] === 'frost') view = await viewFrost();
     else if (parts[0] === 'inside') view = await viewInside();
     else if (parts[0] === 'outside') view = await viewOutside();
+    else if (parts[0] === 'identify') view = await viewIdentify();
+    else if (parts[0] === 'library') view = await viewLibrary(qs);
     else view = await viewGallery();
     if (my !== token) return;
     app.innerHTML = rend(view.html);
@@ -314,7 +319,7 @@ function navLayout() {
   document.querySelectorAll('.pane').forEach(p => { const j = p.querySelector('.jump'); p.style.setProperty('--jump-h', (j ? j.offsetHeight : 0) + 'px'); });
   pnavLayout();
 }
-document.addEventListener('toggle', e => { if (e.target && e.target.id === 'pn-filters') PNOPEN = e.target.open; }, true);
+document.addEventListener('toggle', e => { if (e.target && e.target.id === 'pn-filters') PNOPEN = e.target.open; if (e.target && e.target.id === 'more-f') MOREOPEN = e.target.open; }, true);
 let NAVITEMS = [];
 function buildSideNav() {
   const list = document.getElementById('sn-list'); if (!list) return;
@@ -375,11 +380,16 @@ function navActive() {
 window.addEventListener('scroll', navActive, { capture: true, passive: true });
 
 // ---------- gallery ----------
-const G = { q: '', plan: '', health: '', low: false, needs: false, sort: 'code', archived: false, group: '' };
+const G = { q: '', plan: '', health: '', low: false, needs: false, sort: 'code', group: '', status: 'active', site: '',   // 1.16.2: status and site
+  light: '', pets: '', hardy: '', care: '', grow: '', leaf: '', pot: '', photo: '' };                                      // 1.17.0: more filters
+const MORE_KEYS = ['light', 'pets', 'hardy', 'care', 'grow', 'leaf', 'pot', 'photo'];     // the More filters (defined further down)
 // the Plants page filters are remembered in this browser and also decide where Previous / Next plant go on plant pages
-try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort', 'group']) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ }
-function gSave() { try { localStorage.setItem('plantdb.filters', JSON.stringify({ q: G.q, plan: G.plan, health: G.health, low: G.low, needs: G.needs, sort: G.sort, group: G.group })); } catch (e) { /* not saved */ } }
-const gActive = () => !!(G.q.trim() || G.plan || G.health || G.low || G.needs || (G.group && groupById(G.group)));
+try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort', 'group', 'status', 'site', ...MORE_KEYS]) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ }
+function gSave() { try { localStorage.setItem('plantdb.filters', JSON.stringify({ q: G.q, plan: G.plan, health: G.health, low: G.low, needs: G.needs, sort: G.sort, group: G.group, status: G.status, site: G.site, ...Object.fromEntries(MORE_KEYS.map(k => [k, G[k]])) })); } catch (e) { /* not saved */ } }
+const gActive = () => !!(G.q.trim() || G.plan || G.health || G.low || G.needs || (G.group && groupById(G.group)) || G.status !== 'active' || G.site || moreOn());
+const STATUS_WORD = { active: 'Active only', all: 'Active and archived', archived: 'Archived only' };
+const isArch = p => p.status === 'archived';
+const statusOk = p => G.status === 'all' || (G.status === 'archived' ? isArch(p) : !isArch(p));
 const needsYou = p => (p.requests_open || 0) > 0 || (p.id_confidence != null && p.id_confidence < 70);
 let ALL = [];
 const SORTS = { code: 'Code', health: 'Health, worst first', conf: 'ID confidence, lowest first', updated: 'Recently updated', name: 'Name A to Z', group: 'Group A to Z' };
@@ -387,6 +397,7 @@ const SORTS = { code: 'Code', health: 'Health, worst first', conf: 'ID confidenc
 function filteredPlants(list) {
   const q = G.q.trim().toLowerCase();
   let r = (list || ALL).filter(p =>
+    statusOk(p) && (!G.site || (p.site || 'Outdoors') === G.site) && moreOk(p) &&
     (!G.plan || p.winter_plan === G.plan) && (!G.health || p.health_rating === G.health) &&
     (!G.low || (p.id_confidence != null && p.id_confidence < 70)) && (!G.needs || needsYou(p)) && inGroupFilter(p.code) &&
     (!q || [p.code, p.common_name, p.scientific_name, p.aliases, p.plant_type, p.location].join(' ').toLowerCase().includes(q)));
@@ -408,7 +419,7 @@ function sheet(p) {
       <span class="acc">${p.code}</span><div class="bar" style="--hb:${HEALTH_COLOR[p.health_rating] || 'var(--line)'}"></div></div>
     <h3 class="name">${p.common_name}</h3>
     <p class="sci latin">${p.scientific_name || 'Scientific name not set'}</p>
-    <div class="tags">${planTag(p.winter_plan)}${healthTag(p.health_rating)}</div>
+    <div class="tags">${isArch(p) ? html`<span class="tag tag-arch">Archived</span>` : ''}${planTag(p.winter_plan)}${healthTag(p.health_rating)}</div>
     ${needsYou(p) ? html`<p class="needs-badge">Needs from you: ${[p.requests_open ? `${p.requests_open} request${p.requests_open === 1 ? '' : 's'}` : '', p.id_confidence != null && p.id_confidence < 70 ? 'ID info' : ''].filter(Boolean).join(', ')}</p>` : ''}
     <div class="meter"><span>ID ${p.id_confidence == null ? 'not rated' : p.id_confidence + '%'}</span><i style="--v:${p.id_confidence || 0}%;--mc:${confColor(p.id_confidence)}"></i></div>
   </a>`;
@@ -417,25 +428,30 @@ function drawGrid() {
   gSave();
   if (!document.getElementById('grid')) { drawPnav(); return; }
   const r = filteredPlants();
-  document.getElementById('count').textContent = r.length + ' of ' + ALL.length + ' plants shown';
+  const pool = ALL.filter(statusOk).length;
+  const led = document.querySelector('.ledger'); if (led) led.innerHTML = rend(ledger());
+  const mf = document.querySelector('#more-f > summary'); if (mf) { const n = moreOn(); mf.textContent = 'More filters' + (n ? ` (${n} on)` : ''); }
+  const gt = document.getElementById('g-title'); if (gt) gt.textContent = G.status === 'archived' ? 'Archived plants' : 'Outdoor plants';
+  document.getElementById('count').textContent = `${r.length} of ${pool} ${G.status === 'archived' ? 'archived ' : G.status === 'all' ? '' : 'active '}plants shown`;
   document.getElementById('grid').innerHTML = r.length
     ? rend(r.map(sheet))
     : rend(html`<div class="empty" style="grid-column:1/-1"><p>No plants match these filters.</p><button class="btn ghost" type="button" data-act="clearfilters">Clear filters</button></div>`);
 }
 function ledger() {
-  const n = pl => ALL.filter(p => p.winter_plan === pl).length;
+  const n = pl => ALL.filter(p => statusOk(p) && p.winter_plan === pl).length;
   return html`${META.winter_plans.map(pl => html`<button type="button" data-act="plan" data-plan="${pl}" style="--bar:${PLAN_COLOR[pl]}" aria-pressed="${String(G.plan === pl)}"><b>${n(pl)}</b>${pl}</button>`)}`;
 }
 async function viewGallery() {
-  ALL = await api('GET', '/api/plants' + (G.archived ? '?status=archived' : ''));
-  const lowN = ALL.filter(p => p.id_confidence != null && p.id_confidence < 70).length;
-  const needN = ALL.filter(needsYou).length;
+  ALL = await api('GET', '/api/plants?status=all');
+  const ACT = ALL.filter(p => !isArch(p)), archN = ALL.length - ACT.length;
+  const lowN = ACT.filter(p => p.id_confidence != null && p.id_confidence < 70).length;
+  const needN = ACT.filter(needsYou).length;
   let todoN = 0, fcN = 0;
   await Promise.all([api('GET', '/api/to-photograph').then(t => { todoN = t.filter(x => !x.done).length; }).catch(() => {}),
     api('GET', '/api/for-claude?range=last').then(d => { fcN = d.counts.answers; }).catch(() => {})]);
   return {
     title: '',
-    html: html`<div class="hero"><div><h1>${G.archived ? 'Archived plants' : 'Outdoor plants'}</h1>
+    html: html`<div class="hero"><div><h1 id="g-title">${G.status === 'archived' ? 'Archived plants' : 'Outdoor plants'}</h1>
       <p class="muted">${META.counts.plants} plants and ${META.counts.photos} photos. Weather for ${placeName()}. Each plant has its own page, version number and change log.</p></div>
       <a class="btn" href="#/new">Add a plant</a></div>
     <div class="needs-bar" role="group" aria-label="What Claude needs from you">
@@ -446,13 +462,14 @@ async function viewGallery() {
     <div class="filters">
       <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
       <label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
-      ${groupFilter()}
+      ${siteFilter()}${groupFilter()}${statusFilter()}
       <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
       <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70% (${lowN})</label>
     </div>
+    ${moreFilters()}
     <p id="count" class="muted" aria-live="polite"></p>
     <div class="grid" id="grid"></div>
-    <p style="margin-top:36px"><label class="chk" style="display:inline-flex;gap:8px;align-items:center"><input type="checkbox" data-f="archived" ${G.archived ? raw('checked') : ''} style="width:20px;height:20px;margin:0">Show archived plants instead</label></p>`,
+    ${archN ? html`<p class="hint" style="margin-top:2rem">${archN} archived plant${archN === 1 ? ' is' : 's are'} hidden from this list. Choose <strong>Show: Active and archived</strong> in the filters to see ${archN === 1 ? 'it' : 'them'} too.</p>` : ''}`,
     after: drawGrid,
   };
 }
@@ -471,6 +488,62 @@ const groupById = id => (PGROUPS && PGROUPS.groups.find(g => String(g.id) === St
 const groupsOf = code => (PGROUPS ? PGROUPS.groups.filter(g => g.codes.includes(code)) : []);
 const groupNames = code => groupsOf(code).map(g => g.name).sort((a, b) => a.localeCompare(b));
 function inGroupFilter(code) { const g = G.group && groupById(G.group); return !g || g.codes.includes(code); }
+// ---------- 1.17.0: more filters (light needs, pets, winter, care today, grow light, leaf type, pot size, photos) ----------
+const MORE = [
+  { key: 'light', label: 'Light needs', opts: [['low', 'Low light'], ['indirect', 'Bright indirect light'], ['sun', 'Some direct sun'], ['full', 'Full sun']] },
+  { key: 'pets', label: 'Pets', opts: [['safe', 'Safe for pets (ASPCA)'], ['notknown', 'Not known to be toxic'], ['mild', 'Mildly toxic to pets'], ['toxic', 'Toxic to pets'], ['unset', 'Pet safety not set']] },
+  { key: 'hardy', label: 'Winter here', opts: [['hardy', 'Hardy here'], ['tender', 'Not hardy here'], ['nozone', 'Annual or no zone set']] },
+  { key: 'care', label: 'Care today', opts: [['any', 'Water or feeding due'], ['water', 'Water due'], ['feed', 'Feeding due']] },
+  { key: 'grow', label: 'Grow light', opts: [['yes', 'Under a grow light spot'], ['no', 'Not under a grow light']] },
+  { key: 'leaf', label: 'Leaf type', opts: () => [...((META.enums || {}).leaf_type || []).map(x => [x, x]), ['unset', 'Leaf type not set']] },
+  { key: 'pot', label: 'Pot size', opts: () => [...((META.enums || {}).pot_size || []).map(x => [x, x]), ['unset', 'Pot size not set']] },
+  { key: 'photo', label: 'Photos', opts: [['none', 'No photo yet'], ['old', 'Newest photo over a month old']] },
+];
+const moreOpts = d => typeof d.opts === 'function' ? d.opts() : d.opts;
+const moreOn = () => MORE_KEYS.filter(k => G[k]).length;
+let MOREOPEN = false, CAREDUE = null;
+function lightBand(p) { const d = p.dli_low; return d == null ? '' : d < 6 ? 'low' : d < 12 ? 'indirect' : d < 25 ? 'sun' : 'full'; }
+const PET_KEY = { 'Toxic to pets': 'toxic', 'Mildly toxic to pets': 'mild', 'Not known to be toxic': 'notknown', 'Safe for pets (ASPCA)': 'safe' };
+function hereZone() { const Z = META && META.zone; return !Z ? null : Z.zone ? zoneNum(Z.zone) : zoneNum(String(Z.map_zone || '').split(' ')[0]); }
+function hardyKey(p) { const lo = zoneNum(p.zone_low), here = hereZone(); return lo == null || here == null ? 'nozone' : here >= lo ? 'hardy' : 'tender'; }
+async function loadCareDue() {
+  try {
+    const [W] = await Promise.all([api('GET', '/api/water'), loadFertData(false)]);
+    const t = todayStr(), m = new Map();
+    for (const w of W.plants) m.set(w.code, { water: w.state === 'due', feed: false });
+    for (const p of PCODES.values()) { const x = m.get(p.code) || { water: false, feed: false }; x.feed = fertState(p, entriesFor(p.code), t, fertCtx()).state === 'due'; m.set(p.code, x); }
+    CAREDUE = m;
+  } catch (e) { CAREDUE = new Map(); }
+  return CAREDUE;
+}
+function moreOk(p) {
+  const k = G;
+  if (k.light && lightBand(p) !== k.light) return false;
+  if (k.pets && (k.pets === 'unset' ? !!p.pet_safety : PET_KEY[p.pet_safety] !== k.pets)) return false;
+  if (k.hardy && hardyKey(p) !== k.hardy) return false;
+  if (k.care && CAREDUE) { const c = CAREDUE.get(p.code) || {}; if (k.care === 'water' ? !c.water : k.care === 'feed' ? !c.feed : !(c.water || c.feed)) return false; }
+  if (k.grow && (k.grow === 'yes') !== !!p.light_spot) return false;
+  if (k.leaf && (k.leaf === 'unset' ? !!p.leaf_type : p.leaf_type !== k.leaf)) return false;
+  if (k.pot && (k.pot === 'unset' ? !!p.pot_size : p.pot_size !== k.pot)) return false;
+  if (k.photo === 'none' && p.photo_count) return false;
+  if (k.photo === 'old' && (!p.photo_count || (p.photo_at && Date.now() - Date.parse(p.photo_at) < 30 * 864e5))) return false;
+  return true;
+}
+function moreSelects() {
+  return html`${MORE.map(d => html`<label>${d.label}<select data-f="more" data-key="${d.key}"><option value="">Any</option>${moreOpts(d).map(([v, l]) => html`<option value="${v}" ${G[d.key] === v ? raw('selected') : ''}>${l}</option>`)}</select></label>`)}`;
+}
+function moreFilters() {
+  const n = moreOn();
+  return html`<details class="more-f" id="more-f" ${MOREOPEN || n ? raw('open') : ''}><summary>More filters${n ? ` (${n} on)` : ''}</summary>
+    <div class="filters">${moreSelects()}</div>
+    <p class="hint">Light needs come from each plant's daily light range. "Winter here" compares the plant's coldest zone with yours. Care today follows the Today page.</p></details>`;
+}
+function statusFilter() {
+  return html`<label>Show<select data-f="status">${Object.entries(STATUS_WORD).map(([k, v]) => html`<option value="${k}" ${G.status === k ? raw('selected') : ''}>${v}</option>`)}</select></label>`;
+}
+function siteFilter() {
+  return html`<label>Location<select data-f="site"><option value="">Any</option>${(META.sites || []).map(s => html`<option ${G.site === s ? raw('selected') : ''}>${s}</option>`)}</select></label>`;
+}
 function groupFilter() {
   const gs = (PGROUPS && PGROUPS.groups) || [];
   if (!gs.length) return '';
@@ -592,7 +665,7 @@ async function groupDialog(g, kind, preset) {
   if (!(await needName())) return;
   await loadGroups();
   kind = g ? g.kind : kind;
-  const all = [...PCODES.keys()].sort();
+  const all = [...PCODES.values()].filter(p => !isArch(p)).map(p => p.code).sort();
   const conds = g && g.rule ? g.rule.conds : (preset && preset.conds) || [{ field: 'genus', op: 'is', value: '' }];
   const r = await modal(html`<form method="dialog" data-grp="1" class="grp-form"><h2>${g ? 'Change the group ' + g.name : kind === 'smart' ? 'Make a smart group' : 'Make a hand-picked group'}</h2>
     <label class="f">Name<input type="text" name="name" maxlength="60" required value="${g ? g.name : (preset && preset.name) || ''}" placeholder="${kind === 'smart' ? 'For example: Philodendrons' : 'For example: Tall Black Shelf'}"></label>
@@ -806,7 +879,7 @@ function humBlock(p, cur) {
 }
 // ---------- 1.14.0: about this plant ----------
 const ABOUT_FIELDS = ['growth_habit', 'kingdom', 'taxon_order', 'family', 'genus', 'height_ground', 'width_ground', 'height_pot', 'width_pot', 'growth_rate', 'lifespan',
-  'zone_low', 'zone_high', 'zone_notes', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'propagation', 'sources'];
+  'zone_low', 'zone_high', 'zone_notes', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'pet_safety', 'propagation', 'sources'];
 function zoneNum(z) { const m = /^\s*(\d{1,2})\s*([ab])?\s*$/i.exec(String(z || '')); return m ? +m[1] + ((m[2] || '').toLowerCase() === 'b' ? 0.5 : 0) : null; }
 function zoneHere(p) {
   const Z = META && META.zone, lo = zoneNum(p.zone_low), here = !Z ? null : Z.zone ? zoneNum(Z.zone) : zoneNum(String(Z.map_zone || '').split(' ')[0]);   // no weather history yet: the colder end of the map zone
@@ -837,7 +910,7 @@ function aboutBlock(p) {
     ${p.invasive ? html`<h3>Invasive risk</h3>${paras(p.invasive)}` : ''}
     ${p.bloom ? html`<h3>Flowers</h3>${paras(p.bloom)}` : ''}
     ${p.fruit ? html`<h3>Fruit</h3>${paras(p.fruit)}` : ''}
-    ${p.danger_humans || p.danger_animals ? html`<div class="danger-box"><h3><span aria-hidden="true">⚠ </span>Dangers</h3>${p.danger_humans ? html`<h4>To people</h4>${paras(p.danger_humans)}` : ''}${p.danger_animals ? html`<h4>To pets and other animals</h4>${paras(p.danger_animals)}` : ''}
+    ${p.danger_humans || p.danger_animals || p.pet_safety ? html`<div class="danger-box"><h3><span aria-hidden="true">⚠ </span>Dangers</h3>${p.danger_humans ? html`<h4>To people</h4>${paras(p.danger_humans)}` : ''}${p.danger_animals ? html`<h4>To pets and other animals</h4>${paras(p.danger_animals)}${p.pet_safety ? html`<p><strong>In short: ${p.pet_safety}.</strong></p>` : ''}` : ''}
       <p class="hint">If someone may have been poisoned, call Poison Control at 1-800-222-1222. For a pet, call your vet or the ASPCA Animal Poison Control Center at 888-426-4435.</p></div>` : ''}
     ${lines(p.propagation).length ? html`<h3>Propagation</h3>${ol(p.propagation)}` : ''}
     ${lines(p.sources).length ? html`<h3>Sources and further reading</h3><ul class="srcs">${srcList(p.sources)}</ul>` : ''}`;
@@ -1235,6 +1308,9 @@ function filterWords() {
   if (G.needs) w.push('needs something from you'); if (G.plan) w.push(G.plan); if (G.health) w.push('health ' + G.health);
   if (G.low) w.push('ID under 70%'); if (G.q.trim()) w.push('"' + G.q.trim() + '"');
   if (G.group && groupById(G.group)) w.push('group ' + groupById(G.group).name);
+  if (G.site) w.push(G.site.toLowerCase());
+  if (G.status !== 'active') w.push(G.status === 'all' ? 'archived included' : 'archived only');
+  for (const d of MORE) if (G[d.key]) { const o = moreOpts(d).find(x => x[0] === G[d.key]); if (o) w.push(o[1].toLowerCase()); }
   return (w.length ? w.join(', ') : 'all plants') + '; sorted by ' + (SORTS[G.sort] || 'code').toLowerCase();
 }
 function pnavBlock(code) {
@@ -1246,7 +1322,7 @@ function pnavBlock(code) {
         <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
         <label>Winter plan<select data-f="pnplan"><option value="">Any</option>${META.winter_plans.map(pl => html`<option ${G.plan === pl ? raw('selected') : ''}>${pl}</option>`)}</select></label>
         <label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
-        ${groupFilter()}
+        ${siteFilter()}${groupFilter()}${statusFilter()}${moreSelects()}
         <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
         <label class="chk"><input type="checkbox" data-f="pnneeds" ${G.needs ? raw('checked') : ''}>Needs something from you</label>
         <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70%</label>
@@ -1340,7 +1416,7 @@ async function careDialog(code, name) {
     <div class="row"><button class="btn" value="ok">Save</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`);
   if (r !== 'ok') return;
   const f = dlg.querySelector('form');
-  await guard(async () => { await api('POST', '/api/care', { plant: code, kind: f.elements.kind.value, done_on: f.elements.day.value, note: f.elements.note.value }); toast('Saved: ' + CARE_WORD[f.elements.kind.value]); await careRefresh(code); });
+  await guard(async () => { const x = await api('POST', '/api/care', { plant: code, kind: f.elements.kind.value, done_on: f.elements.day.value, note: f.elements.note.value }); careUndoToast('Saved: ' + CARE_WORD[f.elements.kind.value] + ' for ' + name, x && x.ids, code); await careRefresh(code); });
 }
 async function careRefresh(code) {
   if (document.getElementById('care-plant')) return loadCarePlant();
@@ -1353,6 +1429,65 @@ function jobRow(p, words, btns) {
     <div class="job-txt"><a class="nm" href="#/plant/${enc(p.code)}">${p.common_name}</a> <span class="muted">${p.code}</span><div>${words}</div></div>
     <div class="job-acts">${btns}</div></li>`;
 }
+// ---------- undo right after a care button (prototype: proto/undo-care) ----------
+// "Watered", "Still moist", "Mark all as watered" and "Log other care" show a message with an Undo button instead of a
+// plain toast. Undo removes exactly the entries that press made (by id), so nothing else in the care log is touched.
+// The message stays for UNDO_SECS, and the countdown stops while the pointer or keyboard focus is on it. U also undoes.
+const UNDO_SECS = 30;
+let UNDO = null;      // {el, ids, code, left, timer}
+function careUndoClose() {
+  if (!UNDO) return;
+  clearInterval(UNDO.timer); const el = UNDO.el, hadFocus = el.contains(document.activeElement); UNDO = null; el.remove();
+  if (hadFocus) { const m = document.querySelector('main h1'); if (m) { m.setAttribute('tabindex', '-1'); m.focus({ preventScroll: true }); } }
+}
+function careUndoToast(msg, ids, code) {
+  careUndoClose();
+  if (!Array.isArray(ids) || !ids.length) { toast(msg); return; }
+  const n = ids.length, el = document.createElement('div');
+  el.className = 'toast undo-toast'; el.setAttribute('role', 'group'); el.setAttribute('aria-label', 'Care saved');
+  el.innerHTML = rend(html`<span class="undo-msg" id="undo-msg">${msg}.</span>
+    <span class="undo-acts"><button class="btn small" type="button" data-undo="undo" aria-describedby="undo-msg">Undo</button>
+    <button class="btn small ghost" type="button" data-undo="close" aria-label="Close this message">Close</button></span>
+    <span class="undo-left" aria-hidden="true"></span>`);
+  document.getElementById('toasts').appendChild(el);
+  UNDO = { el, ids: ids.slice(), code, left: UNDO_SECS, paused: 0, timer: 0 };
+  const left = el.querySelector('.undo-left'), keys = window.PlantPrefs.get().keys === '1' && matchMedia('(any-pointer: fine)').matches;     // no key hint on a phone
+  const paint = () => { left.textContent = (n > 1 ? `Undo removes all ${n} entries. ` : '') + `Closes in ${UNDO.left} s${keys ? ' (U undoes it)' : ''}.`; };
+  paint();
+  const hold = on => { if (UNDO && UNDO.el === el) UNDO.paused = Math.max(0, UNDO.paused + (on ? 1 : -1)); };
+  el.addEventListener('pointerenter', () => hold(true)); el.addEventListener('pointerleave', () => hold(false));
+  el.addEventListener('focusin', () => hold(true)); el.addEventListener('focusout', () => hold(false));
+  UNDO.timer = setInterval(() => {
+    if (!UNDO || UNDO.el !== el) return;
+    if (UNDO.paused) return;
+    UNDO.left -= 1; if (UNDO.left <= 0) careUndoClose(); else paint();
+  }, 1000);
+}
+async function careUndo() {
+  if (!UNDO) return;
+  const { ids, code } = UNDO, btn = UNDO.el.querySelector('[data-undo=undo]');
+  if (btn) btn.disabled = true;
+  if (!(await needName())) { if (btn) btn.disabled = false; return; }
+  let gone = 0, missing = 0;
+  for (const id of ids) {
+    try { await api('DELETE', '/api/care/' + id + '?undo=1'); gone++; }
+    catch (e) { if (e.status === 404) missing++; else { toast('Could not undo: ' + e.message, true); break; } }
+  }
+  careUndoClose();
+  if (gone) toast(gone === 1 ? 'Undone. The entry was removed from the care log.' : `Undone. ${gone} entries were removed from the care log.`);
+  else if (missing) toast('Nothing to undo: someone already removed that entry.');
+  await careRefresh(code);
+}
+document.getElementById('toasts').addEventListener('click', e => {      // its own listener, so this block needs nothing in acts
+  const b = e.target.closest && e.target.closest('.undo-toast button'); if (!b) return;
+  if (b.dataset.undo === 'undo') careUndo(); else if (b.dataset.undo === 'close') careUndoClose();
+});
+document.addEventListener('keydown', e => {
+  if (!UNDO || (e.key !== 'u' && e.key !== 'U')) return;
+  if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || window.PlantPrefs.get().keys !== '1') return;
+  if (e.target.closest && e.target.closest('input,textarea,select,[contenteditable="true"],dialog[open]')) return;
+  e.preventDefault(); careUndo();
+});
 // ---------- getting plants ready to come inside (added in 1.9.0) ----------
 // Ten ways to keep outdoor pests out of the house. The server rates each one for each plant (from its leaf type, pot
 // size, the pests found, its health and the weather); this draws the plant page section, the Coming inside page and
@@ -2094,7 +2229,7 @@ const GROUPS = [
   ['Names and place', ['common_name', 'scientific_name', 'aliases', 'plant_type', 'site', 'location', 'container']],
   ['Identification', ['id_confidence', 'id_basis', 'id_alternatives', 'id_improve']],
   ['About this plant', ['growth_habit', 'kingdom', 'taxon_order', 'family', 'genus', 'height_ground', 'width_ground', 'height_pot', 'width_pot', 'growth_rate', 'lifespan',
-    'zone_low', 'zone_high', 'zone_notes', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'propagation', 'sources']],
+    'zone_low', 'zone_high', 'zone_notes', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'pet_safety', 'propagation', 'sources']],
   ['Temperature', ['temp_ideal_low', 'temp_ideal_high', 'temp_damage_below', 'temp_lethal_below', 'temp_damage_above', 'temp_notes']],
   ['Humidity and air dryness', ['humidity_low', 'humidity_high', 'vpd_low', 'vpd_high', 'humidity_notes']],
   ['Sunlight', ['light_summary', 'light_hours', 'par_low', 'par_high', 'dli_low', 'dli_high', 'light_notes']],
@@ -2117,6 +2252,7 @@ const HINTS = {
   pests_found: 'One per line, from: Spider mites, Mealybugs, Scale, Aphids, Whiteflies, Thrips, Ants, Fungus gnats, Root mealybugs, Slugs or snails, Pill bugs or earwigs, Other. The plant page has tick boxes for these.',
   npk_ratio: 'Three numbers for nitrogen, phosphate and potash, such as 3-1-2. The Fertilizer page finds your closest fertilizer.',
   fert_strength: 'How strong to mix it. The Fertilizer page works out the amount per gallon from this.',
+  pet_safety: 'Used by the Pets filter on the Plants page. "Safe for pets" only where the ASPCA lists the plant as non-toxic.',
   zone_low: 'USDA zone, such as 9b or 10. The page compares it with the zone where you are.', zone_high: 'USDA zone, such as 11.',
   height_ground: 'For example 6 to 10 ft.', height_pot: 'For example 3 to 5 ft.', propagation: 'One method per line.',
   sources: 'One per line: a title, a | and the web address, for example "NC State Extension: Aloe vera | https://...".',
@@ -2126,7 +2262,7 @@ const rangeOf = n => (META.int_ranges && META.int_ranges[n]) || (META.num_ranges
 function fieldInput(f, val) {
   const hint = HINTS[f.name] || (f.kind === 'list' ? 'One item per line.' : '');
   const wide = (f.kind === 'long' || f.kind === 'list') ? 'wide' : '';
-  const v = val == null ? '' : val;
+  let v = val == null ? '' : val;          // let: the location defaults to Outdoors below (1.17.1 fixes "Add a plant", which stopped on it)
   let inp;
   if (f.kind === 'long' || f.kind === 'list') inp = html`<textarea name="${f.name}" rows="${f.kind === 'list' ? 5 : 4}">${v}</textarea>`;
   else if (f.kind === 'int') { const mm = rangeOf(f.name); inp = html`<input type="number" inputmode="numeric" step="1" min="${mm[0]}" max="${mm[1]}" name="${f.name}" value="${v}">`; }
@@ -2149,7 +2285,8 @@ function viewForm(p) {
     <h1>${isNew ? 'Add a plant' : 'Edit ' + p.code}</h1>
     <p class="muted">${isNew ? 'Only the common name is required. You can add photos after saving.' : 'Saving makes version ' + (p.version + 1) + '. The old text stays in the page history.'}</p>
     <form data-form="${isNew ? 'new' : 'edit'}" ${p ? raw('data-code="' + esc(p.code) + '" data-ver="' + p.version + '"') : ''} autocomplete="off">
-      ${GROUPS.map(([title, names]) => html`<fieldset><legend>${title}</legend><div class="field-grid">${names.map(n => fieldInput(F[n], p ? p[n] : (n === 'winter_plan' ? 'Move indoors' : n === 'health_rating' ? 'Fair' : '')))}</div></fieldset>`)}
+      ${isNew && NEWFILL ? html`<p class="notice ok" role="note">${NEWFILL.__from}: the names are filled in${NEWFILL.__pic ? ', and the picture is added when you save' : ''}. Check them before saving.</p>` : ''}
+      ${GROUPS.map(([title, names]) => html`<fieldset><legend>${title}</legend><div class="field-grid">${names.map(n => fieldInput(F[n], p ? p[n] : NEWFILL && NEWFILL[n] ? NEWFILL[n] : (n === 'winter_plan' ? 'Move indoors' : n === 'health_rating' ? 'Fair' : '')))}</div></fieldset>`)}
       ${isNew ? '' : html`<fieldset><legend>Change note</legend><label class="f">What did you change, and why?<small>Optional. It appears in the page history.</small><input type="text" name="__note" maxlength="300"></label></fieldset>`}
       <div id="form-err"></div>
       <div class="sticky-save"><button class="btn" type="submit">${isNew ? 'Add plant' : 'Save changes'}</button>
@@ -2167,6 +2304,11 @@ async function submitForm(form) {
   try {
     if (form.dataset.form === 'new') {
       const p = await api('POST', '/api/plants', { fields });
+      if (NEWFILL && NEWFILL.__pic) {                // 1.18.0: the picture from Identify
+        const fd = new FormData(); fd.append('files', NEWFILL.__pic, 'identify-' + ymd(new Date()) + '.jpg'); fd.append('caption', 'Taken with Identify, ' + new Date().toLocaleDateString());
+        try { await api('POST', '/api/plants/' + enc(p.code) + '/photos', undefined, fd); } catch (e) { toast('The plant was added, but not the picture: ' + e.message, true); }
+      }
+      NEWFILL = null;
       toast('Added ' + p.code); go('#/plant/' + enc(p.code));
     } else {
       const r = await api('PUT', '/api/plants/' + enc(form.dataset.code), { base_version: +form.dataset.ver, fields, note: fd.get('__note') || '' });
@@ -3238,7 +3380,7 @@ function shortcutsDialog() {
       ${k('R', 'Read this page aloud (press again, or Escape, to stop)')}${k('Escape', 'Stop reading')}
       ${k('[', 'Previous plant (on a plant page)')}${k(']', 'Next plant (on a plant page)')}
       ${k('E', 'Edit this plant (on a plant page)')}${k('/', 'Search plants')}
-      ${k('H', 'Go to the Plants page')}${k('M', 'Open or fold the section menu')}${k('L', 'Choose the location for the weather')}${k('?', 'Show this list')}
+      ${k('H', 'Go to the Plants page')}${k('M', 'Open or fold the section menu')}${k('L', 'Choose the location for the weather')}${k('U', 'Undo the care you just logged, while its message is showing')}${k('?', 'Show this list')}
     </tbody></table>
     <div class="row"><button class="btn" value="ok" autofocus>Close</button></div></form>`);
 }
@@ -4217,7 +4359,7 @@ const acts = {
   },
   grprulerm(el) { const row = el.closest('.rule-row'); const box = row.parentElement; row.remove();
     box.querySelectorAll('.rule-row').forEach((r, i) => { r.dataset.row = i; r.querySelector('legend').textContent = 'Part ' + (i + 1); }); rulePreview(); box.querySelector('select').focus(); },
-  clearfilters() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '' }); gSave(); route(); },
+  clearfilters() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '', status: 'active', site: '' }, Object.fromEntries(MORE_KEYS.map(k => [k, '']))); MOREOPEN = false; gSave(); route(); },
   plan(el) { G.plan = G.plan === el.dataset.plan ? '' : el.dataset.plan; document.querySelectorAll('.ledger button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.plan === G.plan))); drawGrid(); },
   pick(el) { PIDX = +el.dataset.i; repaintPhotos(); },
   zoom() { const c = curPhoto(); if (c) modal(html`<form method="dialog"><img src="${photoUrl(c.file)}" alt="${c.caption || CUR.p.common_name}"><p class="cap">${c.caption}</p><button class="btn" value="ok" autofocus>Close</button></form>`, 'photo'); },
@@ -4278,13 +4420,13 @@ const acts = {
   async care(el) {
     if (!(await needName())) return;
     const k = el.dataset.kind, code = el.dataset.code;
-    await guard(async () => { await api('POST', '/api/care', { plant: code, kind: k }); toast((k === 'water' ? 'Watered: ' : 'Checked, still moist: ') + el.dataset.name); await careRefresh(code); });
+    await guard(async () => { const r = await api('POST', '/api/care', { plant: code, kind: k }); careUndoToast((k === 'water' ? 'Watered: ' : 'Checked, still moist: ') + el.dataset.name, r && r.ids, code); await careRefresh(code); });
   },
   async careall(el) {
     const codes = el.dataset.codes.split(',').filter(Boolean); if (!codes.length) return;
     if (!(await needName())) return;
     if (!(await confirmBox(`Mark ${codes.length} plants as watered today?`, 'Each one gets a "Watered" entry for today in its care log. You can remove any of them on the plant\'s page.', 'Mark as watered'))) return;
-    await guard(async () => { await api('POST', '/api/care', { plants: codes, kind: el.dataset.kind }); toast(codes.length + ' plants marked as watered'); await careRefresh(); });
+    await guard(async () => { const r = await api('POST', '/api/care', { plants: codes, kind: el.dataset.kind }); careUndoToast(codes.length + ' plants marked as watered', r && r.ids); await careRefresh(); });
   },
   careother(el) { return careDialog(el.dataset.code, el.dataset.name); },
   async caredel(el) {
@@ -4439,6 +4581,388 @@ const formActs = {
     await guard(async () => { await api('PUT', '/api/settings', { base_url: form.elements.base.value }); toast('Address saved'); route(); });
   },
 };
+// ---------- 1.18.0: identify a plant with the camera, and the plant library ----------
+// The pictures go to this computer's picture checker (the "plant-vision" container) through the app. Pl@ntNet and Claude are only
+// asked when someone presses their buttons. Nothing is saved unless someone presses "Add this picture to its photos" or adds a plant.
+const ID_SCOPES = [['common', 'Plants with a common name, and all US plants'], ['texas', 'Texas plants'], ['us', 'US plants'], ['world', 'All plants worldwide']];
+const ID = { stream: null, timer: null, busy: false, last: null, streak: 0, shot: null, paused: false, said: '', qr: null, mode: 'live', st: null, keys: null };
+function idScope() { try { const s = localStorage.getItem('plantdb.idscope'); if (ID_SCOPES.some(x => x[0] === s)) return s; } catch (e) { /* default */ } return 'common'; }
+const pct = p => Math.round((p || 0) * 100) + '%';
+const sureWord = c => c >= 0.9 ? 'Very likely' : c >= 0.75 ? 'Likely' : c >= 0.5 ? 'Possibly' : 'Unsure';
+const canChange = () => ME().role !== 'viewer';
+function idStatusText(st) {
+  if (!st) return 'Checking the picture checker…';
+  if (st.state === 'ready') return `Ready. It compares pictures with ${st.photos} photos of your plants and ${Number(st.species || 0).toLocaleString()} plant species.`;
+  if (st.state === 'off') return st.step || 'The picture checker is not running.';
+  if (st.state === 'error') return 'The picture checker could not start: ' + (st.error || st.step) + '. Restarting the app usually fixes it; see README, "Identify a plant".';
+  return 'The picture checker is setting up: ' + st.step + (st.total ? ` (${st.done} of ${st.total})` : '') + '. The first start downloads about 5 GB and can take 20 to 40 minutes.';
+}
+async function idLoadStatus() {
+  try { ID.st = await api('GET', '/api/identify/status'); } catch (e) { ID.st = { state: 'off', step: e.message }; }
+  const b = document.getElementById('id-st');
+  if (b) { b.textContent = idStatusText(ID.st); b.className = 'notice ' + (ID.st.state === 'ready' ? 'ok' : ID.st.state === 'off' || ID.st.state === 'error' ? 'bad' : ''); }
+  if (ID.st.state !== 'ready' && ID.st.state !== 'error' && document.getElementById('id-st')) { clearTimeout(ID.stt); ID.stt = setTimeout(idLoadStatus, 5000); }
+}
+async function viewIdentify() {
+  idStop();
+  let keys = null;
+  try { keys = await api('GET', '/api/identify/settings'); } catch (e) { /* shown as not set up */ }
+  ID.keys = keys;
+  const sc = idScope(), owner = ME().role === 'owner';
+  return {
+    title: 'Identify a plant',
+    after: () => { idLoadStatus(); },
+    html: html`<h1>Identify a plant</h1>
+    <p>Point your camera at a plant. This computer compares the picture with your plant photos and says which plant it thinks it is, and how sure it is. If it is not one of yours, it suggests what the plant could be. Nothing is saved unless you choose to save it.</p>
+    <p id="id-st" class="notice" role="status">Checking the picture checker…</p>
+    <section class="id-sec id-cam" aria-labelledby="h-cam"><h2 id="h-cam">Camera</h2>
+      <div class="id-view" id="id-view"><video id="id-video" playsinline muted aria-label="Camera picture"></video>
+        <p class="id-placeholder" id="id-ph">The camera is off.</p></div>
+      <p id="id-live" class="id-live" role="status" aria-live="polite"></p>
+      <div class="row id-btns">
+        <button class="btn" type="button" data-act="idcam" id="id-cam-btn">Start camera</button>
+        <button class="btn ghost" type="button" data-act="idsnap" id="id-snap" disabled>Check this picture</button>
+        <label class="btn ghost id-file">Use a photo instead<input type="file" accept="image/*" capture="environment" data-act="idfile"></label>
+      </div>
+      <p class="hint">While the camera is on it checks about once a second, and also reads plant label QR codes. "Check this picture" holds the picture still and shows everything it found.</p>
+      <label class="f id-scope">When it is not one of your plants, suggest names from
+        <select data-f="idscope">${ID_SCOPES.map(([k, l]) => html`<option value="${k}" ${k === sc ? raw('selected') : ''}>${l}</option>`)}</select></label>
+    </section>
+    <section class="id-sec" aria-labelledby="h-idres"><h2 id="h-idres">What it found</h2><div id="id-res"><p class="muted">Start the camera or choose a photo.</p></div></section>
+    <section class="id-sec" aria-labelledby="h-second"><h2 id="h-second">Second opinions</h2>
+      <p>When this computer is unsure, you can ask Pl@ntNet (free, up to 500 pictures a day) and then Claude (paid per picture, about a cent or two). They only see a picture when you press their button. Pl@ntNet does not keep pictures.</p>
+      <ul class="id-keys">
+        <li><strong>Pl@ntNet:</strong> ${keys && keys.plantnet ? html`set up (key ending ${keys.plantnet_hint.slice(1)})` : 'not set up'}</li>
+        <li><strong>Claude:</strong> ${keys && keys.claude ? html`set up (key ending ${keys.claude_hint.slice(1)}), using ${keys.claude_model}` : 'not set up'}</li>
+      </ul>
+      ${owner ? html`<details class="id-setkeys"><summary>Set up or change the keys</summary>
+        <form data-form="idkeys" autocomplete="off">
+          <label class="f">Pl@ntNet API key<small>Free: sign in at my.plantnet.org, open "My account", then "Settings", and copy the API key. Leave empty to keep the saved one.</small>
+            <input type="password" name="plantnet_key" autocomplete="off" spellcheck="false"></label>
+          <label class="f">Anthropic API key, for Claude<small>From console.anthropic.com, "API keys". It is billed to that account. Leave empty to keep the saved one.</small>
+            <input type="password" name="claude_key" autocomplete="off" spellcheck="false"></label>
+          <p class="hint">The keys stay on this computer, in the database (and so in its backups). The app never shows them again, only their last 4 characters.</p>
+          <div class="row"><button class="btn" type="submit">Save keys</button>
+            ${keys && keys.plantnet ? html`<button class="btn ghost" type="button" data-act="idkeydel" data-k="plantnet_key">Remove the Pl@ntNet key</button>` : ''}
+            ${keys && keys.claude ? html`<button class="btn ghost" type="button" data-act="idkeydel" data-k="claude_key">Remove the Claude key</button>` : ''}</div>
+        </form></details>` : html`<p class="muted">${ME().owner_name || 'The owner'} can set these up.</p>`}
+    </section>
+    <p><a href="#/library">Search the plant library</a></p>`,
+  };
+}
+function idStop() {
+  clearTimeout(ID.timer); ID.timer = null;
+  if (ID.stream) ID.stream.getTracks().forEach(t => t.stop());
+  ID.stream = null; ID.busy = false; ID.streak = 0; ID.last = null; ID.paused = false; ID.said = '';
+}
+function idCamUi(on) {
+  const b = document.getElementById('id-cam-btn'), s = document.getElementById('id-snap'), ph = document.getElementById('id-ph');
+  if (b) b.textContent = on ? 'Stop camera' : 'Start camera';
+  if (s) s.disabled = !on;
+  if (ph) ph.hidden = on;
+}
+async function idCamToggle() {
+  if (ID.stream) { idStop(); idCamUi(false); idSay('The camera is off.'); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    toast(window.isSecureContext ? 'This browser cannot use the camera. Use "Use a photo instead".' : 'The browser only allows the camera on a secure address: use http://localhost:8080 on this computer, or the Tailscale address (https://plants...). Or use "Use a photo instead".', true);
+    return;
+  }
+  try {
+    ID.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+  } catch (e) {
+    toast(e.name === 'NotAllowedError' ? 'The camera was not allowed. Allow it in the browser\'s site settings, then try again.' : 'Could not start the camera: ' + e.message, true);
+    return;
+  }
+  const v = document.getElementById('id-video');
+  if (!v) { idStop(); return; }
+  v.srcObject = ID.stream; await v.play().catch(() => {});
+  if ('BarcodeDetector' in window && !ID.qr) { try { ID.qr = new window.BarcodeDetector({ formats: ['qr_code'] }); } catch (e) { ID.qr = null; } }
+  idCamUi(true); idSay('The camera is on. Point it at a plant.');
+  idTick();
+}
+function idSay(t) { if (t === ID.said) return; ID.said = t; const l = document.getElementById('id-live'); if (l) l.textContent = t; }
+function idGrab(maxSide) {
+  const v = document.getElementById('id-video');
+  if (!v || !v.videoWidth) return null;
+  const k = Math.min(1, maxSide / Math.max(v.videoWidth, v.videoHeight)), c = document.createElement('canvas');
+  c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k);
+  c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+  return c;
+}
+const toBlob = c => new Promise(res => c.toBlob(res, 'image/jpeg', 0.86));
+async function idAsk(blob, scope) {
+  const fd = new FormData(); fd.append('image', blob, 'picture.jpg');
+  return api('POST', '/api/identify?scope=' + enc(scope || idScope()), undefined, fd);
+}
+async function idQr() {
+  if (!ID.qr) return false;
+  const v = document.getElementById('id-video');
+  try {
+    const codes = await ID.qr.detect(v);
+    for (const q of codes) {
+      const m = /#\/plant\/([^/?#\s]+)/.exec(q.rawValue || '');
+      if (m) { const code = decodeURIComponent(m[1]); ID.paused = true; await idLabelFound(code); ID.paused = false; return true; }
+    }
+  } catch (e) { /* no QR this time */ }
+  return false;
+}
+async function idLabelFound(code) {
+  await loadCodes(true);
+  const p = PCODES.get(code);
+  idSay(`Label found: ${code}${p ? ', ' + p.common_name : ''}.`);
+  const r = await modal(html`<form method="dialog" class="id-pop"><h2>Label found: ${code}</h2>
+    ${p ? html`<p class="id-pop-name">${p.common_name}${p.scientific_name ? html` (<i>${p.scientific_name}</i>)` : ''}</p>${p.photo ? html`<img class="id-pop-img" src="${thumbUrl(p.photo)}" alt="Photo of ${p.common_name}">` : ''}` : html`<p>There is no plant ${code} in the record.</p>`}
+    <div class="row">${p ? html`<button class="btn" value="open" autofocus>Open its page</button>` : ''}<button class="btn ghost" value="cancel" ${p ? '' : raw('autofocus')}>Keep looking</button></div></form>`);
+  if (r === 'open') { idStop(); go('#/plant/' + enc(code)); }
+}
+async function idTick() {
+  clearTimeout(ID.timer);
+  if (!ID.stream || !document.getElementById('id-video')) { idStop(); return; }
+  if (!ID.paused && !ID.busy && !document.hidden && !dlg.open) {
+    ID.busy = true;
+    try {
+      if (!(await idQr())) {
+        const c = idGrab(800);
+        if (c && ID.st && ID.st.state === 'ready') {
+          const r = await idAsk(await toBlob(c));
+          if (ID.stream) await idLive(r, c);
+        } else if (ID.st && ID.st.state !== 'ready') idSay(idStatusText(ID.st));
+      }
+    } catch (e) { idSay(e.message); if (e.status === 503) idLoadStatus(); }
+    ID.busy = false;
+  }
+  if (ID.stream) ID.timer = setTimeout(idTick, 900);
+}
+async function idLive(r, canvas) {
+  if (ID.paused) return;
+  const m = r.matches[0];
+  idPaint(r, null, true);
+  if (!m) { idSay('Looking. No match yet.'); return; }
+  const key = r.likely_new ? '(new)' : m.code;      // a plant that looks unlike all of yours counts as one answer too
+  ID.streak = ID.last === key ? ID.streak + 1 : 1; ID.last = key;
+  const c = m.confidence || 0;
+  // a window: the same plant twice in a row when sure, or four times in a row when less sure or when it is not one of yours
+  if ((c >= 0.8 && ID.streak >= 2 && !r.likely_new) || (ID.streak >= 4 && (c >= 0.5 || r.likely_new))) {
+    ID.paused = true;
+    const big = idGrab(1600) || canvas;
+    ID.shot = { blob: await toBlob(big), url: big.toDataURL('image/jpeg', 0.8), result: r };
+    await idPopup(r);
+    ID.paused = false; ID.streak = 0; ID.last = null;
+  } else if (r.likely_new) idSay(`This doesn't look like any of your plants.${r.species[0] ? ' It may be ' + (r.species[0].common_name || r.species[0].scientific_name) + '.' : ''} Hold steady.`);
+  else if (c >= 0.5) idSay(`${sureWord(c)} ${m.code}, ${m.common_name} (${pct(c)} sure). Hold steady.`);
+  else idSay(`Not sure yet. Closest: ${m.code}, ${m.common_name}. ${r.species[0] ? 'Or it may be ' + (r.species[0].common_name || r.species[0].scientific_name) + '.' : ''}`);
+}
+async function idSnap() {
+  const c = idGrab(1600); if (!c) return;
+  ID.paused = true;
+  try {
+    const blob = await toBlob(c);
+    ID.shot = { blob, url: c.toDataURL('image/jpeg', 0.8) };
+    idSay('Checking this picture…');
+    ID.shot.result = await idAsk(blob);
+    idPaint(ID.shot.result, ID.shot.url);
+    await idPopup(ID.shot.result);
+  } catch (e) { toast(e.message, true); }
+  ID.paused = false;
+}
+async function idFile(input) {
+  const f = input.files && input.files[0]; input.value = '';
+  if (!f) return;
+  const res = document.getElementById('id-res'); if (res) res.innerHTML = rend(html`<p class="muted" role="status">Checking ${f.name}…</p>`);
+  try {
+    const url = await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = no; fr.readAsDataURL(f); });
+    ID.shot = { blob: f, url };
+    ID.shot.result = await idAsk(f);
+    idPaint(ID.shot.result, url);
+    await idPopup(ID.shot.result);
+  } catch (e) { if (res) res.innerHTML = rend(html`<div class="notice bad" role="alert">${e.message}</div>`); }
+}
+function idMatchCard(m, first) {
+  return html`<li class="id-m"><a href="#/plant/${enc(m.code)}" data-act="idopen" data-code="${m.code}">${m.photo ? html`<img src="${thumbUrl(m.matched_photo || m.photo)}" alt="">` : ''}
+    <span><b>${m.code}</b> ${m.common_name}${m.location ? html`<small>${m.location}</small>` : ''}${first && m.confidence != null ? html`<small>${sureWord(m.confidence)}: ${pct(m.confidence)} sure</small>` : ''}</span></a></li>`;
+}
+function spLinks(s) {
+  const q = enc(s.scientific_name);
+  return html`<span class="id-links">${s.usda_symbol ? html`<a href="https://plants.usda.gov/plant-profile/${enc(s.usda_symbol)}" target="_blank" rel="noopener noreferrer">USDA PLANTS</a>` : ''}
+    <a href="https://powo.science.kew.org/results?q=${q}" target="_blank" rel="noopener noreferrer">Kew (POWO)</a>
+    <a href="https://en.wikipedia.org/wiki/${enc(s.scientific_name.replace(/ /g, '_'))}" target="_blank" rel="noopener noreferrer">Wikipedia</a></span>`;
+}
+function spCard(s, i, src, withAdd) {
+  const tags = [];
+  if (s.in_texas) tags.push(html`<span class="tag">Grows wild in Texas</span>`);
+  else if (s.us_states && s.us_states.length) tags.push(html`<span class="tag">In ${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}</span>`);
+  if (s.yours && s.yours.length) tags.push(html`<span class="tag tag-yours">You have this: ${s.yours.join(', ')}</span>`);
+  else if (s.yours_genus && s.yours_genus.length) tags.push(html`<span class="tag">Same genus as ${s.yours_genus.slice(0, 4).join(', ')}</span>`);
+  return html`<li class="id-sp"><div><i class="sci">${s.scientific_name}</i>${s.common_name ? html` <span>${s.common_name}</span>` : ''}
+      ${s.probability != null ? html`<b class="id-p">${pct(s.probability)}</b>` : ''}</div>
+    <div class="muted">${[s.family, s.order].filter(Boolean).join(', ')}</div>
+    ${s.why ? html`<div>${s.why}</div>` : ''}
+    ${tags.length ? html`<div class="id-tags">${tags}</div>` : ''}
+    <div class="id-acts">${spLinks(s)}${withAdd ? html`<button class="btn small" type="button" data-act="idnew" data-src="${src}" data-i="${i}">Add as a new plant</button>` : ''}</div></li>`;
+}
+function idPaint(r, picUrl, live) {
+  const res = document.getElementById('id-res'); if (!res) return;
+  const m = r.matches || [], top = m[0], c = top ? top.confidence || 0 : 0;
+  const sc = ID_SCOPES.find(x => x[0] === r.scope);
+  res.innerHTML = rend(html`${picUrl ? html`<img class="id-shot" src="${picUrl}" alt="The picture that was checked">` : ''}
+    ${top ? html`<h3>${c >= 0.5 && !r.likely_new ? 'Your plant' : 'Closest of your plants'}</h3>
+      <p>${c >= 0.5 && !r.likely_new ? html`${sureWord(c)} <b>${top.code}, ${top.common_name}</b>: ${pct(c)} sure.` : html`Probably none of your plants: the closest is ${top.code}, ${top.common_name}, ${pct(c)} sure${r.likely_new ? ', and it looks different from all your photos' : ''}.`}</p>
+      <ol class="id-ms ${c >= 0.5 && !r.likely_new ? 'id-sure' : ''}">${m.slice(0, 3).map((x, i) => idMatchCard(x, i === 0))}</ol>` : html`<p>There are no photos of your plants to compare with yet.</p>`}
+    <h3>What it could be</h3>
+    ${r.genera && r.genera[0] ? html`<p>Most likely genus: <i>${r.genera[0].genus}</i> (${pct(r.genera[0].probability)}). Names below are from: ${sc ? sc[1] : 'the species list'}.</p>` : ''}
+    <ol class="id-sps">${(r.species || []).map((s, i) => spCard(s, i, 'local', !live && canChange()))}</ol>
+    ${live ? '' : html`<div id="id-more">${idMoreBtns()}</div>`}
+    <p class="hint">Checked in ${r.seconds} seconds by ${r.model} on this computer.</p>`);
+}
+function idMoreBtns() {
+  if (!canChange() || !ID.keys) return '';
+  return html`<div class="row">${ID.keys.plantnet ? html`<button class="btn ghost" type="button" data-act="idask" data-who="plantnet">Ask Pl@ntNet</button>` : ''}
+    ${ID.keys.claude ? html`<button class="btn ghost" type="button" data-act="idask" data-who="claude">Ask Claude</button>` : ''}</div><div id="id-ext"><div id="id-ext-plantnet"></div><div id="id-ext-claude"></div></div>`;
+}
+async function idPopup(r) {
+  const m = r.matches || [], top = m[0], c = top ? top.confidence || 0 : 0, edit = canChange();
+  let body;
+  if (top && c >= 0.75 && !r.likely_new) {
+    idSay(`${sureWord(c)} ${top.code}, ${top.common_name}: ${pct(c)} sure.`);
+    body = html`<h2>${sureWord(c)} ${top.code}: ${top.common_name}</h2>
+      <p class="id-conf"><b>${pct(c)} sure.</b> ${c >= 0.85 ? 'In tests on your photos, answers this sure were right about 9 times in 10.' : 'It is not certain: compare the photos.'}</p>
+      <div class="id-pair">${ID.shot ? html`<figure><img src="${ID.shot.url}" alt="Your picture"><figcaption>Your picture</figcaption></figure>` : ''}
+        <figure><img src="${thumbUrl(top.matched_photo || top.photo)}" alt="Photo of ${top.common_name}"><figcaption>Its closest photo</figcaption></figure></div>
+      <div class="row"><button class="btn" value="open:${top.code}" autofocus>Open its page</button>
+        ${edit && ID.shot ? html`<button class="btn ghost" value="addpic:${top.code}">Add this picture to its photos</button>` : ''}
+        <button class="btn ghost" value="cancel">Not this one</button></div>`;
+  } else if (top && c >= 0.45 && !r.likely_new) {
+    idSay(`Not sure. It could be ${m.slice(0, 3).map(x => x.code).join(', ')}.`);
+    body = html`<h2>Which one is it?</h2><p>It is not sure (${pct(c)} for the first). These look closest:</p>
+      <div class="id-choose">${m.slice(0, 3).map((x, i) => html`<button class="id-ch" value="open:${x.code}" ${i === 0 ? raw('autofocus') : ''}>
+        ${x.photo ? html`<img src="${thumbUrl(x.matched_photo || x.photo)}" alt="">` : ''}<span><b>${x.code}</b> ${x.common_name}</span></button>`)}</div>
+      <p class="hint">Choosing one opens its page.${edit ? ' Or add the picture to one:' : ''}</p>
+      ${edit && ID.shot ? html`<div class="row">${m.slice(0, 3).map(x => html`<button class="btn small ghost" value="addpic:${x.code}">Add the picture to ${x.code}</button>`)}</div>` : ''}
+      <div class="row"><button class="btn ghost" value="cancel">None of these</button></div>`;
+  } else {
+    const s = (r.species || [])[0];
+    idSay(`Probably not one of your plants.${s ? ' It may be ' + (s.common_name || s.scientific_name) + '.' : ''}`);
+    body = html`<h2>Probably not one of your plants</h2>
+      ${s ? html`<p>It looks most like <i>${s.scientific_name}</i>${s.common_name ? ' (' + s.common_name + ')' : ''}, but names from a picture are often wrong. See all the suggestions on the page${edit && ID.keys && (ID.keys.plantnet || ID.keys.claude) ? ', or ask for a second opinion' : ''}.</p>` : ''}
+      ${top ? html`<p>Or is it one of yours after all? The closest are:</p><ul class="id-close">${m.slice(0, 3).map(x => html`<li><button class="linkish" value="open:${x.code}">${x.code} ${x.common_name}</button></li>`)}</ul>` : ''}
+      <div class="row"><button class="btn" value="list" autofocus>See the suggestions</button><button class="btn ghost" value="cancel">Keep looking</button></div>`;
+  }
+  const v = await modal(html`<form method="dialog" class="id-pop">${body}</form>`, 'wide');
+  if (v.startsWith('open:')) { idStop(); go('#/plant/' + enc(v.slice(5))); }
+  else if (v.startsWith('addpic:')) await idAddPic(v.slice(7));
+  else if (v === 'list') {
+    if (ID.shot && ID.shot.result) idPaint(ID.shot.result, ID.shot.url);
+    if (ID.stream) { idStop(); idCamUi(false); }
+    const h = document.getElementById('h-idres'); if (h) { h.setAttribute('tabindex', '-1'); h.focus(); h.scrollIntoView({ block: 'start' }); }
+  }
+}
+async function idAddPic(code) {
+  if (!ID.shot || !(await needName())) return;
+  const fd = new FormData(); fd.append('files', ID.shot.blob, 'identify-' + ymd(new Date()) + '.jpg'); fd.append('caption', 'Taken with Identify, ' + new Date().toLocaleDateString());
+  await guard(async () => { await api('POST', '/api/plants/' + enc(code) + '/photos', undefined, fd); toast('Picture added to ' + code); idSay('Picture added to ' + code + '.'); });
+}
+async function idAskOutside(who) {
+  if (!ID.shot) return;
+  const box = document.getElementById('id-ext-' + who); if (!box) return;
+  const name = who === 'plantnet' ? 'Pl@ntNet' : 'Claude';
+  box.innerHTML = rend(html`<p role="status">Asking ${name}…</p>`);
+  try {
+    const fd = new FormData(); fd.append('image', ID.shot.blob, 'picture.jpg');
+    const r = await api('POST', '/api/identify/' + who, undefined, fd);
+    ID.shot[who] = r;
+    box.innerHTML = rend(html`<h3>${name} says</h3>${r.note ? html`<p>${r.note}</p>` : ''}
+      ${r.species.length ? html`<ol class="id-sps">${r.species.map((s, i) => spCard(s, i, who, canChange()))}</ol>` : ''}
+      ${r.tip ? html`<p class="hint">Tip from Claude: ${r.tip}</p>` : ''}
+      ${r.remaining != null ? html`<p class="hint">Pl@ntNet pictures left today: ${r.remaining}.</p>` : ''}`);
+    const h = box.querySelector('h3'); if (h) { h.setAttribute('tabindex', '-1'); h.focus(); }
+  } catch (e) { box.innerHTML = rend(html`<div class="notice bad" role="alert">${e.message}</div>`); }
+}
+
+// "Add as a new plant" and "Add to my plants": the Add a plant form opens with the names filled in (and the picture, if any)
+let NEWFILL = null;
+function idNewPlant(s, withPic) {
+  const g = (s.scientific_name || '').split(' ')[0];
+  NEWFILL = { common_name: (s.common_name || '').split(',')[0].trim() || s.scientific_name, scientific_name: s.scientific_name, genus: g, family: s.family || '',
+              taxon_order: s.order || '', kingdom: 'Plantae', __pic: withPic && ID.shot ? ID.shot.blob : null,
+              __from: `Names from ${s.src || 'the plant library'}` };
+  idStop(); go('#/new');
+}
+
+// ---------- the plant library ----------
+const LIB = { q: '', scope: 'world', res: null };
+async function viewLibrary(qs) {
+  if (qs.get('q')) LIB.q = qs.get('q');
+  if (qs.get('scope')) LIB.scope = qs.get('scope');
+  let st = null;
+  try { st = await api('GET', '/api/identify/status'); } catch (e) { /* shown below */ }
+  const ready = st && st.scopes && st.state !== 'off';
+  return {
+    title: 'Plant library',
+    after: () => { if (LIB.q && ready) libSearch(); },
+    html: html`<h1>Plant library</h1>
+    <p>Look up any of ${st && st.species ? Number(st.species).toLocaleString() : 'about 349,000'} plant species by scientific or common name. It works without the internet, from this computer's lists.</p>
+    ${ready ? '' : html`<p class="notice bad" role="status">${idStatusText(st)}</p>`}
+    <form data-form="libsearch" role="search" class="lib-form" autocomplete="off">
+      <label class="f">Name<small>Part of a scientific or common name, at least 2 letters. For example: monstera, bluebonnet, Agave.</small>
+        <input type="search" name="q" value="${LIB.q}" required minlength="2"></label>
+      <label class="f">Look in<select name="scope">${ID_SCOPES.map(([k, l]) => html`<option value="${k}" ${k === LIB.scope ? raw('selected') : ''}>${l}${st && st.scopes && st.scopes[k] ? ` (${Number(st.scopes[k].count).toLocaleString()})` : ''}</option>`)}</select></label>
+      <div class="row"><button class="btn" type="submit">Search</button></div>
+    </form>
+    <div id="lib-res" aria-live="polite"></div>
+    <section class="id-sec" aria-labelledby="h-libsrc"><h2 id="h-libsrc">Where the names come from</h2>
+      <ul><li>Scientific names, families and common names: the Tree of Life list that the BioCLIP model was trained with (TreeOfLife-200M, Imageomics Institute, free to use).</li>
+      <li>Which states a plant grows wild in, and USDA symbols: the USDA PLANTS state lists (public domain).</li>
+      <li>The links open USDA PLANTS, Kew's Plants of the World Online and Wikipedia for care, range and pictures.</li></ul></section>`,
+  };
+}
+async function libSearch() {
+  const box = document.getElementById('lib-res'); if (!box) return;
+  box.innerHTML = rend(html`<p role="status">Searching…</p>`);
+  try {
+    const r = await api('GET', '/api/library?' + new URLSearchParams({ q: LIB.q, scope: LIB.scope }));
+    LIB.res = r.results;
+    const sc = ID_SCOPES.find(x => x[0] === LIB.scope);
+    box.innerHTML = rend(html`<h2 id="h-libres" tabindex="-1">${r.total ? `${r.total >= 400 ? 'More than 400' : r.total} found` : 'Nothing found'} for "${LIB.q}" in ${sc ? sc[1].toLowerCase() : 'the list'}</h2>
+      ${r.total > r.results.length ? html`<p class="muted">Showing the first ${r.results.length}. Type more of the name to narrow it down.</p>` : ''}
+      ${!r.total && LIB.scope !== 'world' ? html`<p>Try "All plants worldwide".</p>` : ''}
+      <ol class="id-sps">${r.results.map((s, i) => spCard(s, i, 'library', canChange()))}</ol>`);
+    const h = document.getElementById('h-libres'); if (h) h.focus();
+  } catch (e) { box.innerHTML = rend(html`<div class="notice bad" role="alert">${e.message}</div>`); }
+}
+function spFrom(src, i) {
+  const list = src === 'library' ? LIB.res : src === 'local' ? ID.shot && ID.shot.result && ID.shot.result.species : ID.shot && ID.shot[src] && ID.shot[src].species;
+  const s = list && list[+i];
+  return s ? Object.assign({}, s, { src: src === 'library' ? 'the plant library' : src === 'local' ? 'Identify (this computer)' : src === 'plantnet' ? 'Pl@ntNet' : 'Claude' }) : null;
+}
+Object.assign(acts, {
+  idcam: () => idCamToggle(),
+  idsnap: () => idSnap(),
+  idopen: el => { idStop(); go('#/plant/' + enc(el.dataset.code)); },
+  idask: el => idAskOutside(el.dataset.who),
+  idnew: el => { const s = spFrom(el.dataset.src, el.dataset.i); if (s) idNewPlant(s, el.dataset.src !== 'library'); },
+  async idkeydel(el) {
+    if (!(await confirmBox('Remove the key?', 'The button for this second opinion goes away until a key is saved again.', 'Remove the key', true))) return;
+    await guard(async () => { await api('PUT', '/api/identify/settings', { [el.dataset.k]: '' }); toast('Key removed'); route(); });
+  },
+});
+Object.assign(changeActs, { idfile: el => idFile(el) });
+Object.assign(formActs, {
+  async idkeys(form) {
+    const b = {};
+    ['plantnet_key', 'claude_key'].forEach(k => { const v = form.elements[k].value.trim(); if (v) b[k] = v; });
+    if (!Object.keys(b).length) { toast('Paste a key first.', true); return; }
+    await api('PUT', '/api/identify/settings', b); toast('Keys saved'); route();
+  },
+  async libsearch(form) {
+    LIB.q = form.elements.q.value.trim(); LIB.scope = form.elements.scope.value;
+    if (LIB.q.length < 2) { toast('Type at least 2 letters.', true); return; }
+    history.replaceState(null, '', '#/library?' + new URLSearchParams({ q: LIB.q, scope: LIB.scope }));
+    lastPath = location.hash.replace(/^#/, '');
+    await libSearch();
+  },
+});
+document.addEventListener('visibilitychange', () => { if (document.hidden && ID.stream) { idStop(); idCamUi(false); } });
+
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
   if (!el || el.tagName === 'INPUT') return;
@@ -4514,7 +5038,9 @@ document.addEventListener('change', e => {
   else if (f === 'pnneeds') { G.needs = el.checked; drawGrid(); }
   else if (f === 'sort') { G.sort = el.value; drawGrid(); }
   else if (f === 'low') { G.low = el.checked; drawGrid(); }
-  else if (f === 'archived') { G.archived = el.checked; G.plan = ''; route(); }
+  else if (f === 'status') { G.status = el.value; drawGrid(); }
+  else if (f === 'site') { G.site = el.value; drawGrid(); }
+  else if (f === 'more') { G[el.dataset.key] = el.value; if (el.dataset.key === 'care' && el.value && !CAREDUE) loadCareDue().then(drawGrid); drawGrid(); }
 });
 document.addEventListener('toggle', e => { const d = e.target; if (d.classList && d.classList.contains('histbox') && d.open) histOpen(d.dataset.hist); }, true);
 document.addEventListener('keydown', e => {

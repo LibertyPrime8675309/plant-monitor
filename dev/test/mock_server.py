@@ -6,6 +6,11 @@ The forecast fills in after an update: POST /api/weather/refresh with an X-Edito
 import math
 import os, sys, time, urllib.parse
 os.environ['PLANTDB_WEATHER']='0'
+# 1.18.0: the picture checker. Without MOCK_VISION=real, a fake one (dev/test/mock_vision.py) answers on 127.0.0.1:8090,
+# started here, and stands in for Pl@ntNet and Claude too. With MOCK_VISION=real, run vision/service.py on 8090 yourself.
+os.environ.setdefault('PLANTDB_VISION_URL', 'http://127.0.0.1:' + os.environ.get('MOCK_VISION_PORT', '8090'))
+os.environ.setdefault('PLANTDB_PLANTNET_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/plantnet')
+os.environ.setdefault('PLANTDB_CLAUDE_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/claude')
 sys.path.insert(0,os.environ.get('APPDIR', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'app')))
 import server as S
 from datetime import datetime, timedelta, timezone
@@ -48,4 +53,13 @@ if os.environ.get('MOCK_TS') == '1':
     threading.Thread(target=_ts.serve_forever, daemon=True).start()
     _sensor = make_server('127.0.0.1', int(S.SENSOR_PORT), S.app, threaded=True)      # and the sensor-only port
     threading.Thread(target=_sensor.serve_forever, daemon=True).start()
+if os.environ.get('MOCK_VISION', 'fake') == 'fake':
+    import threading, importlib.util
+    from werkzeug.serving import make_server
+    _spec = importlib.util.spec_from_file_location('mock_vision', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mock_vision.py'))
+    _mv = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(_mv)
+    try:
+        _vs = make_server('127.0.0.1', int(os.environ.get('MOCK_VISION_PORT', '8090')), _mv.app, threaded=True)
+        threading.Thread(target=_vs.serve_forever, daemon=True).start()
+    except OSError as e: print('mock vision not started:', e)
 S.app.run(host='127.0.0.1', port=int(os.environ.get('PORT', '8080')), threaded=True)
