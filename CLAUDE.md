@@ -36,6 +36,7 @@ This is Ethan's home plant database: a Flask + SQLite web app ("Plant record") t
   - Batch files apply in **filename order**, once each. Name new ones so they sort last: `batch9d.json`, then `batchA1.json`. `batch10.json` would sort before `batch2.json`.
 - **Access (from 1.12.0).** People reach the app through its own Tailscale container: port 8081, with identity headers, roles owner/editor/viewer. This computer uses port 8080 (localhost only), and sensors use 8082 (readings only).
   - Any new route that changes data is refused for viewers automatically.
+  - The one exception is `VIEWER_POSTS` (`/api/identify`), a POST that changes nothing.
   - Owner-only areas must be added to `OWNER_ONLY_PATHS` or `OWNER_ONLY_CHANGES` in `server.py`.
   - Buttons that make changes must also be added to the viewer CSS block in `style.css`.
   - Never publish 8081, and never trust `Tailscale-User-*` headers on any other port.
@@ -49,6 +50,7 @@ This is Ethan's home plant database: a Flask + SQLite web app ("Plant record") t
 
 ## Where things are
 - `app/`: the app (`server.py`, `static/app.js`, `static/style.css`, `static/index.html`, `static/prefs.js`, `seed/`)
+- `vision/`: the picture checker container for Identify and Library (BioCLIP on the processor; 1.18.0). Its model and lists download into `data/vision` on first start. `dev/vision/` holds the tests that chose the model.
 - `tools/`: the updater and `make-release.py`
 - `dev/seed_src/`: scripts that built each upgrade batch from Ethan's photos; `plants_*.py` and `envdata.py` hold the plant data and care profiles
 - `dev/photos-raw/`: the photos those scripts read (already shrunk)

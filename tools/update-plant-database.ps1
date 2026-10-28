@@ -297,7 +297,8 @@ function Port-Owner([int]$p) {     # which program listens on this port (Windows
 # 1.12.1: start everything. If a port on this computer is busy, wait and try again (the old container can take a few seconds to
 # let go of it); if it stays busy, move that port to a free one and save it in .env.
 function Start-App {
-    $r = Native-Capture { docker compose up -d }
+    $svc = $script:Services                     # 1.18.0: empty means all of them
+    $r = Native-Capture { docker compose up -d @svc }
     $waits = @(5, 10, 15, 30)
     for ($i = 0; $r.code -ne 0 -and $i -le $waits.Count; $i++) {
         if ($r.text -notmatch 'ports are not available|port is already allocated|address already in use|Only one usage of each socket address') { break }
@@ -322,7 +323,7 @@ function Start-App {
                 Say ("On this computer the app now answers at {0}. The Tailscale address does not change." -f $Url) 'Cyan'
             }
         }
-        $r = Native-Capture { docker compose up -d }
+        $r = Native-Capture { docker compose up -d @svc }
     }
     return $r.code
 }
@@ -342,6 +343,16 @@ if (-not (Test-Path $tsState)) { New-Item -ItemType Directory -Path $tsState -Fo
 Push-Location $AppFolder
 $code = Native { docker compose build --pull }
 if ($code -ne 0) { Say 'Could not download the newest base image (is the internet down?). Building with the one already on this computer.' 'Yellow'; $code = Native { docker compose build } }
+# 1.18.0: the picture checker (container plant-vision, for Identify and Library) downloads about 1 GB of packages when it is built.
+# If only that fails, start the rest of the app without it, so an internet hiccup never keeps the app itself from updating.
+$script:Services = @()
+if ($code -ne 0) {
+    $c2 = Native { docker compose build plants }
+    if ($c2 -eq 0) {
+        $script:Services = @('plants', 'tailscale'); $code = 0
+        Say 'Could not build the picture checker for Identify and Library (see the messages above). Starting the rest of Plant record without it. Run the updater again later to try again.' 'Yellow'
+    }
+}
 if ($code -eq 0) {
     $pc = Native { docker compose pull --ignore-buildable }      # the Tailscale container's image; the app itself is built above
     if ($pc -ne 0) { Say 'Could not download the newest Tailscale container. The one already on this computer is used.' 'Yellow' }
