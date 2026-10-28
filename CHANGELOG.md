@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.18.1 (2026-10-28)
+- **The top menu fits on iPads again.** On an iPad mini (and other mid-size screens with larger text) the menu links were squeezed into one narrow column, one link per line, so the menu filled the whole screen. Now the links sit side by side and wrap onto a few rows. On narrower screens the menu gets its own full-width row under the name, and the Location and "Editing as" buttons sit side by side when they fit.
+- Includes everything in 1.18.0 below.
+
 ## 1.18.0 (2026-10-26)
 - **Identify a plant** (new page in the top menu). Point your phone or computer camera at a plant:
   - If it's one of yours, a window names it and says how sure it is, for example "Very likely P-020: Fiddle-leaf fig, 93% sure". It shows your picture next to the plant's closest photo, with **Open its page** and **Add this picture to its photos**.
