@@ -1,5 +1,53 @@
 # Changelog
 
+## 1.18.1 (2026-10-28)
+- **The top menu fits on iPads again.** On an iPad mini (and other mid-size screens with larger text) the menu links were squeezed into one narrow column, one link per line, so the menu filled the whole screen. Now the links sit side by side and wrap onto a few rows. On narrower screens the menu gets its own full-width row under the name, and the Location and "Editing as" buttons sit side by side when they fit.
+- Includes everything in 1.18.0 below.
+
+## 1.18.0 (2026-10-26)
+- **Identify a plant** (new page in the top menu). Point your phone or computer camera at a plant:
+  - If it's one of yours, a window names it and says how sure it is, for example "Very likely P-020: Fiddle-leaf fig, 93% sure". It shows your picture next to the plant's closest photo, with **Open its page** and **Add this picture to its photos**.
+  - When it is unsure between a few of your plants, it asks **Which one is it?** with their photos.
+  - When it's probably not one of yours, it suggests what it could be. You choose the list it names from: Texas plants, plants with a common name and all US plants, US plants, or all plants worldwide. Each suggestion links to USDA PLANTS, Kew and Wikipedia, and has **Add as a new plant**, which fills in the names and attaches the picture.
+  - It also reads the QR codes on plant labels.
+  - **Use a photo instead** checks a photo you already have.
+- **It all runs on this computer**, in a new container called `plant-vision`, with the free BioCLIP 2.5 model. The first start downloads about 5 GB into `data\vision` and takes 20 to 40 minutes; the page shows how far it has got. After that it needs no internet. See README, "Identify a plant and the plant library", which also says how to stop it or use a smaller model.
+- **Second opinions:** when it is unsure you can press **Ask Pl@ntNet** (free key, 500 pictures a day) or **Ask Claude** (your Anthropic API key, a cent or two a picture). Save the keys once at the bottom of the Identify page. They are never shown again, only their last 4 characters.
+- **Plant library** (new page in the top menu): look up any of 349,000 plant species by scientific or common name. It shows the family, whether the plant grows wild in Texas or other US states, and whether you have it. It has the same links and an **Add to my plants** button.
+- People who can only view can use Identify and the library, but can't add pictures or plants or ask for second opinions.
+- If the picture checker can't be built during an update (for example, the internet drops), the updater now starts the rest of Plant record without it and says so.
+
+## 1.17.1 (2026-10-26)
+- **Fixed: "Add a plant" works again.** The form stopped with "Something went wrong: Assignment to constant variable" instead of opening. It had been broken for a while; plants added by upgrade batches were not affected.
+- Includes everything in 1.17.0 below.
+
+## 1.17.0 (2026-10-26)
+- **More filters on the Plants page,** in a fold-out under the filter row (it says how many are on):
+  - **Light needs:** low light, bright indirect light, some direct sun, or full sun.
+  - **Pets:** safe for pets (only where the ASPCA lists the plant as non-toxic), not known to be toxic, mildly toxic, or toxic.
+  - **Winter here:** hardy here, not hardy here, or annual / no zone set, comparing each plant's zone with yours.
+  - **Care today:** water or feeding due, as on the Today page.
+  - **Grow light:** under a grow light spot, or not.
+  - **Leaf type** and **pot size.**
+  - **Photos:** no photo yet, or the newest photo is over a month old.
+
+  They are also in the Previous / Next panel on plant pages, and are remembered like the other filters.
+- **Safety for pets** is a new field on every plant, filled in for all of them. It shows in the Dangers box on each plant page, and you can change it under Edit, "About this plant".
+- **Your answers:** the young Monstera's page now says it started with at least five larger leaves without holes, before an animal ate them. The fern's tag request is closed.
+
+## 1.16.2 (2026-10-26)
+- **Plants page filters:**
+  - **Show:** active plants only (the usual), active and archived together, or archived only. Archived plants say "Archived" on their card. It replaces the "Show archived plants instead" box at the bottom of the page.
+  - **Location:** only the plants outdoors, on the covered porch, indoors, or in the garage or shed.
+  - Both are also in the Previous / Next panel on plant pages, and are remembered like the other filters.
+- **Your porch shelf photos are in.** This replaces 1.16.1, which you can ignore.
+  - **New page: Chinese evergreen, red speckled (second).** The second one on the shelf, not P-028. It is healthy and has a new pink shoot at the base. The mix has dried hard and shrunk from the pot wall, and white mineral crust is building up on the pot; its steps say how to fix both.
+  - **New page: Boston fern, curly (grey bowl).** A second curly fern, mostly dead fronds but with healthy new ones coming. Spurge weed is growing in its pot.
+  - **New page: Monstera, young (beige pot).** Young shoots with their first holes, coming from an old knot of roots.
+  - **Pink Princess cutting (P-035):** its tag reads "PP-1", so that request is answered. The bamboo stake is still down in the hollow stem; pulling it out is still the first step.
+- Two new requests: a close photo of the fern's tag, and how the young Monstera started.
+- Photos come in the photo pack `plant-database-photos-batchA7.zip`, already in your `versions_plant-database` folder.
+
 ## 1.16.0 (2026-10-25)
 - **Groups of plants.** A new **Groups** page, in the top menu. A plant can be in several groups.
   - **Smart groups** have a rule, such as "Genus is Philodendron" or "Location is Covered porch". Plants that fit join by themselves. While you make one, the window lists the plants that fit.

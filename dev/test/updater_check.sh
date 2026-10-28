@@ -24,6 +24,7 @@ cat > "$T/bin/docker" <<SH
 #!/bin/bash
 echo "docker \$*" >> "$T/docker.txt"
 case "\$*" in
+  "compose build --pull"|"compose build") [ -f "$T/vision-fails" ] && { echo 'failed to solve: process "pip install torch" did not complete successfully' >&2; exit 1; };;
   *"compose logs"*) [ -f "$T/logs" ] && cat "$T/logs";;
   "compose up -d")
     busy() { echo 'Error response from daemon: ports are not available: exposing port TCP 127.0.0.1:8080 -> 127.0.0.1:0: listen tcp4 127.0.0.1:8080: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted.' >&2; exit 1; }
@@ -64,6 +65,10 @@ want "D2: one pack arrives later and its photos are added" '[[ "$out" == *"photo
 cp "$T/repo/dist"/plant-database-photos-*.zip "$T/Plants/"; out=$(run); want "D3: the rest arrive: all photos present" '[[ $(photos) -eq $ALL ]]'
 out=$(run); want "E: nothing left to do" '[[ "$out" == *"Already up to date"* ]]'
 want "1.12.0: builds on a fresh base image and fetches the Tailscale container" 'grep -q "docker compose build --pull" "$T/docker.txt" && grep -q "docker compose pull --ignore-buildable" "$T/docker.txt"'
+touch "$T/vision-fails"; : > "$T/docker.txt"; fresh; cp "$T/repo/dist"/plant-database-photos-*.zip "$T/Plants/"; out=$(run)
+want "1.18.0: if the picture checker cannot be built, the rest of the app still updates and starts" '[[ "$out" == *"Starting the rest of Plant record without it"* && "$out" == *"Done. Plant record version 99.0.0"* ]] && grep -q "docker compose build plants" "$T/docker.txt" && grep -q "docker compose up -d plants tailscale" "$T/docker.txt"'
+rm -f "$T/vision-fails"; : > "$T/docker.txt"; fresh; cp "$T/repo/dist"/plant-database-photos-*.zip "$T/Plants/"; out=$(run)
+want "1.18.0: normally everything starts, the picture checker too" '[[ "$out" == *"Done."* && "$out" != *"without it"* ]] && grep -qx "docker compose up -d" "$T/docker.txt"'
 rm -rf "$T/Plants"/*; (cd "$T/Plants" && unzip -q "$T/full.zip"); cp "$T/repo/dist"/plant-database-v*.zip "$T/repo/tools/update-plant-database.ps1" "$T/Plants/"
 touch "$T/stuck"; echo "PLANTDB_NOT_WRITABLE: the app cannot write to /data" > "$T/logs"
 out=$(run -WaitSeconds 6); rm -f "$T/stuck" "$T/logs"

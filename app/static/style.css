@@ -82,6 +82,17 @@ p{margin:0 0 var(--para);max-width:68ch} ul,ol{margin:.4em 0 1.1em;padding-left:
 .top nav a{color:inherit;text-decoration:none;padding:.55rem .8rem;border-bottom:4px solid transparent;min-height:2.75rem;display:inline-flex;align-items:center}
 .top nav a:hover{border-color:color-mix(in srgb,var(--top-ink) 55%,transparent)}
 .top nav a[aria-current=page]{border-color:var(--top-ink);font-weight:700}
+/* 1.18.1: the menu links always sit side by side and wrap onto more rows. The menu never shrinks to one link wide: below
+   24rem it moves onto its own row, and on narrow screens (narrow for the chosen text size, not just in pixels, so an
+   iPad with large text counts) it always has a full row of its own under the name and buttons. */
+.brand,.ver{flex:none}
+.top-acts{flex:0 1 auto}
+.top nav{flex:1 1 0;min-width:min(100%,24rem)}
+html[data-narrow="1"] .top-in{gap:.5rem 1rem}
+html[data-narrow="1"] .top nav{flex:1 1 100%;order:3;min-width:0;gap:0 .15rem}
+html[data-narrow="1"] .top nav a{padding:.45rem .6rem}
+html[data-narrow="1"] .top-acts{flex-direction:row;flex-wrap:wrap}
+html[data-narrow="1"] .top-acts>*{flex:1 1 auto}
 .who{background:transparent;color:inherit;border:2px solid color-mix(in srgb,var(--top-ink) 60%,transparent);padding:.5rem .9rem;font:inherit;font-size:1rem;cursor:pointer;min-height:2.75rem}
 .who:hover{background:color-mix(in srgb,var(--top-ink) 14%,transparent)}
 main{max-width:80rem;margin:0 auto;padding:1.6rem 1.25rem 6rem;outline:none}
@@ -120,7 +131,8 @@ fieldset legend{font-family:var(--serif);font-weight:600;font-size:1.4rem;paddin
 .ledger button[aria-pressed=true]{background:var(--bar,var(--ink));color:#fff;border-color:var(--bar,var(--ink))}
 :root[data-theme=dark] .ledger button[aria-pressed=true]{color:#0e2233}
 @media (prefers-color-scheme:dark){:root:not([data-theme=light]) .ledger button[aria-pressed=true]{color:#0e2233}}
-.filters{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:.9rem;align-items:end;margin-bottom:1.8rem}
+.filters{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,14rem),1fr));gap:.9rem;align-items:end;margin-bottom:1.8rem}
+html:not([data-narrow="1"]) .filters>label:first-child{grid-column:span 2}
 .filters label{font-weight:700}
 .filters .chk{display:flex;gap:.6rem;align-items:center;font-weight:400;padding-bottom:.6rem}
 html[data-narrow="1"] .filters{grid-template-columns:1fr 1fr}
@@ -1021,3 +1033,65 @@ ul.srcs li{margin:.25rem 0;overflow-wrap:anywhere}
 html[data-role=viewer] :is([data-act=grpnew], [data-act=grpedit], [data-act=grpdel], [data-act=grpaddsug], [data-act=grpaddall], [data-act=grprm],
   [data-act=grpcare], [data-act=grpmove], [data-act=grpset], [data-act=grpundo], [data-act=plgroups], #g-do){display:none!important}
 .rule-prev{border-left:.35rem solid var(--cyan);padding:.4rem .8rem;background:var(--cyan-soft)}
+.tag.tag-arch{border-style:dashed;color:var(--ink-2)}
+/* 1.17.0: more filters on the Plants page */
+.more-f{margin:-.8rem 0 1.8rem;border:var(--bw) solid var(--line);padding:.5rem .9rem;background:var(--sheet)}
+.more-f>summary{font-weight:700;cursor:pointer;padding:.3rem 0}
+.more-f .filters{margin:.6rem 0 .4rem}
+.more-f .hint{margin:0}
+html:not([data-narrow="1"]) .more-f .filters>label:first-child{grid-column:auto}
+
+/* 1.18.0: Identify a plant (camera) and the plant library. The camera view is framed like a specimen on a herbarium sheet:
+   corner marks, not a box, so the plant stays the biggest thing on the screen. */
+.id-cam,.lib-form{max-width:46rem}
+.id-sec>h2,#lib-res>h2{margin-top:2rem;margin-bottom:.7rem}
+.id-view{position:relative;background:var(--ink);aspect-ratio:4/3;max-height:70vh;margin:.4rem 0 .6rem;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.id-view video{width:100%;height:100%;object-fit:contain;display:block}
+.id-view::before,.id-view::after{content:"";position:absolute;width:2.2rem;height:2.2rem;border:4px solid #fff;pointer-events:none;mix-blend-mode:difference}
+.id-view::before{top:.8rem;left:.8rem;border-right:0;border-bottom:0}
+.id-view::after{bottom:.8rem;right:.8rem;border-left:0;border-top:0}
+.id-placeholder{position:absolute;color:#fff;font-weight:700;margin:0;font-size:1.2rem}
+.id-live{min-height:1.6em;font-weight:700;font-size:1.15rem;margin:0 0 .6rem}
+.id-btns .btn{flex:1 1 12rem}
+.id-file{position:relative;overflow:hidden}
+.id-file input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.id-file:focus-within{outline:var(--ring) solid var(--focus);outline-offset:2px}
+.id-scope{margin-top:1rem}
+.id-shot{display:block;max-width:min(100%,24rem);max-height:18rem;border:2px solid var(--ink);margin:.4rem 0 1rem}
+#id-res h3,#id-ext h3,#lib-res h3{margin:1.2rem 0 .5rem}
+.id-ms{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,15rem),1fr));gap:.7rem;max-width:none}
+.id-m{margin:0}
+.id-m a{display:flex;gap:.7rem;align-items:center;border:var(--bw) solid var(--line);background:var(--sheet);padding:.5rem;text-decoration:none;color:var(--ink);min-height:4.5rem}
+.id-m a:hover{border-color:var(--cyan)}
+.id-sure .id-m:first-child a{border:2.5px solid var(--cyan)}
+.id-m img{width:4rem;height:4rem;object-fit:cover;flex:none}
+.id-m small{display:block;color:var(--ink-2);font-size:1rem}
+.id-sps{padding-left:1.6em;max-width:52rem}
+.id-sp{margin:0 0 1rem;padding:.6rem .8rem;border-left:4px solid var(--line);background:var(--sheet)}
+.id-sp .sci{font-family:var(--serif);font-size:1.2rem;font-weight:600}
+.id-p{float:right;font-size:1.1rem;margin-left:.6rem}
+.id-tags{display:flex;flex-wrap:wrap;gap:.4rem;margin:.4rem 0}
+.id-tags .tag{white-space:normal}
+.tag.tag-yours{color:var(--moss)}
+.id-acts{display:flex;flex-wrap:wrap;gap:.6rem 1rem;align-items:center;margin-top:.4rem}
+.id-links{display:flex;flex-wrap:wrap;gap:.3rem 1rem}
+.id-pop h2{font-size:1.6rem}
+.id-pop-name{font-size:1.2rem}
+.id-pop-img{max-width:min(100%,20rem);display:block;margin:.4rem 0 1rem}
+.id-conf{font-size:1.15rem}
+.id-pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,13rem),1fr));gap:.8rem;margin:.6rem 0 1rem}
+.id-pair figure{margin:0}
+.id-pair img{width:100%;max-height:16rem;object-fit:contain;background:var(--ink);display:block}
+.id-pair figcaption{font-weight:700;margin-top:.2rem}
+.id-choose{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr));gap:.7rem;margin:.6rem 0}
+.id-ch{font:inherit;color:var(--ink);background:var(--sheet);border:2px solid var(--ink-2);padding:.5rem;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:.4rem;min-height:2.75rem}
+.id-ch:hover,.id-ch:focus-visible{border-color:var(--cyan)}
+.id-ch img{width:100%;height:9rem;object-fit:cover}
+.id-keys{list-style:none;padding:0}
+.id-setkeys{border:var(--bw) solid var(--line);padding:.5rem .9rem;background:var(--sheet);max-width:46rem}
+.id-setkeys>summary{font-weight:700;cursor:pointer;padding:.3rem 0}
+.id-setkeys input[type=password]{width:100%;font:inherit;color:var(--ink);background:var(--sheet);border:var(--bw) solid var(--ink-2);padding:.55rem .7rem;margin-top:.35rem;min-height:2.75rem}
+html[data-role=viewer] :is([data-act=idnew], [data-act=idask], [data-act=idkeydel], form[data-form=idkeys], .id-setkeys, button[value^="addpic:"]){display:none!important}
+button.linkish{font:inherit;color:var(--cyan);background:none;border:0;padding:.2rem 0;text-decoration:underline;text-underline-offset:.2em;cursor:pointer;min-height:2.75rem}
+.id-close{list-style:none;padding:0;margin:0 0 1rem}
+.id-close li{margin:0}
