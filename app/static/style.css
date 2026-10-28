@@ -1095,3 +1095,13 @@ html[data-role=viewer] :is([data-act=idnew], [data-act=idask], [data-act=idkeyde
 button.linkish{font:inherit;color:var(--cyan);background:none;border:0;padding:.2rem 0;text-decoration:underline;text-underline-offset:.2em;cursor:pointer;min-height:2.75rem}
 .id-close{list-style:none;padding:0;margin:0 0 1rem}
 .id-close li{margin:0}
+
+/* 1.19.0 (prototype proto/undo-care): the message with an Undo button after a care button */
+#toasts .undo-toast{pointer-events:auto;display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;width:min(40rem,calc(100vw - 2rem));max-width:none;box-sizing:border-box;border:2px solid var(--paper)}
+.undo-toast .undo-msg{flex:1 1 12rem}
+.undo-toast .undo-acts{display:flex;gap:.5rem;flex-wrap:wrap}
+.undo-toast .btn{background:var(--paper);color:var(--ink);border-color:var(--paper)}
+.undo-toast .btn.ghost{background:transparent;color:var(--paper)}
+.undo-toast .btn:focus-visible{outline-color:var(--paper);outline-offset:3px}
+.undo-toast .undo-left{flex-basis:100%;font-weight:400;font-size:.9em}
+html[data-role=viewer] .undo-toast .undo-acts [data-undo=undo]{display:none!important}

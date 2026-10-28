@@ -1416,7 +1416,7 @@ async function careDialog(code, name) {
     <div class="row"><button class="btn" value="ok">Save</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`);
   if (r !== 'ok') return;
   const f = dlg.querySelector('form');
-  await guard(async () => { await api('POST', '/api/care', { plant: code, kind: f.elements.kind.value, done_on: f.elements.day.value, note: f.elements.note.value }); toast('Saved: ' + CARE_WORD[f.elements.kind.value]); await careRefresh(code); });
+  await guard(async () => { const x = await api('POST', '/api/care', { plant: code, kind: f.elements.kind.value, done_on: f.elements.day.value, note: f.elements.note.value }); careUndoToast('Saved: ' + CARE_WORD[f.elements.kind.value] + ' for ' + name, x && x.ids, code); await careRefresh(code); });
 }
 async function careRefresh(code) {
   if (document.getElementById('care-plant')) return loadCarePlant();
@@ -1429,6 +1429,65 @@ function jobRow(p, words, btns) {
     <div class="job-txt"><a class="nm" href="#/plant/${enc(p.code)}">${p.common_name}</a> <span class="muted">${p.code}</span><div>${words}</div></div>
     <div class="job-acts">${btns}</div></li>`;
 }
+// ---------- undo right after a care button (prototype: proto/undo-care) ----------
+// "Watered", "Still moist", "Mark all as watered" and "Log other care" show a message with an Undo button instead of a
+// plain toast. Undo removes exactly the entries that press made (by id), so nothing else in the care log is touched.
+// The message stays for UNDO_SECS, and the countdown stops while the pointer or keyboard focus is on it. U also undoes.
+const UNDO_SECS = 30;
+let UNDO = null;      // {el, ids, code, left, timer}
+function careUndoClose() {
+  if (!UNDO) return;
+  clearInterval(UNDO.timer); const el = UNDO.el, hadFocus = el.contains(document.activeElement); UNDO = null; el.remove();
+  if (hadFocus) { const m = document.querySelector('main h1'); if (m) { m.setAttribute('tabindex', '-1'); m.focus({ preventScroll: true }); } }
+}
+function careUndoToast(msg, ids, code) {
+  careUndoClose();
+  if (!Array.isArray(ids) || !ids.length) { toast(msg); return; }
+  const n = ids.length, el = document.createElement('div');
+  el.className = 'toast undo-toast'; el.setAttribute('role', 'group'); el.setAttribute('aria-label', 'Care saved');
+  el.innerHTML = rend(html`<span class="undo-msg" id="undo-msg">${msg}.</span>
+    <span class="undo-acts"><button class="btn small" type="button" data-undo="undo" aria-describedby="undo-msg">Undo</button>
+    <button class="btn small ghost" type="button" data-undo="close" aria-label="Close this message">Close</button></span>
+    <span class="undo-left" aria-hidden="true"></span>`);
+  document.getElementById('toasts').appendChild(el);
+  UNDO = { el, ids: ids.slice(), code, left: UNDO_SECS, paused: 0, timer: 0 };
+  const left = el.querySelector('.undo-left'), keys = window.PlantPrefs.get().keys === '1' && matchMedia('(any-pointer: fine)').matches;     // no key hint on a phone
+  const paint = () => { left.textContent = (n > 1 ? `Undo removes all ${n} entries. ` : '') + `Closes in ${UNDO.left} s${keys ? ' (U undoes it)' : ''}.`; };
+  paint();
+  const hold = on => { if (UNDO && UNDO.el === el) UNDO.paused = Math.max(0, UNDO.paused + (on ? 1 : -1)); };
+  el.addEventListener('pointerenter', () => hold(true)); el.addEventListener('pointerleave', () => hold(false));
+  el.addEventListener('focusin', () => hold(true)); el.addEventListener('focusout', () => hold(false));
+  UNDO.timer = setInterval(() => {
+    if (!UNDO || UNDO.el !== el) return;
+    if (UNDO.paused) return;
+    UNDO.left -= 1; if (UNDO.left <= 0) careUndoClose(); else paint();
+  }, 1000);
+}
+async function careUndo() {
+  if (!UNDO) return;
+  const { ids, code } = UNDO, btn = UNDO.el.querySelector('[data-undo=undo]');
+  if (btn) btn.disabled = true;
+  if (!(await needName())) { if (btn) btn.disabled = false; return; }
+  let gone = 0, missing = 0;
+  for (const id of ids) {
+    try { await api('DELETE', '/api/care/' + id + '?undo=1'); gone++; }
+    catch (e) { if (e.status === 404) missing++; else { toast('Could not undo: ' + e.message, true); break; } }
+  }
+  careUndoClose();
+  if (gone) toast(gone === 1 ? 'Undone. The entry was removed from the care log.' : `Undone. ${gone} entries were removed from the care log.`);
+  else if (missing) toast('Nothing to undo: someone already removed that entry.');
+  await careRefresh(code);
+}
+document.getElementById('toasts').addEventListener('click', e => {      // its own listener, so this block needs nothing in acts
+  const b = e.target.closest && e.target.closest('.undo-toast button'); if (!b) return;
+  if (b.dataset.undo === 'undo') careUndo(); else if (b.dataset.undo === 'close') careUndoClose();
+});
+document.addEventListener('keydown', e => {
+  if (!UNDO || (e.key !== 'u' && e.key !== 'U')) return;
+  if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || window.PlantPrefs.get().keys !== '1') return;
+  if (e.target.closest && e.target.closest('input,textarea,select,[contenteditable="true"],dialog[open]')) return;
+  e.preventDefault(); careUndo();
+});
 // ---------- getting plants ready to come inside (added in 1.9.0) ----------
 // Ten ways to keep outdoor pests out of the house. The server rates each one for each plant (from its leaf type, pot
 // size, the pests found, its health and the weather); this draws the plant page section, the Coming inside page and
@@ -3321,7 +3380,7 @@ function shortcutsDialog() {
       ${k('R', 'Read this page aloud (press again, or Escape, to stop)')}${k('Escape', 'Stop reading')}
       ${k('[', 'Previous plant (on a plant page)')}${k(']', 'Next plant (on a plant page)')}
       ${k('E', 'Edit this plant (on a plant page)')}${k('/', 'Search plants')}
-      ${k('H', 'Go to the Plants page')}${k('M', 'Open or fold the section menu')}${k('L', 'Choose the location for the weather')}${k('?', 'Show this list')}
+      ${k('H', 'Go to the Plants page')}${k('M', 'Open or fold the section menu')}${k('L', 'Choose the location for the weather')}${k('U', 'Undo the care you just logged, while its message is showing')}${k('?', 'Show this list')}
     </tbody></table>
     <div class="row"><button class="btn" value="ok" autofocus>Close</button></div></form>`);
 }
@@ -4361,13 +4420,13 @@ const acts = {
   async care(el) {
     if (!(await needName())) return;
     const k = el.dataset.kind, code = el.dataset.code;
-    await guard(async () => { await api('POST', '/api/care', { plant: code, kind: k }); toast((k === 'water' ? 'Watered: ' : 'Checked, still moist: ') + el.dataset.name); await careRefresh(code); });
+    await guard(async () => { const r = await api('POST', '/api/care', { plant: code, kind: k }); careUndoToast((k === 'water' ? 'Watered: ' : 'Checked, still moist: ') + el.dataset.name, r && r.ids, code); await careRefresh(code); });
   },
   async careall(el) {
     const codes = el.dataset.codes.split(',').filter(Boolean); if (!codes.length) return;
     if (!(await needName())) return;
     if (!(await confirmBox(`Mark ${codes.length} plants as watered today?`, 'Each one gets a "Watered" entry for today in its care log. You can remove any of them on the plant\'s page.', 'Mark as watered'))) return;
-    await guard(async () => { await api('POST', '/api/care', { plants: codes, kind: el.dataset.kind }); toast(codes.length + ' plants marked as watered'); await careRefresh(); });
+    await guard(async () => { const r = await api('POST', '/api/care', { plants: codes, kind: el.dataset.kind }); careUndoToast(codes.length + ' plants marked as watered', r && r.ids); await careRefresh(); });
   },
   careother(el) { return careDialog(el.dataset.code, el.dataset.name); },
   async caredel(el) {
