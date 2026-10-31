@@ -2,12 +2,13 @@
 
 One line each, most wanted first. A prototyping session takes the top one that is not already in progress, and marks it "(in progress: proto/<branch>)".
 
-- Undo right after a quick care button: "Watered" or "Still moist" pressed by mistake can be undone from the message that appears, without looking for it in the care log. (in progress: proto/undo-care)
-- Large-print care card: a printable page for one plant or a group, with its photo, name, and water, light and temperature needs in big type, to keep beside the plants indoors over winter.
 - Summer heat: an AHS heat-zone style "days above 86°F" count from the weather history, next to the USDA zone on About this plant, for plants that struggle in Texas summers.
 - Sensor dashboard for the DIY plant monitor (soil moisture, temperature, light) once hardware is posting to `/api/readings`.
 
 ## Done
+1.19.0 (October 28, 2026, pull requests #23 and #26): Undo right after a quick care button, and large-print care cards for a plant or a whole group.
+1.18.0 and 1.18.1 (October 26 to 28, 2026, pull request #25): Identify a plant with the camera (BioCLIP 2.5 on Ethan's PC, with Pl@ntNet and Claude as second opinions) and the plant library; the top menu fixed for iPads.
+1.16.2 and 1.17.x (October 26, 2026, pull requests #22 and #24): Show, Location and eight more filters on the Plants page, and Safety for pets.
 1.16.0 (October 25, 2026): groups of plants. Smart and hand-picked groups, suggestions, filter and sort by group, what suits a whole group, and care, moving and setting changes for a whole group with a preview and undo.
 October 25, 2026, pull requests #18 and #13: Back outside (a spring list of plants that can go back out, from each plant's temperatures and the forecast) and a calendar of feeding days and cold nights to subscribe to.
 1.14.1 (October 25, 2026, pull request #19): swipe between plants on phones, and every part of a plant page in the section menu and the row of section buttons.

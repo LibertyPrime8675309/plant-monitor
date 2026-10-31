@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.19.0 (2026-10-28)
+- **Undo right after a care button.** After you press **Watered**, **Still moist**, **Watered all** or save **Log other care**, the message that appears says what was saved and has an **Undo** button (and **Close**).
+  - It stays for 30 seconds and counts down, and the countdown pauses while the pointer or keyboard focus is on it.
+  - With a keyboard, **U** undoes it while the message shows.
+  - Undo removes only the entries that press made. For "Watered all" it says how many.
+  - The change log records it as "Undone right after it was logged".
+- **Large-print care cards.** Plant pages have a new **Large-print care card** button, and group pages have **Large-print care cards** (one card for each plant).
+  - Each card has the plant's name, code, place and winter plan, its photo, and a code to scan that opens its page.
+  - Boxes headed Water, Light, Temperature, Humidity, Feeding and, if you tick it, Careful (dangers to pets and people).
+  - Above the cards you choose short or full notes, and whether to show the photo, the scan code and the dangers. Then press **Print**.
+  - The printout is always black on white, large print (about 16 point notes, 20 point main facts), one plant per page.
+- Includes everything in 1.18.1 below.
+
 ## 1.18.1 (2026-10-28)
 - **The top menu fits on iPads again.** On an iPad mini (and other mid-size screens with larger text) the menu links were squeezed into one narrow column, one link per line, so the menu filled the whole screen. Now the links sit side by side and wrap onto a few rows. On narrower screens the menu gets its own full-width row under the name, and the Location and "Editing as" buttons sit side by side when they fit.
 - Includes everything in 1.18.0 below.
