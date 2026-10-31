@@ -1438,10 +1438,16 @@ def local_get(name):
     KNOW['cache'][name] = (mt, j)
     return j
 
+def lists_wait():
+    """Lists wait while photos someone is looking at are being fetched (up to a minute), so pages fill in first."""
+    t = time.time()
+    while LIBQ['queue'] and time.time() - t < 60: time.sleep(0.5)
+
 def local_fetch(name, params):
     """Every species in one iNaturalist species count, 500 a page (at most 30 pages)."""
     out, page = [], 1
     while page <= 30:
+        lists_wait()
         j = inat_get('/observations/species_counts?' + urllib.parse.urlencode(params | {'per_page': 500, 'page': page, 'locale': 'en'}))
         res = j.get('results') or []
         for r in res:
@@ -1466,6 +1472,7 @@ def aspca_fetch():
     """The ASPCA's toxic and non-toxic plant lists for dogs, cats and horses, read from their web pages."""
     out = {}
     for animal, page in (('dogs', 'dogs-plant-list'), ('cats', 'cats-plant-list'), ('horses', 'horse-plant-list')):
+        lists_wait()
         with LIBQ['lock']:
             wait = 1.05 - (time.time() - LIBQ['last'])
             if wait > 0: time.sleep(wait)
