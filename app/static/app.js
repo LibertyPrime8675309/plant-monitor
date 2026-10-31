@@ -83,6 +83,11 @@ function paintWho() {
 let PLACE = null;
 try { PLACE = localStorage.getItem('plantdb.place') || null; } catch (e) { /* ignore */ }
 async function api(method, url, body, form) {
+  if (method === 'GET' && /^\/api\/fungi\/NEW-/i.test(url)) {        // 1.24.0: a find made offline that is not sent yet
+    const f = await idbGet('finds', decodeURIComponent(url.split('/')[3].split('?')[0]));
+    if (!f) { const e = new Error('That find was sent to the plant record. Open the Mushrooms page to see it with its new code.'); e.status = 404; throw e; }
+    return offFindDict(f);
+  }
   const opts = { method, headers: {} };
   if (PLACE) opts.headers['X-Place'] = PLACE;
   if (method !== 'GET') opts.headers['X-Editor'] = cleanName(viaTS() ? ME().name : getName()) || 'Unknown';
@@ -91,11 +96,25 @@ async function api(method, url, body, form) {
   }
   if (form) opts.body = form;
   else if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  // 1.24.0: changes that can wait are kept on this device when the server can't be reached, and sent later (offSync)
+  const q = method !== 'GET' && offQueueable(method, url);
+  if (q && (!navigator.onLine || /\/NEW-/i.test(url))) return offQueue(method, url, body, form);
+  if (q) opts.headers['X-Offline-Op'] = offId();          // so a retry after a dropped answer is made only once
   let r;
-  try { r = await fetch(url, opts); } catch (e) { throw new Error('Cannot reach the plant server. Check that the container is running.'); }
+  try { r = await fetch(url, opts); } catch (e) {
+    if (q) return offQueue(method, url, body, form);
+    if (method === 'POST' && url.startsWith('/api/identify?') && form) return offIdQueue(url, form);
+    throw new Error(navigator.onLine ? 'Cannot reach the plant server. Check that the container is running.' : 'You are offline. This needs a connection to the plant server.');
+  }
+  if (method === 'GET') offSeen(r.headers.get('X-Offline-Saved'));
   let data = null;
   try { data = await r.json(); } catch (e) { /* not json */ }
-  if (!r.ok) { const e = new Error((data && data.error) || ('Request failed (' + r.status + ')')); e.status = r.status; e.data = data; throw e; }
+  if (!r.ok) {
+    const off = r.status === 503 && data && data.offline;
+    const e = new Error(off ? 'You are offline, and this page was not saved on this device. Turn on "Keep a copy on this device" on the Offline page while you are online.' : (data && data.error) || ('Request failed (' + r.status + ')'));
+    e.status = r.status; e.data = data; e.offline = off; throw e;
+  }
+  if (method === 'GET' && /^\/api\/fungi\?status=(active|all)/.test(url) && data && data.finds) data.finds = (await offPendingFinds()).concat(data.finds);
   return data;
 }
 
@@ -198,6 +217,7 @@ function peoplePaint(P) { const b = document.getElementById('people-box'); if (b
 
 // ---------- toast, dialog ----------
 function toast(msg, isErr) {
+  if (!isErr && Date.now() - OFF.queuedAt < 2500) { msg = String(msg).replace(/\.$/, '') + '. Kept on this device; it will be sent when you are back online.'; OFF.queuedAt = 0; }
   const t = document.createElement('div');
   t.className = 'toast' + (isErr ? ' err' : '');
   t.textContent = msg;
@@ -247,13 +267,14 @@ function go(h) { if (location.hash === h) route(); else location.hash = h; }
 window.addEventListener('hashchange', route);
 async function route() {
   const my = ++token;
+  OFF.saved = null;
   const h = location.hash.replace(/^#/, '') || '/';
   const [hp, hq] = h.split('?');                     // 1.18.0: #/library?q=... keeps the search in the address
   const parts = hp.split('/').filter(Boolean), qs = new URLSearchParams(hq || '');
   if (parts[0] !== 'identify') idStop();
   if (parts[0] !== 'new') NEWFILL = null;
   if (parts[0] !== 'fungi' || parts[1] !== 'new') MUFILL = null;
-  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' || parts[0] === 'species' || parts[0] === 'wishlist' || parts[0] === 'around' ? 'library' : parts[0] === 'fungi' ? 'fungi' : 'plants';
+  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' || parts[0] === 'species' || parts[0] === 'wishlist' || parts[0] === 'around' ? 'library' : parts[0] === 'fungi' ? 'fungi' : parts[0] === 'offline' || parts[0] === 'decisions' ? 'offline' : 'plants';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let view;
@@ -280,6 +301,8 @@ async function route() {
     else if (parts[0] === 'library') view = await viewLibrary(qs);
     else if (parts[0] === 'species' && parts[1]) view = await viewSpecies(decodeURIComponent(parts[1]));
     else if (parts[0] === 'wishlist') view = await viewWishlist();
+    else if (parts[0] === 'offline') view = await viewOffline();
+    else if (parts[0] === 'decisions') view = await viewDecisions();
     else if (parts[0] === 'around') view = await viewAround();
     else if (parts[0] === 'fungi' && !parts[1]) view = await viewFungi();
     else if (parts[0] === 'fungi' && parts[1] === 'safety') view = viewFungiSafety();
@@ -290,6 +313,8 @@ async function route() {
     if (my !== token) return;
     app.innerHTML = rend(view.html);
     if (parts[0] !== 'frost' && parts[0] !== 'plant') app.insertAdjacentHTML('afterbegin', rend(frostBanner()));   // plant pages have their own note
+    if (OFF.saved && OFF.saved !== 'none') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice off-note noprint" role="note"><strong>Offline.</strong> This is what this device saved${OFF.saved ? ' on ' + when(OFF.saved) : ''}. Changes you make are kept here and sent when you are back online. <a href="#/offline">Offline page</a></p>`));
+    offNotice(parts);
     if (ME().role === 'viewer') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice vw-note noprint" role="note"><strong>View only.</strong> You can look at everything here, but changes are turned off. Ask ${ME().owner_name} if you would like to edit.</p>`));
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
     if (view.after) view.after();
@@ -2379,7 +2404,7 @@ async function submitForm(form) {
       toast('Added ' + p.code); go('#/plant/' + enc(p.code));
     } else {
       const r = await api('PUT', '/api/plants/' + enc(form.dataset.code), { base_version: +form.dataset.ver, fields, note: fd.get('__note') || '' });
-      toast(r.changed ? 'Saved as version ' + r.version : 'Nothing was changed'); go('#/plant/' + enc(form.dataset.code));
+      toast(r.offline ? (r.changed ? 'Saved' : 'Nothing was changed') : r.changed ? 'Saved as version ' + r.version : 'Nothing was changed'); go('#/plant/' + enc(form.dataset.code));
     }
   } catch (e) {
     btn.disabled = false;
@@ -5087,12 +5112,32 @@ async function libLoad(more) {
   const my = ++LIB.my, off = more ? LIB.res.length : 0;
   if (!more) { box.setAttribute('aria-busy', 'true'); }
   try {
-    const r = await api('GET', '/api/library/browse?' + libQuery(off));
+    let r = !navigator.onLine ? await offLibBrowse(off) : null;          // 1.24.0: offline, search the list saved on this device
+    if (!r) { r = await api('GET', '/api/library/browse?' + libQuery(off)); if (OFF.saved) r = (await offLibBrowse(off)) || r; }
+    LIB.offline = !!r.offline;
     if (my !== LIB.my) return;
     LIB.res = more ? LIB.res.concat(r.results) : r.results; LIB.total = r.total;
     libDraw(more ? r.results.length : 0);
   } catch (e) { if (my === LIB.my) box.innerHTML = rend(html`<div class="notice bad" role="alert">${e.message}</div>`); }
   box.removeAttribute('aria-busy');
+}
+function offKnowOk(k, f) {
+  k = k || {};
+  return f === 'native' ? k.tx === 'native' : f === 'introduced' ? k.tx === 'introduced' : f === 'invasive' ? !!k.invasive : f === 'near' ? !!k.near : f === 'bloom' ? !!k.bloom
+    : f === 'fruiting' ? !!k.fruiting : f === 'hardy' ? ['wild-near', 'zone-yes'].includes(k.hardy) : f === 'petsafe' ? !!k.pets && k.pets.dogs === 'non-toxic' && k.pets.cats === 'non-toxic'
+    : f === 'pettoxic' ? !!k.pets && (k.pets.dogs === 'toxic' || k.pets.cats === 'toxic') : true;
+}
+async function offLibBrowse(off) {             // the library without a connection: the Texas list saved on this device
+  const idx = await offSavedJson('/api/library/offline-index'); if (!idx) return null;
+  const q = LIB.q.toLowerCase(), fam = LIB.family.toLowerCase(), m = LIB.mine;
+  let r = idx.species.filter(x => (!q || (x.n + ' ' + x.c).toLowerCase().includes(q)) && (!LIB.kind || x.k === LIB.kind) && (!fam || x.f.toLowerCase() === fam) && (!LIB.common || x.c)
+    && (!m || (m === 'species' && x.y.length) || (m === 'genus' && x.y.length) || (m === 'wish' && x.w) || (m === 'notes' && x.t.length) || (m.startsWith('tag:') && x.t.includes(m.slice(4))))
+    && (!LIB.know || offKnowOk(x.kn, LIB.know)));
+  if (LIB.sort === 'sci') r = r.slice().sort((a, b) => a.n.localeCompare(b.n)); else if (LIB.sort === 'common') r = r.slice().sort((a, b) => (a.c || '~').localeCompare(b.c || '~'));
+  else if (LIB.sort === 'family') r = r.slice().sort((a, b) => a.f.localeCompare(b.f) || a.n.localeCompare(b.n));
+  const page = r.slice(off, off + LIB_PAGE).map(x => { LIB.photos[x.n] = x.p ? { url: x.p } : null; return { scientific_name: x.n, common_name: x.c, family: x.f, kind: x.k, genus: x.g,
+    in_texas: x.tx, us_states: new Array(x.st).fill(''), yours: x.y, yours_genus: [], wish: x.w, tags: x.t, know: x.kn, own_photo: null }; });
+  return { total: r.length, results: page, offline: true };
 }
 function libTags(s) {
   const t = [];
@@ -5137,7 +5182,8 @@ function libDraw(added) {
   const box = document.getElementById('lib-res'); if (!box) return;
   const n = LIB.res.length, cnt = document.getElementById('lib-count'), more = document.getElementById('lib-more'), clr = document.getElementById('lib-clear');
   const sc = ID_SCOPES.find(x => x[0] === LIB.scope);
-  if (cnt) cnt.textContent = LIB.total ? `Showing ${n.toLocaleString()} of ${LIB.total.toLocaleString()} in ${sc ? sc[1][0].toLowerCase() + sc[1].slice(1) : 'the list'}${LIB.q ? ` matching "${LIB.q}"` : ''}.` : `Nothing found${LIB.q ? ` for "${LIB.q}"` : ''} with these filters.`;
+  if (cnt && LIB.offline) cnt.dataset.off = '1'; else if (cnt) delete cnt.dataset.off;
+  if (cnt) cnt.textContent = (LIB.offline ? 'Offline: searching the Texas list saved on this device. ' : '') + (LIB.total ? `Showing ${n.toLocaleString()} of ${LIB.total.toLocaleString()} in ${sc ? sc[1][0].toLowerCase() + sc[1].slice(1) : 'the list'}${LIB.q ? ` matching "${LIB.q}"` : ''}.` : `Nothing found${LIB.q ? ` for "${LIB.q}"` : ''} with these filters.`);
   if (more) { more.hidden = n >= LIB.total; more.textContent = `Show ${Math.min(LIB_PAGE, LIB.total - n)} more`; }
   if (clr) clr.hidden = !(libFiltersOn() || LIB.q);
   if (!LIB.total) {
@@ -5183,7 +5229,15 @@ function libChanged(reload) {
 
 // ---------- one species: the library record (1.21.0) ----------
 async function viewSpecies(name) {
-  const d = await api('GET', '/api/library/taxon?name=' + enc(name));
+  let d;
+  try { d = await api('GET', '/api/library/taxon?name=' + enc(name)); }
+  catch (e) {                                  // 1.24.0: offline, and this species was not opened before: what the saved Texas list knows
+    const idx = e.offline || !navigator.onLine ? await offSavedJson('/api/library/offline-index') : null, x = idx && idx.species.find(y => y.n === name);
+    if (!x) throw e;
+    d = { scientific_name: x.n, common_name: x.c, family: x.f, genus: x.g, kind: LIB_KIND_SHORT[x.k] || '', in_texas: x.tx, us_states: [], classification: [{ rank: 'Family', name: x.f }, { rank: 'Genus', name: x.g }],
+      common_names: x.c ? [x.c] : [], similar: [], yours: x.y, yours_genus: [], your_plants: [], your_finds: [], know: x.kn, wish: x.w, tags: x.t, wishlist: null,
+      notes: { notes: '', tags: x.t.join(', ') }, care: null, zone: '', home: 'home', near_km: 50, online: false, own_photo: x.p, offline_row: true };
+  }
   SPCUR = d;
   const title = d.common_name || d.scientific_name;
   const cls = d.classification || [], states = d.us_states || [];
@@ -5248,7 +5302,7 @@ async function spInfo(d) {
   libPhotos();
   const gal = document.getElementById('sp-gallery'), about = document.getElementById('sp-about');
   if (!gal) return;
-  if (!d.online) { if (d.own_photo || (d.your_plants || []).some(p => p.photo)) spGallery(d, []); return; }
+  if (!d.online) { if (d.offline_row) spGallery(d, d.own_photo ? [{ url: d.own_photo, credit: 'Photo from iNaturalist (saved on this device)' }] : []); else if (d.own_photo || (d.your_plants || []).some(p => p.photo)) spGallery(d, []); return; }
   let r;
   try { r = await api('GET', '/api/library/info?name=' + enc(d.scientific_name)); } catch (e) { r = { error: e.message }; }
   if (!document.getElementById('sp-gallery')) return;
@@ -5461,7 +5515,7 @@ function muFiltered() {
 }
 function muCard(f) {
   return html`<article class="sheet mu-card" data-code="${f.code}">
-    <div class="mat">${f.photo ? html`<img src="${thumbUrl(f.photo)}" alt="" loading="lazy" decoding="async">` : html`<div class="nophoto">No photo yet</div>`}<span class="acc">${f.code}</span></div>
+    <div class="mat">${f.photo ? html`<img src="${thumbUrl(f.photo)}" alt="" loading="lazy" decoding="async">` : f.photo_url ? html`<img src="${f.photo_url}" alt="" decoding="async">` : html`<div class="nophoto">No photo yet</div>`}<span class="acc">${f.pending ? 'Not sent yet' : f.code}</span></div>
     <h3 class="name"><a class="sheet-link" href="#/fungi/${enc(f.code)}">${f.name || 'Unnamed mushroom'}</a></h3>
     ${f.scientific_name ? html`<p class="sci latin">${f.scientific_name}</p>` : ''}
     <p class="mu-when">${f.found_on ? longDay(f.found_on) : ''}${f.place_kind ? ' · ' + f.place_kind.replace(/^In (the|a) /, '').replace(/^\w/, c => c.toUpperCase()) : ''}${f.plant_code ? ' ' + f.plant_code : ''}</p>
@@ -5587,11 +5641,11 @@ function muGallery(i) {
   if (!ph.length) { box.innerHTML = rend(html`<p class="muted">No photos yet. Add them below.</p>`); return; }
   MUPIX = ((i % ph.length) + ph.length) % ph.length;
   const p = ph[MUPIX];
-  box.innerHTML = rend(html`<figure class="sp-fig"><img src="${photoUrl(p.file)}" alt="${p.caption || 'Photo ' + (MUPIX + 1) + ' of ' + MUCUR.code}">
+  box.innerHTML = rend(html`<figure class="sp-fig"><img src="${p.url || photoUrl(p.file)}" alt="${p.caption || 'Photo ' + (MUPIX + 1) + ' of ' + MUCUR.code}">
     <figcaption>${p.caption || 'No caption'}${p.taken_at ? `. Taken ${when(p.taken_at)}` : ''}${p.gps_lat != null ? '. Has a location.' : ''}${p.is_primary ? html` <strong>★ Main photo</strong>` : ''}</figcaption></figure>
     ${ph.length > 1 ? html`<div class="row sp-step"><button class="btn ghost small" type="button" data-act="mustep" data-d="-1">‹ Previous photo</button><span class="muted">${MUPIX + 1} of ${ph.length}</span><button class="btn ghost small" type="button" data-act="mustep" data-d="1">Next photo ›</button></div>` : ''}
-    <div class="row noprint">${!p.is_primary ? html`<button class="btn ghost small" type="button" data-act="mumain">Make this the main photo</button>` : ''}
-      <button class="btn ghost small" type="button" data-act="mucap">Edit caption</button><button class="btn danger small" type="button" data-act="murmphoto">Remove photo</button></div>`);
+    ${MUCUR.pending ? html`<p class="hint">Captions and the main photo can be changed once the find is sent.</p>` : html`<div class="row noprint">${!p.is_primary ? html`<button class="btn ghost small" type="button" data-act="mumain">Make this the main photo</button>` : ''}
+      <button class="btn ghost small" type="button" data-act="mucap">Edit caption</button><button class="btn danger small" type="button" data-act="murmphoto">Remove photo</button></div>`}`);
 }
 async function muReload(i) { MUCUR = await api('GET', '/api/fungi/' + enc(MUCUR.code)); await route(); muGallery(i == null ? MUPIX : i); }
 function muSetLoc(lat, lon, how) {
@@ -5635,7 +5689,7 @@ Object.assign(acts, {
     const p = MUCUR.photos[MUPIX], box = document.getElementById('mu-ident'); if (!p) return;
     box.innerHTML = rend(html`<p role="status">Checking the photo…</p>`);
     try {
-      const blob = await (await fetch(photoUrl(p.file))).blob(), fd = new FormData(); fd.append('image', blob, 'find.jpg');
+      const blob = await (await fetch(p.url || photoUrl(p.file))).blob(), fd = new FormData(); fd.append('image', blob, 'find.jpg');
       const r = await api('POST', '/api/identify?scope=fungi', undefined, fd);
       MUIDENT = r.species || [];
       box.innerHTML = rend(html`<h3>It looks most like</h3>${r.genera && r.genera[0] ? html`<p>Most likely genus: <i>${r.genera[0].genus}</i> (${pct(r.genera[0].probability)}).</p>` : ''}
@@ -5674,15 +5728,359 @@ Object.assign(formActs, {
         if (files.length) {
           const fd = new FormData(); files.forEach(f => fd.append('files', f));
           const p = await api('POST', '/api/fungi/' + enc(code) + '/photos', undefined, fd);
-          const g = (p.added || []).find(a => a.gps_lat != null);
-          if (g && fields.lat === '') { await api('PUT', '/api/fungi/' + enc(code), { base_version: p.version, fields: { lat: g.gps_lat, lon: g.gps_lon } }); toast('The location from the photo was saved with the find.'); }
+          if (p.located && fields.lat === '') toast('The location from the photo was saved with the find.');
         }
         MUFILL = null;
       }
-      toast(form.dataset.code ? 'Saved' : 'Find ' + code + ' added'); go('#/fungi/' + enc(code));
+      toast(form.dataset.code ? 'Saved' : /^NEW-/.test(code) ? 'Find added' : 'Find ' + code + ' added'); go('#/fungi/' + enc(code));
     } catch (e) { err.innerHTML = rend(html`<div class="notice bad" role="alert"><strong>Not saved.</strong> ${e.message}</div>`); err.scrollIntoView({ block: 'center' }); }
   },
 });
+
+// ---------- 1.24.0: offline use (phones and tablets out of reach of the server) ----------
+// sw.js keeps the app's files, the answers its pages asked for and the photos. This part keeps changes made without a connection
+// in an outbox (IndexedDB, on this device only) and sends them when the server can be reached again, each with its own id so that
+// it is made only once. Mushroom finds added offline get a temporary code (NEW-…) until the server gives them their F- code.
+const OFF = { online: navigator.onLine, sending: false, n: 0, failed: 0, conflicts: 0, saved: null, queuedAt: 0, k: 0, dl: null, idq: 0 };
+const OFF_OK = [                              // the changes that can wait for a connection
+  ['POST', /^\/api\/care$/], ['DELETE', /^\/api\/care\/\d+$/],
+  ['PUT', /^\/api\/plants\/[^/]+$/], ['POST', /^\/api\/plants\/[^/]+\/(site|status|photos)$/],
+  ['POST', /^\/api\/fungi$/], ['PUT', /^\/api\/fungi\/[^/]+$/], ['POST', /^\/api\/fungi\/[^/]+\/(status|photos)$/], ['PATCH', /^\/api\/fungi\/photos\/\d+$/], ['DELETE', /^\/api\/fungi\/photos\/\d+$/],
+  ['PUT', /^\/api\/library\/notes$/], ['PUT', /^\/api\/wishlist$/], ['DELETE', /^\/api\/wishlist$/]];
+const offQueueable = (m, url) => OFF_OK.some(([mm, re]) => mm === m && re.test(url.split('?')[0]));
+const offId = () => Date.now().toString(36) + '-' + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join('');
+let OFFDB = null;
+function idb() {
+  if (!OFFDB) OFFDB = new Promise((ok, no) => {
+    const r = indexedDB.open('plantdb-offline', 1);
+    r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('outbox', { keyPath: 'id' }); d.createObjectStore('finds', { keyPath: 'code' }); d.createObjectStore('idq', { keyPath: 'id' }); d.createObjectStore('kv'); };
+    r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error);
+  });
+  return OFFDB;
+}
+async function idbDo(store, mode, fn) {
+  const d = await idb();
+  return new Promise((ok, no) => { const t = d.transaction(store, mode), req = fn(t.objectStore(store)); t.oncomplete = () => ok(req ? req.result : undefined); t.onerror = () => no(t.error); t.onabort = () => no(t.error); });
+}
+const idbAll = st => idbDo(st, 'readonly', s => s.getAll()).catch(() => []);
+const idbGet = (st, k) => idbDo(st, 'readonly', s => s.get(k)).catch(() => undefined);
+const idbPut = (st, v, k) => idbDo(st, 'readwrite', s => (k === undefined ? s.put(v) : s.put(v, k)));
+const idbDel = (st, k) => idbDo(st, 'readwrite', s => s.delete(k));
+const offKv = async (k, d) => { const v = await idbGet('kv', k); return v === undefined ? d : v; };
+function offGuessDevice() {
+  const u = navigator.userAgent;
+  return /iPhone/.test(u) ? 'iPhone' : /iPad|Macintosh.*Mobile/.test(u) || (/Macintosh/.test(u) && navigator.maxTouchPoints > 1) ? 'iPad' : /Android/.test(u) ? (/Mobile/.test(u) ? 'Android phone' : 'Android tablet') : /Windows/.test(u) ? 'Windows PC' : /Macintosh/.test(u) ? 'Mac' : 'This device';
+}
+let OFFDEV = null;
+const offDevice = () => OFFDEV || offGuessDevice();
+async function offOps() { return (await idbAll('outbox')).sort((a, b) => a.seq - b.seq); }
+function offWords(op) {                       // what a waiting change is, in words
+  const u = op.url.split('?')[0], b = op.body || {}, code = (u.match(/\/(P-\d+|F-\d+|NEW-[a-z0-9-]+)/i) || [])[1] || '';
+  const KIND = { water: 'Watered', check: 'Checked: still moist', note: 'Note' };
+  if (u === '/api/care') return `${KIND[b.kind] || 'Care logged'}${b.note ? ': ' + b.note : ''} for ${(b.plants || [b.plant]).join(', ')} (${b.done_on})`;
+  if (/^\/api\/care\//.test(u)) return 'A care log entry removed';
+  if (/\/site$/.test(u)) return `${code}: moved to ${b.site}`;
+  if (/\/status$/.test(u)) return `${code}: ${b.archived ? 'archived' : 'brought back'}`;
+  if (/\/photos$/.test(u)) { const n = (op.form || []).filter(p => p.blob).length; return `${code}: ${n} photo${n === 1 ? '' : 's'} added`; }
+  if (/^\/api\/plants\//.test(u)) return `${code}: edited ${Object.keys(b.fields || {}).join(', ') || 'details'}`;
+  if (u === '/api/fungi') return `New mushroom find ${op.temp}${b.fields && b.fields.name ? ': ' + b.fields.name : ''}`;
+  if (/^\/api\/fungi\/photos\//.test(u)) return 'A mushroom photo changed';
+  if (/^\/api\/fungi\//.test(u)) return `${code}: edited ${Object.keys(b.fields || {}).join(', ') || 'details'}`;
+  if (u === '/api/library/notes') return `Notes and tags for ${b.name}`;
+  if (u === '/api/wishlist') return op.method === 'DELETE' ? `${b.name} taken off the wishlist` : `${b.name} on the wishlist`;
+  return op.method + ' ' + u;
+}
+async function offSavedJson(url) {
+  try { const c = await caches.open('plantdb-api'), r = await c.match(url); return r ? await r.json() : null; } catch (e) { return null; }
+}
+async function offPatch(url, fn) {            // so the page shows a change made offline before it is sent
+  try {
+    const c = await caches.open('plantdb-api'), r = await c.match(url); if (!r) return;
+    const j = await r.json(); fn(j);
+    await c.put(url, new Response(JSON.stringify(j), { status: 200, headers: r.headers }));
+  } catch (e) { /* only for show */ }
+}
+async function offFormParts(form) { return [...form.entries()].map(([k, v]) => (v instanceof Blob ? { k, blob: v, name: v.name || 'photo.jpg' } : { k, v: String(v) })); }
+async function offQueue(method, url, body, form) {
+  if (ME().role === 'viewer') { const e = new Error('You can only view, so nothing can be saved.'); e.status = 403; throw e; }
+  const op = { id: offId(), seq: Date.now() + (OFF.k++) / 1000, method, url, body: body === undefined ? null : JSON.parse(JSON.stringify(body)), form: form ? await offFormParts(form) : null,
+    who: cleanName(viaTS() ? ME().name : getName()) || 'Unknown', made: new Date().toISOString(), device: offDevice(), place: PLACE || null };
+  const path = url.split('?')[0];
+  let shim = { offline: true };
+  if (path === '/api/care' && method === 'POST') { if (!op.body.done_on) op.body.done_on = todayStr(); shim = { ids: [], skipped: [], water: [], offline: true }; }
+  const pend = path.match(/^\/api\/fungi\/(NEW-[a-z0-9-]+)(\/[a-z]+)?$/i);
+  if (pend) {                                  // a find that has not been sent yet: change the waiting record itself
+    const f = await idbGet('finds', pend[1]); if (!f) throw new Error('That find is not on this device any more.');
+    if (method === 'PUT' && !pend[2]) { Object.assign(f.fields, op.body.fields || {}); const cr = (await offOps()).find(o => o.temp === f.code); if (cr) { Object.assign(cr.body.fields, op.body.fields || {}); await idbPut('outbox', cr); } }
+    else if (pend[2] === '/photos') { op.form.filter(p => p.blob).forEach(p => f.photos.push({ id: 'p' + offId(), blob: p.blob, caption: '' })); await idbPut('outbox', op); }
+    else if (pend[2] === '/status') { f.status = op.body.archived ? 'archived' : 'active'; await idbPut('outbox', op); }
+    f.version++; await idbPut('finds', f);
+    OFF.queuedAt = Date.now(); offPaint();
+    return Object.assign(await offFindDict(f), { offline: true, added: [] });
+  }
+  if (path === '/api/fungi' && method === 'POST') {
+    op.temp = 'NEW-' + offId().slice(-10);
+    await idbPut('finds', { code: op.temp, fields: Object.assign({}, op.body.fields || {}), photos: [], status: 'active', version: 1, made: op.made, who: op.who });
+    shim = { code: op.temp, version: 1, offline: true };
+  }
+  if ((method === 'PUT') && /^\/api\/(plants|fungi)\/[^/]+$/.test(path)) {
+    const saw = await offSavedJson(path), fields = op.body.fields || {};
+    if (saw) {
+      op.body.base_values = {};
+      for (const k of Object.keys(fields)) {
+        const a = saw[k] == null ? '' : String(saw[k]).trim(), b = fields[k] == null ? '' : String(fields[k]).trim();
+        if (a === b) delete fields[k]; else op.body.base_values[k] = saw[k] == null ? null : saw[k];
+      }
+      op.body.base_version = op.body.base_version || saw.version;
+      shim = Object.assign({}, saw, fields, { changed: Object.keys(fields).length > 0, offline: true });
+    }
+    await offPatch(path, j => Object.assign(j, fields));
+  }
+  if (/\/site$/.test(path)) await offPatch(path.replace(/\/site$/, ''), j => { j.site = op.body.site; });
+  if (/\/status$/.test(path) && /^\/api\/plants\//.test(path)) await offPatch(path.replace(/\/status$/, ''), j => { j.status = op.body.archived ? 'archived' : 'active'; });
+  await idbPut('outbox', op);
+  OFF.queuedAt = Date.now();
+  offPaint();
+  return shim;
+}
+async function offFindDict(f) {                // a waiting find, in the shape the mushroom pages use
+  const meta = (await offSavedJson('/api/fungi?status=none')) || (await offSavedJson('/api/fungi?status=active')) || { fields: [], enums: {} };
+  const photos = f.photos.map((p, i) => ({ id: p.id, file: null, url: URL.createObjectURL(p.blob), caption: p.caption || '', is_primary: i === 0 ? 1 : 0, gps_lat: null, gps_lon: null, taken_at: null }));
+  const d = Object.assign({ code: f.code, status: f.status, version: f.version, created_by: f.who, created_at: f.made, updated_by: f.who, updated_at: f.made, plant: null, pending: true },
+    Object.fromEntries((meta.fields || []).map(x => [x.name, null])), f.fields, { photos, photo: null, photo_url: photos[0] ? photos[0].url : null, photo_count: photos.length,
+      fields: meta.fields || [], enums: meta.enums || {} });
+  if (!d.found_on) d.found_on = f.made.slice(0, 10);
+  if (!d.id_status) d.id_status = 'Not identified yet';
+  return d;
+}
+async function offPendingFinds() { return Promise.all((await idbAll('finds')).map(offFindDict)); }
+async function offIdQueue(url, form) {
+  const parts = await offFormParts(form), img = parts.find(p => p.blob);
+  if (!img) throw new Error('No picture to keep.');
+  const scope = new URLSearchParams(url.split('?')[1] || '').get('scope') || 'common';
+  await idbPut('idq', { id: offId(), made: new Date().toISOString(), scope, blob: img.blob, ref: MUCUR && location.hash.startsWith('#/fungi/') ? MUCUR.code : null, result: null });
+  OFF.idq++; offPaint();
+  const e = new Error('You are offline. The picture is kept on this device and will be checked when you are back online; the answer will be on the Offline page.'); e.queued = true; throw e;
+}
+function offSeen(h) { if (h && h !== 'none') OFF.saved = h; }          // route() clears it; any saved answer marks the page
+async function offCount() {
+  const ops = await offOps(); OFF.n = ops.filter(o => !o.failed).length; OFF.failed = ops.filter(o => o.failed).length;
+  OFF.idq = (await idbAll('idq')).filter(x => !x.result).length;
+}
+async function offPaint() {
+  await offCount();
+  const b = document.getElementById('net'); if (!b) return;
+  const on = navigator.onLine && !OFF.forced;
+  const bits = [OFF.sending === true ? `Sending ${OFF.n}…` : on ? 'Online' : 'Offline'];
+  if (OFF.sending !== true && OFF.n) bits.push(`${OFF.n} to send`);
+  if (OFF.failed) bits.push(`${OFF.failed} not sent`);
+  if (OFF.conflicts) bits.push(`${OFF.conflicts} to decide`);
+  b.textContent = bits.join(' · ');
+  b.dataset.state = OFF.sending === true ? 'sending' : on ? (OFF.n || OFF.failed || OFF.conflicts ? 'waiting' : 'online') : 'offline';
+  document.documentElement.toggleAttribute('data-offline', !on);
+}
+async function offSync() {
+  if (OFF.sending || !navigator.onLine) return;
+  OFF.sending = 'checking';                    // one at a time: the online event, the timer and the page can all ask
+  let st;
+  try { const r = await fetch('/api/offline/status', { cache: 'no-store' }); if (!r.ok || r.headers.get('X-Offline-Saved')) { OFF.sending = false; return; } st = await r.json(); } catch (e) { OFF.sending = false; return; }
+  OFF.conflicts = st.conflicts || 0;
+  const ops = (await offOps()).filter(o => !o.failed);
+  if (!ops.length && !(await idbAll('idq')).some(x => !x.result)) { OFF.sending = false; offPaint(); return; }
+  OFF.sending = true; offPaint();
+  const map = await offKv('idmap', {});
+  let sent = 0, problems = 0;
+  try {
+    for (const op of ops) {
+      const url = op.url.replace(/NEW-[a-z0-9-]+/gi, m => map[m] || m);
+      if (/NEW-/i.test(url)) { op.failed = true; op.error = 'The find it belongs to could not be sent.'; await idbPut('outbox', op); problems++; continue; }
+      const h = { 'X-Editor': op.who, 'X-Offline-Op': op.id, 'X-Offline-Made': op.made, 'X-Offline-Device': op.device };
+      if (op.place) h['X-Place'] = op.place;
+      let body;
+      if (op.form) { body = new FormData(); op.form.forEach(p => (p.blob ? body.append(p.k, p.blob, p.name) : body.append(p.k, p.v))); }
+      else if (op.body != null) { h['Content-Type'] = 'application/json'; body = JSON.stringify(op.body); }
+      let r;
+      try { r = await fetch(url, { method: op.method, headers: h, body }); } catch (e) { break; }      // the connection dropped: try again later
+      let d = null; try { d = await r.json(); } catch (e) { /* no answer */ }
+      if (r.ok) {
+        if (op.temp && d && d.code) { map[op.temp] = d.code; await idbPut('kv', map, 'idmap'); await idbDel('finds', op.temp); }
+        await idbDel('outbox', op.id); sent++;
+      } else if (r.status >= 500) break;
+      else { op.failed = true; op.error = (d && d.error) || `Refused (${r.status})`; await idbPut('outbox', op); problems++; }
+    }
+    var checked = await offIdRun();
+    try { const r2 = await fetch('/api/offline/status', { cache: 'no-store' }); if (r2.ok && !r2.headers.get('X-Offline-Saved')) OFF.conflicts = (await r2.json()).conflicts || 0; } catch (e) { /* later */ }
+  } finally { OFF.sending = false; await offPaint(); }
+  if (sent || problems || checked) {
+    toast(`${sent ? `${sent} change${sent === 1 ? '' : 's'} made offline ${sent === 1 ? 'was' : 'were'} sent.` : ''}${checked ? ` ${checked} picture${checked === 1 ? ' was' : 's were'} checked with Identify; see the Offline page.` : ''}${problems ? ` ${problems} could not be sent; see the Offline page.` : ''}${OFF.conflicts ? ` ${OFF.conflicts} need${OFF.conflicts === 1 ? 's' : ''} your decision.` : ''}`.trim(), problems > 0);
+    if (!document.querySelector('main form[data-form]') || location.hash.startsWith('#/offline')) route();
+    if (await offKv('keep', false)) setTimeout(() => offDownload(true), 1500);
+  }
+}
+async function offIdRun() {                    // pictures taken for Identify while offline
+  let n = 0;
+  for (const x of await idbAll('idq')) {
+    if (x.result) continue;
+    const fd = new FormData(); fd.append('image', x.blob, 'picture.jpg');
+    let r; try { r = await fetch('/api/identify?scope=' + enc(x.scope), { method: 'POST', headers: { 'X-Editor': cleanName(viaTS() ? ME().name : getName()) || 'Unknown' }, body: fd }); } catch (e) { break; }
+    if (!r.ok) { if (r.status >= 500) break; x.result = { error: ((await r.json().catch(() => ({}))).error) || 'Could not be checked.' }; }
+    else x.result = await r.json();
+    x.checked = new Date().toISOString(); await idbPut('idq', x); n++;
+  }
+  return n;
+}
+async function offDownload(quick) {            // "Keep a copy on this device": the answers the pages use, and every photo
+  if (OFF.dl || !navigator.onLine) return;
+  OFF.dl = { done: 0, total: 1, step: 'Finding what to save' }; offDlPaint();
+  try {
+    const m = await (await fetch('/api/offline/manifest', { cache: 'no-store' })).json();
+    const pics = await caches.open('plantdb-photos');
+    const want = [];
+    for (const f of m.photos) for (const u of ['/photos/' + enc(f), '/thumbs/' + enc(f)]) if (!(await pics.match(u))) want.push(u);
+    const lib = (await offKv('keeplib', false)) ? ['/api/library/offline-index'] : [];
+    const jobs = m.urls.concat(lib, want);
+    OFF.dl = { done: 0, total: jobs.length, step: 'Saving', bytes: m.photo_bytes, failed: 0 };
+    const head = PLACE ? { 'X-Place': PLACE } : {};
+    let i = 0;
+    const worker = async () => { while (i < jobs.length) { const u = jobs[i++]; try { const r = await fetch(u, { headers: head }); if (!r.ok) OFF.dl.failed++; } catch (e) { OFF.dl.failed++; } OFF.dl.done++; if (OFF.dl.done % 10 === 0) offDlPaint(); } };
+    await Promise.all([worker(), worker(), worker(), worker()]);
+    if (lib.length) await offLibPhotos();
+    await idbPut('kv', new Date().toISOString(), 'downloaded');
+    OFF.dl.step = 'Done';
+  } catch (e) { OFF.dl = Object.assign(OFF.dl || {}, { step: 'Stopped: ' + e.message }); }
+  const fin = OFF.dl; OFF.dl = null; offDlPaint(fin);
+}
+async function offLibPhotos() {                // the library's Texas list photos, when asked for
+  const idx = await offSavedJson('/api/library/offline-index'); if (!idx) return;
+  const c = await caches.open('plantdb-library-photos'), urls = idx.species.map(s => s.p).filter(Boolean);
+  OFF.dl = Object.assign(OFF.dl, { step: 'Saving library photos', done: 0, total: urls.length });
+  let i = 0;
+  const worker = async () => { while (i < urls.length) { const u = urls[i++]; if (!(await c.match(u))) { try { await fetch(u); } catch (e) { /* later */ } } OFF.dl.done++; if (OFF.dl.done % 20 === 0) offDlPaint(); } };
+  await Promise.all([worker(), worker(), worker()]);
+}
+function offDlPaint(fin) {
+  const box = document.getElementById('off-dl'); if (!box) return;
+  const d = OFF.dl || fin;
+  box.textContent = !d ? '' : OFF.dl ? `${d.step}: ${d.done.toLocaleString()} of ${d.total.toLocaleString()}…` : `${d.step}.${d.failed ? ` ${d.failed} could not be saved; they are tried again next time.` : ''}`;
+  if (!OFF.dl && fin) offPagePaint();
+}
+function offNotice(parts) {                    // on a plant or find page: its changes that are still waiting
+  const code = (parts[0] === 'plant' || parts[0] === 'fungi') && parts[1] ? decodeURIComponent(parts[1]) : null;
+  if (!code) return;
+  offOps().then(ops => {
+    const mine = ops.filter(o => o.url.includes('/' + code) || (o.body && (o.body.plant === code || (o.body.plants || []).includes(code))) || o.temp === code);
+    if (!mine.length || !document.getElementById('app')) return;
+    document.getElementById('app').insertAdjacentHTML('afterbegin', rend(html`<div class="notice off-note noprint" role="note"><strong>Not sent yet:</strong> ${mine.map(offWords).join('; ')}. ${navigator.onLine ? 'Sending soon.' : 'They will be sent when this device is back online.'} <a href="#/offline">Offline page</a></div>`));
+  });
+}
+// the Offline page
+async function viewOffline() {
+  const [keep, keeplib, dl, ops, idq] = await Promise.all([offKv('keep', false), offKv('keeplib', false), offKv('downloaded', null), offOps(), idbAll('idq')]);
+  let est = null; try { est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null; } catch (e) { /* not told */ }
+  let persisted = null; try { persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : null; } catch (e) { /* not told */ }
+  if (navigator.onLine) { try { const s = await (await fetch('/api/offline/status', { cache: 'no-store' })).json(); OFF.conflicts = s.conflicts || 0; } catch (e) { /* offline */ } }
+  const mb = b => (b / 1048576).toLocaleString(undefined, { maximumFractionDigits: b < 10485760 ? 1 : 0 }) + ' MB';
+  const wait = ops.filter(o => !o.failed), bad = ops.filter(o => o.failed);
+  const ios = /iPhone|iPad/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+  return {
+    title: 'Offline use', after: () => { offDlPaint(); },
+    html: html`<h1>Offline use</h1>
+    <p>This device: <strong>${navigator.onLine ? 'online' : 'offline'}</strong>${OFF.saved && !navigator.onLine ? '' : ''}. Changes you make without a connection are kept on this device and sent to the plant record as soon as it can be reached again.</p>
+    ${OFF.conflicts ? html`<p class="notice bad" role="status"><strong>${OFF.conflicts} change${OFF.conflicts === 1 ? '' : 's'} need${OFF.conflicts === 1 ? 's' : ''} your decision:</strong> the same thing was changed on two devices. <a href="#/decisions">Choose which to keep</a>.</p>` : ''}
+    <section aria-labelledby="off-copy-h"><h2 id="off-copy-h">Keep a copy on this device</h2>
+      <div class="off-opts"><label class="chk"><input type="checkbox" data-f="offkeep" ${keep ? raw('checked') : ''}>Keep a copy of every plant, mushroom find, care log and photo (full size) on this device, so it works without a connection</label>
+      <label class="chk"><input type="checkbox" data-f="offkeeplib" ${keeplib ? raw('checked') : ''}>Also keep the library's Texas plant list with its photos (about 300 MB, once the owner has downloaded those photos)</label></div>
+      <p>${dl ? `Last saved ${when(dl)}.` : 'Not saved on this device yet.'} ${keep ? 'It is saved again by itself when it is a few hours old and the device is online.' : ''}</p>
+      <p id="off-dl" role="status" aria-live="polite"></p>
+      ${keep ? html`<p class="row"><button class="btn" type="button" data-act="offdl" ${navigator.onLine ? '' : raw('disabled')}>Save it again now</button></p>` : ''}
+      ${est ? html`<p class="hint">This device is using ${mb(est.usage || 0)} for the plant record${est.quota ? `, of the ${mb(est.quota)} the browser allows` : ''}.${persisted === false ? ' The browser may clear it if the device runs short of space.' : persisted ? ' The browser has agreed to keep it.' : ''}</p>` : ''}
+      <p class="hint">${ios ? html`On an iPhone or iPad, add the plant record to the Home Screen (Share, then <strong>Add to Home Screen</strong>) and open it from there: Safari clears saved copies of sites that are not on the Home Screen after a few weeks.`
+        : html`On Android, choose <strong>Install app</strong> (or <strong>Add to Home screen</strong>) in the browser's menu, and open it from there.`} Open it once while online after each update, so the new version is saved too.</p>
+      <label class="f">This device's name<small>Shown in the Audit log and on decisions, so you know where a change came from</small><input type="text" data-f="offdev" value="${offDevice()}" maxlength="40" autocomplete="off"></label>
+    </section>
+    <section aria-labelledby="off-out-h"><h2 id="off-out-h">Waiting to be sent (${wait.length})</h2>
+      ${wait.length ? html`<ol class="off-list">${wait.map(o => html`<li>${offWords(o)} <span class="muted">(${when(o.made)}, ${o.who})</span> <button class="btn ghost small" type="button" data-act="offrm" data-id="${o.id}">Don't send this</button></li>`)}</ol>
+        <p class="row"><button class="btn" type="button" data-act="offsend" ${navigator.onLine ? '' : raw('disabled')}>Send them now</button></p>` : html`<p class="muted">Nothing is waiting.</p>`}
+      ${bad.length ? html`<h3>Could not be sent (${bad.length})</h3><ol class="off-list">${bad.map(o => html`<li>${offWords(o)} <span class="muted">(${when(o.made)})</span>: <strong>${o.error}</strong>
+        <span class="row"><button class="btn ghost small" type="button" data-act="offretry" data-id="${o.id}">Try again</button><button class="btn ghost small" type="button" data-act="offrm" data-id="${o.id}">Remove it</button></span></li>`)}</ol>` : ''}
+    </section>
+    <section aria-labelledby="off-id-h"><h2 id="off-id-h">Pictures to identify</h2>
+      ${idq.length ? html`<ul class="off-list">${idq.map(x => html`<li><img class="off-pic" src="${URL.createObjectURL(x.blob)}" alt="Picture taken ${when(x.made)}"> Taken ${when(x.made)}${x.ref ? html` for <a href="#/fungi/${enc(x.ref)}">${x.ref}</a>` : ''}.
+          ${!x.result ? html`<span>Waiting for a connection.</span>` : x.result.error ? html`<span>${x.result.error}</span>`
+            : html`<span>It looks most like: ${(x.result.species || []).slice(0, 3).map((s, i) => html`${i ? '; ' : ''}<a href="#/species/${enc(s.scientific_name)}"><i>${s.scientific_name}</i></a>${s.common_name ? ` (${s.common_name})` : ''} ${pct(s.probability)}`)}${(x.result.matches || [])[0] && (x.result.matches[0].confidence || 0) >= 0.5 ? html`. Your plant ${x.result.matches[0].code}?` : ''}</span>`}
+          <button class="btn ghost small" type="button" data-act="offidrm" data-id="${x.id}">Remove</button></li>`)}</ul>` : html`<p class="muted">None. Pictures taken for Identify without a connection wait here and are checked when you're back online.</p>`}
+    </section>
+    ${keep || dl ? html`<section aria-labelledby="off-forget-h"><h2 id="off-forget-h">Forget the copy</h2><p>Deletes what this device saved (not the changes waiting to be sent, and nothing on the plant record itself).</p>
+      <p class="row"><button class="btn danger" type="button" data-act="offforget">Delete the saved copy on this device</button></p></section>` : ''}`,
+  };
+}
+function offPagePaint() { if (location.hash.startsWith('#/offline') && !document.querySelector('#app input:focus')) route(); }
+// the Needs your decision page
+async function viewDecisions() {
+  const d = await api('GET', '/api/conflicts?all=1');
+  const open = d.conflicts.filter(x => x.open), done = d.conflicts.filter(x => !x.open).slice(0, 30);
+  const v = x => (x == null || x === '' ? '(empty)' : x);
+  const href = x => x.kind === 'plant' ? `#/plant/${enc(x.code)}` : `#/fungi/${enc(x.code)}`;
+  return {
+    title: 'Needs your decision',
+    html: html`<h1>Needs your decision</h1>
+    <p>When the same thing was changed on a device without a connection and on the plant record, both versions are kept here until someone chooses. Everything else from the device has already been saved.</p>
+    ${open.length ? html`<ul class="dec-list">${open.map(x => html`<li class="dec"><h2><a href="${href(x)}">${x.code}</a>: ${x.label}</h2>
+        <div class="dec-sides"><div><h3>Changed on ${x.device || 'a device'}</h3><p class="dec-v">${v(x.phone_value)}</p><p class="hint">By ${x.phone_by}, ${when(x.phone_made_at)}</p>
+          ${canChange() ? html`<button class="btn" type="button" data-act="decide" data-id="${x.id}" data-choice="phone">Keep this: ${String(v(x.phone_value)).slice(0, 40)}</button>` : ''}</div>
+        <div><h3>On the plant record</h3><p class="dec-v">${v(x.server_value)}</p><p class="hint">${x.server_by ? `By ${x.server_by}, ${when(x.server_at)}` : ''}</p>
+          ${canChange() ? html`<button class="btn ghost" type="button" data-act="decide" data-id="${x.id}" data-choice="server">Keep this: ${String(v(x.server_value)).slice(0, 40)}</button>` : ''}</div></div>
+        <p class="hint">Before either change it was: ${v(x.base)}.</p></li>`)}</ul>` : html`<p class="muted">Nothing to decide.</p>`}
+    ${done.length ? html`<h2>Decided</h2><ul class="off-list">${done.map(x => html`<li><a href="${href(x)}">${x.code}</a> ${x.label}: kept ${x.choice === 'phone' ? `the change from ${x.device || 'the device'} (${v(x.phone_value)})` : `the plant record's value (${v(x.server_value)})`}, chosen by ${x.resolved_by}.</li>`)}</ul>` : ''}`,
+  };
+}
+Object.assign(acts, {
+  offdl: () => offDownload(false),
+  offsend: async () => { await offSync(); route(); },
+  async offrm(el) {
+    if (!(await confirmBox('Don\'t send this change?', 'It is deleted from this device and never reaches the plant record.', 'Delete it', true))) return;
+    const op = (await offOps()).find(o => o.id === el.dataset.id);
+    if (op && op.temp) { await idbDel('finds', op.temp); for (const o of await offOps()) if (o.url.includes(op.temp)) await idbDel('outbox', o.id); }
+    await idbDel('outbox', el.dataset.id); await offPaint(); route();
+  },
+  async offretry(el) { const op = (await offOps()).find(o => o.id === el.dataset.id); if (op) { delete op.failed; delete op.error; await idbPut('outbox', op); } await offSync(); route(); },
+  async offidrm(el) { await idbDel('idq', el.dataset.id); await offPaint(); route(); },
+  async offforget() {
+    if (!(await confirmBox('Delete the saved copy?', 'This device will need a connection to show the plant record until it is saved again. Changes waiting to be sent are kept.', 'Delete the saved copy', true))) return;
+    await Promise.all(['plantdb-api', 'plantdb-photos', 'plantdb-library-photos'].map(n => caches.delete(n)));
+    await idbPut('kv', false, 'keep'); await idbPut('kv', false, 'keeplib'); await idbDel('kv', 'downloaded'); toast('The saved copy is deleted'); route();
+  },
+  async decide(el) {
+    if (!(await needName())) return;
+    await guard(async () => { await api('POST', '/api/conflicts/' + el.dataset.id, { choice: el.dataset.choice }); OFF.conflicts = Math.max(0, OFF.conflicts - 1); toast('Kept'); offPaint(); await route(); });
+  },
+});
+async function offChange(el) {                 // the Offline page's settings
+  const f = el.dataset.f;
+  if (f === 'offkeep') {
+    await idbPut('kv', el.checked, 'keep');
+    if (el.checked) { try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) { /* asked */ } offDownload(false); }
+    route(); return true;
+  }
+  if (f === 'offkeeplib') { await idbPut('kv', el.checked, 'keeplib'); if (el.checked && (await offKv('keep', false))) offDownload(false); return true; }
+  if (f === 'offdev') { OFFDEV = el.value.trim().slice(0, 40) || null; await idbPut('kv', OFFDEV, 'device'); toast('Saved: this device is ' + offDevice()); return true; }
+  return false;
+}
+async function offStart() {
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    try { await navigator.serviceWorker.register('/sw.js', { scope: '/' }); } catch (e) { console.warn('Offline use is not available here: ' + e.message); }
+  }
+  OFFDEV = await offKv('device', null);
+  window.addEventListener('online', () => { offPaint(); offSync(); });
+  window.addEventListener('offline', () => offPaint());
+  setInterval(() => { offSync(); }, 60000);
+  await offPaint();
+  setTimeout(async () => {
+    await offSync();
+    const keep = await offKv('keep', false), dl = await offKv('downloaded', null);
+    if (keep && navigator.onLine && (!dl || Date.now() - new Date(dl).getTime() > 3 * 3600 * 1000)) offDownload(true);
+  }, 2500);
+}
 
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
@@ -5693,6 +6091,7 @@ document.addEventListener('click', e => {
 document.addEventListener('change', e => {
   const el = e.target;
   if (el.dataset && el.dataset.act && changeActs[el.dataset.act]) { changeActs[el.dataset.act](el); return; }
+  if (el.dataset && /^off(keep|keeplib|dev)$/.test(el.dataset.f || '')) { offChange(el); return; }
   if (el.dataset && el.dataset.plc) {        // Location window: switch straight away, as Display settings do
     placeChanged(el.dataset.plc);
     route().then(() => { const m = document.getElementById('plc-msg'); if (m) m.textContent = `Now using the weather for ${placeName()}.`; const h = document.getElementById('plc-home'); if (h) h.innerHTML = rend(plcHomeRow()); });
@@ -6021,5 +6420,6 @@ Object.assign(changeActs, {
 })();
 
 route();
+offStart();
 wxPoll();                      // shows the progress box on every page while a history load runs
 })();
