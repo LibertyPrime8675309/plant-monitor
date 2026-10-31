@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.19.1 (2026-10-31)
+- **Fixed: the updater can delete old Docker images again.** At the end of an update it offers to delete the images older versions left behind. When you answered yes, it said "invalid reference format: repository name (library/Stop) must be lowercase" and deleted nothing, because a name mix-up in the updater asked Docker for an image called "Stop". Your app and data were never affected.
+- The updater now lists every older image, including the picture checker's (about 2 GB each), and deletes all of them when you say yes. The fix takes effect from the update after this one, because each update runs the updater that was already installed. While installing 1.19.1, just press Enter at that question.
+- Includes everything in 1.19.0 below.
+
 ## 1.19.0 (2026-10-28)
 - **Undo right after a care button.** After you press **Watered**, **Still moist**, **Watered all** or save **Log other care**, the message that appears says what was saved and has an **Undo** button (and **Close**).
   - It stays for 30 seconds and counts down, and the countdown pauses while the pointer or keyboard focus is on it.
