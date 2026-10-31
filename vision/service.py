@@ -117,6 +117,7 @@ def load_all():
         hay = [(s + ' ' + (r[1] or '') + ' ' + ' '.join({v[0] for v in usda.get(s, {}).values()})).lower() for s, r in zip(sp, rows)]
         NAMES.update(rows=rows, sp=sp, emb=emb, usda=usda, hay=hay, by_sp={s: i for i, s in enumerate(sp)},
                      masks={'world': has, 'us': has & in_us, 'texas': has & in_tx, 'common': has & (common | in_us)})
+        build_browse()
         say('Fingerprinting your photos'); index_photos()
         S.update(state='ready', step='Ready')
         threading.Thread(target=watch_photos, daemon=True).start()
@@ -220,7 +221,7 @@ def identify():
     scope = request.args.get('scope', 'common')
     mask = NAMES['masks'].get(scope, NAMES['masks']['common'])
     idx = np.where(mask)[0]
-    logits = (NAMES['emb'][idx].astype(np.float32) @ v) * M['scale']
+    logits = dot_rows(idx, v) * M['scale']
     top = np.argsort(-logits)[:50]
     p = np.exp(logits[top] - logits[top].max()); p /= p.sum()
     for k in range(5):
@@ -233,12 +234,156 @@ def identify():
     out['scope'] = scope
     return jsonify(out)
 
+def dot_rows(idx, v, chunk=40000):
+    """Name fingerprints of rows idx times v, a block at a time (a float32 copy of all 349,000 rows would need 1.4 GB)."""
+    out = np.empty(len(idx), dtype=np.float32)
+    for a in range(0, len(idx), chunk):
+        out[a:a + chunk] = NAMES['emb'][idx[a:a + chunk]].astype(np.float32) @ v
+    return out
+
+# ---------------------------------------------------------------- 1.21.0: browsing the library
+# Kinds of plant, from the class (or the phylum for mosses, liverworts, hornworts and algae) in the Tree of Life list.
+KINDS = [('dicot', 'Flowering plants: broadleaf (dicots)', {'Magnoliopsida'}, set()),
+         ('monocot', 'Flowering plants: grasses, lilies, palms, orchids (monocots)', {'Liliopsida'}, set()),
+         ('fern', 'Ferns and horsetails', {'Polypodiopsida'}, set()),
+         ('lycophyte', 'Clubmosses, spikemosses and quillworts', {'Lycopodiopsida'}, set()),
+         ('conifer', 'Conifers', {'Pinopsida'}, set()),
+         ('cycad', 'Cycads', {'Cycadopsida'}, set()),
+         ('ginkgo', 'Ginkgo', {'Ginkgoopsida'}, set()),
+         ('gnetophyte', 'Joint-firs, Welwitschia and relatives', {'Gnetopsida'}, set()),
+         ('moss', 'Mosses', set(), {'Bryophyta'}),
+         ('liverwort', 'Liverworts', set(), {'Marchantiophyta'}),
+         ('hornwort', 'Hornworts', set(), {'Anthocerotophyta'}),
+         ('alga', 'Algae (green, red and others)', set(), {'Rhodophyta', 'Chlorophyta', 'Charophyta', 'Glaucophyta', 'Langiophytophyta'}),
+         ('other', 'Other or not classified', set(), set())]
+SORTS = ('known', 'sci', 'common', 'family')
+B = {}            # browse arrays: kind, family code, genus, order, common flag, number of US states, sort orders, family names
+
+def kind_of(row):
+    t = row[0]
+    for i, (k, _, classes, phyla) in enumerate(KINDS):
+        if t[2] in classes or t[1] in phyla: return i
+    return len(KINDS) - 1
+
+def common_of(i):
+    """The common name to show: the USDA one (English) when there is one, else the Tree of Life one."""
+    us = NAMES['usda'].get(NAMES['sp'][i])
+    if us:
+        n = next((v[0] for v in us.values() if v[0]), '')
+        if n: return n[0].upper() + n[1:]
+    return NAMES['rows'][i][1] or ''
+
+def build_browse():
+    say('Preparing the library')
+    rows, sp = NAMES['rows'], NAMES['sp']
+    n = len(rows)
+    fams = sorted({r[0][4] for r in rows if r[0][4]})
+    fcode = {f: i for i, f in enumerate(fams)}
+    commons = [common_of(i) for i in range(n)]
+    B.update(kind=np.array([kind_of(r) for r in rows], dtype=np.int8), fams=fams,
+             fam=np.array([fcode.get(r[0][4], -1) for r in rows], dtype=np.int32),
+             genus=np.array([r[0][5].lower() for r in rows]), order=np.array([r[0][3].lower() for r in rows]),
+             common=np.array([bool(c) for c in commons]), commons=commons,
+             nstates=np.array([len(NAMES['usda'].get(x, {})) for x in sp], dtype=np.int16))
+    low = [x.lower() for x in sp]
+    B['sort'] = {
+        'known': np.array(sorted(range(n), key=lambda i: (not commons[i], -int(B['nstates'][i]), low[i])), dtype=np.int32),
+        'sci': np.array(sorted(range(n), key=lambda i: low[i]), dtype=np.int32),
+        'common': np.array(sorted(range(n), key=lambda i: (not commons[i], commons[i].lower(), low[i])), dtype=np.int32),
+        'family': np.array(sorted(range(n), key=lambda i: (rows[i][0][4] or '~', low[i])), dtype=np.int32)}
+    B['facets'] = {}
+
+def browse_mask(a):
+    scope = a.get('scope', 'world')
+    m = NAMES['masks'].get(scope, NAMES['masks']['world']).copy()
+    if a.get('kind'):
+        k = next((i for i, x in enumerate(KINDS) if x[0] == a['kind']), None)
+        if k is not None: m &= B['kind'] == k
+    if a.get('family'):
+        f = next((i for i, x in enumerate(B['fams']) if x.lower() == a['family'].strip().lower()), None)
+        m &= (B['fam'] == f) if f is not None else False
+    if a.get('genus'): m &= B['genus'] == a['genus'].strip().lower()
+    if a.get('order'): m &= B['order'] == a['order'].strip().lower()
+    if a.get('common') == '1': m &= B['common']
+    st = a.get('state', '')
+    if st == 'us': m &= B['nstates'] > 0
+    elif st:
+        idx = np.where(m & (B['nstates'] > 0))[0]
+        m[:] = False
+        m[[i for i in idx if st in NAMES['usda'][NAMES['sp'][i]]]] = True
+    own = [x for x in (a.get('own') or '').lower().split('|') if x]
+    if a.get('mine') in ('species', 'genus') and own:
+        ok = set(own)
+        gen = {x for x in (a.get('owngenus') or '').lower().split('|') if x} if a['mine'] == 'genus' else set()
+        idx = np.where(m)[0]
+        m[:] = False
+        m[[i for i in idx if NAMES['sp'][i].lower() in ok or (gen and B['genus'][i] in gen)]] = True
+    elif a.get('mine') in ('species', 'genus'):
+        m[:] = False
+    q = (a.get('q') or '').strip().lower()
+    if q:
+        hay = NAMES['hay']
+        idx = np.where(m)[0]
+        m[:] = False
+        m[[i for i in idx if q in hay[i]]] = True
+    return m
+
+@app.get('/browse')
+def browse():
+    """Every species in a list, filtered and sorted, a page at a time: ?scope=&q=&kind=&family=&genus=&order=&state=&common=1
+    &mine=species|genus&own=a|b&owngenus=x|y&sort=known|sci|common|family&offset=&limit="""
+    if not B: return jsonify(error=S['step'] if S['state'] == 'off' else 'The picture checker is still setting up: ' + S['step'], status=S), 503
+    a = request.args
+    m = browse_mask(a)
+    order = B['sort'].get(a.get('sort'), B['sort']['known'])
+    hits = order[m[order]]
+    off = max(0, int(a.get('offset', 0) or 0)); lim = max(1, min(120, int(a.get('limit', 48) or 48)))
+    return jsonify(total=int(len(hits)), offset=off, results=[species_dict(int(i)) for i in hits[off:off + lim]])
+
+@app.get('/facets')
+def facets():
+    """What the filters can offer in a list: the kinds and families with their counts."""
+    if not B: return jsonify(error='Still setting up', status=S), 503
+    scope = request.args.get('scope', 'world')
+    if scope not in B['facets']:
+        m = NAMES['masks'].get(scope, NAMES['masks']['world'])
+        kc = np.bincount(B['kind'][m], minlength=len(KINDS)); fc = np.bincount(B['fam'][m][B['fam'][m] >= 0], minlength=len(B['fams']))
+        B['facets'][scope] = {'total': int(m.sum()), 'kinds': [{'key': k[0], 'label': k[1], 'count': int(kc[i])} for i, k in enumerate(KINDS) if kc[i]],
+                              'families': [{'name': f, 'count': int(fc[i])} for i, f in enumerate(B['fams']) if fc[i]],
+                              'states': [x for x in STATES if x != 'Texas']}
+    return jsonify(B['facets'][scope])
+
+@app.get('/taxon')
+def taxon():
+    """One species in full: names, classification, US states, and the species whose name fingerprints are closest
+    (BioCLIP places species that look alike near each other, so these are lookalikes, not necessarily relatives)."""
+    if not B: return jsonify(error='Still setting up', status=S), 503
+    i = NAMES['by_sp'].get((request.args.get('name') or '').strip())
+    if i is None: abort(404, 'That species is not in the list')
+    d = species_dict(i)
+    t = NAMES['rows'][i][0]
+    us = NAMES['usda'].get(NAMES['sp'][i], {})
+    d['classification'] = [{'rank': r, 'name': n} for r, n in zip(('Kingdom', 'Phylum', 'Class', 'Order', 'Family', 'Genus'), t[:6]) if n]
+    d['common_names'] = sorted({x for x in [NAMES['rows'][i][1]] + [v[0] for v in us.values()] if x}, key=str.lower)
+    d['kind'] = KINDS[int(B['kind'][i])][1]
+    sims = []
+    if np.abs(NAMES['emb'][i]).sum() > 0:
+        idx = np.where(NAMES['masks']['world'])[0]
+        sc = dot_rows(idx, NAMES['emb'][i].astype(np.float32))
+        for j in np.argsort(-sc)[:13]:
+            k = int(idx[j])
+            if k != i and NAMES['sp'][k] != NAMES['sp'][i]: sims.append(species_dict(k) | {'similarity': round(float(sc[j]), 3)})
+            if len(sims) >= 8: break
+    d['similar'] = sims
+    return jsonify(d)
+
 def species_dict(i):
     r, sp = NAMES['rows'][i], NAMES['sp'][i]
     us = NAMES['usda'].get(sp, {})
     first = next(iter(us.values())) if us else ('', '', '')
-    return {'scientific_name': sp, 'common_name': r[1] or first[0], 'genus': r[0][5], 'family': r[0][4] or first[2], 'order': r[0][3],
-            'in_texas': 'Texas' in us, 'us_states': sorted(us), 'usda_symbol': first[1]}
+    return {'scientific_name': sp, 'common_name': B['commons'][i] if B else (r[1] or first[0]), 'genus': r[0][5], 'family': r[0][4] or first[2],
+            'order': r[0][3], 'in_texas': 'Texas' in us, 'us_states': sorted(us), 'usda_symbol': first[1],
+            'kind': KINDS[int(B['kind'][i])][0] if B else ''}
 
 @app.get('/names')
 def names():

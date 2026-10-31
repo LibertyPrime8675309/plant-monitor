@@ -252,7 +252,7 @@ async function route() {
   const parts = hp.split('/').filter(Boolean), qs = new URLSearchParams(hq || '');
   if (parts[0] !== 'identify') idStop();
   if (parts[0] !== 'new') NEWFILL = null;
-  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' ? 'library' : 'plants';
+  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' || parts[0] === 'species' ? 'library' : 'plants';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let view;
@@ -277,6 +277,7 @@ async function route() {
     else if (parts[0] === 'outside') view = await viewOutside();
     else if (parts[0] === 'identify') view = await viewIdentify();
     else if (parts[0] === 'library') view = await viewLibrary(qs);
+    else if (parts[0] === 'species' && parts[1]) view = await viewSpecies(decodeURIComponent(parts[1]));
     else view = await viewGallery();
     if (my !== token) return;
     app.innerHTML = rend(view.html);
@@ -436,6 +437,10 @@ function sheet(p) {
     <div class="meter"><span>ID ${p.id_confidence == null ? 'not rated' : p.id_confidence + '%'}</span><i style="--v:${p.id_confidence || 0}%;--mc:${confColor(p.id_confidence)}"></i></div>
   </article>`;
 }
+document.addEventListener('load', e => {       // 1.21.0: wide photos on cards get class "wide" (see the photofit Display setting)
+  const im = e.target; if (!im || im.tagName !== 'IMG' || !im.closest('.mat')) return;
+  im.classList.toggle('wide', im.naturalWidth > im.naturalHeight * 1.1);
+}, true);
 function sheetStep(code, d) {
   const p = ALL.find(x => x.code === code), card = document.querySelector(`#grid .sheet[data-code="${CSS.escape(code)}"]`);
   if (!p || !card) return;
@@ -475,6 +480,7 @@ function drawGrid() {
   const led = document.querySelector('.ledger'); if (led) led.innerHTML = rend(ledger());
   const mf = document.querySelector('#more-f > summary'); if (mf) { const n = moreOn(); mf.textContent = 'More filters' + (n ? ` (${n} on)` : ''); }
   const gt = document.getElementById('g-title'); if (gt) gt.textContent = G.status === 'archived' ? 'Archived plants' : 'Outdoor plants';
+  const wa = document.getElementById('wa-btn'); if (wa) { const n = r.filter(p => !isArch(p)).length; wa.textContent = `Water all ${n} shown`; wa.disabled = !n; }
   document.getElementById('count').textContent = `${r.length} of ${pool} ${G.status === 'archived' ? 'archived ' : G.status === 'all' ? '' : 'active '}plants shown`;
   document.getElementById('grid').innerHTML = r.length
     ? rend(r.map(sheet))
@@ -511,6 +517,8 @@ async function viewGallery() {
     </div>
     ${moreFilters()}
     <p id="count" class="muted" aria-live="polite"></p>
+    <div class="water-all noprint"><button class="btn ghost" type="button" data-act="waterall" id="wa-btn">Water all</button>
+      <span class="hint">Marks every plant shown (with the filters above) as watered today. Plants already watered today are skipped.</span></div>
     <div class="grid" id="grid"></div>
     ${archN ? html`<p class="hint" style="margin-top:2rem">${archN} archived plant${archN === 1 ? ' is' : 's are'} hidden from this list. Choose <strong>Show: Active and archived</strong> in the filters to see ${archN === 1 ? 'it' : 'them'} too.</p>` : ''}`,
     after: drawGrid,
@@ -1434,7 +1442,8 @@ function careQuick(p) {
       <button class="btn ghost" type="button" data-act="fertlog" data-code="${p.code}">Log feeding</button>
       <label class="btn ghost quick-photo">Add a photo<input type="file" accept="image/*" capture="environment" data-act="addphotos" class="sr"></label>
       <button class="btn ghost" type="button" data-act="careother" data-code="${p.code}" data-name="${p.common_name}">Log other care</button>
-    </div></div>`;
+    </div>
+    <p class="hint" id="water-done-note" hidden>Already watered today, so "Watered today" is off until tomorrow. To take it back, use Undo in the message, or Remove in the care log.</p></div>`;
 }
 async function loadCarePlant() {
   const box = document.getElementById('care-plant'); if (!box || !CUR) return;
@@ -1445,6 +1454,11 @@ async function loadCarePlant() {
   if (!CUR || CUR.p.code !== code) return;
   const w = W.plants.find(x => x.code === code);
   const qs = document.getElementById('quick-status'); if (qs) qs.textContent = w ? 'Water: ' + waterWords(w) : '';
+  // 1.21.0: once watered today, "Watered today" is switched off until tomorrow (Undo or Remove in the care log switch it back on)
+  const wb = document.querySelector('.quick-btns [data-act=care][data-kind=water]'), wn = document.getElementById('water-done-note');
+  const done = !!(w && w.last_water === W.today);
+  if (wb) { wb.disabled = done; wb.classList.toggle('done-today', done); wb.textContent = done ? '✓ Watered today' : 'Watered today'; }
+  if (wn) wn.hidden = !done;
   box.innerHTML = rend(html`<div class="verdict-box v-${w && w.state === 'due' ? 'due' : 'wait'}" role="status"><h3>Watering</h3><p>${w ? waterWords(w) : ''}</p>
       <p class="hint">Change the gap with "Check for water every (days)" in Edit this page. Rain of ${W.rain_counts_in} in or more counts as a watering for plants whose Location is Outdoors.</p></div>
     <h3>Care log</h3>${log.length ? html`<ul class="care-log">${log.map(e => html`<li><strong>${CARE_WORD[e.kind] || e.kind}</strong> ${relDay(e.done_on)}${e.note ? ': ' + e.note : ''} <span class="muted">(${e.created_by})</span>
@@ -3258,6 +3272,7 @@ function displayDialog() {
     <fieldset class="opt-group"><legend>Voice</legend><label class="f">Voice<select data-pref="voice" id="pref-voice">${voiceOptions(P.voice)}</select></label>
       <p class="row"><button class="btn ghost small" type="button" data-act="voicetest">Try this voice</button></p>
       <p class="hint">"Natural" or "Online" voices in Microsoft Edge sound the most human.</p></fieldset>` : ''}
+    ${group('photofit', 'Photos on the Plants page', [['auto', 'Show wide photos whole, fill the card with tall ones'], ['fill', 'Fill the card (wide photos lose their sides)'], ['whole', 'Always show the whole photo']], 'A wide photo cut down to fit a tall card loses its sides. Shown whole, it has a plain band above and below.')}
     ${group('swipe', 'Swipe between plants', [['1', 'On'], ['0', 'Off']], 'On a phone or tablet, swipe left on a plant page for the next plant, or right for the previous one. Start away from the edges of the screen, which your phone uses for Back.')}
     ${group('keys', 'Keyboard shortcuts', [['1', 'On'], ['0', 'Off']], 'R reads the page aloud, [ and ] go to the previous and next plant, ? lists them all.')}
     <div class="row"><button class="btn" value="ok" autofocus>Done</button><button class="btn ghost" type="button" data-act="prefreset">Reset to defaults</button></div></form>`);
@@ -4476,6 +4491,19 @@ const acts = {
     if (!(await confirmBox(`Mark ${codes.length} plants as watered today?`, 'Each one gets a "Watered" entry for today in its care log. You can remove any of them on the plant\'s page.', 'Mark as watered'))) return;
     await guard(async () => { const r = await api('POST', '/api/care', { plants: codes, kind: el.dataset.kind }); careUndoToast(codes.length + ' plants marked as watered', r && r.ids); await careRefresh(); });
   },
+  async waterall() {                    // 1.21.0: Plants page, every plant the filters show
+    const shown = filteredPlants().filter(p => !isArch(p)); if (!shown.length) return;
+    if (!(await needName())) return;
+    await guard(async () => {
+      const W = await api('GET', '/api/water'), done = new Set(W.plants.filter(w => w.last_water === W.today).map(w => w.code));
+      const todo = shown.filter(p => !done.has(p.code)), skip = shown.length - todo.length;
+      if (!todo.length) { toast(`All ${shown.length} plants shown were already watered today.`); return; }
+      if (!(await confirmBox(`Mark ${todo.length} plant${todo.length === 1 ? '' : 's'} as watered today?`,
+        `These are the plants shown with your filters.${skip ? ` ${skip} of them ${skip === 1 ? 'was' : 'were'} already watered today and ${skip === 1 ? 'is' : 'are'} skipped.` : ''} Each gets a "Watered" entry for today in its care log.`, 'Mark as watered'))) return;
+      const r = await api('POST', '/api/care', { plants: todo.map(p => p.code), kind: 'water' });
+      careUndoToast(`${r.ids.length} plant${r.ids.length === 1 ? '' : 's'} marked as watered${skip ? ` (${skip} already watered today were skipped)` : ''}`, r.ids);
+    });
+  },
   careother(el) { return careDialog(el.dataset.code, el.dataset.name); },
   async caredel(el) {
     if (!(await needName())) return;
@@ -4936,47 +4964,237 @@ function idNewPlant(s, withPic) {
   idStop(); go('#/new');
 }
 
-// ---------- the plant library ----------
-const LIB = { q: '', scope: 'world', res: null };
+// ---------- the plant library (1.18.0; 1.21.0: browse every species, filters, records with photos) ----------
+// The list comes from the picture checker (offline). Photos come from iNaturalist through the app, which keeps them in
+// data/library; the cards ask for the photos of the plants on screen and fill them in as they arrive.
+const LIB_DEF = { q: '', scope: 'common', kind: '', family: '', state: '', common: false, mine: '', sort: 'known', view: 'cards' };
+const LIB = Object.assign({ res: [], total: 0, facets: null, facetsFor: '', photos: {}, t: 0, poll: 0, my: 0 }, LIB_DEF);
+try { const s = JSON.parse(localStorage.getItem('plantdb.library') || '{}'); Object.keys(LIB_DEF).forEach(k => { if (s[k] != null && typeof s[k] === typeof LIB_DEF[k]) LIB[k] = s[k]; }); } catch (e) { /* defaults */ }
+const libSave = () => { try { localStorage.setItem('plantdb.library', JSON.stringify(Object.fromEntries(Object.keys(LIB_DEF).map(k => [k, LIB[k]])))); } catch (e) { /* not remembered */ } };
+const LIB_PAGE = 48;
+const LIB_SORTS = [['known', 'Best known first'], ['common', 'Common name A to Z'], ['sci', 'Scientific name A to Z'], ['family', 'Family']];
+const LIB_STATE_WORD = s => s.replace(/([a-z])([A-Z])/g, '$1 $2');
+const LIB_KIND_SHORT = { dicot: 'Flowering plant', monocot: 'Flowering plant (monocot)', fern: 'Fern', lycophyte: 'Clubmoss', conifer: 'Conifer', cycad: 'Cycad', ginkgo: 'Ginkgo', gnetophyte: 'Gnetophyte', moss: 'Moss', liverwort: 'Liverwort', hornwort: 'Hornwort', alga: 'Alga', other: '' };
+const spHref = s => '#/species/' + enc(s);
+function libFiltersOn() { return ['kind', 'family', 'state', 'mine'].filter(k => LIB[k]).length + (LIB.common ? 1 : 0); }
 async function viewLibrary(qs) {
-  if (qs.get('q')) LIB.q = qs.get('q');
-  if (qs.get('scope')) LIB.scope = qs.get('scope');
+  for (const k of ['q', 'scope', 'kind', 'family', 'state', 'mine', 'sort']) if (qs.get(k) != null) LIB[k] = qs.get(k);
   let st = null;
   try { st = await api('GET', '/api/identify/status'); } catch (e) { /* shown below */ }
-  const ready = st && st.scopes && st.state !== 'off';
+  const ready = st && st.state === 'ready';
+  let fac = null;
+  if (ready) { try { fac = await api('GET', '/api/library/facets?scope=' + enc(LIB.scope)); LIB.facets = fac; LIB.facetsFor = LIB.scope; } catch (e) { /* filters without counts */ } }
+  let lset = null; if (ME().role === 'owner') { try { lset = await api('GET', '/api/library/settings'); } catch (e) { /* hidden */ } }
+  const sel = (f, opts) => html`<select data-f="${f}">${opts.map(([v, l]) => html`<option value="${v}" ${String(LIB[f.slice(3)]) === v ? raw('selected') : ''}>${l}</option>`)}</select>`;
   return {
     title: 'Plant library',
-    after: () => { if (LIB.q && ready) libSearch(); },
+    after: () => { if (ready) libLoad(); },
     html: html`<h1>Plant library</h1>
-    <p>Look up any of ${st && st.species ? Number(st.species).toLocaleString() : 'about 349,000'} plant species by scientific or common name. It works without the internet, from this computer's lists.</p>
+    <p>Every plant species this computer knows, ${st && st.species ? Number(st.species).toLocaleString() : 'about 349,000'} in all. Search, filter, and open any of them for its photos, description, classification, where it grows in the US, and the species it is most often mistaken for.</p>
     ${ready ? '' : html`<p class="notice bad" role="status">${idStatusText(st)}</p>`}
-    <form data-form="libsearch" role="search" class="lib-form" autocomplete="off">
-      <label class="f">Name<small>Part of a scientific or common name, at least 2 letters. For example: monstera, bluebonnet, Agave.</small>
-        <input type="search" name="q" value="${LIB.q}" required minlength="2"></label>
-      <label class="f">Look in<select name="scope">${ID_SCOPES.map(([k, l]) => html`<option value="${k}" ${k === LIB.scope ? raw('selected') : ''}>${l}${st && st.scopes && st.scopes[k] ? ` (${Number(st.scopes[k].count).toLocaleString()})` : ''}</option>`)}</select></label>
-      <div class="row"><button class="btn" type="submit">Search</button></div>
-    </form>
-    <div id="lib-res" aria-live="polite"></div>
-    <section class="id-sec" aria-labelledby="h-libsrc"><h2 id="h-libsrc">Where the names come from</h2>
-      <ul><li>Scientific names, families and common names: the Tree of Life list that the BioCLIP model was trained with (TreeOfLife-200M, Imageomics Institute, free to use).</li>
-      <li>Which states a plant grows wild in, and USDA symbols: the USDA PLANTS state lists (public domain).</li>
-      <li>The links open USDA PLANTS, Kew's Plants of the World Online and Wikipedia for care, range and pictures.</li></ul></section>`,
+    <div class="filters lib-filters" role="search" aria-label="Search and filter the library">
+      <label>Search<input type="search" data-f="libq" value="${LIB.q}" placeholder="Common or scientific name" autocomplete="off"></label>
+      <label>Look in${sel('libscope', ID_SCOPES.map(([k, l]) => [k, l + (st && st.scopes && st.scopes[k] ? ` (${Number(st.scopes[k].count).toLocaleString()})` : '')]))}</label>
+      <label>Kind of plant${sel('libkind', [['', 'Any kind'], ...((fac && fac.kinds) || []).map(k => [k.key, `${k.label} (${k.count.toLocaleString()})`])])}</label>
+      <label>Family<input type="text" data-f="libfamily" list="lib-fams" value="${LIB.family}" placeholder="Any family" autocomplete="off">
+        <datalist id="lib-fams">${((fac && fac.families) || []).map(f => html`<option value="${f.name}">${f.name} (${f.count})</option>`)}</datalist></label>
+      <label>Grows wild in${sel('libstate', [['', 'Anywhere'], ['us', 'The United States'], ['Texas', 'Texas'], ...((fac && fac.states) || []).map(x => [x, LIB_STATE_WORD(x)])])}</label>
+      <label>Show${sel('libmine', [['', 'All of them'], ['species', 'Only ones I have'], ['genus', 'Ones I have, or of the same genus']])}</label>
+      <label>Sort by${sel('libsort', LIB_SORTS)}</label>
+      <label>Show as${sel('libview', [['cards', 'Cards with photos'], ['table', 'A table']])}</label>
+      <label class="chk"><input type="checkbox" data-f="libcommon" ${LIB.common ? raw('checked') : ''}>Only plants with a common name</label>
+    </div>
+    <p class="row lib-count"><span id="lib-count" class="muted" role="status" aria-live="polite"></span>
+      <button class="btn ghost small" type="button" data-act="libclear" id="lib-clear" ${libFiltersOn() || LIB.q ? '' : raw('hidden')}>Clear search and filters</button></p>
+    <div id="lib-res"></div>
+    <p class="row"><button class="btn" type="button" data-act="libmore" id="lib-more" hidden>Show more</button></p>
+    <section class="id-sec" aria-labelledby="h-libsrc"><h2 id="h-libsrc">Where the names and photos come from</h2>
+      <ul><li>Names, classification and the lookalikes: the Tree of Life list behind the BioCLIP model (Imageomics Institute, free to use), on this computer.</li>
+      <li>Where a plant grows wild in the US: the USDA PLANTS state lists (public domain), on this computer.</li>
+      <li>Photos and the short description: iNaturalist, whose members share their photos under Creative Commons licences (each photo names its photographer and licence), and Wikipedia. They are fetched once per species, only the species name is sent, and they are kept on this computer in data\\library.</li></ul>
+      ${lset ? html`<label class="chk"><input type="checkbox" data-f="libonline" ${lset.online ? raw('checked') : ''}>Look up photos and descriptions on iNaturalist (turn off to keep the library fully offline)</label>` : ''}
+    </section>`,
   };
 }
-async function libSearch() {
-  const box = document.getElementById('lib-res'); if (!box) return;
-  box.innerHTML = rend(html`<p role="status">Searching…</p>`);
-  try {
-    const r = await api('GET', '/api/library?' + new URLSearchParams({ q: LIB.q, scope: LIB.scope }));
-    LIB.res = r.results;
-    const sc = ID_SCOPES.find(x => x[0] === LIB.scope);
-    box.innerHTML = rend(html`<h2 id="h-libres" tabindex="-1">${r.total ? `${r.total >= 400 ? 'More than 400' : r.total} found` : 'Nothing found'} for "${LIB.q}" in ${sc ? sc[1].toLowerCase() : 'the list'}</h2>
-      ${r.total > r.results.length ? html`<p class="muted">Showing the first ${r.results.length}. Type more of the name to narrow it down.</p>` : ''}
-      ${!r.total && LIB.scope !== 'world' ? html`<p>Try "All plants worldwide".</p>` : ''}
-      <ol class="id-sps">${r.results.map((s, i) => spCard(s, i, 'library', canChange()))}</ol>`);
-    const h = document.getElementById('h-libres'); if (h) h.focus();
-  } catch (e) { box.innerHTML = rend(html`<div class="notice bad" role="alert">${e.message}</div>`); }
+function libQuery(offset) {
+  const p = { scope: LIB.scope, q: LIB.q, kind: LIB.kind, family: LIB.family, state: LIB.state, mine: LIB.mine, sort: LIB.sort, offset: String(offset), limit: String(LIB_PAGE) };
+  if (LIB.common) p.common = '1';
+  return new URLSearchParams(Object.fromEntries(Object.entries(p).filter(([, v]) => v !== '')));
 }
+async function libLoad(more) {
+  const box = document.getElementById('lib-res'); if (!box) return;
+  const my = ++LIB.my, off = more ? LIB.res.length : 0;
+  if (!more) { box.setAttribute('aria-busy', 'true'); }
+  try {
+    const r = await api('GET', '/api/library/browse?' + libQuery(off));
+    if (my !== LIB.my) return;
+    LIB.res = more ? LIB.res.concat(r.results) : r.results; LIB.total = r.total;
+    libDraw(more ? r.results.length : 0);
+  } catch (e) { if (my === LIB.my) box.innerHTML = rend(html`<div class="notice bad" role="alert">${e.message}</div>`); }
+  box.removeAttribute('aria-busy');
+}
+function libTags(s) {
+  const t = [];
+  if (s.yours && s.yours.length) t.push(html`<span class="tag tag-yours">You have it: ${s.yours.join(', ')}</span>`);
+  else if (s.yours_genus && s.yours_genus.length) t.push(html`<span class="tag">Same genus as ${s.yours_genus.slice(0, 3).join(', ')}</span>`);
+  if (s.in_texas) t.push(html`<span class="tag">Wild in Texas</span>`);
+  else if (s.us_states && s.us_states.length) t.push(html`<span class="tag">Wild in ${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}</span>`);
+  return t;
+}
+function libPhotoHtml(s, cls) {
+  const ph = s.own_photo ? { url: s.own_photo, mine: true } : LIB.photos[s.scientific_name];
+  if (ph && ph.url) return html`<img class="${cls}" src="${ph.url}" alt="" loading="lazy" decoding="async">`;
+  return html`<div class="nophoto ${cls}" data-ph="${s.scientific_name}">${ph === null ? 'No photo found' : LIB.photos.__off ? 'Photos are off' : 'Finding a photo…'}</div>`;
+}
+function libCard(s) {
+  return html`<article class="sheet lib-card" data-sp="${s.scientific_name}">
+    <div class="mat">${libPhotoHtml(s, '')}${s.kind && LIB_KIND_SHORT[s.kind] ? html`<span class="acc">${LIB_KIND_SHORT[s.kind]}</span>` : ''}</div>
+    <h3 class="name"><a class="sheet-link" href="${spHref(s.scientific_name)}">${s.common_name || s.scientific_name}</a></h3>
+    ${s.common_name ? html`<p class="sci latin">${s.scientific_name}</p>` : ''}
+    <p class="lib-fam">${s.family || 'Family not known'}</p>
+    <div class="tags">${libTags(s)}</div>
+  </article>`;
+}
+function libRow(s) {
+  return html`<tr data-sp="${s.scientific_name}"><td class="lib-th">${libPhotoHtml(s, 'lib-thumb')}</td>
+    <td><a href="${spHref(s.scientific_name)}">${s.common_name || s.scientific_name}</a></td><td class="latin">${s.scientific_name}</td>
+    <td>${s.family}</td><td>${LIB_KIND_SHORT[s.kind] || ''}</td>
+    <td>${s.in_texas ? 'Texas' + (s.us_states.length > 1 ? ` and ${s.us_states.length - 1} more states` : '') : s.us_states && s.us_states.length ? `${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}` : ''}</td>
+    <td>${s.yours && s.yours.length ? s.yours.join(', ') : s.yours_genus && s.yours_genus.length ? 'Same genus: ' + s.yours_genus.slice(0, 3).join(', ') : ''}</td></tr>`;
+}
+function libDraw(added) {
+  const box = document.getElementById('lib-res'); if (!box) return;
+  const n = LIB.res.length, cnt = document.getElementById('lib-count'), more = document.getElementById('lib-more'), clr = document.getElementById('lib-clear');
+  const sc = ID_SCOPES.find(x => x[0] === LIB.scope);
+  if (cnt) cnt.textContent = LIB.total ? `Showing ${n.toLocaleString()} of ${LIB.total.toLocaleString()} in ${sc ? sc[1][0].toLowerCase() + sc[1].slice(1) : 'the list'}${LIB.q ? ` matching "${LIB.q}"` : ''}.` : `Nothing found${LIB.q ? ` for "${LIB.q}"` : ''} with these filters.`;
+  if (more) { more.hidden = n >= LIB.total; more.textContent = `Show ${Math.min(LIB_PAGE, LIB.total - n)} more`; }
+  if (clr) clr.hidden = !(libFiltersOn() || LIB.q);
+  if (!LIB.total) {
+    box.innerHTML = rend(html`<div class="empty"><p>Try another spelling, fewer filters${LIB.scope !== 'world' ? ', or "All plants worldwide" under Look in' : ''}.</p></div>`);
+    return;
+  }
+  if (LIB.view === 'table') {
+    box.innerHTML = rend(html`<div class="tbl-wrap"><table class="tbl lib-tbl"><caption class="sr">Plant species, ${LIB.total} in all</caption><thead><tr><th scope="col">Photo</th><th scope="col">Name</th><th scope="col">Scientific name</th><th scope="col">Family</th><th scope="col">Kind</th><th scope="col">Grows wild in</th><th scope="col">Yours</th></tr></thead>
+      <tbody>${LIB.res.map(libRow)}</tbody></table></div>`);
+  } else if (added && box.querySelector('.grid')) {
+    box.querySelector('.grid').insertAdjacentHTML('beforeend', rend(LIB.res.slice(n - added).map(libCard)));
+  } else {
+    box.innerHTML = rend(html`<div class="grid lib-grid">${LIB.res.map(libCard)}</div>`);
+  }
+  if (added) { const first = box.querySelectorAll('[data-sp]')[n - added]; const a = first && first.querySelector('a'); if (a) a.focus(); }
+  libPhotos();
+}
+async function libPhotos() {
+  clearTimeout(LIB.poll);
+  const want = [...new Set([...document.querySelectorAll('#lib-res [data-ph]')].map(e => e.dataset.ph).filter(n => LIB.photos[n] === undefined || LIB.photos[n] === 'pending'))];
+  if (!want.length) return;
+  let r;
+  try { r = await api('GET', '/api/library/photos?names=' + enc(want.slice(0, 150).join('|'))); } catch (e) { return; }
+  LIB.photos.__off = !r.online;
+  let pending = 0;
+  for (const [name, v] of Object.entries(r.photos)) {
+    LIB.photos[name] = v; if (v === 'pending') pending++;
+    if (v === 'pending') continue;
+    document.querySelectorAll(`#lib-res [data-ph="${CSS.escape(name)}"]`).forEach(el => {
+      const s = LIB.res.find(x => x.scientific_name === name); if (!s) return;
+      el.outerHTML = rend(libPhotoHtml(s, el.classList.contains('lib-thumb') ? 'lib-thumb' : ''));
+    });
+  }
+  if (!r.online) document.querySelectorAll('#lib-res [data-ph]').forEach(el => { el.textContent = 'Photos are off'; });
+  if (pending && document.getElementById('lib-res')) LIB.poll = setTimeout(libPhotos, 3000);     // the background fetch does about one a second
+}
+function libChanged(reload) {
+  libSave();
+  history.replaceState(null, '', '#/library' + (LIB.q ? '?' + new URLSearchParams({ q: LIB.q }) : ''));
+  lastPath = location.hash.replace(/^#/, '');
+  if (reload) route(); else libLoad();
+}
+
+// ---------- one species: the library record (1.21.0) ----------
+async function viewSpecies(name) {
+  const d = await api('GET', '/api/library/taxon?name=' + enc(name));
+  SPCUR = d;
+  const title = d.common_name || d.scientific_name;
+  const cls = d.classification || [], states = d.us_states || [];
+  const filt = (k, v) => `#/library?${new URLSearchParams({ [k]: v, scope: 'world' })}`;
+  return {
+    title,
+    after: () => spInfo(d),
+    html: html`<p class="crumb"><a href="#/library">Back to the plant library</a></p>
+    <article class="species" aria-labelledby="sp-h">
+      <header class="sp-head"><h1 id="sp-h">${title}</h1>
+        ${d.common_name ? html`<p class="sp-sci latin">${d.scientific_name}</p>` : ''}
+        <p class="muted">${[d.kind, d.family ? 'family ' + d.family : ''].filter(Boolean).join(', ')}</p>
+        <div class="tags">${libTags(d)}</div></header>
+      <div class="sp-grid">
+        <section class="sp-photos" aria-labelledby="sp-ph-h"><h2 id="sp-ph-h">Photos</h2><div id="sp-gallery"><p class="muted" role="status">${d.online ? 'Finding photos…' : 'Photos from iNaturalist are turned off.'}</p></div></section>
+        <section aria-labelledby="sp-about-h"><h2 id="sp-about-h">About</h2><div id="sp-about"><p class="muted">${d.online ? 'Looking up the description…' : 'The description comes from iNaturalist and Wikipedia, which are turned off.'}</p></div>
+          ${d.your_plants && d.your_plants.length ? html`<h3>Your plants</h3><ul class="sp-yours">${d.your_plants.map(p => html`<li><a href="#/plant/${enc(p.code)}">${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : ''}<span><b>${p.code}</b> ${p.common_name}${(d.yours || []).includes(p.code) ? '' : html` <small>(same genus)</small>`}</span></a></li>`)}</ul>` : ''}
+          <div class="row sp-acts">${canChange() ? html`<button class="btn" type="button" data-act="spnew">Add to my plants</button>` : ''}
+            <a class="btn ghost" href="#/identify">Identify a plant</a></div>
+        </section>
+      </div>
+      <section aria-labelledby="sp-names-h"><h2 id="sp-names-h">Names</h2>
+        <dl class="dl"><dt>Scientific name</dt><dd class="latin">${d.scientific_name}</dd>
+          <dt>Common names</dt><dd id="sp-common">${(d.common_names || []).length ? d.common_names.join('; ') : 'None in the lists on this computer.'}</dd></dl></section>
+      <section aria-labelledby="sp-cls-h"><h2 id="sp-cls-h">Classification</h2>
+        <ol class="sp-cls">${cls.map(c => html`<li><span class="muted">${c.rank}:</span> ${['Order', 'Family', 'Genus'].includes(c.rank) ? html`<a href="${filt(c.rank.toLowerCase(), c.name)}">${c.name}</a>` : c.name}</li>`)}
+          <li><span class="muted">Species:</span> <i>${d.scientific_name}</i></li></ol>
+        <p class="hint">The links list every species in that order, family or genus.</p></section>
+      <section aria-labelledby="sp-us-h"><h2 id="sp-us-h">Where it grows wild in the US</h2>
+        ${states.length ? html`<p>${states.length === 1 ? 'One state or territory' : states.length + ' states and territories'}, from the USDA PLANTS lists: ${states.map(LIB_STATE_WORD).join(', ')}.</p>`
+          : html`<p>It is not on the USDA PLANTS state lists, so it does not grow wild in the US (or is not recorded there). It may still be grown in gardens and homes.</p>`}</section>
+      ${d.similar && d.similar.length ? html`<section aria-labelledby="sp-sim-h"><h2 id="sp-sim-h">Looks like</h2>
+        <p class="hint">The species the BioCLIP model finds closest to this one. Plants that look alike sit close together, so these are the ones it is easy to mix up with, not always close relatives.</p>
+        <div class="grid lib-grid" id="lib-res">${d.similar.map(libCard)}</div></section>` : ''}
+      <section aria-labelledby="sp-links-h"><h2 id="sp-links-h">More about it elsewhere</h2>
+        <ul class="sp-links" id="sp-links">${d.usda_symbol ? html`<li><a href="https://plants.usda.gov/plant-profile/${enc(d.usda_symbol)}" target="_blank" rel="noopener noreferrer">USDA PLANTS</a>: range map, native status, growth habit</li>` : ''}
+          <li><a href="https://powo.science.kew.org/results?q=${enc(d.scientific_name)}" target="_blank" rel="noopener noreferrer">Kew, Plants of the World Online</a>: native range and accepted name</li>
+          <li><a href="https://www.inaturalist.org/search?q=${enc(d.scientific_name)}" target="_blank" rel="noopener noreferrer">iNaturalist</a>: photos and sightings near you</li>
+          <li><a href="https://en.wikipedia.org/wiki/${enc(d.scientific_name.replace(/ /g, '_'))}" target="_blank" rel="noopener noreferrer">Wikipedia</a></li></ul></section>
+    </article>`,
+  };
+}
+async function spInfo(d) {
+  LIB.res = d.similar || [];
+  libPhotos();
+  const gal = document.getElementById('sp-gallery'), about = document.getElementById('sp-about');
+  if (!gal) return;
+  if (!d.online) { if (d.own_photo || (d.your_plants || []).some(p => p.photo)) spGallery(d, []); return; }
+  let r;
+  try { r = await api('GET', '/api/library/info?name=' + enc(d.scientific_name)); } catch (e) { r = { error: e.message }; }
+  if (!document.getElementById('sp-gallery')) return;
+  if (r.error) { gal.innerHTML = rend(html`<p class="notice">${r.error}</p>`); about.innerHTML = ''; return; }
+  spGallery(d, r.photos || []);
+  about.innerHTML = rend(html`${r.inat_common ? html`<p><strong>Also called:</strong> ${r.inat_common}</p>` : ''}
+    ${r.summary ? html`<p>${r.summary}</p><p class="hint">From Wikipedia${r.wikipedia_url ? html` (<a href="${r.wikipedia_url}" target="_blank" rel="noopener noreferrer">read more</a>)` : ''}, CC BY-SA.</p>` : html`<p class="muted">No description found for this species.</p>`}
+    ${r.observations ? html`<p class="hint">iNaturalist members have recorded it ${Number(r.observations).toLocaleString()} times${r.inat_url ? html` (<a href="${r.inat_url}" target="_blank" rel="noopener noreferrer">see them</a>)` : ''}.</p>` : ''}`);
+  const cm = document.getElementById('sp-common');
+  if (cm && r.inat_common && !(d.common_names || []).some(x => x.toLowerCase() === r.inat_common.toLowerCase())) cm.textContent = [r.inat_common, ...(d.common_names || [])].join('; ');
+}
+function spGallery(d, photos) {
+  const gal = document.getElementById('sp-gallery'); if (!gal) return;
+  const mine = (d.your_plants || []).filter(p => p.photo && (d.yours || []).includes(p.code)).map(p => ({ url: thumbUrl(p.photo), credit: `Your plant ${p.code}`, mine: true }));
+  const all = mine.concat(photos);
+  if (!all.length) { gal.innerHTML = rend(html`<p class="muted">No photos found for this species.</p>`); return; }
+  let i = 0;
+  const draw = () => {
+    const p = all[i];
+    gal.innerHTML = rend(html`<figure class="sp-fig"><img src="${p.url}" alt="${p.mine ? 'Your plant' : 'Photo of ' + (d.common_name || d.scientific_name)}">
+      <figcaption>${p.mine ? p.credit : html`${p.credit || 'Photo from iNaturalist'}${p.license && !/\bcc\b|rights|public domain/i.test(p.credit || '') ? ` (${p.license})` : ''}${p.page ? html`. <a href="${p.page}" target="_blank" rel="noopener noreferrer">On iNaturalist</a>` : ''}`}</figcaption></figure>
+      ${all.length > 1 ? html`<div class="row sp-step"><button class="btn ghost small" type="button" data-act="spph" data-d="-1">‹ Previous photo</button><span class="muted">${i + 1} of ${all.length}</span><button class="btn ghost small" type="button" data-act="spph" data-d="1">Next photo ›</button></div>` : ''}`);
+  };
+  SPG.step = dd => { i = (i + dd + all.length) % all.length; draw(); const b = gal.querySelector(`[data-act=spph][data-d="${dd}"]`); if (b) b.focus(); };
+  draw();
+}
+const SPG = { step: null };
+let SPCUR = null;          // the species page on screen, for "Add to my plants"
+Object.assign(acts, {
+  libmore: () => libLoad(true),
+  libclear: () => { Object.assign(LIB, { q: '', kind: '', family: '', state: '', common: false, mine: '' }); libChanged(true); },
+  spph: el => SPG.step && SPG.step(+el.dataset.d),
+  spnew: () => { if (SPCUR) idNewPlant(Object.assign({}, SPCUR, { src: 'the plant library' }), false); },
+});
 function spFrom(src, i) {
   const list = src === 'library' ? LIB.res : src === 'local' ? ID.shot && ID.shot.result && ID.shot.result.species : ID.shot && ID.shot[src] && ID.shot[src].species;
   const s = list && list[+i];
@@ -5000,13 +5218,6 @@ Object.assign(formActs, {
     ['plantnet_key', 'claude_key'].forEach(k => { const v = form.elements[k].value.trim(); if (v) b[k] = v; });
     if (!Object.keys(b).length) { toast('Paste a key first.', true); return; }
     await api('PUT', '/api/identify/settings', b); toast('Keys saved'); route();
-  },
-  async libsearch(form) {
-    LIB.q = form.elements.q.value.trim(); LIB.scope = form.elements.scope.value;
-    if (LIB.q.length < 2) { toast('Type at least 2 letters.', true); return; }
-    history.replaceState(null, '', '#/library?' + new URLSearchParams({ q: LIB.q, scope: LIB.scope }));
-    lastPath = location.hash.replace(/^#/, '');
-    await libSearch();
   },
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && ID.stream) { idStop(); idCamUi(false); } });
@@ -5042,6 +5253,15 @@ document.addEventListener('change', e => {
   if (el.name === 'csrc') { const mf = document.getElementById('manual-fields'); if (mf) mf.hidden = el.value !== 'manual'; return; }
   const f = el.dataset && el.dataset.f;
   if (!f) return;
+  if (f.startsWith('lib')) {             // 1.21.0: the library's filters
+    const k = f.slice(3);
+    if (k === 'online') { api('PUT', '/api/library/settings', { online: el.checked }).then(() => { LIB.photos = {}; toast(el.checked ? 'Library photos from iNaturalist are on' : 'Library photos are off: nothing is looked up online'); }).catch(e => toast(e.message, true)); return; }
+    if (k === 'q') return;               // typing is handled as you type
+    LIB[k] = el.type === 'checkbox' ? el.checked : el.value.trim();
+    if (k === 'view') { libSave(); libDraw(0); return; }
+    libChanged(k === 'scope');
+    return;
+  }
   if (f === 'wxperiod') {
     WX.period = el.value; if (/^\d+$/.test(el.value)) WX.days = +el.value;
     const d = document.getElementById('wx-dates'); if (d) d.hidden = el.value !== 'custom';
@@ -5111,6 +5331,7 @@ document.addEventListener('input', e => {
     e.target.closest('fieldset').querySelectorAll('li').forEach(li => { li.hidden = !!q && !li.textContent.toLowerCase().includes(q); });
   }
   const f = e.target.dataset && e.target.dataset.f;
+  if (f === 'libq') { LIB.q = e.target.value.trim(); clearTimeout(LIB.t); LIB.t = setTimeout(() => libChanged(false), 300); }
   if (f === 'q') { G.q = e.target.value; drawGrid(); }
   else if (f === 'audq') { AUD.f.q = e.target.value; AUD.offset = 0; audSave(); clearTimeout(AUD.t); AUD.t = setTimeout(() => audLoad(), 400); }
 });

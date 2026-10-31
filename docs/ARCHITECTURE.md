@@ -204,6 +204,20 @@
   - Swipe: `GSW` touch listeners on the card's photo area, and a capture-phase click guard so a swipe never opens the plant.
   - On plant pages, `photoPanel()` shows `.main-note` and the `.th-main` thumbnail badge. "Make this the main photo" (act `mainphoto`) PATCHes `is_primary`.
   - Tested by `photos_check.py`.
+- **1.21.0:**
+  - **Watering:**
+    - `POST /api/care` skips a `water` entry for a plant that already has one on that day, and returns `skipped`.
+    - `loadCarePlant()` switches "Watered today" off (`.done-today`, `#water-done-note`) when `last_water` is today.
+    - The Plants page's `waterall` act waters the filtered plants that weren't watered today.
+  - **Thumbnails:** `/thumbs/` now makes them with a short side of at least 640 px, in `data/cache/thumbs2`. The Display setting `photofit` (auto, fill or whole) sets `html[data-photofit]`, and a load listener marks wide card photos with `img.wide`.
+  - **Library:**
+    - The vision service builds the `B` arrays (`build_browse()`) and serves `/browse`, `/facets` and `/taxon`. Kinds come from `KINDS` (class or phylum), and `/taxon` returns lookalikes as the nearest name fingerprints, worked out a block at a time with `dot_rows()`.
+    - The app proxies these as `/api/library/browse|facets|taxon`, adding `yours`, `yours_genus` and `own_photo`.
+    - Photos: `/api/library/photos?names=` answers from `data/library/<slug>.json`, and queues the missing ones for `lib_worker()`. The worker calls iNaturalist (`PLANTDB_INAT_URL`) at most once a second (`inat_get()`), downloads only from `PLANTDB_INAT_IMG_OK` addresses, and keeps the photo as `<slug>.jpg`.
+    - `/api/library/info` fetches a species' detail on first view: up to 6 photos and its Wikipedia summary. Empty results are looked up again after 30 days.
+    - Setting `library_online` (`/api/library/settings`, owner only) turns all of this off.
+    - Front end: `viewLibrary()` (state `LIB`, localStorage `plantdb.library`, `libLoad()`, `libDraw()`, `libPhotos()` polling) and `viewSpecies()` (`#/species/<name>`, `spInfo()`, `spGallery()`).
+  - **Tests:** `water_check.py` and `library_check.py`. `mock_vision.py` stands in for iNaturalist at `/mock/inat/`.
 - **Plants page filters:** the state lives in `G` and is remembered in localStorage `plantdb.filters`. It also drives Previous / Next on plant pages.
 - `style.css`: colour tokens on `:root`, overridden for dark mode and high contrast. Additions are appended in blocks headed with the version that added them.
 - **Charts:** hand-drawn SVG using a palette checked for colour-blind readers (see the CHANGELOG for 1.5.0).

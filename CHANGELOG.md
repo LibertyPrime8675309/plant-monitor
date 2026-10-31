@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.21.0 (2026-10-31)
+- **"Watered today" works once a day.** After you press it on a plant page it says **✓ Watered today** and is switched off until tomorrow. Undo, or Remove in the care log, switches it back on. A plant can't get two waterings logged for the same day any more, from any button.
+- **Water all** on the Plants page marks every plant shown (with your filters) as watered today. Plants already watered today are skipped. It asks first, and the message has Undo.
+- **Wide photos are no longer blurry on the Plants page.** They used to be cut down to a tall slice and stretched. Now they're shown whole, with a plain band above and below, and every card photo is sharper. Display, "Photos on the Plants page", changes this: you can always fill the card, or always show the whole photo.
+- **The library is now a browsable reference.** It lists every species in the chosen list without a search. You can search as you type, filter by kind of plant, family, where it grows wild, yours, and common name, sort, and switch between cards and a table. Each species has its own page with photos, a description, names, classification, US states, your plants, lookalikes and links. Photos and descriptions come from iNaturalist and Wikipedia, fetched once and kept on your computer; the owner can turn that off at the bottom of the Library page. See README, "The plant library".
+- Includes everything in 1.20.0 below.
+
 ## 1.20.0 (2026-10-31)
 - **Browse a plant's photos on the Plants page.** Each card with more than one photo has **‹** and **›** buttons and says "2 of 5". On a phone or tablet you can swipe left or right on the photo. This doesn't open the plant; clicking anywhere else on the card still does.
 - **Choosing the main photo is easier to find.** On a plant page, the main photo now says "★ This is the main photo" under it, and its thumbnail is marked **★ Main**. Pick any other photo and press **Make this the main photo**. The Plants page, the care cards and plant link previews then show it.

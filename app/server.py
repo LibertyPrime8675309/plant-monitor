@@ -18,7 +18,7 @@ DATA_DIR = os.environ.get('DATA_DIR', '/data')
 DB_PATH = os.path.join(DATA_DIR, 'plants.db')
 PHOTO_DIR = os.path.join(DATA_DIR, 'photos')
 TRASH_DIR = os.path.join(DATA_DIR, 'photos_deleted')
-THUMB_DIR = os.path.join(DATA_DIR, 'cache', 'thumbs')
+THUMB_DIR = os.path.join(DATA_DIR, 'cache', 'thumbs2')     # 1.21.0: sized by the short side (thumbs/ was 520 px on the long side)
 SEED_DIR = os.path.join(APP_DIR, 'seed')
 PASSWORD = os.environ.get('PLANTDB_PASSWORD', '')
 # Backups go to /backups when that folder is mounted (docker-compose maps ./backups there), otherwise data/backups.
@@ -549,7 +549,7 @@ def owner_name(c):
     return r[0] if r else 'the owner'
 
 OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people')        # any request (the people list shows everyone's login)
-OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings')   # changes only
+OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings')   # changes only
 VIEWER_POSTS = ('/api/identify',)            # 1.18.0: asks this computer what a picture shows; changes nothing, so viewers may use it
 
 def role_refusal(u):
@@ -787,15 +787,18 @@ def care():
     if day > local_today(c).isoformat(): abort(400, 'That date is in the future')
     note = str(b.get('note') or '').strip()[:500]
     if kind == 'note' and not note: abort(400, 'Write the note')
-    who, ids = editor(), []
+    who, ids, skipped = editor(), [], []
     for code in codes:
         r = plant_row(c, code)
+        # 1.21.0: a plant is watered at most once a day, so "Water all" and a second press skip it instead of logging it twice
+        if kind == 'water' and c.execute("SELECT 1 FROM care_log WHERE plant_code=? AND kind='water' AND done_on=?", (r['code'], day)).fetchone():
+            skipped.append(r['code']); continue
         ids.append(c.execute('INSERT INTO care_log(plant_code,kind,done_on,note,created_by,created_at) VALUES(?,?,?,?,?,?)',
                              (r['code'], kind, day, note, who, now())).lastrowid)
         audit_only(c, 'care', 'care_log', None, f'{CARE_KINDS[kind]} {day}' + (f': {note}' if note else ''), who,
                    CARE_KINDS[kind] + (f': {note}' if note else '') + ('' if day == local_today(c).isoformat() else f' (for {day_words(day)})'), r['id'], r['code'])
     c.commit()
-    return jsonify(ids=ids, water=water_report(c, codes)['plants']), 201
+    return jsonify(ids=ids, skipped=skipped, water=water_report(c, codes)['plants']), 201
 
 @app.route('/api/care/<int:i>', methods=['DELETE'])
 def care_one(i):
@@ -985,6 +988,215 @@ def library():
     mark_owned(db(), out.get('results', []))
     out['results'].sort(key=lambda x: (not x['yours'], not x['yours_genus']))      # yours first (a stable sort keeps the rest in order)
     return jsonify(out)
+
+# ---------------------------------------------------------------- 1.21.0: the library as a browsable knowledge base
+# Names, classification and US states come from the picture checker (offline). Photos and the short description come from
+# iNaturalist (CC-licensed photos by its members; the description is from Wikipedia), fetched once per species in the
+# background, about one request a second as iNaturalist asks, and kept in data/library. Only species names are sent.
+LIB_DIR = os.path.join(DATA_DIR, 'library')
+INAT_URL = os.environ.get('PLANTDB_INAT_URL', 'https://api.inaturalist.org/v1').rstrip('/')
+INAT_IMG_OK = tuple(x for x in os.environ.get('PLANTDB_INAT_IMG_OK', 'https://inaturalist-open-data.s3.amazonaws.com/,https://static.inaturalist.org/').split(',') if x)
+LIB_RECHECK_DAYS = 30            # a species with no photo is looked up again after this many days
+LIBQ = {'queue': [], 'set': set(), 'lock': threading.Lock(), 'thread': None, 'last': 0.0}
+
+def lib_slug(name):
+    return re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')[:120]
+
+def lib_meta(name):
+    p = os.path.join(LIB_DIR, lib_slug(name) + '.json')
+    try:
+        with open(p, encoding='utf-8') as f: return json.load(f)
+    except (OSError, ValueError): return None
+
+def lib_save(name, meta):
+    os.makedirs(LIB_DIR, exist_ok=True)
+    p = os.path.join(LIB_DIR, lib_slug(name) + '.json')
+    with open(p + '.tmp', 'w', encoding='utf-8') as f: json.dump(meta, f)
+    os.replace(p + '.tmp', p)
+
+def lib_online(c=None):
+    return setting(c or db(), 'library_online', '1') == '1'
+
+def inat_get(path):
+    """One iNaturalist API call, at most one a second (shared by every request)."""
+    with LIBQ['lock']:
+        wait = 1.05 - (time.time() - LIBQ['last'])
+        if wait > 0: time.sleep(wait)
+        LIBQ['last'] = time.time()
+    req = urllib.request.Request(INAT_URL + path, headers={'User-Agent': f'plant-database/{APP_VERSION} (a home plant record)', 'Accept': 'application/json'})
+    with urllib.request.urlopen(req, timeout=20) as r: return json.loads(r.read())
+
+def lib_download(url, dest, big=1024):
+    if not url.startswith(INAT_IMG_OK): raise ValueError('not an iNaturalist photo address')
+    req = urllib.request.Request(url, headers={'User-Agent': f'plant-database/{APP_VERSION} (a home plant record)'})
+    with urllib.request.urlopen(req, timeout=30) as r: raw = r.read(8_000_000)
+    im = ImageOps.exif_transpose(Image.open(io.BytesIO(raw))); im = im.convert('RGB')
+    im.thumbnail((big, big))
+    im.save(dest + '.tmp', 'JPEG', quality=84, optimize=True); os.replace(dest + '.tmp', dest)
+
+def inat_find(name):
+    """The iNaturalist taxon with exactly this name, or None."""
+    j = inat_get('/taxa?' + urllib.parse.urlencode({'q': name, 'is_active': 'true', 'per_page': 10, 'locale': 'en'}))
+    for t in j.get('results') or []:
+        if (t.get('name') or '').lower() == name.lower(): return t
+    return None
+
+def photo_meta(ph, file):
+    return {'file': file, 'credit': ph.get('attribution') or '', 'license': (ph.get('license_code') or '').upper(),
+            'page': f"https://www.inaturalist.org/photos/{ph['id']}" if ph.get('id') else ''}
+
+def lib_fetch_photo(name):
+    """Looks a species up on iNaturalist and keeps its main photo (and the basic facts) in data/library."""
+    meta = lib_meta(name) or {}
+    t = inat_find(name)
+    meta.update(name=name, checked=date.today().isoformat(), taxon_id=t['id'] if t else None,
+                inat_common=(t or {}).get('preferred_common_name') or '', observations=(t or {}).get('observations_count'),
+                wikipedia_url=(t or {}).get('wikipedia_url') or '')
+    ph = (t or {}).get('default_photo') or {}
+    url = ph.get('medium_url') or ph.get('url')
+    if url:
+        f = lib_slug(name) + '.jpg'
+        lib_download(url, os.path.join(LIB_DIR, f), big=640)
+        meta['photo'] = photo_meta(ph, f)
+    else:
+        meta['photo'] = None
+    lib_save(name, meta)
+    return meta
+
+def lib_worker():
+    while True:
+        with LIBQ['lock']:
+            if not LIBQ['queue']: LIBQ['thread'] = None; return
+            name = LIBQ['queue'].pop(0)
+        try:                                                          # turned off since it was queued: stop
+            c2 = sqlite3.connect(DB_PATH, timeout=10)
+            try: online = lib_online(c2)
+            finally: c2.close()
+        except Exception: online = True
+        if not online:
+            with LIBQ['lock']: LIBQ['queue'].clear(); LIBQ['set'].clear(); LIBQ['thread'] = None
+            return
+        try: lib_fetch_photo(name)
+        except Exception as e:
+            print(f'[library] {name}: {e}', flush=True)
+            lib_save(name, (lib_meta(name) or {}) | {'name': name, 'checked': date.today().isoformat(), 'photo': None, 'error': str(e)[:200]})
+        finally:
+            with LIBQ['lock']: LIBQ['set'].discard(name)
+
+def lib_enqueue(names):
+    with LIBQ['lock']:
+        for n in names:
+            if n not in LIBQ['set']: LIBQ['set'].add(n); LIBQ['queue'].append(n)
+        if LIBQ['queue'] and not LIBQ['thread']:
+            LIBQ['thread'] = threading.Thread(target=lib_worker, daemon=True); LIBQ['thread'].start()
+
+def lib_photo_state(name):
+    """{'url', 'credit', ...} when kept, None when there is none, 'pending' while it is being fetched."""
+    m = lib_meta(name)
+    if m and m.get('photo'): return {'url': '/library-photos/' + m['photo']['file'], 'credit': m['photo']['credit'], 'license': m['photo']['license'], 'page': m['photo']['page']}
+    fresh = m and m.get('checked') and (date.today() - date.fromisoformat(m['checked'])).days < LIB_RECHECK_DAYS
+    if fresh or not lib_online(): return None
+    return 'pending'
+
+def owned_lists(c):
+    sp, gn = species_owned(c)
+    return '|'.join(sp), '|'.join(gn)
+
+def own_photo(c, codes):
+    for code in codes:
+        b = plant_brief(c, code)
+        if b and b['photo']: return '/thumbs/' + urllib.parse.quote(b['photo'])
+    return None
+
+@app.route('/api/library/browse')
+def library_browse():
+    """Every species in a list, filtered and sorted, a page at a time (see the picture checker's /browse)."""
+    c, a = db(), request.args
+    own, owngenus = owned_lists(c)
+    q = {k: a.get(k, '')[:80] for k in ('scope', 'q', 'kind', 'family', 'genus', 'order', 'state', 'common', 'mine', 'sort', 'offset', 'limit')}
+    if q['scope'] not in ID_SCOPES: q['scope'] = 'common'
+    if q['mine']: q.update(own=own, owngenus=owngenus)
+    out = vision_call('/browse?' + urllib.parse.urlencode({k: v for k, v in q.items() if v}), timeout=30)
+    mark_owned(c, out.get('results', []))
+    for x in out['results']:
+        x['own_photo'] = own_photo(c, x['yours']) if x['yours'] else None
+    return jsonify(out)
+
+@app.route('/api/library/facets')
+def library_facets():
+    scope = request.args.get('scope', 'common')
+    return jsonify(vision_call('/facets?' + urllib.parse.urlencode({'scope': scope if scope in ID_SCOPES else 'common'}), timeout=30))
+
+@app.route('/api/library/photos')
+def library_photos():
+    """?names=a|b|c: each one's photo, null when there is none, or "pending" while it is fetched in the background."""
+    names = [n.strip() for n in request.args.get('names', '').split('|') if n.strip()][:150]
+    out = {n: lib_photo_state(n) for n in names}
+    if lib_online(): lib_enqueue([n for n, v in out.items() if v == 'pending'])
+    return jsonify(photos=out, online=lib_online())
+
+@app.route('/api/library/taxon')
+def library_taxon():
+    """One species in full, plus your plants of it and of its genus."""
+    c, name = db(), request.args.get('name', '').strip()[:120]
+    if not name: abort(400, 'Which species?')
+    out = vision_call('/taxon?' + urllib.parse.urlencode({'name': name}), timeout=30)
+    mark_owned(c, [out]); mark_owned(c, out.get('similar', []))
+    out['your_plants'] = [plant_brief(c, x) for x in out['yours'] + out['yours_genus']]
+    m = lib_meta(name) or {}
+    out['inat'] = {k: m.get(k) for k in ('inat_common', 'taxon_id', 'observations', 'wikipedia_url', 'summary', 'photos', 'detail_checked')}
+    out['online'] = lib_online(c)
+    return jsonify(out)
+
+@app.route('/api/library/info', methods=['GET'])
+def library_info():
+    """The species' photos (up to 6) and short description, from iNaturalist, fetched on first view and then kept."""
+    c, name = db(), request.args.get('name', '').strip()[:120]
+    if not name: abort(400, 'Which species?')
+    m = lib_meta(name) or {}
+    fresh = m.get('detail_checked') and (date.today() - date.fromisoformat(m['detail_checked'])).days < LIB_RECHECK_DAYS
+    if not fresh and lib_online(c):
+        try:
+            if 'taxon_id' not in m: m = lib_fetch_photo(name)
+            if m.get('taxon_id'):
+                t = (inat_get(f"/taxa/{int(m['taxon_id'])}?locale=en").get('results') or [{}])[0]
+                summ = re.sub(r'<[^>]+>', '', t.get('wikipedia_summary') or '')
+                photos = []
+                for k, tp in enumerate((t.get('taxon_photos') or [])[:6]):
+                    ph = tp.get('photo') or {}
+                    url = (ph.get('medium_url') or ph.get('url') or '').replace('/medium.', '/large.')
+                    if not url: continue
+                    f = f'{lib_slug(name)}-{k + 1}.jpg'
+                    try: lib_download(url, os.path.join(LIB_DIR, f)); photos.append(photo_meta(ph, f))
+                    except Exception as e: print(f'[library] {name} photo {k + 1}: {e}', flush=True)
+                m.update(summary=html_unescape(summ)[:3000], photos=photos, inat_common=t.get('preferred_common_name') or m.get('inat_common', ''),
+                         observations=t.get('observations_count'), wikipedia_url=t.get('wikipedia_url') or m.get('wikipedia_url', ''))
+            m['detail_checked'] = date.today().isoformat(); m.setdefault('name', name)
+            lib_save(name, m)
+        except Exception as e:
+            return jsonify(error='Could not reach iNaturalist for the photos and description. They are tried again next time.', detail=str(e)[:200], online=True)
+    return jsonify(summary=m.get('summary', ''), photos=[p | {'url': '/library-photos/' + p['file']} for p in (m.get('photos') or [])],
+                   inat_common=m.get('inat_common', ''), observations=m.get('observations'), wikipedia_url=m.get('wikipedia_url', ''),
+                   inat_url=f"https://www.inaturalist.org/taxa/{m['taxon_id']}" if m.get('taxon_id') else '', online=lib_online(c))
+
+def html_unescape(t):
+    import html as _h
+    return _h.unescape(t).strip()
+
+@app.route('/library-photos/<path:name>')
+def library_photo_file(name):
+    return send_from_directory(LIB_DIR, os.path.basename(name), max_age=86400)
+
+@app.route('/api/library/settings', methods=['GET', 'PUT'])
+def library_settings():
+    """Whether the library may look up photos and descriptions on iNaturalist (owner only to change)."""
+    c = db()
+    if request.method == 'PUT':
+        on = bool((request.get_json(silent=True) or {}).get('online'))
+        set_setting(c, 'library_online', '1' if on else '0')
+        audit_only(c, 'setting', 'library_online', None, 'on' if on else 'off', editor(), 'Library photos from iNaturalist turned ' + ('on' if on else 'off'))
+        c.commit()
+    return jsonify(online=lib_online(c))
 
 def key_hint(k):
     return ('…' + k[-4:]) if k else ''
@@ -2077,7 +2289,13 @@ def thumb(name):
     src, dst = os.path.join(PHOTO_DIR, safe), os.path.join(THUMB_DIR, safe)
     if not os.path.exists(src): abort(404)
     if not os.path.exists(dst):
-        im = Image.open(src); im.thumbnail((520, 520)); im.save(dst, 'JPEG', quality=80)
+        # 1.21.0: the short side is at least 640 px, so a wide photo cropped to fill a tall card (or shown whole) stays sharp on
+        # high-resolution screens. Before, wide photos were 520 x 390 and blurry when cropped.
+        im = ImageOps.exif_transpose(Image.open(src)); im = im.convert('RGB') if im.mode not in ('RGB', 'L') else im
+        k = min(1.0, 640 / min(im.size), 1400 / max(im.size))
+        if k < 1: im = im.resize((round(im.width * k), round(im.height * k)), Image.LANCZOS)
+        os.makedirs(THUMB_DIR, exist_ok=True)
+        im.save(dst + '.tmp', 'JPEG', quality=82, optimize=True); os.replace(dst + '.tmp', dst)
     return send_from_directory(THUMB_DIR, safe, max_age=3600)
 
 # ---------------------------------------------------------------- to-photograph list
