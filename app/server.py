@@ -1451,9 +1451,14 @@ def local_get(name):
     return j
 
 def lists_wait():
-    """Lists wait while photos someone is looking at are being fetched (up to a minute), so pages fill in first."""
+    """Lists wait while photos someone is looking at are being fetched (up to a minute), so pages fill in first. Then they stop
+    if the owner has turned library lookups off meanwhile."""
     t = time.time()
     while LIBQ['queue'] and time.time() - t < 60: time.sleep(0.5)
+    c2 = sqlite3.connect(DB_PATH, timeout=10)
+    try: on = lib_online(c2)
+    finally: c2.close()
+    if not on: raise ValueError('library lookups were turned off')
 
 def local_fetch(name, params):
     """Every species in one iNaturalist species count, 500 a page (at most 30 pages)."""
@@ -1544,6 +1549,9 @@ def know_worker():
             aspca_fetch() if name == 'aspca' else local_fetch(name, params)
             KNOW['error'].pop(name, None)
         except Exception as e:
+            if str(e) == 'library lookups were turned off':
+                with KNOW['lock']: KNOW['queue'].clear(); KNOW['thread'] = None; KNOW['now'] = None
+                return
             print(f'[library] list {name}: {e}', flush=True)
             KNOW['error'][name] = {'at': now(), 'error': str(e)[:300]}
 

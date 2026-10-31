@@ -5020,16 +5020,17 @@ function libPreHtml(p) {
   const msg = p.running ? `Downloading: ${p.done.toLocaleString()} of ${p.total.toLocaleString()} done, about ${Math.max(1, Math.round(p.left * 1.1 / 60))} minutes left. You can leave this page; it carries on.`
     : p.total ? `Finished: ${p.done.toLocaleString()} species fetched${p.all ? ` (the other ${(p.all - p.total).toLocaleString()} were already kept)` : ''}.`
     : p.online ? '' : 'Turn on the iNaturalist photos above first.';
-  return html`<p>${msg}</p><p class="row">${btn}</p>`;
+  return html`<p class="pre-msg">${msg}</p><p class="row">${btn}</p>`;
 }
 async function libPrePoll() {
   clearTimeout(LIB.prePoll);
   const box = document.getElementById('lib-pre'); if (!box) return;
   let p; try { p = await api('GET', '/api/library/prefetch'); } catch (e) { return; }
   if (!document.getElementById('lib-pre')) return;
-  const had = box.contains(document.activeElement);
-  box.innerHTML = rend(libPreHtml(p));
-  if (had) { const b = box.querySelector('button'); if (b) b.focus(); }
+  const tmp = document.createElement('div'); tmp.innerHTML = rend(libPreHtml(p));
+  const ob = box.querySelector('button'), nb = tmp.querySelector('button'), om = box.querySelector('.pre-msg');
+  if (ob && nb && om && ob.dataset.act === nb.dataset.act && ob.disabled === nb.disabled) om.textContent = tmp.querySelector('.pre-msg').textContent;   // keep the button, so a press is never lost
+  else { const had = box.contains(document.activeElement); box.innerHTML = tmp.innerHTML; if (had) { const b = box.querySelector('button'); if (b) b.focus(); } }
   if (p.running) LIB.prePoll = setTimeout(libPrePoll, 5000);
 }
 function libListsHtml(d) {
