@@ -1328,11 +1328,11 @@ def lib_enqueue(names, front=True):
     """Queues species for a photo. Ones someone is looking at go first (front=True); a whole-list download goes last."""
     with LIBQ['lock']:
         if front:
-            for n in reversed(names):
-                if n in LIBQ['set']:
-                    try: LIBQ['queue'].remove(n)
-                    except ValueError: pass
-                LIBQ['set'].add(n); LIBQ['queue'].insert(0, n)
+            queued = set(LIBQ['queue'])
+            first = [n for n in dict.fromkeys(names) if n not in LIBQ['set'] or n in queued]   # in the set but not queued = being fetched now
+            moving = set(first)
+            LIBQ['queue'] = first + [n for n in LIBQ['queue'] if n not in moving]
+            LIBQ['set'].update(first)
         else:
             for n in names:
                 if n not in LIBQ['set']: LIBQ['set'].add(n); LIBQ['queue'].append(n)
