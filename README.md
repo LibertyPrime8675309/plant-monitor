@@ -276,6 +276,18 @@ On a plant page in side-by-side view, the photos (left) and details (right) each
 
 On a phone the menu bar at the top scrolls away with the page (scroll back to the top to reach it), and every page fits the width of the screen at every text size. The Debug button sits just above the Display button. When there is no room for the Sections button beside them (larger text, or a narrow phone), it sits above Debug.
 
+### Pop-up windows (from 1.25.0)
+
+- **Display settings** is divided into parts: Text and colours, Page layout, Reading aloud, Photos and touch, and Keyboard.
+  - On a computer, the parts are listed on the left. Press one to jump to it; the part you're looking at is highlighted.
+  - On a phone, or an upright tablet, the window covers the screen and the parts are a row of buttons above the settings.
+  - **Done** and **Reset to defaults** are at the top and stay there while you scroll. Reset to defaults keeps the window open.
+- **Every pop-up window:**
+  - uses more of the screen;
+  - keeps its buttons (Save, Cancel, Done…) in view at the bottom while you scroll;
+  - closes when you click or tap outside it, the same as Cancel or Done (a drag that only ends outside doesn't close it). Escape still closes it too.
+- Confirmations ("Remove this photo?") stay small. On a phone, windows rise from the bottom of the screen and use its full width.
+
 ### Read aloud and keyboard shortcuts (from 1.8.0)
 
 Every section has a **Read aloud** button. Your browser reads that section in its own voice, the section gets a dashed outline while it is read, and a big **Stop reading** button stays at the bottom of the screen. **Read this page aloud**, under the page title, reads the whole page. In **Display** you can hide the buttons, pick the **Reading speed** (slower to fastest) and the **Voice**, with **Try this voice**. In Microsoft Edge the "Natural" voices sound the most human.

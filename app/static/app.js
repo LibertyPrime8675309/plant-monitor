@@ -225,14 +225,21 @@ function toast(msg, isErr) {
   setTimeout(() => t.remove(), isErr ? 7000 : 3500);
 }
 const dlg = document.getElementById('dlg');
+// 1.25.0: a press that starts and ends outside the window closes it, as Cancel would (a drag that ends outside does not)
+let DLGDOWN = false;
+const outsideDlg = e => { const r = dlg.getBoundingClientRect(); return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom; };
+dlg.addEventListener('pointerdown', e => { DLGDOWN = e.target === dlg && outsideDlg(e); });
+dlg.addEventListener('click', e => { if (DLGDOWN && e.target === dlg && outsideDlg(e)) { dlg.close(''); } DLGDOWN = false; });
 function modal(content, cls) {
   dlg.className = cls || '';
   dlg.innerHTML = rend(content);
+  const h2 = dlg.querySelector('h2');               // the window is named by its heading, for screen readers
+  if (h2) { h2.id = h2.id || 'dlg-title'; dlg.setAttribute('aria-labelledby', h2.id); } else dlg.removeAttribute('aria-labelledby');
   return new Promise(res => {
     const done = () => { dlg.removeEventListener('close', done); res(dlg.returnValue); };
     dlg.addEventListener('close', done);
     dlg.returnValue = '';
-    dlg.showModal();
+    if (!dlg.open) dlg.showModal();
     const f = dlg.querySelector('[autofocus]') || dlg.querySelector('input,select,textarea');
     if (f) f.focus();
   });
@@ -240,7 +247,7 @@ function modal(content, cls) {
 async function confirmBox(title, text, okLabel, danger) {
   const r = await modal(html`<form method="dialog"><h2>${title}</h2><p>${text}</p>
     <div class="row"><button class="btn ${danger ? 'danger' : ''}" value="ok">${okLabel}</button>
-    <button class="btn ghost" value="cancel" autofocus>Cancel</button></div></form>`);
+    <button class="btn ghost" value="cancel" autofocus>Cancel</button></div></form>`, 'small');
   return r === 'ok';
 }
 async function askName(force) {
@@ -3289,27 +3296,47 @@ new MutationObserver(() => {
 function displayDialog() {
   const P = window.PlantPrefs.get();
   const group = (key, title, opts, hint) => html`<fieldset class="opt-group"><legend>${title}</legend><div class="opts">${opts.map(([v, l]) => html`<label><input type="radio" name="pref-${key}" data-pref="${key}" value="${v}" ${P[key] === v ? raw('checked') : ''}><span>${l}</span></label>`)}</div>${hint ? html`<p class="hint">${hint}</p>` : ''}</fieldset>`;
-  modal(html`<form method="dialog"><h2>Display settings</h2>
-    <p class="muted">Changes apply right away and are remembered in this browser. Each computer or phone keeps its own.</p>
-    <p><strong>App version:</strong> ${META && META.version ? META.version : 'unknown'}</p>
-    ${group('size', 'Text and button size', [['100', 'Standard'], ['115', 'Comfortable'], ['135', 'Large'], ['160', 'Larger'], ['190', 'Largest']], 'Everything scales together, including buttons, bars and charts.')}
-    ${group('space', 'Spacing', [['normal', 'Normal'], ['roomy', 'Roomy']], 'Roomy adds space between lines, letters and words.')}
-    ${group('contrast', 'Contrast', [['normal', 'Normal'], ['high', 'High']], 'High contrast uses black and white, stronger lines and heavier outlines.')}
-    ${group('theme', 'Colours', [['auto', 'Match my device'], ['light', 'Light'], ['dark', 'Dark']])}
-    ${group('navside', 'Section menu side', [['left', 'Left'], ['right', 'Right']], 'The "On this page" menu lists the sections of the page you are on.')}
-    ${group('navopen', 'Section menu', [['1', 'Open'], ['0', 'Folded away (the Sections button opens it)']], 'On narrow windows and phones it starts folded and covers the page while open.')}
-    ${group('width', 'Page width', [['normal', 'Normal'], ['wide', 'Use the full width of the window']], 'Full width gives charts and tables more room on a wide screen.')}
-    ${group('layout', 'Plant pages', [['split', 'Photos and details side by side'], ['single', 'One column']], 'Side by side lets each half scroll on its own: scroll with the pointer over the half you want to move. One column stacks the photos above the details.')}
-    ${canSpeak() ? html`${group('readbtns', 'Read aloud buttons', [['1', 'Show them on each section'], ['0', 'Hide them']], 'Your browser reads the section aloud with its own voices. The R key reads the whole page either way.')}
+  const G = {};
+  G.size = group('size', 'Text and button size', [['100', 'Standard'], ['115', 'Comfortable'], ['135', 'Large'], ['160', 'Larger'], ['190', 'Largest']], 'Everything scales together, including buttons, bars and charts.');
+  G.space = group('space', 'Spacing', [['normal', 'Normal'], ['roomy', 'Roomy']], 'Roomy adds space between lines, letters and words.');
+  G.contrast = group('contrast', 'Contrast', [['normal', 'Normal'], ['high', 'High']], 'High contrast uses black and white, stronger lines and heavier outlines.');
+  G.theme = group('theme', 'Colours', [['auto', 'Match my device'], ['light', 'Light'], ['dark', 'Dark']]);
+  G.navside = group('navside', 'Section menu side', [['left', 'Left'], ['right', 'Right']], 'The "On this page" menu lists the sections of the page you are on.');
+  G.navopen = group('navopen', 'Section menu', [['1', 'Open'], ['0', 'Folded away (the Sections button opens it)']], 'On narrow windows and phones it starts folded and covers the page while open.');
+  G.width = group('width', 'Page width', [['normal', 'Normal'], ['wide', 'Use the full width of the window']], 'Full width gives charts and tables more room on a wide screen.');
+  G.layout = group('layout', 'Plant pages', [['split', 'Photos and details side by side'], ['single', 'One column']], 'Side by side lets each half scroll on its own: scroll with the pointer over the half you want to move. One column stacks the photos above the details.');
+  const speak = canSpeak() ? html`${group('readbtns', 'Read aloud buttons', [['1', 'Show them on each section'], ['0', 'Hide them']], 'Your browser reads the section aloud with its own voices. The R key reads the whole page either way.')}
     ${group('rate', 'Reading speed', [['0.8', 'Slower'], ['1', 'Normal'], ['1.25', 'Faster'], ['1.5', 'Fastest']])}
     <fieldset class="opt-group"><legend>Voice</legend><label class="f">Voice<select data-pref="voice" id="pref-voice">${voiceOptions(P.voice)}</select></label>
       <p class="row"><button class="btn ghost small" type="button" data-act="voicetest">Try this voice</button></p>
-      <p class="hint">"Natural" or "Online" voices in Microsoft Edge sound the most human.</p></fieldset>` : ''}
-    ${group('photofit', 'Photos on the Plants page', [['auto', 'Show wide photos whole, fill the card with tall ones'], ['fill', 'Fill the card (wide photos lose their sides)'], ['whole', 'Always show the whole photo']], 'A wide photo cut down to fit a tall card loses its sides. Shown whole, it has a plain band above and below.')}
-    ${group('swipe', 'Swipe between plants', [['1', 'On'], ['0', 'Off']], 'On a phone or tablet, swipe left on a plant page for the next plant, or right for the previous one. Start away from the edges of the screen, which your phone uses for Back.')}
-    ${group('keys', 'Keyboard shortcuts', [['1', 'On'], ['0', 'Off']], 'R reads the page aloud, [ and ] go to the previous and next plant, ? lists them all.')}
-    <div class="row"><button class="btn" value="ok" autofocus>Done</button><button class="btn ghost" type="button" data-act="prefreset">Reset to defaults</button></div></form>`);
+      <p class="hint">"Natural" or "Online" voices in Microsoft Edge sound the most human.</p></fieldset>` : html`<p class="muted">This browser cannot read aloud.</p>`;
+  G.photofit = group('photofit', 'Photos on the Plants page', [['auto', 'Show wide photos whole, fill the card with tall ones'], ['fill', 'Fill the card (wide photos lose their sides)'], ['whole', 'Always show the whole photo']], 'A wide photo cut down to fit a tall card loses its sides. Shown whole, it has a plain band above and below.');
+  G.swipe = group('swipe', 'Swipe between plants', [['1', 'On'], ['0', 'Off']], 'On a phone or tablet, swipe left on a plant page for the next plant, or right for the previous one. Start away from the edges of the screen, which your phone uses for Back.');
+  G.keys = group('keys', 'Keyboard shortcuts', [['1', 'On'], ['0', 'Off']], 'R reads the page aloud, [ and ] go to the previous and next plant, ? lists them all.');
+  const SECS = [['Text and colours', html`${G.size}${G.space}${G.contrast}${G.theme}`], ['Page layout', html`${G.navside}${G.navopen}${G.width}${G.layout}`],
+    ['Reading aloud', speak], ['Photos and touch', html`${G.photofit}${G.swipe}`], ['Keyboard', G.keys]];
+  const keep = DVSCROLL; DVSCROLL = 0;
+  modal(html`<form method="dialog" class="dv-form">
+    <div class="dv-head"><div class="dv-title"><h2 id="dv-title">Display settings</h2>
+        <p class="muted dv-intro">Changes apply right away and are remembered in this browser. Each computer or phone keeps its own.</p>
+        <p class="dv-ver"><strong>App version:</strong> ${META && META.version ? META.version : 'unknown'}</p></div>
+      <div class="row dv-acts"><button class="btn" value="ok" autofocus>Done</button><button class="btn ghost" type="button" data-act="prefreset">Reset to defaults</button></div></div>
+    <div class="dv-main"><nav class="dv-tabs" aria-label="Parts of the display settings">${SECS.map(([n], i) => html`<button type="button" class="dv-tab" data-act="dvjump" data-to="dv-s${i}" ${i ? '' : raw('aria-current="true"')}>${n}</button>`)}</nav>
+      <div class="dv-body" id="dv-body" tabindex="-1">${SECS.map(([n, body], i) => html`<section id="dv-s${i}" aria-labelledby="dv-h${i}"><h3 id="dv-h${i}">${n}</h3><div class="dv-cols">${body}</div></section>`)}</div></div></form>`, 'dv');
+  dlg.setAttribute('aria-labelledby', 'dv-title');
+  const body = document.getElementById('dv-body');
+  if (keep) body.scrollTop = keep;
+  const mark = () => {                         // the part being read is marked in the menu, in words for screen readers too
+    const top = body.getBoundingClientRect().top + 8;
+    let cur = 'dv-s0';
+    body.querySelectorAll('section').forEach(sc => { if (sc.getBoundingClientRect().top <= top + 40) cur = sc.id; });
+    if (body.scrollTop + body.clientHeight >= body.scrollHeight - 4) cur = body.querySelector('section:last-child').id;
+    dlg.querySelectorAll('.dv-tab').forEach(b => { if (b.dataset.to === cur) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); });
+  };
+  body.addEventListener('scroll', () => { DVSCROLL = body.scrollTop; mark(); }, { passive: true });
+  mark();
 }
+let DVSCROLL = 0;              // Reset to defaults redraws the window; it stays where it was
 // ---------- swipe between plants on touch screens (added in 1.14.1) ----------
 // A quick sideways swipe on a plant page opens the next plant (swipe left) or the previous one (swipe right), the same as
 // the Previous / Next Plant buttons. It stays out of the way of scrolling, zooming, tables and charts that scroll sideways,
@@ -4230,7 +4257,12 @@ const acts = {
   },
   histmetric(el) { const S = HS[el.dataset.kind]; S.metric = el.dataset.m; S.day = S.day; histOpen(el.dataset.kind); },
   display() { displayDialog(); },
-  prefreset() { window.PlantPrefs.reset(); displayDialog(); },
+  prefreset() { DVSCROLL = (document.getElementById('dv-body') || {}).scrollTop || 0; window.PlantPrefs.reset(); displayDialog(); },
+  dvjump(el) {
+    const t = document.getElementById(el.dataset.to); if (!t) return;
+    t.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    const h = t.querySelector('h3'); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
+  },
   async reqdone(el) { if (!(await needName())) return; await guard(async () => { await api('PUT', '/api/requests/' + el.dataset.id, { done: true }); toast('Marked done'); reloadPlant(); }); },
   async reqreopen(el) { if (!(await needName())) return; await guard(async () => { await api('PUT', '/api/requests/' + el.dataset.id, { done: false }); toast('Reopened'); reloadPlant(); }); },
   async reqanswer(el) {
