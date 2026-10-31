@@ -1,4 +1,4 @@
-"""Checks 1.18.1: the top menu links sit side by side and wrap, at every text size, on phones, iPads (including the iPad mini,
+"""Checks 1.18.1: the top menu links sit side by side and wrap (from 1.26.0, once the Pages button has opened them where they fold), at every text size, on phones, iPads (including the iPad mini,
 744 px wide) and computers. Before 1.18.1, at iPad width with larger text, the menu shrank to one link wide, so every link
 sat on its own line. Start the mock server first, then:  python3 dev/test/header_check.py
 Screenshots: dev/tmp/shots/header-*.png"""
@@ -22,6 +22,10 @@ with sync_playwright() as p:
             pg = b.new_page(viewport={'width': w, 'height': h})
             pg.add_init_script(f"localStorage.setItem('plantdb.editor','Header Test');localStorage.setItem('plantdb.display',JSON.stringify({{size:'{size}'}}))")
             pg.goto(BASE + '/#/plant/P-011'); pg.wait_for_timeout(1200)
+            folded = pg.locator('#pages-btn').is_visible()       # 1.26.0: narrow windows and large text fold the links behind Pages
+            if folded:
+                check(pg.locator('#main-nav').is_hidden(), f"{name} ({w} px), text {size}%: the links fold behind the Pages button")
+                pg.click('#pages-btn'); pg.wait_for_timeout(200)
             m = pg.evaluate(MEASURE)
             wide = m['navw'] >= min(w - 80, 24 * m['rem'] - 1)
             # every row but the last holds at least two links (on a phone with the largest text, long names may stand alone)

@@ -1339,3 +1339,55 @@ dialog.dv .opt-group .hint{margin:.45rem 0 0}
   dialog:not(.dv):not(.photo)>form>.row:last-child{bottom:-1rem;margin:1rem -1rem -1rem;padding:.7rem 1rem}
 }
 dialog p,dialog ul,dialog ol,dialog .notice{max-width:none}
+/* 1.26.0: line length (Display setting): full width by default; lists used as grids and menus are never capped */
+html[data-lines=full] :is(p, ul, ol, .ask, .nowstate, .notice, .cal-legend, .job-txt>div, .fz-banner p, .bo-why, .danger-box){max-width:none}
+ul[class],ol[class]{max-width:none}
+.sheet .mat img{height:auto}           /* 1.26.0: the photo's width and height attributes made cards about three times too tall */
+/* 1.26.0: use the width of the screen: side by side where there is room */
+.jobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,36rem),1fr));column-gap:2.5rem}
+.lib-card .tags,.mu-card .tags{display:flex;flex-wrap:wrap;gap:.3rem}
+.id-two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,34rem),1fr));gap:0 2.5rem;align-items:start}
+.sp-more,.mu-info{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,30rem),1fr));gap:0 2.5rem;align-items:start}
+.sp-more>section>h2,.mu-info>section>h2{margin-top:1.4rem}
+.field-grid{container-type:inline-size}
+@container (min-width:60rem){.field-grid>.wide{grid-column:span 2}}
+@container (min-width:96rem){.field-grid>.wide{grid-column:span 3}}
+.off-dev input{max-width:30rem}
+/* 1.26.0 phones and narrow windows: less of the screen spent on the top bar, the buttons pinned at the bottom and the margins */
+.pages-btn{display:none;align-items:center;gap:.5rem;background:transparent;color:inherit;border:2px solid color-mix(in srgb,var(--top-ink) 60%,transparent);padding:.45rem .8rem;font:inherit;font-weight:700;cursor:pointer;min-height:2.75rem;max-width:100%;text-align:left}
+.pages-btn:hover{background:color-mix(in srgb,var(--top-ink) 14%,transparent)}
+.pages-btn[aria-expanded=true]{background:var(--top-ink);color:var(--top-bg)}
+html:is([data-narrow="1"],[data-pagesfold="1"]) .pages-btn{display:inline-flex;order:2;flex:0 1 auto}
+html[data-narrow="1"] .pages-btn{flex:1 1 auto}
+html[data-pagesfold="1"] .pages-btn{order:0}
+html:is([data-narrow="1"],[data-pagesfold="1"]) .top:not(.pages-open) #main-nav{display:none}
+html:is([data-narrow="1"],[data-pagesfold="1"]) .top #main-nav{display:flex;flex-wrap:wrap;gap:0 .4rem;flex:1 1 100%;order:3;min-width:0}
+html[data-pagesfold="1"] .top-acts{flex-direction:row;flex-wrap:wrap;margin-left:auto}
+html[data-toptall="1"] .top{position:static}
+html[data-narrow="1"] .top-in,html[data-narrow="1"] main{padding-left:min(1.25rem,4vw);padding-right:min(1.25rem,4vw)}
+html[data-narrow="1"] .top-in{padding-top:.4rem;padding-bottom:.4rem;gap:.4rem}
+html[data-narrow="1"] .brand{font-size:1.2rem}
+html[data-narrow="1"] .top-acts{order:4;flex:1 1 100%;flex-direction:row;flex-wrap:wrap;gap:.4rem}
+html[data-narrow="1"] .top-acts>*,html[data-narrow="1"] .pages-btn{flex:1 1 auto;padding:.25em .5em;min-height:44px;line-height:1.25}
+html[data-narrow="1"] .fz-banner{padding:.6rem min(1rem,3vw);border-left-width:min(.5rem,2vw)}
+/* Sections, Debug and Display: one bar along the bottom, side by side, wrapping only when the text is too big for one row */
+html[data-narrow="1"] #corner{left:0;right:0;bottom:0;flex-direction:row;flex-wrap:wrap;align-items:stretch;gap:.4rem;
+  padding:.4rem min(1rem,3vw) calc(.4rem + env(safe-area-inset-bottom,0px));background:var(--paper);border-top:2px solid var(--line)}
+html[data-narrow="1"] #corner>button{flex:1 1 auto;justify-content:center;min-height:44px;line-height:1.25;padding:.25em .45em;gap:.35em;position:static;box-shadow:none}   /* 44px: the size of a fingertip, whatever the text size */
+html[data-narrow="1"] #corner #nav-tab{border:3px solid var(--ink);border-radius:0;left:auto;right:auto;bottom:auto;top:auto}
+html[data-narrow="1"] main{padding-bottom:calc(var(--pin-h,4rem) + 1.5rem)}
+html[data-narrow="1"] #job-badge{max-width:calc(100vw - 2rem)}
+html[data-narrow="1"] .ver{font-size:.8em;padding:.1em .35em}
+/* 1.26.0: tables too wide for the screen (app.js fitTables) become one box per row. The row's name is its title; each value follows
+   its column's name, two or more to a line when they fit */
+table.tbl.stacked,table.tbl.stacked tbody,table.tbl.stacked tfoot{display:block;width:100%}
+table.tbl.stacked thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+table.tbl.stacked caption:not(.sr){display:block;text-align:left;font-weight:700;margin-bottom:.4rem}
+table.tbl.stacked tr{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,9.5rem),1fr));gap:.1rem 1.2rem;border:2px solid var(--line);background:var(--sheet);padding:.35rem .7rem;margin:0 0 .6rem}
+table.tbl.stacked th,table.tbl.stacked td{display:block;border:0;padding:.2rem 0;text-align:left;overflow-wrap:anywhere;min-width:0}
+table.tbl.stacked tr>:first-child,table.tbl.stacked tr>:not([data-label]){grid-column:1/-1}
+table.tbl.stacked tr>:first-child{font-weight:700;border-bottom:1px solid var(--line);padding-bottom:.35rem;margin-bottom:.1rem}
+table.tbl.stacked [data-label]::before{content:attr(data-label) " ";font-weight:700;color:var(--ink-2);margin-right:.35rem}
+table.tbl.stacked tr>[data-label]:first-child::before{content:none}
+/* 1.26.0: phones and tablets have no keyboard, so the keyboard shortcut note under "Read this page aloud" only takes up a line there */
+html[data-touch="1"] .rd-page .hint{display:none}

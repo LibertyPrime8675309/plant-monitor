@@ -50,6 +50,7 @@ with sync_playwright() as p:
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and '404' not in m.text and '409' not in m.text else None)
     pg.add_init_script("localStorage.setItem('plantdb.editor','Fungi Test')")
     pg.goto(LOCAL + '/#/today'); pg.wait_for_timeout(1500); pg.evaluate("localStorage.removeItem('plantdb.fungi')")
+    if pg.locator('#pages-btn').is_visible(): pg.click('#pages-btn')       # 1.26.0: with less room the links fold behind Pages
     pg.click('nav[aria-label=Main] a[data-nav=fungi]'); pg.wait_for_timeout(1500)
     check(pg.evaluate('location.hash') == '#/fungi' and pg.locator('h1').inner_text() == 'Mushroom finds', 'the menu has "Mushrooms", which opens the page of finds')
     check(pg.locator('nav[aria-label=Main] a[data-nav=fungi][aria-current=page]').count() == 1, 'and marks it as the current page')

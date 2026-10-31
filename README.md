@@ -271,10 +271,16 @@ Press the **Display** button (bottom right of every page; it stays on screen) to
 - **Contrast**: Normal or High (black and white with heavier outlines).
 - **Colours**: match your device, light or dark.
 - **Plant pages**: photos and details side by side, or one column.
+- **Line length** (from 1.26.0): **Use the full width** (the usual choice: paragraphs and lists run across the whole page, so more fits on screen) or **Shorter lines** (about 70 letters per line, which some people find easier to follow).
 
 On a plant page in side-by-side view, the photos (left) and details (right) each scroll on their own: put the pointer over the half you want to move and scroll. A "Switch to one column" button at the top of the page does the same as the Display setting. With very large text or a narrow window the page switches to one column automatically. The row of section buttons (Now, Temperature, Humidity, Light, Water and soil, ...) jumps straight to a section; in side-by-side view it steps aside while the On this page menu is open, because the menu lists the same sections. All parts of the page can also be reached with the Tab key.
 
-On a phone the menu bar at the top scrolls away with the page (scroll back to the top to reach it), and every page fits the width of the screen at every text size. The Debug button sits just above the Display button. When there is no room for the Sections button beside them (larger text, or a narrow phone), it sits above Debug.
+On a phone the menu bar at the top scrolls away with the page (scroll back to the top to reach it), and every page fits the width of the screen at every text size. From 1.26.0:
+- The list of pages folds behind one **Pages** button, which names the page you're on (for example "Pages: Groups"). Press it to show every page; choosing one, or pressing Escape, folds the list again.
+- **Sections**, **Debug** and **Display** share one bar along the bottom of the screen. With the largest text there isn't room for all three in one row, so Sections takes the top row and Debug and Display share the second.
+- On a computer with large text (or a small window such as a tablet held sideways), the page links fold behind the same **Pages** button once they would take more than two rows, or the top bar more than a fifth of the window. If the top bar is still that tall, it scrolls away with the page, as on a phone.
+- Tables too wide for the screen become one box per row: the row's name (a day, a plant, a backup) at the top, then each value next to its column's name, two or more to a line when they fit. The long table on the Weather page still scrolls sideways.
+- The same happens on a tablet or a small window whenever the text is large enough that the page switches to one column.
 
 ### Pop-up windows (from 1.25.0)
 
