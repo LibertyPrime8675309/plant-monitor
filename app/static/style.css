@@ -1243,3 +1243,31 @@ html[data-photofit=whole] .sheet .mat img,html[data-photofit=auto] .sheet .mat i
 .sp-acts{margin-top:1rem}
 html[data-role=viewer] [data-act=spnew]{display:none!important}
 .lib-card .tags .tag,.species .tags .tag{white-space:normal}
+/* 1.22.0: mushroom finds */
+.mu-safe{margin:0 0 1.4rem}
+.mu-safe ul{margin:.5rem 0 0;padding-left:1.3em}
+.mu-safe li{margin:.3rem 0}
+.mu-card .mu-when{margin:0 0 .5rem;color:var(--ink-2)}
+.mu-card .tags .tag{white-space:normal}
+.mu-loc{margin-top:.6rem}
+.mu-loc .row{margin:.4rem 0}
+.mu-add{margin-top:1rem}
+.mu-acts{margin:1.6rem 0 1rem}
+.mu-find .dl{margin-bottom:.5rem}
+html[data-role=viewer] :is(a[href="#/fungi/new"], [data-act=muhere], [data-act=muclearloc], [data-act=mumain], [data-act=mucap], [data-act=murmphoto], [data-act=mugps], [data-act=muarch], [data-act=muusename], [data-act=munewfrom], .mu-add){display:none!important}
+/* 1.22.0: wishlist, your notes and tags */
+.tag.tag-wish{border-style:double;border-width:3px}
+.tag.tag-own{border-style:dotted}
+a.tag{text-decoration:none;color:inherit}
+a.tag:hover,a.tag:focus-visible{text-decoration:underline}
+.sp-wish{margin:1rem 0}
+.sp-wish p{margin:.3rem 0}
+.sp-notes-edit{margin:.8rem 0}
+.sp-notes-edit summary{cursor:pointer;font-weight:700;padding:.3rem 0}
+.sp-mynotes .tags{margin:.4rem 0}
+.wl-list{list-style:none;padding:0;display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(min(100%,22rem),1fr))}
+.wl-item{border:var(--bw) solid var(--line);background:var(--sheet);padding:1rem}
+.wl-item h3{margin:0 0 .2rem}
+.wl-item p{margin:.3rem 0}
+.wl-acts{margin-top:.6rem}
+html[data-role=viewer] :is([data-act=spwish], [data-act=wledit], [data-act=wlgot], [data-act=wlrm], form[data-form=spnotes], .sp-notes-edit){display:none!important}

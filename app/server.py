@@ -226,6 +226,7 @@ def init_db():
     # WAL can misbehave on Windows bind mounts; the default rollback journal is safe everywhere for a single-process home app.
     c.execute('PRAGMA journal_mode=' + os.environ.get('PLANTDB_JOURNAL', 'DELETE'))
     c.executescript(SCHEMA)
+    c.executescript(FUNGI_SCHEMA)                 # 1.22.0: mushroom finds, library notes and the wishlist
     have = {r[1] for r in c.execute('PRAGMA table_info(plants)')}
     for n, k, _ in FIELDS:                      # upgrade an older database: add any column this version needs
         if n not in have: c.execute(f"ALTER TABLE plants ADD COLUMN {n} {SQLTYPE.get(k, 'TEXT')}")
@@ -549,7 +550,7 @@ def owner_name(c):
     return r[0] if r else 'the owner'
 
 OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people')        # any request (the people list shows everyone's login)
-OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings')   # changes only
+OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/prefetch')   # changes only
 VIEWER_POSTS = ('/api/identify',)            # 1.18.0: asks this computer what a picture shows; changes nothing, so viewers may use it
 
 def role_refusal(u):
@@ -654,7 +655,7 @@ def guard():
 def headers(resp):
     if via_tailscale():                              # always HTTPS (Tailscale Serve), so browsers can be told to stay on HTTPS
         resp.headers['Strict-Transport-Security'] = 'max-age=31536000'
-    resp.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), payment=(), usb=(), camera=(self)'
+    resp.headers['Permissions-Policy'] = 'geolocation=(self), microphone=(), payment=(), usb=(), camera=(self)'   # 1.22.0: location for mushroom finds
     resp.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
     resp.headers['X-Content-Type-Options'] = 'nosniff'
     resp.headers['X-Frame-Options'] = 'DENY'
@@ -893,7 +894,7 @@ VISION_URL = os.environ.get('PLANTDB_VISION_URL', 'http://vision:8090').rstrip('
 PLANTNET_URL = os.environ.get('PLANTDB_PLANTNET_URL', 'https://my-api.plantnet.org/v2/identify/all')
 CLAUDE_URL = os.environ.get('PLANTDB_CLAUDE_URL', 'https://api.anthropic.com/v1/messages')
 CLAUDE_MODEL = 'claude-sonnet-5-5'
-ID_SCOPES = ('common', 'texas', 'us', 'world')
+ID_SCOPES = ('common', 'texas', 'us', 'world', 'fungi')
 
 def vision_call(path, data=None, ctype=None, timeout=60):
     req = urllib.request.Request(VISION_URL + path, data=data, headers={'Content-Type': ctype} if ctype else {}, method='POST' if data is not None else 'GET')
@@ -951,6 +952,12 @@ def mark_owned(c, items, key='scientific_name'):
     for x in items:
         n = (x.get(key) or '').lower()
         x['yours'] = sp.get(n, []); x['yours_genus'] = [] if x['yours'] else gn.get(n.split(' ')[0], [])
+    if items:                                     # 1.22.0: your wishlist and your tags, shown on the cards
+        wish = {r[0].lower(): r[1] for r in c.execute('SELECT name, status FROM wishlist')}
+        tags = {r[0].lower(): [t.strip() for t in r[1].split(',') if t.strip()] for r in c.execute("SELECT name, tags FROM species_notes WHERE tags<>''")}
+        for x in items:
+            n = (x.get(key) or '').lower()
+            x['wish'] = wish.get(n); x['tags'] = tags.get(n, [])
     return items
 
 @app.route('/api/identify', methods=['POST'])
@@ -988,6 +995,240 @@ def library():
     mark_owned(db(), out.get('results', []))
     out['results'].sort(key=lambda x: (not x['yours'], not x['yours_genus']))      # yours first (a stable sort keeps the rest in order)
     return jsonify(out)
+
+# ---------------------------------------------------------------- 1.22.0: mushroom finds (a page of their own) and library notes
+# A find is one mushroom (or a cluster of them) seen somewhere: the yard, one of your plant pots, or anywhere else. Its photos go in
+# data/photos like the plants', but in their own table. The location can come from the phone ("Use my location") or from the
+# GPS in a photo, read before the photo is saved without its EXIF data. Nothing here ever says a mushroom is safe to eat.
+FUNGI_FIELDS = [
+    ('name', 'text', 'Name'), ('scientific_name', 'text', 'Scientific name'), ('id_status', 'enum', 'How sure is the name?'),
+    ('found_on', 'date', 'Found on'), ('place_kind', 'enum', 'Where'), ('plant_code', 'text', 'Which plant pot'),
+    ('place', 'text', 'Where exactly'), ('lat', 'num', 'Latitude'), ('lon', 'num', 'Longitude'),
+    ('substrate', 'enum', 'Growing on'), ('near', 'text', 'Trees or plants nearby'), ('abundance', 'enum', 'How many'),
+    ('cap_size', 'text', 'Cap width'), ('cap_colour', 'text', 'Cap colour and surface'), ('underside', 'enum', 'Under the cap'),
+    ('ring', 'enum', 'Ring on the stem'), ('volva', 'enum', 'Cup or sac at the base'), ('spore_print', 'text', 'Spore print colour'),
+    ('bruising', 'text', 'Colour change when cut or bruised'), ('smell', 'text', 'Smell'), ('notes', 'long', 'Notes')]
+FUNGI_ENUMS = {
+    'id_status': ['Not identified yet', 'A guess', 'Fairly sure', 'Confirmed by an expert'],
+    'place_kind': ['In the yard', 'In a plant pot', 'Somewhere else'],
+    'substrate': ['Soil or grass', 'Mulch or wood chips', 'Dead wood or a stump', 'A living tree', 'Potting mix', 'Compost or dung', 'Leaf litter', 'Something else'],
+    'abundance': ['Just one', 'A few', 'A cluster', 'A ring or arc', 'Many, scattered'],
+    'underside': ['Gills', 'Pores (like a sponge)', 'Teeth or spines', 'Smooth or wrinkled', 'No cap (puffball, coral, crust, cup)', 'Not checked'],
+    'ring': ['Yes', 'No', 'Not checked'], 'volva': ['Yes', 'No', 'Not checked (dig around the base to see)']}
+FUNGI_NAMES = [f[0] for f in FUNGI_FIELDS]
+FUNGI_LABEL = {f[0]: f[2] for f in FUNGI_FIELDS}
+FUNGI_SCHEMA = """
+CREATE TABLE IF NOT EXISTS fungi_finds(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL UNIQUE, %s,
+  status TEXT NOT NULL DEFAULT 'active', version INTEGER NOT NULL DEFAULT 1,
+  created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_by TEXT, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS fungi_photos(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, find_id INTEGER NOT NULL, file TEXT NOT NULL, caption TEXT NOT NULL DEFAULT '',
+  is_primary INTEGER NOT NULL DEFAULT 0, gps_lat REAL, gps_lon REAL, taken_at TEXT, added_by TEXT NOT NULL, added_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS species_notes(
+  name TEXT PRIMARY KEY, notes TEXT NOT NULL DEFAULT '', tags TEXT NOT NULL DEFAULT '', updated_by TEXT, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS wishlist(
+  name TEXT PRIMARY KEY, common_name TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '', where_seen TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'want', added_by TEXT NOT NULL, added_at TEXT NOT NULL, updated_by TEXT, updated_at TEXT);
+""" % ',\n  '.join(f"{n} {'REAL' if k == 'num' else 'TEXT'}" for n, k, _ in FUNGI_FIELDS)
+
+def fungi_norm(c, n, v):
+    kind = dict((f[0], f[1]) for f in FUNGI_FIELDS)[n]
+    if v is None: v = ''
+    if kind == 'num':
+        if v == '': return None
+        try: x = round(float(v), 6)
+        except (TypeError, ValueError): abort(400, f'{FUNGI_LABEL[n]} must be a number')
+        if not (-90 <= x <= 90 if n == 'lat' else -180 <= x <= 180): abort(400, f'{FUNGI_LABEL[n]} is out of range')
+        return x
+    v = str(v).strip()[:4000 if kind == 'long' else 300]
+    if kind == 'enum' and v and v not in FUNGI_ENUMS[n]: abort(400, f'{FUNGI_LABEL[n]}: choose one of the listed answers')
+    if kind == 'date' and v:
+        try: date.fromisoformat(v)
+        except ValueError: abort(400, 'Found on must be a date like 2026-10-31')
+    if n == 'plant_code' and v and not c.execute('SELECT 1 FROM plants WHERE code=?', (v,)).fetchone(): abort(400, f'There is no plant {v}')
+    return v
+
+def find_row(c, code):
+    r = c.execute('SELECT * FROM fungi_finds WHERE code=?', (code,)).fetchone()
+    if not r: abort(404, 'There is no mushroom find ' + code)
+    return r
+
+def find_photos(c, fid):
+    return [dict(x) for x in c.execute('SELECT * FROM fungi_photos WHERE find_id=? ORDER BY is_primary DESC, id', (fid,))]
+
+def find_dict(c, r, full=True):
+    d = {k: r[k] for k in ['code'] + FUNGI_NAMES + ['status', 'version', 'created_by', 'created_at', 'updated_by', 'updated_at']}
+    ph = find_photos(c, r['id'])
+    d['photo'] = ph[0]['file'] if ph else None; d['photo_count'] = len(ph)
+    if full:
+        d['photos'] = ph
+        d['plant'] = plant_brief(c, r['plant_code']) if r['plant_code'] else None
+    return d
+
+def exif_info(raw):
+    """(lat, lon, taken_at) from a photo's EXIF data, or Nones. Read before the photo is saved, which drops EXIF."""
+    try:
+        im = Image.open(io.BytesIO(raw)); ex = im.getexif()
+        when = ex.get(306) or ex.get_ifd(0x8769).get(36867)
+        g = ex.get_ifd(0x8825)
+        def deg(v): return float(v[0]) + float(v[1]) / 60 + float(v[2]) / 3600
+        lat = lon = None
+        if g and 2 in g and 4 in g:
+            lat = deg(g[2]) * (-1 if g.get(1) == 'S' else 1); lon = deg(g[4]) * (-1 if g.get(3) == 'W' else 1)
+            if not (-90 <= lat <= 90 and -180 <= lon <= 180) or (lat == 0 and lon == 0): lat = lon = None
+        t = None
+        if when:
+            try: t = datetime.strptime(str(when).strip(), '%Y:%m:%d %H:%M:%S').strftime('%Y-%m-%dT%H:%M')
+            except ValueError: t = None
+        return (round(lat, 6) if lat is not None else None, round(lon, 6) if lon is not None else None, t)
+    except Exception:
+        return None, None, None
+
+class _Upload:                                    # save_image() wants something with .stream and .filename
+    def __init__(self, raw, name): self.stream, self.filename = io.BytesIO(raw), name
+
+@app.route('/api/fungi', methods=['GET', 'POST'])
+def fungi_list():
+    c = db()
+    if request.method == 'POST':
+        b = (request.get_json(silent=True) or {}).get('fields') or {}
+        vals = {n: fungi_norm(c, n, b.get(n)) for n in FUNGI_NAMES}
+        if not vals['found_on']: vals['found_on'] = local_today(c).isoformat()
+        if not vals['id_status']: vals['id_status'] = 'Not identified yet'
+        n = (c.execute("SELECT MAX(CAST(SUBSTR(code,3) AS INTEGER)) FROM fungi_finds").fetchone()[0] or 0) + 1
+        code, who, t = f'F-{n:03d}', editor(), now()
+        cols = ['code'] + FUNGI_NAMES + ['created_by', 'created_at', 'updated_by', 'updated_at']
+        c.execute(f"INSERT INTO fungi_finds({','.join(cols)}) VALUES({','.join('?' * len(cols))})", [code] + [vals[k] for k in FUNGI_NAMES] + [who, t, who, t])
+        audit_only(c, 'fungi', 'find', None, code, who, f"Mushroom find {code} added: {vals['name'] or 'not identified'}", None, code)
+        c.commit()
+        return jsonify(find_dict(c, find_row(c, code))), 201
+    status = request.args.get('status', 'active')
+    rows = c.execute('SELECT * FROM fungi_finds' + ('' if status == 'all' else ' WHERE status=?') + ' ORDER BY found_on DESC, id DESC',
+                     () if status == 'all' else (status,)).fetchall()
+    return jsonify(finds=[find_dict(c, r, False) for r in rows], enums=FUNGI_ENUMS, fields=[{'name': n, 'kind': k, 'label': l} for n, k, l in FUNGI_FIELDS])
+
+@app.route('/api/fungi/<code>', methods=['GET', 'PUT'])
+def fungi_one(code):
+    c = db()
+    r = find_row(c, code)
+    if request.method == 'PUT':
+        b = request.get_json(silent=True) or {}
+        if int(b.get('base_version', r['version'])) != r['version']:
+            abort(409, f'Someone else changed {code} while you were editing. Reload the page to see their changes, then make yours again.')
+        f, who, ch = b.get('fields') or {}, editor(), []
+        for n in FUNGI_NAMES:
+            if n not in f: continue
+            v = fungi_norm(c, n, f[n])
+            if (r[n] if r[n] is not None else '') != (v if v is not None else ''): ch.append((n, r[n], v))
+        if ch:
+            c.execute(f"UPDATE fungi_finds SET {', '.join(n + '=?' for n, _, _ in ch)}, version=version+1, updated_by=?, updated_at=? WHERE id=?",
+                      [v for _, _, v in ch] + [who, now(), r['id']])
+            for n, o, v in ch:
+                audit_only(c, 'fungi', n, None if o is None else str(o)[:500], None if v is None else str(v)[:500], who, f'{code}: {FUNGI_LABEL[n]} changed', None, code)
+            c.commit()
+        return jsonify(find_dict(c, find_row(c, code)) | {'changed': len(ch)})
+    return jsonify(find_dict(c, r) | {'enums': FUNGI_ENUMS, 'fields': [{'name': n, 'kind': k, 'label': l} for n, k, l in FUNGI_FIELDS]})
+
+@app.route('/api/fungi/<code>/status', methods=['POST'])
+def fungi_status(code):
+    c = db(); r = find_row(c, code)
+    to = 'archived' if (request.get_json(silent=True) or {}).get('archived') else 'active'
+    c.execute('UPDATE fungi_finds SET status=?, version=version+1, updated_by=?, updated_at=? WHERE id=?', (to, editor(), now(), r['id']))
+    audit_only(c, 'fungi', 'status', r['status'], to, editor(), f'{code} ' + ('archived' if to == 'archived' else 'brought back'), None, code)
+    c.commit()
+    return jsonify(find_dict(c, find_row(c, code)))
+
+@app.route('/api/fungi/<code>/photos', methods=['POST'])
+def fungi_add_photos(code):
+    c = db(); r = find_row(c, code)
+    files = request.files.getlist('files')
+    if not files: abort(400, 'Choose at least one photo')
+    who, cap = editor(), request.form.get('caption', '').strip()[:200]
+    has = c.execute('SELECT 1 FROM fungi_photos WHERE find_id=? AND is_primary=1', (r['id'],)).fetchone()
+    added = []
+    for i, f in enumerate(files):
+        raw = f.read()
+        lat, lon, taken = exif_info(raw)
+        name = save_image(_Upload(raw, f.filename))
+        pid = c.execute('INSERT INTO fungi_photos(find_id,file,caption,is_primary,gps_lat,gps_lon,taken_at,added_by,added_at) VALUES(?,?,?,?,?,?,?,?,?)',
+                        (r['id'], name, cap, 0 if has or i else 1, lat, lon, taken, who, now())).lastrowid
+        added.append({'id': pid, 'file': name, 'gps_lat': lat, 'gps_lon': lon, 'taken_at': taken})
+    c.execute('UPDATE fungi_finds SET version=version+1, updated_by=?, updated_at=? WHERE id=?', (who, now(), r['id']))
+    audit_only(c, 'fungi', 'photo', None, ', '.join(a['file'] for a in added), who, f'{code}: {len(added)} photo(s) added', None, code)
+    c.commit()
+    return jsonify(find_dict(c, find_row(c, code)) | {'added': added}), 201
+
+@app.route('/api/fungi/photos/<int:pid>', methods=['PATCH', 'DELETE'])
+def fungi_photo(pid):
+    c = db()
+    ph = c.execute('SELECT * FROM fungi_photos WHERE id=?', (pid,)).fetchone()
+    if not ph: abort(404, 'photo not found')
+    r = c.execute('SELECT * FROM fungi_finds WHERE id=?', (ph['find_id'],)).fetchone()
+    who = editor()
+    if request.method == 'DELETE':
+        c.execute('DELETE FROM fungi_photos WHERE id=?', (pid,))
+        src = os.path.join(PHOTO_DIR, ph['file'])
+        if os.path.exists(src): shutil.move(src, os.path.join(TRASH_DIR, ph['file']))
+        if not c.execute('SELECT 1 FROM fungi_photos WHERE find_id=? AND is_primary=1', (r['id'],)).fetchone():
+            c.execute('UPDATE fungi_photos SET is_primary=1 WHERE id=(SELECT MIN(id) FROM fungi_photos WHERE find_id=?)', (r['id'],))
+        audit_only(c, 'fungi', 'photo', ph['file'], None, who, f"{r['code']}: photo removed (file kept in photos_deleted)", None, r['code'])
+    else:
+        b = request.get_json(silent=True) or {}
+        if 'caption' in b:
+            c.execute('UPDATE fungi_photos SET caption=? WHERE id=?', (str(b['caption']).strip()[:200], pid))
+        if b.get('is_primary'):
+            c.execute('UPDATE fungi_photos SET is_primary=0 WHERE find_id=?', (r['id'],)); c.execute('UPDATE fungi_photos SET is_primary=1 WHERE id=?', (pid,))
+            audit_only(c, 'fungi', 'photo', None, ph['file'], who, f"{r['code']}: main photo changed", None, r['code'])
+    c.execute('UPDATE fungi_finds SET version=version+1, updated_by=?, updated_at=? WHERE id=?', (who, now(), r['id']))
+    c.commit()
+    return jsonify(find_dict(c, find_row(c, r['code'])))
+
+# ---- library notes, tags and wishlist (shared with everyone who can open the app; viewers can read them)
+@app.route('/api/library/notes', methods=['GET', 'PUT'])
+def library_notes():
+    c = db()
+    if request.method == 'PUT':
+        b = request.get_json(silent=True) or {}
+        name = str(b.get('name') or '').strip()[:120]
+        if not name: abort(400, 'Which species?')
+        notes = str(b.get('notes') or '').strip()[:5000]
+        tags = ', '.join(dict.fromkeys(t.strip().lower()[:40] for t in str(b.get('tags') or '').split(',') if t.strip()))[:500]
+        old = c.execute('SELECT * FROM species_notes WHERE name=?', (name,)).fetchone()
+        c.execute('INSERT OR REPLACE INTO species_notes(name,notes,tags,updated_by,updated_at) VALUES(?,?,?,?,?)', (name, notes, tags, editor(), now()))
+        audit_only(c, 'library', 'notes', (old['notes'] + ' | ' + old['tags']) if old else None, notes + ' | ' + tags, editor(), f'Library notes for {name} saved')
+        c.commit()
+    name = request.args.get('name') or (request.get_json(silent=True) or {}).get('name') or ''
+    if name:
+        r = c.execute('SELECT * FROM species_notes WHERE name=?', (name.strip(),)).fetchone()
+        return jsonify(dict(r) if r else {'name': name, 'notes': '', 'tags': ''})
+    return jsonify(notes=[dict(r) for r in c.execute("SELECT * FROM species_notes WHERE notes<>'' OR tags<>'' ORDER BY name")],
+                   tags=sorted({t.strip() for (x,) in c.execute('SELECT tags FROM species_notes') for t in x.split(',') if t.strip()}))
+
+@app.route('/api/wishlist', methods=['GET', 'PUT', 'DELETE'])
+def wishlist_api():
+    c = db()
+    if request.method in ('PUT', 'DELETE'):
+        b = request.get_json(silent=True) or {}
+        name = str(b.get('name') or request.args.get('name') or '').strip()[:120]
+        if not name: abort(400, 'Which species?')
+        old = c.execute('SELECT * FROM wishlist WHERE name=?', (name,)).fetchone()
+        if request.method == 'DELETE':
+            c.execute('DELETE FROM wishlist WHERE name=?', (name,))
+            audit_only(c, 'library', 'wishlist', name, None, editor(), f'{name} taken off the wishlist')
+        else:
+            st = b.get('status', old['status'] if old else 'want')
+            if st not in ('want', 'got'): abort(400, 'status must be want or got')
+            vals = (str(b.get('common_name', old['common_name'] if old else '') or '')[:120], str(b.get('notes', old['notes'] if old else '') or '').strip()[:2000],
+                    str(b.get('where_seen', old['where_seen'] if old else '') or '').strip()[:300], st)
+            if old: c.execute('UPDATE wishlist SET common_name=?, notes=?, where_seen=?, status=?, updated_by=?, updated_at=? WHERE name=?', vals + (editor(), now(), name))
+            else: c.execute('INSERT INTO wishlist(name,common_name,notes,where_seen,status,added_by,added_at) VALUES(?,?,?,?,?,?,?)', (name,) + vals + (editor(), now()))
+            audit_only(c, 'library', 'wishlist', None, name, editor(), f'{name} ' + ('updated on the wishlist' if old else 'added to the wishlist'))
+        c.commit()
+    rows = [dict(r) for r in c.execute("SELECT * FROM wishlist ORDER BY status='got', added_at DESC")]
+    sp, _ = species_owned(c)
+    for r in rows: r['yours'] = sp.get(r['name'].lower(), [])
+    return jsonify(wishlist=rows)
 
 # ---------------------------------------------------------------- 1.21.0: the library as a browsable knowledge base
 # Names, classification and US states come from the picture checker (offline). Photos and the short description come from
@@ -1083,12 +1324,49 @@ def lib_worker():
         finally:
             with LIBQ['lock']: LIBQ['set'].discard(name)
 
-def lib_enqueue(names):
+def lib_enqueue(names, front=True):
+    """Queues species for a photo. Ones someone is looking at go first (front=True); a whole-list download goes last."""
     with LIBQ['lock']:
-        for n in names:
-            if n not in LIBQ['set']: LIBQ['set'].add(n); LIBQ['queue'].append(n)
+        if front:
+            for n in reversed(names):
+                if n in LIBQ['set']:
+                    try: LIBQ['queue'].remove(n)
+                    except ValueError: pass
+                LIBQ['set'].add(n); LIBQ['queue'].insert(0, n)
+        else:
+            for n in names:
+                if n not in LIBQ['set']: LIBQ['set'].add(n); LIBQ['queue'].append(n)
         if LIBQ['queue'] and not LIBQ['thread']:
             LIBQ['thread'] = threading.Thread(target=lib_worker, daemon=True); LIBQ['thread'].start()
+
+PREFETCH = {'scope': None, 'names': set(), 'total': 0, 'started': None, 'by': None}
+
+@app.route('/api/library/prefetch', methods=['GET', 'POST', 'DELETE'])
+def library_prefetch():
+    """1.22.0: download the photo and facts for every species in a list (Texas plants), so the library works offline.
+    Owner only (OWNER_ONLY_CHANGES). It goes about one species a second, after anything someone is looking at."""
+    c = db()
+    if request.method == 'POST':
+        if not lib_online(c): abort(409, 'Library photos are turned off. Turn them on first.')
+        scope = (request.get_json(silent=True) or {}).get('scope', 'texas')
+        if scope not in ('texas',): abort(400, 'Only the Texas list can be downloaded')
+        names = vision_call('/scope_names?scope=' + scope, timeout=60).get('names', [])
+        todo = []
+        for n in names:
+            m = lib_meta(n)
+            if not (m and m.get('checked') and (m.get('photo') or (date.today() - date.fromisoformat(m['checked'])).days < LIB_RECHECK_DAYS)): todo.append(n)
+        PREFETCH.update(scope=scope, names=set(todo), total=len(todo), started=now(), by=editor(), all=len(names))
+        lib_enqueue(todo, front=False)
+        audit_only(c, 'library', 'prefetch', None, f'{len(todo)} of {len(names)}', editor(), f'Download of the photos for the {scope.title()} list started ({len(todo)} to fetch)')
+        c.commit()
+    elif request.method == 'DELETE':
+        with LIBQ['lock']:
+            LIBQ['queue'] = [n for n in LIBQ['queue'] if n not in PREFETCH['names']]
+            LIBQ['set'] -= PREFETCH['names']
+        PREFETCH.update(names=set(), total=0)
+    with LIBQ['lock']: left = len(PREFETCH['names'] & LIBQ['set'])
+    return jsonify(scope=PREFETCH['scope'], total=PREFETCH['total'], left=left, done=PREFETCH['total'] - left, started=PREFETCH['started'],
+                   by=PREFETCH['by'], all=PREFETCH.get('all'), running=left > 0, online=lib_online(c))
 
 def lib_photo_state(name):
     """{'url', 'credit', ...} when kept, None when there is none, 'pending' while it is being fetched."""
@@ -1115,7 +1393,15 @@ def library_browse():
     own, owngenus = owned_lists(c)
     q = {k: a.get(k, '')[:80] for k in ('scope', 'q', 'kind', 'family', 'genus', 'order', 'state', 'common', 'mine', 'sort', 'offset', 'limit')}
     if q['scope'] not in ID_SCOPES: q['scope'] = 'common'
-    if q['mine']: q.update(own=own, owngenus=owngenus)
+    if q['mine'] == 'wish':                        # 1.22.0: your wishlist, your notes and tags (names sent as the "own" list)
+        q.update(mine='species', own='|'.join(r[0] for r in c.execute('SELECT name FROM wishlist')), owngenus='')
+    elif q['mine'] == 'notes':
+        q.update(mine='species', own='|'.join(r[0] for r in c.execute("SELECT name FROM species_notes WHERE notes<>'' OR tags<>''")), owngenus='')
+    elif q['mine'].startswith('tag:'):
+        t = q['mine'][4:].strip().lower()
+        q.update(mine='species', own='|'.join(n for n, tg in c.execute("SELECT name, tags FROM species_notes WHERE tags<>''") if t in [x.strip() for x in tg.split(',')]), owngenus='')
+    elif q['mine']: q.update(own=own, owngenus=owngenus)
+    if q['mine'] == 'species' and not q.get('own'): q['own'] = '-'           # an empty list matches nothing
     out = vision_call('/browse?' + urllib.parse.urlencode({k: v for k, v in q.items() if v}), timeout=30)
     mark_owned(c, out.get('results', []))
     for x in out['results']:
@@ -1143,6 +1429,12 @@ def library_taxon():
     out = vision_call('/taxon?' + urllib.parse.urlencode({'name': name}), timeout=30)
     mark_owned(c, [out]); mark_owned(c, out.get('similar', []))
     out['your_plants'] = [plant_brief(c, x) for x in out['yours'] + out['yours_genus']]
+    nt = c.execute('SELECT * FROM species_notes WHERE lower(name)=lower(?)', (out.get('scientific_name') or name,)).fetchone()
+    out['notes'] = dict(nt) if nt else {'notes': '', 'tags': '', 'updated_by': None, 'updated_at': None}
+    w = c.execute('SELECT * FROM wishlist WHERE lower(name)=lower(?)', (out.get('scientific_name') or name,)).fetchone()
+    out['wishlist'] = dict(w) if w else None
+    out['your_finds'] = [{'code': r['code'], 'name': r['name'], 'found_on': r['found_on'], 'id_status': r['id_status']}
+                         for r in c.execute('SELECT * FROM fungi_finds WHERE lower(scientific_name)=lower(?) ORDER BY found_on DESC', (out.get('scientific_name') or name,))]
     m = lib_meta(name) or {}
     out['inat'] = {k: m.get(k) for k in ('inat_common', 'taxon_id', 'observations', 'wikipedia_url', 'summary', 'photos', 'detail_checked')}
     out['online'] = lib_online(c)
@@ -2086,11 +2378,13 @@ AUDIT_KINDS = {                          # kind of change (the filter on the Aud
     'lights': ('Grow lights', ('light',)),
     'groups': ('Groups and changes to a whole group', ('group',)),
     'notes': ('Notes from updates', ('note',)),
+    'fungi': ('Mushroom finds', ('fungi',)),
+    'library': ('Library notes, tags and wishlist', ('library',)),
 }
 ACTION_WORD = {'create': 'Page created', 'update': 'Edited', 'edit': 'Updated', 'restore': 'Restored', 'archive': 'Archived', 'unarchive': 'Brought back',
                'photo_add': 'Photo added', 'photo_assign': 'Photo assigned', 'photo_move': 'Photo moved', 'photo_remove': 'Photo removed',
                'photo_caption': 'Caption edited', 'photo_primary': 'Main photo changed', 'care': 'Care', 'fertilizer': 'Feeding', 'frost': 'Cold night',
-               'request': 'Request', 'todo': 'Photo list', 'setting': 'Setting', 'backup': 'Backup', 'note': 'Note', 'light': 'Grow light', 'group': 'Group'}
+               'request': 'Request', 'todo': 'Photo list', 'setting': 'Setting', 'backup': 'Backup', 'note': 'Note', 'light': 'Grow light', 'group': 'Group', 'fungi': 'Mushroom find', 'library': 'Library'}
 
 def audit_query(c, a, count=False):
     """SQL and arguments for the audit log with the filters in `a` (request.args): q, plant, who, kind, field, from, to,

@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.22.0 (2026-10-31)
+- **Mushrooms, on a page of their own.** **Mushrooms** in the top menu keeps a record of each mushroom you find (F-001, F-002…), in the yard, a plant pot or anywhere else:
+  - photos from your phone's camera, with the location taken from the photo or from **Use my location now**;
+  - where and when, what it grew on, and what it looks like (gills or pores, ring, cup at the base, spore print and so on);
+  - its name, and how sure it is;
+  - **Identify the photo shown** compares a find's photo with about 49,000 fungi, on your computer.
+  - A safety note on every mushroom page. The app never says a mushroom is safe to eat.
+- **Fungi in Identify and the Library.** Choose **Fungi worldwide** under **Look in**. Fungus pages offer **Record a find of this**.
+- **A wishlist.** **Add to my wishlist** on any species page, and **Your wishlist** on the Library page, with **Got it**, where to find it and notes.
+- **Your own notes and tags on any species**, shared with everyone who has access. Tags show on the library cards, and **Show** can list your wishlist, your notes or one tag.
+- **Photos for offline use.** The owner can download the photo and facts for every Texas plant in the background (about an hour and a half, about 300 MB).
+- **The first start after this update** downloads about 100 MB of fungus fingerprints for the picture checker, which takes a few minutes. Its container is rebuilt too.
+- Includes everything in 1.21.0 below.
+
 ## 1.21.0 (2026-10-31)
 - **"Watered today" works once a day.** After you press it on a plant page it says **✓ Watered today** and is switched off until tomorrow. Undo, or Remove in the care log, switches it back on. A plant can't get two waterings logged for the same day any more, from any button.
 - **Water all** on the Plants page marks every plant shown (with your filters) as watered today. Plants already watered today are skipped. It asks first, and the message has Undo.
