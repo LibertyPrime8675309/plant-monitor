@@ -915,6 +915,70 @@ function aboutBlock(p) {
     ${lines(p.propagation).length ? html`<h3>Propagation</h3>${ol(p.propagation)}` : ''}
     ${lines(p.sources).length ? html`<h3>Sources and further reading</h3><ul class="srcs">${srcList(p.sources)}</ul>` : ''}`;
 }
+// ---------- prototype proto/summer-heat: summer heat (AHS heat zones) under "About this plant" ----------
+// A MutationObserver puts #heat-box right after the hardiness zones (or at the end of the section) and fills it from /api/heat.
+const HEAT_CACHE = new Map();         // `${place}|${above}` -> {at, data}
+const MONTH_FULL = { Jan: 'January', Feb: 'February', Mar: 'March', Apr: 'April', May: 'May', Jun: 'June', Jul: 'July', Aug: 'August', Sep: 'September', Oct: 'October', Nov: 'November', Dec: 'December' };
+function andList(a) { return a.length < 2 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+function heatMonths(ms) {               // ['Jun','Jul','Aug','Sep'] -> 'June to September'; gaps -> 'May, July and August'
+  const all = Object.keys(MONTH_FULL), idx = ms.map(m => all.indexOf(m.month));
+  const run = idx.every((v, i) => !i || v === idx[i - 1] + 1);
+  return run && ms.length > 2 ? `${MONTH_FULL[ms[0].month]} to ${MONTH_FULL[ms[ms.length - 1].month]}` : andList(ms.map(m => MONTH_FULL[m.month]));
+}
+function heatVerdict(p, H) {
+  const T = H.above, n = H.reach, where = p.site === 'Indoors' || p.site === 'Garage or shed' ? ` It is ${p.site === 'Indoors' ? 'indoors' : 'in the garage or shed'} now, so this matters when it goes outside.` : '';
+  if (T == null || n == null) return '';
+  const when = H.months.length ? `, mostly in ${heatMonths(H.months)}` : '';
+  const days = x => x < 1 ? 'Less than 1 day' : `About ${Math.round(x)} day${Math.round(x) === 1 ? '' : 's'}`;
+  if (n < 0.5) return html`<p class="nowstate v-ok"><strong>✓ Summer heat is fine for it here.</strong> A usual summer's hottest day, about ${H.hottest}°F, stays below the ${T}°F where its leaves start to scorch.${where}</p>`;
+  if (n < 10) return html`<p class="nowstate v-hot"><strong>▲ A few days a summer are too hot for it.</strong> ${days(n)} a year reach ${T}°F or more, where its leaves can scorch${when}. Move it into afternoon shade when the forecast is that hot.${where}</p>`;
+  return html`<p class="nowstate v-damage"><strong>■ Summer heat is hard on it here.</strong> ${days(n)} a year reach ${T}°F or more, where its leaves can scorch${when}. Keep it in afternoon shade, or bring it inside, through those months.${where}</p>`;
+}
+function heatTable(p, H) {
+  if (!H.per_year.length) return '';
+  const top = Math.max(1, ...H.per_year.map(y => y.over86));
+  return html`<h4 id="heat-cap">Hot days each year at ${H.place}</h4><div class="tbl-wrap"><table class="tbl heat-tbl" aria-labelledby="heat-cap">
+    <thead><tr><th scope="col">Year</th><th scope="col">Days over ${H.line}°F</th>${H.above != null ? html`<th scope="col">Days at ${H.above}°F or more</th>` : ''}<th scope="col">Hottest</th></tr></thead>
+    <tbody>${H.per_year.map(y => html`<tr><th scope="row">${y.year}${y.partial ? ' (so far)' : ''}</th>
+      <td data-label="Days over ${H.line}°F: "><span class="heat-n">${y.over86}</span><span class="heat-bar" aria-hidden="true"><span style="width:${Math.round(y.over86 / top * 100)}%"></span></span></td>
+      ${H.above != null ? html`<td data-label="Days at ${H.above}°F or more: ">${y.reach}</td>` : ''}<td data-label="Hottest: ">${y.hottest}°F</td></tr>`)}</tbody></table></div>`;
+}
+function heatBlock(p, H) {
+  const head = html`<h3>Summer heat (AHS heat zones)</h3>`;
+  if (H.zone == null) return html`${head}<p>Not enough weather history yet. Once ${H.place} has 3 whole years of weather, this shows how many hot days a usual year has and what that means for this plant.
+    <a href="#/weather">Load the weather history on the Weather page</a>.</p>${heatTable(p, H)}`;
+  return html`${head}<p>Where you are: over the last ${H.years} years at ${H.place}, an average of ${H.over86} days a year went above ${H.line}°F, which is <strong>heat zone ${H.zone}</strong>
+      on the American Horticultural Society's scale of 1 (cool summers) to 12 (very hot). A usual year's hottest day is about ${H.hottest}°F.</p>
+    ${heatVerdict(p, H)}${heatTable(p, H)}
+    <p class="hint">${H.line}°F is where many plants start to suffer from heat. The highs are air temperatures in the shade from the weather history; in full sun, leaves and dark pots get hotter. ${has(p.temp_damage_above) ? html`This plant's heat damage temperature (${p.temp_damage_above}°F) is under Temperature, and you can change it with Edit.` : 'Add a heat damage temperature with Edit, under Temperature, to see how many days are too hot for this plant.'}</p>`;
+}
+async function loadHeat(box, p) {
+  const above = has(p.temp_damage_above) ? +p.temp_damage_above : '', key = `${PLACE || ''}|${above}`, hit = HEAT_CACHE.get(key);
+  let H = hit && Date.now() - hit.at < 10 * 60e3 ? hit.data : null;
+  if (!H) {
+    try { H = await api('GET', '/api/heat' + (above !== '' ? '?above=' + above : '')); HEAT_CACHE.set(key, { at: Date.now(), data: H }); }
+    catch (e) { box.innerHTML = rend(html`<h3>Summer heat (AHS heat zones)</h3><p class="notice bad">Could not load the summer heat: ${e.message}</p>`); return; }
+  }
+  if (box.isConnected) { box.innerHTML = rend(heatBlock(p, H)); heatFit(); }
+}
+function heatFit() {                    // with very large text the table does not fit: show each year as a short list instead
+  const box = document.getElementById('heat-box'), w = box && box.querySelector('.tbl-wrap');
+  if (!w) return;
+  box.classList.remove('heat-stack');
+  if (w.scrollWidth - w.clientWidth > 2) box.classList.add('heat-stack');
+}
+window.addEventListener('resize', () => requestAnimationFrame(heatFit));
+new MutationObserver(() => {
+  const sec = document.getElementById('about');
+  if (!sec || document.getElementById('heat-box') || !CUR || !CUR.p) return;
+  const box = document.createElement('div');
+  box.id = 'heat-box'; box.className = 'heat';
+  const hz = [...sec.querySelectorAll(':scope > h3')].find(h => /^Hardiness zones/.test(h.textContent));
+  let next = hz ? hz.nextElementSibling : null;
+  while (next && !(next.tagName === 'H3' || next.classList.contains('danger-box'))) next = next.nextElementSibling;
+  sec.insertBefore(box, next);
+  loadHeat(box, CUR.p);
+}).observe(document.getElementById('app'), { childList: true, subtree: true });
 function lightBlock(p, cur) {
   const lo = p.par_low, hi = p.par_high;
   const old = html`${p.light_summary ? html`<p><strong>${p.light_summary}</strong>${p.light_hours ? html`, about ${p.light_hours}` : ''}.</p>` : ''}${paras(p.light_notes)}`;

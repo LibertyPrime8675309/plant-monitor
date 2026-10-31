@@ -994,6 +994,21 @@ ul.sp-verdicts{list-style:none;padding:0;margin:.3rem 0;display:grid;gap:.25rem}
 ul.srcs{padding-left:1.2rem}
 ul.srcs li{margin:.25rem 0;overflow-wrap:anywhere}
 
+/* ---- prototype proto/summer-heat: summer heat (AHS heat zones) under About this plant ---- */
+.heat{max-width:72ch}
+.heat h4{margin:.8rem 0 .2rem}
+.heat-n{display:inline-block;min-width:2.6em;font-variant-numeric:tabular-nums}
+.heat-bar{display:inline-block;vertical-align:middle;width:6em;height:.7em;border:1px solid var(--ink-2);margin-left:.4rem}
+.heat-bar>span{display:block;height:100%;background:var(--ochre)}
+@media (max-width:40em){.heat-bar{display:none}}
+html[data-narrow="1"] .heat-bar{display:none}
+.heat-stack .heat-tbl thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.heat-stack .heat-tbl, .heat-stack .heat-tbl tbody, .heat-stack .heat-tbl tr, .heat-stack .heat-tbl th, .heat-stack .heat-tbl td{display:block;width:auto}
+.heat-stack .heat-tbl tr{border-top:1px solid var(--line);padding:.4rem 0}
+.heat-stack .heat-tbl th, .heat-stack .heat-tbl td{border:0;padding:.1rem 0}
+.heat-stack .heat-tbl td::before{content:attr(data-label)}
+.heat-stack .heat-bar{display:none}
+
 /* 1.14.1: swipe between plants. A label slides in from the side the next page comes from; it turns solid once letting go will open it. */
 .swipe-hint{position:fixed;top:42%;z-index:70;max-width:min(80vw,26rem);padding:.8rem 1.1rem;background:var(--sheet);color:var(--ink);border:var(--bw) solid var(--ink);
   font-weight:700;line-height:1.3;pointer-events:none;opacity:0;box-shadow:0 .3rem 1rem rgba(0,0,0,.25)}

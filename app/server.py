@@ -2313,6 +2313,71 @@ def place_climate(c, L):
     PLACE_CLIMATE[L['id']] = (time.time(), out)
     return out
 
+# ---------- prototype proto/summer-heat: summer heat (AHS heat zones) ----------
+# The American Horticultural Society heat zone of a place is the number of days a year whose high is above 86°F (30°C),
+# the point where many plants start to suffer heat stress. Zone 1 has less than one such day, zone 12 more than 210.
+AHS_HEAT_ZONES = [(1, 1), (2, 8), (3, 15), (4, 31), (5, 46), (6, 61), (7, 91), (8, 121), (9, 151), (10, 181), (11, 211)]   # (zone, days below which it applies)
+HEAT_LINE_F = 86
+PLACE_HEAT = {}
+
+def ahs_heat_zone(days):
+    """AHS heat zone (1 to 12) for an average number of days a year above 86°F."""
+    if days is None: return None
+    for z, below in AHS_HEAT_ZONES:
+        if days < below: return z
+    return 12
+
+def place_highs(c, L):
+    """Each observed day's high at a place, as {year: [(month, high), ...]}. Worked out at most every 6 hours."""
+    hit = PLACE_HEAT.get(L['id'])
+    if hit and time.time() - hit[0] < 6 * 3600: return hit[1]
+    try: rows = c.execute("SELECT date, json_extract(data, '$.temperature_2m_max') FROM weather_daily WHERE loc_id=? AND kind='observed'", (L['id'],)).fetchall()
+    except sqlite3.OperationalError:            # an SQLite without JSON functions
+        rows = [(d, (json.loads(x) if x else {}).get('temperature_2m_max')) for d, x in c.execute("SELECT date, data FROM weather_daily WHERE loc_id=? AND kind='observed'", (L['id'],))]
+    years = {}
+    for d, t in rows:
+        if isinstance(t, (int, float)): years.setdefault(int(d[:4]), []).append((int(d[5:7]), t))
+    PLACE_HEAT[L['id']] = (time.time(), years)
+    return years
+
+def place_heat(c, L, above=None):
+    """Summer heat at a place from its weather history: days above 86°F each year, the AHS heat zone (from whole years
+    only, and at least 3 of them), a usual summer's hottest day and, when `above` is given (a plant's heat-damage
+    temperature), how many days reach it, in which months, and how many so far this year."""
+    years, this_year = place_highs(c, L), local_today(c).year
+    whole = sorted(y for y, v in years.items() if len(v) >= 330 and y < this_year)
+    def count(v, t): return sum(1 for _, x in v if x > t)
+    def reach(v, t): return sum(1 for _, x in v if x >= t)
+    per = [{'year': y, 'days': len(years[y]), 'partial': y not in whole, 'over86': count(years[y], HEAT_LINE_F), 'hottest': round(max(x for _, x in years[y])),
+            **({'reach': reach(years[y], above)} if above is not None else {})} for y in sorted(years, reverse=True) if y in whole or y == this_year][:11]
+    out = {'place': L['name'], 'line': HEAT_LINE_F, 'years': len(whole), 'since': whole[0] if whole else None, 'zone': None, 'over86': None,
+           'hottest': None, 'above': above, 'per_year': per, 'months': []}
+    if len(whole) >= 3:
+        n = len(whole)
+        out['over86'] = round(sum(count(years[y], HEAT_LINE_F) for y in whole) / n)
+        out['zone'] = ahs_heat_zone(sum(count(years[y], HEAT_LINE_F) for y in whole) / n)
+        out['hottest'] = round(sum(max(x for _, x in years[y]) for y in whole) / n)
+        if above is not None:
+            out['reach'] = round(sum(reach(years[y], above) for y in whole) / n, 1)
+            by_month = [0] * 12
+            for y in whole:
+                for m, x in years[y]:
+                    if x >= above: by_month[m - 1] += 1
+            out['months'] = [{'month': MONTH_ABBR[i], 'days': round(by_month[i] / n, 1)} for i in range(12) if by_month[i] / n >= 0.5]
+    return out
+
+@app.route('/api/heat')
+def heat_api():
+    """GET /api/heat[?above=F][&loc=ID]: summer heat where the plants are (see place_heat)."""
+    c = db()
+    above = request.args.get('above')
+    if above not in (None, ''):
+        try: above = int(float(above))
+        except ValueError: abort(400, 'above must be a temperature in °F')
+        if not 50 <= above <= 140: abort(400, 'above must be between 50 and 140°F')
+    else: above = None
+    return jsonify(place_heat(c, req_loc(c), above))
+
 def place_brief(L):
     return {k: L[k] for k in ('id', 'name', 'tz', 'is_home', 'enabled')}
 
