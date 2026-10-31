@@ -1026,8 +1026,8 @@ ul.srcs li{margin:.25rem 0;overflow-wrap:anywhere}
 .pc-box h3{margin:0 0 .2rem;font-size:1.05rem;text-transform:uppercase;letter-spacing:.06em}
 .pc-box p{margin:.25rem 0;overflow-wrap:anywhere}
 .pc-main-fact{font-size:1.4rem;font-weight:700;line-height:1.25}
-.pc-printed{margin:.3rem 0 0;font-size:1rem;color:var(--ink-2)}
-.pc-scan{margin:0;flex:none;width:7rem;text-align:center;font-size:.95rem;line-height:1.25}
+.pc-printed{margin:.3rem 0 0;font-size:1em;color:var(--ink-2)}            /* 1.20.0: as big as the rest of the card's text */
+.pc-scan{margin:0;flex:none;width:8rem;text-align:center;font-size:1em;line-height:1.25}
 .pc-qr{display:block;width:6rem;height:6rem;margin:0 auto .2rem;background:#fff;padding:.2rem;border-radius:4px}
 /* phones and very large text: smaller margins and headings so words are not split */
 html[data-narrow="1"] .pc-main{padding:1rem .5rem 3rem}
@@ -1055,8 +1055,8 @@ html[data-narrow="1"] .pc-opts{padding:.7rem .7rem .2rem}
   .pc-col{flex:1 1 0}
   .pc-box{padding:.06in .12in .08in}
   .pc-box p{margin:.04in 0}
-  .pc-printed{font-size:.8rem}
-  .pc-scan{width:1.15in;font-size:.75rem}
+  .pc-printed{font-size:1em}
+  .pc-scan{width:1.35in;font-size:1em}
   .pc-qr{width:1in;height:1in;padding:0}
 }
 
@@ -1161,3 +1161,52 @@ button.linkish{font:inherit;color:var(--cyan);background:none;border:0;padding:.
 .undo-toast .btn:focus-visible{outline-color:var(--paper);outline-offset:3px}
 .undo-toast .undo-left{flex-basis:100%;font-weight:400;font-size:.9em}
 html[data-role=viewer] .undo-toast .undo-acts [data-undo=undo]{display:none!important}
+
+/* 1.20.0: Plants page cards hold their own photo buttons. The name's link stretches over the whole card, so the card still
+   opens the plant from anywhere; the photo buttons sit above it. */
+.sheet{position:relative}
+.sheet .sheet-link{color:inherit;text-decoration:none}
+.sheet .sheet-link::after{content:"";position:absolute;inset:0;z-index:1}
+.sheet .sheet-link:focus-visible{outline:none}
+.sheet:has(.sheet-link:focus-visible){outline:var(--ring) solid var(--focus);outline-offset:4px}
+.sheet:hover .name a{text-decoration:underline;text-underline-offset:.2em;text-decoration-thickness:2px}
+.sheet .ph-nav{position:absolute;z-index:2;left:.5rem;right:.5rem;bottom:1.1rem;display:flex;align-items:center;justify-content:space-between;gap:.4rem;pointer-events:none}
+.sheet .ph-btn{pointer-events:auto;font:inherit;font-size:1.7rem;line-height:1;font-weight:700;width:2.9rem;height:2.9rem;display:grid;place-items:center;
+  background:var(--sheet);color:var(--ink);border:2px solid var(--ink);border-radius:50%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.sheet .ph-btn:hover{background:var(--cyan);color:var(--cyan-ink);border-color:var(--cyan)}
+.sheet .ph-btn:focus-visible{outline:var(--ring) solid var(--focus);outline-offset:2px}
+.sheet .ph-n{background:var(--sheet);color:var(--ink);border:2px solid var(--ink);border-radius:1rem;padding:.05rem .6rem;font-weight:700;font-size:1rem;white-space:nowrap}
+/* 1.20.0: which photo is the main one, in words, on the plant page */
+.main-note{margin:.2rem 0 .6rem;display:flex;flex-wrap:wrap;gap:.4rem .8rem;align-items:center}
+.main-note .hint{flex:1 1 16rem}
+.thumbs button{position:relative}
+.thumbs .th-main{position:absolute;left:0;right:0;bottom:0;background:var(--ink);color:var(--paper);font-size:1rem;font-weight:700;line-height:1.3;text-align:center}
+html[data-role=viewer] .main-note button{display:none!important}
+
+/* 1.20.0: the 4 x 6 inch card (landscape): name, code and place, scan code and photo, then one row per need. Nothing on it is
+   smaller than about 16 point when printed. */
+.pc-46 .pc-head{flex-wrap:nowrap;align-items:flex-start}
+.pc-46 .pc-names{flex:1 1 auto}
+.pc-46 .pc-qr{flex:none;width:5.5rem;height:5.5rem}
+.pc-46 .pc-photo{flex:0 0 7rem;width:7rem}
+.pc-rows{display:grid;gap:.35rem}
+.pc-row{display:grid;grid-template-columns:7.5rem minmax(0,1fr);gap:.2rem .8rem;align-items:baseline;border-top:1px solid var(--line);padding-top:.3rem;break-inside:avoid}
+.pc-row:first-child{border-top:0;padding-top:0}
+.pc-row h3{margin:0;font-family:var(--sans);font-size:1em;font-weight:700;letter-spacing:0}
+.pc-row p{margin:0;overflow-wrap:anywhere}
+.pc-row .pc-main-fact{font-size:1.1em;font-weight:700}
+body.pc-c46 .pc-cards{grid-template-columns:repeat(auto-fill,minmax(min(100%,40rem),1fr))}
+body.pc-c46 .pc-card{max-width:48rem}
+html[data-narrow="1"] .pc-row{grid-template-columns:minmax(0,1fr)}
+html[data-narrow="1"] .pc-46 .pc-head{flex-wrap:wrap}
+@media print{
+  body.pc-c46 .pc-cards{display:block}
+  body.pc-c46 .pc-card{max-width:none;font-size:16pt;line-height:1.15}
+  .pc-46 .pc-head{gap:.1in;padding-bottom:.05in;margin-bottom:.06in;border-bottom-width:2px}
+  .pc-46 h2{font-size:1.35rem;line-height:1.1}
+  .pc-46 .pc-qr{width:.7in;height:.7in}
+  .pc-46 .pc-photo{width:.7in;flex:0 0 .7in;border-width:1px}
+  .pc-rows{gap:.02in}
+  .pc-row{grid-template-columns:.95in minmax(0,1fr);gap:0 .08in;padding-top:.015in;border-top:.5pt solid #000}
+  .pc-row .pc-main-fact{font-size:1.06em}
+}

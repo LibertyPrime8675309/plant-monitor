@@ -190,6 +190,20 @@
     - `NEWFILL` pre-fills the Add a plant form (and attaches `__pic` after saving). It is cleared on any other route.
     - Change buttons are in the viewer CSS block.
   - **Tests:** `dev/test/mock_vision.py` is a fake service (decides by picture colour, and also fakes Pl@ntNet and Claude), started by `mock_server.py` unless `MOCK_VISION=real`. `dev/test/identify_check.py` uses a fake red camera (`.y4m`).
+- **Care cards (1.19.0, 1.20.0):** a page of its own, `app/static/card.html` + `card.js` (no app.js; the printout carries only the cards).
+  - URLs: `/card.html?plant=P-006` (or several, comma-separated), `?group=<id>`, `?all=1` (every active plant, from the Labels page).
+  - Options are kept in localStorage `plantdb.card2`: `size` (`card` = 4 x 6 inch, the default, or `page`), `notes`, `photo`, `qr` and `pets` (on by default).
+  - `card()` draws the full page and `card46()` the 4 x 6 card, with shorter wording (`row()`).
+  - `pageSize()` writes the `@page` size into a `<style id="pc-page">`, because `@page` cannot depend on a class.
+  - The links on plant and group pages are added by `careCardLinks()` in app.js.
+  - Tested by `card_check.py`, which prints PDFs and checks font sizes and page counts.
+- **Plants page cards (1.20.0):**
+  - `sheet()` is an `<article class="sheet">`. The name's `a.sheet-link` stretches over the card with `::after`, so the card can hold buttons.
+  - `/api/plants` returns `photos` (every file, main first). `sheetMat()` draws the photo with `.ph-btn` Previous / Next (act `gphoto`) and the "n of N" count.
+  - `GPIX` remembers each card's photo while the page is open. `sheetStep()` redraws only that card's photo.
+  - Swipe: `GSW` touch listeners on the card's photo area, and a capture-phase click guard so a swipe never opens the plant.
+  - On plant pages, `photoPanel()` shows `.main-note` and the `.th-main` thumbnail badge. "Make this the main photo" (act `mainphoto`) PATCHes `is_primary`.
+  - Tested by `photos_check.py`.
 - **Plants page filters:** the state lives in `G` and is remembered in localStorage `plantdb.filters`. It also drives Previous / Next on plant pages.
 - `style.css`: colour tokens on `:root`, overridden for dark mode and high contrast. Additions are appended in blocks headed with the version that added them.
 - **Charts:** hand-drawn SVG using a palette checked for colour-blind readers (see the CHANGELOG for 1.5.0).

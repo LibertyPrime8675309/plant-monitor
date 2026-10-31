@@ -7,8 +7,8 @@ const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ESC[c]);
 const enc = encodeURIComponent;
 const $ = id => document.getElementById(id);
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-const KEY = 'plantdb.card';
-const DEF = { notes: 'short', photo: true, qr: true, pets: false };
+const KEY = 'plantdb.card2';                // 1.20.0: new defaults (4 x 6 card, dangers shown), so earlier saved choices start over
+const DEF = { size: 'card', notes: 'short', photo: true, qr: true, pets: true };
 
 let OPT = Object.assign({}, DEF);
 try { Object.assign(OPT, JSON.parse(localStorage.getItem(KEY) || '{}') || {}); } catch (e) { /* storage blocked: defaults */ }
@@ -65,9 +65,11 @@ function card(p, water, base) {
     box('pc-hum', 'Humidity', range(p.humidity_low, p.humidity_high, '%'), [], [note(p.humidity_notes)]),
     box('pc-feed', 'Feeding', feedMain, [p.fert_strength && feedWhen ? 'Feed ' + feedWhen + '.' : ''],
         [p.fertilizer ? note(p.fertilizer) : '', p.npk_ratio && OPT.notes === 'full' ? `N-P-K about ${p.npk_ratio}.` : '', OPT.notes === 'full' || !feedWhen ? note(p.nutrients) : ''])].join('');
-  const careful = OPT.pets ? box('pc-care', 'Careful', '', [p.danger_animals ? 'Pets: ' + note(p.danger_animals) : '', p.danger_humans ? 'People: ' + note(p.danger_humans) : '']) : '';
-  // two fixed columns (water and light; temperature, humidity and feeding) so a card breaks across pages predictably
-  const boxes = left || right ? `<div class="pc-col">${left}</div><div class="pc-col">${right}</div>${careful}` : careful;
+  const petMain = !p.pet_safety ? '' : /pets/i.test(p.pet_safety) ? p.pet_safety : 'Pets: ' + p.pet_safety[0].toLowerCase() + p.pet_safety.slice(1);
+  const careful = OPT.pets ? box('pc-care', 'Careful', petMain, [p.danger_animals ? 'Pets: ' + note(p.danger_animals) : '', p.danger_humans ? 'People: ' + note(p.danger_humans) : '']) : '';
+  // two fixed columns (water, light and the dangers; temperature, humidity and feeding) so a card breaks across pages
+  // predictably. 1.20.0: the dangers go under light, where there is usually room, so most cards stay on one page.
+  const boxes = left || right || careful ? `<div class="pc-col">${left}${careful}</div><div class="pc-col">${right}</div>` : '';
   const where = p.location && p.site && p.location.toLowerCase().startsWith(p.site.toLowerCase()) ? p.location : [p.site, p.location].filter(Boolean).join(', ');
   const today = new Date().toLocaleDateString([], { dateStyle: 'long' });
   return `<article class="pc-card" aria-labelledby="pc-h-${esc(p.code)}">
@@ -86,19 +88,74 @@ function card(p, water, base) {
   </article>`;
 }
 
+// 1.20.0: a 4 x 6 inch card (landscape): the main facts only, one row each, in large type
+function row(cls, title, main, more) {
+  const m = (more || []).filter(Boolean);
+  if (!main && !m.length) return '';
+  // the main fact in bold, and the rest on the same line, so most needs take one line
+  return `<div class="pc-row ${cls}"><h3>${esc(title)}</h3><p>${main ? `<b class="pc-main-fact">${esc(main)}</b>` : ''}${m.map((x, i) => `${main || i ? '. ' : ''}${esc(x)}`).join('')}</p></div>`;
+}
+function card46(p, water, base) {
+  const photo = (p.photos || []).find(x => x.is_primary) || (p.photos || [])[0];
+  const w = water[p.code];
+  const waterMain = p.water_every_days ? `Check every ${p.water_every_days} days` : w ? `Check about every ${w.base} days` : '';
+  // shorter wording than the full page, so most plants fit on one card: short month names, and the hours only when brief
+  const hrs = p.light_hours && p.light_hours.length <= 12 ? p.light_hours.replace(/\bh\b/, 'hours') + ' a day' : '';
+  const light = [String(p.light_summary || '').replace(/\s*\([^)]*\)/g, '').split(/;|\.\s/)[0].replace(/\.$/, '').trim(), hrs].filter(Boolean).join(', ');   // asides in brackets are on the full page
+  const ideal = range(p.temp_ideal_low, p.temp_ideal_high, '°F');
+  const mo = (a, b) => !a || !b ? '' : (a === 1 && b === 12) || b === a - 1 ? 'all year' : `${MONTHS[a - 1].slice(0, 3)} to ${MONTHS[b - 1].slice(0, 3)}`;
+  const feedWhen = [mo(p.fert_from_month, p.fert_to_month), p.fert_every_days ? `every ${p.fert_every_days} days` : ''].filter(Boolean).join(', ');
+  const first = p.danger_humans ? String(p.danger_humans).replace(/\s+/g, ' ').trim().match(/^.+?[.!?](?=\s|$)|^.+$/)[0] : '';
+  // a long warning would push the card onto a second one: point to the plant's page instead (the scan code opens it)
+  const people = !first ? '' : first.length <= 75 ? 'People: ' + first : 'People: see the warning on its page';
+  const rows = [
+    row('pc-water', 'Water', waterMain),
+    row('pc-light', 'Light', light),
+    row('pc-temp', 'Temp', ideal ? 'Best at ' + ideal : '', [p.temp_damage_below != null ? `Harmed below ${p.temp_damage_below}°F` : '']),
+    row('pc-hum', 'Humidity', range(p.humidity_low, p.humidity_high, '%')),
+    row('pc-feed', 'Feeding', p.fert_strength || (feedWhen ? 'Feed ' + feedWhen : ''), [p.fert_strength && feedWhen ? feedWhen[0].toUpperCase() + feedWhen.slice(1) : '']),
+    OPT.pets ? row('pc-care', 'Careful', !p.pet_safety ? (p.danger_animals ? 'Pets: see the warning on its page' : '') : /pets/i.test(p.pet_safety) ? p.pet_safety : 'Pets: ' + p.pet_safety[0].toLowerCase() + p.pet_safety.slice(1), [people]) : ''].join('');
+  const where = p.location || p.site || '';             // the card sits with the plant, so the spot alone is enough
+  return `<article class="pc-card pc-46" aria-labelledby="pc-h-${esc(p.code)}">
+    <header class="pc-head">
+      <div class="pc-names">
+        <h2 id="pc-h-${esc(p.code)}">${esc(p.common_name)}</h2>
+        <p class="pc-where"><strong>${esc(p.code)}</strong>${where ? ' · ' + esc(where) : ''}</p>
+      </div>
+      ${OPT.qr ? `<img class="pc-qr" src="/api/plants/${enc(p.code)}/qr.svg?base=${enc(base)}" alt="Code to scan: opens the page for ${esc(p.code)}" width="80" height="80">` : ''}
+      ${OPT.photo && photo ? `<img class="pc-photo" src="/photos/${enc(photo.file)}" alt="${esc(photo.caption || 'Photo of ' + p.common_name)}">` : ''}
+    </header>
+    <div class="pc-rows">${rows || '<p>This plant has no care details yet.</p>'}</div>
+  </article>`;
+}
+
+// the paper size goes in its own style element: @page cannot depend on a class
+function pageSize() {
+  let st = $('pc-page');
+  if (!st) { st = document.createElement('style'); st.id = 'pc-page'; document.head.appendChild(st); }
+  st.textContent = OPT.size === 'card' ? '@page{size:6in 4in;margin:.15in .18in}' : '@page{size:letter;margin:.45in}';
+}
+
 let DATA = null;
 function paint() {
   const f = $('pc-opts');
   f.querySelectorAll('input[type=radio]').forEach(i => { i.checked = OPT[i.name] === i.value; });
   f.querySelectorAll('input[type=checkbox]').forEach(i => { i.checked = !!OPT[i.name]; });
-  $('pc-cards').innerHTML = DATA.plants.map(p => card(p, DATA.water, DATA.base)).join('');
+  const c46 = OPT.size === 'card';
+  $('pc-notes').hidden = c46;
+  document.body.classList.toggle('pc-c46', c46);
+  pageSize();
+  $('pc-cards').innerHTML = DATA.plants.map(p => (c46 ? card46 : card)(p, DATA.water, DATA.base)).join('');
   const n = DATA.plants.length;
-  $('pc-count').textContent = `${n} ${n === 1 ? 'card' : 'cards'}. Each starts on a new page; long notes can run onto a second page.`;
+  $('pc-count').textContent = c46 ? `${n} ${n === 1 ? 'card' : 'cards'}, one plant on each. In the print window, choose 4 x 6 inch paper.`
+    : `${n} ${n === 1 ? 'page' : 'pages'}, one plant on each. Long notes can run onto a second page.`;
 }
 
 async function load() {
   const q = new URLSearchParams(location.search);
   let codes = (q.get('plant') || '').split(',').map(s => s.trim()).filter(Boolean), group = null;
+  const all = q.get('all') === '1';                     // 1.20.0: every active plant, from the Labels page
+  if (all) codes = (await get('/api/plants')).map(p => p.code);
   if (q.get('group')) {
     group = await get('/api/groups/' + enc(q.get('group')));
     codes = group.members.map(m => m.code);
@@ -111,7 +168,11 @@ async function load() {
   ]);
   DATA = { plants, water: Object.fromEntries((water.plants || []).map(w => [w.code, w])), base: st.base_url || location.origin };
   const back = $('pc-back');
-  if (group) {
+  if (all) {
+    back.href = '/#/labels'; back.textContent = 'Back to Labels';
+    $('pc-title').textContent = 'Large-print care cards for all plants';
+    $('pc-intro').textContent = `One card for each of your ${plants.length} plants (archived plants are left out), to print and keep beside them.`;
+  } else if (group) {
     back.href = '/#/group/' + enc(group.id); back.textContent = 'Back to the group ' + group.name;
     $('pc-title').textContent = 'Large-print care cards: ' + group.name;
     $('pc-intro').textContent = plants.length ? `One card for each of the ${plants.length} plants in this group, to print and keep beside them.` : 'This group has no plants yet, so there is nothing to print.';

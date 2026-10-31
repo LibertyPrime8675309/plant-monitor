@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.20.0 (2026-10-31)
+- **Browse a plant's photos on the Plants page.** Each card with more than one photo has **‹** and **›** buttons and says "2 of 5". On a phone or tablet you can swipe left or right on the photo. This doesn't open the plant; clicking anywhere else on the card still does.
+- **Choosing the main photo is easier to find.** On a plant page, the main photo now says "★ This is the main photo" under it, and its thumbnail is marked **★ Main**. Pick any other photo and press **Make this the main photo**. The Plants page, the care cards and plant link previews then show it.
+- **Care cards, as you asked:**
+  - **4 × 6 inch cards** are now the usual size: one line each for water, light, temperature, humidity, feeding and dangers, in large print. They print sideways on 4 × 6 inch paper. 78 of the 82 plants fit on one card; the rest run onto a second. The full page is still there under **Size**.
+  - **Dangers to pets and people are shown to start with.** (Your earlier choices on that page start over once, so the new defaults apply.)
+  - **The smallest text is bigger.** The "Printed on" line and "Scan for the full page" are now the same size as the notes. Nothing on a printed card is smaller than about 16 point.
+  - **Print care cards for all plants** is on the Labels page.
+- Includes everything in 1.19.1 below.
+
 ## 1.19.1 (2026-10-31)
 - **Fixed: the updater can delete old Docker images again.** At the end of an update it offers to delete the images older versions left behind. When you answered yes, it said "invalid reference format: repository name (library/Stop) must be lowercase" and deleted nothing, because a name mix-up in the updater asked Docker for an image called "Stop". Your app and data were never affected.
 - The updater now lists every older image, including the picture checker's (about 2 GB each), and deletes all of them when you say yes. The fix takes effect from the update after this one, because each update runs the updater that was already installed. While installing 1.19.1, just press Enter at that question.

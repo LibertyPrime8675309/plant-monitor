@@ -304,6 +304,11 @@ Every page has a menu down the side listing its sections (for example on the Wea
 - On phones, narrow windows and very large text the menu starts folded, the Sections button sits at the bottom left, and the menu closes after you choose a section.
 - On plant pages (from 1.14.1) it lists every part of the page: **Photos**, **Name and details** (the card at the top), and each section below. The row of section buttons has the same sections with shorter names. Both are made from the page itself, so new sections join them by themselves.
 
+## Photos on the Plants page, and the main photo (from 1.20.0)
+
+- **On the Plants page,** a plant with more than one photo has **‹** and **›** buttons on its photo, with "2 of 5" between them. They step through all its photos without opening the plant. On a phone or tablet you can also swipe left or right on the photo. With the keyboard, move to a photo button with Tab, then use the Left and Right arrow keys. Click anywhere else on the card to open the plant, as before.
+- **The main photo** is the one the Plants page shows first, and the one on care cards and in plant link previews. On a plant page, the photo panel says "★ This is the main photo" under it, and its thumbnail is marked **★ Main**. To change it, pick another photo and press **Make this the main photo**.
+
 ## Plants page filters
 
 The filter row on the Plants page narrows the list. Every filter is remembered in this browser, and **Clear filters** resets them.
@@ -800,12 +805,14 @@ Undo removes only the entries that press made, so the rest of the care log is un
 
 ## Large-print care cards (from 1.19.0)
 
-A printable card with a plant's needs in big type, to keep beside the plants indoors and read without opening the app.
+A printable card with a plant's needs in big type, to tape to a pot or shelf or keep beside the plants indoors, and read without opening the app.
 
-- On a plant page, press **Large-print care card**. On a group's page, **Large-print care cards** makes one card for each plant in the group.
-- Each card has the plant's name, Latin name, code, where it is and its winter plan, its main photo, and a code to scan that opens its page. Under that are boxes headed **Water** (how often to check, the same figure as the Today list), **Light**, **Temperature**, **Humidity**, **Feeding** and, if you tick it, **Careful** (dangers to pets and people). The main fact in each box is in bold, with a short note under it.
-- Above the cards, choose short or full notes, and whether to show the photo, the scan code and the dangers. The choices are remembered in this browser. **Print** opens the browser's print window, where you can pick a printer or "Save as PDF".
-- The printout is always black on white and large print: notes about 16 point, main facts about 20 point, the name about 30 point. Each plant starts on a new page, and most fit on one.
+- On a plant page, press **Large-print care card**. On a group's page, **Large-print care cards** makes one card for each plant in the group. On the **Labels** page, **Print care cards for all plants** makes one for every active plant (from 1.20.0).
+- **Size** (from 1.20.0):
+  - **4 × 6 inch card** (the usual choice): the plant's name, code and spot, its main photo and a code to scan that opens its page. Under that is one line each for **Water** (how often to check, the same figure as the Today list), **Light**, **Temp**, **Humidity**, **Feeding** and **Careful** (pets and people). It prints on 6 × 4 inch paper, turned sideways: choose 4 × 6 inch paper (or index cards) in the print window. Most plants fit on one card; a few with long wording run onto a second.
+  - **Full page (Letter):** the same, plus the plant's winter plan and notes in boxes, with **Short** or **Full** notes.
+- Under **Also show**, choose whether to show the photo, the scan code and the dangers to pets and people (on to start with). The choices are remembered in this browser. **Print** opens the browser's print window, where you can pick a printer or "Save as PDF".
+- The printout is always black on white and large print. Nothing on it is smaller than about 16 point (from 1.20.0, the "Printed on" line and "Scan for the full page" are as big as the notes). The name is about 21 point on a card and 30 point on a page.
 - People who can only view the app can print cards too.
 
 ## Grow lights (from 1.13.0)
