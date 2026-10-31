@@ -340,6 +340,16 @@ def browse_mask(a):
         m[[i for i in idx if NAMES['sp'][i].lower() in ok or (gen and B['genus'][i] in gen)]] = True
     elif a.get('mine') in ('species', 'genus'):
         m[:] = False
+    only, genera = a.get('only'), a.get('only_genera')     # 1.23.0: lists the app keeps (native to Texas, near home, ASPCA...)
+    if only is not None or genera:
+        keep = np.zeros(len(m), bool)
+        if only:
+            low = NAMES.get('by_low') or NAMES.setdefault('by_low', {k.lower(): v for k, v in NAMES['by_sp'].items()})
+            ix = [low[n.lower()] for n in only if isinstance(n, str) and n.lower() in low]
+            if ix: keep[ix] = True
+        if genera:
+            keep |= np.isin(B['genus'], [g.lower() for g in genera if isinstance(g, str)])
+        m &= keep
     q = (a.get('q') or '').strip().lower()
     if q:
         hay = NAMES['hay']
@@ -355,12 +365,18 @@ def scope_names():
     m = NAMES['masks'].get(request.args.get('scope', 'texas'), NAMES['masks']['texas'])
     return jsonify(names=[NAMES['sp'][int(i)] for i in np.where(m)[0]])
 
-@app.get('/browse')
+def req_args():
+    """The query string, plus a JSON body for POST (1.23.0: name lists too long for an address)."""
+    a = dict(request.args)
+    if request.method == 'POST': a.update(request.get_json(silent=True) or {})
+    return a
+
+@app.route('/browse', methods=['GET', 'POST'])
 def browse():
     """Every species in a list, filtered and sorted, a page at a time: ?scope=&q=&kind=&family=&genus=&order=&state=&common=1
     &mine=species|genus&own=a|b&owngenus=x|y&sort=known|sci|common|family&offset=&limit="""
     if not B: return jsonify(error=S['step'] if S['state'] == 'off' else 'The picture checker is still setting up: ' + S['step'], status=S), 503
-    a = request.args
+    a = req_args()
     m = browse_mask(a)
     order = B['sort'].get(a.get('sort'), B['sort']['known'])
     hits = order[m[order]]

@@ -821,6 +821,38 @@ On any species page, press **Add to my wishlist**. The Library page has a **Your
 
 In the library, **Show** can be set to **On my wishlist**, **Ones with notes or tags**, or any one of your tags.
 
+#### Texas, home, pets and care sheets (from 1.23.0)
+
+Each plant's page in the library now has three more sections:
+
+- **Here at home:**
+  - whether it is native or introduced in Texas;
+  - how often people have recorded it growing wild within 31 miles of home, and whether it is flowering there this month;
+  - a warning if it is on the Texas noxious and invasive plant list (Texas law says those may not be sold, distributed or brought into Texas).
+- **Will it survive outside here all year?** "Likely" if it grows wild near home, or if its care sheet's hardiness zones include yours (worked out from your own weather history; 9a for Round Rock). Otherwise it says it doesn't know.
+- **Pets:** what the ASPCA's lists say for dogs, cats and horses. A plant not on their lists is not called safe.
+- **Care sheet:** press **Write a care sheet with Claude**. Claude writes one for your place and zone in about half a minute, using the owner's Anthropic key (the one on the Identify page; a cent or two each). It covers light, water, soil, temperature, feeding, pruning, propagation, pests, pots, hardiness and growing it outdoors here. It is kept, everyone with access can read it, and it is marked "not checked by a person". People who can only view can read care sheets but not ask for them.
+
+The cards show the same things as tags (for example "Native to Texas", "Flowering near home now", "⚠ Toxic to dogs and cats", "⚠ Texas invasive list"). The new filter **Texas and home** lists only:
+- the ones native to or introduced in Texas;
+- the ones on the invasive list;
+- the ones that grow wild near home, or are flowering there this month (or, for fungi, found there this month);
+- the ones likely to survive outside here;
+- the ones safe for, or toxic to, dogs and cats.
+
+**Around home** (a button at the top of the Library page, and on the Mushrooms page) shows three lists, with photos:
+- what is flowering near home this month;
+- the mushrooms and other fungi found there this month;
+- the plants and fungi recorded wild there most often.
+
+**Where this comes from.** These lists are fetched in the background, about one request a second, and kept in `data\library\local`. **Lists about your area**, at the bottom of the Library page, shows each one, when it was fetched, and **Fetch the lists again now**. The lists are fetched again by themselves when they get old (Texas lists and pets every 3 months, near home every month, this month's flowers and fungi every 2 weeks).
+
+- **iNaturalist:** what is native or introduced in Texas, and what people have recorded wild near home (only species names and the home place's position are sent).
+- **The ASPCA's** toxic and non-toxic plant lists, read from their web pages.
+- **The Texas Department of Agriculture's** noxious and invasive list, which is built in.
+
+When the owner turns library lookups off, none of this is fetched.
+
 #### Photos for offline use (from 1.22.0)
 
 At the bottom of the Library page the owner has **Download photos for the Texas list**. It fetches the photo and short facts for every Texas plant (about 4,750) in the background, so the library shows them without the internet. It goes at about one species a second, after anything someone is looking at, so it takes about an hour and a half. It uses about 300 MB in `data\library`. Species already kept are skipped. You can leave the page while it runs, and **Stop the download** stops it. If the app restarts part way through, press the button again to carry on where it stopped.

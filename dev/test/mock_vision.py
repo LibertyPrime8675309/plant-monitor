@@ -1,7 +1,7 @@
 """A fake picture checker (vision/service.py) for tests, with fake Pl@ntNet and Claude answers. It decides by the picture's
 main colour: mostly red -> plant P-020, very sure; mostly green -> unsure between P-049, P-050 and P-051; mostly blue -> none
 of yours, with species guesses. mock_server.py starts it on 127.0.0.1:8090 (MOCK_VISION_PORT)."""
-import io
+import io, json
 from flask import Flask, jsonify, request, Response
 from PIL import Image, ImageStat
 app = Flask(__name__)
@@ -58,6 +58,13 @@ def plantnet():
 @app.post('/mock/claude')
 def claude():
     if not request.headers.get('x-api-key'): return jsonify(error='no key'), 401
+    body = json.dumps(request.get_json(silent=True) or {})
+    if 'CARE SHEET' in body:                                  # 1.23.0: a care sheet for any species
+        sheet = {'summary': 'A tough annual wildflower for full sun.', 'light': 'Full sun, at least 6 hours.', 'water': 'Let the soil dry between waterings.',
+                 'soil': 'Lean, fast-draining soil.', 'temperature': 'Takes frost once established.', 'min_temp_f': 10, 'zone_low': '7a', 'zone_high': '10b',
+                 'humidity': 'Low is fine.', 'feeding': 'None needed.', 'pruning': 'Leave seed pods to ripen.', 'propagation': 'Scarified seed sown in fall.',
+                 'pests': 'Pill bugs on seedlings.', 'outdoors_here': 'Sow outdoors in Round Rock in October or November.', 'containers': 'Deep pots only.'}
+        return jsonify(content=[{'type': 'text', 'text': json.dumps(sheet)}])
     return jsonify(content=[{'type': 'text', 'text': '{"plant": true, "guesses": [{"scientific_name": "Lupinus texensis", "common_name": "Texas bluebonnet", '
                                                      '"family": "Fabaceae", "probability": 0.8, "why": "Palmate leaves and blue pea flowers."}], "photo_tip": "A photo of the flowers."}'}])
 
@@ -67,6 +74,8 @@ MORE = [{'scientific_name': f'Testia species{i:02d}', 'common_name': f'Test plan
          'order': 'Testales', 'in_texas': i % 2 == 0, 'us_states': ['Texas'] if i % 2 == 0 else [], 'usda_symbol': '', 'kind': 'fern' if i % 5 == 0 else 'dicot'}
         for i in range(1, 61)]
 ALL = [x | {'kind': {'Lupinus': 'dicot', 'Monstera': 'monocot', 'Agave': 'monocot'}[x['genus']]} for x in SP] + MORE
+ALL.append({'scientific_name': 'Melia azedarach', 'common_name': 'chinaberry', 'genus': 'Melia', 'family': 'Meliaceae', 'order': 'Sapindales',   # 1.23.0: on the Texas noxious list
+            'in_texas': True, 'us_states': ['Texas'], 'usda_symbol': 'MEAZ', 'kind': 'dicot'})
 for x in ALL: x['kingdom'] = 'Plantae'
 # 1.22.0: a few fungi, for the "Fungi worldwide" list and the mushroom finds
 FUNGI = [{'scientific_name': n, 'common_name': cn, 'genus': n.split()[0], 'family': fam, 'order': 'Agaricales', 'in_texas': False, 'us_states': [],
@@ -76,9 +85,10 @@ FUNGI = [{'scientific_name': n, 'common_name': cn, 'genus': n.split()[0], 'famil
 FUNGI.append({'scientific_name': 'Peziza vesiculosa', 'common_name': 'blistered cup', 'genus': 'Peziza', 'family': 'Pezizaceae', 'order': 'Pezizales',
               'in_texas': False, 'us_states': [], 'usda_symbol': '', 'kind': 'cupfungus', 'kingdom': 'Fungi'})
 
-@app.get('/browse')
+@app.route('/browse', methods=['GET', 'POST'])
 def browse():
-    a = request.args
+    a = dict(request.args)
+    if request.method == 'POST': a.update(request.get_json(silent=True) or {})
     r = FUNGI if a.get('scope') == 'fungi' else [x for x in ALL if a.get('scope') != 'texas' or x['in_texas']]
     if a.get('q'): r = [x for x in r if a['q'].lower() in (x['scientific_name'] + ' ' + x['common_name']).lower()]
     if a.get('kind'): r = [x for x in r if x['kind'] == a['kind']]
@@ -88,6 +98,9 @@ def browse():
     if a.get('state') == 'us': r = [x for x in r if x['us_states']]
     elif a.get('state'): r = [x for x in r if a['state'] in x['us_states']]
     if a.get('mine'): own = set(a.get('own', '').lower().split('|')); r = [x for x in r if x['scientific_name'].lower() in own]
+    if a.get('only') is not None or a.get('only_genera'):
+        only, gen = {n.lower() for n in a.get('only') or []}, {g.lower() for g in a.get('only_genera') or []}
+        r = [x for x in r if x['scientific_name'].lower() in only or x['genus'].lower() in gen]
     if a.get('sort') == 'sci': r = sorted(r, key=lambda x: x['scientific_name'])
     off, lim = int(a.get('offset', 0)), int(a.get('limit', 48))
     return jsonify(total=len(r), offset=off, results=r[off:off + lim])
@@ -146,3 +159,36 @@ def inat_img(i, size):
 @app.get('/mock/inat/calls')
 def inat_calls():
     return jsonify(INAT_CALLS)
+
+
+# 1.23.0: iNaturalist species counts (Texas native and introduced, near home, flowering and fungi this month), ASPCA's lists, care sheets
+def _sc(names):
+    return [{'count': n, 'taxon': {'id': 9000 + i, 'name': nm, 'rank': 'species', 'preferred_common_name': cm}} for i, (nm, cm, n) in enumerate(names)]
+SC = {'native': [('Lupinus texensis', 'Texas bluebonnet', 900), ('Agave americana', 'century plant', 300)] + [(f'Testia species{i:02d}', '', 10 + i) for i in range(2, 31, 2)],
+      'introduced': [('Melia azedarach', 'chinaberry', 500), ('Testia species03', '', 20), ('Testia species05', '', 12)],
+      'near': [('Lupinus texensis', 'Texas bluebonnet', 120), ('Melia azedarach', 'chinaberry', 40), ('Testia species02', '', 15),
+               ('Chlorophyllum molybdites', 'green-spored parasol', 25), ('Leucocoprinus birnbaumii', 'flowerpot parasol', 6)],
+      'bloom': [('Lupinus texensis', 'Texas bluebonnet', 30), ('Testia species02', '', 4)],
+      'fungi': [('Chlorophyllum molybdites', 'green-spored parasol', 10), ('Leucocoprinus birnbaumii', 'flowerpot parasol', 3)]}
+
+@app.get('/mock/inat/v1/observations/species_counts')
+def inat_species_counts():
+    a = request.args
+    INAT_CALLS.append('species_counts ' + '&'.join(f'{k}={v}' for k, v in sorted(a.items())))
+    key = ('native' if a.get('native') == 'true' else 'introduced' if a.get('introduced') == 'true' else 'bloom' if a.get('term_value_id') == '13'
+           else 'fungi' if a.get('iconic_taxa') == 'Fungi' else 'near')
+    rows = _sc(SC[key]); per, page = int(a.get('per_page', 500)), int(a.get('page', 1))
+    return jsonify(total_results=len(rows), page=page, per_page=per, results=rows[(page - 1) * per:page * per])
+
+ASPCA = {'toxic': [('Swiss Cheese Plant (Ceriman, Cut-leaf Philodendron)', 'Monstera deliciosa', 'Araceae'), ('Century Plant (Agave)', 'Agave americana', 'Agavaceae'),
+                   ('Chinaberry Tree (Bead Tree)', 'Melia azedarach', 'Meliaceae'), ('Alocasia (Elephant\'s Ear)', 'Alocasia spp.', 'Araceae')],
+         'non-toxic': [('Texas Bluebonnet ()', 'Lupinus texensis', 'Fabaceae'), ('Test Plant One', 'Testia species01', 'Testaceae')]}
+
+@app.get('/mock/aspca/<animal>-plant-list')
+def aspca(animal):
+    title = {'dogs': 'Dogs', 'cats': 'Cats', 'horse': 'Horses'}[animal]
+    def items(rows): return ''.join(f'<div class="views-row"><span><a href="/pet-care/x/{n.lower()}">{c}</a> | <b>Scientific Names:</b> <i>{n}</i> | <b>Family:</b> {f}</span></div>' for c, n, f in rows)
+    tox = ASPCA['toxic'] if animal != 'horse' else ASPCA['toxic'] + [ASPCA['non-toxic'][0]]
+    non = ASPCA['non-toxic'] if animal != 'horse' else ASPCA['non-toxic'][1:]
+    return Response(f'<html><body><h1>Toxic and Non-Toxic Plant List \u2014 {title}</h1><h2>Plants Toxic to {title}</h2>{items(tox)}'
+                    f'<h2>Plants Non-Toxic to {title}</h2>{items(non)}</body></html>', mimetype='text/html')

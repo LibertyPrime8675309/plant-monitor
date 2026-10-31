@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.23.0 (2026-10-31)
+- **Every species page in the library now has more sections:**
+  - **Here at home:** native or introduced in Texas, how often it's been recorded growing wild within 31 miles of home, whether it's flowering there now, and a warning if it's on the Texas invasive plant list.
+  - **Will it survive outside here all year?** It answers from whether it grows wild nearby, or from its care sheet's hardiness zones against your zone (9a).
+  - **Pets:** the ASPCA's answer for dogs, cats and horses.
+  - **Care sheet:** **Write a care sheet with Claude** writes one for Round Rock, using the owner's key. It is kept, and marked as not checked by a person.
+- **A new library filter, Texas and home:** native to Texas, introduced, invasive, grows wild near home, flowering near home this month, fungi found near home this month, likely to survive outside here, and safe for (or toxic to) dogs and cats. The cards show the same things as tags.
+- **Around home:** what's flowering and the fungi found near home this month, and what's recorded wild there most often.
+- These lists come from iNaturalist and the ASPCA. They are fetched in the background the first time you open the library after updating, and kept on your computer. **Lists about your area**, at the bottom of the Library page, shows them.
+- Includes everything in 1.22.0 below.
+
 ## 1.22.0 (2026-10-31)
 - **Mushrooms, on a page of their own.** **Mushrooms** in the top menu keeps a record of each mushroom you find (F-001, F-002…), in the yard, a plant pot or anywhere else:
   - photos from your phone's camera, with the location taken from the photo or from **Use my location now**;

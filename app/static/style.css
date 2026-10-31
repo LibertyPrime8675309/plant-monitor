@@ -1271,3 +1271,11 @@ a.tag:hover,a.tag:focus-visible{text-decoration:underline}
 .wl-item p{margin:.3rem 0}
 .wl-acts{margin-top:.6rem}
 html[data-role=viewer] :is([data-act=spwish], [data-act=wledit], [data-act=wlgot], [data-act=wlrm], form[data-form=spnotes], .sp-notes-edit){display:none!important}
+/* 1.23.0: here at home, pets, care sheets, around home */
+.tag.tag-warn{border-width:3px;color:var(--madder)}
+.lib-card .lib-rec{margin:0 0 .4rem;color:var(--ink-2)}
+.lib-lists{padding-left:1.2em}
+.lib-lists li{margin:.3rem 0}
+.sp-pets{max-width:24rem}
+.sp-pets th[scope=row]{text-align:left}
+html[data-role=viewer] :is([data-act=spcare], [data-act=liblists]){display:none!important}
