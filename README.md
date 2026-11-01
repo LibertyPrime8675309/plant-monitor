@@ -841,6 +841,22 @@ On any species page, press **Add to my wishlist**. The Library page has a **Your
 
 In the library, **Show** can be set to **On my wishlist**, **Ones with notes or tags**, or any one of your tags.
 
+#### Prices, stock and alerts (from 1.27.0)
+
+The plant record checks shops for everything on your wishlist that you still want: every 12 hours, or when you press **Check the shops now** on the Wishlist page.
+- **On each wanted plant:** the cheapest listing now (with a link to it), how many shops have it, and **Every listing found, with past prices**.
+- **Edit, and set alerts** sets:
+  - **Search the shops for**: one search per line, such as a variety ("Monstera Thai Constellation"). If it's left empty, the common and scientific names are used.
+  - **Alert me when the price is at or under** $X, shipping not included.
+  - **Alert me when a shop has it in stock**.
+- **Alerts** appear at the top of the Wishlist page and on Today, and the top bar shows how many beside **Library**. Each check makes at most one alert per plant. A price alert comes again only if the price drops further, and a stock alert comes again only if it sold out and came back. **Dismiss** clears an alert.
+- **Shops checked** (at the bottom of the Wishlist page) lists every shop, how it is read, and its last check, or what went wrong. The owner can turn shops on and off, change an address, add a shop, and choose how often:
+  - **Online stores** (Steve's Leaves, Logee's, North Spore and others) are read for names, prices and stock. The kind of store is worked out on the first check.
+  - **Local nurseries with no online store** (Round Rock Garden Center, Snooper's, Cantu Imports, Barry Hill) have their plant pages read for the names on your wishlist, with the price if it's on the same line. Call them to be sure.
+  - **eBay and Etsy** are searched through their official services, which need free keys from developer.ebay.com and etsy.com/developers. The owner pastes them under **eBay and Etsy keys**. They're kept on your computer and never shown again.
+- Walmart, Home Depot, Lowe's, Amazon and Facebook Marketplace are left out on purpose.
+- Each shop gets at most one request every 2 seconds, a few times a day, and the requests say they come from a home plant record.
+
 #### Texas, home, pets and care sheets (from 1.23.0)
 
 Each plant's page in the library now has three more sections:

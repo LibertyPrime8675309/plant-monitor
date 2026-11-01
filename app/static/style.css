@@ -1411,3 +1411,14 @@ html[data-narrow="0"][data-navrow="1"] .top nav{flex-wrap:nowrap;justify-content
 .fact-warn{color:var(--madder);font-weight:700}
 .fact-yours{display:inline-block;margin-top:.15rem;font-weight:700}
 html[data-role=viewer] [data-act=factswrite]{display:none!important}
+/* 1.27.0: wishlist prices, alerts and shops */
+.wl-price{border-left:4px solid var(--line);padding:.2rem 0 .2rem .8rem;margin:.6rem 0}
+.wl-price p{margin:.3rem 0}
+.wl-offers summary{cursor:pointer;font-weight:700;padding:.3rem 0}
+.wl-offer-list,.wl-alert-list{padding-left:1.2rem;margin:.4rem 0}
+.wl-offer-list li,.wl-alert-list li{margin:.5rem 0;line-height:1.5}
+.wl-alert-list .btn{margin-left:.4rem}
+.wl-check{align-items:center;gap:.6rem 1rem;flex-wrap:wrap;margin:.8rem 0}
+.wl-shops td .chk{display:inline-flex;gap:.4rem;align-items:center;margin-right:.6rem}
+html[data-role=viewer] :is([data-act=wlcheck], [data-act=wldismiss]){display:none!important}
+.nav-badge{font-weight:700}

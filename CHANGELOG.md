@@ -8,6 +8,11 @@
   - **Propagation**: methods and the best time of year in Round Rock.
   - **Breeding**: how it crosses, with links to your plants of the same species and the ones it may cross with (your three aloes, the haworthias and the hardy aloe, for example). Patented varieties such as the Queen of Elegance rose are flagged.
 - These are filled in for your plants (about 50 species). For any other species, **Write them with Claude** on its page uses the owner's key and keeps the result. For mushrooms they never include eating them.
+- **Wishlist prices and stock.** The shops you chose are checked every 12 hours (or when you press **Check the shops now**) for everything you still want.
+  - **Shops:** eBay, Etsy, Steve's Leaves, Gabriella Plants, Logee's, Costa Farms, Wildseed Farms, Native American Seed, Baker Creek, Burpee and North Spore, plus Round Rock Garden Center, Snooper's, Cantu Imports, Mind's Eye Plants and Barry Hill. The owner can add more.
+  - **On the Wishlist page:** the cheapest listing now, how many shops have it, and every listing with its past prices.
+  - **Alerts:** set a price to watch for, or ask to hear when it's in stock. Alerts show on the Wishlist page and on Today, with a count beside Library in the top bar.
+  - **eBay and Etsy** need free keys, which the owner saves at the bottom of the Wishlist page.
 - Includes everything in 1.26.1 below.
 
 ## 1.26.1 (2026-11-01)

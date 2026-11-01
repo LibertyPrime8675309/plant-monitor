@@ -288,6 +288,7 @@ async function route() {
   const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' || parts[0] === 'species' || parts[0] === 'wishlist' || parts[0] === 'around' ? 'library' : parts[0] === 'fungi' ? 'fungi' : parts[0] === 'offline' || parts[0] === 'decisions' ? 'offline' : parts[0] === 'today' ? 'today' : 'plants';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   pagesMenu(false);
+  wlBadge();
   try {
     let view;
     await Promise.all([loadCodes(), loadFrost(), loadGroups(parts[0] === 'groups' || parts[0] === 'group' || !parts.length), G.care && !CAREDUE ? loadCareDue() : null]);
@@ -1804,7 +1805,8 @@ function todayPrep(PR, t) {
     ${!again.length && !free.length ? html`<p class="notice ok">No sprays due and nobody to move today.</p>` : ''}</section>`;
 }
 async function viewToday() {
-  const [W, reqs, , PR] = await Promise.all([api('GET', '/api/water'), api('GET', '/api/requests?open=1'), loadFertData(true), api('GET', '/api/prep').catch(() => null)]);
+  const [W, reqs, , PR, WA] = await Promise.all([api('GET', '/api/water'), api('GET', '/api/requests?open=1'), loadFertData(true), api('GET', '/api/prep').catch(() => null),
+    api('GET', '/api/wishlist/alerts').catch(() => ({ alerts: [] }))]);
   const by = Object.fromEntries(FERT.plants.map(p => [p.code, p])), t = todayStr();
   const ws = W.plants.filter(w => by[w.code]);
   const due = ws.filter(w => w.state === 'due').sort((a, b) => b.overdue - a.overdue), soon = ws.filter(w => w.state === 'soon'), unk = ws.filter(w => w.state === 'unknown');
@@ -1816,6 +1818,7 @@ async function viewToday() {
   return {
     title: 'Today',
     html: html`<h1>Today</h1><p class="muted">${longDay(t)}. Watering, feeding and anything Claude has asked you for, most urgent first.</p>
+    ${WA.alerts.length ? html`<section class="blk wl-alerts" id="today-wish"><h2>Wishlist alerts (${WA.alerts.length})</h2>${wlAlertsHtml(WA.alerts.slice(0, 6), true)}</section>` : ''}
     <div class="verdict-box" role="status"><p><strong>${n(due.length, 'plant to water', 'plants to water')}, ${n(feed.length, 'to feed', 'to feed')}, and ${n(needs.length, 'plant that needs something from you', 'plants that need something from you')}.</strong>
       ${W.avg_high != null ? `Highs have been about ${W.avg_high}°F lately.` : ''} ${Object.keys(W.rain).length ? `Rain counted as watering for plants out in the open: ${Object.entries(W.rain).slice(-3).map(([d, i]) => relDay(d) + ', ' + i + ' in').join('; ')}.` : ''}</p></div>
     <section class="blk" id="today-water"><h2>Water (${due.length})</h2>
@@ -3973,7 +3976,7 @@ async function conPoll() {
 function pagesMenu(open) {
   const b = document.getElementById('pages-btn'), top = document.querySelector('header.top'); if (!b || !top) return;
   const cur = document.querySelector('#main-nav a[aria-current=page]'), c = document.getElementById('pages-cur');
-  if (c) c.textContent = cur ? cur.textContent : 'Plants';
+  if (c) c.textContent = cur ? cur.childNodes[0].textContent : 'Plants';     // without the wishlist alert count
   b.setAttribute('aria-expanded', open ? 'true' : 'false'); top.classList.toggle('pages-open', !!open);
 }
 document.addEventListener('keydown', e => {      // Escape folds the list of pages again and goes back to its button
@@ -5537,25 +5540,148 @@ async function viewAround() {
 // ---------- 1.22.0: the wishlist (#/wishlist) ----------
 let WL = [];
 async function viewWishlist() {
-  WL = (await api('GET', '/api/wishlist')).wishlist;
-  const want = WL.filter(w => w.status === 'want'), got = WL.filter(w => w.status === 'got');
+  const [wl, sh] = await Promise.all([api('GET', '/api/wishlist'), api('GET', '/api/shops').catch(() => null)]);
+  WL = wl.wishlist; WLSHOPS = sh;
+  const want = WL.filter(w => w.status === 'want'), got = WL.filter(w => w.status === 'got'), owner = ME().role === 'owner';
+  const money = n => n == null ? '' : '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const item = (w, i) => html`<li class="wl-item"><h3><a href="${spHref(w.name)}">${w.common_name || w.name}</a></h3>
     ${w.common_name ? html`<p class="latin">${w.name}</p>` : ''}
     ${w.yours && w.yours.length ? html`<p><span class="tag tag-yours">You have it: ${w.yours.join(', ')}</span></p>` : ''}
+    ${w.status === 'want' ? html`<div class="wl-price">
+      ${w.offers && w.offers.best ? html`<p><strong>Cheapest now:</strong> ${money(w.offers.best.price)} at ${w.offers.best.shop_name}: <a href="${w.offers.best.url}" target="_blank" rel="noopener noreferrer">${w.offers.best.title}</a></p>` : ''}
+      <p>${w.offers && w.offers.count ? `In stock at ${w.offers.shops} shop${w.offers.shops === 1 ? '' : 's'} (${w.offers.count} listing${w.offers.count === 1 ? '' : 's'}).` : wl.checked ? 'Not found at the shops checked.' : 'The shops have not been checked yet.'}
+        <strong>Alerts:</strong> ${[w.max_price != null ? `${money(w.max_price)} or less` : '', w.alert_stock ? 'when it is in stock' : ''].filter(Boolean).join('; ') || 'none set (Edit to add one)'}.</p>
+      <p class="hint">Searching for: ${(w.terms || []).join('; ') || 'nothing (Edit to add search words)'}.</p>
+      <details class="wl-offers" data-wish="${w.name}"><summary>Every listing found, with past prices</summary><div class="wl-offers-box"><p class="loading">Loading</p></div></details></div>` : ''}
     ${w.where_seen ? html`<p><strong>Where to find it:</strong> ${w.where_seen}</p>` : ''}
     ${w.notes ? html`<p class="pl">${w.notes}</p>` : ''}
     <p class="hint">Added by ${w.added_by} on ${when(w.added_at)}.</p>
     <div class="row wl-acts"><button class="btn small" type="button" data-act="wlgot" data-i="${i}">${w.status === 'got' ? 'Move back to wanted' : 'Got it'}</button>
-      <button class="btn ghost small" type="button" data-act="wledit" data-name="${w.name}">Edit</button>
+      <button class="btn ghost small" type="button" data-act="wledit" data-name="${w.name}">Edit, and set alerts</button>
       <button class="btn danger small" type="button" data-act="wlrm" data-i="${i}">Take it off the list</button></div></li>`;
+  const al = wl.alerts || [];
   return {
     title: 'Wishlist',
+    after: () => { if (sh && sh.busy) wlPoll(); },
     html: html`<p class="crumb"><a href="#/library">Back to the library</a></p><h1>Wishlist</h1>
-    <p>Plants (or fungi) you would like to have or find. Add one from its page in the <a href="#/library">library</a>. Everyone you have given access to the app sees this list.</p>
+    <p>Plants (or fungi) you would like to have or find. Add one from its page in the <a href="#/library">library</a>. Everyone you have given access to the app sees this list.
+      The shops listed below are checked ${sh && sh.hours !== '0' ? `every ${sh.hours} hours` : 'only when you ask'} for everything you want, with alerts here and on the Today page.</p>
+    ${al.length ? html`<section class="blk wl-alerts" aria-labelledby="wl-al-h"><h2 id="wl-al-h">Alerts (${al.length})</h2>${wlAlertsHtml(al)}</section>` : ''}
+    <div class="row wl-check"><button class="btn" type="button" data-act="wlcheck" ${want.length ? '' : raw('disabled')}>Check the shops now</button>
+      <span id="wl-check-msg" role="status" aria-live="polite">${wl.checked ? `Last checked ${when(wl.checked)}.` : 'Not checked yet.'}</span></div>
     <h2>Wanted (${want.length})</h2>${want.length ? html`<ul class="wl-list">${want.map(w => item(w, WL.indexOf(w)))}</ul>` : html`<p class="muted">Nothing wanted yet. Open a species in the library and press "Add to my wishlist".</p>`}
-    ${got.length ? html`<h2>Got them (${got.length})</h2><ul class="wl-list">${got.map(w => item(w, WL.indexOf(w)))}</ul>` : ''}`,
+    ${got.length ? html`<h2>Got them (${got.length})</h2><ul class="wl-list">${got.map(w => item(w, WL.indexOf(w)))}</ul>` : ''}
+    ${sh ? wlShopsHtml(sh, owner) : ''}`,
   };
 }
+let WLSHOPS = null, WLBADGE = 0;
+async function wlBadge() {           // 1.27.0: the number of wishlist alerts beside Library in the top bar (checked at most once a minute)
+  if (Date.now() - WLBADGE < 60000) return;
+  WLBADGE = Date.now();
+  let n = 0; try { n = (await api('GET', '/api/wishlist/alerts')).alerts.length; } catch (e) { return; }
+  const a = document.querySelector('#main-nav a[data-nav=library]'); if (!a) return;
+  let b = a.querySelector('.nav-badge');
+  if (!n) { if (b) b.remove(); return; }
+  if (!b) { b = document.createElement('span'); b.className = 'nav-badge'; a.append(b); }
+  b.innerHTML = rend(html` <span aria-hidden="true">(${n})</span><span class="sr">, ${n} wishlist alert${n === 1 ? '' : 's'}</span>`);
+}
+function wlAlertsHtml(al, today) {
+  return html`<ul class="wl-alert-list">${al.map(a => html`<li><span class="tag ${a.kind === 'price' ? 'tag-yours' : ''}">${a.kind === 'price' ? 'Price' : 'In stock'}</span>
+      ${a.url ? html`<a href="${a.url}" target="_blank" rel="noopener noreferrer">${a.text}</a>` : a.text} <small class="muted">${when(a.created_at)}</small>
+      <button class="btn ghost small" type="button" data-act="wldismiss" data-id="${a.id}">Dismiss</button></li>`)}</ul>
+    <div class="row">${al.length > 1 ? html`<button class="btn ghost small" type="button" data-act="wldismiss" data-id="all">Dismiss them all</button>` : ''}${today ? html`<a class="btn ghost small" href="#/wishlist">Open the wishlist</a>` : ''}</div>`;
+}
+function wlShopsHtml(sh, owner) {
+  const kindWord = s => s.kind === 'api' ? 'Searches its listings' : s.platform === 'shopify' || s.platform === 'woo' ? 'Reads its online store' : s.platform === 'page' || s.kind === 'page' ? 'Reads its pages for your plant names' : 'Finds out on the first check';
+  return html`<section class="blk" aria-labelledby="wl-shops-h"><h2 id="wl-shops-h">Shops checked</h2>
+    <p class="hint">Online stores give prices and whether each plant is in stock. Local nurseries with no online store are read for your plants' names, with a price if the page shows one: call them to be sure.</p>
+    <div class="tbl-wrap"><table class="tbl wl-shops"><thead><tr><th>Shop</th><th>How</th><th>Last check</th>${owner ? html`<th>Check it</th>` : ''}</tr></thead><tbody>
+      ${sh.shops.map(s => html`<tr><th scope="row"><a href="${s.url}" target="_blank" rel="noopener noreferrer">${s.name}</a>${s.local ? html` <small class="tag">Near home</small>` : ''}</th>
+        <td>${kindWord(s)}</td>
+        <td>${s.error ? html`<span class="bad-text">⚠ ${s.status}</span>` : s.status || (s.enabled ? 'Not checked yet' : 'Off')}${s.checked_at ? html`<br><small class="muted">${when(s.checked_at)}</small>` : ''}</td>
+        ${owner ? html`<td><label class="chk"><input type="checkbox" data-act="shopon" data-key="${s.key}" ${s.enabled ? raw('checked') : ''}> On</label>
+          ${s.kind !== 'api' ? html`<button class="btn ghost small" type="button" data-act="shopedit" data-key="${s.key}">Change address</button>` : ''}
+          ${s.custom ? html`<button class="btn danger small" type="button" data-act="shoprm" data-key="${s.key}">Remove</button>` : ''}</td>` : ''}</tr>`)}
+    </tbody></table></div>
+    ${owner ? html`<h3>How often</h3><label class="f">Check the shops<select data-act="shophours">${[['6', 'Every 6 hours'], ['12', 'Every 12 hours (twice a day)'], ['24', 'Once a day'], ['48', 'Every 2 days'], ['0', 'Only when I press "Check the shops now"']].map(([v, t]) => html`<option value="${v}" ${sh.hours === v ? raw('selected') : ''}>${t}</option>`)}</select></label>
+      <h3>Add a shop</h3>
+      <form data-form="shopadd" class="row plc-search" autocomplete="off"><label class="f">Shop name<input type="text" name="name" maxlength="80" required></label>
+        <label class="f">Web address<small>Its home page, or the page that lists its plants</small><input type="url" name="url" maxlength="300" placeholder="https://" required></label>
+        <label class="chk"><input type="checkbox" name="local"> Near home</label><button class="btn" type="submit">Add the shop</button></form>
+      <h3>eBay and Etsy keys</h3>
+      <p class="hint">eBay and Etsy are searched through their official services, which need free keys. They are kept on this computer and never shown again.</p>
+      <form data-form="shopkeys" data-shop="ebay" class="f-grid" autocomplete="off"><p><strong>eBay</strong>: ${sh.have_ebay ? 'saved.' : 'not set.'} Create a free account at <a href="https://developer.ebay.com/" target="_blank" rel="noopener noreferrer">developer.ebay.com</a>, make a "Production" keyset, and paste its App ID (Client ID) and Cert ID (Client Secret).</p>
+        <label class="f">App ID<input type="password" name="ebay_app_id" autocomplete="off"></label><label class="f">Cert ID<input type="password" name="ebay_cert_id" autocomplete="off"></label>
+        <div class="row"><button class="btn" type="submit">Save the eBay keys</button>${sh.have_ebay ? html`<button class="btn ghost" type="button" data-act="shopkeyrm" data-shop="ebay">Remove them</button>` : ''}</div></form>
+      <form data-form="shopkeys" data-shop="etsy" autocomplete="off"><p><strong>Etsy</strong>: ${sh.have_etsy ? 'saved.' : 'not set.'} Register an app at <a href="https://www.etsy.com/developers/register" target="_blank" rel="noopener noreferrer">etsy.com/developers</a> and paste its key (keystring).</p>
+        <label class="f">Etsy key<input type="password" name="etsy_key" autocomplete="off"></label>
+        <div class="row"><button class="btn" type="submit">Save the Etsy key</button>${sh.have_etsy ? html`<button class="btn ghost" type="button" data-act="shopkeyrm" data-shop="etsy">Remove it</button>` : ''}</div></form>` : ''}
+  </section>`;
+}
+async function wlPoll() {
+  const msg = () => document.getElementById('wl-check-msg');
+  for (let n = 0; n < 900 && msg(); n++) {
+    let r; try { r = await api('GET', '/api/wishlist/check'); } catch (e) { return; }
+    if (!r.busy) { if (msg()) { toast('Shops checked'); WLBADGE = 0; await route(); } return; }
+    if (msg()) msg().textContent = `Checking ${r.now || 'the shops'} (${r.done + 1} of ${r.total})…`;
+    await new Promise(res => setTimeout(res, 2000));
+  }
+}
+document.addEventListener('toggle', async e => {         // the listings for one entry, loaded when opened
+  const d = e.target; if (!d.matches || !d.matches('details.wl-offers') || !d.open || d.dataset.loaded) return;
+  d.dataset.loaded = '1';
+  const box = d.querySelector('.wl-offers-box');
+  try {
+    const r = await api('GET', '/api/wishlist/offers?name=' + enc(d.dataset.wish));
+    const money = n => n == null ? 'no price shown' : '$' + Number(n).toFixed(2);
+    box.innerHTML = rend(r.offers.length ? html`<ul class="wl-offer-list">${r.offers.map(o => html`<li class="${o.gone ? 'muted' : ''}">
+        <strong>${money(o.price)}</strong> at ${o.shop_name}: <a href="${o.url}" target="_blank" rel="noopener noreferrer">${o.title}</a>
+        ${o.gone ? html` <span class="tag">No longer listed</span>` : o.available ? '' : html` <span class="tag">Out of stock</span>`}
+        ${o.detail ? html`<br><small>${o.detail}</small>` : ''}
+        ${o.history.length > 1 ? html`<br><small>Past: ${o.history.slice(-6).map(h => `${when(h.at)} ${h.available ? money(h.price) : 'gone or out of stock'}`).join('; ')}</small>` : ''}
+        <br><small class="muted">First seen ${when(o.first_seen)}, last seen ${when(o.last_seen)}</small></li>`)}</ul>` : html`<p class="muted">Nothing found yet.</p>`);
+  } catch (err) { box.innerHTML = rend(html`<p class="muted">${err.message}</p>`); }
+}, true);
+Object.assign(acts, {
+  async wlcheck(el) {
+    if (!(await needName())) return;
+    el.disabled = true;
+    await guard(async () => { await api('POST', '/api/wishlist/check'); wlPoll(); });
+  },
+  async wldismiss(el) {
+    if (!(await needName())) return;
+    await guard(async () => { await api('POST', '/api/wishlist/alerts', el.dataset.id === 'all' ? { all: true } : { id: +el.dataset.id }); toast('Dismissed'); WLBADGE = 0; await route(); });
+  },
+  async shopedit(el) {
+    const s = WLSHOPS && WLSHOPS.shops.find(x => x.key === el.dataset.key); if (!s) return;
+    const r = await modal(html`<form method="dialog"><h2>${s.name}</h2>
+      <label class="f">Web address<input type="url" name="url" maxlength="300" value="${s.url}"></label>
+      <label class="f">More pages to read<small>For a shop without an online store: the pages that list its plants, one per line</small><textarea name="pages" rows="5">${s.pages.join('\n')}</textarea></label>
+      <div class="row"><button class="btn" value="ok">Save changes</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`);
+    if (r !== 'ok') return;
+    await guard(async () => { await api('PUT', '/api/shops', { key: s.key, url: dlg.querySelector('[name=url]').value, pages: dlg.querySelector('[name=pages]').value }); toast('Saved'); await route(); });
+  },
+  async shoprm(el) {
+    const s = WLSHOPS && WLSHOPS.shops.find(x => x.key === el.dataset.key); if (!s) return;
+    if (!(await confirmBox('Remove this shop?', `${s.name} is no longer checked, and what it had is forgotten.`, 'Remove the shop', true))) return;
+    await guard(async () => { await api('DELETE', '/api/shops?key=' + enc(s.key)); toast('Removed'); await route(); });
+  },
+  async shopkeyrm(el) {
+    if (!(await confirmBox('Remove the key?', `${el.dataset.shop === 'ebay' ? 'eBay' : 'Etsy'} is not searched again until a key is saved.`, 'Remove it', true))) return;
+    await guard(async () => { await api('DELETE', '/api/shops/keys', { shop: el.dataset.shop }); toast('Removed'); await route(); });
+  },
+});
+Object.assign(changeActs, {
+  async shopon(el) { await guard(async () => { await api('PUT', '/api/shops', { key: el.dataset.key, enabled: el.checked }); toast(el.checked ? 'Turned on' : 'Turned off'); }); },
+  async shophours(el) { await guard(async () => { await api('PUT', '/api/shops', { hours: el.value }); toast('Saved'); }); },
+});
+Object.assign(formActs, {
+  async shopadd(form) { await api('POST', '/api/shops', { name: form.elements.name.value, url: form.elements.url.value, local: form.elements.local.checked }); toast('Shop added. It is read on the next check.'); route(); },
+  async shopkeys(form) {
+    const b = { shop: form.dataset.shop }; [...form.elements].forEach(x => { if (x.name) b[x.name] = x.value.trim(); });
+    await api('PUT', '/api/shops/keys', b); toast('Saved'); route();
+  },
+});
 Object.assign(acts, {
   async wlgot(el) {
     const w = WL[+el.dataset.i]; if (!w || !(await needName())) return;
@@ -5573,9 +5699,15 @@ Object.assign(acts, {
       <label class="f">Where to find it<small>A nursery, a website, a friend's garden</small><input type="text" name="where" maxlength="300" value="${w.where_seen}"></label>
       <label class="f">Notes<textarea name="notes" rows="4" maxlength="2000">${w.notes}</textarea></label>
       <label class="f">Status<select name="status"><option value="want" ${w.status === 'want' ? raw('selected') : ''}>Wanted</option><option value="got" ${w.status === 'got' ? raw('selected') : ''}>Got it</option></select></label>
+      <fieldset class="opt-group"><legend>Shops and alerts</legend>
+        <label class="f">Search the shops for<small>One search per line, such as a variety: Monstera Thai Constellation. Left empty, its common and scientific names are used.</small><textarea name="search" rows="2" maxlength="300">${w.search_words || ''}</textarea></label>
+        <label class="f">Alert me when the price is at or under<small>In dollars, such as 25. Shipping is not included. Leave empty for no price alert.</small><input type="number" name="max_price" min="0.01" step="0.01" inputmode="decimal" value="${w.max_price == null ? '' : w.max_price}"></label>
+        <label class="chk"><input type="checkbox" name="alert_stock" ${w.alert_stock ? raw('checked') : ''}> Alert me when a shop has it in stock</label></fieldset>
       <div class="row"><button class="btn" value="ok">Save changes</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`);
     if (r !== 'ok') return;
-    await guard(async () => { await api('PUT', '/api/wishlist', { name: w.name, where_seen: dlg.querySelector('[name=where]').value, notes: dlg.querySelector('[name=notes]').value, status: dlg.querySelector('[name=status]').value }); toast('Saved'); await route(); });
+    const q = n => dlg.querySelector(`[name=${n}]`);
+    await guard(async () => { await api('PUT', '/api/wishlist', { name: w.name, where_seen: q('where').value, notes: q('notes').value, status: q('status').value,
+      search_words: q('search').value, max_price: q('max_price').value, alert_stock: q('alert_stock').checked }); toast('Saved'); await route(); });
   },
 });
 Object.assign(acts, {
