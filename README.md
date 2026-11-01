@@ -1018,6 +1018,18 @@ Every plant page has an **About this plant** section after Identification (also 
 
 If the identification is less than 85% sure, a note says the details are for the closest match. Change anything with **Edit**, under "About this plant". In the **Sources** field, put one source per line as `Title | https://link`, and it shows as a link.
 
+## Uses, partners and propagation (from 1.27.0)
+
+Every plant page has a section **Uses, partners and propagation** (the **Uses** button in the row of section buttons). Species pages in the Library have it too, and mushroom finds have **What it does, and growing it**.
+- **Uses**: what people use it for (food, skin and first aid, dye, crafts, ground cover, cut flowers...), each with its safety warnings. Traditional uses are labelled as such and are not medical advice.
+- **In the compost**: good, fine in small amounts, poor, or keep it out, and why.
+- **Keeps away** and **Brings in**: pests or animals it deters, and the pollinators, birds and helpful insects it feeds.
+- **Good partners** and **Keep apart from**: each with how sure it is ("shown in trials", "gardeners' lore, not proven", "same light, water and soil", or "needs different light, water or soil"). When you have a partner plant, it says **You have it** and links to it.
+- **Propagation**: the ways to make more of it, and the best time of year here.
+- **Breeding**: how it crosses, then links to **your plants of the same species** and **your plants it may cross with**. Patented varieties are flagged: propagating a patented plant isn't allowed while the patent lasts, even for yourself.
+
+For your plants, Claude wrote these from general horticultural knowledge (upgrade batch A9, about 50 species, plus their genus for named hybrids). Nothing was checked by a person. For any other species, press **Write them with Claude** on its page. Like care sheets, it uses the owner's Anthropic key (saved on the Identify page) and keeps the result. For mushrooms, uses never include eating them.
+
 ## Audit log (from 1.10.0)
 
 The **Audit log** page (in the menu bar; it used to be called Change log) lists every change to every record, newest first: edits to plant pages, plants added or archived, photos added, moved or removed, feeding and care, requests and answers, the "Still to photograph" list, settings and backups. Each change shows when, which plant (with a link), who, what changed, and the value before and after.

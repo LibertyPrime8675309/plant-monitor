@@ -65,6 +65,20 @@ def claude():
                  'humidity': 'Low is fine.', 'feeding': 'None needed.', 'pruning': 'Leave seed pods to ripen.', 'propagation': 'Scarified seed sown in fall.',
                  'pests': 'Pill bugs on seedlings.', 'outdoors_here': 'Sow outdoors in Round Rock in October or November.', 'containers': 'Deep pots only.'}
         return jsonify(content=[{'type': 'text', 'text': json.dumps(sheet)}])
+    if '\\"uses\\": a list' in body:                         # 1.27.0: uses, partners and propagation for any species
+        fungus = 'This is a FUNGUS' in body
+        f = {'summary': 'Breaks down dead wood.' if fungus else 'A tough native wildflower.',
+             'uses': [{'kind': 'Soil', 'text': 'Breaks down wood chips into rich soil.', 'caution': ''},
+                      {'kind': 'Food', 'text': 'Edible when cooked.', 'caution': ''}] if fungus else
+                     [{'kind': 'Cut flowers', 'text': 'Lasts a week in a vase.', 'caution': ''}, {'kind': 'Dye', 'text': 'Blue-green dye from the flowers.', 'caution': 'Wear gloves.'}],
+             'compost': {'verdict': 'Good', 'why': 'Soft and quick to rot.'},
+             'partners_good': [{'name': 'Agave', 'sci': 'Agave', 'why': 'Same dry ground.', 'evidence': 'Same needs'}],
+             'partners_bad': [{'name': 'Thirsty plants', 'sci': '', 'why': 'Too much water.', 'evidence': 'Different needs'}],
+             'deters': [], 'attracts': [{'what': 'Bees', 'why': 'Nectar in spring.'}],
+             'propagation': [{'method': 'Seed', 'when': 'Autumn', 'how': 'Scratch the seed and sow it in October.'}],
+             'breeding': {'text': 'Crosses with other lupines.', 'cross_genera': [], 'patent': ''},
+             'sources': [{'title': 'Lady Bird Johnson Wildflower Center', 'url': 'https://www.wildflower.org/'}, {'title': 'Bad', 'url': 'javascript:alert(1)'}]}
+        return jsonify(content=[{'type': 'text', 'text': 'Here it is: ' + json.dumps(f)}])
     return jsonify(content=[{'type': 'text', 'text': '{"plant": true, "guesses": [{"scientific_name": "Lupinus texensis", "common_name": "Texas bluebonnet", '
                                                      '"family": "Fabaceae", "probability": 0.8, "why": "Palmate leaves and blue pea flowers."}], "photo_tip": "A photo of the flowers."}'}])
 

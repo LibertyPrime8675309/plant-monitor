@@ -1402,3 +1402,12 @@ html[data-narrow="0"][data-topmode=one] .top nav{min-width:0}
 html[data-narrow="0"][data-topmode=tier] .top-in{row-gap:.3rem}
 html[data-narrow="0"][data-topmode=tier] .top nav{order:3;flex:1 1 100%;min-width:0}
 html[data-narrow="0"][data-navrow="1"] .top nav{flex-wrap:nowrap;justify-content:space-evenly}
+/* 1.27.0: uses, partners, deterrents, propagation and breeding */
+.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,26rem),1fr));gap:0 2.5rem;align-items:start}
+.facts h3{margin:1rem 0 .4rem}
+.fact-list{margin:0 0 .6rem;padding-left:1.2rem}
+.fact-list li{margin:.35rem 0;line-height:1.5}
+.fact-ev{color:var(--ink-2);font-size:.92em}
+.fact-warn{color:var(--madder);font-weight:700}
+.fact-yours{display:inline-block;margin-top:.15rem;font-weight:700}
+html[data-role=viewer] [data-act=factswrite]{display:none!important}

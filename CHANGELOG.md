@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.27.0 (2026-11-01)
+- **New section on every plant page: Uses, partners and propagation.** It's also on Library species pages, and on mushroom finds as "What it does, and growing it".
+  - **Uses** with their safety warnings (aloe gel for minor burns, prickly pear pads, fig fruit, dye from cosmos and gardenia...), and whether it's good for **compost**, and why.
+  - **Keeps away** (deer, animals, aphids...) and **Brings in** (bees, hummingbirds, butterflies, helpful insects).
+  - **Good partners** and **Keep apart from**, each saying how well it's known: shown in trials, gardeners' lore, or simply the same (or different) light and water. Partners you already have are linked.
+  - **Propagation**: methods and the best time of year in Round Rock.
+  - **Breeding**: how it crosses, with links to your plants of the same species and the ones it may cross with (your three aloes, the haworthias and the hardy aloe, for example). Patented varieties such as the Queen of Elegance rose are flagged.
+- These are filled in for your plants (about 50 species). For any other species, **Write them with Claude** on its page uses the owner's key and keeps the result. For mushrooms they never include eating them.
+- Includes everything in 1.26.1 below.
+
 ## 1.26.1 (2026-11-01)
 - **The top bar on a computer uses the whole width of the window.** It used to stop well short of both edges.
   - "Plant record" and its version are on the left, and **Online**, **Location** and **Editing as** (or **Signed in as**) are side by side on the right.

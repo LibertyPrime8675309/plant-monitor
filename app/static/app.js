@@ -412,7 +412,7 @@ function buildSideNav() {
 }
 // the row of section buttons on plant pages: the same sections as the menu, with shorter names where the title is long
 const JUMP_SHORT = { 'Name and details': 'Details', 'Current conditions': 'Now', 'Needed from you': 'Needed', 'Requests (all answered)': 'Requests',
-  'Getting this plant back in range': 'Back in range', 'In range': 'In range', 'Plant identification': 'Identification', 'About this plant': 'About',
+  'Getting this plant back in range': 'Back in range', 'In range': 'In range', 'Plant identification': 'Identification', 'About this plant': 'About', 'Uses, partners and propagation': 'Uses',
   'Sunlight': 'Light', 'Getting ready to come inside': 'Coming inside', 'Pests and diseases': 'Pests', 'Page history': 'History' };
 function buildJumpRow() {
   const row = document.getElementById('jumprow'), pane = document.getElementById('pane-r'); if (!row || !pane) return;
@@ -1285,6 +1285,57 @@ async function loadTimeline(box) {
   if (TL.code !== code) { TL.code = code; TL.a = TL.b = null; }
   tlRender();
 }
+// ---------- 1.27.0: uses, partners, deterrents, propagation and breeding (one species' facts, on plant, species and find pages) ----------
+const FACT_EVIDENCE = { Tested: 'shown in trials', Traditional: "gardeners' lore, not proven", 'Same needs': 'same light, water and soil', 'Different needs': 'needs different light, water or soil' };
+function factYours(list, lead) {
+  return list && list.length ? html`<span class="fact-yours">${lead} ${list.map((x, i) => html`${i ? ', ' : ''}<a href="#/plant/${enc(x.code)}">${x.code} ${x.name}</a>`)}</span>` : '';
+}
+function factsHtml(f, box) {
+  const fungus = box.dataset.factsKind === 'fungus', name = box.dataset.factsCommon || box.dataset.factsName;
+  if (!f) {
+    const can = canChange() && box.dataset.canWrite === '1';
+    return html`<p class="muted">Nothing kept for ${name} yet.</p>
+      ${can && box.dataset.factsName ? html`<p><button class="btn" type="button" data-act="factswrite">Write them with Claude</button></p>
+        <p class="hint">Claude writes the uses, ${fungus ? 'partner trees and plants, and how it is grown' : 'good and bad partner plants, deterrents, propagation and breeding'} for this species, for ${fungus ? 'your area' : 'Round Rock'}. It takes about half a minute, uses the owner's Anthropic key, and is kept.</p>`
+        : html`<p class="hint">${box.dataset.factsName ? 'The owner can let Claude write them by saving an Anthropic API key on the Identify page.' : 'Set the scientific name (Edit this page) so they can be looked up.'}</p>`}`;
+  }
+  const ev = e => html`<span class="fact-ev">(${FACT_EVIDENCE[e] || e})</span>`;
+  const partner = p => html`<li><strong>${p.name}</strong>${p.sci && p.sci.toLowerCase() !== (p.name || '').toLowerCase() ? html` <i class="latin">${p.sci}</i>` : ''}: ${p.why} ${ev(p.evidence)}${p.yours && p.yours.length ? html`<br>${factYours(p.yours, 'You have it:')}` : ''}</li>`;
+  const genus = f.key.split(' ')[0], same = f.cross_same || [], other = f.cross_other || [];
+  const src = f.origin === 'researched' ? `Written for your plants by ${f.written_by || 'Claude'}, from general horticultural knowledge` : `Written by Claude when ${f.written_by || 'someone'} asked`;
+  const sp = (box.dataset.factsName || '').replace(/^[x\u00d7]\s*/, '');
+  return html`${!f.key.includes(' ') && /^[A-Z][a-z]+\s+[a-z]{3,}/.test(sp) && !/^[A-Z][a-z]+\s+(sp|spp|cultivar|type|hybrid|or|cf)\b/.test(sp) ? html`<p class="hint">For the genus <i class="latin">${f.name}</i> as a whole.</p>` : ''}
+    ${f.summary ? html`<p>${f.summary}</p>` : ''}
+    <div class="facts">
+      <div><h3>Uses</h3>${f.uses.length ? html`<ul class="fact-list">${f.uses.map(u => html`<li><strong>${u.kind}:</strong> ${u.text}${u.caution ? html`<br><span class="fact-warn">⚠ ${u.caution}</span>` : ''}</li>`)}</ul>` : html`<p class="muted">None known beyond being grown for its looks.</p>`}
+        ${fungus ? html`<p class="hint">Uses never include eating it. Never eat a wild mushroom because of an app, a photo, or this record.</p>` : html`<p class="hint">Traditional uses are not medical advice.</p>`}
+        ${f.compost.verdict ? html`<h3>In the compost</h3><p><strong>${f.compost.verdict}.</strong> ${f.compost.why}</p>` : ''}</div>
+      ${f.deters.length || f.attracts.length ? html`<div>${f.deters.length ? html`<h3>Keeps away</h3><ul class="fact-list">${f.deters.map(x => html`<li><strong>${x.what}:</strong> ${x.how} ${ev(x.evidence)}</li>`)}</ul>` : ''}
+        ${f.attracts.length ? html`<h3>Brings in</h3><ul class="fact-list">${f.attracts.map(x => html`<li><strong>${x.what}:</strong> ${x.why}</li>`)}</ul>` : ''}</div>` : ''}
+      <div><h3>Good partners</h3>${f.partners_good.length ? html`<ul class="fact-list">${f.partners_good.map(partner)}</ul>` : html`<p class="muted">None noted.</p>`}
+        <h3>Keep apart from</h3>${f.partners_bad.length ? html`<ul class="fact-list">${f.partners_bad.map(partner)}</ul>` : html`<p class="muted">None noted.</p>`}</div>
+      <div><h3>${fungus ? 'Growing it' : 'Propagation'}</h3>${f.propagation.length ? html`<ul class="fact-list">${f.propagation.map(x => html`<li><strong>${x.method}</strong>${x.when ? html` (${x.when})` : ''}: ${x.how}</li>`)}</ul>` : html`<p class="muted">Not noted.</p>`}
+        ${fungus ? '' : html`<h3>Breeding</h3>${f.breeding.text ? html`<p>${f.breeding.text}</p>` : ''}
+          ${same.length ? html`<p>${factYours(same, 'Your plants of the same species:')}</p>` : ''}
+          ${other.length ? html`<p>${factYours(other, `Your plants it may cross with (${[genus].concat(f.breeding.cross_genera || []).map(g => g.charAt(0).toUpperCase() + g.slice(1)).join(' or ')}):`)}</p>` : ''}
+          ${!same.length && !other.length ? html`<p class="muted">None of your plants are close enough relatives to cross with it.</p>` : ''}
+          ${f.breeding.patent ? html`<p class="fact-warn">⚠ ${f.breeding.patent}</p>` : ''}`}</div>
+    </div>
+    <p class="hint">${src}${f.written_at ? `, ${when(f.written_at)}` : ''}. Not checked by a person. Evidence: "shown in trials" has been tested; "gardeners' lore" is widely repeated but not proven.
+      ${f.sources.length ? html`Read more: ${f.sources.map((x, i) => html`${i ? '; ' : ''}<a href="${x.url}" target="_blank" rel="noopener noreferrer">${x.title}</a>`)}.` : ''}</p>
+    ${f.origin === 'claude' && canChange() && box.dataset.canWrite === '1' ? html`<p><button class="btn ghost small" type="button" data-act="factswrite">Write them again with Claude</button></p>` : ''}`;
+}
+async function loadFacts(box) {
+  const q = box.dataset.factsCode ? 'code=' + enc(box.dataset.factsCode) : 'name=' + enc(box.dataset.factsName || '');   // by code alone, so it is saved for offline use
+  try {
+    const r = await api('GET', '/api/facts?' + q);
+    box.dataset.canWrite = r.can_write ? '1' : '0';
+    box.innerHTML = rend(factsHtml(r.facts, box));
+  } catch (e) { box.innerHTML = rend(html`<p class="muted">${e.offline || !navigator.onLine ? 'Not saved on this device. They load once you are back online.' : e.message}</p>`); }
+}
+new MutationObserver(() => document.querySelectorAll('.facts-box:not([data-loaded])').forEach(b => { b.dataset.loaded = '1'; loadFacts(b); }))
+  .observe(document.getElementById('app'), { childList: true, subtree: true });
+
 new MutationObserver(() => { const b = document.getElementById('tl-box'); if (b && !b.dataset.loaded) { b.dataset.loaded = '1'; loadTimeline(b); } })
   .observe(document.getElementById('app'), { childList: true });
 function slips(h) {
@@ -1347,6 +1398,7 @@ async function viewPlant(code) {
         </section>
 
         <section class="blk" id="about"><h2>About this plant</h2>${aboutBlock(p)}</section>
+        <section class="blk" id="uses"><h2>Uses, partners and propagation</h2><div class="facts-box" data-facts-code="${p.code}" data-facts-name="${p.scientific_name || ''}" data-facts-common="${p.common_name}"><p class="loading">Loading</p></div></section>
 
         <section class="blk" id="temp"><h2>Temperature</h2>${tempBlock(p, cur)}${paras(p.temp_notes)}${histBlock('temp')}</section>
         <section class="blk" id="hum"><h2>Humidity</h2>${humBlock(p, cur)}${histBlock('hum')}</section>
@@ -5356,6 +5408,7 @@ async function viewSpecies(name) {
       <div class="sp-more">${spHomeHtml(d, fungus)}
       ${fungus ? '' : spPetsHtml(d)}
       ${fungus ? '' : html`<section aria-labelledby="sp-care-h"><h2 id="sp-care-h">Care sheet</h2><div id="sp-care">${spCareHtml(d)}</div></section>`}
+      <section aria-labelledby="sp-facts-h"><h2 id="sp-facts-h">${fungus ? 'What it does, and growing it' : 'Uses, partners and propagation'}</h2><div class="facts-box" data-facts-name="${d.scientific_name}" data-facts-common="${d.common_name || ''}" data-facts-kind="${fungus ? 'fungus' : 'plant'}"><p class="loading">Loading</p></div></section>
       <section aria-labelledby="sp-notes-h"><h2 id="sp-notes-h">Your notes and tags</h2>
         <p class="hint">Shared with everyone you have given access to the app.</p>
         ${d.notes.notes || d.notes.tags ? html`<div class="sp-mynotes">${d.notes.notes ? html`<p class="pl">${d.notes.notes}</p>` : ''}
@@ -5525,7 +5578,18 @@ Object.assign(acts, {
     await guard(async () => { await api('PUT', '/api/wishlist', { name: w.name, where_seen: dlg.querySelector('[name=where]').value, notes: dlg.querySelector('[name=notes]').value, status: dlg.querySelector('[name=status]').value }); toast('Saved'); await route(); });
   },
 });
-const SPG = { step: null };
+Object.assign(acts, {
+  async factswrite(el) {
+    const box = el.closest('.facts-box'); if (!box || !(await needName())) return;
+    el.disabled = true;
+    box.insertAdjacentHTML('beforeend', rend(html`<p role="status" class="facts-wait">Claude is writing them. This takes about half a minute…</p>`));
+    try {
+      const r = await api('POST', '/api/facts', { name: box.dataset.factsName, common_name: box.dataset.factsCommon || '', kind: box.dataset.factsKind || 'plant' });
+      box.innerHTML = rend(factsHtml(r.facts, box)); toast('Written and kept');
+      const h = box.closest('section') && box.closest('section').querySelector('h2'); if (h) { h.setAttribute('tabindex', '-1'); h.focus(); }
+    } catch (e) { const w = box.querySelector('.facts-wait'); if (w) w.remove(); el.disabled = false; box.insertAdjacentHTML('beforeend', rend(html`<div class="notice bad" role="alert">${e.message}</div>`)); }
+  },
+});const SPG = { step: null };
 let SPCUR = null;          // the species page on screen, for "Add to my plants"
 Object.assign(acts, {
   libmore: () => libLoad(true),
@@ -5718,7 +5782,8 @@ async function viewFind(code) {
       ${f.lat == null && gps ? html`<p><button class="btn ghost" type="button" data-act="mugps" data-lat="${gps.gps_lat}" data-lon="${gps.gps_lon}">Save the location from the photo (${(+gps.gps_lat).toFixed(4)}, ${(+gps.gps_lon).toFixed(4)})</button></p>` : ''}</section>
     <section aria-labelledby="mu-grew-h"><h2 id="mu-grew-h">What it grew on</h2>${['substrate', 'near', 'abundance'].some(show) ? html`<dl class="dl">${dl(['substrate', 'near', 'abundance'])}</dl>` : html`<p class="muted">Not noted yet.</p>`}</section>
     <section aria-labelledby="mu-look-h"><h2 id="mu-look-h">What it looks like</h2>${['cap_size', 'cap_colour', 'underside', 'ring', 'volva', 'spore_print', 'bruising', 'smell'].some(show) ? html`<dl class="dl">${dl(['cap_size', 'cap_colour', 'underside', 'ring', 'volva', 'spore_print', 'bruising', 'smell'])}</dl>` : html`<p class="muted">Not noted yet. Edit the find to add the cap, the underside, the ring, the base and the spore print.</p>`}</section>
-    ${show('notes') ? html`<section aria-labelledby="mu-notes-h"><h2 id="mu-notes-h">Notes</h2><p class="pl">${f.notes}</p></section>` : ''}</div>
+    ${show('notes') ? html`<section aria-labelledby="mu-notes-h"><h2 id="mu-notes-h">Notes</h2><p class="pl">${f.notes}</p></section>` : ''}
+    ${f.scientific_name && f.id_status !== 'Not identified yet' ? html`<section aria-labelledby="mu-facts-h"><h2 id="mu-facts-h">What it does, and growing it</h2><div class="facts-box" data-facts-name="${f.scientific_name}" data-facts-common="${f.name || ''}" data-facts-kind="fungus"><p class="loading">Loading</p></div></section>` : ''}</div>
     <div class="row noprint mu-acts"><a class="btn" href="#/fungi/${enc(f.code)}/edit">Edit this find</a>
       <button class="btn ghost" type="button" data-act="muarch" data-to="${f.status === 'archived' ? '0' : '1'}">${f.status === 'archived' ? 'Bring it back' : 'Archive this find'}</button></div>
     <p class="hint">Added by ${f.created_by} on ${when(f.created_at)}${f.updated_at && f.updated_at !== f.created_at ? `; last changed by ${f.updated_by} on ${when(f.updated_at)}` : ''}. Changes are listed in the Audit log under "Mushroom finds".</p></div>`,
