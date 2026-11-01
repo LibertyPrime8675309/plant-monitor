@@ -76,7 +76,10 @@ function paintWho() {
   const n = viaTS() ? ME().name : getName(), el = document.getElementById('who-name');
   if (el) el.textContent = viaTS() ? 'Signed in as ' + n : n ? 'Editing as ' + n : 'Set your name';
   document.documentElement.dataset.role = ME().role;
+  topSoon();
 }
+let TOPRAF = 0;                  // 1.26.1: the name and the place change the width of their buttons, so the top bar is fitted again
+function topSoon() { cancelAnimationFrame(TOPRAF); TOPRAF = requestAnimationFrame(() => navLayout()); }
 
 // ---------- api ----------
 // the place this browser uses for weather, frost, watering and "today" (1.11.0); null = the home place
@@ -138,6 +141,7 @@ function paintPlace() {
   const n = document.getElementById('place-name'); if (n) n.textContent = META.place.name;
   const b = document.getElementById('place-btn');
   if (b) b.setAttribute('aria-label', `Location: ${META.place.name}${META.place.is_home ? ' (home)' : ''}. Choose another place`);
+  topSoon();
 }
 function placeDialog() {
   const cur = META && META.place, list = (META && META.places) || [];
@@ -345,11 +349,17 @@ function navOpen() { const P = window.PlantPrefs.get(), narrow = document.docume
 function topFit() {
   const r = document.documentElement, nav = document.getElementById('main-nav'), top = document.querySelector('.top');
   if (!nav || !top) return;
-  if (r.dataset.narrow === '1') { r.dataset.pagesfold = '0'; r.dataset.toptall = '0'; return; }
+  if (r.dataset.narrow === '1') { r.dataset.pagesfold = '0'; r.dataset.toptall = '0'; r.dataset.topmode = ''; r.dataset.navrow = '0'; return; }
   const was = top.classList.contains('pages-open'); top.classList.remove('pages-open');
   r.dataset.pagesfold = '0';
+  // 1.26.1: the bar spans the window. Everything on one line if it fits; otherwise the name and the buttons on the first line and
+  // the page links on a line of their own, spread across the whole width
+  const rows = () => new Set([...nav.querySelectorAll('a')].map(x => Math.round(x.getBoundingClientRect().top))).size;
+  r.dataset.topmode = 'one'; r.dataset.navrow = '0';
+  if (rows() > 1) r.dataset.topmode = 'tier';
+  r.dataset.navrow = rows() === 1 ? '1' : '0';
   const a = nav.querySelector('a');
-  if (a && (nav.offsetHeight > a.offsetHeight * 2.5 || top.offsetHeight > innerHeight * 0.2)) r.dataset.pagesfold = '1';
+  if (a && (nav.offsetHeight > a.offsetHeight * 2.5 || top.offsetHeight > innerHeight * 0.2)) { r.dataset.pagesfold = '1'; r.dataset.topmode = ''; r.dataset.navrow = '0'; }
   if (was) top.classList.add('pages-open');
   r.dataset.toptall = top.offsetHeight > innerHeight * 0.2 ? '1' : '0';
 }
@@ -4004,7 +4014,7 @@ document.addEventListener('keydown', e => {      // Enter in the Location window
   if (e.key === 'Enter' && e.target && e.target.name === 'plcq') { e.preventDefault(); placeSearch(); }
 });
 { const b = conEl('con-body'); if (b) b.addEventListener('scroll', conScrolled, { passive: true }); }
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { conLayout(); fitPanes(); });   // rows grow a little once the fonts arrive
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { navLayout(); conLayout(); fitPanes(); });   // rows grow a little once the fonts arrive
 
 // ---------- grow lights (1.13.0) ----------
 let LT = null;                     // the last answer from /api/lights

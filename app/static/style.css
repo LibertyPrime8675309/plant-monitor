@@ -1391,3 +1391,14 @@ table.tbl.stacked [data-label]::before{content:attr(data-label) " ";font-weight:
 table.tbl.stacked tr>[data-label]:first-child::before{content:none}
 /* 1.26.0: phones and tablets have no keyboard, so the keyboard shortcut note under "Read this page aloud" only takes up a line there */
 html[data-touch="1"] .rd-page .hint{display:none}
+/* 1.26.1: on computers the top bar spans the whole window. app.js topFit() sets data-topmode: "one" puts the name, the page links and
+   Online, Location and Editing on one line; "tier" puts the name and those buttons on the first line and the page links on a line
+   of their own. Page links on one line spread evenly across the space they have */
+html[data-narrow="0"] .top-in{max-width:none;padding-left:clamp(1rem,1.5vw,2rem);padding-right:clamp(1rem,1.5vw,2rem)}
+html[data-narrow="0"]:is([data-topmode=one],[data-topmode=tier]) .top-acts{flex-direction:row;flex-wrap:nowrap;margin-left:auto}
+html[data-narrow="0"]:is([data-topmode=one],[data-topmode=tier]) .top-acts>*{white-space:nowrap}
+html[data-narrow="0"][data-topmode=one] .top-in{flex-wrap:nowrap}
+html[data-narrow="0"][data-topmode=one] .top nav{min-width:0}
+html[data-narrow="0"][data-topmode=tier] .top-in{row-gap:.3rem}
+html[data-narrow="0"][data-topmode=tier] .top nav{order:3;flex:1 1 100%;min-width:0}
+html[data-narrow="0"][data-navrow="1"] .top nav{flex-wrap:nowrap;justify-content:space-evenly}
