@@ -3,7 +3,7 @@
 One line each, most wanted first. A prototyping session takes the top one that is not already in progress, and marks it "(in progress: proto/<branch>)".
 
 - Summer heat: an AHS heat-zone style "days above 86°F" count from the weather history, next to the USDA zone on About this plant, for plants that struggle in Texas summers.
-- Sensor dashboard for the DIY plant monitor (soil moisture, temperature, light) once hardware is posting to `/api/readings`.
+- Sensor dashboard for the DIY plant monitor (soil moisture, temperature, light) once hardware is posting to `/api/readings`. (in progress: proto/sensor-dashboard)
 
 ## Done
 1.19.0 (October 28, 2026, pull requests #23 and #26): Undo right after a quick care button, and large-print care cards for a plant or a whole group.

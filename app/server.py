@@ -2740,6 +2740,131 @@ def ingest_regen():
     c.commit()
     return jsonify(token=setting(c, 'ingest_token'))
 
+# ---------------------------------------------------------------- prototype proto/sensor-dashboard: your sensors at a glance
+# Each sensor (a `device` name in readings) can get a friendly name, a plant it sits in, and how long it may stay quiet
+# before the app says so. Its newest values are compared with that plant's ranges, in words. The table is made on first use
+# (CREATE TABLE IF NOT EXISTS), so an older database upgrades in place and nothing else changes.
+SENSOR_METRICS = (   # key, label, unit, plant fields for low / high
+    ('soil_moisture', 'Soil moisture', '%', 'soil_moisture_low', 'soil_moisture_high'),
+    ('temp_f', 'Temperature', '°F', 'temp_ideal_low', 'temp_ideal_high'),
+    ('humidity', 'Humidity', '%', 'humidity_low', 'humidity_high'),
+    ('par', 'Light now', ' PAR', None, None),
+    ('soil_temp_f', 'Root-zone temperature', '°F', 'soil_temp_low', 'soil_temp_high'),
+    ('soil_ph', 'Soil pH', '', 'soil_ph_low', 'soil_ph_high'),
+)
+SENSOR_WORDS = {   # key -> (word when low, word when high)
+    'soil_moisture': ('Dry', 'Wet'), 'temp_f': ('Cool', 'Warm'), 'humidity': ('Dry air', 'Humid'),
+    'soil_temp_f': ('Cold roots', 'Warm roots'), 'soil_ph': ('Too acid', 'Too alkaline'), 'dli': ('Too dim', 'Too bright')}
+SENSOR_QUIET_DEFAULT = 3
+
+def sensor_tables(c):
+    c.execute("""CREATE TABLE IF NOT EXISTS sensor_devices(device TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '',
+                 plant_id INTEGER REFERENCES plants(id) ON DELETE SET NULL, quiet_hours INTEGER NOT NULL DEFAULT 3,
+                 updated_by TEXT, updated_at TEXT)""")
+
+def sensor_judge(key, v, lo, hi, p=None):
+    """In words: how a value compares with the plant's range. level is ok / low / high / bad (bad = in the damage range)."""
+    if v is None: return None
+    unit = next((m[2] for m in SENSOR_METRICS if m[0] == key), ' mol/m²' if key == 'dli' else '')
+    fmt = lambda x: (f'{x:g}' if isinstance(x, (int, float)) else str(x)) + unit
+    if key == 'temp_f' and p is not None and p['temp_damage_below'] is not None and v < p['temp_damage_below']:
+        return {'level': 'bad', 'word': 'Too cold', 'text': f"Below {fmt(p['temp_damage_below'])}, where damage starts. Move it somewhere warmer."}
+    if lo is None and hi is None: return None
+    lw, hw = SENSOR_WORDS.get(key, ('Low', 'High'))
+    rng = f'{fmt(lo)} to {fmt(hi)}' if lo is not None and hi is not None else (f'at least {fmt(lo)}' if lo is not None else f'at most {fmt(hi)}')
+    if lo is not None and v < lo:
+        return {'level': 'low', 'word': lw, 'text': f'Below its range ({rng}).' + (' Time to check it and water.' if key == 'soil_moisture' else '')}
+    if hi is not None and v > hi:
+        return {'level': 'high', 'word': hw, 'text': f'Above its range ({rng}).' + (' Let it dry out before watering again.' if key == 'soil_moisture' else '')}
+    return {'level': 'ok', 'word': 'In range', 'text': f'Within its range ({rng}).'}
+
+def sensor_card(c, dev, conf, now_t):
+    sw = "source='sensor' AND device=?"
+    st = c.execute(f'SELECT COUNT(*), MIN(ts), MAX(ts) FROM readings WHERE {sw}', (dev,)).fetchone()
+    name = (conf['name'] if conf else '') or dev
+    quiet_h = conf['quiet_hours'] if conf and conf['quiet_hours'] else SENSOR_QUIET_DEFAULT
+    p = None
+    if conf and conf['plant_id']:
+        p = c.execute('SELECT * FROM plants WHERE id=?', (conf['plant_id'],)).fetchone()
+    last = st[2]
+    mins = round((now_t - parse_ts(last).timestamp()) / 60) if last else None
+    day_ago = iso(now_t - 86400)
+    metrics = []
+    for key, label, unit, flo, fhi in SENSOR_METRICS:
+        r = c.execute(f'SELECT {key}, ts FROM readings WHERE {sw} AND {key} IS NOT NULL ORDER BY ts DESC LIMIT 1', (dev,)).fetchone()
+        if not r: continue
+        a = c.execute(f'SELECT MIN({key}), MAX({key}), COUNT({key}) FROM readings WHERE {sw} AND ts>=?', (dev, day_ago)).fetchone()
+        m = {'key': key, 'label': label, 'unit': unit, 'value': r[0], 'ts': r[1],
+             'day_min': a[0], 'day_max': a[1], 'day_n': a[2], 'judge': None, 'range': None, 'change': None}
+        if p is not None and flo:
+            lo, hi = p[flo], p[fhi]
+            m['range'] = [lo, hi] if lo is not None or hi is not None else None
+            m['judge'] = sensor_judge(key, r[0], lo, hi, p)
+        if key == 'soil_moisture':      # how much it changed in about a day (the reading closest to 24 hours before the newest)
+            t0 = parse_ts(r[1]).timestamp()
+            b = c.execute(f"""SELECT {key}, ts FROM readings WHERE {sw} AND {key} IS NOT NULL AND ts BETWEEN ? AND ?
+                              ORDER BY ABS(strftime('%s', ts) - ?) LIMIT 1""", (dev, iso(t0 - 30 * 3600), iso(t0 - 18 * 3600), int(t0 - 86400))).fetchone()
+            if b: m['change'] = {'by': round(r[0] - b[0], 1), 'hours': round((t0 - parse_ts(b[1]).timestamp()) / 3600)}
+        metrics.append(m)
+    # daily light over the last 24 hours from the hourly averages of PAR, when most hours have a reading
+    hrs = c.execute(f'SELECT substr(ts,1,13), AVG(par) FROM readings WHERE {sw} AND par IS NOT NULL AND ts>=? GROUP BY 1', (dev, day_ago)).fetchall()
+    dli = None
+    if len(hrs) >= 18:
+        v = round(sum(h[1] for h in hrs) / len(hrs) * 0.0864, 1)
+        dli = {'value': v, 'hours': len(hrs), 'judge': sensor_judge('dli', v, p['dli_low'], p['dli_high']) if p is not None else None,
+               'range': [p['dli_low'], p['dli_high']] if p is not None and (p['dli_low'] is not None or p['dli_high'] is not None) else None}
+    alerts = [m for m in metrics if m['judge'] and m['judge']['level'] != 'ok'] + ([dli] if dli and dli['judge'] and dli['judge']['level'] != 'ok' else [])
+    return {'device': dev, 'name': name, 'named': bool(conf and conf['name']), 'count': st[0], 'first': st[1], 'last': last, 'minutes_ago': mins,
+            'quiet_hours': quiet_h, 'quiet': mins is None or mins > quiet_h * 60,
+            'plant': {'code': p['code'], 'common_name': p['common_name'], 'site': p['site'], 'status': p['status']} if p is not None else None,
+            'metrics': metrics, 'dli': dli, 'needs_look': bool(alerts)}
+
+@app.route('/api/sensors')
+def sensors_list():
+    """Every sensor that has sent a reading or been set up, newest values first. ?plant=CODE: only the ones in that plant."""
+    c = db(); sensor_tables(c)
+    conf = {r['device']: r for r in c.execute('SELECT * FROM sensor_devices').fetchall()}
+    devs = [r[0] for r in c.execute("SELECT device FROM readings WHERE source='sensor' GROUP BY device ORDER BY MAX(ts) DESC").fetchall()]
+    devs += [d for d in conf if d not in devs]
+    code = request.args.get('plant')
+    if code:
+        pid = plant_row(c, code)['id']
+        devs = [d for d in devs if d in conf and conf[d]['plant_id'] == pid]
+    t = time.time()
+    cards = [sensor_card(c, d, conf.get(d), t) for d in devs]
+    cards.sort(key=lambda s: (not s['needs_look'], s['quiet'], s['name'].lower()))
+    return jsonify(sensors=cards, quiet_default=SENSOR_QUIET_DEFAULT)
+
+@app.route('/api/sensors/<path:device>', methods=['PUT'])
+def sensor_save(device):
+    """Name a sensor, say which plant it is in ('' for none) and how many hours it may stay quiet."""
+    c = db(); sensor_tables(c)
+    dev = re.sub(r'[^\w .\-@]', '', device)[:40]
+    if not dev: abort(400, 'unknown sensor')
+    known = c.execute("SELECT 1 FROM readings WHERE source='sensor' AND device=? LIMIT 1", (dev,)).fetchone()
+    old = c.execute('SELECT * FROM sensor_devices WHERE device=?', (dev,)).fetchone()
+    if not known and not old: abort(404, 'no sensor by that name has sent a reading')
+    b = request.get_json(silent=True) or {}
+    name = re.sub(r'\s+', ' ', str(b.get('name') or '')).strip()[:60]
+    pid, pcode = None, ''
+    if b.get('plant'):
+        pr = plant_row(c, str(b['plant'])); pid, pcode = pr['id'], pr['code']
+    try: qh = int(b.get('quiet_hours') or SENSOR_QUIET_DEFAULT)
+    except (TypeError, ValueError): abort(400, 'quiet hours must be a whole number')
+    if not 1 <= qh <= 168: abort(400, 'quiet hours must be between 1 and 168')
+    c.execute("""INSERT INTO sensor_devices(device,name,plant_id,quiet_hours,updated_by,updated_at) VALUES(?,?,?,?,?,?)
+                 ON CONFLICT(device) DO UPDATE SET name=excluded.name, plant_id=excluded.plant_id, quiet_hours=excluded.quiet_hours,
+                 updated_by=excluded.updated_by, updated_at=excluded.updated_at""", (dev, name, pid, qh, editor(), now()))
+    oldcode = ''
+    if old and old['plant_id']:
+        r = c.execute('SELECT code FROM plants WHERE id=?', (old['plant_id'],)).fetchone(); oldcode = r[0] if r else ''
+    was = f"{old['name'] or dev}, in {oldcode or 'no plant'}, quiet after {old['quiet_hours']} h" if old else ''
+    audit_only(c, 'setting', 'sensor:' + dev, was or None, f"{name or dev}, in {pcode or 'no plant'}, quiet after {qh} h", editor(),
+               f'Sensor "{dev}" set up', pid, pcode or None)
+    c.commit()
+    return jsonify(ok=True)
+# ---------------------------------------------------------------- end of proto/sensor-dashboard
+
 def ts_filter(days):
     return iso(time.time() - days * 86400)
 

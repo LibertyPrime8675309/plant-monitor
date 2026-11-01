@@ -2535,6 +2535,113 @@ async function viewWeather() {
     after: () => { wxCatalog().then(loadWxCharts); loadWxTable(); loadRunLog(); if (W.job && W.job.running) wxPoll(); },
   };
 }
+
+// ---------- prototype proto/sensor-dashboard: your sensors at a glance ----------
+// "Your sensors" on the Weather page (before Connect your sensor) and "Sensor in this pot" in Water and soil on a plant page.
+// Filled by a MutationObserver when those pages draw, with its own click and submit listeners, so nothing else needs changing.
+const SNS = { list: [] };
+const snsNum = (m, v) => v == null ? '' : (m === 'temp_f' || m === 'soil_temp_f' || m === 'soil_ph' ? String(r1(v)) : String(Math.round(v)));
+const snsVal = (m, unit, v) => snsNum(m, v) + (unit || '');
+function snsHeard(s) {
+  if (!s.last) return html`<p class="notice sns-quiet" role="status"><strong>No readings yet.</strong> This sensor is set up, but nothing has arrived from it.</p>`;
+  const a = ago(s.minutes_ago);
+  if (s.quiet) return html`<p class="notice bad sns-quiet" role="status"><strong>Quiet: last heard ${a}.</strong> It usually sends more often than every ${s.quiet_hours} hour${s.quiet_hours === 1 ? '' : 's'}. Check its battery, power or Wi-Fi.</p>`;
+  return html`<p class="sns-heard">Last reading ${a} (${timeEl(s.last)}).</p>`;
+}
+function snsJudge(j) {
+  if (!j) return '';
+  const mark = { ok: '✓', low: '↓', high: '↑', bad: '!' }[j.level] || '';
+  return html`<p class="sns-judge"><span class="tag sns-${j.level}"><span aria-hidden="true">${mark} </span>${j.word}</span> ${j.text}</p>`;
+}
+function snsMetric(m) {
+  const day = m.day_n > 1 && m.day_min !== m.day_max ? html`<span class="hint">Last 24 hours: ${snsVal(m.key, m.unit, m.day_min)} to ${snsVal(m.key, m.unit, m.day_max)}.</span>` : '';
+  const ch = m.change && Math.abs(m.change.by) >= 1 ? html`<span class="hint">${m.change.by < 0 ? 'Down' : 'Up'} ${Math.abs(Math.round(m.change.by))} points since ${m.change.hours} hours before.</span>` : m.change ? html`<span class="hint">About the same as ${m.change.hours} hours before.</span>` : '';
+  return html`<div class="sns-m"><dt>${m.label}</dt><dd><span class="sns-big">${snsVal(m.key, m.unit, m.value)}</span>${snsJudge(m.judge)}${ch}${day}</dd></div>`;
+}
+function snsCard(s, onPlant) {
+  const dli = s.dli ? html`<div class="sns-m"><dt>Daily light (last 24 hours)</dt><dd><span class="sns-big">${String(s.dli.value)} mol/m²</span>${snsJudge(s.dli.judge)}<span class="hint">Worked out from ${s.dli.hours} hours of light readings.</span></dd></div>` : '';
+  const where = s.plant ? html`<p>In <a href="#/plant/${enc(s.plant.code)}">${s.plant.code} ${s.plant.common_name}</a>${s.plant.site ? ` (${s.plant.site.toLowerCase()})` : ''}.</p>`
+    : html`<p class="muted">Not linked to a plant yet, so its values are not compared with any plant's needs.</p>`;
+  const look = s.needs_look ? html`<p class="sns-look"><strong>Needs a look.</strong></p>` : '';
+  return html`<article class="sns-card${s.needs_look ? ' sns-alert' : ''}${s.quiet ? ' sns-off' : ''}" aria-labelledby="sns-h-${enc(s.device)}">
+    <h3 id="sns-h-${enc(s.device)}">${onPlant ? 'Sensor: ' : ''}${s.name}${s.named ? html` <span class="hint">(${s.device})</span>` : ''}</h3>
+    ${look}${onPlant ? '' : where}${snsHeard(s)}
+    ${s.metrics.length || dli ? html`<dl class="sns-dl">${s.metrics.map(snsMetric)}${dli}</dl>` : ''}
+    <div class="row noprint"><button class="btn small ghost" type="button" data-act="snsedit" data-dev="${s.device}">Change name or plant</button></div></article>`;
+}
+function snsWeatherBlock() {
+  const L = SNS.list;
+  if (!L.length) return html`<p>No sensor has sent a reading yet. When one does, it appears here with its newest values and whether they suit its plant. See Connect your sensor, below.</p>`;
+  const look = L.filter(s => s.needs_look).length, quiet = L.filter(s => s.quiet).length;
+  return html`<p class="sns-sum" role="status">${L.length} sensor${L.length === 1 ? '' : 's'}.
+      ${look ? `${look} need${look === 1 ? 's' : ''} a look.` : 'Every linked plant is within its range.'}${quiet ? ` ${quiet} ${quiet === 1 ? 'has' : 'have'} gone quiet.` : ''}</p>
+    <div class="sns-grid">${L.map(s => snsCard(s, false))}</div>
+    <p class="hint">Link a sensor to the plant whose pot it is in, and its values are compared with that plant's ranges. The newest values also show under Water and soil on that plant's page.</p>`;
+}
+async function snsFillWeather(box) {
+  box.dataset.done = '1';
+  try { SNS.list = (await api('GET', '/api/sensors')).sensors; box.innerHTML = rend(snsWeatherBlock()); }
+  catch (e) { box.innerHTML = rend(html`<p class="notice bad">Could not load your sensors: ${e.message}</p>`); }
+  const h = box.closest('section').querySelector('h2'); if (h && SNS.list.length) h.textContent = `Your sensors (${SNS.list.length})`;
+}
+async function snsFillPlant(box, code) {
+  box.dataset.done = '1';
+  try {
+    const L = (await api('GET', '/api/sensors?plant=' + enc(code))).sensors;
+    box.innerHTML = L.length ? rend(L.map(s => snsCard(s, true))) : '';
+    L.forEach(s => { if (!SNS.list.some(x => x.device === s.device)) SNS.list.push(s); });
+  } catch (e) { box.innerHTML = ''; }
+}
+async function snsDialog(dev) {
+  const s = SNS.list.find(x => x.device === dev); if (!s) return;
+  let plants = [];
+  try { plants = await api('GET', '/api/plants'); } catch (e) { toast(e.message, true); return; }
+  const cur = s.plant ? s.plant.code : '';
+  await modal(html`<form method="dialog" data-form="snssave" data-dev="${s.device}"><h2>Sensor "${s.device}"</h2>
+    <p>Give it a name you will recognise, and say which plant's pot it is in. Its readings are then compared with that plant's needs.</p>
+    <label class="f">Name<small>For example "Monstera pot" or "Porch shelf". Leave it empty to use "${s.device}".</small><input type="text" name="name" maxlength="60" value="${s.named ? s.name : ''}" autofocus></label>
+    <label class="f">Plant it is in<select name="plant"><option value="">Not in a plant</option>${plants.map(p => html`<option value="${p.code}" ${p.code === cur ? raw('selected') : ''}>${p.code}  ${p.common_name}</option>`)}</select></label>
+    <label class="f">Say it has gone quiet after this many hours without a reading<input type="number" name="quiet_hours" min="1" max="168" step="1" value="${s.quiet_hours}"></label>
+    <div class="row"><button class="btn" type="submit">Save sensor</button><button class="btn ghost" type="button" data-act="snsclose">Cancel</button></div></form>`);
+}
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act^=sns]'); if (!el) return;
+  e.preventDefault();
+  if (el.dataset.act === 'snsedit') snsDialog(el.dataset.dev);
+  else if (el.dataset.act === 'snsclose') dlg.close('cancel');
+});
+document.addEventListener('submit', async e => {
+  const form = e.target.closest('form[data-form=snssave]'); if (!form) return;
+  e.preventDefault();
+  if (!(await needName())) return;
+  const f = form.elements;
+  await guard(async () => {
+    await api('PUT', '/api/sensors/' + enc(form.dataset.dev), { name: f.name.value.trim(), plant: f.plant.value, quiet_hours: +f.quiet_hours.value || 3 });
+    dlg.close('ok'); toast('Sensor saved'); route();
+  });
+});
+(function sensorDashboard() {
+  const main = document.getElementById('app'); if (!main) return;
+  const add = () => {
+    const h = location.hash;
+    if (h.startsWith('#/weather')) {
+      const conn = main.querySelector('#sensor');
+      if (conn && !main.querySelector('#sns-dash')) {
+        conn.insertAdjacentHTML('beforebegin', rend(html`<section class="blk" id="sns-dash"><h2>Your sensors</h2><div id="sns-box"><p class="loading">Loading your sensors</p></div></section>`));
+        snsFillWeather(main.querySelector('#sns-box'));
+      }
+    }
+    const m = h.match(/^#\/plant\/([^/]+)$/);
+    if (m) {
+      const soil = main.querySelector('section#soil > h2');
+      if (soil && !main.querySelector('#sns-plant')) {
+        soil.insertAdjacentHTML('afterend', '<div id="sns-plant" class="sns-plant"></div>');
+        snsFillPlant(main.querySelector('#sns-plant'), decodeURIComponent(m[1]));
+      }
+    }
+  };
+  new MutationObserver(add).observe(main, { childList: true, subtree: true });
+})();
 const locQS = () => PLACE ? '&loc=' + enc(PLACE) : '';     // the Weather page shows the place in use (1.11.0)
 const WX = { days: 7, period: '7', from: '', to: '', src: 'both', plant: '', show: ['temp', 'hum', 'light'], vars: [], cols: 1, compare: [], places: [] };
 try { const v = JSON.parse(localStorage.getItem('plantdb.wxchart') || 'null'); if (v) Object.assign(WX, { period: v.period || '7', from: v.from || '', to: v.to || '', show: Array.isArray(v.show) ? v.show : WX.show, vars: Array.isArray(v.vars) ? v.vars : [], cols: [1, 2, 3].includes(+v.cols) ? +v.cols : 1, compare: Array.isArray(v.compare) ? v.compare.map(String) : [] }); } catch (e) { /* ignore */ }
