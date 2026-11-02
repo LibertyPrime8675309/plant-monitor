@@ -1015,7 +1015,7 @@ How much light a plant gets is its **daily light (DLI)**, in mol/m² a day: the 
 - **Your lights.** Press **Change this light** to note where it is (for a bulb, the lamp or socket it screws into), correct how many you have, or fix its figures. **Add a light** adds one you buy later. Type its figures as distance and PAR, for example "12 in 719, 24 in 234".
 - **Plant pages** show the plant's spot, or what the suggested layout gives it, under Sunlight.
 - **Rooms and shelves (from 1.13.1).** The rooms, shelves and tables where plants go inside. Yours are listed already: the Downstairs Living Room (Tall Black Shelf, Tall Brown Shelf, Short Brown Shelf, Large Brown Hutch, Side Table), My Bedroom (Shelves), the Garage and the Upstairs Living Room. Press **Add a room or shelf** to add more, for example each new bedroom shelf, and choose one under **Where** when you set up a light spot.
-- **Manufacturer model (from 1.13.1).** Each light has a field for the model number on its box or label. Fill it in with **Change this light**.
+- **Manufacturer model (from 1.13.1).** Each light has a field for the model number on its box or label. Fill it in with **Change this light**. From 1.27.2, the Barrina standing light, the SANSI 80 W, 30 W and 10 W bulbs and the SANSI pot clip lights have theirs filled in from your label photos.
 
 Changes to lights, spots, rooms and shelves appear in the audit log under "Grow lights". People who can only view see everything but cannot change it.
 
