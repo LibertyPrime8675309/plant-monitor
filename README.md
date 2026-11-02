@@ -730,6 +730,8 @@ The first update to 1.18.0 takes longer than usual:
 
 `data\vision` is safe to delete; it downloads everything again on the next start. Backups leave it out.
 
+**From 1.22.0** it also knows about 49,000 fungi (mushrooms, lichens, moulds). The first start after that update downloads their fingerprints, about 100 MB, which takes a few minutes. Until then Identify and the Library still work for plants.
+
 ### Using the camera
 
 - Open **Identify** and press **Start camera**. It checks about once a second.
@@ -799,6 +801,30 @@ The keys are kept in the database on this computer, and so in its backups. The a
 
 The names come from the Tree of Life list that BioCLIP was trained with (Imageomics Institute, free to use), and the states from the USDA PLANTS state lists (public domain).
 
+#### Fungi in the library (from 1.22.0)
+
+Choose **Fungi worldwide: mushrooms, lichens and moulds** under **Look in** (on the Library or the Identify page). **Kind of fungus** then filters to mushrooms (with brackets, puffballs and jelly fungi), cup fungi, lichens, rusts and smuts, or moulds and mildews. The USDA state lists include lichens but no other fungi, so **Grows wild in** only works for lichens.
+
+A fungus page has a safety note at the top, your finds of that species, and **Record a find of this** instead of **Add to my plants**. Nothing in the app ever says a mushroom is safe to eat.
+
+#### Your notes and tags (from 1.22.0)
+
+Every species page has **Your notes and tags**. Press **Add notes and tags**, write anything, and add tags separated by commas (for example `shade, gift idea`). Tags are saved in lower case. Each tag is a link that lists every species with that tag, and the tags show on the library cards. Everyone you have given access to the app can read them; people who can only view can't change them.
+
+#### Your wishlist (from 1.22.0)
+
+On any species page, press **Add to my wishlist**. The Library page has a **Your wishlist** button, which opens the list:
+
+- **Got it** moves a plant to "Got them" (and **Move back to wanted** undoes that).
+- **Edit** adds where to find it (a nursery, a website) and notes.
+- **Take it off the list** asks first.
+
+In the library, **Show** can be set to **On my wishlist**, **Ones with notes or tags**, or any one of your tags.
+
+#### Photos for offline use (from 1.22.0)
+
+At the bottom of the Library page the owner has **Download photos for the Texas list**. It fetches the photo and short facts for every Texas plant (about 4,750) in the background, so the library shows them without the internet. It goes at about one species a second, after anything someone is looking at, so it takes about an hour and a half. It uses about 300 MB in `data\library`. Species already kept are skipped. You can leave the page while it runs, and **Stop the download** stops it. If the app restarts part way through, press the button again to carry on where it stopped.
+
 ### Stopping the picture checker
 
 The rest of the app works without it. Identify and Library then say it isn't running. It uses about 6 GB of memory while running, and no processor time when idle. From the `plant-database` folder:
@@ -828,6 +854,28 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 - bash: `echo 'PLANTDB_VISION_MODEL=bioclip-2' >> .env && docker compose up -d`
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
+
+## Mushroom finds (from 1.22.0)
+
+**Mushrooms** in the top menu is a page of its own for the mushrooms you spot: in the yard, in a plant pot, or anywhere else. Each find gets a code, F-001, F-002 and so on.
+
+**Adding a find.** Press **Add a find**.
+
+- **Photos:** take photos of the cap from above, the underside (gills or pores), the whole stem and the very base. On a phone the button can open the camera. If a photo carries its location (most phone photos do, if location is on for the camera), the find gets that location.
+- **Where and when:** the date, and whether it was in the yard, in a plant pot (then pick which plant) or somewhere else, plus a description. **Use my location now** asks the phone or browser for where you are. Locations are seen by everyone you have given access to the app.
+- **What it grew on:** soil, mulch, dead wood, a living tree, potting mix and so on; trees nearby; how many.
+- **What it looks like:** cap width and colour, gills or pores, a ring on the stem, a cup or sac at the base, spore print colour, colour change when cut, smell.
+- **Name:** a common name or your own description, the scientific name, and how sure the name is: not identified yet, a guess, fairly sure, or confirmed by an expert.
+
+Only the photos and the place really matter at first; you can fill in the rest any time with **Edit this find**.
+
+**A find's page** shows its photos (**Previous photo** and **Next photo**, **Make this the main photo**, **Edit caption**, **Remove photo**), where and when (with a link to the map), and what you noted. **Identify the photo shown** compares the photo on screen with the 49,000 fungi, on this computer. **Use this name (as a guess)** saves a suggestion as the scientific name, marked "A guess". **Archive this find** takes it off the list without deleting it.
+
+**The list of finds** can be searched and filtered by how sure the name is, where, and year. **Show** includes archived finds.
+
+**Safety.** Every mushroom page has a short safety note, and **Read more** opens the full one. Never eat a wild mushroom because of an app, a photo, or this record. If a pet may have eaten one, call your vet or ASPCA Animal Poison Control at (888) 426-4435. If a person may have, call Poison Control at 1-800-222-1222 (or 911 if they are very ill).
+
+Changes to finds are in the Audit log under "Mushroom finds", and the finds and their photos are in your backups like everything else.
 
 ## Undo right after a care button (from 1.19.0)
 

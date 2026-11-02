@@ -31,7 +31,8 @@ STATES = ['Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 
           'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'NewHampshire', 'NewJersey', 'NewMexico', 'NewYork', 'NorthCarolina',
           'NorthDakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'PuertoRico', 'RhodeIsland', 'SouthCarolina', 'SouthDakota', 'Tennessee',
           'Texas', 'Utah', 'Vermont', 'VirginIslands', 'Virginia', 'Washington', 'WestVirginia', 'Wisconsin', 'Wyoming']
-SCOPES = {'common': 'Plants with a common name, plus all US plants', 'texas': 'Texas plants', 'us': 'US plants', 'world': 'All plants worldwide'}
+SCOPES = {'common': 'Plants with a common name, plus all US plants', 'texas': 'Texas plants', 'us': 'US plants', 'world': 'All plants worldwide',
+          'fungi': 'Fungi worldwide: mushrooms, lichens and moulds'}
 
 app = Flask(__name__)
 S = {'state': 'starting', 'step': 'Starting', 'done': 0, 'total': 0, 'error': None, 'model': MODEL}
@@ -54,29 +55,31 @@ def get(url, rng=None, tries=6):
             time.sleep(3 + 5 * i)
 
 # ---------------------------------------------------------------- downloads (once)
-def fetch_names():
-    """Plant rows of BioCLIP's name fingerprints: names.json and names.npy (N x D float16, unit length)."""
+def fetch_names(kingdom='Plantae', stem='names', J=None):
+    """One kingdom's rows of BioCLIP's name fingerprints: <stem>.json and <stem>.npy (N x D float16, unit length).
+    Plants are names.*; from 1.22.0 fungi are fungi.* (fetched the same way, so an existing plant download is kept)."""
     d = os.path.join(CACHE, MODEL); os.makedirs(d, exist_ok=True)
-    out_n, out_e = os.path.join(d, 'names.json'), os.path.join(d, 'names.npy')
-    if os.path.exists(out_n) and os.path.exists(out_e): return out_n, out_e
-    say('Downloading the species list')
-    J = json.loads(get(EMB_BASE + f'txt_emb_{MODEL}.json'))
-    idx = [i for i, x in enumerate(J) if x[0][0] == 'Plantae']
+    out_n, out_e = os.path.join(d, stem + '.json'), os.path.join(d, stem + '.npy')
+    if os.path.exists(out_n) and os.path.exists(out_e): return out_n, out_e, J
+    word = 'plant' if kingdom == 'Plantae' else 'fungus'
+    say(f'Downloading the {word} species list')
+    if J is None: J = json.loads(get(EMB_BASE + f'txt_emb_{MODEL}.json'))
+    idx = [i for i, x in enumerate(J) if x[0][0] == kingdom]
     a, b = idx[0], idx[-1] + 1
-    if idx != list(range(a, b)): raise RuntimeError('the plant rows of the species list are not in one block')
+    if idx != list(range(a, b)): raise RuntimeError(f'the {kingdom} rows of the species list are not in one block')
     npy = EMB_BASE + f'txt_emb_{MODEL}.npy'
     head = get(npy, (0, 255)).decode('latin1')
     hl = 10 + int.from_bytes(head[8:10].encode('latin1'), 'little')        # .npy v1 header length
     D = int(re.search(r"'shape': \((\d+), %d\)" % len(J), head).group(1))
     E = np.zeros((b - a, D), dtype=np.float32)
-    for k in range(D):                       # stored as D rows across all taxa: take the plant block of each row
+    for k in range(D):                       # stored as D rows across all taxa: take this kingdom's block of each row
         s = hl + (k * len(J) + a) * 4
         E[:, k] = np.frombuffer(get(npy, (s, s + (b - a) * 4 - 1)), dtype='<f4')
-        say('Downloading the species fingerprints', k + 1, D)
+        say(f'Downloading the {word} species fingerprints', k + 1, D)
     n = np.linalg.norm(E, axis=1, keepdims=True); n[n == 0] = 1
     np.save(out_e + '.tmp.npy', (E / n).astype(np.float16)); os.replace(out_e + '.tmp.npy', out_e)
     json.dump(J[a:b], open(out_n, 'w'))
-    return out_n, out_e
+    return out_n, out_e, J
 
 def fetch_usda():
     """{'Genus species': set of states} from the USDA PLANTS state lists (accepted names only)."""
@@ -105,18 +108,25 @@ def load_all():
         model.load_state_dict(load_file(hf_hub_download('imageomics/' + MODEL, 'open_clip_model.safetensors')), assign=True)
         model.eval()
         M.update(model=model, pre=pre, torch=torch, scale=float(model.logit_scale.exp().item()))
-        n_json, n_npy = fetch_names()
-        rows = json.load(open(n_json))
-        emb = np.load(n_npy)
+        n_json, n_npy, J = fetch_names()
+        rows = json.load(open(n_json)); emb = np.load(n_npy); n_plants = len(rows)
+        try:                                     # 1.22.0: fungi too (mushrooms, lichens, moulds); the plants work without them
+            f_json, f_npy, J = fetch_names('Fungi', 'fungi', J)
+            rows = rows + json.load(open(f_json)); emb = np.concatenate([emb, np.load(f_npy)])
+        except Exception as e:
+            print('[vision] fungi not loaded:', repr(e), flush=True)
+        del J
         usda_path = os.path.join(CACHE, 'usda_states.json'); fetch_usda()
         usda = json.load(open(usda_path))
         sp = [r[0][5] + ' ' + r[0][6] for r in rows]
         has = np.abs(emb).sum(1) > 0
+        plant = np.arange(len(rows)) < n_plants; fung = ~plant
         common = np.array([bool(re.search(r'[A-Za-z]', r[1] or '')) for r in rows])
         in_us = np.array([s in usda for s in sp]); in_tx = np.array([s in usda and 'Texas' in usda[s] for s in sp])
         hay = [(s + ' ' + (r[1] or '') + ' ' + ' '.join({v[0] for v in usda.get(s, {}).values()})).lower() for s, r in zip(sp, rows)]
         NAMES.update(rows=rows, sp=sp, emb=emb, usda=usda, hay=hay, by_sp={s: i for i, s in enumerate(sp)},
-                     masks={'world': has, 'us': has & in_us, 'texas': has & in_tx, 'common': has & (common | in_us)})
+                     masks={'world': has & plant, 'us': has & in_us & plant, 'texas': has & in_tx & plant,
+                            'common': has & (common | in_us) & plant, 'fungi': has & fung}, n_plants=n_plants)
         build_browse()
         say('Fingerprinting your photos'); index_photos()
         S.update(state='ready', step='Ready')
@@ -190,6 +200,7 @@ def confidence(score, margin):
 @app.get('/status')
 def status():
     return jsonify(S | {'photos': len(PHOTOS['files']), 'species': int(NAMES['masks']['world'].sum()) if NAMES else 0,
+                        'fungi': int(NAMES['masks']['fungi'].sum()) if NAMES else 0,
                         'scopes': {k: {'label': v, 'count': int(NAMES['masks'][k].sum()) if NAMES else 0} for k, v in SCOPES.items()}})
 
 @app.post('/identify')
@@ -255,15 +266,24 @@ KINDS = [('dicot', 'Flowering plants: broadleaf (dicots)', {'Magnoliopsida'}, se
          ('liverwort', 'Liverworts', set(), {'Marchantiophyta'}),
          ('hornwort', 'Hornworts', set(), {'Anthocerotophyta'}),
          ('alga', 'Algae (green, red and others)', set(), {'Rhodophyta', 'Chlorophyta', 'Charophyta', 'Glaucophyta', 'Langiophytophyta'}),
-         ('other', 'Other or not classified', set(), set())]
+         ('other', 'Other or not classified', set(), set()),
+         # 1.22.0: fungi
+         ('mushroom', 'Mushrooms, brackets, puffballs and jelly fungi', {'Agaricomycetes', 'Dacrymycetes', 'Tremellomycetes'}, set()),
+         ('cupfungus', 'Cup fungi, morels and truffles', {'Pezizomycetes'}, set()),
+         ('lichen', 'Lichens', {'Lecanoromycetes', 'Arthoniomycetes', 'Lichinomycetes', 'Candelariomycetes', 'Coniocybomycetes'}, set()),
+         ('rust', 'Rusts and smuts', {'Pucciniomycetes', 'Ustilaginomycetes', 'Exobasidiomycetes', 'Microbotryomycetes'}, set()),
+         ('mould', 'Moulds, mildews and other small fungi', {'Sordariomycetes', 'Dothideomycetes', 'Leotiomycetes', 'Eurotiomycetes', 'Saccharomycetes',
+                                                              'Orbiliomycetes', 'Geoglossomycetes', 'Laboulbeniomycetes', 'Taphrinomycetes'}, set()),
+         ('otherfungus', 'Other fungi', set(), set())]
 SORTS = ('known', 'sci', 'common', 'family')
+KIND_IX = {k[0]: i for i, k in enumerate(KINDS)}
 B = {}            # browse arrays: kind, family code, genus, order, common flag, number of US states, sort orders, family names
 
 def kind_of(row):
     t = row[0]
     for i, (k, _, classes, phyla) in enumerate(KINDS):
         if t[2] in classes or t[1] in phyla: return i
-    return len(KINDS) - 1
+    return KIND_IX['otherfungus' if t[0] == 'Fungi' else 'other']
 
 def common_of(i):
     """The common name to show: the USDA one (English) when there is one, else the Tree of Life one."""
@@ -328,6 +348,13 @@ def browse_mask(a):
         m[[i for i in idx if q in hay[i]]] = True
     return m
 
+@app.get('/scope_names')
+def scope_names():
+    """1.22.0: every scientific name in a list, for downloading the library photos of a whole list."""
+    if not B: return jsonify(error='The picture checker is still setting up: ' + S['step']), 503
+    m = NAMES['masks'].get(request.args.get('scope', 'texas'), NAMES['masks']['texas'])
+    return jsonify(names=[NAMES['sp'][int(i)] for i in np.where(m)[0]])
+
 @app.get('/browse')
 def browse():
     """Every species in a list, filtered and sorted, a page at a time: ?scope=&q=&kind=&family=&genus=&order=&state=&common=1
@@ -368,7 +395,7 @@ def taxon():
     d['kind'] = KINDS[int(B['kind'][i])][1]
     sims = []
     if np.abs(NAMES['emb'][i]).sum() > 0:
-        idx = np.where(NAMES['masks']['world'])[0]
+        idx = np.where(NAMES['masks']['fungi' if i >= NAMES['n_plants'] else 'world'])[0]        # fungi look like fungi
         sc = dot_rows(idx, NAMES['emb'][i].astype(np.float32))
         for j in np.argsort(-sc)[:13]:
             k = int(idx[j])
@@ -383,7 +410,7 @@ def species_dict(i):
     first = next(iter(us.values())) if us else ('', '', '')
     return {'scientific_name': sp, 'common_name': B['commons'][i] if B else (r[1] or first[0]), 'genus': r[0][5], 'family': r[0][4] or first[2],
             'order': r[0][3], 'in_texas': 'Texas' in us, 'us_states': sorted(us), 'usda_symbol': first[1],
-            'kind': KINDS[int(B['kind'][i])][0] if B else ''}
+            'kind': KINDS[int(B['kind'][i])][0] if B else '', 'kingdom': r[0][0]}
 
 @app.get('/names')
 def names():

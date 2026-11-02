@@ -252,7 +252,8 @@ async function route() {
   const parts = hp.split('/').filter(Boolean), qs = new URLSearchParams(hq || '');
   if (parts[0] !== 'identify') idStop();
   if (parts[0] !== 'new') NEWFILL = null;
-  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' || parts[0] === 'species' ? 'library' : 'plants';
+  if (parts[0] !== 'fungi' || parts[1] !== 'new') MUFILL = null;
+  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' || parts[0] === 'species' || parts[0] === 'wishlist' ? 'library' : parts[0] === 'fungi' ? 'fungi' : 'plants';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   try {
     let view;
@@ -278,6 +279,12 @@ async function route() {
     else if (parts[0] === 'identify') view = await viewIdentify();
     else if (parts[0] === 'library') view = await viewLibrary(qs);
     else if (parts[0] === 'species' && parts[1]) view = await viewSpecies(decodeURIComponent(parts[1]));
+    else if (parts[0] === 'wishlist') view = await viewWishlist();
+    else if (parts[0] === 'fungi' && !parts[1]) view = await viewFungi();
+    else if (parts[0] === 'fungi' && parts[1] === 'safety') view = viewFungiSafety();
+    else if (parts[0] === 'fungi' && parts[1] === 'new') view = await viewFindForm(null);
+    else if (parts[0] === 'fungi' && parts[2] === 'edit') view = await viewFindForm(decodeURIComponent(parts[1]));
+    else if (parts[0] === 'fungi') view = await viewFind(decodeURIComponent(parts[1]));
     else view = await viewGallery();
     if (my !== token) return;
     app.innerHTML = rend(view.html);
@@ -4660,7 +4667,7 @@ const formActs = {
 // ---------- 1.18.0: identify a plant with the camera, and the plant library ----------
 // The pictures go to this computer's picture checker (the "plant-vision" container) through the app. Pl@ntNet and Claude are only
 // asked when someone presses their buttons. Nothing is saved unless someone presses "Add this picture to its photos" or adds a plant.
-const ID_SCOPES = [['common', 'Plants with a common name, and all US plants'], ['texas', 'Texas plants'], ['us', 'US plants'], ['world', 'All plants worldwide']];
+const ID_SCOPES = [['common', 'Plants with a common name, and all US plants'], ['texas', 'Texas plants'], ['us', 'US plants'], ['world', 'All plants worldwide'], ['fungi', 'Fungi worldwide: mushrooms, lichens and moulds']];
 const ID = { stream: null, timer: null, busy: false, last: null, streak: 0, shot: null, paused: false, said: '', qr: null, mode: 'live', st: null, keys: null };
 function idScope() { try { const s = localStorage.getItem('plantdb.idscope'); if (ID_SCOPES.some(x => x[0] === s)) return s; } catch (e) { /* default */ } return 'common'; }
 const pct = p => Math.round((p || 0) * 100) + '%';
@@ -4874,7 +4881,8 @@ function spCard(s, i, src, withAdd) {
     <div class="muted">${[s.family, s.order].filter(Boolean).join(', ')}</div>
     ${s.why ? html`<div>${s.why}</div>` : ''}
     ${tags.length ? html`<div class="id-tags">${tags}</div>` : ''}
-    <div class="id-acts">${spLinks(s)}${withAdd ? html`<button class="btn small" type="button" data-act="idnew" data-src="${src}" data-i="${i}">Add as a new plant</button>` : ''}</div></li>`;
+    <div class="id-acts">${spLinks(s)}${withAdd ? s.kingdom === 'Fungi' ? html`<button class="btn small" type="button" data-act="idfind" data-src="${src}" data-i="${i}">Record a mushroom find</button>`
+      : html`<button class="btn small" type="button" data-act="idnew" data-src="${src}" data-i="${i}">Add as a new plant</button>` : ''}</div></li>`;
 }
 function idPaint(r, picUrl, live) {
   const res = document.getElementById('id-res'); if (!res) return;
@@ -4885,6 +4893,7 @@ function idPaint(r, picUrl, live) {
       <p>${c >= 0.5 && !r.likely_new ? html`${sureWord(c)} <b>${top.code}, ${top.common_name}</b>: ${pct(c)} sure.` : html`Probably none of your plants: the closest is ${top.code}, ${top.common_name}, ${pct(c)} sure${r.likely_new ? ', and it looks different from all your photos' : ''}.`}</p>
       <ol class="id-ms ${c >= 0.5 && !r.likely_new ? 'id-sure' : ''}">${m.slice(0, 3).map((x, i) => idMatchCard(x, i === 0))}</ol>` : html`<p>There are no photos of your plants to compare with yet.</p>`}
     <h3>What it could be</h3>
+    ${r.scope === 'fungi' ? fungiSafety(true) : ''}
     ${r.genera && r.genera[0] ? html`<p>Most likely genus: <i>${r.genera[0].genus}</i> (${pct(r.genera[0].probability)}). Names below are from: ${sc ? sc[1] : 'the species list'}.</p>` : ''}
     <ol class="id-sps">${(r.species || []).map((s, i) => spCard(s, i, 'local', !live && canChange()))}</ol>
     ${live ? '' : html`<div id="id-more">${idMoreBtns()}</div>`}
@@ -4974,8 +4983,27 @@ const libSave = () => { try { localStorage.setItem('plantdb.library', JSON.strin
 const LIB_PAGE = 48;
 const LIB_SORTS = [['known', 'Best known first'], ['common', 'Common name A to Z'], ['sci', 'Scientific name A to Z'], ['family', 'Family']];
 const LIB_STATE_WORD = s => s.replace(/([a-z])([A-Z])/g, '$1 $2');
-const LIB_KIND_SHORT = { dicot: 'Flowering plant', monocot: 'Flowering plant (monocot)', fern: 'Fern', lycophyte: 'Clubmoss', conifer: 'Conifer', cycad: 'Cycad', ginkgo: 'Ginkgo', gnetophyte: 'Gnetophyte', moss: 'Moss', liverwort: 'Liverwort', hornwort: 'Hornwort', alga: 'Alga', other: '' };
+const LIB_KIND_SHORT = { dicot: 'Flowering plant', monocot: 'Flowering plant (monocot)', fern: 'Fern', lycophyte: 'Clubmoss', conifer: 'Conifer', cycad: 'Cycad', ginkgo: 'Ginkgo', gnetophyte: 'Gnetophyte', moss: 'Moss', liverwort: 'Liverwort', hornwort: 'Hornwort', alga: 'Alga', other: '',
+  mushroom: 'Mushroom', cupfungus: 'Cup fungus', lichen: 'Lichen', rust: 'Rust or smut', mould: 'Mould or mildew', otherfungus: 'Fungus' };
 const spHref = s => '#/species/' + enc(s);
+function libPreHtml(p) {
+  const btn = p.running ? html`<button class="btn ghost" type="button" data-act="libprestop">Stop the download</button>`
+    : html`<button class="btn" type="button" data-act="libpre" ${p.online ? '' : raw('disabled')}>Download photos for the Texas list</button>`;
+  const msg = p.running ? `Downloading: ${p.done.toLocaleString()} of ${p.total.toLocaleString()} done, about ${Math.max(1, Math.round(p.left * 1.1 / 60))} minutes left. You can leave this page; it carries on.`
+    : p.total ? `Finished: ${p.done.toLocaleString()} species fetched${p.all ? ` (the other ${(p.all - p.total).toLocaleString()} were already kept)` : ''}.`
+    : p.online ? '' : 'Turn on the iNaturalist photos above first.';
+  return html`<p>${msg}</p><p class="row">${btn}</p>`;
+}
+async function libPrePoll() {
+  clearTimeout(LIB.prePoll);
+  const box = document.getElementById('lib-pre'); if (!box) return;
+  let p; try { p = await api('GET', '/api/library/prefetch'); } catch (e) { return; }
+  if (!document.getElementById('lib-pre')) return;
+  const had = box.contains(document.activeElement);
+  box.innerHTML = rend(libPreHtml(p));
+  if (had) { const b = box.querySelector('button'); if (b) b.focus(); }
+  if (p.running) LIB.prePoll = setTimeout(libPrePoll, 5000);
+}
 function libFiltersOn() { return ['kind', 'family', 'state', 'mine'].filter(k => LIB[k]).length + (LIB.common ? 1 : 0); }
 async function viewLibrary(qs) {
   for (const k of ['q', 'scope', 'kind', 'family', 'state', 'mine', 'sort']) if (qs.get(k) != null) LIB[k] = qs.get(k);
@@ -4984,25 +5012,30 @@ async function viewLibrary(qs) {
   const ready = st && st.state === 'ready';
   let fac = null;
   if (ready) { try { fac = await api('GET', '/api/library/facets?scope=' + enc(LIB.scope)); LIB.facets = fac; LIB.facetsFor = LIB.scope; } catch (e) { /* filters without counts */ } }
-  let lset = null; if (ME().role === 'owner') { try { lset = await api('GET', '/api/library/settings'); } catch (e) { /* hidden */ } }
+  let lset = null, pre = null; if (ME().role === 'owner') { try { [lset, pre] = await Promise.all([api('GET', '/api/library/settings'), api('GET', '/api/library/prefetch')]); } catch (e) { /* hidden */ } }
+  let mine = { tags: [] }, wl = { wishlist: [] };
+  try { [mine, wl] = await Promise.all([api('GET', '/api/library/notes'), api('GET', '/api/wishlist')]); } catch (e) { /* no extras */ }
   const sel = (f, opts) => html`<select data-f="${f}">${opts.map(([v, l]) => html`<option value="${v}" ${String(LIB[f.slice(3)]) === v ? raw('selected') : ''}>${l}</option>`)}</select>`;
+  const fungi = LIB.scope === 'fungi';
   return {
-    title: 'Plant library',
-    after: () => { if (ready) libLoad(); },
-    html: html`<h1>Plant library</h1>
-    <p>Every plant species this computer knows, ${st && st.species ? Number(st.species).toLocaleString() : 'about 349,000'} in all. Search, filter, and open any of them for its photos, description, classification, where it grows in the US, and the species it is most often mistaken for.</p>
+    title: 'Library',
+    after: () => { if (ready) libLoad(); if (pre && pre.running) libPrePoll(); },
+    html: html`<h1>Library</h1>
+    <p>Every plant species this computer knows, ${st && st.species ? Number(st.species).toLocaleString() : 'about 349,000'} in all${st && st.fungi ? html`, and ${Number(st.fungi).toLocaleString()} fungi (choose "Fungi worldwide" under Look in)` : ''}. Search, filter, and open any of them for its photos, description, classification, where it grows in the US, and the species it is most often mistaken for.</p>
     ${ready ? '' : html`<p class="notice bad" role="status">${idStatusText(st)}</p>`}
+    <p class="row"><a class="btn ghost" href="#/wishlist">Your wishlist (${wl.wishlist.filter(w => w.status === 'want').length} wanted)</a></p>
     <div class="filters lib-filters" role="search" aria-label="Search and filter the library">
       <label>Search<input type="search" data-f="libq" value="${LIB.q}" placeholder="Common or scientific name" autocomplete="off"></label>
       <label>Look in${sel('libscope', ID_SCOPES.map(([k, l]) => [k, l + (st && st.scopes && st.scopes[k] ? ` (${Number(st.scopes[k].count).toLocaleString()})` : '')]))}</label>
-      <label>Kind of plant${sel('libkind', [['', 'Any kind'], ...((fac && fac.kinds) || []).map(k => [k.key, `${k.label} (${k.count.toLocaleString()})`])])}</label>
+      <label>${fungi ? 'Kind of fungus' : 'Kind of plant'}${sel('libkind', [['', 'Any kind'], ...((fac && fac.kinds) || []).map(k => [k.key, `${k.label} (${k.count.toLocaleString()})`])])}</label>
       <label>Family<input type="text" data-f="libfamily" list="lib-fams" value="${LIB.family}" placeholder="Any family" autocomplete="off">
         <datalist id="lib-fams">${((fac && fac.families) || []).map(f => html`<option value="${f.name}">${f.name} (${f.count})</option>`)}</datalist></label>
-      <label>Grows wild in${sel('libstate', [['', 'Anywhere'], ['us', 'The United States'], ['Texas', 'Texas'], ...((fac && fac.states) || []).map(x => [x, LIB_STATE_WORD(x)])])}</label>
-      <label>Show${sel('libmine', [['', 'All of them'], ['species', 'Only ones I have'], ['genus', 'Ones I have, or of the same genus']])}</label>
+      <label>Grows wild in${sel('libstate', [['', 'Anywhere'], ['us', 'The United States'], ['Texas', 'Texas'], ...((fac && fac.states) || []).map(x => [x, LIB_STATE_WORD(x)])])}${fungi ? html`<small>Lichens only: the USDA lists have no other fungi</small>` : ''}</label>
+      <label>Show${sel('libmine', [['', 'All of them'], ['species', 'Only ones I have'], ['genus', 'Ones I have, or of the same genus'], ['wish', 'On my wishlist'], ['notes', 'Ones with notes or tags'],
+        ...mine.tags.map(t => ['tag:' + t, `Tagged "${t}"`])])}</label>
       <label>Sort by${sel('libsort', LIB_SORTS)}</label>
       <label>Show as${sel('libview', [['cards', 'Cards with photos'], ['table', 'A table']])}</label>
-      <label class="chk"><input type="checkbox" data-f="libcommon" ${LIB.common ? raw('checked') : ''}>Only plants with a common name</label>
+      <label class="chk"><input type="checkbox" data-f="libcommon" ${LIB.common ? raw('checked') : ''}>Only ${fungi ? 'fungi' : 'plants'} with a common name</label>
     </div>
     <p class="row lib-count"><span id="lib-count" class="muted" role="status" aria-live="polite"></span>
       <button class="btn ghost small" type="button" data-act="libclear" id="lib-clear" ${libFiltersOn() || LIB.q ? '' : raw('hidden')}>Clear search and filters</button></p>
@@ -5013,7 +5046,10 @@ async function viewLibrary(qs) {
       <li>Where a plant grows wild in the US: the USDA PLANTS state lists (public domain), on this computer.</li>
       <li>Photos and the short description: iNaturalist, whose members share their photos under Creative Commons licences (each photo names its photographer and licence), and Wikipedia. They are fetched once per species, only the species name is sent, and they are kept on this computer in data\\library.</li></ul>
       ${lset ? html`<label class="chk"><input type="checkbox" data-f="libonline" ${lset.online ? raw('checked') : ''}>Look up photos and descriptions on iNaturalist (turn off to keep the library fully offline)</label>` : ''}
-    </section>`,
+    </section>
+    ${pre ? html`<section class="id-sec" aria-labelledby="h-libpre"><h2 id="h-libpre">Photos for offline use</h2>
+      <p>Download the photo and short facts for every Texas plant now (about ${st && st.scopes && st.scopes.texas ? Number(st.scopes.texas.count).toLocaleString() : '4,700'} species), so the library shows them even without the internet. It runs in the background at about one species a second (roughly an hour and a half), after anything someone is looking at, and takes about 300 MB in data\\library. Ones already kept are skipped.</p>
+      <div id="lib-pre" aria-live="polite">${libPreHtml(pre)}</div></section>` : ''}`,
   };
 }
 function libQuery(offset) {
@@ -5037,6 +5073,8 @@ function libTags(s) {
   const t = [];
   if (s.yours && s.yours.length) t.push(html`<span class="tag tag-yours">You have it: ${s.yours.join(', ')}</span>`);
   else if (s.yours_genus && s.yours_genus.length) t.push(html`<span class="tag">Same genus as ${s.yours_genus.slice(0, 3).join(', ')}</span>`);
+  if (s.wish) t.push(html`<span class="tag tag-wish">${s.wish === 'got' ? 'Wishlist: got it' : 'On your wishlist'}</span>`);
+  (s.tags || []).forEach(x => t.push(html`<span class="tag tag-own">Tag: ${x}</span>`));
   if (s.in_texas) t.push(html`<span class="tag">Wild in Texas</span>`);
   else if (s.us_states && s.us_states.length) t.push(html`<span class="tag">Wild in ${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}</span>`);
   return t;
@@ -5116,24 +5154,37 @@ async function viewSpecies(name) {
   SPCUR = d;
   const title = d.common_name || d.scientific_name;
   const cls = d.classification || [], states = d.us_states || [];
-  const filt = (k, v) => `#/library?${new URLSearchParams({ [k]: v, scope: 'world' })}`;
+  const fungus = d.kingdom === 'Fungi';
+  const filt = (k, v) => `#/library?${new URLSearchParams({ [k]: v, scope: fungus ? 'fungi' : 'world' })}`;
   return {
     title,
     after: () => spInfo(d),
-    html: html`<p class="crumb"><a href="#/library">Back to the plant library</a></p>
+    html: html`<p class="crumb"><a href="#/library">Back to the library</a></p>
     <article class="species" aria-labelledby="sp-h">
       <header class="sp-head"><h1 id="sp-h">${title}</h1>
         ${d.common_name ? html`<p class="sp-sci latin">${d.scientific_name}</p>` : ''}
         <p class="muted">${[d.kind, d.family ? 'family ' + d.family : ''].filter(Boolean).join(', ')}</p>
         <div class="tags">${libTags(d)}</div></header>
+      ${fungus ? fungiSafety(true) : ''}
       <div class="sp-grid">
         <section class="sp-photos" aria-labelledby="sp-ph-h"><h2 id="sp-ph-h">Photos</h2><div id="sp-gallery"><p class="muted" role="status">${d.online ? 'Finding photos…' : 'Photos from iNaturalist are turned off.'}</p></div></section>
         <section aria-labelledby="sp-about-h"><h2 id="sp-about-h">About</h2><div id="sp-about"><p class="muted">${d.online ? 'Looking up the description…' : 'The description comes from iNaturalist and Wikipedia, which are turned off.'}</p></div>
           ${d.your_plants && d.your_plants.length ? html`<h3>Your plants</h3><ul class="sp-yours">${d.your_plants.map(p => html`<li><a href="#/plant/${enc(p.code)}">${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : ''}<span><b>${p.code}</b> ${p.common_name}${(d.yours || []).includes(p.code) ? '' : html` <small>(same genus)</small>`}</span></a></li>`)}</ul>` : ''}
-          <div class="row sp-acts">${canChange() ? html`<button class="btn" type="button" data-act="spnew">Add to my plants</button>` : ''}
-            <a class="btn ghost" href="#/identify">Identify a plant</a></div>
+          ${d.your_finds && d.your_finds.length ? html`<h3>Your finds</h3><ul class="sp-yours">${d.your_finds.map(f => html`<li><a href="#/fungi/${enc(f.code)}"><span><b>${f.code}</b> ${f.name || 'Unnamed'}, found ${longDay(f.found_on)} <small>(${(MU_ID_TAG[f.id_status] || f.id_status).toLowerCase()})</small></span></a></li>`)}</ul>` : ''}
+          ${spWishHtml(d)}
+          <div class="row sp-acts">${canChange() ? fungus ? html`<button class="btn" type="button" data-act="munewfrom">Record a find of this</button>` : html`<button class="btn" type="button" data-act="spnew">Add to my plants</button>` : ''}
+            <a class="btn ghost" href="#/identify">${fungus ? 'Identify from a photo' : 'Identify a plant'}</a></div>
         </section>
       </div>
+      <section aria-labelledby="sp-notes-h"><h2 id="sp-notes-h">Your notes and tags</h2>
+        <p class="hint">Shared with everyone you have given access to the app.</p>
+        ${d.notes.notes || d.notes.tags ? html`<div class="sp-mynotes">${d.notes.notes ? html`<p class="pl">${d.notes.notes}</p>` : ''}
+          ${d.notes.tags ? html`<div class="tags">${d.notes.tags.split(',').map(t => t.trim()).filter(Boolean).map(t => html`<a class="tag tag-own" href="#/library?${new URLSearchParams({ mine: 'tag:' + t, scope: fungus ? 'fungi' : 'world' })}">Tag: ${t}</a>`)}</div>` : ''}
+          <p class="hint">Last changed by ${d.notes.updated_by} on ${when(d.notes.updated_at)}.</p></div>` : html`<p class="muted">No notes yet.</p>`}
+        ${canChange() ? html`<details class="sp-notes-edit"><summary>${d.notes.notes || d.notes.tags ? 'Edit the notes and tags' : 'Add notes and tags'}</summary>
+          <form data-form="spnotes" autocomplete="off"><label class="f">Notes<textarea name="notes" rows="5">${d.notes.notes}</textarea></label>
+            <label class="f">Tags<small>Separate them with commas, for example: shade, gift idea, saw at the nursery</small><input type="text" name="tags" value="${d.notes.tags}"></label>
+            <div class="row"><button class="btn" type="submit">Save notes and tags</button></div></form></details>` : ''}</section>
       <section aria-labelledby="sp-names-h"><h2 id="sp-names-h">Names</h2>
         <dl class="dl"><dt>Scientific name</dt><dd class="latin">${d.scientific_name}</dd>
           <dt>Common names</dt><dd id="sp-common">${(d.common_names || []).length ? d.common_names.join('; ') : 'None in the lists on this computer.'}</dd></dl></section>
@@ -5141,15 +5192,16 @@ async function viewSpecies(name) {
         <ol class="sp-cls">${cls.map(c => html`<li><span class="muted">${c.rank}:</span> ${['Order', 'Family', 'Genus'].includes(c.rank) ? html`<a href="${filt(c.rank.toLowerCase(), c.name)}">${c.name}</a>` : c.name}</li>`)}
           <li><span class="muted">Species:</span> <i>${d.scientific_name}</i></li></ol>
         <p class="hint">The links list every species in that order, family or genus.</p></section>
-      <section aria-labelledby="sp-us-h"><h2 id="sp-us-h">Where it grows wild in the US</h2>
-        ${states.length ? html`<p>${states.length === 1 ? 'One state or territory' : states.length + ' states and territories'}, from the USDA PLANTS lists: ${states.map(LIB_STATE_WORD).join(', ')}.</p>`
+      <section aria-labelledby="sp-us-h"><h2 id="sp-us-h">${fungus ? 'Where it grows' : 'Where it grows wild in the US'}</h2>
+        ${fungus && !states.length ? html`<p>The USDA PLANTS lists cover plants and lichens, not other fungi, so this computer has no US range for it. iNaturalist (below) shows where people have seen it.</p>` : states.length ? html`<p>${states.length === 1 ? 'One state or territory' : states.length + ' states and territories'}, from the USDA PLANTS lists: ${states.map(LIB_STATE_WORD).join(', ')}.</p>`
           : html`<p>It is not on the USDA PLANTS state lists, so it does not grow wild in the US (or is not recorded there). It may still be grown in gardens and homes.</p>`}</section>
       ${d.similar && d.similar.length ? html`<section aria-labelledby="sp-sim-h"><h2 id="sp-sim-h">Looks like</h2>
-        <p class="hint">The species the BioCLIP model finds closest to this one. Plants that look alike sit close together, so these are the ones it is easy to mix up with, not always close relatives.</p>
+        <p class="hint">The species the BioCLIP model finds closest to this one. ${fungus ? 'Never use this to tell an edible mushroom from a poisonous one. ' : ''}Species that look alike sit close together, so these are the ones it is easy to mix up with, not always close relatives.</p>
         <div class="grid lib-grid" id="lib-res">${d.similar.map(libCard)}</div></section>` : ''}
       <section aria-labelledby="sp-links-h"><h2 id="sp-links-h">More about it elsewhere</h2>
         <ul class="sp-links" id="sp-links">${d.usda_symbol ? html`<li><a href="https://plants.usda.gov/plant-profile/${enc(d.usda_symbol)}" target="_blank" rel="noopener noreferrer">USDA PLANTS</a>: range map, native status, growth habit</li>` : ''}
-          <li><a href="https://powo.science.kew.org/results?q=${enc(d.scientific_name)}" target="_blank" rel="noopener noreferrer">Kew, Plants of the World Online</a>: native range and accepted name</li>
+          ${fungus ? html`<li><a href="https://www.gbif.org/species/search?q=${enc(d.scientific_name)}" target="_blank" rel="noopener noreferrer">GBIF</a>: records worldwide and accepted name</li>`
+            : html`<li><a href="https://powo.science.kew.org/results?q=${enc(d.scientific_name)}" target="_blank" rel="noopener noreferrer">Kew, Plants of the World Online</a>: native range and accepted name</li>`}
           <li><a href="https://www.inaturalist.org/search?q=${enc(d.scientific_name)}" target="_blank" rel="noopener noreferrer">iNaturalist</a>: photos and sightings near you</li>
           <li><a href="https://en.wikipedia.org/wiki/${enc(d.scientific_name.replace(/ /g, '_'))}" target="_blank" rel="noopener noreferrer">Wikipedia</a></li></ul></section>
     </article>`,
@@ -5187,12 +5239,71 @@ function spGallery(d, photos) {
   SPG.step = dd => { i = (i + dd + all.length) % all.length; draw(); const b = gal.querySelector(`[data-act=spph][data-d="${dd}"]`); if (b) b.focus(); };
   draw();
 }
+function spWishHtml(d) {
+  const w = d.wishlist;
+  if (!w) return canChange() ? html`<div class="sp-wish"><button class="btn ghost" type="button" data-act="spwish">Add to my wishlist</button></div>` : '';
+  return html`<div class="sp-wish notice" role="note"><p><strong>${w.status === 'got' ? 'On your wishlist: you got it.' : 'On your wishlist.'}</strong> Added by ${w.added_by} on ${when(w.added_at)}.
+    ${w.where_seen ? html`Where to find it: ${w.where_seen}.` : ''}</p>${w.notes ? html`<p class="pl">${w.notes}</p>` : ''}
+    <p class="row"><a href="#/wishlist">Open the wishlist</a>${canChange() ? html`<button class="btn ghost small" type="button" data-act="wledit" data-name="${w.name}">Edit</button>` : ''}</p></div>`;
+}
+// ---------- 1.22.0: the wishlist (#/wishlist) ----------
+let WL = [];
+async function viewWishlist() {
+  WL = (await api('GET', '/api/wishlist')).wishlist;
+  const want = WL.filter(w => w.status === 'want'), got = WL.filter(w => w.status === 'got');
+  const item = (w, i) => html`<li class="wl-item"><h3><a href="${spHref(w.name)}">${w.common_name || w.name}</a></h3>
+    ${w.common_name ? html`<p class="latin">${w.name}</p>` : ''}
+    ${w.yours && w.yours.length ? html`<p><span class="tag tag-yours">You have it: ${w.yours.join(', ')}</span></p>` : ''}
+    ${w.where_seen ? html`<p><strong>Where to find it:</strong> ${w.where_seen}</p>` : ''}
+    ${w.notes ? html`<p class="pl">${w.notes}</p>` : ''}
+    <p class="hint">Added by ${w.added_by} on ${when(w.added_at)}.</p>
+    <div class="row wl-acts"><button class="btn small" type="button" data-act="wlgot" data-i="${i}">${w.status === 'got' ? 'Move back to wanted' : 'Got it'}</button>
+      <button class="btn ghost small" type="button" data-act="wledit" data-name="${w.name}">Edit</button>
+      <button class="btn danger small" type="button" data-act="wlrm" data-i="${i}">Take it off the list</button></div></li>`;
+  return {
+    title: 'Wishlist',
+    html: html`<p class="crumb"><a href="#/library">Back to the library</a></p><h1>Wishlist</h1>
+    <p>Plants (or fungi) you would like to have or find. Add one from its page in the <a href="#/library">library</a>. Everyone you have given access to the app sees this list.</p>
+    <h2>Wanted (${want.length})</h2>${want.length ? html`<ul class="wl-list">${want.map(w => item(w, WL.indexOf(w)))}</ul>` : html`<p class="muted">Nothing wanted yet. Open a species in the library and press "Add to my wishlist".</p>`}
+    ${got.length ? html`<h2>Got them (${got.length})</h2><ul class="wl-list">${got.map(w => item(w, WL.indexOf(w)))}</ul>` : ''}`,
+  };
+}
+Object.assign(acts, {
+  async wlgot(el) {
+    const w = WL[+el.dataset.i]; if (!w || !(await needName())) return;
+    await guard(async () => { await api('PUT', '/api/wishlist', { name: w.name, status: w.status === 'got' ? 'want' : 'got' }); toast(w.status === 'got' ? 'Moved back to wanted' : 'Marked as got it'); await route(); });
+  },
+  async wlrm(el) {
+    const w = WL[+el.dataset.i]; if (!w || !(await needName())) return;
+    if (!(await confirmBox('Take it off the wishlist?', `${w.common_name || w.name} and its notes leave the list.`, 'Take it off the list', true))) return;
+    await guard(async () => { await api('DELETE', '/api/wishlist', { name: w.name }); toast('Taken off the wishlist'); await route(); });
+  },
+  async wledit(el) {
+    if (!(await needName())) return;
+    const all = (await api('GET', '/api/wishlist')).wishlist, w = all.find(x => x.name === el.dataset.name); if (!w) return;
+    const r = await modal(html`<form method="dialog"><h2>Edit: ${w.common_name || w.name}</h2>
+      <label class="f">Where to find it<small>A nursery, a website, a friend's garden</small><input type="text" name="where" maxlength="300" value="${w.where_seen}"></label>
+      <label class="f">Notes<textarea name="notes" rows="4" maxlength="2000">${w.notes}</textarea></label>
+      <label class="f">Status<select name="status"><option value="want" ${w.status === 'want' ? raw('selected') : ''}>Wanted</option><option value="got" ${w.status === 'got' ? raw('selected') : ''}>Got it</option></select></label>
+      <div class="row"><button class="btn" value="ok">Save changes</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`);
+    if (r !== 'ok') return;
+    await guard(async () => { await api('PUT', '/api/wishlist', { name: w.name, where_seen: dlg.querySelector('[name=where]').value, notes: dlg.querySelector('[name=notes]').value, status: dlg.querySelector('[name=status]').value }); toast('Saved'); await route(); });
+  },
+});
 const SPG = { step: null };
 let SPCUR = null;          // the species page on screen, for "Add to my plants"
 Object.assign(acts, {
   libmore: () => libLoad(true),
   libclear: () => { Object.assign(LIB, { q: '', kind: '', family: '', state: '', common: false, mine: '' }); libChanged(true); },
   spph: el => SPG.step && SPG.step(+el.dataset.d),
+  async spwish() {
+    if (!SPCUR || !(await needName())) return;
+    await guard(async () => { await api('PUT', '/api/wishlist', { name: SPCUR.scientific_name, common_name: SPCUR.common_name || '' }); toast('Added to your wishlist'); await route(); });
+  },
+  async libpre() {
+    await guard(async () => { const p = await api('POST', '/api/library/prefetch', { scope: 'texas' }); toast(p.total ? `Downloading ${p.total.toLocaleString()} species in the background` : 'They are all kept already'); await libPrePoll(); });
+  },
+  async libprestop() { await guard(async () => { await api('DELETE', '/api/library/prefetch'); toast('Download stopped'); await libPrePoll(); }); },
   spnew: () => { if (SPCUR) idNewPlant(Object.assign({}, SPCUR, { src: 'the plant library' }), false); },
 });
 function spFrom(src, i) {
@@ -5206,6 +5317,7 @@ Object.assign(acts, {
   idopen: el => { idStop(); go('#/plant/' + enc(el.dataset.code)); },
   idask: el => idAskOutside(el.dataset.who),
   idnew: el => { const s = spFrom(el.dataset.src, el.dataset.i); if (s) idNewPlant(s, el.dataset.src !== 'library'); },
+  idfind: el => { const s = spFrom(el.dataset.src, el.dataset.i); if (!s) return; idStop(); MUFILL = { name: s.common_name || '', scientific_name: s.scientific_name, id_status: 'A guess' }; go('#/fungi/new'); },
   async idkeydel(el) {
     if (!(await confirmBox('Remove the key?', 'The button for this second opinion goes away until a key is saved again.', 'Remove the key', true))) return;
     await guard(async () => { await api('PUT', '/api/identify/settings', { [el.dataset.k]: '' }); toast('Key removed'); route(); });
@@ -5213,6 +5325,10 @@ Object.assign(acts, {
 });
 Object.assign(changeActs, { idfile: el => idFile(el) });
 Object.assign(formActs, {
+  async spnotes(form) {
+    if (!SPCUR || !(await needName())) return;
+    await guard(async () => { await api('PUT', '/api/library/notes', { name: SPCUR.scientific_name, notes: form.elements.notes.value, tags: form.elements.tags.value }); toast('Notes and tags saved'); await route(); });
+  },
   async idkeys(form) {
     const b = {};
     ['plantnet_key', 'claude_key'].forEach(k => { const v = form.elements[k].value.trim(); if (v) b[k] = v; });
@@ -5221,6 +5337,252 @@ Object.assign(formActs, {
   },
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && ID.stream) { idStop(); idCamUi(false); } });
+
+// ---------- 1.22.0: mushroom finds (#/fungi), a page of their own ----------
+// A find is a mushroom (or a cluster) seen anywhere: the yard, a plant pot, a walk. It has photos, where and when, what it grew
+// on, what it looks like, and its name with how sure that is. The app never says a mushroom is safe to eat.
+const MU = { q: '', id: '', place: '', year: '', status: 'active', list: null, meta: null };
+try { const s = JSON.parse(localStorage.getItem('plantdb.fungi') || '{}'); ['q', 'id', 'place', 'year', 'status'].forEach(k => { if (typeof s[k] === 'string') MU[k] = s[k]; }); } catch (e) { /* defaults */ }
+const muSave = () => { try { localStorage.setItem('plantdb.fungi', JSON.stringify({ q: MU.q, id: MU.id, place: MU.place, year: MU.year, status: MU.status })); } catch (e) { /* not remembered */ } };
+const MU_ID_TAG = { 'Not identified yet': 'Not identified', 'A guess': 'Name is a guess', 'Fairly sure': 'Fairly sure of the name', 'Confirmed by an expert': 'Confirmed name' };
+function fungiSafety(short) {
+  return html`<aside class="notice bad mu-safe" role="note" aria-label="Safety"><strong>Never eat a wild mushroom because of an app, a photo, or this record.</strong>
+    ${short ? html` Deadly mushrooms look like edible ones, and photo IDs are often wrong. <a href="#/fungi/safety">Read more</a>.`
+      : html`<ul><li>Deadly species, such as death caps and destroying angels (<i>Amanita</i>), look like common edible ones, and some poisons only show symptoms a day later, when the liver is already damaged.</li>
+      <li>Names here come from photos, your notes or Identify. They are leads, not proof. Only an experienced local expert, with the whole mushroom in hand, can confirm one.</li>
+      <li><strong>Pets:</strong> dogs often eat mushrooms in yards, and several common lawn species are toxic to them. Pick mushrooms from the yard before letting pets out. If a pet may have eaten one, call your vet or ASPCA Animal Poison Control at (888) 426-4435.</li>
+      <li><strong>People:</strong> if someone may have eaten a wild mushroom, call Poison Control at 1-800-222-1222 (or 911 if they are very ill), and keep any leftover pieces.</li>
+      <li>Wash your hands after handling wild mushrooms.</li></ul>`}</aside>`;
+}
+function muYears(list) { return [...new Set(list.map(f => (f.found_on || '').slice(0, 4)).filter(Boolean))].sort().reverse(); }
+function muFiltered() {
+  const q = MU.q.toLowerCase();
+  return (MU.list || []).filter(f => (!MU.id || f.id_status === MU.id) && (!MU.place || f.place_kind === MU.place) && (!MU.year || (f.found_on || '').startsWith(MU.year))
+    && (!q || [f.code, f.name, f.scientific_name, f.place, f.near, f.notes, f.cap_colour, f.plant_code].join(' ').toLowerCase().includes(q)));
+}
+function muCard(f) {
+  return html`<article class="sheet mu-card" data-code="${f.code}">
+    <div class="mat">${f.photo ? html`<img src="${thumbUrl(f.photo)}" alt="" loading="lazy" decoding="async">` : html`<div class="nophoto">No photo yet</div>`}<span class="acc">${f.code}</span></div>
+    <h3 class="name"><a class="sheet-link" href="#/fungi/${enc(f.code)}">${f.name || 'Unnamed mushroom'}</a></h3>
+    ${f.scientific_name ? html`<p class="sci latin">${f.scientific_name}</p>` : ''}
+    <p class="mu-when">${f.found_on ? longDay(f.found_on) : ''}${f.place_kind ? ' · ' + f.place_kind.replace(/^In (the|a) /, '').replace(/^\w/, c => c.toUpperCase()) : ''}${f.plant_code ? ' ' + f.plant_code : ''}</p>
+    <div class="tags"><span class="tag ${f.id_status === 'Confirmed by an expert' ? 'tag-yours' : ''}">${MU_ID_TAG[f.id_status] || f.id_status}</span>${f.status === 'archived' ? html`<span class="tag tag-arch">Archived</span>` : ''}</div>
+  </article>`;
+}
+function muDraw() {
+  const box = document.getElementById('mu-grid'); if (!box) return;
+  muSave();
+  const r = muFiltered();
+  document.getElementById('mu-count').textContent = `${r.length} of ${(MU.list || []).length} finds shown`;
+  box.innerHTML = rend(r.length ? r.map(muCard) : html`<div class="empty" style="grid-column:1/-1"><p>${(MU.list || []).length ? 'No finds match these filters.' : 'No finds yet. When you spot a mushroom, press "Add a find" and take its photos.'}</p></div>`);
+}
+async function viewFungi() {
+  const d = await api('GET', '/api/fungi?status=' + enc(MU.status));
+  MU.list = d.finds; MU.meta = d;
+  const sel = (f, opts) => html`<select data-f="${f}">${opts.map(([v, l]) => html`<option value="${v}" ${MU[f.slice(2)] === v ? raw('selected') : ''}>${l}</option>`)}</select>`;
+  return {
+    title: 'Mushroom finds', after: muDraw,
+    html: html`<div class="hero"><div><h1>Mushroom finds</h1>
+      <p class="muted">Mushrooms you have spotted in the yard, in your plant pots, or anywhere else, with their photos, where they grew and what they look like.</p></div>
+      <a class="btn" href="#/fungi/new">Add a find</a></div>
+    ${fungiSafety(true)}
+    <div class="filters mu-filters">
+      <label>Search<input type="search" data-f="muq" value="${MU.q}" placeholder="Name, place, colour, notes" autocomplete="off"></label>
+      <label>Name${sel('muid', [['', 'Any'], ...d.enums.id_status.map(x => [x, x])])}</label>
+      <label>Where${sel('muplace', [['', 'Anywhere'], ...d.enums.place_kind.map(x => [x, x])])}</label>
+      <label>Year${sel('muyear', [['', 'Any year'], ...muYears(d.finds).map(y => [y, y])])}</label>
+      <label>Show${sel('mustatus', [['active', 'Current finds'], ['all', 'Current and archived'], ['archived', 'Archived only']])}</label>
+    </div>
+    <p id="mu-count" class="muted" aria-live="polite"></p>
+    <div class="grid" id="mu-grid"></div>
+    <p class="hint">Look up mushrooms by name in the <a href="#/library?scope=fungi">library</a> (Look in: Fungi worldwide), or take a picture with <a href="#/identify">Identify</a>.</p>`,
+  };
+}
+function viewFungiSafety() {
+  return { title: 'Mushroom safety', html: html`<p class="crumb"><a href="#/fungi">Back to the mushroom finds</a></p><h1>Mushroom safety</h1>${fungiSafety(false)}
+    <h2>Good habits when you record a find</h2>
+    <ul><li>Photograph the cap from above, the underside (gills or pores), the whole stem, and the very base. Dig gently around the base first: a cup or sac there (a volva) is a warning sign of <i>Amanita</i>.</li>
+      <li>Note what it grew on, and which trees are near: many mushrooms grow only with certain trees.</li>
+      <li>A spore print helps an expert most: put the cap gills-down on half white, half dark paper under a bowl for a few hours, and note the colour.</li>
+      <li>Ask for help on iNaturalist or a local mycological society, such as the Texas Mycological Society.</li></ul>` };
+}
+function muField(meta, f, v, plants) {
+  const id = 'mu-' + f.name;
+  if (f.name === 'lat' || f.name === 'lon') return '';
+  if (f.name === 'plant_code') return html`<label class="f" data-show="pot">${f.label}<select name="plant_code" id="${id}"><option value="">Not in a pot</option>${plants.map(p => html`<option value="${p.code}" ${p.code === v ? raw('selected') : ''}>${p.code} ${p.common_name}</option>`)}</select></label>`;
+  if (f.kind === 'enum') return html`<label class="f">${f.label}<select name="${f.name}" id="${id}"><option value="">Not set</option>${meta.enums[f.name].map(o => html`<option ${o === v ? raw('selected') : ''}>${o}</option>`)}</select></label>`;
+  if (f.kind === 'long') return html`<label class="f wide">${f.label}<textarea name="${f.name}" id="${id}" rows="4">${v || ''}</textarea></label>`;
+  if (f.kind === 'date') return html`<label class="f">${f.label}<input type="date" name="${f.name}" id="${id}" value="${v || todayStr()}" max="${todayStr()}"></label>`;
+  const hint = { name: 'A common name, or your own description such as "small brown one by the oak"', cap_size: 'For example 2 inches', spore_print: 'For example white, cream, pink, brown, purple-brown, black' }[f.name];
+  return html`<label class="f">${f.label}${hint ? html`<small>${hint}</small>` : ''}<input type="text" name="${f.name}" id="${id}" value="${v || ''}"></label>`;
+}
+const MU_GROUPS = [['Name', ['name', 'scientific_name', 'id_status']], ['Where and when', ['found_on', 'place_kind', 'plant_code', 'place']],
+  ['What it grew on', ['substrate', 'near', 'abundance']], ['What it looks like', ['cap_size', 'cap_colour', 'underside', 'ring', 'volva', 'spore_print', 'bruising', 'smell']], ['Notes', ['notes']]];
+let MUFILL = null;            // a new find started from a species page or from Identify
+async function viewFindForm(code) {
+  const [meta, plants] = await Promise.all([code ? api('GET', '/api/fungi/' + enc(code)) : api('GET', '/api/fungi?status=none'), api('GET', '/api/plants')]);
+  MU.meta = meta;
+  const F = Object.fromEntries(meta.fields.map(f => [f.name, f])), v = code ? meta : (MUFILL || {});
+  return {
+    title: code ? 'Edit ' + code : 'Add a mushroom find',
+    after: () => muPlaceShow(),
+    html: html`<p class="crumb"><a href="${code ? '#/fungi/' + enc(code) : '#/fungi'}">${code ? 'Back to ' + code : 'Back to the mushroom finds'}</a></p>
+    <h1>${code ? 'Edit ' + code : 'Add a mushroom find'}</h1>
+    ${code ? '' : html`<p class="muted">Only the photos and where you found it really matter now; fill in the rest any time.</p>`}
+    <form data-form="musave" ${code ? raw(`data-code="${esc(code)}" data-ver="${meta.version}"`) : ''} autocomplete="off">
+      ${code ? '' : html`<fieldset><legend>Photos</legend><label class="f">Photos of the cap, the underside, the stem and the base<small>On a phone this can open the camera. If the photos carry their location, it is offered for the find.</small>
+        <input type="file" name="photos" accept="image/*" multiple capture="environment"></label></fieldset>`}
+      ${MU_GROUPS.map(([t, names]) => html`<fieldset><legend>${t}</legend><div class="field-grid">${names.map(n => muField(meta, F[n], v[n], plants))}</div>
+        ${t === 'Where and when' ? html`<div class="mu-loc"><input type="hidden" name="lat" value="${v.lat == null ? '' : v.lat}"><input type="hidden" name="lon" value="${v.lon == null ? '' : v.lon}">
+          <p id="mu-loc-txt" aria-live="polite">${v.lat != null ? html`Location saved: ${(+v.lat).toFixed(5)}, ${(+v.lon).toFixed(5)}.` : 'No map location saved.'}</p>
+          <div class="row"><button class="btn ghost small" type="button" data-act="muhere">Use my location now</button><button class="btn ghost small" type="button" data-act="muclearloc">Clear the location</button></div>
+          <p class="hint">Saved locations are seen by everyone you have given access to the app.</p></div>` : ''}</fieldset>`)}
+      <div id="form-err"></div>
+      <div class="sticky-save"><button class="btn" type="submit">${code ? 'Save changes' : 'Add this find'}</button><a class="btn ghost" href="${code ? '#/fungi/' + enc(code) : '#/fungi'}">Cancel</a></div>
+    </form>`,
+  };
+}
+function muPlaceShow() {
+  const s = document.getElementById('mu-place_kind'), pot = document.querySelector('[data-show=pot]');
+  if (s && pot) pot.hidden = s.value !== 'In a plant pot';
+}
+async function viewFind(code) {
+  const f = await api('GET', '/api/fungi/' + enc(code));
+  MUCUR = f;
+  const ph = f.photos, gps = ph.find(p => p.gps_lat != null);
+  const show = n => f[n] != null && f[n] !== '';
+  const dl = names => names.filter(show).map(n => html`<dt>${f.fields.find(x => x.name === n).label}</dt><dd>${n === 'plant_code' && f.plant ? html`<a href="#/plant/${enc(f.plant_code)}">${f.plant_code} ${f.plant.common_name}</a>` : n === 'found_on' ? longDay(f[n]) : f[n]}</dd>`);
+  return {
+    title: (f.name || 'Unnamed mushroom') + ' (' + f.code + ')',
+    after: () => muGallery(0),
+    html: html`<div class="species mu-find"><p class="crumb"><a href="#/fungi">All mushroom finds</a></p>
+    <header class="sp-head"><h1>${f.name || 'Unnamed mushroom'}</h1>
+      ${f.scientific_name ? html`<p class="sp-sci latin">${f.scientific_name}${f.id_status !== 'Not identified yet' ? html` <a href="#/species/${enc(f.scientific_name)}">(in the library)</a>` : ''}</p>` : ''}
+      <p class="muted"><strong>${f.code}</strong> · found ${longDay(f.found_on)} · page version ${f.version}</p>
+      <div class="tags"><span class="tag ${f.id_status === 'Confirmed by an expert' ? 'tag-yours' : ''}">${MU_ID_TAG[f.id_status] || f.id_status}</span>${f.status === 'archived' ? html`<span class="tag tag-arch">Archived</span>` : ''}</div></header>
+    ${fungiSafety(true)}
+    <div class="sp-grid">
+      <section aria-labelledby="mu-ph-h"><h2 id="mu-ph-h">Photos</h2><div id="mu-gallery"></div>
+        <label class="f noprint mu-add">Add photos<small>On a phone this can open the camera.</small><input type="file" accept="image/*" multiple capture="environment" data-act="muaddphotos"></label></section>
+      <section aria-labelledby="mu-id-h"><h2 id="mu-id-h">What could it be?</h2>
+        <p>Identify compares a photo with about 49,000 fungi, on this computer. Treat its answer as a lead to check, never as proof.</p>
+        <div class="row"><button class="btn" type="button" data-act="muident" ${ph.length ? '' : raw('disabled')}>Identify the photo shown</button></div>
+        <div id="mu-ident" aria-live="polite"></div></section>
+    </div>
+    <section aria-labelledby="mu-where-h"><h2 id="mu-where-h">Where and when</h2><dl class="dl">${dl(['found_on', 'place_kind', 'plant_code', 'place'])}
+      ${f.lat != null ? html`<dt>Map location</dt><dd>${(+f.lat).toFixed(5)}, ${(+f.lon).toFixed(5)} (<a href="https://www.openstreetmap.org/?mlat=${f.lat}&mlon=${f.lon}#map=18/${f.lat}/${f.lon}" target="_blank" rel="noopener noreferrer">open the map</a>)</dd>` : ''}</dl>
+      ${f.lat == null && gps ? html`<p><button class="btn ghost" type="button" data-act="mugps" data-lat="${gps.gps_lat}" data-lon="${gps.gps_lon}">Save the location from the photo (${(+gps.gps_lat).toFixed(4)}, ${(+gps.gps_lon).toFixed(4)})</button></p>` : ''}</section>
+    <section aria-labelledby="mu-grew-h"><h2 id="mu-grew-h">What it grew on</h2>${['substrate', 'near', 'abundance'].some(show) ? html`<dl class="dl">${dl(['substrate', 'near', 'abundance'])}</dl>` : html`<p class="muted">Not noted yet.</p>`}</section>
+    <section aria-labelledby="mu-look-h"><h2 id="mu-look-h">What it looks like</h2>${['cap_size', 'cap_colour', 'underside', 'ring', 'volva', 'spore_print', 'bruising', 'smell'].some(show) ? html`<dl class="dl">${dl(['cap_size', 'cap_colour', 'underside', 'ring', 'volva', 'spore_print', 'bruising', 'smell'])}</dl>` : html`<p class="muted">Not noted yet. Edit the find to add the cap, the underside, the ring, the base and the spore print.</p>`}</section>
+    ${show('notes') ? html`<section aria-labelledby="mu-notes-h"><h2 id="mu-notes-h">Notes</h2><p class="pl">${f.notes}</p></section>` : ''}
+    <div class="row noprint mu-acts"><a class="btn" href="#/fungi/${enc(f.code)}/edit">Edit this find</a>
+      <button class="btn ghost" type="button" data-act="muarch" data-to="${f.status === 'archived' ? '0' : '1'}">${f.status === 'archived' ? 'Bring it back' : 'Archive this find'}</button></div>
+    <p class="hint">Added by ${f.created_by} on ${when(f.created_at)}${f.updated_at && f.updated_at !== f.created_at ? `; last changed by ${f.updated_by} on ${when(f.updated_at)}` : ''}. Changes are listed in the Audit log under "Mushroom finds".</p></div>`,
+  };
+}
+let MUCUR = null, MUPIX = 0;
+function muGallery(i) {
+  const box = document.getElementById('mu-gallery'); if (!box || !MUCUR) return;
+  const ph = MUCUR.photos;
+  if (!ph.length) { box.innerHTML = rend(html`<p class="muted">No photos yet. Add them below.</p>`); return; }
+  MUPIX = ((i % ph.length) + ph.length) % ph.length;
+  const p = ph[MUPIX];
+  box.innerHTML = rend(html`<figure class="sp-fig"><img src="${photoUrl(p.file)}" alt="${p.caption || 'Photo ' + (MUPIX + 1) + ' of ' + MUCUR.code}">
+    <figcaption>${p.caption || 'No caption'}${p.taken_at ? `. Taken ${when(p.taken_at)}` : ''}${p.gps_lat != null ? '. Has a location.' : ''}${p.is_primary ? html` <strong>★ Main photo</strong>` : ''}</figcaption></figure>
+    ${ph.length > 1 ? html`<div class="row sp-step"><button class="btn ghost small" type="button" data-act="mustep" data-d="-1">‹ Previous photo</button><span class="muted">${MUPIX + 1} of ${ph.length}</span><button class="btn ghost small" type="button" data-act="mustep" data-d="1">Next photo ›</button></div>` : ''}
+    <div class="row noprint">${!p.is_primary ? html`<button class="btn ghost small" type="button" data-act="mumain">Make this the main photo</button>` : ''}
+      <button class="btn ghost small" type="button" data-act="mucap">Edit caption</button><button class="btn danger small" type="button" data-act="murmphoto">Remove photo</button></div>`);
+}
+async function muReload(i) { MUCUR = await api('GET', '/api/fungi/' + enc(MUCUR.code)); await route(); muGallery(i == null ? MUPIX : i); }
+function muSetLoc(lat, lon, how) {
+  const f = document.querySelector('form[data-form=musave]'); if (!f) return;
+  f.elements.lat.value = lat == null ? '' : lat; f.elements.lon.value = lon == null ? '' : lon;
+  document.getElementById('mu-loc-txt').textContent = lat == null ? 'No map location saved.' : `Location ${how}: ${(+lat).toFixed(5)}, ${(+lon).toFixed(5)}. It is saved with the find.`;
+}
+Object.assign(acts, {
+  muhere: () => {
+    if (!navigator.geolocation) { toast('This browser cannot give a location.', true); return; }
+    document.getElementById('mu-loc-txt').textContent = 'Finding your location…';
+    navigator.geolocation.getCurrentPosition(p => muSetLoc(p.coords.latitude.toFixed(6), p.coords.longitude.toFixed(6), 'from this device'),
+      e => { document.getElementById('mu-loc-txt').textContent = e.code === 1 ? 'Location was not allowed. Allow it in the browser\'s site settings, or leave it empty.' : 'Could not get the location: ' + e.message; },
+      { enableHighAccuracy: true, timeout: 20000 });
+  },
+  muclearloc: () => muSetLoc(null, null),
+  mustep: el => { muGallery(MUPIX + +el.dataset.d); const b = document.querySelector(`[data-act=mustep][data-d="${el.dataset.d}"]`); if (b) b.focus(); },
+  async mumain() { if (!(await needName())) return; await guard(async () => { await api('PATCH', '/api/fungi/photos/' + MUCUR.photos[MUPIX].id, { is_primary: true }); toast('Main photo changed'); await muReload(0); }); },
+  async mucap() {
+    if (!(await needName())) return;
+    const p = MUCUR.photos[MUPIX];
+    const r = await modal(html`<form method="dialog"><h2>Edit caption</h2><label class="f">Caption<input type="text" name="c" maxlength="200" value="${p.caption}" placeholder="For example: underside, gills"></label>
+      <div class="row"><button class="btn" value="ok">Save caption</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`);
+    if (r !== 'ok') return;
+    await guard(async () => { await api('PATCH', '/api/fungi/photos/' + p.id, { caption: dlg.querySelector('[name=c]').value }); toast('Caption saved'); await muReload(); });
+  },
+  async murmphoto() {
+    if (!(await needName())) return;
+    if (!(await confirmBox('Remove this photo?', 'It leaves the find. The file is kept in the photos_deleted folder.', 'Remove photo', true))) return;
+    await guard(async () => { await api('DELETE', '/api/fungi/photos/' + MUCUR.photos[MUPIX].id); toast('Photo removed'); await muReload(0); });
+  },
+  async mugps(el) {
+    if (!(await needName())) return;
+    await guard(async () => { await api('PUT', '/api/fungi/' + enc(MUCUR.code), { base_version: MUCUR.version, fields: { lat: el.dataset.lat, lon: el.dataset.lon } }); toast('Location saved'); await muReload(); });
+  },
+  async muarch(el) {
+    if (!(await needName())) return;
+    await guard(async () => { await api('POST', '/api/fungi/' + enc(MUCUR.code) + '/status', { archived: el.dataset.to === '1' }); toast(el.dataset.to === '1' ? 'Archived' : 'Brought back'); await muReload(); });
+  },
+  async muident() {
+    const p = MUCUR.photos[MUPIX], box = document.getElementById('mu-ident'); if (!p) return;
+    box.innerHTML = rend(html`<p role="status">Checking the photo…</p>`);
+    try {
+      const blob = await (await fetch(photoUrl(p.file))).blob(), fd = new FormData(); fd.append('image', blob, 'find.jpg');
+      const r = await api('POST', '/api/identify?scope=fungi', undefined, fd);
+      MUIDENT = r.species || [];
+      box.innerHTML = rend(html`<h3>It looks most like</h3>${r.genera && r.genera[0] ? html`<p>Most likely genus: <i>${r.genera[0].genus}</i> (${pct(r.genera[0].probability)}).</p>` : ''}
+        <ol class="id-sps">${MUIDENT.map((s, i) => html`<li class="id-sp"><div><i class="sci">${s.scientific_name}</i>${s.common_name ? html` <span>${s.common_name}</span>` : ''} <b class="id-p">${pct(s.probability)}</b></div>
+          <div class="muted">${s.family}</div><div class="id-acts"><a href="#/species/${enc(s.scientific_name)}">Open in the library</a>${canChange() ? html`<button class="btn small ghost" type="button" data-act="muusename" data-i="${i}">Use this name (as a guess)</button>` : ''}</div></li>`)}</ol>
+        <p class="hint">Checked in ${r.seconds} seconds on this computer. A second opinion from Pl@ntNet or Claude is on the Identify page.</p>`);
+    } catch (e) { box.innerHTML = rend(html`<div class="notice bad" role="alert">${e.message}</div>`); }
+  },
+  async muusename(el) {
+    const s = MUIDENT[+el.dataset.i]; if (!s || !(await needName())) return;
+    await guard(async () => { await api('PUT', '/api/fungi/' + enc(MUCUR.code), { base_version: MUCUR.version, fields: { name: MUCUR.name || s.common_name || s.scientific_name, scientific_name: s.scientific_name, id_status: 'A guess' } }); toast('Name saved as a guess'); await muReload(); });
+  },
+  munewfrom: () => { if (!SPCUR) return; MUFILL = { name: SPCUR.common_name || '', scientific_name: SPCUR.scientific_name, id_status: 'A guess' }; go('#/fungi/new'); },
+});
+let MUIDENT = [];
+Object.assign(changeActs, {
+  async muaddphotos(el) {
+    const files = [...el.files]; el.value = ''; if (!files.length || !(await needName())) return;
+    const fd = new FormData(); files.forEach(f => fd.append('files', f));
+    await guard(async () => { const r = await api('POST', '/api/fungi/' + enc(MUCUR.code) + '/photos', undefined, fd); toast(`${files.length} photo${files.length === 1 ? '' : 's'} added`); MUCUR = r; await route(); muGallery(r.photos.length - 1); });
+  },
+});
+Object.assign(formActs, {
+  async musave(form) {
+    if (!(await needName())) return;
+    const fields = {};
+    for (const f of (MU.meta ? MU.meta.fields : [])) if (form.elements[f.name]) fields[f.name] = form.elements[f.name].value;
+    if (!fields.place_kind || fields.place_kind !== 'In a plant pot') fields.plant_code = '';
+    const err = document.getElementById('form-err'); err.innerHTML = '';
+    try {
+      let code = form.dataset.code;
+      if (code) await api('PUT', '/api/fungi/' + enc(code), { base_version: +form.dataset.ver, fields });
+      else {
+        const r = await api('POST', '/api/fungi', { fields }); code = r.code;
+        const files = form.elements.photos ? [...form.elements.photos.files] : [];
+        if (files.length) {
+          const fd = new FormData(); files.forEach(f => fd.append('files', f));
+          const p = await api('POST', '/api/fungi/' + enc(code) + '/photos', undefined, fd);
+          const g = (p.added || []).find(a => a.gps_lat != null);
+          if (g && fields.lat === '') { await api('PUT', '/api/fungi/' + enc(code), { base_version: p.version, fields: { lat: g.gps_lat, lon: g.gps_lon } }); toast('The location from the photo was saved with the find.'); }
+        }
+        MUFILL = null;
+      }
+      toast(form.dataset.code ? 'Saved' : 'Find ' + code + ' added'); go('#/fungi/' + enc(code));
+    } catch (e) { err.innerHTML = rend(html`<div class="notice bad" role="alert"><strong>Not saved.</strong> ${e.message}</div>`); err.scrollIntoView({ block: 'center' }); }
+  },
+});
 
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
@@ -5250,9 +5612,15 @@ document.addEventListener('change', e => {
   }
   if (el.dataset && el.dataset.f === 'aud') { AUD.f[el.name] = el.value; AUD.offset = 0; audSave(); audLoad(`[name="${el.name}"][data-f=aud]`); return; }
   if (el.dataset && el.dataset.pref) { window.PlantPrefs.set(el.dataset.pref, el.value); if (el.dataset.pref === 'layout' && document.querySelector('.plant')) route(); return; }
+  if (el.id === 'mu-place_kind') { muPlaceShow(); return; }
   if (el.name === 'csrc') { const mf = document.getElementById('manual-fields'); if (mf) mf.hidden = el.value !== 'manual'; return; }
   const f = el.dataset && el.dataset.f;
   if (!f) return;
+  if (f.startsWith('mu') && f !== 'muq') {   // 1.22.0: the mushroom finds' filters
+    MU[f.slice(2)] = el.value;
+    if (f === 'mustatus') { muSave(); route(); } else muDraw();
+    return;
+  }
   if (f.startsWith('lib')) {             // 1.21.0: the library's filters
     const k = f.slice(3);
     if (k === 'online') { api('PUT', '/api/library/settings', { online: el.checked }).then(() => { LIB.photos = {}; toast(el.checked ? 'Library photos from iNaturalist are on' : 'Library photos are off: nothing is looked up online'); }).catch(e => toast(e.message, true)); return; }
@@ -5331,6 +5699,7 @@ document.addEventListener('input', e => {
     e.target.closest('fieldset').querySelectorAll('li').forEach(li => { li.hidden = !!q && !li.textContent.toLowerCase().includes(q); });
   }
   const f = e.target.dataset && e.target.dataset.f;
+  if (f === 'muq') { MU.q = e.target.value.trim(); muDraw(); }
   if (f === 'libq') { LIB.q = e.target.value.trim(); clearTimeout(LIB.t); LIB.t = setTimeout(() => libChanged(false), 300); }
   if (f === 'q') { G.q = e.target.value; drawGrid(); }
   else if (f === 'audq') { AUD.f.q = e.target.value; AUD.offset = 0; audSave(); clearTimeout(AUD.t); AUD.t = setTimeout(() => audLoad(), 400); }

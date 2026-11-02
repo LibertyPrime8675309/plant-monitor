@@ -60,8 +60,11 @@ if os.environ.get('MOCK_VISION', 'fake') == 'fake':
     from werkzeug.serving import make_server
     _spec = importlib.util.spec_from_file_location('mock_vision', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mock_vision.py'))
     _mv = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(_mv)
-    try:
-        _vs = make_server('127.0.0.1', int(os.environ.get('MOCK_VISION_PORT', '8090')), _mv.app, threaded=True)
+    import socket
+    _port = int(os.environ.get('MOCK_VISION_PORT', '8090'))
+    with socket.socket() as _s: _busy = _s.connect_ex(('127.0.0.1', _port)) == 0
+    if _busy: print(f'mock vision not started: port {_port} is in use (a real vision service, probably)')
+    else:
+        _vs = make_server('127.0.0.1', _port, _mv.app, threaded=True)
         threading.Thread(target=_vs.serve_forever, daemon=True).start()
-    except OSError as e: print('mock vision not started:', e)
 S.app.run(host='127.0.0.1', port=int(os.environ.get('PORT', '8080')), threaded=True)

@@ -22,7 +22,7 @@ def colour():
 def status():
     return jsonify(STATE | {'step': 'Ready' if STATE['state'] == 'ready' else 'Downloading the species fingerprints', 'done': 3, 'total': 1024,
                             'photos': 215, 'species': 335884, 'model': 'bioclip-2.5-vith14 (test)',
-                            'scopes': {k: {'label': k, 'count': n} for k, n in (('common', 32542), ('texas', 4606), ('us', 18168), ('world', 335884))}})
+                            'scopes': {k: {'label': k, 'count': n} for k, n in (('common', 32542), ('texas', 4606), ('us', 18168), ('world', 335884), ('fungi', 49210))}, 'fungi': 49210})
 
 @app.post('/mock/state')
 def set_state():
@@ -36,6 +36,7 @@ def identify():
          'green': [('P-049', .90, .62), ('P-050', .89, None), ('P-051', .88, None)],
          'blue': [('P-030', .60, .52), ('P-031', .58, None), ('P-032', .57, None)]}[c]
     sp = SP if c == 'blue' else SP[1:] + SP[:1]
+    if request.args.get('scope') == 'fungi': sp = FUNGI[:3]
     return jsonify(model='bioclip-2.5-vith14 (test)', likely_new=c == 'blue', scope=request.args.get('scope', 'common'), seconds=0.1,
                    matches=[{'code': k, 'score': s, 'photo': None, 'confidence': cf} for k, s, cf in m],
                    species=[x | {'probability': p} for x, p in zip(sp, (.41, .22, .09))], genera=[{'genus': sp[0]['genus'], 'probability': .5}])
@@ -66,11 +67,19 @@ MORE = [{'scientific_name': f'Testia species{i:02d}', 'common_name': f'Test plan
          'order': 'Testales', 'in_texas': i % 2 == 0, 'us_states': ['Texas'] if i % 2 == 0 else [], 'usda_symbol': '', 'kind': 'fern' if i % 5 == 0 else 'dicot'}
         for i in range(1, 61)]
 ALL = [x | {'kind': {'Lupinus': 'dicot', 'Monstera': 'monocot', 'Agave': 'monocot'}[x['genus']]} for x in SP] + MORE
+for x in ALL: x['kingdom'] = 'Plantae'
+# 1.22.0: a few fungi, for the "Fungi worldwide" list and the mushroom finds
+FUNGI = [{'scientific_name': n, 'common_name': cn, 'genus': n.split()[0], 'family': fam, 'order': 'Agaricales', 'in_texas': False, 'us_states': [],
+          'usda_symbol': '', 'kind': 'mushroom', 'kingdom': 'Fungi'}
+         for n, cn, fam in (('Leucocoprinus birnbaumii', 'flowerpot parasol', 'Agaricaceae'), ('Chlorophyllum molybdites', 'green-spored parasol', 'Agaricaceae'),
+                            ('Amanita phalloides', 'death cap', 'Amanitaceae'), ('Agaricus campestris', 'meadow mushroom', 'Agaricaceae'))]
+FUNGI.append({'scientific_name': 'Peziza vesiculosa', 'common_name': 'blistered cup', 'genus': 'Peziza', 'family': 'Pezizaceae', 'order': 'Pezizales',
+              'in_texas': False, 'us_states': [], 'usda_symbol': '', 'kind': 'cupfungus', 'kingdom': 'Fungi'})
 
 @app.get('/browse')
 def browse():
     a = request.args
-    r = [x for x in ALL if a.get('scope') != 'texas' or x['in_texas']]
+    r = FUNGI if a.get('scope') == 'fungi' else [x for x in ALL if a.get('scope') != 'texas' or x['in_texas']]
     if a.get('q'): r = [x for x in r if a['q'].lower() in (x['scientific_name'] + ' ' + x['common_name']).lower()]
     if a.get('kind'): r = [x for x in r if x['kind'] == a['kind']]
     if a.get('family'): r = [x for x in r if x['family'].lower() == a['family'].lower()]
@@ -83,16 +92,27 @@ def browse():
     off, lim = int(a.get('offset', 0)), int(a.get('limit', 48))
     return jsonify(total=len(r), offset=off, results=r[off:off + lim])
 
+@app.get('/scope_names')
+def scope_names():
+    return jsonify(names=[x['scientific_name'] for x in (FUNGI if request.args.get('scope') == 'fungi' else ALL) if request.args.get('scope') != 'texas' or x['in_texas']])
+
 @app.get('/facets')
 def facets():
+    if request.args.get('scope') == 'fungi':
+        return jsonify(total=len(FUNGI), kinds=[{'key': 'mushroom', 'label': 'Mushrooms, brackets, puffballs and jelly fungi', 'count': 4}, {'key': 'cupfungus', 'label': 'Cup fungi, morels and truffles', 'count': 1}],
+                       families=[{'name': 'Agaricaceae', 'count': 3}, {'name': 'Amanitaceae', 'count': 1}, {'name': 'Pezizaceae', 'count': 1}], states=[])
     return jsonify(total=len(ALL), kinds=[{'key': 'dicot', 'label': 'Flowering plants: broadleaf (dicots)', 'count': 50}, {'key': 'monocot', 'label': 'Flowering plants: grasses, lilies, palms, orchids (monocots)', 'count': 2},
                                          {'key': 'fern', 'label': 'Ferns and horsetails', 'count': 12}],
                    families=[{'name': 'Araceae', 'count': 1}, {'name': 'Fabaceae', 'count': 1}, {'name': 'Testaceae', 'count': 60}], states=['Florida', 'Hawaii'])
 
 @app.get('/taxon')
 def taxon():
-    x = next((y for y in ALL if y['scientific_name'] == request.args.get('name')), None)
+    x = next((y for y in ALL + FUNGI if y['scientific_name'] == request.args.get('name')), None)
     if not x: return jsonify(error='That species is not in the list'), 404
+    if x['kingdom'] == 'Fungi':
+        return jsonify(x | {'classification': [{'rank': 'Kingdom', 'name': 'Fungi'}, {'rank': 'Family', 'name': x['family']}, {'rank': 'Genus', 'name': x['genus']}],
+                            'common_names': [x['common_name']], 'kind': 'Mushrooms, brackets, puffballs and jelly fungi',
+                            'similar': [y | {'similarity': .9} for y in FUNGI if y is not x][:4]})
     return jsonify(x | {'classification': [{'rank': 'Kingdom', 'name': 'Plantae'}, {'rank': 'Family', 'name': x['family']}, {'rank': 'Genus', 'name': x['genus']}],
                         'common_names': [x['common_name']] if x['common_name'] else [], 'kind': 'Flowering plants',
                         'similar': [y | {'similarity': .9} for y in ALL if y is not x][:4]})
