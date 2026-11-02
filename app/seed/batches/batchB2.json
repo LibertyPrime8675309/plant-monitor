@@ -1,0 +1,21 @@
+{
+ "id": "B2",
+ "created": "2026-11-01",
+ "author": "Claude (Ethan's grow light details, Nov 2026)",
+ "lights_update": [
+  {
+   "key": "barrina-standing",
+   "note": "model number from its label (batch B2)",
+   "set": {
+    "model": [
+     null,
+     "T10F20"
+    ],
+    "power": [
+     "Plugs into an outlet; 4.9 ft cord with an on/off switch",
+     "Plugs into an outlet (100-277 V AC, 50/60 Hz); 4.9 ft cord with an on/off switch"
+    ]
+   }
+  }
+ ]
+}
