@@ -887,6 +887,44 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
 
+## Offline use on phones and tablets (from 1.24.0)
+
+The plant record works on a phone or tablet without a connection: out in the woods, in a basement, anywhere. Changes you make there are kept on the device and sent to the plant record as soon as it can be reached again.
+
+**Setting up a device (once, while it's online):**
+
+1. Open the plant record on the phone (through Tailscale, at your https://plants… address).
+2. **iPhone or iPad:** in Safari, press Share, then **Add to Home Screen**, and from then on open it from the Home Screen. Safari clears what a site saved after a few weeks unless it's on the Home Screen. **Android:** in Chrome's menu choose **Install app** (or **Add to Home screen**).
+3. Press the **Online** button at the top of the page. It opens **Offline use**.
+4. Tick **Keep a copy on this device**. It saves every plant page, mushroom find, care log and photo (full size). The first time takes a few minutes. After that it saves again by itself whenever the copy is a few hours old and the device is online.
+5. Give the device a name (for example "Ethan's phone"). The name shows on changes that came from it.
+6. If you want the library offline too, tick **Also keep the library's Texas plant list with its photos** (about 300 MB). The owner has to press **Download photos for the Texas list** on the Library page first.
+
+**Without a connection:**
+
+- The button at the top says **Offline**, and each page says it is showing what the device saved, and when.
+- **You can:**
+  - read every plant, mushroom find and photo;
+  - log watering and care (with the day you did it);
+  - edit plants, move them and archive them;
+  - add photos;
+  - add mushroom finds with photos (a new find gets a temporary code until it is sent; its location still comes from the photo);
+  - use your notes, tags and wishlist;
+  - search the saved Texas list in the library.
+- **Identify** keeps the picture and checks it when you're back online. The answer appears on the Offline use page.
+- Things that need the computer (backups, settings, adding a new plant page, the weather update) say they need a connection.
+- The top button counts the changes waiting ("Offline · 3 to send"). The Offline use page lists them, and you can take any of them back before they're sent.
+
+**When the device can reach the plant record again**, the waiting changes are sent by themselves, in the order you made them. Each change is made only once, even if the connection drops halfway and it is sent again. Then:
+
+- If someone changed **other** things on the same plant meanwhile, both are kept.
+- If someone changed the **same** thing (say the pot) to something different, nothing is overwritten. Both versions wait on **Needs your decision** (the top button says "1 to decide"). There you see both side by side, who made each change, when and on which device, and press **Keep this** on the one you want. Owners and editors can decide.
+- A change the plant record refused (for example, the plant was deleted meanwhile) stays on the Offline use page under **Could not be sent**, with the reason. You can **Try again** or **Remove it**.
+
+Changes from a device are in the Audit log like any other, under the person's name. Clashes are listed under "Clashes between devices".
+
+**Delete the saved copy on this device** (Offline use page) removes the copy from that device. Changes still waiting to be sent are kept.
+
 ## Mushroom finds (from 1.22.0)
 
 **Mushrooms** in the top menu is a page of its own for the mushrooms you spot: in the yard, in a plant pot, or anywhere else. Each find gets a code, F-001, F-002 and so on.

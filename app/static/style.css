@@ -1279,3 +1279,23 @@ html[data-role=viewer] :is([data-act=spwish], [data-act=wledit], [data-act=wlgot
 .sp-pets{max-width:24rem}
 .sp-pets th[scope=row]{text-align:left}
 html[data-role=viewer] :is([data-act=spcare], [data-act=liblists]){display:none!important}
+/* 1.24.0: offline use */
+.net{display:inline-flex;align-items:center;justify-content:center;color:inherit;text-decoration:none;border:2px solid color-mix(in srgb,var(--top-ink) 60%,transparent);padding:.5rem .9rem;font-size:1rem;min-height:2.75rem;font-weight:700}
+.net:hover{background:color-mix(in srgb,var(--top-ink) 14%,transparent)}
+.net::before{content:"";display:inline-block;width:.7em;height:.7em;border-radius:50%;margin-right:.45em;border:2px solid currentColor}
+.net[data-state=online]::before{background:currentColor}
+.net[data-state=offline]{border-style:dashed}
+.net[data-state=waiting],.net[data-state=sending]{border-width:3px}
+.off-note{margin-bottom:1rem}
+.off-list{padding-left:1.3em}
+.off-list li{margin:.5rem 0}
+.off-pic{width:4.5rem;height:4.5rem;object-fit:cover;vertical-align:middle;margin-right:.5rem;border:1px solid var(--line)}
+.dec-list{list-style:none;padding:0;display:grid;gap:1.2rem}
+.dec{border:var(--bw) solid var(--line);background:var(--sheet);padding:1rem}
+.dec h2{margin:0 0 .6rem;font-size:1.25rem}
+.dec-sides{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:1rem}
+.dec-sides h3{margin:0 0 .3rem;font-size:1.05rem}
+.dec-v{font-weight:700;white-space:pre-wrap;overflow-wrap:anywhere;margin:.2rem 0}
+html[data-role=viewer] :is([data-act=decide]){display:none!important}
+.off-opts .chk{display:flex;gap:.6rem;align-items:flex-start;margin:.6rem 0;font-weight:400}
+.off-opts .chk input{margin-top:.3rem;flex:none}

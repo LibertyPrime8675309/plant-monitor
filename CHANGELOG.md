@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.24.0 (2026-10-31)
+- **Works without a connection on phones and tablets.**
+  - Press **Online** at the top of the page and tick **Keep a copy on this device**. The phone then keeps every plant, mushroom find, care log and photo (full size) and opens the plant record with no signal at all.
+  - Offline you can log care, edit and move plants, add photos and mushroom finds, and use your notes and wishlist. Pictures for Identify are checked once you're back online.
+- **Changes are sent by themselves when the phone is back online**, each one only once. If someone changed other things on the same plant meanwhile, both are kept. If you both changed the same thing, nothing is overwritten: **Needs your decision** shows both side by side, and you choose.
+- The **Online / Offline** button at the top says, in words, how many changes are waiting and how many need a decision.
+- **iPhone and iPad:** add the plant record to the Home Screen (Share, then Add to Home Screen) and open it from there, so iOS keeps the saved copy. See README, "Offline use on phones and tablets".
+- A mushroom find now takes its location from its photo on the computer, so this also works for finds added offline.
+- Includes everything in 1.23.0 below.
+
 ## 1.23.0 (2026-10-31)
 - **Every species page in the library now has more sections:**
   - **Here at home:** native or introduced in Texas, how often it's been recorded growing wild within 31 miles of home, whether it's flowering there now, and a warning if it's on the Texas invasive plant list.

@@ -231,6 +231,24 @@
   - **Care sheets:** `POST /api/library/care` asks Claude (`CARE_ASK`, the owner's key) for JSON and keeps it in `data/library/care/<slug>.json`. Its `zone_low` against `home_zone()` decides "zone-yes" or "zone-no".
   - Routes `/api/library/local` (GET, and POST to refetch) and `/api/library/around`. Front end: `spHomeHtml()`, `spPetsHtml()`, `spCareHtml()`, `viewAround()` (`#/around`), and the `libknow` filter.
   - **Tests:** `know_check.py`. `mock_vision.py` serves species counts, the ASPCA pages and care sheets.
+- **1.24.0 (offline use):**
+  - **Service worker** `app/static/sw.js`, served at `/sw.js` by `service_worker()` with the version substituted, so each update installs a new one:
+    - the app's files and `/api/` GETs are network-first with a 5 s timeout, then the saved copy (`X-Offline-Saved` header); after a failure it uses saved copies at once for 30 s;
+    - photos are cache-first;
+    - `NO_SAVE` lists the answers never kept (people, backups, audit, keys, status).
+  - Manifest and icons in `app/static/`.
+  - **Device side** (app.js, "offline use"):
+    - IndexedDB `plantdb-offline` with `outbox` (changes waiting), `finds` (finds made offline, code `NEW-…`, photos as Blobs), `idq` (pictures for Identify) and `kv` (keep, keeplib, device name, idmap from NEW- to F- codes, downloaded).
+    - `api()` puts queueable changes (`OFF_OK`) in the outbox when offline or when the fetch fails, and returns a stand-in answer. Every queueable request carries an `X-Offline-Op` id.
+    - `offQueue()` adds `base_values` (what the device saw) to PUTs and patches the saved answer so the page shows the change. `offSync()` sends the outbox in order on `online`, every minute and at start, rewriting NEW- codes.
+    - `offDownload()` saves what `/api/offline/manifest` lists, plus every photo. `OFFLINE_PAGES` and the per-plant and per-find lists were recorded by visiting every page.
+    - The library falls back to `/api/library/offline-index` (`offLibBrowse()`).
+  - **Server:**
+    - `offline_replay()` (end of `guard()`) answers a known `X-Offline-Op` from `sync_ops`, and `offline_remember()` (after_request) keeps new answers.
+    - `merge_fields()` is used by `PUT /api/plants/<code>` and `PUT /api/fungi/<code>` when the version moved on and `base_values` came with the edit. Fields only the device changed are applied, and clashes go to `sync_conflicts`.
+    - `/api/conflicts` and `/api/conflicts/<id>` (`choice`: phone or server).
+    - Audit kind `sync`. CSP allows `blob:` images and connections, for photos kept on the device.
+  - **Tests:** `offline_check.py` pauses the mock server (SIGSTOP), because Playwright's offline switch doesn't reach service-worker requests.
 - **Plants page filters:** the state lives in `G` and is remembered in localStorage `plantdb.filters`. It also drives Previous / Next on plant pages.
 - `style.css`: colour tokens on `:root`, overridden for dark mode and high contrast. Additions are appended in blocks headed with the version that added them.
 - **Charts:** hand-drawn SVG using a palette checked for colour-blind readers (see the CHANGELOG for 1.5.0).
