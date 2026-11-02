@@ -65,6 +65,20 @@ def claude():
                  'humidity': 'Low is fine.', 'feeding': 'None needed.', 'pruning': 'Leave seed pods to ripen.', 'propagation': 'Scarified seed sown in fall.',
                  'pests': 'Pill bugs on seedlings.', 'outdoors_here': 'Sow outdoors in Round Rock in October or November.', 'containers': 'Deep pots only.'}
         return jsonify(content=[{'type': 'text', 'text': json.dumps(sheet)}])
+    if '\\"uses\\": a list' in body:                         # 1.27.0: uses, partners and propagation for any species
+        fungus = 'This is a FUNGUS' in body
+        f = {'summary': 'Breaks down dead wood.' if fungus else 'A tough native wildflower.',
+             'uses': [{'kind': 'Soil', 'text': 'Breaks down wood chips into rich soil.', 'caution': ''},
+                      {'kind': 'Food', 'text': 'Edible when cooked.', 'caution': ''}] if fungus else
+                     [{'kind': 'Cut flowers', 'text': 'Lasts a week in a vase.', 'caution': ''}, {'kind': 'Dye', 'text': 'Blue-green dye from the flowers.', 'caution': 'Wear gloves.'}],
+             'compost': {'verdict': 'Good', 'why': 'Soft and quick to rot.'},
+             'partners_good': [{'name': 'Agave', 'sci': 'Agave', 'why': 'Same dry ground.', 'evidence': 'Same needs'}],
+             'partners_bad': [{'name': 'Thirsty plants', 'sci': '', 'why': 'Too much water.', 'evidence': 'Different needs'}],
+             'deters': [], 'attracts': [{'what': 'Bees', 'why': 'Nectar in spring.'}],
+             'propagation': [{'method': 'Seed', 'when': 'Autumn', 'how': 'Scratch the seed and sow it in October.'}],
+             'breeding': {'text': 'Crosses with other lupines.', 'cross_genera': [], 'patent': ''},
+             'sources': [{'title': 'Lady Bird Johnson Wildflower Center', 'url': 'https://www.wildflower.org/'}, {'title': 'Bad', 'url': 'javascript:alert(1)'}]}
+        return jsonify(content=[{'type': 'text', 'text': 'Here it is: ' + json.dumps(f)}])
     return jsonify(content=[{'type': 'text', 'text': '{"plant": true, "guesses": [{"scientific_name": "Lupinus texensis", "common_name": "Texas bluebonnet", '
                                                      '"family": "Fabaceae", "probability": 0.8, "why": "Palmate leaves and blue pea flowers."}], "photo_tip": "A photo of the flowers."}'}])
 
@@ -192,3 +206,59 @@ def aspca(animal):
     non = ASPCA['non-toxic'] if animal != 'horse' else ASPCA['non-toxic'][1:]
     return Response(f'<html><body><h1>Toxic and Non-Toxic Plant List \u2014 {title}</h1><h2>Plants Toxic to {title}</h2>{items(tox)}'
                     f'<h2>Plants Non-Toxic to {title}</h2>{items(non)}</body></html>', mimetype='text/html')
+
+
+# 1.27.0: stand-in shops for the wishlist checks. A Shopify store answers on 127.0.0.1, a WooCommerce store on localhost (shops
+# are told apart by their address), a nursery page, and eBay and Etsy's search services. /mock/shop/set changes the stock.
+SHOP = {'bluebonnet_price': '4.95', 'bluebonnet_stock': True, 'calls': []}
+
+@app.get('/products.json')
+def shop_shopify():
+    SHOP['calls'].append('shopify ' + request.host)
+    if not request.host.startswith('127.0.0.1'): return 'not found', 404
+    if request.args.get('page', '1') != '1': return jsonify(products=[])
+    return jsonify(products=[
+        {'title': 'Texas Bluebonnet (Lupinus texensis) seed packet', 'handle': 'texas-bluebonnet', 'variants': [
+            {'title': '1 oz', 'price': SHOP['bluebonnet_price'], 'available': SHOP['bluebonnet_stock']}, {'title': '1 lb', 'price': '39.00', 'available': False}]},
+        {'title': 'Monstera deliciosa, 6 inch pot', 'handle': 'monstera-6', 'variants': [{'title': 'Default Title', 'price': '29.99', 'available': False}]},
+        {'title': 'Pothos Golden', 'handle': 'pothos', 'variants': [{'title': 'Default Title', 'price': '12.00', 'available': True}]}])
+
+@app.get('/wp-json/wc/store/v1/products')
+def shop_woo():
+    SHOP['calls'].append('woo ' + request.host)
+    if not request.host.startswith('localhost'): return 'not found', 404
+    if request.args.get('page', '1') != '1': return jsonify([])
+    return jsonify([{'name': 'Bluebonnets, Texas &amp; 4 inch', 'permalink': 'http://localhost:8090/shop/bluebonnet', 'prices': {'price': '799', 'currency_code': 'USD', 'currency_minor_unit': 2},
+                     'is_in_stock': True}])
+
+@app.get('/mock/shop/page')
+def shop_page():
+    return ('<html><body><h1>Fall sale</h1><ul><li>1 gallon Mexican Heather – $3.00</li><li>4 inch Texas bluebonnet &ndash; $2.50</li>'
+            '<li>Agave americana, large</li></ul><script>var x="Texas bluebonnet $1"</script></body></html>')
+
+@app.post('/mock/shop/set')
+def shop_set():
+    b = request.get_json(silent=True) or {}
+    SHOP.update({k: v for k, v in b.items() if k in SHOP})
+    return jsonify(ok=True)
+
+@app.post('/mock/ebay/identity/v1/oauth2/token')
+def ebay_token():
+    if request.headers.get('Authorization') != 'Basic ' + __import__('base64').b64encode(b'app-1:cert-1').decode(): return jsonify(error='invalid_client'), 401
+    return jsonify(access_token='tok-1', expires_in=7200)
+
+@app.get('/mock/ebay/buy/browse/v1/item_summary/search')
+def ebay_search():
+    if request.headers.get('Authorization') != 'Bearer tok-1': return jsonify(errors=[{'message': 'bad token'}]), 401
+    q = request.args.get('q', '').lower()
+    items = [{'title': 'LIVE Texas Bluebonnet plant 4in pot', 'itemWebUrl': 'https://www.ebay.com/itm/1', 'price': {'value': '9.50', 'currency': 'USD'}, 'condition': 'New',
+              'seller': {'username': 'txnative'}, 'shippingOptions': [{'shippingCost': {'value': '0.00'}}]},
+             {'title': 'Bluebonnet print poster', 'itemWebUrl': 'https://www.ebay.com/itm/2', 'price': {'value': '5.00', 'currency': 'USD'}}] if 'bluebonnet' in q else []
+    return jsonify(itemSummaries=items)
+
+@app.get('/mock/etsy/v3/application/listings/active')
+def etsy_search():
+    if request.headers.get('x-api-key') != 'etsy-1': return jsonify(error='Invalid API key'), 403
+    q = request.args.get('keywords', '').lower()
+    res = [{'title': 'Texas bluebonnet seeds, 500 count', 'url': 'https://www.etsy.com/listing/9', 'price': {'amount': 650, 'divisor': 100, 'currency_code': 'USD'}, 'quantity': 3}] if 'bluebonnet' in q else []
+    return jsonify(count=len(res), results=res)

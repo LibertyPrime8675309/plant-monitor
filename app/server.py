@@ -12,6 +12,7 @@ from flask import Flask, Response, abort, g, has_request_context, jsonify, reque
 from PIL import Image, ImageOps
 import segno
 import writable                 # 1.12.1: the start-up write check, shared with start.py
+import shops as SH              # 1.27.0: reading shops for the plants on the wishlist
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get('DATA_DIR', '/data')
@@ -228,6 +229,13 @@ def init_db():
     c.executescript(SCHEMA)
     c.executescript(FUNGI_SCHEMA)                 # 1.22.0: mushroom finds, library notes and the wishlist
     c.executescript(SYNC_SCHEMA)                  # 1.24.0: changes sent later from devices, and clashes to decide
+    c.executescript(FACTS_SCHEMA)                 # 1.27.0: uses, partners, deterrents, propagation and breeding for each species
+    c.executescript(SHOPS_SCHEMA)                 # 1.27.0: shops, what they have from the wishlist, and price alerts
+    wl = {r[1] for r in c.execute('PRAGMA table_info(wishlist)')}
+    for col, typ in (('max_price', 'REAL'), ('alert_stock', 'INTEGER NOT NULL DEFAULT 0'), ('search_words', "TEXT NOT NULL DEFAULT ''")):
+        if col not in wl: c.execute(f'ALTER TABLE wishlist ADD COLUMN {col} {typ}')
+    for i, (k, name, kind, url, pages, local) in enumerate(SH.DEFAULT_SHOPS):
+        c.execute('INSERT OR IGNORE INTO shops(key,name,kind,url,pages,local,sort) VALUES(?,?,?,?,?,?,?)', (k, name, kind, url, json.dumps(pages), int(local), i))
     have = {r[1] for r in c.execute('PRAGMA table_info(plants)')}
     for n, k, _ in FIELDS:                      # upgrade an older database: add any column this version needs
         if n not in have: c.execute(f"ALTER TABLE plants ADD COLUMN {n} {SQLTYPE.get(k, 'TEXT')}")
@@ -404,6 +412,12 @@ def apply_batches(c):
                     c.execute('UPDATE lights SET %s data=?, updated_by=?, updated_at=? WHERE id=?' % ''.join('%s=?, ' % k for k in cols),
                               (*cols.values(), json.dumps(d), who, ts, L['id']))
                     audit_only(c, 'light', 'light', None, ', '.join(done), who, 'Grow light updated (%s): %s, %s' % (label, L['name'], u.get('note') or ', '.join(done)))
+            for f in b.get('species_facts_add', []):       # 1.27.0: added once; a later batch or Claude never overwrites them
+                d = facts_clean(f['data'], f.get('kind', 'plant'))
+                c.execute('INSERT OR IGNORE INTO species_facts(key,name,kind,data,origin,written_by,written_at) VALUES(?,?,?,?,?,?,?)',
+                          (f['key'].lower(), f['name'], f.get('kind', 'plant'), json.dumps(d), 'researched', who, ts))
+            for code, k in b.get('facts_link', {}).items():   # plants whose scientific name does not say which facts are theirs
+                c.execute('INSERT OR IGNORE INTO facts_link(code,key) VALUES(?,?)', (code, k.lower()))
             for pre in b.get('to_photograph_done', []):
                 c.execute('UPDATE to_photograph SET done=1 WHERE done=0 AND label LIKE ?', (pre.replace('%', '') + '%',))
             for t in b.get('to_photograph_add', []):
@@ -551,7 +565,7 @@ def owner_name(c):
     return r[0] if r else 'the owner'
 
 OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people')        # any request (the people list shows everyone's login)
-OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/prefetch')   # changes only
+OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/prefetch', '/api/shops')   # changes only
 VIEWER_POSTS = ('/api/identify',)            # 1.18.0: asks this computer what a picture shows; changes nothing, so viewers may use it
 
 def role_refusal(u):
@@ -1234,14 +1248,302 @@ def wishlist_api():
             if st not in ('want', 'got'): abort(400, 'status must be want or got')
             vals = (str(b.get('common_name', old['common_name'] if old else '') or '')[:120], str(b.get('notes', old['notes'] if old else '') or '').strip()[:2000],
                     str(b.get('where_seen', old['where_seen'] if old else '') or '').strip()[:300], st)
-            if old: c.execute('UPDATE wishlist SET common_name=?, notes=?, where_seen=?, status=?, updated_by=?, updated_at=? WHERE name=?', vals + (editor(), now(), name))
-            else: c.execute('INSERT INTO wishlist(name,common_name,notes,where_seen,status,added_by,added_at) VALUES(?,?,?,?,?,?,?)', (name,) + vals + (editor(), now()))
+            mp = b.get('max_price', old['max_price'] if old else None)          # 1.27.0: price and stock alerts, and what to search the shops for
+            if mp in ('', None): mp = None
+            else:
+                try: mp = round(float(mp), 2)
+                except (TypeError, ValueError): abort(400, 'The price to watch for must be a number of dollars, such as 25')
+                if not 0 < mp < 100000: abort(400, 'The price to watch for must be more than $0')
+            more = (mp, 1 if b.get('alert_stock', old['alert_stock'] if old else 0) else 0,
+                    re.sub(r'[ \t]+', ' ', str(b.get('search_words', old['search_words'] if old else '') or '')).strip()[:300])
+            if old: c.execute('UPDATE wishlist SET common_name=?, notes=?, where_seen=?, status=?, max_price=?, alert_stock=?, search_words=?, updated_by=?, updated_at=? WHERE name=?',
+                              vals + more + (editor(), now(), name))
+            else: c.execute('INSERT INTO wishlist(name,common_name,notes,where_seen,status,max_price,alert_stock,search_words,added_by,added_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                            (name,) + vals + more + (editor(), now()))
+            if old and (old['search_words'] or '') != more[2]: c.execute('DELETE FROM offers WHERE wish=?', (name,))   # new searches: start the list again
             audit_only(c, 'library', 'wishlist', None, name, editor(), f'{name} ' + ('updated on the wishlist' if old else 'added to the wishlist'))
         c.commit()
     rows = [dict(r) for r in c.execute("SELECT * FROM wishlist ORDER BY status='got', added_at DESC")]
     sp, _ = species_owned(c)
-    for r in rows: r['yours'] = sp.get(r['name'].lower(), [])
-    return jsonify(wishlist=rows)
+    for r in rows:
+        r['yours'] = sp.get(r['name'].lower(), [])
+        r['terms'] = SH.terms_for(r)
+        o = c.execute("SELECT COUNT(*) n, COUNT(DISTINCT shop) s, MAX(last_seen) seen FROM offers WHERE wish=? AND gone=0 AND available=1", (r['name'],)).fetchone()
+        best = c.execute("SELECT o.*, s.name shop_name FROM offers o JOIN shops s ON s.key=o.shop WHERE o.wish=? AND o.gone=0 AND o.available=1 AND o.price IS NOT NULL "
+                         "ORDER BY o.price LIMIT 1", (r['name'],)).fetchone()
+        r['offers'] = {'count': o['n'], 'shops': o['s'], 'best': dict(best) if best else None}
+    return jsonify(wishlist=rows, alerts=wish_alerts_open(c), checked=setting(c, 'shops_checked_at', ''))
+
+# ---------------------------------------------------------------- 1.27.0: prices and stock for the wishlist (app/shops.py)
+SHOPS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS shops(key TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL, url TEXT NOT NULL, pages TEXT NOT NULL DEFAULT '[]',
+  local INTEGER NOT NULL DEFAULT 0, enabled INTEGER NOT NULL DEFAULT 1, custom INTEGER NOT NULL DEFAULT 0, platform TEXT, status TEXT, error TEXT,
+  checked_at TEXT, sort INTEGER NOT NULL DEFAULT 99);
+CREATE TABLE IF NOT EXISTS offers(id INTEGER PRIMARY KEY AUTOINCREMENT, wish TEXT NOT NULL, shop TEXT NOT NULL, title TEXT NOT NULL, url TEXT NOT NULL,
+  price REAL, currency TEXT, available INTEGER, detail TEXT, first_seen TEXT NOT NULL, last_seen TEXT NOT NULL, avail_since TEXT,
+  gone INTEGER NOT NULL DEFAULT 0, UNIQUE(wish, shop, url, title));
+CREATE TABLE IF NOT EXISTS offer_history(offer_id INTEGER NOT NULL, price REAL, available INTEGER, at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS wish_alert_marks(offer_id INTEGER NOT NULL, kind TEXT NOT NULL, price REAL, at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS wish_alerts(id INTEGER PRIMARY KEY AUTOINCREMENT, wish TEXT NOT NULL, offer_id INTEGER, kind TEXT NOT NULL, text TEXT NOT NULL,
+  price REAL, url TEXT, shop TEXT, created_at TEXT NOT NULL, dismissed_by TEXT, dismissed_at TEXT);
+"""
+EBAY_API = os.environ.get('PLANTDB_EBAY_API', SH.EBAY_API).rstrip('/')
+ETSY_API = os.environ.get('PLANTDB_ETSY_API', SH.ETSY_API).rstrip('/')
+SHOP_UA = 'PlantRecord/1.27 (a home plant record checking its owner\'s wishlist, a few requests a day)'
+SHOP_GAP = float(os.environ.get('PLANTDB_SHOP_GAP', '2'))          # seconds between requests to the same shop
+SHOPQ = {'lock': threading.Lock(), 'thread': None, 'now': '', 'want': False, 'hosts': {}, 'ebay': None, 'done': 0, 'total': 0}
+
+def shop_fetch(url, headers=None, data=None, timeout=25):
+    host = urllib.parse.urlsplit(url).netloc
+    wait = SHOPQ['hosts'].get(host, 0) + SHOP_GAP - time.time()
+    if wait > 0: time.sleep(wait)
+    SHOPQ['hosts'][host] = time.time()
+    req = urllib.request.Request(url, data=data, headers={'User-Agent': SHOP_UA, 'Accept': 'application/json, text/html;q=0.9'} | (headers or {}),
+                                 method='POST' if data is not None else 'GET')
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r: return r.status, r.read(6_000_000)
+    except urllib.error.HTTPError as e:
+        return e.code, e.read(200_000) if e.fp else b''
+    except (urllib.error.URLError, OSError, TimeoutError) as e:
+        raise SH.ShopError('Could not reach the shop (' + str(getattr(e, 'reason', e))[:80] + ')')
+
+def shop_json(url, headers=None):
+    st, raw = shop_fetch(url, headers)
+    if st in (401, 403) and headers: raise SH.ShopError('The shop refused the key. Check it and save it again.')
+    if st == 429: raise SH.ShopError('The shop asked for fewer checks. It will be tried again next time.')
+    if st >= 500: raise SH.ShopError(f'The shop had a problem (status {st}). It will be tried again next time.')
+    try: return json.loads(raw) if st == 200 else None
+    except ValueError: return None
+
+def shop_text(url):
+    st, raw = shop_fetch(url)
+    if st != 200: raise SH.ShopError(f'The page did not open (status {st}). Check its address.')
+    return raw.decode('utf-8', 'replace')
+
+def shop_post_form(url, form, headers):
+    st, raw = shop_fetch(url, headers | {'Content-Type': 'application/x-www-form-urlencoded'}, urllib.parse.urlencode(form).encode())
+    try: return st, json.loads(raw)
+    except ValueError: return st, {}
+
+def offers_save(c, shop, wish, found):
+    """Keeps what a shop has for one wishlist entry: new ones are added, changes go in the history, and ones that went are marked gone."""
+    ts, keep = now(), set()
+    found = sorted(found, key=lambda o: (not o['available'], o['price'] if o['price'] is not None else 1e9))[:20]
+    for o in found:
+        r = c.execute('SELECT * FROM offers WHERE wish=? AND shop=? AND url=? AND title=?', (wish, shop, o['url'], o['title'])).fetchone()
+        av = None if o['available'] is None else int(bool(o['available']))
+        if r:
+            back = (r['gone'] or not r['available']) and av
+            c.execute('UPDATE offers SET price=?, currency=?, available=?, detail=?, last_seen=?, gone=0, avail_since=? WHERE id=?',
+                      (o['price'], o['currency'], av, o['detail'], ts, ts if back else r['avail_since'], r['id']))
+            if r['price'] != o['price'] or (r['available'] or 0) != (av or 0) or r['gone']:
+                c.execute('INSERT INTO offer_history(offer_id,price,available,at) VALUES(?,?,?,?)', (r['id'], o['price'], av, ts))
+            keep.add(r['id'])
+        else:
+            i = c.execute('INSERT INTO offers(wish,shop,title,url,price,currency,available,detail,first_seen,last_seen,avail_since) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+                          (wish, shop, o['title'], o['url'], o['price'], o['currency'], av, o['detail'], ts, ts, ts if av else None)).lastrowid
+            c.execute('INSERT INTO offer_history(offer_id,price,available,at) VALUES(?,?,?,?)', (i, o['price'], av, ts))
+            keep.add(i)
+    for (i,) in c.execute('SELECT id FROM offers WHERE wish=? AND shop=? AND gone=0', (wish, shop)).fetchall():
+        if i not in keep:
+            c.execute('UPDATE offers SET gone=1 WHERE id=?', (i,))
+            c.execute('INSERT INTO offer_history(offer_id,price,available,at) VALUES(?,?,?,?)', (i, None, 0, ts))
+
+def wish_alerts_make(c):
+    """One alert per wishlist entry per check, when something comes into stock or its price is at or under the one set (again only if it
+    drops further). wish_alert_marks remembers what each listing has already been alerted for."""
+    ts = now()
+    money = lambda v: f'${v:,.2f}' if v is not None else 'price not shown'
+    for w in c.execute("SELECT * FROM wishlist WHERE status='want' AND (alert_stock=1 OR max_price IS NOT NULL)").fetchall():
+        nm, stock, cheap = w['common_name'] or w['name'], [], []
+        for o in c.execute("SELECT o.*, s.name shop_name FROM offers o JOIN shops s ON s.key=o.shop WHERE o.wish=? AND o.gone=0 AND o.available=1 "
+                           "ORDER BY o.price IS NULL, o.price", (w['name'],)).fetchall():
+            if w['alert_stock'] and not c.execute("SELECT 1 FROM wish_alert_marks WHERE offer_id=? AND kind='stock' AND at>=?", (o['id'], o['avail_since'] or o['first_seen'])).fetchone():
+                stock.append(o); c.execute('INSERT INTO wish_alert_marks(offer_id,kind,price,at) VALUES(?,?,?,?)', (o['id'], 'stock', o['price'], ts))
+            if w['max_price'] is not None and o['price'] is not None and o['price'] <= w['max_price']:
+                last = c.execute("SELECT MIN(price) FROM wish_alert_marks WHERE offer_id=? AND kind='price'", (o['id'],)).fetchone()[0]
+                if last is None or o['price'] < last:
+                    cheap.append(o); c.execute('INSERT INTO wish_alert_marks(offer_id,kind,price,at) VALUES(?,?,?,?)', (o['id'], 'price', o['price'], ts))
+        if not (stock or cheap): continue
+        parts, top = [], (cheap or stock)[0]
+        if cheap:
+            parts.append(f"{money(cheap[0]['price'])} at {cheap[0]['shop_name']}, at or under your {money(w['max_price'])}" + (f" (and {len(cheap) - 1} more)" if len(cheap) > 1 else '') + '.')
+        if stock:
+            parts.append(f"In stock at {len(stock)} shop{'s' if len(stock) > 1 else ''}: " + ', '.join(f"{o['shop_name']} {money(o['price'])}" for o in stock[:6]) + ('…' if len(stock) > 6 else '') + '.')
+        c.execute('INSERT INTO wish_alerts(wish,offer_id,kind,text,price,url,shop,created_at) VALUES(?,?,?,?,?,?,?,?)',
+                  (w['name'], top['id'], 'price' if cheap else 'stock', f"{nm}: " + ' '.join(parts), top['price'], top['url'], top['shop_name'], ts))
+
+def wish_alerts_open(c):
+    return [dict(r) for r in c.execute('SELECT * FROM wish_alerts WHERE dismissed_at IS NULL ORDER BY id DESC LIMIT 50')]
+
+def shop_check_one(c, s, wants):
+    """Reads one shop and keeps what it has for every wanted entry. Returns the status line shown on the Wishlist page."""
+    if s['kind'] == 'api':
+        if s['key'] == 'ebay':
+            app_id, cert = setting(c, 'ebay_app_id', ''), setting(c, 'ebay_cert_id', '')
+            if not (app_id and cert): return 'keys', 'Needs the owner\'s eBay keys (below).', None
+            if not SHOPQ['ebay'] or SHOPQ['ebay'][1] < time.time() or SHOPQ['ebay'][2] != app_id:
+                tok, exp = SH.ebay_token(shop_post_form, app_id, cert, EBAY_API); SHOPQ['ebay'] = (tok, exp, app_id)
+            look = lambda t: SH.search_ebay(shop_json, SHOPQ['ebay'][0], t, EBAY_API)
+        else:
+            key = setting(c, 'etsy_key', '')
+            if not key: return 'keys', 'Needs the owner\'s Etsy key (below).', None
+            look = lambda t: SH.search_etsy(shop_json, key, t, ETSY_API)
+        for w in wants:
+            terms, found = SH.terms_for(w), []
+            for t in terms[:2]:
+                found += [o for o in look(t) if SH.matches(o['title'], terms) and not any(o['url'] == f['url'] for f in found)]
+            offers_save(c, s['key'], w['name'], found)
+        return 'ok', f'Searched for {len(wants)} wishlist {"entry" if len(wants) == 1 else "entries"}.', 'api'
+    pages = json.loads(s['pages'] or '[]')
+    kind = s['kind'] if s['kind'] != 'auto' else (s['platform'] or '')
+    if kind == 'shopify': cat = SH.catalog_shopify(shop_json, s['url'])
+    elif kind == 'woo': cat = SH.catalog_woo(shop_json, s['url'])
+    elif kind == 'page': cat = SH.page_lines(shop_text, [s['url']] + pages)
+    else: kind, cat = SH.detect(shop_json, shop_text, s['url'], pages)
+    for w in wants:
+        terms = SH.terms_for(w)
+        found = SH.offers_from_lines(cat, terms) if kind == 'page' else [o for o in cat if SH.matches(o['title'], terms)]
+        offers_save(c, s['key'], w['name'], found)
+    if kind == 'page': return 'ok', f'Read {len(pages) + 1} page{"s" if pages else ""} for the names on your wishlist (this shop has no online store to read prices from).', kind
+    return 'ok', f'Read its online store: {len(cat):,} products.', kind
+
+def shops_worker():
+    while True:
+        with SHOPQ['lock']:
+            if not SHOPQ['want']: SHOPQ['thread'] = None; SHOPQ['now'] = ''; return
+            SHOPQ['want'] = False
+        c = sqlite3.connect(DB_PATH, timeout=30); c.row_factory = sqlite3.Row
+        try:
+            wants = [dict(r) for r in c.execute("SELECT * FROM wishlist WHERE status='want'")]
+            todo = c.execute('SELECT * FROM shops WHERE enabled=1 ORDER BY sort, name').fetchall()
+            SHOPQ['total'], SHOPQ['done'] = len(todo), 0
+            for s in todo:
+                SHOPQ['now'] = s['name']
+                if not wants: break
+                try: st, msg, kind = shop_check_one(c, s, wants); err = None
+                except SH.ShopError as e: st, msg, kind, err = 'error', str(e), None, str(e)
+                except Exception as e: st, msg, kind, err = 'error', 'Could not read it: ' + str(e)[:120], None, str(e)[:300]
+                c.execute('UPDATE shops SET status=?, error=?, checked_at=?, platform=COALESCE(?, platform) WHERE key=?', (msg, err, now(), kind, s['key']))
+                c.commit(); SHOPQ['done'] += 1
+            wish_alerts_make(c)
+            set_setting(c, 'shops_checked_at', now()); c.commit()
+        except Exception as e:
+            print('[shops] check failed:', e, flush=True)
+        finally: c.close()
+
+def shops_check_soon():
+    with SHOPQ['lock']:
+        SHOPQ['want'] = True
+        if not SHOPQ['thread']:
+            SHOPQ['thread'] = threading.Thread(target=shops_worker, daemon=True); SHOPQ['thread'].start()
+
+def shops_loop():
+    """Checks the shops on the schedule the owner set (every 12 hours unless changed). Off when set to 0."""
+    time.sleep(90)
+    while True:
+        try:
+            c = sqlite3.connect(DB_PATH, timeout=30); c.row_factory = sqlite3.Row
+            try:
+                hours = float(setting(c, 'shops_hours', '12') or 0)
+                last = setting(c, 'shops_checked_at', '')
+                due = hours > 0 and (not last or (datetime.now(timezone.utc) - datetime.fromisoformat(last.replace('Z', '+00:00'))).total_seconds() >= hours * 3600)
+                if due and c.execute("SELECT 1 FROM wishlist WHERE status='want'").fetchone(): shops_check_soon()
+            finally: c.close()
+        except Exception: pass
+        time.sleep(600)
+
+def shop_row(r):
+    d = dict(r); d['pages'] = json.loads(d['pages'] or '[]'); return d
+
+@app.route('/api/shops', methods=['GET', 'PUT', 'POST', 'DELETE'])
+def shops_api():
+    """GET: the shops, their last check and the settings. PUT {key, enabled, url, pages, name} changes one (owner). POST {name, url}
+    adds a shop (owner). DELETE ?key= removes one the owner added."""
+    c = db()
+    if request.method != 'GET':
+        b = request.get_json(silent=True) or {}
+        if request.method == 'POST':
+            name, url = str(b.get('name') or '').strip()[:80], str(b.get('url') or '').strip()[:300]
+            if not name or not re.match(r'^https?://[^\s/]+(/\S*)?$', url): abort(400, 'Give the shop a name and its web address, starting with https://')
+            key = 'custom-' + (re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')[:40] or 'shop')
+            if c.execute('SELECT 1 FROM shops WHERE key=?', (key,)).fetchone(): abort(409, 'There is already a shop with that name.')
+            c.execute('INSERT INTO shops(key,name,kind,url,pages,local,custom,sort) VALUES(?,?,?,?,?,?,1,99)', (key, name, 'auto', url, '[]', 1 if b.get('local') else 0))
+            audit_only(c, 'setting', 'shops', None, f'{name} ({url})', editor(), f'Shop added to the wishlist checks: {name}')
+        elif request.method == 'DELETE':
+            key = request.args.get('key', '')
+            r = c.execute('SELECT * FROM shops WHERE key=? AND custom=1', (key,)).fetchone()
+            if not r: abort(404, 'Only shops you added can be removed. Turn the others off instead.')
+            c.execute('DELETE FROM shops WHERE key=?', (key,)); c.execute('DELETE FROM offers WHERE shop=?', (key,))
+            audit_only(c, 'setting', 'shops', r['name'], None, editor(), f'Shop removed from the wishlist checks: {r["name"]}')
+        else:
+            if 'hours' in b:
+                h = b.get('hours')
+                if str(h) not in ('0', '6', '12', '24', '48'): abort(400, 'Choose how often: every 6, 12, 24 or 48 hours, or never')
+                set_setting(c, 'shops_hours', str(h))
+                audit_only(c, 'setting', 'shops_hours', None, str(h), editor(), 'Wishlist checks: how often changed')
+            if b.get('key'):
+                r = c.execute('SELECT * FROM shops WHERE key=?', (b['key'],)).fetchone()
+                if not r: abort(404, 'No such shop')
+                url = str(b.get('url', r['url']) or '').strip()[:300]
+                if not re.match(r'^https?://[^\s/]+(/\S*)?$', url): abort(400, 'The address must start with https://')
+                pages = b.get('pages', json.loads(r['pages']))
+                pages = [p.strip()[:300] for p in (pages.split('\n') if isinstance(pages, str) else pages) if str(p).strip().startswith('http')][:12]
+                en = 1 if b.get('enabled', r['enabled']) else 0
+                c.execute('UPDATE shops SET enabled=?, url=?, pages=?, platform=CASE WHEN url<>? THEN NULL ELSE platform END WHERE key=?', (en, url, json.dumps(pages), url, r['key']))
+                if not en: c.execute('UPDATE offers SET gone=1 WHERE shop=?', (r['key'],))
+                audit_only(c, 'setting', 'shops', None, r['name'], editor(), f'Wishlist checks: {r["name"]} ' + ('changed' if en else 'turned off'))
+        c.commit()
+    rows = [shop_row(r) for r in c.execute('SELECT * FROM shops ORDER BY sort, name')]
+    with SHOPQ['lock']: busy = bool(SHOPQ['thread'])
+    return jsonify(shops=rows, hours=setting(c, 'shops_hours', '12'), checked=setting(c, 'shops_checked_at', ''), busy=busy, now=SHOPQ['now'],
+                   done=SHOPQ['done'], total=SHOPQ['total'], have_ebay=bool(setting(c, 'ebay_app_id', '') and setting(c, 'ebay_cert_id', '')),
+                   have_etsy=bool(setting(c, 'etsy_key', '')))
+
+@app.route('/api/shops/keys', methods=['PUT', 'DELETE'])
+def shops_keys():
+    """The owner's eBay and Etsy keys. They are kept on this computer and never sent back to the browser."""
+    c = db(); b = request.get_json(silent=True) or {}
+    for k in (('ebay_app_id', 'ebay_cert_id') if b.get('shop') == 'ebay' else ('etsy_key',)):
+        v = '' if request.method == 'DELETE' else str(b.get(k) or '').strip()[:200]
+        if request.method == 'PUT' and not v: abort(400, 'Paste the key first.')
+        set_setting(c, k, v)
+    SHOPQ['ebay'] = None
+    audit_only(c, 'setting', 'shop keys', None, b.get('shop'), editor(), f'Wishlist checks: {b.get("shop")} key ' + ('removed' if request.method == 'DELETE' else 'saved'))
+    c.commit()
+    return jsonify(ok=True)
+
+@app.route('/api/wishlist/check', methods=['GET', 'POST'])
+def shops_check():
+    """POST: check every shop now (in the background). GET: how far it has got."""
+    if request.method == 'POST':
+        c = db()
+        if not c.execute("SELECT 1 FROM wishlist WHERE status='want'").fetchone(): abort(400, 'Nothing is on the wishlist to look for.')
+        shops_check_soon()
+        audit_only(c, 'library', 'shops', None, None, editor(), 'Wishlist: shops checked now'); c.commit()
+    with SHOPQ['lock']: busy = bool(SHOPQ['thread'])
+    return jsonify(busy=busy, now=SHOPQ['now'], done=SHOPQ['done'], total=SHOPQ['total'])
+
+@app.route('/api/wishlist/offers')
+def wishlist_offers():
+    """Everything the shops have for one wishlist entry, cheapest first, with each one's price history."""
+    c = db(); name = request.args.get('name', '')
+    rows = [dict(r) for r in c.execute("SELECT o.*, s.name shop_name, s.local FROM offers o JOIN shops s ON s.key=o.shop WHERE o.wish=? "
+                                       "ORDER BY o.gone, o.available DESC, o.price IS NULL, o.price", (name,))]
+    for r in rows:
+        r['history'] = [dict(h) for h in c.execute('SELECT price, available, at FROM offer_history WHERE offer_id=? ORDER BY at', (r['id'],))]
+    return jsonify(offers=rows)
+
+@app.route('/api/wishlist/alerts', methods=['GET', 'POST'])
+def wishlist_alerts():
+    """GET: the alerts not dismissed yet. POST {id} or {all: true}: dismiss."""
+    c = db()
+    if request.method == 'POST':
+        b = request.get_json(silent=True) or {}
+        if b.get('all'): c.execute('UPDATE wish_alerts SET dismissed_by=?, dismissed_at=? WHERE dismissed_at IS NULL', (editor(), now()))
+        else: c.execute('UPDATE wish_alerts SET dismissed_by=?, dismissed_at=? WHERE id=? AND dismissed_at IS NULL', (editor(), now(), int(b.get('id') or 0)))
+        c.commit()
+    return jsonify(alerts=wish_alerts_open(c))
 
 # ---------------------------------------------------------------- 1.21.0: the library as a browsable knowledge base
 # Names, classification and US states come from the picture checker (offline). Photos and the short description come from
@@ -1685,6 +1987,167 @@ def library_around():
             for x in res: x['own_photo'] = own_photo(c, x['yours']) if x['yours'] else None
         secs.append({'key': key, 'title': title, 'fetched': j['fetched'] if j else None, 'total': len((j or {}).get('species', [])), 'species': res})
     return jsonify(sections=secs, place=L['name'], online=lib_online(c), near_km=NEAR_KM, month=month)
+
+# ---------- 1.27.0: uses, partners, deterrents, propagation and breeding, for each species ----------
+FACTS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS species_facts(
+  key TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'plant', data TEXT NOT NULL,
+  origin TEXT NOT NULL, written_by TEXT, written_at TEXT);
+CREATE TABLE IF NOT EXISTS facts_link(code TEXT PRIMARY KEY, key TEXT NOT NULL);
+"""
+FACTS_EVIDENCE = ('Tested', 'Traditional', 'Same needs', 'Different needs')
+FACTS_COMPOST = ('Good', 'Fine in small amounts', 'Poor', 'Keep it out')
+# a fungus's uses never include eating it or taking it as medicine (the app never says a wild mushroom is edible or safe)
+FACTS_FUNGUS_NO = re.compile(r'edib|\beat|eaten|cook|culinar|food|meal|tea\b|tincture|medicin|supplement|extract|psychoactiv|hallucin|consum|forag|recipe|flavou?r|tast', re.I)
+
+def facts_keys(sci):
+    """The keys a species' facts can be filed under, most exact first: 'Aloe vera (spotted form)' -> ['aloe vera', 'aloe'],
+    'xGraptosedum 'Francesco Baldi'' -> ['graptosedum'], "Philodendron 'Birkin'" -> ['philodendron']."""
+    s = re.sub(r'^\s*[x\u00d7]\s*(?=[A-Z])', '', (sci or '').strip())
+    m = re.match(r'^([A-Z][a-z]+)(?:\s+([a-z][a-z\-]+))?', s)
+    if not m: return []
+    g, sp = m.group(1).lower(), m.group(2)
+    return ([g + ' ' + sp] if sp and sp not in ('sp', 'spp', 'x', 'cultivar', 'type', 'hybrid', 'var', 'or', 'cf') else []) + [g]
+
+def facts_clean(a, kind='plant'):
+    """Keeps only the expected keys, at sensible lengths (for batches and for what Claude writes)."""
+    a = a if isinstance(a, dict) else {}
+    t = lambda v, n: re.sub(r'\s+', ' ', str(v or '')).strip()[:n]
+    ev = lambda v: v if v in FACTS_EVIDENCE else 'Traditional'
+    def lst(k, fields, n):
+        out = []
+        for x in (a.get(k) or [])[:n]:
+            if isinstance(x, dict):
+                y = {f: (ev(x.get(f)) if f == 'evidence' else t(x.get(f), m)) for f, m in fields}
+                if any(v for f, v in y.items() if f != 'evidence'): out.append(y)
+        return out
+    d = {'summary': t(a.get('summary'), 400),
+         'uses': lst('uses', (('kind', 40), ('text', 400), ('caution', 300)), 8),
+         'partners_good': lst('partners_good', (('name', 80), ('sci', 80), ('why', 300), ('evidence', 0)), 8),
+         'partners_bad': lst('partners_bad', (('name', 80), ('sci', 80), ('why', 300), ('evidence', 0)), 8),
+         'deters': lst('deters', (('what', 80), ('how', 300), ('evidence', 0)), 6),
+         'attracts': lst('attracts', (('what', 80), ('why', 300)), 6),
+         'propagation': lst('propagation', (('method', 60), ('when', 160), ('how', 500)), 6)}
+    cp = a.get('compost') if isinstance(a.get('compost'), dict) else {}
+    d['compost'] = {'verdict': cp.get('verdict') if cp.get('verdict') in FACTS_COMPOST else '', 'why': t(cp.get('why'), 300)}
+    br = a.get('breeding') if isinstance(a.get('breeding'), dict) else {}
+    d['breeding'] = {'text': t(br.get('text'), 700), 'patent': t(br.get('patent'), 300), 'same_genus': br.get('same_genus') is not False,
+                     'cross_genera': [t(g, 40) for g in (br.get('cross_genera') or [])[:6] if re.fullmatch(r'[A-Za-z\u00d7 ]{3,40}', str(g or ''))]}
+    d['sources'] = [{'title': t(x.get('title'), 120), 'url': t(x.get('url'), 300)} for x in (a.get('sources') or [])[:6]
+                    if isinstance(x, dict) and str(x.get('url', '')).startswith('https://')]
+    if kind == 'fungus':
+        d['uses'] = [u for u in d['uses'] if not FACTS_FUNGUS_NO.search(u['kind'] + ' ' + u['text'] + ' ' + u['caution'])]
+        d['summary'] = '' if FACTS_FUNGUS_NO.search(d['summary']) else d['summary']
+    return d
+
+def facts_row(c, sci, code=None):
+    if code:
+        k = c.execute('SELECT key FROM facts_link WHERE code=?', (code,)).fetchone()
+        if k:
+            r = c.execute('SELECT * FROM species_facts WHERE key=?', (k[0],)).fetchone()
+            if r: return r
+    for k in facts_keys(sci):
+        r = c.execute('SELECT * FROM species_facts WHERE key=?', (k,)).fetchone()
+        if r: return r
+    return None
+
+def facts_links(c, d, sci, self_code=None):
+    """Marks which partner plants you have, and which of your plants could be crossed with this one."""
+    mine = []
+    for code, name, s in c.execute("SELECT code, common_name, scientific_name FROM plants WHERE status='active' ORDER BY code"):
+        lk = c.execute('SELECT key FROM facts_link WHERE code=?', (code,)).fetchone()
+        mine.append((code, name, ([lk[0]] if lk else []) + facts_keys(s)))
+    def have(target):
+        t = (target or '').lower().strip()
+        t = re.sub(r'^[x\u00d7]\s*', '', t)
+        return [{'code': code, 'name': name} for code, name, ks in mine if code != self_code and t and (t in ks or any(k.startswith(t + ' ') for k in ks))]
+    for p in d.get('partners_good', []) + d.get('partners_bad', []):
+        p['yours'] = have(p['sci']) if p.get('sci') else []
+    ks = facts_keys(sci)
+    if self_code:
+        lk = c.execute('SELECT key FROM facts_link WHERE code=?', (self_code,)).fetchone()
+        if lk: ks = [lk[0]] + ks
+    sp = next((k for k in ks if ' ' in k), None)
+    br = d.get('breeding', {})
+    genera = ({k for k in ks if ' ' not in k} if br.get('same_genus', True) else set()) | {g.lower().replace('\u00d7', '').strip() for g in br.get('cross_genera', [])}
+    same, other = [], []
+    for code, name, pks in mine:
+        if code == self_code: continue
+        if sp and sp in pks: same.append({'code': code, 'name': name})
+        elif genera & {k for k in pks if ' ' not in k}: other.append({'code': code, 'name': name})
+    d['cross_same'], d['cross_other'] = same, other
+    return d
+
+def facts_out(c, sci, code=None, kind='plant'):
+    r = facts_row(c, sci, code)
+    if not r: return None
+    d = facts_links(c, json.loads(r['data']), sci, code)
+    d.update(key=r['key'], name=r['name'], kind=r['kind'], origin=r['origin'], written_by=r['written_by'], written_at=r['written_at'])
+    return d
+
+@app.route('/api/facts', methods=['GET', 'POST'])
+def species_facts():
+    """GET ?name=<scientific name>[&code=P-001]: what is kept for that species (or its genus), with your plants linked.
+    POST {name, common_name, kind}: Claude writes them with the owner's key, and they are kept."""
+    c = db()
+    if request.method == 'GET':
+        a = request.args
+        code = a.get('code') or None
+        sci = a.get('name') or ''
+        if code and not sci:
+            r = c.execute('SELECT scientific_name FROM plants WHERE code=?', (code,)).fetchone()
+            sci = r[0] if r else ''
+        return jsonify(facts=facts_out(c, sci, code), keys=facts_keys(sci), can_write=bool(setting(c, 'claude_key', '')))
+    b = request.get_json(silent=True) or {}
+    name, kind = str(b.get('name') or '').strip()[:120], 'fungus' if b.get('kind') == 'fungus' else 'plant'
+    ks = facts_keys(name)
+    if not ks: abort(400, 'This needs a scientific name, such as "Aloe vera", to look up.')
+    old = c.execute('SELECT origin FROM species_facts WHERE key=?', (ks[0],)).fetchone()
+    if old and old['origin'] == 'researched': abort(409, 'These were researched for your plants and are kept as they are.')
+    key = setting(c, 'claude_key', '')
+    if not key: abort(400, 'These are written by Claude. The owner can save an Anthropic API key on the Identify page, under "Second opinions".')
+    L = home_place(c)
+    ask = FACTS_ASK.format(name=name, common=f' ({b["common_name"]})' if b.get('common_name') else '', place=L['name'],
+                           zone=home_zone(c), extra=FACTS_ASK_FUNGUS if kind == 'fungus' else FACTS_ASK_PLANT)
+    body = json.dumps({'model': CLAUDE_MODEL, 'max_tokens': 3000, 'messages': [{'role': 'user', 'content': ask}]}).encode()
+    st, j = outside_call(CLAUDE_URL, body, {'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01'}, timeout=150)
+    if st in (401, 403): abort(502, 'Anthropic refused the key. Check it at console.anthropic.com and save it again.')
+    if st in (429, 529): abort(502, 'Claude is busy or the key has reached its limit. Try again in a minute.')
+    if st != 200: abort(502, 'Could not reach Claude. Check the internet connection and try again.')
+    text = ''.join(x.get('text', '') for x in j.get('content', []) if x.get('type') == 'text')
+    m = re.search(r'\{.*\}', text, re.S)
+    try: a = json.loads(m.group(0)) if m else {}
+    except ValueError: a = {}
+    d = facts_clean(a, kind)
+    if not (d['uses'] or d['propagation'] or d['partners_good']): abort(502, 'Claude did not give an answer this could read. Try again.')
+    c.execute('INSERT OR REPLACE INTO species_facts(key,name,kind,data,origin,written_by,written_at) VALUES(?,?,?,?,?,?,?)',
+              (ks[0], name, kind, json.dumps(d), 'claude', editor(), now()))
+    audit_only(c, 'library', 'uses and partners', None, name, editor(), f'Uses, partners and propagation for {name} written by Claude'); c.commit()
+    return jsonify(facts=facts_out(c, name, None, kind))
+
+FACTS_ASK = """For the species {name}{common}, grown by a home gardener in {place} (USDA zone {zone}), answer with ONE JSON object only, no other
+text. Keys:
+"summary": one sentence on what it is most useful for.
+"uses": a list (0 to 6) of {{"kind": a short category such as "Skin and first aid", "Food for wildlife", "Dye", "Crafts", "Erosion control",
+  "Cut flowers", "Ornamental", "Soil", "text": one or two sentences, "caution": safety notes, or ""}}. Traditional or folk uses must say so.
+{extra}
+"compost": {{"verdict": one of "Good", "Fine in small amounts", "Poor", "Keep it out", "why": one sentence}}.
+"partners_good" and "partners_bad": lists (0 to 6) of {{"name": common name, "sci": its genus or "Genus species", "why": one sentence,
+  "evidence": "Tested" (shown in trials), "Traditional" (gardeners' lore, not shown), "Same needs" (same light, water and soil, for pots
+  and beds) or "Different needs" (for partners_bad: needs very different light, water or soil)}}.
+"deters": a list (0 to 4) of {{"what": the pest or animal, "how": one sentence, "evidence": as above}}. Only real, specific claims.
+"attracts": a list (0 to 4) of {{"what": pollinators, birds or beneficial insects, "why": one sentence}}.
+"propagation": a list (1 to 4) of {{"method": such as "Stem cuttings", "Division", "Seed", "Spore print", "when": the best time in {place},
+  "how": two or three practical sentences}}.
+"breeding": {{"text": how to cross it with others and what to expect (or that it does not cross), "cross_genera": genera it is known to
+  cross with besides its own (a list, often empty), "same_genus": false if it cannot practically be crossed with others of its genus at home,
+  "patent": a note if named varieties are commonly patented, or ""}}.
+"sources": a list (0 to 4) of {{"title", "url"}}: only well-known reference pages you are sure exist (extension services, botanic gardens).
+Use plain words. If you do not know the species well, keep each list short and general, and say so in "summary"."""
+FACTS_ASK_PLANT = "Medicinal or skin uses are folk or traditional information, never advice: put any toxicity to people or pets in \"caution\"."
+FACTS_ASK_FUNGUS = """This is a FUNGUS. Do not say or suggest that it is edible, safe, tasty, medicinal or psychoactive, and do not list any use
+that means eating it, drinking it or taking it in any form. Its uses are what it does: what it breaks down, which trees or plants it
+partners with (mycorrhizal), what it tells you about the soil, compost, spore prints, dye from its color, and how it is cultivated."""
 
 CARE_ASK = """Write a CARE SHEET for growing the plant species {name}{common} at home, for a gardener in {place} (USDA hardiness zone {zone}).
 Answer with one JSON object only, no other text, with these keys, each a short plain-English string of one to three sentences unless noted:
@@ -5468,10 +5931,10 @@ OFFLINE_PAGES = ['/api/meta', '/api/plants', '/api/plants?status=all', '/api/fro
                  '/api/fertilizer', '/api/fertilizer/needs', '/api/fertilizer/products', '/api/outside', '/api/prep', '/api/requests?open=1', '/api/water',
                  '/api/weather', '/api/reference', '/api/weather/monthly', '/api/lights', '/api/current', '/api/settings', '/api/photos/unassigned',
                  '/api/identify/status', '/api/library/browse?scope=common&sort=known&offset=0&limit=48', '/api/library/facets?scope=common', '/api/library/notes',
-                 '/api/library/settings', '/api/library/around', '/api/wishlist', '/api/fungi?status=active', '/api/fungi?status=all', '/api/fungi?status=archived',
+                 '/api/library/settings', '/api/library/around', '/api/wishlist', '/api/wishlist/alerts', '/api/shops', '/api/fungi?status=active', '/api/fungi?status=all', '/api/fungi?status=archived',
                  '/api/fungi?status=none', '/api/conflicts?all=1']        # what the pages ask for (recorded by visiting each page)
 OFFLINE_PLANT = ['/api/plants/{code}', '/api/care?n=12&plant={code}', '/api/fertilizer/needs?plant={code}', '/api/lights?plant={code}',
-                 '/api/plants/{code}/history', '/api/plants/{code}/prep', '/api/plants/{code}/timeline', '/api/plants/{code}/qr.svg']
+                 '/api/plants/{code}/history', '/api/plants/{code}/prep', '/api/plants/{code}/timeline', '/api/plants/{code}/qr.svg', '/api/facts?code={code}']
 OFFLINE_FIND = ['/api/fungi/{code}']
 OFFLINE_OP_RE = re.compile(r'^[A-Za-z0-9_-]{8,64}$')
 
@@ -6140,6 +6603,8 @@ def backup_file(name):
 
 init_db()
 threading.Thread(target=backup_loop, daemon=True).start()
+if os.environ.get('PLANTDB_SHOPS', '1') == '1':
+    threading.Thread(target=shops_loop, daemon=True).start()          # 1.27.0: the wishlist's shops, twice a day
 if os.environ.get('PLANTDB_WEATHER', '1') == '1':
     threading.Thread(target=weather_loop, daemon=True).start()
 

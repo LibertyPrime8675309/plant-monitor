@@ -1,0 +1,3869 @@
+{
+ "id": "A9",
+ "author": "Claude (batch A9)",
+ "note": "Uses, partners, deterrents, propagation and breeding (1.27.0)",
+ "species_facts_add": [
+  {
+   "key": "dieffenbachia seguine",
+   "name": "Dieffenbachia seguine",
+   "kind": "plant",
+   "data": {
+    "summary": "A shade-tolerant foliage plant grown for its patterned leaves; it has no safe practical uses.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Bold patterned leaves for low-light rooms.",
+      "caution": "Contains calcium oxalate crystals: chewing it burns the mouth. Keep it away from pets and children, and wear gloves when cutting it. The common name \"dumb cane\" comes from the swelling it causes."
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Soft green leaves rot quickly. The oxalate crystals break down in the pile; wear gloves when chopping it."
+    },
+    "partners_good": [
+     {
+      "name": "Aglaonema",
+      "sci": "Aglaonema",
+      "why": "Same warm, bright-shade light and evenly moist soil, so they share a shelf or a big pot well.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Philodendron",
+      "sci": "Philodendron",
+      "why": "Same light, water and humidity.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Peace lily",
+      "sci": "Spathiphyllum",
+      "why": "Same shade and moisture; both like to be grouped for humidity.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Cacti and other succulents",
+      "sci": "Opuntia",
+      "why": "They need full sun and dry soil between waterings, which this plant does not.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Spring to summer",
+      "how": "Cut a cane into pieces 2 to 3 inches long, each with a node, and lay them half-buried in moist mix. New shoots come from the nodes in 4 to 8 weeks."
+     },
+     {
+      "method": "Top cutting",
+      "when": "Spring to summer",
+      "how": "Cut the top 6 inches off a leggy plant and root it in water or moist mix; the old stump sprouts again."
+     }
+    ],
+    "breeding": {
+     "text": "Aroids flower with a spathe; the female part is ready a day before the pollen is shed, so crossing needs two plants flowering a day or two apart, or stored pollen. Berries take months to ripen, and seedlings of named hybrids vary a lot. Dieffenbachia rarely flowers indoors.",
+     "cross_genera": [],
+     "patent": "Many newer named varieties are patented (look for \"PP\" or \"PPAF\" on the tag). Propagating a patented plant is not allowed while the patent lasts, even for yourself.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Dieffenbachia+seguine"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Dieffenbachia+seguine"
+     }
+    ]
+   }
+  },
+  {
+   "key": "ficus carica",
+   "name": "Ficus carica",
+   "kind": "plant",
+   "data": {
+    "summary": "The edible fig: sweet fruit in summer, and hardy enough to live outdoors in Round Rock.",
+    "uses": [
+     {
+      "kind": "Food",
+      "text": "The fruit is eaten fresh, dried or made into jam. Pick when soft and drooping; figs do not ripen after picking.",
+      "caution": ""
+     },
+     {
+      "kind": "Shade and screening",
+      "text": "Grows into a large shrub or small tree in the ground.",
+      "caution": "The milky sap and leaves can cause a blistering rash in sunlight (phytophotodermatitis). Wear gloves and long sleeves when pruning."
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Leaves break down well; chop the large ones."
+    },
+    "partners_good": [
+     {
+      "name": "Rosemary",
+      "sci": "Salvia rosmarinus",
+      "why": "Same full sun and well-drained soil, so they share a dry, sunny bed or large pot.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Comfrey",
+      "sci": "Symphytum",
+      "why": "Grown under fruit trees as a mulch plant; its deep roots bring up nutrients and its leaves feed the soil.",
+      "evidence": "Traditional"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Lawn grass",
+      "sci": "Cynodon",
+      "why": "Grass competes for water over the fig's shallow roots; keep a mulched circle instead.",
+      "evidence": "Tested"
+     }
+    ],
+    "deters": [],
+    "attracts": [
+     {
+      "what": "Birds",
+      "why": "Ripe fruit is eaten by mockingbirds and other birds; net it if you want the crop."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Hardwood cuttings",
+      "when": "Late winter (January to February), while dormant",
+      "how": "Cut pencil-thick pieces 8 to 10 inches long and stand them two-thirds deep in moist mix or garden soil. Most root by spring."
+     },
+     {
+      "method": "Layering",
+      "when": "Spring",
+      "how": "Bend a low branch to the ground, nick the bark, and pin it under soil. Cut it free once it has rooted, usually by autumn."
+     }
+    ],
+    "breeding": {
+     "text": "Common figs set fruit without pollination, and their seeds are not viable. Crossing figs needs the fig wasp, which does not live in Texas, so they cannot be bred at home.",
+     "cross_genera": [],
+     "patent": "Some modern named figs are patented; older varieties such as Brown Turkey and Celeste are not.",
+     "same_genus": false
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Ficus+carica"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Ficus+carica"
+     }
+    ]
+   }
+  },
+  {
+   "key": "vitis mustangensis",
+   "name": "Vitis mustangensis",
+   "kind": "plant",
+   "data": {
+    "summary": "The mustang grape, a vigorous native vine with very tart fruit, used for jelly and shade.",
+    "uses": [
+     {
+      "kind": "Food",
+      "text": "The grapes make tart jelly, juice and wine once well sweetened.",
+      "caution": "The juice can irritate bare hands; wear gloves when picking and crushing."
+     },
+     {
+      "kind": "Shade",
+      "text": "Covers an arbor or fence in one or two summers.",
+      "caution": ""
+     },
+     {
+      "kind": "Food for wildlife",
+      "text": "Birds, foxes and raccoons eat the fruit.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Leaves and soft prunings compost well. Keep out leaves with mildew or black rot."
+    },
+    "partners_good": [
+     {
+      "name": "Clover",
+      "sci": "Trifolium",
+      "why": "A cover of clover between vines adds nitrogen and protects the soil; used in vineyards.",
+      "evidence": "Tested"
+     },
+     {
+      "name": "Hyssop",
+      "sci": "Hyssopus",
+      "why": "Said to bring pollinators and deter some pests near grapes.",
+      "evidence": "Traditional"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Small shrubs and trees nearby",
+      "sci": "",
+      "why": "It climbs over and smothers whatever it can reach; give it its own support.",
+      "evidence": "Tested"
+     }
+    ],
+    "deters": [],
+    "attracts": [
+     {
+      "what": "Birds",
+      "why": "A favorite autumn food for many birds."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Hardwood cuttings",
+      "when": "Late winter",
+      "how": "Take pieces with three or four buds, plant them with one bud above the soil, and keep them moist. Native grapes root readily."
+     },
+     {
+      "method": "Layering",
+      "when": "Spring to summer",
+      "how": "Bury part of a long cane; it roots where it touches the soil."
+     }
+    ],
+    "breeding": {
+     "text": "Mustang grape crosses with other Vitis species. Breeders have used it for rootstocks that resist drought and the Pierce's disease that kills most grapes in Central Texas. Seedlings take 3 or more years to fruit.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Vitis+mustangensis"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Vitis+mustangensis"
+     }
+    ]
+   }
+  },
+  {
+   "key": "ipomoea hederacea",
+   "name": "Ipomoea hederacea",
+   "kind": "plant",
+   "data": {
+    "summary": "An annual morning glory with blue flowers, fast to cover a fence.",
+    "uses": [
+     {
+      "kind": "Screening",
+      "text": "Covers a fence or trellis in one summer.",
+      "caution": "The seeds are toxic if eaten. Keep them away from children and pets."
+     }
+    ],
+    "compost": {
+     "verdict": "Keep it out",
+     "why": "The hard seeds survive most compost piles and come up wherever the compost goes."
+    },
+    "partners_good": [
+     {
+      "name": "A fence or trellis",
+      "sci": "Ipomoea",
+      "why": "Grow it on a support of its own.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Vegetable and flower beds",
+      "sci": "Cucurbitaceae",
+      "why": "A serious farm weed: it twines over crops and smothers them, and self-sows heavily.",
+      "evidence": "Tested"
+     }
+    ],
+    "deters": [],
+    "attracts": [
+     {
+      "what": "Bees and hummingbirds",
+      "why": "The morning flowers are visited by bees; hummingbirds visit sometimes."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Seed",
+      "when": "After the last frost (late March in Round Rock)",
+      "how": "Nick or soak the seeds overnight, then sow half an inch deep where they will grow. They do not like being moved."
+     }
+    ],
+    "breeding": {
+     "text": "It crosses with other morning glories of the same species group, but it self-pollinates so readily that seed usually comes true.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Ipomoea+hederacea"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Ipomoea+hederacea"
+     }
+    ]
+   }
+  },
+  {
+   "key": "ipomoea batatas",
+   "name": "Ipomoea batatas",
+   "kind": "plant",
+   "data": {
+    "summary": "The sweet potato; ornamental forms are grown for their leaves and trail from pots.",
+    "uses": [
+     {
+      "kind": "Food",
+      "text": "Ornamental varieties do make edible tubers, but they are small and bland. The young leaves are eaten cooked as greens in many countries.",
+      "caution": "Only eat plants that have not been sprayed with garden chemicals."
+     },
+     {
+      "kind": "Ground cover",
+      "text": "Covers bare ground or spills from pots quickly in summer heat.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Fine in small amounts",
+     "why": "Stems and roots sprout again in a moist pile; let them dry out first."
+    },
+    "partners_good": [
+     {
+      "name": "Coleus",
+      "sci": "Plectranthus scutellarioides",
+      "why": "A classic container partner: same water, and the colors contrast.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Petunia",
+      "sci": "Petunia",
+      "why": "Same sun and water in a hanging basket or window box.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Spring to late summer",
+      "how": "Cuttings root in water in about a week. Keep a few indoors over winter to plant out again in spring."
+     },
+     {
+      "method": "Tubers",
+      "when": "Spring",
+      "how": "Store a tuber over winter in a cool dry place, then lay it in moist mix; each sprout (\"slip\") becomes a plant."
+     }
+    ],
+    "breeding": {
+     "text": "Sweet potatoes rarely set seed. Breeders cross them by hand in warm climates; seedlings vary a lot.",
+     "cross_genera": [],
+     "patent": "Most ornamental sweet potato vines (such as the Sweet Caroline and Illusion series) are patented.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Ipomoea+batatas"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Ipomoea+batatas"
+     }
+    ]
+   }
+  },
+  {
+   "key": "caesalpinia mexicana",
+   "name": "Caesalpinia mexicana (Erythrostemon mexicanus)",
+   "kind": "plant",
+   "data": {
+    "summary": "A tough, drought-tolerant flowering shrub with yellow blooms from spring to fall.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Long flowering season in heat and drought.",
+      "caution": "The seeds and pods are toxic if eaten."
+     }
+    ],
+    "compost": {
+     "verdict": "Fine in small amounts",
+     "why": "Leaves are fine; keep out the seed pods, which can sprout."
+    },
+    "partners_good": [
+     {
+      "name": "Lantana",
+      "sci": "Lantana",
+      "why": "Same full sun, heat and little water.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Esperanza",
+      "sci": "Tecoma stans",
+      "why": "Same needs, and the two flower together all summer.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Thirsty plants",
+      "sci": "Hibiscus",
+      "why": "Frequent watering for them makes this shrub weak and leggy.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [
+     {
+      "what": "Butterflies and bees",
+      "why": "Nectar from spring to fall."
+     },
+     {
+      "what": "Hummingbirds",
+      "why": "Visit the flowers."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Seed",
+      "when": "Spring",
+      "how": "Nick the hard seed coat or soak overnight, then sow half an inch deep in warm soil."
+     },
+     {
+      "method": "Softwood cuttings",
+      "when": "Early summer",
+      "how": "Possible but slow; seed is easier."
+     }
+    ],
+    "breeding": {
+     "text": "Crosses with other Caesalpinia and Erythrostemon are uncommon. Seed from a single plant is usually much like the parent.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Caesalpinia+mexicana"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Caesalpinia+mexicana"
+     }
+    ]
+   }
+  },
+  {
+   "key": "bougainvillea",
+   "name": "Bougainvillea",
+   "kind": "plant",
+   "data": {
+    "summary": "A thorny tropical vine with bright bracts; it flowers best when kept a little dry and pot-bound.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Long seasons of color in full sun.",
+      "caution": "Thorns scratch; the sap irritates some people's skin."
+     },
+     {
+      "kind": "Barrier hedge",
+      "text": "Planted where it can live outdoors, the thorny canes make a hedge people and animals avoid.",
+      "caution": ""
+     },
+     {
+      "kind": "Dye",
+      "text": "The bracts give pink to purple dye for fabric.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Poor",
+     "why": "Thorny canes break down slowly and are unpleasant to handle. The bracts and leaves are fine."
+    },
+    "partners_good": [
+     {
+      "name": "Lantana",
+      "sci": "Lantana",
+      "why": "Same heat, sun and dry soil.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Plants watered often",
+      "sci": "Spathiphyllum",
+      "why": "Frequent water means leaves instead of flowers.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [
+     {
+      "what": "People and animals",
+      "how": "The thorns make it a barrier along fences.",
+      "evidence": "Tested"
+     }
+    ],
+    "attracts": [
+     {
+      "what": "Butterflies and hummingbirds",
+      "why": "Visit the small white flowers inside the bracts."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Semi-hardwood cuttings",
+      "when": "Late spring to summer",
+      "how": "Take 6-inch pieces, dip in rooting hormone, and keep warm in a covered pot. They root in 4 to 8 weeks."
+     },
+     {
+      "method": "Air layering",
+      "when": "Summer",
+      "how": "More reliable than cuttings for some varieties."
+     }
+    ],
+    "breeding": {
+     "text": "Bougainvillea seldom sets seed, and named colors come from chance seedlings and sports, not home crosses.",
+     "cross_genera": [],
+     "patent": "Many newer named varieties are patented (look for \"PP\" or \"PPAF\" on the tag). Propagating a patented plant is not allowed while the patent lasts, even for yourself.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Bougainvillea"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Bougainvillea"
+     }
+    ]
+   }
+  },
+  {
+   "key": "philodendron",
+   "name": "Philodendron",
+   "kind": "plant",
+   "data": {
+    "summary": "Easy tropical foliage plants for indoors; climbers and self-heading types.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Tolerates lower light than most houseplants.",
+      "caution": "Contains calcium oxalate crystals: chewing it burns the mouth. Keep it away from pets and children, and wear gloves when cutting it."
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Soft green leaves rot quickly. The oxalate crystals break down in the pile; wear gloves when chopping it."
+    },
+    "partners_good": [
+     {
+      "name": "Pothos",
+      "sci": "Epipremnum",
+      "why": "Same light and water; good on the same shelf or moss pole.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Monstera",
+      "sci": "Monstera",
+      "why": "Same needs; both climb a moss pole.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Aglaonema",
+      "sci": "Aglaonema",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Cacti and other succulents",
+      "sci": "Opuntia",
+      "why": "They need full sun and dry soil between waterings, which this plant does not.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Spring to summer",
+      "how": "Cut below a node with an aerial root, root it in water, moss or moist mix. Variegated forms (Pink Princess, Painted Lady) keep their look only if the cutting has the variegation."
+     },
+     {
+      "method": "Division",
+      "when": "Spring",
+      "how": "Self-heading types (such as Birkin and Black Cardinal) can be split where they have made new crowns or pups."
+     }
+    ],
+    "breeding": {
+     "text": "Aroids flower with a spathe; the female part is ready a day before the pollen is shed, so crossing needs two plants flowering a day or two apart, or stored pollen. Berries take months to ripen, and seedlings of named hybrids vary a lot. Philodendrons hybridize readily within the genus, which is how most of the named ones were made.",
+     "cross_genera": [],
+     "patent": "Many newer named varieties are patented (look for \"PP\" or \"PPAF\" on the tag). Propagating a patented plant is not allowed while the patent lasts, even for yourself.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Philodendron"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Philodendron"
+     }
+    ]
+   }
+  },
+  {
+   "key": "philodendron hederaceum",
+   "name": "Philodendron hederaceum",
+   "kind": "plant",
+   "data": {
+    "summary": "The heartleaf philodendron, including the velvet \"Micans\" form: one of the easiest trailing houseplants.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Trails from shelves and baskets or climbs a pole.",
+      "caution": "Contains calcium oxalate crystals: chewing it burns the mouth. Keep it away from pets and children, and wear gloves when cutting it."
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Soft green leaves rot quickly. The oxalate crystals break down in the pile; wear gloves when chopping it."
+    },
+    "partners_good": [
+     {
+      "name": "Aglaonema",
+      "sci": "Aglaonema",
+      "why": "Same warm, bright-shade light and evenly moist soil, so they share a shelf or a big pot well.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Philodendron",
+      "sci": "Philodendron",
+      "why": "Same light, water and humidity.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Cacti and other succulents",
+      "sci": "Opuntia",
+      "why": "They need full sun and dry soil between waterings, which this plant does not.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Any time of year indoors",
+      "how": "Cuttings with one or two nodes root in water in two weeks."
+     }
+    ],
+    "breeding": {
+     "text": "Aroids flower with a spathe; the female part is ready a day before the pollen is shed, so crossing needs two plants flowering a day or two apart, or stored pollen. Berries take months to ripen, and seedlings of named hybrids vary a lot. It rarely flowers indoors.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Philodendron+hederaceum"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Philodendron+hederaceum"
+     }
+    ]
+   }
+  },
+  {
+   "key": "spathiphyllum",
+   "name": "Spathiphyllum",
+   "kind": "plant",
+   "data": {
+    "summary": "The peace lily: white flowers in low light, and it droops to tell you it needs water.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Flowers in lower light than almost any other houseplant.",
+      "caution": "Contains calcium oxalate crystals: chewing it burns the mouth. Keep it away from pets and children, and wear gloves when cutting it."
+     },
+     {
+      "kind": "Air",
+      "text": "Famous from the NASA clean-air study, but a few plants do not measurably clean a room's air; good ventilation does more.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Soft green leaves rot quickly. The oxalate crystals break down in the pile; wear gloves when chopping it."
+    },
+    "partners_good": [
+     {
+      "name": "Ferns",
+      "sci": "Nephrolepis",
+      "why": "Same shade and moist soil; grouped together they raise the humidity.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Calathea",
+      "sci": "Goeppertia",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Aglaonema",
+      "sci": "Aglaonema",
+      "why": "Same warm, bright-shade light and evenly moist soil, so they share a shelf or a big pot well.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Cacti and other succulents",
+      "sci": "Opuntia",
+      "why": "They need full sun and dry soil between waterings, which this plant does not.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Division",
+      "when": "Spring",
+      "how": "Tip it out of the pot and pull or cut the clump into pieces, each with several leaves and roots."
+     }
+    ],
+    "breeding": {
+     "text": "Aroids flower with a spathe; the female part is ready a day before the pollen is shed, so crossing needs two plants flowering a day or two apart, or stored pollen. Berries take months to ripen, and seedlings of named hybrids vary a lot.",
+     "cross_genera": [],
+     "patent": "Many newer named varieties are patented (look for \"PP\" or \"PPAF\" on the tag). Propagating a patented plant is not allowed while the patent lasts, even for yourself.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Spathiphyllum"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Spathiphyllum"
+     }
+    ]
+   }
+  },
+  {
+   "key": "aeonium",
+   "name": "Aeonium",
+   "kind": "plant",
+   "data": {
+    "summary": "Rosette succulents that grow in cool months and rest in summer heat.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Sculptural rosettes for pots and dry gardens.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Fine in small amounts",
+     "why": "The fleshy leaves are mostly water and can root in the pile. Chop them and let them dry for a few days first."
+    },
+    "partners_good": [
+     {
+      "name": "Other succulents",
+      "sci": "Graptosedum",
+      "why": "Same gritty soil and little water.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Elephant bush",
+      "sci": "Portulacaria",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Ferns, calatheas and peace lilies",
+      "sci": "Nephrolepis",
+      "why": "They want moist soil and shade; a pot that suits them rots a succulent.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Rosette cuttings",
+      "when": "Autumn to early spring (its growing season)",
+      "how": "Cut a rosette with an inch or two of stem, let it dry for a few days, then set it on dry gritty mix. Water lightly once roots form."
+     }
+    ],
+    "breeding": {
+     "text": "Aeoniums cross easily with each other; many garden forms are hybrids. Each rosette dies after it flowers (the plant lives on through its branches), so let seed form on a flowering rosette if you want seedlings.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Aeonium"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Aeonium"
+     }
+    ]
+   }
+  },
+  {
+   "key": "opuntia",
+   "name": "Opuntia",
+   "kind": "plant",
+   "data": {
+    "summary": "Prickly pear: edible pads and fruit, very drought-hardy, and native to Texas in many forms.",
+    "uses": [
+     {
+      "kind": "Food",
+      "text": "Young pads (nopales) and the ripe fruit (tunas) are eaten across Texas and Mexico, cooked or raw, once every spine and glochid is removed.",
+      "caution": "The tiny glochids lodge in skin; handle with tongs and thick gloves, and burn or scrape them off. Be sure of the species before eating it."
+     },
+     {
+      "kind": "Dye",
+      "text": "Cochineal insects that live on prickly pear give carmine red dye, and the fruit gives a pink one.",
+      "caution": ""
+     },
+     {
+      "kind": "Food for wildlife",
+      "text": "Birds and many mammals eat the fruit.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Keep it out",
+     "why": "Spines and glochids survive composting and turn up in your hands later."
+    },
+    "partners_good": [
+     {
+      "name": "Agave",
+      "sci": "Agave",
+      "why": "Same sun, heat and dry soil.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Texas natives",
+      "sci": "Artemisia",
+      "why": "Same dry, sunny conditions.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Ferns, calatheas and peace lilies",
+      "sci": "Nephrolepis",
+      "why": "They want moist soil and shade; a pot that suits them rots a succulent.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [
+     {
+      "what": "People and animals",
+      "how": "Planted along a boundary, it keeps out deer, dogs and trespassers.",
+      "evidence": "Tested"
+     }
+    ],
+    "attracts": [
+     {
+      "what": "Bees",
+      "why": "The big spring flowers are worked heavily by native bees."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Pad cuttings",
+      "when": "Late spring to summer",
+      "how": "Twist off a pad, let the cut end dry for a week, then stand it one-third deep in dry gritty soil. It roots in a few weeks."
+     },
+     {
+      "method": "Seed",
+      "when": "Spring",
+      "how": "Slow; pads are much faster."
+     }
+    ],
+    "breeding": {
+     "text": "Prickly pears hybridize freely, which is why so many are hard to name.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Opuntia"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Opuntia"
+     }
+    ]
+   }
+  },
+  {
+   "key": "aloe vera",
+   "name": "Aloe vera",
+   "kind": "plant",
+   "data": {
+    "summary": "The medicine-cabinet aloe: soothing gel, easy pups, and very little water.",
+    "uses": [
+     {
+      "kind": "Skin and first aid",
+      "text": "The clear inner gel is a traditional soothing treatment for minor burns, sunburn and dry skin; some studies support it for minor burns.",
+      "caution": "Use only the clear gel. The yellow sap (latex) just under the skin is a strong laxative and irritates skin. Do not eat it. Toxic to dogs and cats."
+     },
+     {
+      "kind": "Ornamental",
+      "text": "Easy in a sunny window or outdoors in a sheltered spot.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Fine in small amounts",
+     "why": "The fleshy leaves are mostly water and can root in the pile. Chop them and let them dry for a few days first."
+    },
+    "partners_good": [
+     {
+      "name": "Haworthia",
+      "sci": "Haworthiopsis",
+      "why": "Same gritty soil and light; good in a shallow bowl together.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Other aloes and succulents",
+      "sci": "Aloe",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Ferns, calatheas and peace lilies",
+      "sci": "Nephrolepis",
+      "why": "They want moist soil and shade; a pot that suits them rots a succulent.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Pups (offsets)",
+      "when": "Spring to summer",
+      "how": "Pull or cut off a pup with some roots once it is 3 to 4 inches tall, let it dry a day, and pot it in gritty mix. Your three aloes all make pups."
+     },
+     {
+      "method": "Leaf cuttings",
+      "when": "Not recommended",
+      "how": "Aloe leaves usually rot instead of rooting."
+     }
+    ],
+    "breeding": {
+     "text": "Aloe vera is mostly sterile and rarely sets seed. Other aloes cross with each other and with Gasteria, Haworthia and Astroloba (the hybrids are called ×Gasteraloe and similar).",
+     "cross_genera": [
+      "Gasteria",
+      "Haworthia",
+      "Haworthiopsis",
+      "Aloiampelos"
+     ],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Aloe+vera"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Aloe+vera"
+     }
+    ]
+   }
+  },
+  {
+   "key": "aloe",
+   "name": "Aloe",
+   "kind": "plant",
+   "data": {
+    "summary": "Aloes and aloe hybrids: rosette succulents, mostly from Africa, many with spotted or toothed leaves.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Easy rosettes for sunny windows; many dwarf hybrids flower in winter.",
+      "caution": "Most aloes are toxic to pets if chewed."
+     }
+    ],
+    "compost": {
+     "verdict": "Fine in small amounts",
+     "why": "The fleshy leaves are mostly water and can root in the pile. Chop them and let them dry for a few days first."
+    },
+    "partners_good": [
+     {
+      "name": "Haworthia",
+      "sci": "Haworthiopsis",
+      "why": "Same gritty soil and bright light.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Ferns, calatheas and peace lilies",
+      "sci": "Nephrolepis",
+      "why": "They want moist soil and shade; a pot that suits them rots a succulent.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Pups (offsets)",
+      "when": "Spring to summer",
+      "how": "Separate pups with roots and pot them in gritty mix."
+     }
+    ],
+    "breeding": {
+     "text": "Aloes cross easily with each other and with Gasteria and Haworthia. Dwarf hybrids are often patented or named; their seedlings vary.",
+     "cross_genera": [
+      "Gasteria",
+      "Haworthia",
+      "Haworthiopsis",
+      "Aloiampelos"
+     ],
+     "patent": "Many newer named varieties are patented (look for \"PP\" or \"PPAF\" on the tag). Propagating a patented plant is not allowed while the patent lasts, even for yourself.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Aloe"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Aloe"
+     }
+    ]
+   }
+  },
+  {
+   "key": "aloiampelos striatula",
+   "name": "Aloiampelos striatula",
+   "kind": "plant",
+   "data": {
+    "summary": "A rambling, shrubby aloe hardy to about 10°F, one of the few aloes that lives outdoors all year in Central Texas.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Yellow winter flowers on a sprawling shrub for dry beds.",
+      "caution": "Toxic to pets if chewed, like most aloes."
+     }
+    ],
+    "compost": {
+     "verdict": "Fine in small amounts",
+     "why": "The fleshy leaves are mostly water and can root in the pile. Chop them and let them dry for a few days first."
+    },
+    "partners_good": [
+     {
+      "name": "Agave",
+      "sci": "Agave",
+      "why": "Same dry, sunny bed.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Prickly pear",
+      "sci": "Opuntia",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Ferns, calatheas and peace lilies",
+      "sci": "Nephrolepis",
+      "why": "They want moist soil and shade; a pot that suits them rots a succulent.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [
+     {
+      "what": "Hummingbirds",
+      "why": "Visit the flowers in late winter and spring, when little else is blooming."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Spring to summer",
+      "how": "Cut a stem 8 to 12 inches long, dry it for a few days, and plant it in gritty soil. It roots easily."
+     }
+    ],
+    "breeding": {
+     "text": "It was moved from Aloe into its own small genus, but it can still cross with true aloes.",
+     "cross_genera": [
+      "Aloe"
+     ],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Aloiampelos+striatula"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Aloiampelos+striatula"
+     }
+    ]
+   }
+  },
+  {
+   "key": "haworthiopsis attenuata",
+   "name": "Haworthiopsis attenuata",
+   "kind": "plant",
+   "data": {
+    "summary": "The zebra plant: a small striped rosette that tolerates less light than most succulents.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Small enough for a windowsill; non-toxic to pets (ASPCA).",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Fine in small amounts",
+     "why": "The fleshy leaves are mostly water and can root in the pile. Chop them and let them dry for a few days first."
+    },
+    "partners_good": [
+     {
+      "name": "Aloe",
+      "sci": "Aloe",
+      "why": "Same soil and water; often sold in the same pot.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Gasteria",
+      "sci": "Gasteria",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Ferns, calatheas and peace lilies",
+      "sci": "Nephrolepis",
+      "why": "They want moist soil and shade; a pot that suits them rots a succulent.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Offsets",
+      "when": "Spring or autumn",
+      "how": "Separate offsets with a few roots and pot them in gritty mix."
+     },
+     {
+      "method": "Leaf cuttings",
+      "when": "Spring",
+      "how": "Twist off a whole leaf, dry it for a few days, and lay it on dry mix. Slow, but it works."
+     }
+    ],
+    "breeding": {
+     "text": "Crosses within Haworthiopsis and Haworthia, and with Aloe and Gasteria. Most are self-sterile: you need two different plants flowering together.",
+     "cross_genera": [
+      "Haworthia",
+      "Aloe",
+      "Gasteria"
+     ],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Haworthiopsis+attenuata"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Haworthiopsis+attenuata"
+     }
+    ]
+   }
+  },
+  {
+   "key": "ravenea rivularis",
+   "name": "Ravenea rivularis",
+   "kind": "plant",
+   "data": {
+    "summary": "The majesty palm: a large indoor palm that needs bright light, steady moisture and humidity.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "A tall palm for bright rooms or summer patios; non-toxic to pets.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Fine in small amounts",
+     "why": "Fronds are tough and fibrous; shred them first."
+    },
+    "partners_good": [
+     {
+      "name": "Ferns",
+      "sci": "Nephrolepis",
+      "why": "Same moist soil and humidity.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Peace lily",
+      "sci": "Spathiphyllum",
+      "why": "Same needs, under the palm.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Cacti and other succulents",
+      "sci": "Opuntia",
+      "why": "They need full sun and dry soil between waterings, which this plant does not.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Seed",
+      "when": "Spring and summer, in warmth",
+      "how": "The only practical way. Sow fresh seed in warm, moist mix; germination takes 1 to 3 months."
+     }
+    ],
+    "breeding": {
+     "text": "Majesty palms are male or female. Two of your three would need to be one of each and to flower at the same time, which is rare indoors.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Ravenea+rivularis"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Ravenea+rivularis"
+     }
+    ]
+   }
+  },
+  {
+   "key": "graptosedum",
+   "name": "×Graptosedum",
+   "kind": "plant",
+   "data": {
+    "summary": "A hybrid of Graptopetalum and Sedum: easy blushing rosettes for sunny pots.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Colors up pink and bronze in full sun and cool weather.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Fine in small amounts",
+     "why": "The fleshy leaves are mostly water and can root in the pile. Chop them and let them dry for a few days first."
+    },
+    "partners_good": [
+     {
+      "name": "Aeonium",
+      "sci": "Aeonium",
+      "why": "Same soil and light.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Elephant bush",
+      "sci": "Portulacaria",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Ferns, calatheas and peace lilies",
+      "sci": "Nephrolepis",
+      "why": "They want moist soil and shade; a pot that suits them rots a succulent.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Leaf cuttings",
+      "when": "Spring to autumn",
+      "how": "Twist off whole leaves, let them callus, and lay them on dry mix; tiny rosettes appear in weeks."
+     },
+     {
+      "method": "Stem cuttings",
+      "when": "Spring to autumn",
+      "how": "Cut rosettes with a short stem, dry for a few days, and plant."
+     }
+    ],
+    "breeding": {
+     "text": "It is already a cross between two genera. Its relatives also cross with Echeveria (making ×Graptoveria).",
+     "cross_genera": [
+      "Graptopetalum",
+      "Sedum",
+      "Echeveria"
+     ],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Graptosedum"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Graptosedum"
+     }
+    ]
+   }
+  },
+  {
+   "key": "portulacaria afra",
+   "name": "Portulacaria afra",
+   "kind": "plant",
+   "data": {
+    "summary": "Elephant bush or spekboom: a tough succulent shrub, popular as a bonsai.",
+    "uses": [
+     {
+      "kind": "Food",
+      "text": "In South Africa the sour leaves are eaten raw in salads and stews.",
+      "caution": "Only eat leaves from plants that have not been sprayed."
+     },
+     {
+      "kind": "Food for wildlife",
+      "text": "Browsed by elephants and tortoises in the wild.",
+      "caution": ""
+     },
+     {
+      "kind": "Bonsai",
+      "text": "Takes pruning well and makes a thick trunk.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Fine in small amounts",
+     "why": "The fleshy leaves are mostly water and can root in the pile. Chop them and let them dry for a few days first."
+    },
+    "partners_good": [
+     {
+      "name": "Aeonium",
+      "sci": "Aeonium",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Jade plant",
+      "sci": "Crassula",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Ferns, calatheas and peace lilies",
+      "sci": "Nephrolepis",
+      "why": "They want moist soil and shade; a pot that suits them rots a succulent.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Spring to summer",
+      "how": "Cut 3 to 4 inch tips, dry for a few days, and plant in gritty mix. Variegated forms root a little more slowly."
+     }
+    ],
+    "breeding": {
+     "text": "It rarely flowers in pots, so crossing is not practical at home.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": false
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Portulacaria+afra"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Portulacaria+afra"
+     }
+    ]
+   }
+  },
+  {
+   "key": "ficus lyrata",
+   "name": "Ficus lyrata",
+   "kind": "plant",
+   "data": {
+    "summary": "The fiddle-leaf fig: big leaves for a bright room, fussy about moves and drafts.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "A dramatic indoor tree.",
+      "caution": "The milky sap irritates skin and is mildly toxic to pets."
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "The leathery leaves break down slowly; shred them."
+    },
+    "partners_good": [
+     {
+      "name": "Rubber plant",
+      "sci": "Ficus elastica",
+      "why": "Same bright light and watering.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Monstera",
+      "sci": "Monstera",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Cacti and other succulents",
+      "sci": "Opuntia",
+      "why": "They need full sun and dry soil between waterings, which this plant does not.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Spring to summer",
+      "how": "Cut a tip with two or three leaves, let the sap stop, and root it in water or moist mix in warmth."
+     },
+     {
+      "method": "Air layering",
+      "when": "Spring to summer",
+      "how": "Roots a branch while still attached; best for a tall stem."
+     }
+    ],
+    "breeding": {
+     "text": "Like all figs it needs its own wasp to set seed, so it cannot be bred at home.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": false
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Ficus+lyrata"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Ficus+lyrata"
+     }
+    ]
+   }
+  },
+  {
+   "key": "adenium obesum",
+   "name": "Adenium obesum",
+   "kind": "plant",
+   "data": {
+    "summary": "The desert rose: a fat-trunked succulent with big flowers, easy from seed.",
+    "uses": [
+     {
+      "kind": "Ornamental and bonsai",
+      "text": "Grown for the swollen trunk (caudex) and long flowering.",
+      "caution": "The sap is very poisonous: it was once used for arrow poison. Wear gloves, wash your hands, and keep it away from pets and children."
+     }
+    ],
+    "compost": {
+     "verdict": "Keep it out",
+     "why": "The toxic sap is not worth the risk in compost used on food plants."
+    },
+    "partners_good": [
+     {
+      "name": "Bougainvillea",
+      "sci": "Bougainvillea",
+      "why": "Same heat, sun and dry soil.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Other succulents",
+      "sci": "Euphorbia",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Ferns, calatheas and peace lilies",
+      "sci": "Nephrolepis",
+      "why": "They want moist soil and shade; a pot that suits them rots a succulent.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [
+     {
+      "what": "Butterflies",
+      "why": "Visit the flowers outdoors in summer."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Seed",
+      "when": "Spring to summer",
+      "how": "Sow fresh seed on the surface of warm mix; seed-grown plants make the fattest trunks."
+     },
+     {
+      "method": "Stem cuttings",
+      "when": "Summer",
+      "how": "Root easily but rarely form a big caudex."
+     }
+    ],
+    "breeding": {
+     "text": "Easy to cross by hand: open a flower, take pollen from inside the tube with a fine brush, and place it on the stigma of another plant's flower. Pods take 2 to 3 months, and seedlings vary in color, which is half the fun with your six.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Adenium+obesum"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Adenium+obesum"
+     }
+    ]
+   }
+  },
+  {
+   "key": "rosa",
+   "name": "Rosa",
+   "kind": "plant",
+   "data": {
+    "summary": "Roses: flowers for cutting and scent; floribundas and minis flower in flushes from spring to fall.",
+    "uses": [
+     {
+      "kind": "Cut flowers",
+      "text": "Cut in the cool morning, just as the buds open.",
+      "caution": ""
+     },
+     {
+      "kind": "Food",
+      "text": "Petals from unsprayed roses are edible in salads, jellies and syrups; the hips are rich in vitamin C, though modern floribundas make few.",
+      "caution": "Never eat petals from roses treated with systemic insecticides."
+     },
+     {
+      "kind": "Rose water and potpourri",
+      "text": "Fragrant petals are dried or steeped.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Fine in small amounts",
+     "why": "Petals and leaves are good. Keep out leaves with black spot, and chop thorny canes."
+    },
+    "partners_good": [
+     {
+      "name": "Garlic and chives",
+      "sci": "Allium",
+      "why": "Said to deter aphids and black spot; the evidence is weak, but they do no harm.",
+      "evidence": "Traditional"
+     },
+     {
+      "name": "Lavender",
+      "sci": "Lavandula",
+      "why": "Brings pollinators and is said to keep aphids off.",
+      "evidence": "Traditional"
+     },
+     {
+      "name": "Marigolds",
+      "sci": "Tagetes",
+      "why": "Bring hoverflies, whose larvae eat aphids.",
+      "evidence": "Traditional"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Shading neighbors",
+      "sci": "",
+      "why": "Roses need at least six hours of sun to flower and resist disease.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [
+     {
+      "what": "Bees",
+      "why": "Open, single flowers feed bees more than full doubles."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Softwood cuttings",
+      "when": "Late spring to early summer",
+      "how": "Take 6-inch pieces from a stem that just flowered, dip in rooting hormone, and keep them covered and moist. About half root in 4 to 8 weeks."
+     },
+     {
+      "method": "Layering",
+      "when": "Spring",
+      "how": "Pin a low cane into the soil."
+     }
+    ],
+    "breeding": {
+     "text": "Roses are easy to cross by hand: remove the petals and stamens of a flower before it opens, brush on pollen from another rose, and label it. Hips ripen in autumn; seeds need about 6 weeks in the fridge before they sprout, and every seedling is new.",
+     "cross_genera": [],
+     "patent": "Queen of Elegance (WEKjucstokol) is a patented Weeks rose: propagating it by cuttings is not allowed while the patent lasts. Seedlings from it are yours.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Rosa"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Rosa"
+     }
+    ]
+   }
+  },
+  {
+   "key": "cosmos",
+   "name": "Cosmos",
+   "kind": "plant",
+   "data": {
+    "summary": "Easy annual flowers that self-sow and bring beneficial insects to the garden.",
+    "uses": [
+     {
+      "kind": "Cut flowers",
+      "text": "Long stems for vases; picking keeps them flowering.",
+      "caution": ""
+     },
+     {
+      "kind": "Dye",
+      "text": "Orange Cosmos sulphureus flowers give strong yellow and orange dyes.",
+      "caution": ""
+     },
+     {
+      "kind": "Pest control",
+      "text": "A favorite insectary plant: it feeds the lacewings, hoverflies and parasitic wasps that eat aphids and caterpillars.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Soft stems and leaves rot fast. Seed heads will sprout where the compost goes."
+    },
+    "partners_good": [
+     {
+      "name": "Tomatoes and squash",
+      "sci": "Cucurbitaceae",
+      "why": "Brings the beneficial insects and pollinators that vegetables need.",
+      "evidence": "Tested"
+     },
+     {
+      "name": "Zinnias",
+      "sci": "Zinnia",
+      "why": "Same sun and lean soil.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Rich, heavily fed beds",
+      "sci": "",
+      "why": "Rich soil makes cosmos tall and floppy with few flowers.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [
+     {
+      "what": "Bees, butterflies and beneficial insects",
+      "why": "Open flowers are easy for many insects to use."
+     },
+     {
+      "what": "Goldfinches",
+      "why": "Eat the seeds in autumn."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Seed",
+      "when": "Spring to midsummer",
+      "how": "Scatter seed on bare soil and rake it in lightly. Yours are volunteers, so they will keep self-sowing."
+     }
+    ],
+    "breeding": {
+     "text": "The two common species (C. bipinnatus and C. sulphureus) do not cross with each other, but each crosses freely within its species, so volunteers drift in color.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Cosmos"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Cosmos"
+     }
+    ]
+   }
+  },
+  {
+   "key": "nephrolepis exaltata",
+   "name": "Nephrolepis exaltata",
+   "kind": "plant",
+   "data": {
+    "summary": "The Boston fern: lush fronds for humid, bright shade; safe for pets.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Hanging baskets and shady porches; non-toxic to pets (ASPCA).",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Fronds rot down well."
+    },
+    "partners_good": [
+     {
+      "name": "Peace lily",
+      "sci": "Spathiphyllum",
+      "why": "Same shade and moisture.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Calathea",
+      "sci": "Goeppertia",
+      "why": "Same humidity.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Succulents",
+      "sci": "Aloe",
+      "why": "They want dry soil and full sun.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Runners",
+      "when": "Spring to summer",
+      "how": "Pin a runner's tip onto moist mix in a small pot; cut it free once it has roots and fronds."
+     },
+     {
+      "method": "Division",
+      "when": "Spring",
+      "how": "Cut the clump into pieces with roots and fronds."
+     }
+    ],
+    "breeding": {
+     "text": "Ferns reproduce from spores, not flowers. Most Boston fern varieties, including Emina, are sterile sports and do not make good spores, so they are grown from runners.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Nephrolepis+exaltata"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Nephrolepis+exaltata"
+     }
+    ]
+   }
+  },
+  {
+   "key": "begonia",
+   "name": "Begonia",
+   "kind": "plant",
+   "data": {
+    "summary": "A huge genus of foliage and flowering plants for bright shade and humidity.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Patterned leaves and long flowering in shade.",
+      "caution": "The roots and tubers are toxic to dogs and cats (oxalates)."
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Soft green leaves rot quickly. The oxalate crystals break down in the pile; wear gloves when chopping it."
+    },
+    "partners_good": [
+     {
+      "name": "Coleus",
+      "sci": "Plectranthus scutellarioides",
+      "why": "Same shade and moisture.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Ferns",
+      "sci": "Nephrolepis",
+      "why": "Same humidity.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Succulents",
+      "sci": "Aloe",
+      "why": "They need sun and dry soil.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Leaf and stem cuttings",
+      "when": "Spring to summer",
+      "how": "Cane and rex types root from stem tips, and many from a leaf laid on moist mix with its veins nicked."
+     },
+     {
+      "method": "Division",
+      "when": "Spring",
+      "how": "Rhizomatous types split easily."
+     }
+    ],
+    "breeding": {
+     "text": "Begonias are one of the easiest plants to cross by hand: plants have separate male and female flowers. The dust-fine seed is sown on the surface.",
+     "cross_genera": [],
+     "patent": "Many newer named varieties are patented (look for \"PP\" or \"PPAF\" on the tag). Propagating a patented plant is not allowed while the patent lasts, even for yourself. Leafjoy begonias such as Obsidian are sold as patented or patent-pending.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Begonia"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Begonia"
+     }
+    ]
+   }
+  },
+  {
+   "key": "plectranthus scutellarioides",
+   "name": "Plectranthus scutellarioides",
+   "kind": "plant",
+   "data": {
+    "summary": "Coleus: bright leaves for shade or sun, and the easiest plant to root.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Leaf color all summer.",
+      "caution": "Mildly toxic to pets (ASPCA)."
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Soft stems rot fast; pieces may root in a wet pile."
+    },
+    "partners_good": [
+     {
+      "name": "Sweet potato vine",
+      "sci": "Ipomoea batatas",
+      "why": "A classic container pair.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Begonia",
+      "sci": "Begonia",
+      "why": "Same shade.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [],
+    "deters": [],
+    "attracts": [
+     {
+      "what": "Bees",
+      "why": "If you let it flower, bees visit the blue spikes (pinch them off to keep the leaves at their best)."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Any time it is growing",
+      "how": "Cuttings root in a glass of water in about a week. Take some in autumn to keep over winter indoors."
+     }
+    ],
+    "breeding": {
+     "text": "Seed from named varieties does not come true; seedlings are a mix of colors.",
+     "cross_genera": [],
+     "patent": "Many newer named varieties are patented (look for \"PP\" or \"PPAF\" on the tag). Propagating a patented plant is not allowed while the patent lasts, even for yourself.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Plectranthus+scutellarioides"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Plectranthus+scutellarioides"
+     }
+    ]
+   }
+  },
+  {
+   "key": "aglaonema",
+   "name": "Aglaonema",
+   "kind": "plant",
+   "data": {
+    "summary": "Chinese evergreens: tough, colorful leaves for low light.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "One of the best plants for dim rooms.",
+      "caution": "Contains calcium oxalate crystals: chewing it burns the mouth. Keep it away from pets and children, and wear gloves when cutting it."
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Soft green leaves rot quickly. The oxalate crystals break down in the pile; wear gloves when chopping it."
+    },
+    "partners_good": [
+     {
+      "name": "Dieffenbachia",
+      "sci": "Dieffenbachia",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Philodendron",
+      "sci": "Philodendron",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Cacti and other succulents",
+      "sci": "Opuntia",
+      "why": "They need full sun and dry soil between waterings, which this plant does not.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Division",
+      "when": "Spring",
+      "how": "Separate the shoots at the base, each with roots."
+     },
+     {
+      "method": "Stem cuttings",
+      "when": "Spring to summer",
+      "how": "Root in water or moist mix."
+     }
+    ],
+    "breeding": {
+     "text": "Aroids flower with a spathe; the female part is ready a day before the pollen is shed, so crossing needs two plants flowering a day or two apart, or stored pollen. Berries take months to ripen, and seedlings of named hybrids vary a lot. The red and pink varieties were bred this way in Thailand and Indonesia.",
+     "cross_genera": [],
+     "patent": "Many newer named varieties are patented (look for \"PP\" or \"PPAF\" on the tag). Propagating a patented plant is not allowed while the patent lasts, even for yourself.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Aglaonema"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Aglaonema"
+     }
+    ]
+   }
+  },
+  {
+   "key": "goeppertia",
+   "name": "Goeppertia",
+   "kind": "plant",
+   "data": {
+    "summary": "Calatheas (now Goeppertia): patterned leaves that fold up at night; safe for pets.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Striking patterns; non-toxic to pets (ASPCA).",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Leaves rot down well."
+    },
+    "partners_good": [
+     {
+      "name": "Ferns",
+      "sci": "Nephrolepis",
+      "why": "Same humidity and moisture.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Peace lily",
+      "sci": "Spathiphyllum",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Succulents",
+      "sci": "Aloe",
+      "why": "They need dry soil and sun.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Division",
+      "when": "Spring",
+      "how": "The only practical way: split the clump into pieces, each with roots and several leaves, and keep them warm and humid while they settle."
+     }
+    ],
+    "breeding": {
+     "text": "Calatheas rarely flower or set seed indoors.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": false
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Goeppertia"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Goeppertia"
+     }
+    ]
+   }
+  },
+  {
+   "key": "phalaenopsis",
+   "name": "Phalaenopsis",
+   "kind": "plant",
+   "data": {
+    "summary": "Moth orchids: months of flowers in a bright window; safe for pets.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Flower spikes last 2 to 3 months; non-toxic to pets (ASPCA).",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Old bark potting mix is a good addition to compost or mulch."
+    },
+    "partners_good": [
+     {
+      "name": "Vanilla orchid",
+      "sci": "Vanilla",
+      "why": "Same warmth, light and humidity.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Ferns",
+      "sci": "Nephrolepis",
+      "why": "Raise the humidity around it.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Cacti",
+      "sci": "Opuntia",
+      "why": "Need far more sun and drier air.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Keikis",
+      "when": "Whenever they appear",
+      "how": "A baby plant may grow on a flower spike; cut it off once it has 2 or 3 roots an inch or two long."
+     }
+    ],
+    "breeding": {
+     "text": "Orchids are crossed by moving the pollen packet (pollinia) with a toothpick onto another flower. The seeds are dust and need sterile lab flasks to sprout, so home breeding usually means sending pods to a lab.",
+     "cross_genera": [
+      "Doritis"
+     ],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Phalaenopsis"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Phalaenopsis"
+     }
+    ]
+   }
+  },
+  {
+   "key": "zamioculcas zamiifolia",
+   "name": "Zamioculcas zamiifolia",
+   "kind": "plant",
+   "data": {
+    "summary": "The ZZ plant: survives low light and missed waterings, stores water in its roots.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Nearly indestructible in dim offices and rooms.",
+      "caution": "Contains calcium oxalate crystals: chewing it burns the mouth. Keep it away from pets and children, and wear gloves when cutting it."
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Soft green leaves rot quickly. The oxalate crystals break down in the pile; wear gloves when chopping it."
+    },
+    "partners_good": [
+     {
+      "name": "Snake plant",
+      "sci": "Dracaena",
+      "why": "Same low light and infrequent watering.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Plants watered often",
+      "sci": "Nephrolepis",
+      "why": "The water they need would rot its rhizomes.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Division",
+      "when": "Spring",
+      "how": "Separate the potato-like rhizomes with stems attached."
+     },
+     {
+      "method": "Leaf cuttings",
+      "when": "Spring to summer",
+      "how": "Single leaflets pushed into moist mix make a tiny rhizome in a few months; be patient."
+     }
+    ],
+    "breeding": {
+     "text": "ZZ rarely flowers indoors, and is the only species in its genus.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": false
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Zamioculcas+zamiifolia"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Zamioculcas+zamiifolia"
+     }
+    ]
+   }
+  },
+  {
+   "key": "euphorbia milii",
+   "name": "Euphorbia milii",
+   "kind": "plant",
+   "data": {
+    "summary": "Crown of thorns: flowers almost all year in sun, and its thorny stems make a barrier.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Flowers for most of the year in bright light.",
+      "caution": "The milky sap irritates skin and eyes and is toxic if eaten; wear gloves and eye protection when pruning."
+     },
+     {
+      "kind": "Barrier",
+      "text": "Grown as a thorny hedge where it can live outdoors.",
+      "caution": ""
+     },
+     {
+      "kind": "Snail control (research)",
+      "text": "Its sap kills water snails and has been studied as a cheap way to fight snail-borne disease.",
+      "caution": "Not something to try at home."
+     }
+    ],
+    "compost": {
+     "verdict": "Fine in small amounts",
+     "why": "Let pieces dry first; handle with gloves because of the sap."
+    },
+    "partners_good": [
+     {
+      "name": "Other succulents",
+      "sci": "Adenium",
+      "why": "Same sun and dry soil.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Ferns, calatheas and peace lilies",
+      "sci": "Nephrolepis",
+      "why": "They want moist soil and shade; a pot that suits them rots a succulent.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [
+     {
+      "what": "Pets and animals",
+      "how": "The thorns keep them away.",
+      "evidence": "Tested"
+     }
+    ],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Spring to summer",
+      "how": "Cut 3 to 4 inch tips, rinse the sap off in water, dry for several days, then plant in gritty mix."
+     }
+    ],
+    "breeding": {
+     "text": "Thai growers make many hybrids by hand-crossing the tiny flowers; seed is ready in about a month.",
+     "cross_genera": [],
+     "patent": "Many newer named varieties are patented (look for \"PP\" or \"PPAF\" on the tag). Propagating a patented plant is not allowed while the patent lasts, even for yourself.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Euphorbia+milii"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Euphorbia+milii"
+     }
+    ]
+   }
+  },
+  {
+   "key": "gymnocalycium mihanovichii",
+   "name": "Gymnocalycium mihanovichii",
+   "kind": "plant",
+   "data": {
+    "summary": "Moon cactus: a colorful mutant with no green, grafted onto a green cactus that feeds it.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "A bright novelty for a sunny windowsill.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Keep it out",
+     "why": "Spines persist in compost."
+    },
+    "partners_good": [
+     {
+      "name": "Other cacti",
+      "sci": "Myrtillocactus",
+      "why": "Same light and soil.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Ferns, calatheas and peace lilies",
+      "sci": "Nephrolepis",
+      "why": "They want moist soil and shade; a pot that suits them rots a succulent.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Grafting",
+      "when": "Spring to summer",
+      "how": "The colored top cannot live on its own roots. Pups that form on it can be cut off and grafted onto a fresh green cactus (Hylocereus or similar), cut faces pressed together and held with rubber bands for two weeks."
+     }
+    ],
+    "breeding": {
+     "text": "The red form cannot make food, so it lives only by grafting. Green Gymnocalycium cross readily, but need two genetically different plants.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Gymnocalycium+mihanovichii"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Gymnocalycium+mihanovichii"
+     }
+    ]
+   }
+  },
+  {
+   "key": "agave",
+   "name": "Agave",
+   "kind": "plant",
+   "data": {
+    "summary": "Tough rosette succulents for dry, sunny beds; most flower once after many years and then die.",
+    "uses": [
+     {
+      "kind": "Fiber",
+      "text": "Several species give strong fiber (sisal and others) from the leaves.",
+      "caution": ""
+     },
+     {
+      "kind": "Food",
+      "text": "Some species are cooked for food or sweet sap (the source of agave syrup and mezcal).",
+      "caution": "The raw sap causes a painful rash in many people; wear gloves and long sleeves. Know the species before using it."
+     },
+     {
+      "kind": "Landscaping",
+      "text": "Dramatic and drought-proof in the ground.",
+      "caution": "The leaf tips are sharp: keep it away from paths."
+     }
+    ],
+    "compost": {
+     "verdict": "Keep it out",
+     "why": "The fibrous leaves barely break down, and the spines and sap are hazards."
+    },
+    "partners_good": [
+     {
+      "name": "Prickly pear",
+      "sci": "Opuntia",
+      "why": "Same dry, sunny ground.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Hardy aloe",
+      "sci": "Aloiampelos",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Ferns, calatheas and peace lilies",
+      "sci": "Nephrolepis",
+      "why": "They want moist soil and shade; a pot that suits them rots a succulent.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [
+     {
+      "what": "People and animals",
+      "how": "The spined leaves form a barrier.",
+      "evidence": "Tested"
+     }
+    ],
+    "attracts": [
+     {
+      "what": "Hummingbirds, bats and bees",
+      "why": "The huge flower stalk feeds them when it finally blooms."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Pups",
+      "when": "Spring to summer",
+      "how": "Dig up the offsets around the base and replant them; let the cut root dry first."
+     },
+     {
+      "method": "Bulbils",
+      "when": "After flowering",
+      "how": "Some species make small plants on the flower stalk."
+     }
+    ],
+    "breeding": {
+     "text": "Agaves cross readily, and with Manfreda (making ×Mangave). Because most flower once and die, crossing usually means catching a neighbor's plant in bloom.",
+     "cross_genera": [
+      "Manfreda"
+     ],
+     "patent": "Many newer named varieties are patented (look for \"PP\" or \"PPAF\" on the tag). Propagating a patented plant is not allowed while the patent lasts, even for yourself.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Agave"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Agave"
+     }
+    ]
+   }
+  },
+  {
+   "key": "myrtillocactus geometrizans",
+   "name": "Myrtillocactus geometrizans",
+   "kind": "plant",
+   "data": {
+    "summary": "The bilberry cactus; the \"Fukurokuryuzinboku\" form has odd, bulging rib patterns.",
+    "uses": [
+     {
+      "kind": "Food",
+      "text": "The small purple fruits (garambullos) are eaten fresh or dried in Mexico.",
+      "caution": "Indoor plants and this cultivar rarely flower."
+     },
+     {
+      "kind": "Ornamental",
+      "text": "A sculptural cactus for a sunny window.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Keep it out",
+     "why": "Spines persist."
+    },
+    "partners_good": [
+     {
+      "name": "Other cacti",
+      "sci": "Gymnocalycium",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Ferns, calatheas and peace lilies",
+      "sci": "Nephrolepis",
+      "why": "They want moist soil and shade; a pot that suits them rots a succulent.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Spring to summer",
+      "how": "Cut a branch, let it dry for one to two weeks, and plant in dry gritty mix."
+     },
+     {
+      "method": "As a rootstock",
+      "when": "Spring",
+      "how": "Its green stems are a common grafting base for other cacti."
+     }
+    ],
+    "breeding": {
+     "text": "Rarely flowers in pots, so crossing is unlikely at home.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": false
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Myrtillocactus+geometrizans"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Myrtillocactus+geometrizans"
+     }
+    ]
+   }
+  },
+  {
+   "key": "vanilla planifolia",
+   "name": "Vanilla planifolia",
+   "kind": "plant",
+   "data": {
+    "summary": "The vanilla orchid: a climbing vine that makes real vanilla beans once it is big enough to flower.",
+    "uses": [
+     {
+      "kind": "Food",
+      "text": "The cured seed pods are vanilla beans. A vine usually needs to be several years old and 10 feet or more of stem before it flowers.",
+      "caution": "Fresh green pods have no flavor; they must be cured for months."
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Soft stems rot well."
+    },
+    "partners_good": [
+     {
+      "name": "Moth orchid",
+      "sci": "Phalaenopsis",
+      "why": "Same warmth and humidity.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "A moss pole",
+      "sci": "Philodendron",
+      "why": "It climbs like a philodendron and grows best on a support.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Cacti and other succulents",
+      "sci": "Opuntia",
+      "why": "They need full sun and dry soil between waterings, which this plant does not.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Spring to summer",
+      "how": "Cut a piece with at least 3 nodes, lay the bottom nodes on moist moss or bark, and keep it warm and humid. Aerial roots appear in weeks."
+     }
+    ],
+    "breeding": {
+     "text": "Every flower must be hand-pollinated within the few hours it is open: lift the flap (rostellum) with a toothpick and press the pollen onto the stigma. That is also how you get beans. Pods ripen in about 9 months.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Vanilla+planifolia"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Vanilla+planifolia"
+     }
+    ]
+   }
+  },
+  {
+   "key": "tradescantia",
+   "name": "Tradescantia",
+   "kind": "plant",
+   "data": {
+    "summary": "Spiderworts and wandering dudes: fast trailing plants that root from every piece.",
+    "uses": [
+     {
+      "kind": "Ground cover and baskets",
+      "text": "Fills pots and shady beds fast.",
+      "caution": "The sap gives some people and dogs an itchy rash."
+     }
+    ],
+    "compost": {
+     "verdict": "Poor",
+     "why": "Every stem piece can root and spread from the compost; dry it out completely first."
+    },
+    "partners_good": [
+     {
+      "name": "Coleus",
+      "sci": "Plectranthus scutellarioides",
+      "why": "Same needs in shady pots.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Bearded iris",
+      "sci": "Iris",
+      "why": "It creeps over iris rhizomes, which need sun on their tops to flower.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Any time it is growing",
+      "how": "Pieces root in water in days. Pinch the tips to keep it bushy."
+     }
+    ],
+    "breeding": {
+     "text": "Spiderworts cross readily within the genus.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Tradescantia"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Tradescantia"
+     }
+    ]
+   }
+  },
+  {
+   "key": "tradescantia pallida",
+   "name": "Tradescantia pallida",
+   "kind": "plant",
+   "data": {
+    "summary": "Purple heart: a tough purple ground cover, hardy in Round Rock (it dies back in frost and returns).",
+    "uses": [
+     {
+      "kind": "Ground cover",
+      "text": "Purple color in hot, dry spots where little else grows.",
+      "caution": "The sap can cause an itchy rash on skin and in dogs."
+     },
+     {
+      "kind": "Pollution monitoring (research)",
+      "text": "Its flower cells show damage from air pollution, so it is used in a standard test of air quality (the Tradescantia micronucleus test).",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Poor",
+     "why": "Stem pieces root and spread from compost; dry it out completely first."
+    },
+    "partners_good": [
+     {
+      "name": "Zexmenia",
+      "sci": "Wedelia",
+      "why": "Same heat and drought.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Lantana",
+      "sci": "Lantana",
+      "why": "Same needs; the colors contrast.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Bearded iris",
+      "sci": "Iris",
+      "why": "It creeps over iris rhizomes, which need sun on their tops to flower.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [
+     {
+      "what": "Bees",
+      "why": "Small pink flowers in summer."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Spring to autumn",
+      "how": "Any piece roots in water or soil within days."
+     }
+    ],
+    "breeding": {
+     "text": "Crosses within Tradescantia; it is rarely grown from seed.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Tradescantia+pallida"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Tradescantia+pallida"
+     }
+    ]
+   }
+  },
+  {
+   "key": "syngonium",
+   "name": "Syngonium",
+   "kind": "plant",
+   "data": {
+    "summary": "Arrowhead plants: easy trailing aroids whose leaves change shape as they climb.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Colorful leaves for medium light.",
+      "caution": "Contains calcium oxalate crystals: chewing it burns the mouth. Keep it away from pets and children, and wear gloves when cutting it."
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Soft green leaves rot quickly. The oxalate crystals break down in the pile; wear gloves when chopping it."
+    },
+    "partners_good": [
+     {
+      "name": "Aglaonema",
+      "sci": "Aglaonema",
+      "why": "Same warm, bright-shade light and evenly moist soil, so they share a shelf or a big pot well.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Philodendron",
+      "sci": "Philodendron",
+      "why": "Same light, water and humidity.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Peace lily",
+      "sci": "Spathiphyllum",
+      "why": "Same shade and moisture; both like to be grouped for humidity.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Cacti and other succulents",
+      "sci": "Opuntia",
+      "why": "They need full sun and dry soil between waterings, which this plant does not.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Any time it is growing",
+      "how": "Cuttings with a node root in water in one to two weeks."
+     }
+    ],
+    "breeding": {
+     "text": "Aroids flower with a spathe; the female part is ready a day before the pollen is shed, so crossing needs two plants flowering a day or two apart, or stored pollen. Berries take months to ripen, and seedlings of named hybrids vary a lot. It seldom flowers indoors.",
+     "cross_genera": [],
+     "patent": "Many newer named varieties are patented (look for \"PP\" or \"PPAF\" on the tag). Propagating a patented plant is not allowed while the patent lasts, even for yourself.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Syngonium"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Syngonium"
+     }
+    ]
+   }
+  },
+  {
+   "key": "monstera deliciosa",
+   "name": "Monstera deliciosa",
+   "kind": "plant",
+   "data": {
+    "summary": "The Swiss cheese plant: split leaves, aerial roots, and, outdoors in the tropics, an edible fruit.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "A large climber for bright indoor light.",
+      "caution": "Contains calcium oxalate crystals: chewing it burns the mouth. Keep it away from pets and children, and wear gloves when cutting it."
+     },
+     {
+      "kind": "Food",
+      "text": "The fruit is eaten in the tropics once fully ripe, when its scales lift off by themselves; it tastes like pineapple and banana. Indoor plants almost never fruit.",
+      "caution": "Unripe fruit is full of the irritating oxalate crystals."
+     },
+     {
+      "kind": "Crafts",
+      "text": "The long aerial roots have been used for rope and baskets.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Soft green leaves rot quickly. The oxalate crystals break down in the pile; wear gloves when chopping it."
+    },
+    "partners_good": [
+     {
+      "name": "Philodendron",
+      "sci": "Philodendron",
+      "why": "Same needs; both climb a moss pole.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Fiddle-leaf fig",
+      "sci": "Ficus lyrata",
+      "why": "Same bright light.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Cacti and other succulents",
+      "sci": "Opuntia",
+      "why": "They need full sun and dry soil between waterings, which this plant does not.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Spring to summer",
+      "how": "Each cutting needs a node, ideally with an aerial root; a leaf alone never grows a new plant. Root in water or moss."
+     },
+     {
+      "method": "Air layering",
+      "when": "Spring to summer",
+      "how": "Wrap moist moss around a node on the plant; cut below it once roots fill the moss."
+     }
+    ],
+    "breeding": {
+     "text": "Aroids flower with a spathe; the female part is ready a day before the pollen is shed, so crossing needs two plants flowering a day or two apart, or stored pollen. Berries take months to ripen, and seedlings of named hybrids vary a lot. Indoor monsteras rarely flower.",
+     "cross_genera": [],
+     "patent": "Thai Constellation and some other variegated forms are patented or tissue-culture only.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Monstera+deliciosa"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Monstera+deliciosa"
+     }
+    ]
+   }
+  },
+  {
+   "key": "gardenia jasminoides",
+   "name": "Gardenia jasminoides",
+   "kind": "plant",
+   "data": {
+    "summary": "Gardenia: heavily scented white flowers in early summer; wants acid soil.",
+    "uses": [
+     {
+      "kind": "Fragrance",
+      "text": "Flowers for vases and scent.",
+      "caution": "Mildly toxic to pets (ASPCA)."
+     },
+     {
+      "kind": "Dye",
+      "text": "The orange fruit is a traditional yellow dye in East Asia, for fabric and food.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Leaves compost well."
+    },
+    "partners_good": [
+     {
+      "name": "Azaleas and camellias",
+      "sci": "Camellia",
+      "why": "Same acid soil and light shade.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Plants that need lime",
+      "sci": "Iris",
+      "why": "Alkaline soil turns gardenia leaves yellow; Round Rock's soil and tap water are already alkaline.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [
+     {
+      "what": "Moths",
+      "why": "The night scent draws moths."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Softwood cuttings",
+      "when": "Late spring to early summer",
+      "how": "Take 4 to 5 inch tips, use rooting hormone, and keep them warm and covered in acid mix (peat or bark)."
+     }
+    ],
+    "breeding": {
+     "text": "Gardenias can be crossed by hand but rarely set seed in pots.",
+     "cross_genera": [],
+     "patent": "Many newer named varieties are patented (look for \"PP\" or \"PPAF\" on the tag). Propagating a patented plant is not allowed while the patent lasts, even for yourself.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Gardenia+jasminoides"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Gardenia+jasminoides"
+     }
+    ]
+   }
+  },
+  {
+   "key": "cucurbitaceae",
+   "name": "Cucurbitaceae (gourd family)",
+   "kind": "plant",
+   "data": {
+    "summary": "The gourd family: melons, squash, cucumbers and gourds. Yours is not identified to species yet.",
+    "uses": [
+     {
+      "kind": "Food",
+      "text": "Melons, squash and cucumbers are edible.",
+      "caution": "Do not eat a fruit that tastes bitter: bitter gourd-family fruit can contain cucurbitacins that cause severe illness. Ornamental gourds are not for eating."
+     },
+     {
+      "kind": "Crafts",
+      "text": "Hard-shelled gourds dry into bowls, birdhouses and rattles.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Vines and leaves compost well. Leave out leaves with powdery mildew."
+    },
+    "partners_good": [
+     {
+      "name": "Corn and beans",
+      "sci": "Zea",
+      "why": "The \"Three Sisters\": corn gives support, beans add nitrogen, squash shades out weeds.",
+      "evidence": "Traditional"
+     },
+     {
+      "name": "Nasturtium",
+      "sci": "Tropaeolum",
+      "why": "Said to deter squash bugs.",
+      "evidence": "Traditional"
+     },
+     {
+      "name": "Bee balm",
+      "sci": "Monarda",
+      "why": "Brings in the bees that pollinate the flowers.",
+      "evidence": "Traditional"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Potatoes",
+      "sci": "Solanum",
+      "why": "Compete for space and share some diseases.",
+      "evidence": "Traditional"
+     }
+    ],
+    "deters": [],
+    "attracts": [
+     {
+      "what": "Bees",
+      "why": "Needed to pollinate the female flowers."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Seed",
+      "when": "After the soil warms (April to June)",
+      "how": "Sow 1 inch deep where it will grow; it dislikes transplanting."
+     }
+    ],
+    "breeding": {
+     "text": "Plants of the same species cross freely through bees, so saved seed may not come true if other squash or gourds of that species grow nearby. Hand-pollinate and tape the flowers shut to keep a line pure.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Cucurbitaceae"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Cucurbitaceae"
+     }
+    ]
+   }
+  },
+  {
+   "key": "pennisetum advena",
+   "name": "Pennisetum advena (Cenchrus advena)",
+   "kind": "plant",
+   "data": {
+    "summary": "Purple fountain grass: burgundy leaves and plumes; 'Rubrum' is sterile, so it does not spread like its weedy relative.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Summer color and movement.",
+      "caution": ""
+     },
+     {
+      "kind": "Dried arrangements",
+      "text": "The plumes dry well.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Chop the grass blades; no viable seed."
+    },
+    "partners_good": [
+     {
+      "name": "Lantana",
+      "sci": "Lantana",
+      "why": "Same sun and heat.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Celosia",
+      "sci": "Celosia",
+      "why": "Same needs; good together in pots.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Division",
+      "when": "Spring",
+      "how": "Split the clump with a sharp spade. It is not hardy in hard freezes, so keep a division indoors over winter."
+     }
+    ],
+    "breeding": {
+     "text": "'Rubrum' is sterile and does not set seed.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": false
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Pennisetum+advena"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Pennisetum+advena"
+     }
+    ]
+   }
+  },
+  {
+   "key": "alocasia",
+   "name": "Alocasia",
+   "kind": "plant",
+   "data": {
+    "summary": "Elephant ears: dramatic leaves that need warmth, bright light and humidity.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Bold foliage.",
+      "caution": "Contains calcium oxalate crystals: chewing it burns the mouth. Keep it away from pets and children, and wear gloves when cutting it. Alocasias are more irritating than most aroids."
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Soft green leaves rot quickly. The oxalate crystals break down in the pile; wear gloves when chopping it."
+    },
+    "partners_good": [
+     {
+      "name": "Aglaonema",
+      "sci": "Aglaonema",
+      "why": "Same warm, bright-shade light and evenly moist soil, so they share a shelf or a big pot well.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Philodendron",
+      "sci": "Philodendron",
+      "why": "Same light, water and humidity.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Peace lily",
+      "sci": "Spathiphyllum",
+      "why": "Same shade and moisture; both like to be grouped for humidity.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Cacti and other succulents",
+      "sci": "Opuntia",
+      "why": "They need full sun and dry soil between waterings, which this plant does not.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Corms",
+      "when": "Spring to summer",
+      "how": "Small corms form around the base. Peel and set them half-buried in moist moss or mix in warmth; they sprout in weeks."
+     },
+     {
+      "method": "Division",
+      "when": "Spring",
+      "how": "Separate offsets with roots."
+     }
+    ],
+    "breeding": {
+     "text": "Aroids flower with a spathe; the female part is ready a day before the pollen is shed, so crossing needs two plants flowering a day or two apart, or stored pollen. Berries take months to ripen, and seedlings of named hybrids vary a lot. Many named alocasias are hybrids.",
+     "cross_genera": [],
+     "patent": "Many newer named varieties are patented (look for \"PP\" or \"PPAF\" on the tag). Propagating a patented plant is not allowed while the patent lasts, even for yourself.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Alocasia"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Alocasia"
+     }
+    ]
+   }
+  },
+  {
+   "key": "celosia",
+   "name": "Celosia",
+   "kind": "plant",
+   "data": {
+    "summary": "Cockscomb and plume celosia: long-lasting summer color, good for drying.",
+    "uses": [
+     {
+      "kind": "Cut and dried flowers",
+      "text": "Plumes and combs dry well and keep their color.",
+      "caution": ""
+     },
+     {
+      "kind": "Food",
+      "text": "Young leaves of Celosia argentea are eaten as a cooked green in West Africa and Asia (Lagos spinach).",
+      "caution": "Only eat plants that have not been sprayed."
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Soft annual stems compost well; seed heads may sprout."
+    },
+    "partners_good": [
+     {
+      "name": "Zinnias and marigolds",
+      "sci": "Zinnia",
+      "why": "Same sun and heat.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Purple fountain grass",
+      "sci": "Pennisetum",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [],
+    "deters": [],
+    "attracts": [
+     {
+      "what": "Bees and butterflies",
+      "why": "Feed on the flowers."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Seed",
+      "when": "Spring after frost",
+      "how": "Sow on the surface in warmth. Save seed from dried heads in autumn."
+     }
+    ],
+    "breeding": {
+     "text": "Kelos and Glorious are F1 series: seed you save will not look like the parents. Plume and crested forms cross with each other.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Celosia"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Celosia"
+     }
+    ]
+   }
+  },
+  {
+   "key": "pachira aquatica",
+   "name": "Pachira aquatica",
+   "kind": "plant",
+   "data": {
+    "summary": "The money tree: an easy indoor tree, often sold with braided trunks; safe for pets.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Easy in bright, indirect light; non-toxic to pets (ASPCA).",
+      "caution": ""
+     },
+     {
+      "kind": "Food",
+      "text": "In its native wetlands the large seeds are roasted and eaten (the Guiana chestnut). Indoor trees rarely flower.",
+      "caution": "Eat only roasted seeds; raw seeds are not advised."
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Leaves compost well."
+    },
+    "partners_good": [
+     {
+      "name": "Fiddle-leaf fig",
+      "sci": "Ficus lyrata",
+      "why": "Same light and watering.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Cacti and other succulents",
+      "sci": "Opuntia",
+      "why": "They need full sun and dry soil between waterings, which this plant does not.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Spring to summer",
+      "how": "Root 6-inch tips in water or moist mix. Cuttings grow as normal stems; braiding uses several young trunks."
+     }
+    ],
+    "breeding": {
+     "text": "It rarely flowers indoors.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": false
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Pachira+aquatica"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Pachira+aquatica"
+     }
+    ]
+   }
+  },
+  {
+   "key": "iris germanica",
+   "name": "Iris germanica",
+   "kind": "plant",
+   "data": {
+    "summary": "The bearded iris: spring flowers from rhizomes, hardy and drought-tolerant once settled.",
+    "uses": [
+     {
+      "kind": "Cut flowers",
+      "text": "Spring flowers for the vase.",
+      "caution": ""
+     },
+     {
+      "kind": "Perfume",
+      "text": "Dried, aged rhizomes become orris root, a fixative in perfumes and potpourri.",
+      "caution": "The rhizomes are toxic if eaten and can irritate skin."
+     }
+    ],
+    "compost": {
+     "verdict": "Fine in small amounts",
+     "why": "Leaves are fine. Rhizome pieces resprout; chop and dry them first."
+    },
+    "partners_good": [
+     {
+      "name": "Salvias",
+      "sci": "Salvia",
+      "why": "Same sun and drainage.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Ground covers and mulch over the rhizomes",
+      "sci": "Tradescantia",
+      "why": "The rhizomes need sun on their tops; covering them stops flowering and invites rot.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [
+     {
+      "what": "Deer",
+      "how": "Deer usually leave irises alone.",
+      "evidence": "Traditional"
+     }
+    ],
+    "attracts": [
+     {
+      "what": "Bees",
+      "why": "Bumblebees work the flowers."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Division",
+      "when": "Late summer (August to September)",
+      "how": "Lift the clump every 3 to 4 years, cut healthy rhizomes with a fan of leaves, trim the leaves to 6 inches, and replant with the tops showing."
+     }
+    ],
+    "breeding": {
+     "text": "Easy to cross: move pollen from one flower's anthers onto the stigma lip of another. Seeds take about 2 years to flower, and every seedling is new; this is how most named irises were made.",
+     "cross_genera": [],
+     "patent": "Some recent iris introductions are patented; most are not.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Iris+germanica"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Iris+germanica"
+     }
+    ]
+   }
+  },
+  {
+   "key": "ficus elastica",
+   "name": "Ficus elastica",
+   "kind": "plant",
+   "data": {
+    "summary": "The rubber plant: glossy leaves on a tough indoor tree.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "A forgiving indoor tree.",
+      "caution": "The milky sap irritates skin and is mildly toxic to pets."
+     },
+     {
+      "kind": "History",
+      "text": "Its latex was an early source of rubber, before the Pará rubber tree took over.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Shred the thick leaves."
+    },
+    "partners_good": [
+     {
+      "name": "Fiddle-leaf fig",
+      "sci": "Ficus lyrata",
+      "why": "Same light and water.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Cacti and other succulents",
+      "sci": "Opuntia",
+      "why": "They need full sun and dry soil between waterings, which this plant does not.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Spring to summer",
+      "how": "Let the sap stop, then root tips in water or moist mix in warmth."
+     },
+     {
+      "method": "Air layering",
+      "when": "Spring to summer",
+      "how": "The surest way for a tall plant."
+     }
+    ],
+    "breeding": {
+     "text": "Like all figs it needs its own wasp to set seed, so it cannot be bred at home.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": false
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Ficus+elastica"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Ficus+elastica"
+     }
+    ]
+   }
+  },
+  {
+   "key": "petunia",
+   "name": "Petunia",
+   "kind": "plant",
+   "data": {
+    "summary": "Petunias: summer color in pots and beds; Ray Black is a near-black variety.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Flowers from spring to fall; safe for pets (ASPCA).",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Soft stems compost well."
+    },
+    "partners_good": [
+     {
+      "name": "Tomatoes and beans",
+      "sci": "Solanum",
+      "why": "Petunias are said to deter aphids, tomato hornworms and asparagus beetles.",
+      "evidence": "Traditional"
+     },
+     {
+      "name": "Sweet potato vine",
+      "sci": "Ipomoea batatas",
+      "why": "A classic basket pair.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [],
+    "deters": [
+     {
+      "what": "Aphids and some beetles",
+      "how": "Sticky hairs trap small insects.",
+      "evidence": "Traditional"
+     }
+    ],
+    "attracts": [
+     {
+      "what": "Hummingbirds and moths",
+      "why": "Visit the trumpet flowers."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Spring to summer",
+      "how": "Tips root in a week or two."
+     }
+    ],
+    "breeding": {
+     "text": "Garden petunias are hybrids; seed from them gives a mix. Crossing by hand is easy.",
+     "cross_genera": [],
+     "patent": "Many newer named varieties are patented (look for \"PP\" or \"PPAF\" on the tag). Propagating a patented plant is not allowed while the patent lasts, even for yourself. Ray Black is a patented series.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Petunia"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Petunia"
+     }
+    ]
+   }
+  },
+  {
+   "key": "artemisia ludoviciana",
+   "name": "Artemisia ludoviciana",
+   "kind": "plant",
+   "data": {
+    "summary": "Prairie sage or white sagebrush: a silver, aromatic Texas native. (The \"white sage\" of smudge sticks is usually Salvia apiana, a different plant.)",
+    "uses": [
+     {
+      "kind": "Ceremonial and aromatic",
+      "text": "Bundles are burned for smudging in many Native American traditions, and it is used in dried arrangements and wreaths.",
+      "caution": ""
+     },
+     {
+      "kind": "Ground cover",
+      "text": "Spreads into a silver mat in dry, sunny spots.",
+      "caution": "It spreads aggressively by underground runners; edge it or grow it in a pot."
+     }
+    ],
+    "compost": {
+     "verdict": "Fine in small amounts",
+     "why": "Its aromatic oils slow the growth of some seedlings; let it break down fully before using that compost on seed beds."
+    },
+    "partners_good": [
+     {
+      "name": "Zexmenia",
+      "sci": "Wedelia",
+      "why": "Same dry, sunny ground.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Prickly pear",
+      "sci": "Opuntia",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Small plants it can overrun",
+      "sci": "Celosia",
+      "why": "Its runners crowd them out.",
+      "evidence": "Tested"
+     }
+    ],
+    "deters": [
+     {
+      "what": "Deer and rabbits",
+      "how": "The strong smell makes it unappealing to browsers.",
+      "evidence": "Traditional"
+     },
+     {
+      "what": "Moths in stored clothes",
+      "how": "Dried bundles are a traditional moth repellent.",
+      "evidence": "Traditional"
+     }
+    ],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Division",
+      "when": "Spring",
+      "how": "Dig up rooted pieces of runner and replant."
+     },
+     {
+      "method": "Stem cuttings",
+      "when": "Spring",
+      "how": "Root easily."
+     }
+    ],
+    "breeding": {
+     "text": "It spreads mostly by runners; crossing is rarely done.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Artemisia+ludoviciana"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Artemisia+ludoviciana"
+     }
+    ]
+   }
+  },
+  {
+   "key": "monarda fistulosa",
+   "name": "Monarda fistulosa",
+   "kind": "plant",
+   "data": {
+    "summary": "Wild bergamot: a native mint with lavender flowers that feed bees and hummingbirds.",
+    "uses": [
+     {
+      "kind": "Tea and herbs",
+      "text": "The leaves make a minty, oregano-like tea and seasoning; they are rich in thymol.",
+      "caution": "Use small amounts; avoid in pregnancy."
+     },
+     {
+      "kind": "Skin and first aid",
+      "text": "Leaves were used by many Native American nations on wounds and skin infections, thanks to the antiseptic thymol.",
+      "caution": "A traditional use, not medical advice."
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Leaves compost well; leave out mildewed ones."
+    },
+    "partners_good": [
+     {
+      "name": "Tomatoes and squash",
+      "sci": "Cucurbitaceae",
+      "why": "Brings bees to the vegetable garden.",
+      "evidence": "Traditional"
+     },
+     {
+      "name": "Coneflowers",
+      "sci": "Echinacea",
+      "why": "Same native prairie conditions.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [],
+    "deters": [
+     {
+      "what": "Deer",
+      "how": "The strong scent puts deer off.",
+      "evidence": "Traditional"
+     }
+    ],
+    "attracts": [
+     {
+      "what": "Bees, butterflies and hummingbirds",
+      "why": "One of the best native nectar plants."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Division",
+      "when": "Spring",
+      "how": "Split clumps every 2 to 3 years to keep them vigorous."
+     },
+     {
+      "method": "Seed",
+      "when": "Autumn or early spring",
+      "how": "Surface-sow; it needs light to sprout."
+     },
+     {
+      "method": "Stem cuttings",
+      "when": "Spring",
+      "how": "Root easily."
+     }
+    ],
+    "breeding": {
+     "text": "Crosses with other Monarda species; garden bee balms are mostly hybrids.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Monarda+fistulosa"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Monarda+fistulosa"
+     }
+    ]
+   }
+  },
+  {
+   "key": "wedelia acapulcensis",
+   "name": "Wedelia acapulcensis var. hispida (zexmenia)",
+   "kind": "plant",
+   "data": {
+    "summary": "Zexmenia: a tough, drought-proof Texas native with orange-yellow daisies from spring to fall.",
+    "uses": [
+     {
+      "kind": "Ground cover",
+      "text": "Covers hot, dry spots with flowers and no watering once settled.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Soft stems compost well."
+    },
+    "partners_good": [
+     {
+      "name": "Purple heart",
+      "sci": "Tradescantia pallida",
+      "why": "Same heat and drought.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Prairie sage",
+      "sci": "Artemisia",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Thirsty plants",
+      "sci": "Spathiphyllum",
+      "why": "Extra water makes it floppy and short-lived.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [
+     {
+      "what": "Deer",
+      "how": "Deer seldom eat it.",
+      "evidence": "Traditional"
+     }
+    ],
+    "attracts": [
+     {
+      "what": "Butterflies",
+      "why": "A favorite nectar plant."
+     },
+     {
+      "what": "Birds",
+      "why": "Eat the seeds."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Seed",
+      "when": "Spring",
+      "how": "Sow fresh seed; it self-sows lightly."
+     },
+     {
+      "method": "Softwood cuttings",
+      "when": "Late spring",
+      "how": "Root fairly easily."
+     }
+    ],
+    "breeding": {
+     "text": "Rarely bred; seed from one plant is much like it.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Wedelia+acapulcensis+var.+hispida"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Wedelia+acapulcensis+var.+hispida"
+     }
+    ]
+   }
+  },
+  {
+   "key": "hibiscus coccineus",
+   "name": "Hibiscus coccineus",
+   "kind": "plant",
+   "data": {
+    "summary": "Texas star hibiscus: a tall native of wet ground with brilliant red, star-shaped flowers; it dies back in winter and returns.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Big red flowers through summer, by ponds and in rain gardens.",
+      "caution": ""
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Stems are woody by autumn; chop them."
+    },
+    "partners_good": [
+     {
+      "name": "Other moist-soil natives",
+      "sci": "Lobelia",
+      "why": "Same wet, sunny ground.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Dry-garden plants",
+      "sci": "Agave",
+      "why": "It needs far more water than they want.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [
+     {
+      "what": "Hummingbirds and butterflies",
+      "why": "The red flowers are made for hummingbirds."
+     }
+    ],
+    "propagation": [
+     {
+      "method": "Seed",
+      "when": "Spring",
+      "how": "Nick the seed coat and sow in warm soil; it flowers in its second year."
+     },
+     {
+      "method": "Stem cuttings",
+      "when": "Late spring to summer",
+      "how": "Root easily in moist mix."
+     }
+    ],
+    "breeding": {
+     "text": "Crosses with the other hardy hibiscus (H. moscheutos and H. laevis); some large-flowered garden hybrids come from these crosses.",
+     "cross_genera": [],
+     "patent": "Many newer named varieties are patented (look for \"PP\" or \"PPAF\" on the tag). Propagating a patented plant is not allowed while the patent lasts, even for yourself.",
+     "same_genus": true
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Hibiscus+coccineus"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Hibiscus+coccineus"
+     }
+    ]
+   }
+  }
+ ],
+ "facts_link": {
+  "P-080": "aloe"
+ }
+}
