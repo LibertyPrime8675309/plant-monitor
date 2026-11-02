@@ -16,6 +16,24 @@
      "Plugs into an outlet (100-277 V AC, 50/60 Hz); 4.9 ft cord with an on/off switch"
     ]
    }
+  },
+  {
+   "key": "sansi-80w",
+   "note": "model number and ratings from its label (batch B2)",
+   "set": {
+    "model": [
+     null,
+     "C21FS-BE26"
+    ],
+    "power": [
+     "Screws into an E26 socket (120 V); the cord or fixture is not included",
+     "Screws into an E26 socket (120 V AC, 60 Hz, 1.1 A); the cord or fixture is not included"
+    ],
+    "notes": [
+     "",
+     "Label: \"LED Wing Grow Light\", rated for damp locations (a covered porch is fine, not direct rain). Not for totally enclosed fixtures: hang it bare or in an open shade so it can shed heat."
+    ]
+   }
   }
  ]
 }
