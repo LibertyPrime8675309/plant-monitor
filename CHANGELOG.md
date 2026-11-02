@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.26.1 (2026-11-01)
+- **The top bar on a computer uses the whole width of the window.** It used to stop well short of both edges.
+  - "Plant record" and its version are on the left, and **Online**, **Location** and **Editing as** (or **Signed in as**) are side by side on the right.
+  - The page links have a line of their own underneath, all in one row, spread evenly across the window. On your 1920 × 1080 and 2560 × 1440 (150%) monitors they no longer wrap onto a second row.
+  - On a window wide enough for everything, it is all on one line.
+- Includes everything in 1.26.0 below.
+
 ## 1.26.0 (2026-10-31)
 - **Pages use more of the screen.**
   - Paragraphs and lists run the full width of the page instead of stopping about two thirds of the way across. On the Groups page, for example, the groups now sit three or more across on your monitor.

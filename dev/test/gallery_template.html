@@ -80,11 +80,12 @@ dialog::backdrop{background:rgba(0,0,0,.65)}
 <div class="wrap">
 <header class="intro">
   <div>
-    <h1>Plant record 1.26.0: layout previews</h1>
+    <h1>Plant record 1.26: layout previews</h1>
     <p>Every page of the app, on each of your screens, with three sets of Display settings. Choose a page, a device and the settings below. Press a picture to see it large.</p>
     <ul class="key">
       <li><span class="dash" aria-hidden="true"></span> A pink dashed line marks where each screenful ends, so you can see how much fits before you scroll.</li>
       <li>Long pages stop after four screens in the pictures; the note under each picture says how long the whole page is.</li>
+      <li>The two monitors show 1.26.1: the top bar spans the whole window, with the page links in one row.</li>
       <li>Buttons pinned to the screen (Sections, Debug, Display) show at the bottom of the first screen.</li>
     </ul>
   </div>
@@ -188,8 +189,8 @@ function cardHtml(it, i) {
     <div class="pair" data-shots><div class="waiting">Loading the picture</div></div></article>`;
 }
 function shotHtml(s, it, which, i) {
-  const vers = which === 'after' ? '1.26.0 (new)' : '1.25.0 (old)';
-  const alt = `${title(it)}, ${COMBO[it.c]}, version ${which === 'after' ? '1.26.0' : '1.25.0'}`;
+  const vers = which === 'after' ? '1.26 (new)' : '1.25.0 (old)';
+  const alt = `${title(it)}, ${COMBO[it.c]}, version ${which === 'after' ? '1.26' : '1.25.0'}`;
   const first = SCREEN[it.d] ? `--first:calc(${SCREEN[it.d]} * var(--w))` : '';
   return `<figure class="shot"><figcaption><span class="tag">${vers}</span></figcaption>
     <button class="frame" type="button" data-open="${i}" data-which="${which}" style="${first}" aria-label="Open ${esc(alt)} large">
@@ -242,7 +243,7 @@ function openBig(i) {
     const one = (s, v) => `<figure class="shot${ph}"><figcaption><span class="tag">${v}</span></figcaption><img src="${s.src}" width="${s.w}" height="${s.h}" alt="${esc(title(it) + ', ' + COMBO[it.c] + ', ' + v)}"></figure>`;
     const show = (document.querySelector('input[name=show]:checked') || {}).value || 'both';
     $('big-show').hidden = !o;
-    body.innerHTML = `<div class="pair">${!o || show !== 'old' ? one(a, '1.26.0 (new)') : ''}${o && show !== 'new' ? one(o, '1.25.0 (old)') : ''}</div>`;
+    body.innerHTML = `<div class="pair">${!o || show !== 'old' ? one(a, '1.26 (new)') : ''}${o && show !== 'new' ? one(o, '1.25.0 (old)') : ''}</div>`;
   });
   if (!$('big').open) $('big').showModal();
 }

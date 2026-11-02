@@ -33,17 +33,30 @@ with sync_playwright() as p:
     check(cols(pg, '.grp-list') >= 3, 'the group cards stay side by side with shorter lines')
     pg.evaluate("window.PlantPrefs.set('lines','full')")
     pg.goto(LOCAL + '/#/today'); pg.wait_for_timeout(2500)
-    if pg.locator('ul.jobs').count(): check(cols(pg, 'ul.jobs') >= 2, 'Today shows its jobs in two columns on a wide screen')
+    if pg.locator('ul.jobs').count():
+        try: pg.wait_for_function("getComputedStyle(document.querySelector('ul.jobs')).gridTemplateColumns.split(' ').length >= 2", timeout=8000)
+        except Exception: pass            # the check below reports it
+        check(cols(pg, 'ul.jobs') >= 2, 'Today shows its jobs in two columns on a wide screen')
     pg.goto(LOCAL + '/#/'); pg.wait_for_timeout(2500)
     shape = pg.evaluate("""() => [...document.querySelectorAll('.sheet .mat img')].slice(0, 12).map(i => { const r = i.getBoundingClientRect(); return r.width ? r.height / r.width : 0; })""")
     check(shape and max(shape) < 1.6, f'card photos keep their shape (tallest is {max(shape or [0]):.2f} times its width)')
     check(pg.locator('#pages-btn').is_hidden() and pg.locator('#main-nav').is_visible(), 'on a computer the pages are listed in the top bar')
     pg.goto(LOCAL + '/#/frost'); pg.wait_for_timeout(2500)
     check(pg.locator('main table.tbl.stacked').count() == 0, 'on a computer tables stay tables')
+    for vw, vh in ((1920, 960), (1707, 850)):          # 1.26.1: Ethan's two monitors, at his usual text size
+        pg.set_viewport_size({'width': vw, 'height': vh}); pg.evaluate("window.PlantPrefs.set('size','100')"); pg.wait_for_timeout(700)
+        t = pg.evaluate("""() => { const d = document.documentElement.dataset, i = document.querySelector('.top-in').getBoundingClientRect(),
+            tops = new Set([...document.querySelectorAll('#main-nav a')].map(a => Math.round(a.getBoundingClientRect().top)));
+            return { mode: d.topmode, rows: tops.size, w: Math.round(i.width), h: document.querySelector('header.top').offsetHeight,
+                     side: document.documentElement.scrollWidth > innerWidth + 1 } }""")
+        check(t['rows'] == 1 and t['w'] >= vw - 2 and not t['side'] and t['h'] < 130,
+              f"at {vw} x {vh} the top bar spans the window and the page links sit on one line ({t['mode']}, {t['h']} px tall)")
+    pg.set_viewport_size({'width': 1920, 'height': 960}); pg.evaluate("window.PlantPrefs.set('size','115')"); pg.wait_for_timeout(500)
     pg.evaluate("window.PlantPrefs.set('size','135')"); pg.wait_for_timeout(600)
     top = pg.evaluate("[document.documentElement.dataset.pagesfold, document.querySelector('header.top').offsetHeight, innerHeight]")
-    check(top[0] == '1' and pg.locator('#pages-btn').is_visible() and top[1] < top[2] * .2,
-          f'with large text on a computer the pages fold behind the Pages button and the top bar stays short ({top[1]} px)')
+    nav1 = pg.evaluate("new Set([...document.querySelectorAll('#main-nav a')].map(a => Math.round(a.getBoundingClientRect().top))).size === 1")
+    check((top[0] == '1' and pg.locator('#pages-btn').is_visible() or top[0] == '0' and nav1) and top[1] < top[2] * .2,
+          f'with large text on a computer the page links stay on one line or fold behind Pages, and the top bar stays short ({top[1]} px)')
     pg.evaluate("window.PlantPrefs.set('size','100')"); pg.wait_for_timeout(600)
     check(pg.evaluate("document.documentElement.dataset.pagesfold") == '0', 'with your usual text size the pages are listed again')
     pg.close()
@@ -73,11 +86,11 @@ with sync_playwright() as p:
     check(bar['pad'] >= bar['h'], 'the end of the page can scroll clear of the bar')
     check(not pg.evaluate("document.documentElement.scrollWidth > innerWidth + 1"), 'nothing scrolls sideways')
     pg.screenshot(path=os.path.join(OUT, 'layout-3-phone-bar.png'))
-    pg.goto(LOCAL + '/#/frost'); pg.wait_for_timeout(2500)
+    pg.goto(LOCAL + '/#/winter'); pg.wait_for_timeout(2500)          # the 7-day forecast table is always there
     st = pg.evaluate("""() => { const t = document.querySelector('main table.tbl'); const td = t && t.querySelector('tbody td[data-label]');
         return { stacked: !!t && t.classList.contains('stacked'), label: td ? getComputedStyle(td, '::before').content : '',
                  side: [...document.querySelectorAll('main .tbl-wrap:not(.wide)')].some(w => w.scrollWidth > w.clientWidth + 2) } }""")
-    check(st['stacked'] and 'Low' in st['label'], 'a table too wide for the phone becomes one box per row, each value with its column name')
+    check(st['stacked'] and st['label'] not in ('', 'none', 'normal'), 'a table too wide for the phone becomes one box per row, each value with its column name')
     check(not st['side'], 'no table on the page scrolls sideways')
     pg.screenshot(path=os.path.join(OUT, 'layout-4-phone-table.png'), full_page=True)
     pg.click('#nav-tab'); pg.wait_for_timeout(400)
