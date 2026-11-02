@@ -281,8 +281,9 @@ async function route() {
   if (parts[0] !== 'identify') idStop();
   if (parts[0] !== 'new') NEWFILL = null;
   if (parts[0] !== 'fungi' || parts[1] !== 'new') MUFILL = null;
-  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' || parts[0] === 'species' || parts[0] === 'wishlist' || parts[0] === 'around' ? 'library' : parts[0] === 'fungi' ? 'fungi' : parts[0] === 'offline' || parts[0] === 'decisions' ? 'offline' : 'plants';
+  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' || parts[0] === 'species' || parts[0] === 'wishlist' || parts[0] === 'around' ? 'library' : parts[0] === 'fungi' ? 'fungi' : parts[0] === 'offline' || parts[0] === 'decisions' ? 'offline' : parts[0] === 'today' ? 'today' : 'plants';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  pagesMenu(false);
   try {
     let view;
     await Promise.all([loadCodes(), loadFrost(), loadGroups(parts[0] === 'groups' || parts[0] === 'group' || !parts.length), G.care && !CAREDUE ? loadCareDue() : null]);
@@ -339,9 +340,23 @@ async function route() {
 // ---------- section menu (left or right, can be folded away) ----------
 let NAVSESSION = null;                // on narrow screens the menu starts folded; opening it there lasts until a link is chosen
 function navOpen() { const P = window.PlantPrefs.get(), narrow = document.documentElement.dataset.narrow === '1'; return NAVSESSION != null ? NAVSESSION : (P.navopen === '1' && !narrow); }
+// 1.26.0: with large text on a computer, the page links fold behind the Pages button once they would take more than two rows (or
+// the top bar more than a fifth of the window), and a top bar still taller than a fifth of the window scrolls away with the page, as on phones, instead of staying pinned
+function topFit() {
+  const r = document.documentElement, nav = document.getElementById('main-nav'), top = document.querySelector('.top');
+  if (!nav || !top) return;
+  if (r.dataset.narrow === '1') { r.dataset.pagesfold = '0'; r.dataset.toptall = '0'; return; }
+  const was = top.classList.contains('pages-open'); top.classList.remove('pages-open');
+  r.dataset.pagesfold = '0';
+  const a = nav.querySelector('a');
+  if (a && (nav.offsetHeight > a.offsetHeight * 2.5 || top.offsetHeight > innerHeight * 0.2)) r.dataset.pagesfold = '1';
+  if (was) top.classList.add('pages-open');
+  r.dataset.toptall = top.offsetHeight > innerHeight * 0.2 ? '1' : '0';
+}
 function navLayout() {
   const r = document.documentElement, top = document.querySelector('.top');
-  r.style.setProperty('--top-h', (r.dataset.narrow === '1' ? 0 : (top ? top.getBoundingClientRect().height : 64)) + 'px');   // on phones the top bar scrolls away
+  topFit();
+  r.style.setProperty('--top-h', (r.dataset.narrow === '1' || r.dataset.toptall === '1' ? 0 : (top ? top.getBoundingClientRect().height : 64)) + 'px');   // on phones the top bar scrolls away
   const open = navOpen();
   r.dataset.navopen = open ? '1' : '0';
   const side = window.PlantPrefs.get().navside;
@@ -907,6 +922,24 @@ function fitNowTags() {         // 1.11.0: keep each "Now" label inside its stri
   });
 }
 new MutationObserver(() => requestAnimationFrame(fitNowTags)).observe(document.getElementById('app'), { childList: true, subtree: true });
+// 1.26.0: a table too wide for the screen becomes a list, one box per row, each value with its column's name beside it, instead of
+// scrolling sideways. The long weather log (.tbl-wrap.wide) keeps its scrolling table.
+function fitTables() {
+  document.querySelectorAll('#app .tbl-wrap:not(.wide) > table.tbl').forEach(t => {
+    if (!t.dataset.labelled) {
+      const names = [...t.querySelectorAll('thead tr:last-child > th')].map(th => th.textContent.trim());
+      t.querySelectorAll('tbody tr, tfoot tr').forEach(tr => { let i = 0;
+        [...tr.children].forEach(c => { const n = names[i] || ''; if (n && !c.dataset.label && c.colSpan === 1) c.dataset.label = n; i += c.colSpan || 1; }); });
+      t.dataset.labelled = '1';
+    }
+    t.classList.remove('stacked');
+    if (t.scrollWidth > t.parentElement.clientWidth + 2 && t.querySelector('thead')) t.classList.add('stacked');
+  });
+}
+let FITT = 0;
+function fitTablesSoon() { cancelAnimationFrame(FITT); FITT = requestAnimationFrame(fitTables); }
+new MutationObserver(fitTablesSoon).observe(document.getElementById('app'), { childList: true, subtree: true });
+window.addEventListener('resize', fitTablesSoon); document.addEventListener('prefs', fitTablesSoon);
 new MutationObserver(() => {                      // 1.12.0: for people who can only view, menus and tick boxes that save straight away are switched off
   if (ME().role !== 'viewer') return;
   document.querySelectorAll('#app select[data-act=site], #app select[data-act=plan], #app [data-act=preptrait], #app [data-act=preppest], #app input[type=file]').forEach(el => { if (!el.disabled) el.disabled = true; });
@@ -3304,6 +3337,7 @@ function displayDialog() {
   G.navside = group('navside', 'Section menu side', [['left', 'Left'], ['right', 'Right']], 'The "On this page" menu lists the sections of the page you are on.');
   G.navopen = group('navopen', 'Section menu', [['1', 'Open'], ['0', 'Folded away (the Sections button opens it)']], 'On narrow windows and phones it starts folded and covers the page while open.');
   G.width = group('width', 'Page width', [['normal', 'Normal'], ['wide', 'Use the full width of the window']], 'Full width gives charts and tables more room on a wide screen.');
+  G.lines = group('lines', 'Line length', [['full', 'Use the full width'], ['short', 'Shorter lines (about 70 letters)']], 'Full width fits more on the screen. Shorter lines can be easier to follow from one line to the next.');
   G.layout = group('layout', 'Plant pages', [['split', 'Photos and details side by side'], ['single', 'One column']], 'Side by side lets each half scroll on its own: scroll with the pointer over the half you want to move. One column stacks the photos above the details.');
   const speak = canSpeak() ? html`${group('readbtns', 'Read aloud buttons', [['1', 'Show them on each section'], ['0', 'Hide them']], 'Your browser reads the section aloud with its own voices. The R key reads the whole page either way.')}
     ${group('rate', 'Reading speed', [['0.8', 'Slower'], ['1', 'Normal'], ['1.25', 'Faster'], ['1.5', 'Fastest']])}
@@ -3313,7 +3347,7 @@ function displayDialog() {
   G.photofit = group('photofit', 'Photos on the Plants page', [['auto', 'Show wide photos whole, fill the card with tall ones'], ['fill', 'Fill the card (wide photos lose their sides)'], ['whole', 'Always show the whole photo']], 'A wide photo cut down to fit a tall card loses its sides. Shown whole, it has a plain band above and below.');
   G.swipe = group('swipe', 'Swipe between plants', [['1', 'On'], ['0', 'Off']], 'On a phone or tablet, swipe left on a plant page for the next plant, or right for the previous one. Start away from the edges of the screen, which your phone uses for Back.');
   G.keys = group('keys', 'Keyboard shortcuts', [['1', 'On'], ['0', 'Off']], 'R reads the page aloud, [ and ] go to the previous and next plant, ? lists them all.');
-  const SECS = [['Text and colours', html`${G.size}${G.space}${G.contrast}${G.theme}`], ['Page layout', html`${G.navside}${G.navopen}${G.width}${G.layout}`],
+  const SECS = [['Text and colours', html`${G.size}${G.space}${G.contrast}${G.theme}`], ['Page layout', html`${G.width}${G.lines}${G.layout}${G.navside}${G.navopen}`],
     ['Reading aloud', speak], ['Photos and touch', html`${G.photofit}${G.swipe}`], ['Keyboard', G.keys]];
   const keep = DVSCROLL; DVSCROLL = 0;
   modal(html`<form method="dialog" class="dv-form">
@@ -3873,19 +3907,30 @@ async function conPoll() {
   } catch (e) { CON.failed++; if (!CON.paused) conState('Cannot reach the app, trying again'); }
   finally { CON.busy = false; }
 }
+// 1.26.0: on phones (narrow windows) the list of pages folds behind one "Pages" button, which names the page you are on
+function pagesMenu(open) {
+  const b = document.getElementById('pages-btn'), top = document.querySelector('header.top'); if (!b || !top) return;
+  const cur = document.querySelector('#main-nav a[aria-current=page]'), c = document.getElementById('pages-cur');
+  if (c) c.textContent = cur ? cur.textContent : 'Plants';
+  b.setAttribute('aria-expanded', open ? 'true' : 'false'); top.classList.toggle('pages-open', !!open);
+}
+document.addEventListener('keydown', e => {      // Escape folds the list of pages again and goes back to its button
+  const top = document.querySelector('header.top');
+  if (e.key === 'Escape' && top && top.classList.contains('pages-open') && top.contains(document.activeElement)) { pagesMenu(false); const b = document.getElementById('pages-btn'); if (b) b.focus(); }
+});
 function pinLayout() {           // phones: the buttons pinned to the bottom of the screen stack up instead of covering each other
   const r = document.documentElement, tab = conEl('nav-tab'), corner = conEl('corner'), job = conEl('job-badge');
-  const shown = e => e && e.getClientRects().length && getComputedStyle(e).display !== 'none';
-  if (r.dataset.narrow !== '1' || !corner) { r.dataset.tabup = '0'; if (tab) tab.style.bottom = ''; if (job) job.style.bottom = ''; return; }
+  // 1.26.0: on phones Sections, Debug and Display share one bar along the bottom of the screen
+  if (tab && corner) {
+    const home = document.getElementById('sidenav');
+    if (r.dataset.narrow === '1' && tab.parentNode !== corner) corner.prepend(tab);
+    else if (r.dataset.narrow !== '1' && tab.parentNode === corner && home) home.after(tab);
+  }
+  r.dataset.tabup = '0'; if (tab) tab.style.bottom = '';
+  if (r.dataset.narrow !== '1' || !corner) { r.style.removeProperty('--pin-h'); if (job) job.style.bottom = ''; return; }
   const cr = corner.getBoundingClientRect();
-  let top = cr.top;
-  if (shown(tab)) {             // Sections sits beside Debug and Display when there is room, above them when not
-    const up = tab.getBoundingClientRect().right > cr.left - 8;
-    tab.style.bottom = up ? Math.round(innerHeight - cr.top + 8) + 'px' : '';
-    r.dataset.tabup = up ? '1' : '0';
-    top = Math.min(top, tab.getBoundingClientRect().top);
-  } else r.dataset.tabup = '0';
-  if (job) job.style.bottom = Math.round(innerHeight - top + 8) + 'px';
+  r.style.setProperty('--pin-h', Math.round(cr.height) + 'px');
+  if (job) job.style.bottom = Math.round(innerHeight - cr.top + 8) + 'px';
 }
 function conLayout() {
   pinLayout();
@@ -4355,6 +4400,8 @@ const acts = {
     navLayout(); fitPanes(); paintAllCharts();
     const f = open ? document.querySelector('#sn-list a') : document.getElementById('nav-tab'); if (f) f.focus();
   },
+  pages() { const b = document.getElementById('pages-btn'); const open = b && b.getAttribute('aria-expanded') !== 'true'; pagesMenu(open);
+    if (open) { const a = document.querySelector('#main-nav a[aria-current=page]') || document.querySelector('#main-nav a'); if (a) a.focus(); } },
   navside() { window.PlantPrefs.set('navside', window.PlantPrefs.get().navside === 'left' ? 'right' : 'left'); navLayout(); fitPanes(); paintAllCharts(); },
   jump(el) {
     const t = document.getElementById(el.dataset.id); if (!t) return;
@@ -4756,7 +4803,7 @@ async function viewIdentify() {
     html: html`<h1>Identify a plant</h1>
     <p>Point your camera at a plant. This computer compares the picture with your plant photos and says which plant it thinks it is, and how sure it is. If it is not one of yours, it suggests what the plant could be. Nothing is saved unless you choose to save it.</p>
     <p id="id-st" class="notice" role="status">Checking the picture checker…</p>
-    <section class="id-sec id-cam" aria-labelledby="h-cam"><h2 id="h-cam">Camera</h2>
+    <div class="id-two"><section class="id-sec id-cam" aria-labelledby="h-cam"><h2 id="h-cam">Camera</h2>
       <div class="id-view" id="id-view"><video id="id-video" playsinline muted aria-label="Camera picture"></video>
         <p class="id-placeholder" id="id-ph">The camera is off.</p></div>
       <p id="id-live" class="id-live" role="status" aria-live="polite"></p>
@@ -4769,7 +4816,7 @@ async function viewIdentify() {
       <label class="f id-scope">When it is not one of your plants, suggest names from
         <select data-f="idscope">${ID_SCOPES.map(([k, l]) => html`<option value="${k}" ${k === sc ? raw('selected') : ''}>${l}</option>`)}</select></label>
     </section>
-    <section class="id-sec" aria-labelledby="h-idres"><h2 id="h-idres">What it found</h2><div id="id-res"><p class="muted">Start the camera or choose a photo.</p></div></section>
+    <section class="id-sec" aria-labelledby="h-idres"><h2 id="h-idres">What it found</h2><div id="id-res"><p class="muted">Start the camera or choose a photo.</p></div></section></div>
     <section class="id-sec" aria-labelledby="h-second"><h2 id="h-second">Second opinions</h2>
       <p>When this computer is unsure, you can ask Pl@ntNet (free, up to 500 pictures a day) and then Claude (paid per picture, about a cent or two). They only see a picture when you press their button. Pl@ntNet does not keep pictures.</p>
       <ul class="id-keys">
@@ -5296,7 +5343,7 @@ async function viewSpecies(name) {
             <a class="btn ghost" href="#/identify">${fungus ? 'Identify from a photo' : 'Identify a plant'}</a></div>
         </section>
       </div>
-      ${spHomeHtml(d, fungus)}
+      <div class="sp-more">${spHomeHtml(d, fungus)}
       ${fungus ? '' : spPetsHtml(d)}
       ${fungus ? '' : html`<section aria-labelledby="sp-care-h"><h2 id="sp-care-h">Care sheet</h2><div id="sp-care">${spCareHtml(d)}</div></section>`}
       <section aria-labelledby="sp-notes-h"><h2 id="sp-notes-h">Your notes and tags</h2>
@@ -5317,7 +5364,7 @@ async function viewSpecies(name) {
         <p class="hint">The links list every species in that order, family or genus.</p></section>
       <section aria-labelledby="sp-us-h"><h2 id="sp-us-h">${fungus ? 'Where it grows' : 'Where it grows wild in the US'}</h2>
         ${fungus && !states.length ? html`<p>The USDA PLANTS lists cover plants and lichens, not other fungi, so this computer has no US range for it. iNaturalist (below) shows where people have seen it.</p>` : states.length ? html`<p>${states.length === 1 ? 'One state or territory' : states.length + ' states and territories'}, from the USDA PLANTS lists: ${states.map(LIB_STATE_WORD).join(', ')}.</p>`
-          : html`<p>It is not on the USDA PLANTS state lists, so it does not grow wild in the US (or is not recorded there). It may still be grown in gardens and homes.</p>`}</section>
+          : html`<p>It is not on the USDA PLANTS state lists, so it does not grow wild in the US (or is not recorded there). It may still be grown in gardens and homes.</p>`}</section></div>
       ${d.similar && d.similar.length ? html`<section aria-labelledby="sp-sim-h"><h2 id="sp-sim-h">Looks like</h2>
         <p class="hint">The species the BioCLIP model finds closest to this one. ${fungus ? 'Never use this to tell an edible mushroom from a poisonous one. ' : ''}Species that look alike sit close together, so these are the ones it is easy to mix up with, not always close relatives.</p>
         <div class="grid lib-grid" id="lib-res">${d.similar.map(libCard)}</div></section>` : ''}
@@ -5656,12 +5703,12 @@ async function viewFind(code) {
         <div class="row"><button class="btn" type="button" data-act="muident" ${ph.length ? '' : raw('disabled')}>Identify the photo shown</button></div>
         <div id="mu-ident" aria-live="polite"></div></section>
     </div>
-    <section aria-labelledby="mu-where-h"><h2 id="mu-where-h">Where and when</h2><dl class="dl">${dl(['found_on', 'place_kind', 'plant_code', 'place'])}
+    <div class="mu-info"><section aria-labelledby="mu-where-h"><h2 id="mu-where-h">Where and when</h2><dl class="dl">${dl(['found_on', 'place_kind', 'plant_code', 'place'])}
       ${f.lat != null ? html`<dt>Map location</dt><dd>${(+f.lat).toFixed(5)}, ${(+f.lon).toFixed(5)} (<a href="https://www.openstreetmap.org/?mlat=${f.lat}&mlon=${f.lon}#map=18/${f.lat}/${f.lon}" target="_blank" rel="noopener noreferrer">open the map</a>)</dd>` : ''}</dl>
       ${f.lat == null && gps ? html`<p><button class="btn ghost" type="button" data-act="mugps" data-lat="${gps.gps_lat}" data-lon="${gps.gps_lon}">Save the location from the photo (${(+gps.gps_lat).toFixed(4)}, ${(+gps.gps_lon).toFixed(4)})</button></p>` : ''}</section>
     <section aria-labelledby="mu-grew-h"><h2 id="mu-grew-h">What it grew on</h2>${['substrate', 'near', 'abundance'].some(show) ? html`<dl class="dl">${dl(['substrate', 'near', 'abundance'])}</dl>` : html`<p class="muted">Not noted yet.</p>`}</section>
     <section aria-labelledby="mu-look-h"><h2 id="mu-look-h">What it looks like</h2>${['cap_size', 'cap_colour', 'underside', 'ring', 'volva', 'spore_print', 'bruising', 'smell'].some(show) ? html`<dl class="dl">${dl(['cap_size', 'cap_colour', 'underside', 'ring', 'volva', 'spore_print', 'bruising', 'smell'])}</dl>` : html`<p class="muted">Not noted yet. Edit the find to add the cap, the underside, the ring, the base and the spore print.</p>`}</section>
-    ${show('notes') ? html`<section aria-labelledby="mu-notes-h"><h2 id="mu-notes-h">Notes</h2><p class="pl">${f.notes}</p></section>` : ''}
+    ${show('notes') ? html`<section aria-labelledby="mu-notes-h"><h2 id="mu-notes-h">Notes</h2><p class="pl">${f.notes}</p></section>` : ''}</div>
     <div class="row noprint mu-acts"><a class="btn" href="#/fungi/${enc(f.code)}/edit">Edit this find</a>
       <button class="btn ghost" type="button" data-act="muarch" data-to="${f.status === 'archived' ? '0' : '1'}">${f.status === 'archived' ? 'Bring it back' : 'Archive this find'}</button></div>
     <p class="hint">Added by ${f.created_by} on ${when(f.created_at)}${f.updated_at && f.updated_at !== f.created_at ? `; last changed by ${f.updated_by} on ${when(f.updated_at)}` : ''}. Changes are listed in the Audit log under "Mushroom finds".</p></div>`,
@@ -6029,7 +6076,7 @@ async function viewOffline() {
       ${est ? html`<p class="hint">This device is using ${mb(est.usage || 0)} for the plant record${est.quota ? `, of the ${mb(est.quota)} the browser allows` : ''}.${persisted === false ? ' The browser may clear it if the device runs short of space.' : persisted ? ' The browser has agreed to keep it.' : ''}</p>` : ''}
       <p class="hint">${ios ? html`On an iPhone or iPad, add the plant record to the Home Screen (Share, then <strong>Add to Home Screen</strong>) and open it from there: Safari clears saved copies of sites that are not on the Home Screen after a few weeks.`
         : html`On Android, choose <strong>Install app</strong> (or <strong>Add to Home screen</strong>) in the browser's menu, and open it from there.`} Open it once while online after each update, so the new version is saved too.</p>
-      <label class="f">This device's name<small>Shown in the Audit log and on decisions, so you know where a change came from</small><input type="text" data-f="offdev" value="${offDevice()}" maxlength="40" autocomplete="off"></label>
+      <label class="f off-dev">This device's name<small>Shown in the Audit log and on decisions, so you know where a change came from</small><input type="text" data-f="offdev" value="${offDevice()}" maxlength="40" autocomplete="off"></label>
     </section>
     <section aria-labelledby="off-out-h"><h2 id="off-out-h">Waiting to be sent (${wait.length})</h2>
       ${wait.length ? html`<ol class="off-list">${wait.map(o => html`<li>${offWords(o)} <span class="muted">(${when(o.made)}, ${o.who})</span> <button class="btn ghost small" type="button" data-act="offrm" data-id="${o.id}">Don't send this</button></li>`)}</ol>

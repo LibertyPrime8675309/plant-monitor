@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.26.0 (2026-10-31)
+- **Pages use more of the screen.**
+  - Paragraphs and lists run the full width of the page instead of stopping about two thirds of the way across. On the Groups page, for example, the groups now sit three or more across on your monitor.
+  - **Today** shows its jobs in two columns on a wide screen.
+  - Species pages, mushroom finds, Identify and the edit forms put their sections side by side when there is room.
+- **New Display setting: Line length** (under Page layout). **Use the full width** is the usual choice. **Shorter lines** brings back the old limit of about 70 letters, which some people find easier to read.
+- **Large text on a computer:** when the list of pages would take more than two rows (or the top bar more than a fifth of the window), it folds behind the same **Pages** button, so the bar at the top is one row. If the bar is still tall, it scrolls away with the page instead of staying pinned.
+- **Phones and tablets with large text:**
+  - The list of pages folds behind one **Pages** button at the top, which names the page you're on. Press it to see all the pages.
+  - **Sections**, **Debug** and **Display** share one bar along the bottom of the screen instead of piling up over the page.
+  - Smaller margins at the sides, so more words fit on each line.
+  - Tables too wide for the screen (the cold-night checklist, the 7-day forecast, Fertilizer, Grow lights, Backups) turn into one box per row, with each value next to its column's name, instead of scrolling sideways. The long weather log still scrolls.
+  - The "Shortcut: R" note under **Read this page aloud** is left out on phones and tablets, which have no keyboard.
+- **Fixed:** photos on the Plants page and in the Library were about three times taller than they should be.
+- Includes everything in 1.25.0 below.
+
 ## 1.25.0 (2026-10-31)
 - **Display settings, rearranged as you chose (option C):**
   - The settings are in five parts (Text and colours, Page layout, Reading aloud, Photos and touch, Keyboard), listed on the left. Press one to jump to it.

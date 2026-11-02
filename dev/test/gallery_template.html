@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Layout previews</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#eef3ee; --panel:#ffffff; --ink:#0c1a11; --ink-2:#35473b; --line:#7e9384; --accent:#14532d; --accent-ink:#ffffff;
+  --soft:#d9e8dc; --mark:#c4007a; --focus:#0b57d0; --shadow:0 0 0 2px var(--line);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){--bg:#0b120d; --panel:#141f17; --ink:#eef5ef; --ink-2:#bfd0c3; --line:#6d8574; --accent:#86e0a8; --accent-ink:#06130a; --soft:#1f3326; --mark:#ff5cc0; --focus:#8ab4ff}
+}
+:root[data-theme="dark"]{--bg:#0b120d; --panel:#141f17; --ink:#eef5ef; --ink-2:#bfd0c3; --line:#6d8574; --accent:#86e0a8; --accent-ink:#06130a; --soft:#1f3326; --mark:#ff5cc0; --focus:#8ab4ff}
+*{box-sizing:border-box}
+html{font-size:112.5%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Atkinson Hyperlegible",system-ui,sans-serif;line-height:1.5}
+:focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+.wrap{max-width:120rem;margin:0 auto;padding:1.2rem clamp(.75rem,3vw,2rem) 4rem}
+header.intro{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.5rem 2rem;align-items:start}
+h1{font-size:clamp(1.7rem,4vw,2.4rem);line-height:1.15;margin:.2rem 0 .4rem}
+.intro p{margin:.3rem 0;max-width:none}
+.key{display:flex;flex-wrap:wrap;gap:.4rem 1.6rem;margin:.6rem 0 0;padding:0;list-style:none}
+.key li{display:flex;align-items:center;gap:.6rem}
+.dash{display:inline-block;width:3.2rem;height:0;border-top:4px dashed var(--mark)}
+.theme{display:flex;gap:.4rem;border:0;padding:0;margin:0}
+.bar{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:3px solid var(--ink);padding:.7rem 0 .8rem;margin:1rem 0 1.2rem;display:flex;flex-wrap:wrap;gap:.7rem 1.6rem;align-items:flex-end}
+.bar fieldset{border:0;margin:0;padding:0;min-width:0}
+.bar legend,.bar label.big{font-weight:700;padding:0;margin-bottom:.3rem;display:block}
+.chips{display:flex;flex-wrap:wrap;gap:.35rem}
+.chips label{position:relative}
+.chips input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.chips span,.btn{display:inline-flex;align-items:center;gap:.4rem;min-height:2.6rem;padding:.3rem .8rem;border:2px solid var(--ink);background:var(--panel);color:var(--ink);font:inherit;font-weight:700;cursor:pointer;border-radius:0}
+.chips input:checked+span{background:var(--ink);color:var(--bg)}
+.chips input:checked+span::before{content:"\2713";}
+.chips input:focus-visible+span{outline:3px solid var(--focus);outline-offset:3px}
+select{font:inherit;min-height:2.6rem;padding:.3rem .6rem;border:2px solid var(--ink);background:var(--panel);color:var(--ink);max-width:100%}
+.tick{display:flex;align-items:center;gap:.6rem;font-weight:700;min-height:2.6rem}
+.tick input{width:1.4rem;height:1.4rem;accent-color:var(--accent)}
+.count{margin:0 0 .8rem;font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,19rem),1fr));gap:1.2rem;container-type:inline-size}
+.card{background:var(--panel);border:2px solid var(--line);padding:.7rem .8rem .9rem;min-width:0;display:flex;flex-direction:column;gap:.5rem}
+.card.wide{grid-column:1/-1}
+@container (min-width:44rem){.card.mid{grid-column:span 2}}
+.card h2{font-size:1.15rem;margin:0;line-height:1.3}
+.card .sub{margin:0;color:var(--ink-2)}
+.facts{display:flex;flex-wrap:wrap;gap:.3rem .9rem;margin:0;padding:0;list-style:none;font-size:.95rem}
+.facts .bad{font-weight:700;text-decoration:underline}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr));gap:.8rem;align-items:start}
+.shot{margin:0;min-width:0}
+.shot figcaption{font-weight:700;margin-bottom:.25rem;display:flex;gap:.5rem;align-items:center}
+.tag{border:2px solid currentColor;padding:0 .4rem;font-size:.85rem}
+.frame{display:block;width:100%;padding:0;border:2px solid var(--ink);background:var(--soft);cursor:zoom-in;overflow:hidden;position:relative}
+.frame img{display:block;width:100%;height:auto}
+.h-first .frame{max-height:var(--first,40rem)}
+.h-two .frame{max-height:calc(var(--first,40rem) * 2)}
+.frame .more{position:absolute;left:0;right:0;bottom:0;background:var(--ink);color:var(--bg);font-weight:700;padding:.25rem .5rem;text-align:center}
+.h-all .frame .more{display:none}
+.waiting{display:grid;place-items:center;min-height:12rem;color:var(--ink-2);font-weight:700}
+.none{padding:1rem;border:2px dashed var(--line)}
+.morebtn{margin:1.4rem auto 0;display:flex}
+dialog{border:3px solid var(--ink);background:var(--panel);color:var(--ink);padding:0;width:min(98vw,110rem);max-height:96vh;display:none;flex-direction:column}
+dialog[open]{display:flex}
+dialog::backdrop{background:rgba(0,0,0,.65)}
+.dhead{display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center;padding:.6rem .9rem;border-bottom:2px solid var(--line)}
+.dhead h2{margin:0;font-size:1.2rem;flex:1 1 18rem}
+.dbody{overflow:auto;padding:.8rem;flex:1;min-height:0}
+.dbody .pair{grid-template-columns:repeat(auto-fit,minmax(min(100%,22rem),1fr))}
+.dbody img{display:block;max-width:100%;height:auto;margin:0 auto;border:2px solid var(--ink)}
+.dbody .phone img{max-width:min(100%,32rem)}
+.vh{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+@media (max-width:40rem){header.intro{grid-template-columns:1fr}.bar{position:static}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="intro">
+  <div>
+    <h1>Plant record 1.26.0: layout previews</h1>
+    <p>Every page of the app, on each of your screens, with three sets of Display settings. Choose a page, a device and the settings below. Press a picture to see it large.</p>
+    <ul class="key">
+      <li><span class="dash" aria-hidden="true"></span> A pink dashed line marks where each screenful ends, so you can see how much fits before you scroll.</li>
+      <li>Long pages stop after four screens in the pictures; the note under each picture says how long the whole page is.</li>
+      <li>Buttons pinned to the screen (Sections, Debug, Display) show at the bottom of the first screen.</li>
+    </ul>
+  </div>
+  <fieldset class="theme chips" aria-label="Colours of this page"><legend class="vh">Colours of this page</legend>
+    <label><input type="radio" name="theme" value="auto" checked><span>Match device</span></label>
+    <label><input type="radio" name="theme" value="light"><span>Light</span></label>
+    <label><input type="radio" name="theme" value="dark"><span>Dark</span></label>
+  </fieldset>
+</header>
+
+<form class="bar" id="filters" aria-label="Choose what to show">
+  <div><label class="big" for="f-page">Page</label><select id="f-page" name="page"></select></div>
+  <fieldset><legend>Device</legend><div class="chips" id="f-dev"></div></fieldset>
+  <fieldset><legend>Display settings</legend><div class="chips" id="f-combo"></div></fieldset>
+  <fieldset><legend>Picture height</legend><div class="chips">
+    <label><input type="radio" name="height" value="first" checked><span>First screen</span></label>
+    <label><input type="radio" name="height" value="two"><span>Two screens</span></label>
+    <label><input type="radio" name="height" value="all"><span>Whole picture</span></label></div></fieldset>
+  <label class="tick" id="before-wrap"><input type="checkbox" id="f-before" checked> Show the old layout (1.25.0) beside it</label>
+</form>
+
+<p class="count" id="count" aria-live="polite"></p>
+<div class="grid h-first" id="grid"></div>
+<button class="btn morebtn" type="button" id="more" hidden>Show more pictures</button>
+</div>
+
+<dialog id="big" aria-labelledby="big-title">
+  <div class="dhead"><h2 id="big-title"></h2>
+    <div class="chips" id="big-show" role="group" aria-label="Which layout to show"><label><input type="radio" name="show" value="both" checked><span>Both</span></label><label><input type="radio" name="show" value="new"><span>New only</span></label><label><input type="radio" name="show" value="old"><span>Old only</span></label></div>
+    <button class="btn" type="button" data-step="-1">Previous</button>
+    <button class="btn" type="button" data-step="1">Next</button>
+    <button class="btn" type="button" id="big-close">Close</button></div>
+  <div class="dbody" id="big-body"></div>
+</dialog>
+
+<script>
+const M = /*MANIFEST*/null;
+const DEV = Object.fromEntries(M.devices), COMBO = Object.fromEntries(M.combos), PAGE = Object.fromEntries(M.pages);
+const KIND = d => d.startsWith('pc') ? 'pc' : (d === 's21u' || d === 'iphone11') ? 'phone' : 'tablet';
+const SCREEN = { pc1080: 960 / 1920, pc1440: 850 / 1707, s21u: 740 / 384, iphone11: 715 / 414, ipad6p: 954 / 768, ipad6l: 698 / 1024, firep: 1200 / 800, firel: 720 / 1280 };
+const PAGE_ORDER = M.pages.map(p => p[0]);
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const store = { get(k) { try { return JSON.parse(localStorage.getItem('lp.' + k)); } catch (e) { return null; } }, set(k, v) { try { localStorage.setItem('lp.' + k, JSON.stringify(v)); } catch (e) {} } };
+
+// ---- filters ----
+$('f-page').innerHTML = '<option value="*">Every page</option>' + M.pages.map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('');
+const chip = (name, v, label, type) => `<label><input type="${type}" name="${name}" value="${v}"><span>${esc(label)}</span></label>`;
+$('f-dev').innerHTML = chip('dev', '*', 'Every device', 'radio') + M.devices.map(([k, v]) => chip('dev', k, v, 'radio')).join('');
+$('f-combo').innerHTML = chip('combo', '*', 'All three', 'radio') + M.combos.map(([k, v]) => chip('combo', k, v, 'radio')).join('');
+const saved = store.get('f') || {};
+const F = { page: saved.page || 'groups', dev: saved.dev || '*', combo: saved.combo || 'usual', height: saved.height || 'first', before: saved.before !== false };
+function paintFilters() {
+  $('f-page').value = PAGE[F.page] ? F.page : '*';
+  document.querySelectorAll('input[name=dev]').forEach(i => i.checked = i.value === F.dev);
+  document.querySelectorAll('input[name=combo]').forEach(i => i.checked = i.value === F.combo);
+  document.querySelectorAll('input[name=height]').forEach(i => i.checked = i.value === F.height);
+  $('f-before').checked = F.before;
+}
+paintFilters();
+$('filters').addEventListener('change', e => {
+  const t = e.target;
+  if (t.id === 'f-page') F.page = t.value; else if (t.name === 'dev') F.dev = t.value; else if (t.name === 'combo') F.combo = t.value;
+  else if (t.name === 'height') F.height = t.value; else if (t.id === 'f-before') F.before = t.checked;
+  store.set('f', F); render();
+});
+$('filters').addEventListener('submit', e => e.preventDefault());
+document.querySelectorAll('input[name=theme]').forEach(i => { i.checked = i.value === (store.get('theme') || 'auto');
+  i.addEventListener('change', () => { store.set('theme', i.value); applyTheme(); }); });
+function applyTheme() { const t = store.get('theme') || 'auto'; if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.dataset.theme = t; }
+applyTheme();
+
+// ---- pictures: one data file per page and device, fetched when its card comes into view ----
+const CACHE = {}, LOADING = {};
+function bundle(key) {
+  if (CACHE[key]) return Promise.resolve(CACHE[key]);
+  if (!LOADING[key]) LOADING[key] = fetch('data/' + key + '.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(j => (CACHE[key] = j));
+  return LOADING[key];
+}
+let LIST = [], SHOWN = 0;
+const STEP = 24;
+function items() {
+  const out = [];
+  for (const p of (F.page === '*' ? PAGE_ORDER : [F.page]))
+    for (const [d] of M.devices) {
+      if (F.dev !== '*' && d !== F.dev) continue;
+      const h = M.have[p + '__' + d]; if (!h) continue;
+      for (const [c] of M.combos) {
+        if (F.combo !== '*' && c !== F.combo) continue;
+        if ((h.after || []).includes(c)) out.push({ p, d, c, before: F.before && (h.before || []).includes(c) });
+      }
+    }
+  return out;
+}
+function title(it) { return `${PAGE[it.p]} on the ${DEV[it.d]}`; }
+function cardHtml(it, i) {
+  const wide = KIND(it.d) === 'pc' && it.before ? ' wide' : KIND(it.d) === 'pc' || it.before ? ' mid' : '';
+  return `<article class="card${wide}" data-i="${i}">
+    <h2>${esc(title(it))}</h2><p class="sub">${esc(COMBO[it.c])}</p>
+    <ul class="facts" data-facts></ul>
+    <div class="pair" data-shots><div class="waiting">Loading the picture</div></div></article>`;
+}
+function shotHtml(s, it, which, i) {
+  const vers = which === 'after' ? '1.26.0 (new)' : '1.25.0 (old)';
+  const alt = `${title(it)}, ${COMBO[it.c]}, version ${which === 'after' ? '1.26.0' : '1.25.0'}`;
+  const first = SCREEN[it.d] ? `--first:calc(${SCREEN[it.d]} * var(--w))` : '';
+  return `<figure class="shot"><figcaption><span class="tag">${vers}</span></figcaption>
+    <button class="frame" type="button" data-open="${i}" data-which="${which}" style="${first}" aria-label="Open ${esc(alt)} large">
+      <img src="${s.src}" width="${s.w}" height="${s.h}" alt="${esc(alt)}"><span class="more">Press to see it large</span></button></figure>`;
+}
+function facts(b) {
+  const a = b.after, o = b.before, f = [];
+  f.push(`<li>${a.screens <= 1 ? 'The whole page fits on one screen' : 'The whole page is ' + a.screens + ' screens long'}${o ? ` (was ${o.screens})` : ''}</li>`);
+  f.push(a.sideways ? '<li class="bad">Scrolls sideways</li>' : '<li>Fits the width</li>');
+  return f.join('');
+}
+const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { io.unobserve(e.target); fill(e.target); } }), { rootMargin: '600px 0px' });
+function fill(card) {
+  const it = LIST[+card.dataset.i];
+  bundle(it.p + '__' + it.d).then(b => {
+    const a = b.after && b.after[it.c], o = it.before && b.before && b.before[it.c];
+    if (!a) { card.querySelector('[data-shots]').innerHTML = '<p class="none">No picture for this one.</p>'; return; }
+    card.querySelector('[data-facts]').innerHTML = facts({ after: a, before: o });
+    card.querySelector('[data-shots]').innerHTML = shotHtml(a, it, 'after', card.dataset.i) + (o ? shotHtml(o, it, 'before', card.dataset.i) : '');
+    sizeFrames(card);
+  }).catch(() => { card.querySelector('[data-shots]').innerHTML = '<p class="none">This picture did not load. Reload the page to try again.</p>'; });
+}
+function sizeFrames(root) { root.querySelectorAll('.frame').forEach(f => f.style.setProperty('--w', f.clientWidth + 'px')); }
+new ResizeObserver(() => sizeFrames($('grid'))).observe($('grid'));
+function render() {
+  LIST = items(); SHOWN = 0;
+  const g = $('grid'); g.className = 'grid h-' + F.height; g.innerHTML = '';
+  $('before-wrap').hidden = !M.combos.length;
+  $('count').textContent = LIST.length ? `${LIST.length} ${LIST.length === 1 ? 'picture' : 'pictures'}` + (F.before ? '. The old layout is shown beside your usual settings, where there is one.' : '.') : 'Nothing matches. Choose another page or device.';
+  more();
+}
+function more() {
+  const g = $('grid'), next = LIST.slice(SHOWN, SHOWN + STEP);
+  g.insertAdjacentHTML('beforeend', next.map((it, j) => cardHtml(it, SHOWN + j)).join(''));
+  g.querySelectorAll('.card:not([data-seen])').forEach(c => { c.dataset.seen = '1'; io.observe(c); });
+  SHOWN += next.length;
+  $('more').hidden = SHOWN >= LIST.length;
+  $('more').textContent = `Show more pictures (${LIST.length - SHOWN} left)`;
+}
+$('more').addEventListener('click', more);
+
+// ---- the large view ----
+let CUR = 0;
+function openBig(i) {
+  CUR = Math.max(0, Math.min(LIST.length - 1, i)); const it = LIST[CUR];
+  $('big-title').textContent = `${title(it)}: ${COMBO[it.c]}`;
+  const body = $('big-body'); body.innerHTML = '<div class="waiting">Loading the picture</div>'; body.scrollTop = 0;
+  bundle(it.p + '__' + it.d).then(b => {
+    const a = b.after[it.c], o = it.before && b.before && b.before[it.c], ph = KIND(it.d) !== 'pc' ? ' phone' : '';
+    const one = (s, v) => `<figure class="shot${ph}"><figcaption><span class="tag">${v}</span></figcaption><img src="${s.src}" width="${s.w}" height="${s.h}" alt="${esc(title(it) + ', ' + COMBO[it.c] + ', ' + v)}"></figure>`;
+    const show = (document.querySelector('input[name=show]:checked') || {}).value || 'both';
+    $('big-show').hidden = !o;
+    body.innerHTML = `<div class="pair">${!o || show !== 'old' ? one(a, '1.26.0 (new)') : ''}${o && show !== 'new' ? one(o, '1.25.0 (old)') : ''}</div>`;
+  });
+  if (!$('big').open) $('big').showModal();
+}
+$('grid').addEventListener('click', e => { const b = e.target.closest('[data-open]'); if (b) openBig(+b.dataset.open); });
+document.querySelectorAll('[data-step]').forEach(b => b.addEventListener('click', () => openBig(CUR + +b.dataset.step)));
+$('big-close').addEventListener('click', () => $('big').close());
+document.querySelectorAll('input[name=show]').forEach(i => i.addEventListener('change', () => openBig(CUR)));
+$('big').addEventListener('click', e => { if (e.target === $('big')) $('big').close(); });
+$('big').addEventListener('keydown', e => { if (e.key === 'ArrowRight') openBig(CUR + 1); else if (e.key === 'ArrowLeft') openBig(CUR - 1); });
+render();
+</script>
+</body>
+</html>
