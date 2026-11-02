@@ -413,17 +413,60 @@ function plantCmp() {
     group: (a, b) => { const x = groupNames(a.code)[0], y = groupNames(b.code)[0]; return (!x - !y) || (x || '').localeCompare(y || '') || a.code.localeCompare(b.code); },
   }[G.sort] || ((a, b) => a.code.localeCompare(b.code));
 }
+// 1.20.0: the card is no longer one big link, so it can hold buttons. The name is the link, and it stretches over the whole
+// card (CSS), so the card still opens the plant from anywhere. The photo has its own Previous and Next buttons and can be swiped.
+const GPIX = new Map();                       // plant code -> which of its photos the card shows (kept while the page is open)
+function sheetPhotos(p) { return p.photos && p.photos.length ? p.photos : p.photo ? [p.photo] : []; }
+function sheetMat(p) {
+  const ph = sheetPhotos(p), n = ph.length, i = n ? ((GPIX.get(p.code) || 0) % n + n) % n : 0;
+  return html`${n ? html`<img src="${thumbUrl(ph[i])}" alt="${n > 1 ? `Photo ${i + 1} of ${n}` : ''}" loading="lazy" decoding="async" width="520" height="650">` : html`<div class="nophoto">No photo yet</div>`}
+      <span class="acc">${p.code}</span>
+      ${n > 1 ? html`<div class="ph-nav noprint"><button type="button" class="ph-btn" data-act="gphoto" data-code="${p.code}" data-d="-1" aria-label="Previous photo of ${p.common_name}">‹</button>
+        <span class="ph-n" aria-live="polite">${i + 1} of ${n}</span>
+        <button type="button" class="ph-btn" data-act="gphoto" data-code="${p.code}" data-d="1" aria-label="Next photo of ${p.common_name}">›</button></div>` : ''}
+      <div class="bar" style="--hb:${HEALTH_COLOR[p.health_rating] || 'var(--line)'}"></div>`;
+}
 function sheet(p) {
-  return html`<a class="sheet" href="#/plant/${enc(p.code)}">
-    <div class="mat">${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy" decoding="async" width="520" height="650">` : html`<div class="nophoto">No photo yet</div>`}
-      <span class="acc">${p.code}</span><div class="bar" style="--hb:${HEALTH_COLOR[p.health_rating] || 'var(--line)'}"></div></div>
-    <h3 class="name">${p.common_name}</h3>
+  return html`<article class="sheet" data-code="${p.code}">
+    <div class="mat">${sheetMat(p)}</div>
+    <h3 class="name"><a class="sheet-link" href="#/plant/${enc(p.code)}">${p.common_name}</a></h3>
     <p class="sci latin">${p.scientific_name || 'Scientific name not set'}</p>
     <div class="tags">${isArch(p) ? html`<span class="tag tag-arch">Archived</span>` : ''}${planTag(p.winter_plan)}${healthTag(p.health_rating)}</div>
     ${needsYou(p) ? html`<p class="needs-badge">Needs from you: ${[p.requests_open ? `${p.requests_open} request${p.requests_open === 1 ? '' : 's'}` : '', p.id_confidence != null && p.id_confidence < 70 ? 'ID info' : ''].filter(Boolean).join(', ')}</p>` : ''}
     <div class="meter"><span>ID ${p.id_confidence == null ? 'not rated' : p.id_confidence + '%'}</span><i style="--v:${p.id_confidence || 0}%;--mc:${confColor(p.id_confidence)}"></i></div>
-  </a>`;
+  </article>`;
 }
+function sheetStep(code, d) {
+  const p = ALL.find(x => x.code === code), card = document.querySelector(`#grid .sheet[data-code="${CSS.escape(code)}"]`);
+  if (!p || !card) return;
+  const n = sheetPhotos(p).length; if (n < 2) return;
+  GPIX.set(code, (((GPIX.get(code) || 0) + d) % n + n) % n);
+  const had = document.activeElement && document.activeElement.closest('.ph-btn') ? document.activeElement.dataset.d : null;
+  card.querySelector('.mat').innerHTML = rend(sheetMat(p));
+  if (had) { const b = card.querySelector(`.ph-btn[data-d="${had}"]`); if (b) b.focus(); }   // keep the keyboard on the same button
+}
+document.addEventListener('keydown', e => {          // Left and Right arrows on a photo button step through the photos too
+  const b = e.target.closest && e.target.closest('#grid .ph-btn'); if (!b || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+  e.preventDefault(); const card = b.closest('.sheet'); sheetStep(card.dataset.code, e.key === 'ArrowRight' ? 1 : -1);
+  const nb = card.querySelector(`.ph-btn[data-d="${e.key === 'ArrowRight' ? 1 : -1}"]`); if (nb) nb.focus();
+});
+// swipe left or right on a card's photo for the next or previous photo (phones and tablets)
+const GSW = { x: 0, y: 0, code: null, t: 0, used: 0 };
+document.addEventListener('touchstart', e => {
+  GSW.code = null;
+  const m = e.touches.length === 1 && e.target.closest && e.target.closest('#grid .sheet'); if (!m) return;
+  const t = e.touches[0], r = m.querySelector('.mat').getBoundingClientRect();
+  if (t.clientY < r.top || t.clientY > r.bottom || e.target.closest('.ph-btn')) return;
+  Object.assign(GSW, { x: t.clientX, y: t.clientY, code: m.dataset.code, t: Date.now() });
+}, { passive: true });
+document.addEventListener('touchend', e => {
+  if (!GSW.code) return;
+  const t = e.changedTouches[0], dx = t.clientX - GSW.x, dy = t.clientY - GSW.y, code = GSW.code; GSW.code = null;
+  if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.5 || Date.now() - GSW.t > 1000) return;
+  GSW.used = Date.now();                       // the click that follows a swipe must not open the plant
+  sheetStep(code, dx < 0 ? 1 : -1);
+}, { passive: true });
+document.addEventListener('click', e => { if (Date.now() - GSW.used < 500 && e.target.closest && e.target.closest('#grid .sheet')) { e.preventDefault(); e.stopPropagation(); } }, true);
 function drawGrid() {
   gSave();
   if (!document.getElementById('grid')) { drawPnav(); return; }
@@ -1083,11 +1126,13 @@ function requestText(p) {
 function photoPanel(p) {
   const ph = p.photos, i = clamp(PIDX, 0, Math.max(0, ph.length - 1)), cur = ph[i];
   return html`${cur ? html`<button type="button" class="main-photo" data-act="zoom" aria-label="Enlarge photo"><img src="${photoUrl(cur.file)}" alt="${cur.caption || p.common_name}"></button>
-      <p class="cap">${cur.caption || 'No caption'}${cur.is_primary ? ' (main photo)' : ''}. Added ${when(cur.added_at)} by ${cur.added_by}.</p>`
+      <p class="cap">${cur.caption || 'No caption'}. Added ${when(cur.added_at)} by ${cur.added_by}.</p>
+      ${ph.length > 1 ? html`<p class="main-note noprint">${cur.is_primary
+        ? html`<strong>★ This is the main photo.</strong> It is the one shown on the Plants page, on care cards and in plant link previews.`
+        : html`<button class="btn small" type="button" data-act="mainphoto">Make this the main photo</button> <span class="hint">The main photo is the one shown on the Plants page, on care cards and in plant link previews.</span>`}</p>` : ''}`
       : html`<div class="empty">No photos yet. Add one below.</div>`}
-    ${ph.length > 1 ? html`<div class="thumbs">${ph.map((x, j) => html`<button type="button" data-act="pick" data-i="${j}" aria-label="Photo ${j + 1} of ${ph.length}" aria-current="${String(j === i)}"><img src="${thumbUrl(x.file)}" alt=""></button>`)}</div>` : ''}
+    ${ph.length > 1 ? html`<div class="thumbs">${ph.map((x, j) => html`<button type="button" data-act="pick" data-i="${j}" aria-label="Photo ${j + 1} of ${ph.length}${x.is_primary ? ', the main photo' : ''}" aria-current="${String(j === i)}"><img src="${thumbUrl(x.file)}" alt="">${x.is_primary ? html`<span class="th-main" aria-hidden="true">★ Main</span>` : ''}</button>`)}</div>` : ''}
     <div class="row noprint">
-      ${cur && !cur.is_primary ? html`<button class="btn ghost small" type="button" data-act="mainphoto">Make main photo</button>` : ''}
       ${cur ? html`<button class="btn ghost small" type="button" data-act="capedit">Edit caption</button>
         <button class="btn ghost small" type="button" data-act="movephoto">Move to another plant</button>
         <button class="btn danger small" type="button" data-act="rmphoto">Remove photo</button>` : ''}
@@ -3608,7 +3653,9 @@ async function viewLabels() {
         : local ? html`<div class="notice">The codes currently point to <strong>${base}</strong>, which only works on this computer. A phone cannot open that. Use the app's Tailscale address (README: "Using the app away from home").</div>`
         : html`<div class="notice">Codes open <strong>${base}</strong>. That address only works on your home network, and from version 1.12.0 the app is closed to the home network unless you open it again (README). The Tailscale address works everywhere.</div>`}
       ${/\.ts\.net$/i.test(location.hostname) && base !== location.origin && ME().role === 'owner' ? html`<p><button class="btn ghost" type="button" data-act="usethisbase">Use this address for the codes: ${location.origin}</button></p>` : ''}
-      <p><button class="btn" type="button" data-act="print">Print labels</button></p></div>
+      <p class="row"><button class="btn" type="button" data-act="print">Print labels</button>
+        <a class="btn ghost" href="/card.html?all=1">Print care cards for all plants</a></p>
+      <p class="hint">Care cards: a 4 × 6 inch card (or a full page) for each plant, with its water, light, temperature, humidity, feeding and dangers in big type.</p></div>
     <div class="lsheet">${list.map(p => labelCard(p, base, true))}</div>`,
   };
 }
@@ -4066,6 +4113,7 @@ async function pickPlant(title, text, withNone) {
   return r === 'ok' ? dlg.querySelector('[name=t]').value : null;
 }
 const acts = {
+  gphoto: el => sheetStep(el.dataset.code, +el.dataset.d),
   who() { whoDialog(); },
   spotnew(el) { const p = el.dataset.plan != null ? LT.plan[+el.dataset.plan] : null; spotDialog(p ? { name: p.name, light_id: p.light_id, units: p.units, distance_in: p.distance_in, hours: p.hours, dim_pct: p.dim_pct, codes: p.codes } : { light_id: LT.lights[0] && LT.lights[0].id }); },
   spotedit(el) { const s = LT.spots.find(x => x.id === +el.dataset.id); if (s) spotDialog({ ...s, codes: s.plants.map(p => p.code) }); },
@@ -4366,7 +4414,7 @@ const acts = {
   zoomloose(el) { modal(html`<form method="dialog"><img src="${photoUrl(el.dataset.file)}" alt="${el.dataset.cap}"><p class="cap">${el.dataset.cap}</p><button class="btn" value="ok" autofocus>Close</button></form>`, 'photo'); },
   copyreq() { return copyRequest(); },
   print() { window.print(); },
-  async mainphoto() { if (!(await needName())) return; await guard(async () => { await api('PATCH', '/api/photos/' + curPhoto().id, { is_primary: true }); toast('Main photo changed'); await reloadPlant(); }); },
+  async mainphoto() { if (!(await needName())) return; await guard(async () => { await api('PATCH', '/api/photos/' + curPhoto().id, { is_primary: true }); toast('Main photo changed. It now shows on the Plants page and care cards.'); await loadCodes(true); await reloadPlant(0); }); },
   async capedit() {
     if (!(await needName())) return;
     const c = curPhoto();

@@ -1081,7 +1081,8 @@ def list_plants():
     for r in rows:
         hay = ' '.join(str(r[n] or '') for n in ('code', 'common_name', 'scientific_name', 'aliases', 'location', 'container', 'plant_type', 'notes')).lower()
         if q and q not in hay: continue
-        p = c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC,id LIMIT 1', (r['id'],)).fetchone()
+        files = [x[0] for x in c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC,id', (r['id'],))]
+        p = {'file': files[0]} if files else None
         pn, pat = c.execute('SELECT COUNT(*), MAX(added_at) FROM photos WHERE plant_id=?', (r['id'],)).fetchone()
         out.append({'code': r['code'], 'common_name': r['common_name'], 'scientific_name': r['scientific_name'], 'plant_type': r['plant_type'],
                     'location': r['location'], 'aliases': r['aliases'], 'id_confidence': r['id_confidence'], 'winter_plan': r['winter_plan'], 'health_rating': r['health_rating'],
@@ -1092,7 +1093,8 @@ def list_plants():
                     # 1.17.0: for the filters on the Plants page
                     'dli_low': r['dli_low'], 'dli_high': r['dli_high'], 'zone_low': r['zone_low'], 'pet_safety': r['pet_safety'] or '',
                     'leaf_type': r['leaf_type'] or '', 'pot_size': r['pot_size'] or '', 'photo_count': pn, 'photo_at': pat,
-                    'light_spot': spots.get(r['code'])})
+                    'light_spot': spots.get(r['code']),
+                    'photos': files})                      # 1.20.0: every photo, main photo first, to browse on the Plants page
     return jsonify(out)
 
 @app.route('/api/plants/<code>')
