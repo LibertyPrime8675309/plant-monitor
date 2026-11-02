@@ -4,6 +4,7 @@ One line each, most wanted first. A prototyping session takes the top one that i
 
 - Summer heat: an AHS heat-zone style "days above 86°F" count from the weather history, next to the USDA zone on About this plant, for plants that struggle in Texas summers.
 - Sensor dashboard for the DIY plant monitor (soil moisture, temperature, light) once hardware is posting to `/api/readings`.
+- Plant-sitter sheet: a printable, large-print day-by-day plan for someone looking after the plants while Ethan is away (which plants to check for water each day, where they are, how to tell, and cold nights in the forecast), from the same reminders as Today. (suggested by Claude) (in progress: proto/sitter-sheet)
 
 ## Done
 1.19.0 (October 28, 2026, pull requests #23 and #26): Undo right after a quick care button, and large-print care cards for a plant or a whole group.

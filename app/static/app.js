@@ -1645,6 +1645,22 @@ async function viewToday() {
     after: () => document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === 'today') a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }),
   };
 }
+
+// ---------- prototype proto/sitter-sheet: a link to the plant-sitter sheet (sitter.html), added when Today or a group page draws ----------
+(function sitterLink() {
+  const main = document.getElementById('app'); if (!main) return;
+  const add = () => {
+    const h = location.hash; let after, href = '/sitter.html', m;
+    if (h === '#/today') after = main.querySelector('.verdict-box');
+    else if ((m = h.match(/^#\/group\/(\d+)$/)) && main.querySelector('#g-plants li.job')) { after = main.querySelector('h1 ~ .row.noprint'); href += '#group=' + m[1]; }
+    if (!after || main.querySelector('.ps-link')) return;
+    const p = document.createElement('p'); p.className = 'ps-link noprint';
+    const a = document.createElement('a'); a.className = 'btn ghost'; a.href = href;
+    a.textContent = h === '#/today' ? 'Going away? Make a plant-sitter sheet' : 'Plant-sitter sheet for this group';
+    p.appendChild(a); after.after(p);
+  };
+  new MutationObserver(add).observe(main, { childList: true, subtree: true });
+})();
 const KIND_WORD = { check: 'Check', question: 'Question', photo: 'Photo', info: 'Information' };
 function needsBox(p) {
   const open = (p.requests || []).filter(r => !r.done), done = (p.requests || []).filter(r => r.done);
