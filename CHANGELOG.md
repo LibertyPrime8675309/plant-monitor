@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.25.0 (2026-10-31)
+- **Display settings, rearranged as you chose (option C):**
+  - The settings are in five parts (Text and colours, Page layout, Reading aloud, Photos and touch, Keyboard), listed on the left. Press one to jump to it.
+  - The window fills most of the screen, and the settings sit side by side, so you scroll much less.
+  - **Done** and **Reset to defaults** stay at the top, however far you scroll. Reset to defaults now leaves the window open.
+  - On a phone or an upright tablet it covers the screen, with the parts as a row of buttons.
+- **All pop-up windows:**
+  - are wider;
+  - keep their buttons in view at the bottom while you scroll;
+  - close when you click or tap outside them, the same as Cancel or Done. Confirmations stay small.
+- Includes everything in 1.24.0 below.
+
 ## 1.24.0 (2026-10-31)
 - **Works without a connection on phones and tablets.**
   - Press **Online** at the top of the page and tick **Keep a copy on this device**. The phone then keeps every plant, mushroom find, care log and photo (full size) and opens the plant record with no signal at all.

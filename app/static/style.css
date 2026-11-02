@@ -1299,3 +1299,43 @@ html[data-role=viewer] :is([data-act=spcare], [data-act=liblists]){display:none!
 html[data-role=viewer] :is([data-act=decide]){display:none!important}
 .off-opts .chk{display:flex;gap:.6rem;align-items:flex-start;margin:.6rem 0;font-weight:400}
 .off-opts .chk input{margin-top:.3rem;flex:none}
+/* 1.25.0: pop-up windows use more of the screen; their buttons stay in view; Display settings in parts */
+dialog{width:min(94vw,64rem);max-width:none}
+dialog.small{width:min(94vw,36rem)}
+dialog.wide{width:min(96vw,104rem);max-width:none}
+dialog.photo{width:auto}
+dialog>form>.row:last-child{position:sticky;bottom:-1.4rem;z-index:2;background:var(--paper);margin:1.2rem -1.4rem -1.4rem;padding:.8rem 1.4rem;border-top:2px solid var(--line)}
+dialog.photo>form>.row:last-child{position:static;margin:.6rem 0 0;padding:0;border:0;background:none}
+dialog.dv[open]{display:flex;flex-direction:column;padding:0;width:min(96vw,104rem);height:min(92vh,60rem);max-height:92vh;overflow:hidden}
+dialog.dv .dv-form{display:flex;flex-direction:column;min-height:0;flex:1}
+dialog.dv .dv-head{display:flex;align-items:center;gap:.6rem 1.2rem;flex-wrap:wrap;padding:1rem 1.4rem .8rem;border-bottom:2px solid var(--line)}
+dialog.dv .dv-title{flex:1 1 22rem}
+dialog.dv .dv-title h2{margin:0 0 .2rem}
+dialog.dv .dv-title p{margin:.1rem 0}
+dialog.dv .dv-acts{margin:0;gap:.7rem}
+dialog.dv .dv-main{display:flex;min-height:0;flex:1}
+dialog.dv .dv-tabs{flex:0 0 15rem;border-right:2px solid var(--line);padding:1rem .8rem;display:flex;flex-direction:column;gap:.4rem;overflow:auto}
+dialog.dv .dv-tab{display:block;width:100%;text-align:left;padding:.55rem .8rem;border:2px solid transparent;background:none;color:var(--ink);font:inherit;font-weight:700;cursor:pointer;min-height:2.75rem}
+dialog.dv .dv-tab:hover{border-color:var(--line)}
+dialog.dv .dv-tab[aria-current]{border-color:var(--ink);background:var(--cyan);color:var(--cyan-ink)}
+dialog.dv .dv-body{flex:1;min-width:0;min-height:0;overflow:auto;padding:1rem 1.4rem 2rem;scroll-padding-top:.5rem}
+dialog.dv .dv-body section{margin-bottom:1.6rem}
+dialog.dv .dv-body section>h3{font-size:1.35rem;margin:0 0 .8rem;padding-bottom:.3rem;border-bottom:2px solid var(--line)}
+dialog.dv .dv-cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,24rem),1fr));gap:.4rem 2rem;align-items:start}
+dialog.dv .opt-group{margin:0 0 1rem}
+dialog.dv .opt-group .hint{margin:.45rem 0 0}
+@media (max-width:56rem){
+  dialog.dv[open]{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;border:0}
+  dialog.dv .dv-head{padding:.7rem .9rem .6rem}
+  dialog.dv .dv-intro{display:none}
+  dialog.dv .dv-acts{width:100%}
+  dialog.dv .dv-main{flex-direction:column}
+  dialog.dv .dv-tabs{flex:none;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:2px solid var(--line);padding:.5rem .9rem;gap:.35rem}
+  dialog.dv .dv-tab{width:auto;border-color:var(--line);padding:.35rem .6rem}
+  dialog.dv .dv-body{padding:.8rem .9rem 2rem}
+}
+@media (max-width:40rem){
+  dialog:not(.dv):not(.photo)[open]{width:100vw;max-width:100vw;max-height:100dvh;margin:auto 0 0;border-left:0;border-right:0;border-bottom:0;padding:1rem}
+  dialog:not(.dv):not(.photo)>form>.row:last-child{bottom:-1rem;margin:1rem -1rem -1rem;padding:.7rem 1rem}
+}
+dialog p,dialog ul,dialog ol,dialog .notice{max-width:none}
