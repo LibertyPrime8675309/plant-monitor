@@ -6,6 +6,8 @@
 - SANSI pot clip light (sansi-pot-clip): label and manual read 'C23ZW013-T0005A27, 120Vac, 60Hz, 5W, 0.05A'; input AC 120 V 60 Hz
   (adapter), DC 5 V 1 A (lamp); full spectrum, 4 brightness levels, 3/6/12 hour timer, 120 degree beam, 25,000 hours,
   works at 14-104 F; indoor damp locations; pot rim suggested within 0.4 in (1 cm). Ethan confirmed model, 120 V, 0.05 A, 5 W.
+- SANSI 10 W bulbs (sansi-10w): bulb and box read 'C21GL-GE26-10W, AC120V/60Hz/0.2A/10W/E26, Date: 01.2026'; beam 60 degrees,
+  not dimmable, full spectrum; suitable for damp locations; do not use with dimmers; not for totally enclosed luminaires.
 Guarded like plant updates: each field changes only if it still holds the value the batch expects.
 Run: python3 dev/seed_src/build_batchB2.py"""
 import json, os
@@ -21,6 +23,12 @@ lights_update = [
                        'Screws into an E26 socket (120 V AC, 60 Hz, 1.1 A); the cord or fixture is not included'],
              'notes': ['', 'Label: "LED Wing Grow Light", rated for damp locations (a covered porch is fine, not direct rain). '
                            'Not for totally enclosed fixtures: hang it bare or in an open shade so it can shed heat.']}},
+    {'key': 'sansi-10w', 'note': 'model number and ratings from its label (batch B2)',
+     'set': {'model': [None, 'C21GL-GE26-10W'],
+             'power': ['Screws into an E26 socket (90 to 132 V)',
+                       'Screws into an E26 socket (120 V AC, 60 Hz, 0.2 A; works from 90 to 132 V)'],
+             'notes': ['', 'Not dimmable: do not put it on a dimmer switch or dimming plug. Rated for damp locations (a covered porch is fine, '
+                           'not direct rain). Not for totally enclosed fixtures: use a bare socket or an open shade so it can shed heat.']}},
     {'key': 'sansi-pot-clip', 'note': 'model number and ratings from its label and manual (batch B2)',
      'set': {'model': [None, 'C23ZW013-T0005A27'],
              'power': ['USB (5 V): a phone charger, power bank or computer; 78.7 in cord',

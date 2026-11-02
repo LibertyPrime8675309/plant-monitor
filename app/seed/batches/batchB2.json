@@ -36,6 +36,24 @@
    }
   },
   {
+   "key": "sansi-10w",
+   "note": "model number and ratings from its label (batch B2)",
+   "set": {
+    "model": [
+     null,
+     "C21GL-GE26-10W"
+    ],
+    "power": [
+     "Screws into an E26 socket (90 to 132 V)",
+     "Screws into an E26 socket (120 V AC, 60 Hz, 0.2 A; works from 90 to 132 V)"
+    ],
+    "notes": [
+     "",
+     "Not dimmable: do not put it on a dimmer switch or dimming plug. Rated for damp locations (a covered porch is fine, not direct rain). Not for totally enclosed fixtures: use a bare socket or an open shade so it can shed heat."
+    ]
+   }
+  },
+  {
    "key": "sansi-pot-clip",
    "note": "model number and ratings from its label and manual (batch B2)",
    "set": {
