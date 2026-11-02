@@ -72,6 +72,42 @@
    }
   },
   {
+   "key": "gooingtop-clip",
+   "note": "LED count from Ethan (40 per bar); estimate scaled to match (batch B2)",
+   "set": {
+    "ppfd": [
+     [
+      [
+       6,
+       60,
+       1.0
+      ],
+      [
+       12,
+       25,
+       2.0
+      ]
+     ],
+     [
+      [
+       6,
+       57,
+       1.0
+      ],
+      [
+       12,
+       24,
+       2.0
+      ]
+     ]
+    ],
+    "ppfd_note": [
+     "The maker gives no PPFD. These are Claude's estimates for about 10 W of LEDs (74 white, 10 red).",
+     "The maker gives no PPFD. These are Claude's estimates for its 80 LEDs (40 on each bar, mostly white with a few red), about 10 W."
+    ]
+   }
+  },
+  {
    "key": "sansi-pot-clip",
    "note": "model number and ratings from its label and manual (batch B2)",
    "set": {

@@ -10,6 +10,8 @@
   not dimmable, full spectrum; suitable for damp locations; do not use with dimmers; not for totally enclosed luminaires.
 - SANSI 30 W bulbs (sansi-30w): bulb reads 'C23ZW005-V0030A29/AC120V/60Hz/0.65A/30W/E26 Date:04.2025', suitable for damp
   locations, do not use with dimmers, not for totally enclosed luminaires. Ethan confirmed model, 120 V, 0.65 A, 30 W, E26.
+- GooingTop 2-bar clip light (gooingtop-clip): Ethan's photo shows two bars of 40 LEDs each (he confirmed 40 per bar, and that
+  this is the light he had called "T8"). The estimate assumed 84 LEDs (74 white, 10 red); scaled to 80.
 Guarded like plant updates: each field changes only if it still holds the value the batch expects.
 Run: python3 dev/seed_src/build_batchB2.py"""
 import json, os
@@ -37,6 +39,11 @@ lights_update = [
                        'Screws into an E26 socket (120 V AC, 60 Hz, 0.65 A). Not dimmable.'],
              'notes': ['', 'Do not put it on a dimmer switch or dimming plug. Rated for damp locations (a covered porch is fine, not direct rain). '
                            'Not for totally enclosed fixtures: an open clamp-lamp shade is fine, a closed globe is not.']}},
+    {'key': 'gooingtop-clip', 'note': 'LED count from Ethan (40 per bar); estimate scaled to match (batch B2)',
+     'set': {'ppfd': [[[6, 60, 1.0], [12, 25, 2.0]], [[6, 57, 1.0], [12, 24, 2.0]]],
+             'ppfd_note': ['The maker gives no PPFD. These are Claude\'s estimates for about 10 W of LEDs (74 white, 10 red).',
+                           'The maker gives no PPFD. These are Claude\'s estimates for its 80 LEDs (40 on each bar, mostly white '
+                           'with a few red), about 10 W.']}},
     {'key': 'sansi-pot-clip', 'note': 'model number and ratings from its label and manual (batch B2)',
      'set': {'model': [None, 'C23ZW013-T0005A27'],
              'power': ['USB (5 V): a phone charger, power bank or computer; 78.7 in cord',
