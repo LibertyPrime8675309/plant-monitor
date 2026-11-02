@@ -11,6 +11,8 @@ os.environ['PLANTDB_WEATHER']='0'
 os.environ.setdefault('PLANTDB_VISION_URL', 'http://127.0.0.1:' + os.environ.get('MOCK_VISION_PORT', '8090'))
 os.environ.setdefault('PLANTDB_PLANTNET_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/plantnet')
 os.environ.setdefault('PLANTDB_CLAUDE_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/claude')
+os.environ.setdefault('PLANTDB_INAT_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/inat/v1')                 # 1.21.0: library photos
+os.environ.setdefault('PLANTDB_INAT_IMG_OK', os.environ['PLANTDB_VISION_URL'] + '/mock/inat/img/')
 sys.path.insert(0,os.environ.get('APPDIR', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'app')))
 import server as S
 from datetime import datetime, timedelta, timezone

@@ -79,6 +79,21 @@ with sync_playwright() as p:
     check(not vw.locator('[data-act=mainphoto]').is_visible(), 'someone who can only view does not get "Make this the main photo"')
     vw.goto(TS + '/'); vw.wait_for_timeout(2000)
     check(vw.locator(f'#grid .sheet[data-code="{code}"] .ph-btn').first.is_visible(), 'but can browse the photos on the Plants page')
+    # 1.21.0: wide photos on the cards, and sharper thumbnails
+    pg.goto(LOCAL + '/'); pg.wait_for_timeout(2500)
+    pg.evaluate("window.scrollTo(0, document.body.scrollHeight)"); pg.wait_for_timeout(2500); pg.evaluate("window.scrollTo(0, 0)")
+    wide = pg.locator('#grid .mat img.wide')
+    fit = lambda: wide.first.evaluate("e => getComputedStyle(e).objectFit")
+    check(wide.count() >= 1 and fit() == 'contain', f'wide photos are shown whole by default ({wide.count()} wide photos)')
+    pg.evaluate("window.PlantPrefs.set('photofit', 'fill')"); pg.wait_for_timeout(200)
+    check(fit() == 'cover', 'Display setting "Fill the card" crops them to fill the card')
+    pg.evaluate("window.PlantPrefs.set('photofit', 'auto')")
+    from PIL import Image as _I
+    import io as _io
+    src = wide.first.get_attribute('src')
+    tim = _I.open(_io.BytesIO(urllib.request.urlopen(LOCAL + src).read()))
+    orig = _I.open(_io.BytesIO(urllib.request.urlopen(LOCAL + src.replace('/thumbs/', '/photos/')).read()))
+    check(min(tim.size) >= min(640, min(orig.size)), f'thumbnails keep at least 640 pixels on the short side ({tim.size}, from {orig.size})')
     # phone with the largest text
     ph = b.new_page(viewport={'width': 390, 'height': 844})
     ph.add_init_script("localStorage.setItem('plantdb.editor','Photo Test');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")

@@ -10,7 +10,7 @@ SQLITE_FILES = ('', '-wal', '-shm', '-journal')
 
 def folders(data_dir, backup_dir):
     return (data_dir, os.path.join(data_dir, 'photos'), os.path.join(data_dir, 'photos_deleted'),
-            os.path.join(data_dir, 'cache'), os.path.join(data_dir, 'cache', 'thumbs'), backup_dir)
+            os.path.join(data_dir, 'cache'), os.path.join(data_dir, 'cache', 'thumbs2'), os.path.join(data_dir, 'library'), backup_dir)
 
 
 def problem(data_dir, backup_dir):

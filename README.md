@@ -309,6 +309,8 @@ Every page has a menu down the side listing its sections (for example on the Wea
 - **On the Plants page,** a plant with more than one photo has **‹** and **›** buttons on its photo, with "2 of 5" between them. They step through all its photos without opening the plant. On a phone or tablet you can also swipe left or right on the photo. With the keyboard, move to a photo button with Tab, then use the Left and Right arrow keys. Click anywhere else on the card to open the plant, as before.
 - **The main photo** is the one the Plants page shows first, and the one on care cards and in plant link previews. On a plant page, the photo panel says "★ This is the main photo" under it, and its thumbnail is marked **★ Main**. To change it, pick another photo and press **Make this the main photo**.
 
+- **Wide photos** (from 1.21.0): a photo taken sideways used to be cut down to a tall slice of its middle and stretched, so it looked blurry. Now the Plants page shows wide photos whole, with a plain band above and below, and every card photo is sharper. To change this, open **Display** and choose **Photos on the Plants page**: show wide photos whole (the usual choice), always fill the card, or always show the whole photo.
+
 ## Plants page filters
 
 The filter row on the Plants page narrows the list. Every filter is remembered in this browser, and **Clear filters** resets them.
@@ -360,6 +362,10 @@ How the reminders work:
 3. Rain of 0.25 in or more on one day counts as a watering, but only for plants whose Location is Outdoors (not the covered porch).
 4. **Checked: still moist** moves the next check a third of the gap later.
 5. To set the gap yourself, fill in **Check for water every (days)** on the plant's Edit page.
+
+**Once a day** (from 1.21.0): after you press **Watered today** on a plant page, the button changes to **✓ Watered today** and is switched off until tomorrow, so a second press can't log it twice. Undo, or Remove in the care log, switches it back on. The app never logs two waterings for the same plant on the same day.
+
+**Water all** (from 1.21.0): on the Plants page, **Water all … shown** marks every plant the filters show as watered today, after asking. Plants already watered today are skipped, and the message has **Undo**. For example, choose Location: Covered porch, then **Water all**.
 
 ## Frost alert and cold-night checklist (from 1.8.0)
 
@@ -765,7 +771,33 @@ The keys are kept in the database on this computer, and so in its backups. The a
 
 ### The plant library
 
-**Library** searches the 349,000 species by scientific or common name, in any of the four lists. Each result shows its family, whether it grows wild in Texas (or how many US states), and whether you have it or a plant of the same genus. It also has links to USDA PLANTS, Kew and Wikipedia, and an **Add to my plants** button. The names come from the Tree of Life list that BioCLIP was trained with (Imageomics Institute, free to use) and the USDA PLANTS state lists (public domain).
+**Library** lists every species in the list chosen under **Look in**, straight away, with no search needed: about 34,000 in the usual list, up to 349,000 worldwide. From 1.21.0 it works like the Plants page:
+
+- **Search** narrows the list as you type, by scientific or common name.
+- **Filters:**
+  - **Kind of plant:** broadleaf flowering plants, monocots (grasses, lilies, palms, orchids), ferns, conifers, cycads, mosses, algae and so on.
+  - **Family:** type it, or pick from the list, which shows how many species each family has.
+  - **Grows wild in:** the US, Texas, or any state.
+  - **Show:** only the ones you have, or the ones you have plus others of the same genus.
+  - **Only plants with a common name.**
+- **Sort by:** best known first (common name, then how widespread in the US), common name, scientific name, or family.
+- **Show as** cards with photos, or a table. **Show more** adds the next 48.
+- The filters are remembered in this browser, and **Clear search and filters** starts over.
+
+**Each species has its own page.** Click a card to open it. It has:
+
+- Photos: yours first if you have the plant, then up to six from iNaturalist, each naming its photographer and licence.
+- A short description from Wikipedia, and how often iNaturalist members have recorded it.
+- Its common names.
+- Its classification. Each order, family and genus is a link to the library filtered to it.
+- The US states and territories where it grows wild.
+- Your plants of that species or genus.
+- **Looks like:** the species the BioCLIP model finds closest. They are the easiest to mix up with it, though not always close relatives.
+- Links to USDA PLANTS, Kew, iNaturalist and Wikipedia, and **Add to my plants**.
+
+**Where the photos come from.** Library photos and descriptions come from iNaturalist, whose members share their photos under Creative Commons licences. Only the species name is sent. The app fetches about one species a second, as iNaturalist asks, so a page of cards fills in over a minute the first time. Each photo is kept in `data\library`, so it is only fetched once. The owner can turn this off at the bottom of the Library page, and the library then works fully offline, without photos.
+
+The names come from the Tree of Life list that BioCLIP was trained with (Imageomics Institute, free to use), and the states from the USDA PLANTS state lists (public domain).
 
 ### Stopping the picture checker
 

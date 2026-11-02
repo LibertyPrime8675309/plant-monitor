@@ -1210,3 +1210,36 @@ html[data-narrow="1"] .pc-46 .pc-head{flex-wrap:wrap}
   .pc-row{grid-template-columns:.95in minmax(0,1fr);gap:0 .08in;padding-top:.015in;border-top:.5pt solid #000}
   .pc-row .pc-main-fact{font-size:1.06em}
 }
+
+/* 1.21.0: "Watered today" once it is done (not faded: it says so in words and keeps full contrast) */
+.btn.done-today[disabled]{opacity:1;background:transparent;color:var(--moss);border-color:var(--moss);cursor:default}
+.water-all{display:flex;flex-wrap:wrap;gap:.4rem 1rem;align-items:center;margin:-.4rem 0 1.4rem}
+.water-all .hint{flex:1 1 18rem;margin:0}
+html[data-role=viewer] .water-all{display:none!important}
+/* 1.21.0: wide photos on the Plants page cards (Display setting "Photos on the Plants page") */
+html[data-photofit=whole] .sheet .mat img,html[data-photofit=auto] .sheet .mat img.wide{object-fit:contain;background:var(--line-2)}
+/* 1.21.0: the library as a browsable list, and a page for each species */
+.lib-filters{grid-template-columns:repeat(auto-fill,minmax(min(100%,15rem),1fr))}
+.lib-count{margin:.2rem 0 1rem}
+.lib-card .lib-fam{margin:.1rem 0 .5rem;color:var(--ink-2)}
+.lib-card .mat .nophoto{font-weight:700;text-align:center;padding:1rem}
+.lib-card .acc{max-width:calc(100% - .5rem);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-tbl td{vertical-align:middle}
+.lib-tbl .lib-th{width:5.5rem}
+.lib-tbl .lib-thumb{width:4.5rem;height:4.5rem;object-fit:cover;display:block;background:var(--line-2)}
+.lib-tbl div.lib-thumb{display:grid;place-items:center;font-size:.85rem;text-align:center;color:var(--ink-2);padding:.2rem}
+.species .sp-head{margin-bottom:1.2rem}
+.species .sp-sci{font-size:1.4rem;margin:.2rem 0}
+.species section>h2{margin:1.8rem 0 .6rem}
+.sp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr));gap:0 2rem;align-items:start}
+.sp-fig{margin:0}
+.sp-fig img{display:block;width:100%;max-height:70vh;object-fit:contain;background:var(--line-2);border:1px solid var(--line)}
+.sp-fig figcaption{margin-top:.4rem;color:var(--ink-2);overflow-wrap:anywhere}
+.sp-step{margin:.6rem 0}
+.sp-yours{list-style:none;padding:0;display:grid;gap:.5rem}
+.sp-yours a{display:flex;gap:.7rem;align-items:center;border:var(--bw) solid var(--line);background:var(--sheet);padding:.4rem;text-decoration:none;color:var(--ink)}
+.sp-yours img{width:3.5rem;height:3.5rem;object-fit:cover;flex:none}
+.sp-cls{padding-left:1.4em}
+.sp-acts{margin-top:1rem}
+html[data-role=viewer] [data-act=spnew]{display:none!important}
+.lib-card .tags .tag,.species .tags .tag{white-space:normal}
