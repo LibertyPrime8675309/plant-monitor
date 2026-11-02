@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.27.1 (2026-11-01)
+- **Five new plant pages** from your photos of November 1:
+  - **P-085** and **P-086**: the two philodendrons with "Philodendron Royal Queen" stakes. A true 'Royal Queen' has near-black leaves, and these are orange from the sun, so each page says the name may be 'Prince of Orange' instead. A new leaf grown in bright shade will tell.
+  - **P-087**: **Alocasia 'Frydek'**, your third Alocasia (the "fuzzy pale-green-leaved plant").
+  - **P-088**: the **young Monstera** in the maroon pot with the 'Monstera' tag.
+  - **P-089**: the **Mini Monstera** (Rhaphidophora tetrasperma) beside it, the "climbing aroid". It has its own uses, partners and propagation.
+- **New photos and health notes** for the purple fountain grass (P-054), the iris (P-064), the curly Boston fern (P-083) and the young Monstera in the beige pot (P-084).
+- **Still to photograph:** three items ticked off (the fuzzy plant, the 'Monstera' pot and the climbing aroid).
+- **Photos:** this release comes with a new photo pack, `plant-database-photos-B1.zip`. Keep it next to the release zip.
+- Includes everything in 1.27.0 below.
+
 ## 1.27.0 (2026-11-01)
 - **New section on every plant page: Uses, partners and propagation.** It's also on Library species pages, and on mushroom finds as "What it does, and growing it".
   - **Uses** with their safety warnings (aloe gel for minor burns, prickly pear pads, fig fruit, dye from cosmos and gardenia...), and whether it's good for **compost**, and why.

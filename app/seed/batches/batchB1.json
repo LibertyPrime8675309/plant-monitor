@@ -1,0 +1,776 @@
+{
+ "id": "B1",
+ "created": "2026-11-01",
+ "author": "Claude (Ethan's porch bench photos, Nov 1, 2026)",
+ "plants": [
+  {
+   "common_name": "Philodendron 'Royal Queen' (tag; taller, roots on top)",
+   "scientific_name": "Philodendron 'Royal Queen' (tagged; possibly sun-faded)",
+   "aliases": "Tag: 'Philodendron Royal Queen' (hand-written)",
+   "plant_type": "Tropical foliage plant",
+   "location": "Porch bench, in direct sun",
+   "container": "Clear nursery pot inside a grey fluted pot, bark and perlite mix, white hand-written stake",
+   "id_confidence": 55,
+   "id_basis": "A white hand-written stake reads 'Philodendron Royal Queen'. It is a self-heading philodendron with thick red-pink leaf stalks. A true 'Royal Queen' (a Philodendron erubescens hybrid) has very dark, burgundy-black leaves; these are orange, peach and yellow-green. Ethan says it has been in direct sun for a while, which can bleach dark philodendron leaves toward bronze and yellow, so the tag may be right. The colours fit 'Prince of Orange' just as well.",
+   "id_alternatives": "Philodendron 'Royal Queen' (as tagged, sun-faded)\nPhilodendron 'Prince of Orange'\nPhilodendron 'McColley's Finale'\nPhilodendron 'Black Cardinal' (also bronze when young)",
+   "id_improve": "The colour of the next new leaf after a few weeks in bright shade (indoors, or the covered porch)\nWhere it was bought, and the store tag or receipt",
+   "temp_ideal_low": 65,
+   "temp_ideal_high": 85,
+   "temp_damage_below": 50,
+   "temp_lethal_below": 35,
+   "temp_notes": "Leaf margins scorch or tan with chilling near 50 F. Frost kills.",
+   "humidity_low": 50,
+   "humidity_high": 70,
+   "humidity_notes": "The tan crispy edges could come from dry air.",
+   "light_summary": "Bright indirect light",
+   "light_hours": "4-6 h",
+   "light_notes": "The tan edges and yellow bleached patches suggest sunburn, cold nights or dry air. Give filtered light.",
+   "winter_plan": "Move indoors",
+   "winter_summary": "Tropical foliage plant. Bring it inside before nights fall under 55 F.",
+   "winter_triggers": "Target Nov 1; before any night under 50 F.",
+   "winter_steps": "Target: indoors by about Nov 1, before the first night forecast under 50 F.\nPre-move: rinse the leaves with a hose, check undersides and stem nodes for spider mites, mealybugs, scale and fungus gnats, treat with insecticidal soap or neem, then quarantine 2 weeks away from other houseplants.\nAcclimate in two steps to limit leaf drop: about a week on the covered porch or in the garage, then inside.\nDo not repot or fertilize for the move; trim only dead tissue.",
+   "indoor_setup": "Indoors: within 3 ft of an east or south window, or under a full-spectrum grow light 12-14 h/day at 6-12 in. Winter sun in Round Rock is only ~4.5-6 hours of real sunshine per day in Dec-Jan, so supplement.\nIndoor winter air is typically 20-35% RH; raise it with a humidifier (target 50-60%), grouping plants, or a pebble tray, and keep plants away from heater vents.\nWater when the top 2 in dry; reduce in winter.\nCheck leaf undersides for thrips and spider mites.",
+   "health_rating": "Fair",
+   "health_summary": "Growing, with several crowns and new leaves, but the leaves are sun-faded to orange and yellow-green, the lower stem is bare with dry papery leaf bases, and roots are showing on top of the mix.",
+   "health_observations": "Leaves orange, peach and yellow-green (likely sun-faded)\nThick red-pink leaf stalks\nTwo or more crowns\nDry, papery old leaf sheaths at the base (normal)\nRoots exposed on top of the mix\nOne leaf with a small hole\nTwo small rounded seedlings (weeds) at the base",
+   "health_steps": "Cover the exposed roots with an inch of fresh mix, or repot a little deeper.\nMove it out of direct sun into bright shade (indoors, or the covered porch). Sun bleaches the leaves and scorches them.\nBring it in before nights fall below 55°F.\nWater when the top inch of mix is dry; feed at half strength in spring and summer.\nPull the small seedlings at the base.",
+   "notes": "Photographed on November 1, 2026, on the porch bench. Ethan: no page until now.",
+   "temp_damage_above": 100,
+   "vpd_low": 0.4,
+   "vpd_high": 1.0,
+   "par_low": 150,
+   "par_high": 400,
+   "dli_low": 6.0,
+   "dli_high": 12.0,
+   "water_notes": "Water when the top 1-2 in (3-5 cm) of mix is dry. Soak until water drains out, then empty the saucer. Indoors in winter this stretches to every 10-14 days. Cold, wet mix is the commonest way to lose these plants.",
+   "soil_medium": "Chunky, fast-draining aroid mix: about 40% potting soil, 30% orchid bark, 20% perlite or pumice and 10% coco coir or worm castings. The pot must have drainage holes.",
+   "soil_ph_low": 5.5,
+   "soil_ph_high": 6.5,
+   "soil_moisture_low": 35,
+   "soil_moisture_high": 60,
+   "soil_temp_low": 65,
+   "soil_temp_high": 85,
+   "fertilizer": "Balanced liquid, such as 3-1-2 or 20-20-20, at half strength",
+   "nutrients": "Feed every 2-4 weeks from March to September at half strength, and stop from November to February. Pale new leaves point to low nitrogen. Yellow older leaves with green veins point to low magnesium (1 tsp Epsom salt per gallon, once a season). Brown crisp tips can be salt build-up: flush the pot with plain water every 2-3 months.",
+   "fert_from_month": 3,
+   "fert_to_month": 9,
+   "fert_every_days": 21,
+   "pests_watch": "Spider mites: fine webbing and stippled leaves, worst in dry heated air\nThrips: silvery streaks and black specks on leaves\nMealybugs: white cottony clumps in leaf joints\nFungus gnats: small flies over damp mix\nRoot rot from cold, soggy mix\nBacterial or fungal leaf spot: brown, water-soaked spots",
+   "pest_steps": "Check leaf undersides and leaf joints once a week, and before any plant comes indoors.\nKeep newly moved plants apart from the others for 2 weeks.\nWipe leaves with a damp cloth to remove dust and mites.\nFor mites, thrips or mealybugs: spray insecticidal soap or neem oil every 5-7 days for three rounds. Test one leaf first and do not spray in hot sun.\nFor mealybugs on a few spots: touch each with a swab of 70% rubbing alcohol.\nFor fungus gnats: let the top inch of mix dry, add yellow sticky traps, and water once with Bti (Mosquito Bits) soaked water.\nRemove leaves with leaf spot, keep the foliage dry and give the plant airflow.",
+   "pests_current": "",
+   "site": "Outdoors",
+   "water_every_days": null,
+   "leaf_type": "Large leaves",
+   "pot_size": "Small: fits in a bucket",
+   "pests_found": null,
+   "npk_ratio": "3-1-2",
+   "fert_strength": "Half strength",
+   "growth_habit": "Evergreen tropical aroid, a self-heading or slowly climbing hybrid",
+   "kingdom": "Plantae (plants)",
+   "taxon_order": "Alismatales",
+   "family": "Araceae",
+   "genus": "Philodendron",
+   "height_ground": "Not grown in the ground here; 2 to 4 ft where it is",
+   "width_ground": "2 to 3 ft",
+   "height_pot": "2 to 3 ft",
+   "width_pot": "1.5 to 2.5 ft",
+   "growth_rate": "Slow to moderate",
+   "lifespan": "Many years",
+   "zone_low": "10b",
+   "zone_high": "12",
+   "zone_notes": "Damaged below about 50°F; a houseplant here.",
+   "native_range": "A cultivated hybrid or mutation, with no wild range. Its parents are Philodendron species from tropical Central and South America.",
+   "conservation_status": "Not applicable: a cultivated hybrid.",
+   "invasive": "Not a risk here.",
+   "bloom": "Rare indoors.",
+   "fruit": "None indoors.",
+   "danger_humans": "All parts contain needle-like calcium oxalate crystals. Chewing them causes burning pain and swelling of the mouth, tongue and throat, drooling and trouble swallowing; the sap can irritate skin and eyes. Rarely serious, but keep it from children and wash your hands after pruning.",
+   "danger_animals": "Toxic to cats and dogs (ASPCA): the calcium oxalate crystals cause pawing at the mouth, drooling, mouth swelling, vomiting and trouble swallowing.",
+   "propagation": "Stem or node cuttings rooted in water, moss or moist chunky mix.\nSeparate offshoots (pups) with their own roots from the base.\nMany of these hybrids can revert or change pattern when grown from cuttings; tissue-cultured plants keep the look best.",
+   "sources": "NC State Extension Plant Toolbox: Philodendron 'Birkin' | https://plants.ces.ncsu.edu/plants/philodendron-birkin/common-name/philodendron-birkin/\nPlants of the World Online (Kew): Philodendron erubescens | https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:87759-1\nThe University of Kansas Health System Poison Control: Philodendron | https://www.kansashealthsystem.com/care/centers/poison-control-center/poisonous-plants/philodendron\nASPCA Animal Poison Control: Toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants",
+   "pet_safety": "Toxic to pets",
+   "photos": [
+    {
+     "file": "img_b1_rq_a_1.jpg",
+     "caption": "November 1: tall philodendron with its stake, sun-faded leaves",
+     "primary": true,
+     "source": "Ethan, November 1"
+    },
+    {
+     "file": "img_b1_rq_a_2.jpg",
+     "caption": "November 1: stem base: exposed roots and dry leaf sheaths",
+     "primary": false,
+     "source": "Ethan, November 1"
+    }
+   ]
+  },
+  {
+   "common_name": "Philodendron 'Royal Queen' (tag; compact)",
+   "scientific_name": "Philodendron 'Royal Queen' (tagged; possibly sun-faded)",
+   "aliases": "Tag: 'Philodendron Royal Queen' (hand-written)",
+   "plant_type": "Tropical foliage plant",
+   "location": "Porch bench, in direct sun",
+   "container": "Clear nursery pot inside a grey fluted pot, white hand-written stake",
+   "id_confidence": 55,
+   "id_basis": "A white hand-written stake reads 'Philodendron Royal Queen'. It is a self-heading philodendron with thick red-pink leaf stalks. A true 'Royal Queen' (a Philodendron erubescens hybrid) has very dark, burgundy-black leaves; these are orange, peach and yellow-green. Ethan says it has been in direct sun for a while, which can bleach dark philodendron leaves toward bronze and yellow, so the tag may be right. The colours fit 'Prince of Orange' just as well.",
+   "id_alternatives": "Philodendron 'Royal Queen' (as tagged, sun-faded)\nPhilodendron 'Prince of Orange'\nPhilodendron 'McColley's Finale'\nPhilodendron 'Black Cardinal' (also bronze when young)",
+   "id_improve": "The colour of the next new leaf after a few weeks in bright shade (indoors, or the covered porch)\nWhere it was bought, and the store tag or receipt",
+   "temp_ideal_low": 65,
+   "temp_ideal_high": 85,
+   "temp_damage_below": 50,
+   "temp_lethal_below": 35,
+   "temp_notes": "Leaf margins scorch or tan with chilling near 50 F. Frost kills.",
+   "humidity_low": 50,
+   "humidity_high": 70,
+   "humidity_notes": "The tan crispy edges could come from dry air.",
+   "light_summary": "Bright indirect light",
+   "light_hours": "4-6 h",
+   "light_notes": "The tan edges and yellow bleached patches suggest sunburn, cold nights or dry air. Give filtered light.",
+   "winter_plan": "Move indoors",
+   "winter_summary": "Tropical foliage plant. Bring it inside before nights fall under 55 F.",
+   "winter_triggers": "Target Nov 1; before any night under 50 F.",
+   "winter_steps": "Target: indoors by about Nov 1, before the first night forecast under 50 F.\nPre-move: rinse the leaves with a hose, check undersides and stem nodes for spider mites, mealybugs, scale and fungus gnats, treat with insecticidal soap or neem, then quarantine 2 weeks away from other houseplants.\nAcclimate in two steps to limit leaf drop: about a week on the covered porch or in the garage, then inside.\nDo not repot or fertilize for the move; trim only dead tissue.",
+   "indoor_setup": "Indoors: within 3 ft of an east or south window, or under a full-spectrum grow light 12-14 h/day at 6-12 in. Winter sun in Round Rock is only ~4.5-6 hours of real sunshine per day in Dec-Jan, so supplement.\nIndoor winter air is typically 20-35% RH; raise it with a humidifier (target 50-60%), grouping plants, or a pebble tray, and keep plants away from heater vents.\nWater when the top 2 in dry; reduce in winter.\nCheck leaf undersides for thrips and spider mites.",
+   "health_rating": "Fair",
+   "health_summary": "Compact and full, with firm leaves, but they are sun-faded to orange and yellow-green, and a few have small spots or nicks.",
+   "health_observations": "Leaves orange, peach and yellow-green (likely sun-faded)\nNew red-pink leaves at the centre\nSmall pale spots on a few leaves (sun or water marks)\nOne leaf with a nicked edge",
+   "health_steps": "Move it out of direct sun into bright shade (indoors, or the covered porch). Sun bleaches the leaves and scorches them.\nBring it in before nights fall below 55°F.\nWater when the top inch of mix is dry; feed at half strength in spring and summer.",
+   "notes": "Photographed on November 1, 2026, on the porch bench. Ethan: no page until now.",
+   "temp_damage_above": 100,
+   "vpd_low": 0.4,
+   "vpd_high": 1.0,
+   "par_low": 150,
+   "par_high": 400,
+   "dli_low": 6.0,
+   "dli_high": 12.0,
+   "water_notes": "Water when the top 1-2 in (3-5 cm) of mix is dry. Soak until water drains out, then empty the saucer. Indoors in winter this stretches to every 10-14 days. Cold, wet mix is the commonest way to lose these plants.",
+   "soil_medium": "Chunky, fast-draining aroid mix: about 40% potting soil, 30% orchid bark, 20% perlite or pumice and 10% coco coir or worm castings. The pot must have drainage holes.",
+   "soil_ph_low": 5.5,
+   "soil_ph_high": 6.5,
+   "soil_moisture_low": 35,
+   "soil_moisture_high": 60,
+   "soil_temp_low": 65,
+   "soil_temp_high": 85,
+   "fertilizer": "Balanced liquid, such as 3-1-2 or 20-20-20, at half strength",
+   "nutrients": "Feed every 2-4 weeks from March to September at half strength, and stop from November to February. Pale new leaves point to low nitrogen. Yellow older leaves with green veins point to low magnesium (1 tsp Epsom salt per gallon, once a season). Brown crisp tips can be salt build-up: flush the pot with plain water every 2-3 months.",
+   "fert_from_month": 3,
+   "fert_to_month": 9,
+   "fert_every_days": 21,
+   "pests_watch": "Spider mites: fine webbing and stippled leaves, worst in dry heated air\nThrips: silvery streaks and black specks on leaves\nMealybugs: white cottony clumps in leaf joints\nFungus gnats: small flies over damp mix\nRoot rot from cold, soggy mix\nBacterial or fungal leaf spot: brown, water-soaked spots",
+   "pest_steps": "Check leaf undersides and leaf joints once a week, and before any plant comes indoors.\nKeep newly moved plants apart from the others for 2 weeks.\nWipe leaves with a damp cloth to remove dust and mites.\nFor mites, thrips or mealybugs: spray insecticidal soap or neem oil every 5-7 days for three rounds. Test one leaf first and do not spray in hot sun.\nFor mealybugs on a few spots: touch each with a swab of 70% rubbing alcohol.\nFor fungus gnats: let the top inch of mix dry, add yellow sticky traps, and water once with Bti (Mosquito Bits) soaked water.\nRemove leaves with leaf spot, keep the foliage dry and give the plant airflow.",
+   "pests_current": "",
+   "site": "Outdoors",
+   "water_every_days": null,
+   "leaf_type": "Large leaves",
+   "pot_size": "Small: fits in a bucket",
+   "pests_found": null,
+   "npk_ratio": "3-1-2",
+   "fert_strength": "Half strength",
+   "growth_habit": "Evergreen tropical aroid, a self-heading or slowly climbing hybrid",
+   "kingdom": "Plantae (plants)",
+   "taxon_order": "Alismatales",
+   "family": "Araceae",
+   "genus": "Philodendron",
+   "height_ground": "Not grown in the ground here; 2 to 4 ft where it is",
+   "width_ground": "2 to 3 ft",
+   "height_pot": "2 to 3 ft",
+   "width_pot": "1.5 to 2.5 ft",
+   "growth_rate": "Slow to moderate",
+   "lifespan": "Many years",
+   "zone_low": "10b",
+   "zone_high": "12",
+   "zone_notes": "Damaged below about 50°F; a houseplant here.",
+   "native_range": "A cultivated hybrid or mutation, with no wild range. Its parents are Philodendron species from tropical Central and South America.",
+   "conservation_status": "Not applicable: a cultivated hybrid.",
+   "invasive": "Not a risk here.",
+   "bloom": "Rare indoors.",
+   "fruit": "None indoors.",
+   "danger_humans": "All parts contain needle-like calcium oxalate crystals. Chewing them causes burning pain and swelling of the mouth, tongue and throat, drooling and trouble swallowing; the sap can irritate skin and eyes. Rarely serious, but keep it from children and wash your hands after pruning.",
+   "danger_animals": "Toxic to cats and dogs (ASPCA): the calcium oxalate crystals cause pawing at the mouth, drooling, mouth swelling, vomiting and trouble swallowing.",
+   "propagation": "Stem or node cuttings rooted in water, moss or moist chunky mix.\nSeparate offshoots (pups) with their own roots from the base.\nMany of these hybrids can revert or change pattern when grown from cuttings; tissue-cultured plants keep the look best.",
+   "sources": "NC State Extension Plant Toolbox: Philodendron 'Birkin' | https://plants.ces.ncsu.edu/plants/philodendron-birkin/common-name/philodendron-birkin/\nPlants of the World Online (Kew): Philodendron erubescens | https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:87759-1\nThe University of Kansas Health System Poison Control: Philodendron | https://www.kansashealthsystem.com/care/centers/poison-control-center/poisonous-plants/philodendron\nASPCA Animal Poison Control: Toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants",
+   "pet_safety": "Toxic to pets",
+   "photos": [
+    {
+     "file": "img_b1_rq_b_1.jpg",
+     "caption": "November 1: compact philodendron with its 'Royal Queen' stake",
+     "primary": true,
+     "source": "Ethan, November 1"
+    },
+    {
+     "file": "img_b1_rq_b_2.jpg",
+     "caption": "November 1: from above",
+     "primary": false,
+     "source": "Ethan, November 1"
+    },
+    {
+     "file": "img_b1_rq_b_3.jpg",
+     "caption": "November 1: from the side, the stake in front",
+     "primary": false,
+     "source": "Ethan, November 1"
+    }
+   ]
+  },
+  {
+   "common_name": "Alocasia 'Frydek'",
+   "scientific_name": "Alocasia micholitziana 'Frydek'",
+   "aliases": "Green velvet Alocasia; tag: 'Alocasia Frydek'",
+   "plant_type": "Tropical aroid",
+   "location": "Porch bench, on a terracotta saucer",
+   "container": "Black nursery pot on a square terracotta saucer, with its yellow barcode tag",
+   "id_confidence": 85,
+   "id_basis": "The yellow barcode tag reads 'Alocasia Frydek', and the leaves fit it: arrow-shaped, velvety (Ethan felt them), with a pale midrib and pale main veins. Frydek leaves are usually deep green; these are lighter, which fits a young plant in bright light. It is a third Alocasia, separate from P-056 and P-061.",
+   "id_alternatives": "Alocasia micholitziana 'Frydek'\nAlocasia 'Green Velvet' (a trade name for the same plant)\nAlocasia 'Maharani' (thicker, grey leaves; less likely)",
+   "id_improve": "A daylight photo of a full-grown leaf",
+   "temp_ideal_low": 65,
+   "temp_ideal_high": 85,
+   "temp_damage_below": 55,
+   "temp_lethal_below": 38,
+   "temp_notes": "Collapses below about 55 F; the tuber survives above about 38 F if kept barely damp. Frost kills it.",
+   "humidity_low": 60,
+   "humidity_high": 80,
+   "humidity_notes": "Dry indoor air invites spider mites.",
+   "light_summary": "Bright indirect light",
+   "light_hours": "4-6 h",
+   "light_notes": "Direct afternoon sun scorches the leaves.",
+   "winter_plan": "Move indoors",
+   "winter_summary": "Tropical and cold-sensitive. Bring it in before nights fall under 55 F.",
+   "winter_triggers": "Target Oct 28; before any night under 55 F.",
+   "winter_steps": "Target: indoors by about Oct 28, before the first night forecast under 55 F.\nPre-move: rinse the leaves with a hose, check undersides and stem nodes for spider mites, mealybugs, scale and fungus gnats, treat with insecticidal soap or neem, then quarantine 2 weeks away from other houseplants.\nAcclimate in two steps to limit leaf drop: about a week on the covered porch or in the garage, then inside.\nDo not repot or fertilize for the move; trim only dead tissue.\nExpect leaf loss; keep the mix barely damp and be patient in spring.",
+   "indoor_setup": "Indoors: within 3 ft of an east or south window, or under a full-spectrum grow light 12-14 h/day at 6-12 in. Winter sun in Round Rock is only ~4.5-6 hours of real sunshine per day in Dec-Jan, so supplement.\nIndoor winter air is typically 20-35% RH; raise it with a humidifier (target 50-60%), grouping plants, or a pebble tray, and keep plants away from heater vents.\nKeep the mix lightly moist and above 60 F.\nCheck leaf undersides weekly for mites.",
+   "health_rating": "Fair",
+   "health_summary": "Putting out several new leaves, but they are lighter than a Frydek should be, one has a dry pale patch at the tip, and spotted spurge is spreading over the pot.",
+   "health_observations": "Velvety arrow-shaped leaves with pale midribs\nSeveral new leaves and shoots\nLeaves paler green than usual for Frydek\nOne leaf with a dry, pale patch at its tip\nSpotted spurge (a weed with thin red stems and small maroon-spotted leaves) is growing in the pot.",
+   "health_steps": "Pull the spotted spurge with gloves on, roots and all, before it sets more seed. Its milky sap irritates skin and is toxic to pets.\nGive it bright shade, not direct sun: Frydek leaves bleach and scorch in sun.\nKeep the mix lightly moist, never soggy; Alocasias rot in cold wet soil.\nBring it in before nights fall below 60°F; it may drop leaves in winter and regrow from the corm in spring.\nWipe the leaves now and then and check the undersides for spider mites, which love Alocasias.",
+   "notes": "Photographed on November 1, 2026. Ethan: the third Alocasia, and the 'fuzzy pale-green-leaved plant' on the photo list.",
+   "temp_damage_above": 100,
+   "vpd_low": 0.4,
+   "vpd_high": 0.9,
+   "par_low": 200,
+   "par_high": 500,
+   "dli_low": 8.0,
+   "dli_high": 14.0,
+   "water_notes": "Keep the mix lightly moist but never soggy: water when the top inch is dry. Cold, wet mix rots the tubers, so cut water back as nights fall below 60 F. If the leaves die back in winter, keep the mix barely damp and wait for spring.",
+   "soil_medium": "Chunky aroid mix with extra perlite: about 40% potting soil, 30% perlite or pumice, 20% orchid bark and 10% coir. Drainage holes are essential.",
+   "soil_ph_low": 5.5,
+   "soil_ph_high": 6.5,
+   "soil_moisture_low": 40,
+   "soil_moisture_high": 65,
+   "soil_temp_low": 65,
+   "soil_temp_high": 85,
+   "fertilizer": "Balanced 3-1-2 liquid at half strength",
+   "nutrients": "Feed every 2 weeks at half strength while it is growing (April to September). Stop in cool weather. Yellowing lower leaves are normal as it grows; many yellow leaves at once usually mean overwatering.",
+   "fert_from_month": 4,
+   "fert_to_month": 9,
+   "fert_every_days": 14,
+   "pests_watch": "Spider mites (the most common problem; stippling and fine webs under leaves)\nThrips and aphids on new leaves\nMealybugs near the base\nTuber and root rot in cold, wet mix\nFungus gnats",
+   "pest_steps": "Check leaf undersides and leaf joints once a week, and before any plant comes indoors.\nKeep newly moved plants apart from the others for 2 weeks.\nWipe leaves with a damp cloth to remove dust and mites.\nFor mites, thrips or mealybugs: spray insecticidal soap or neem oil every 5-7 days for three rounds. Test one leaf first and do not spray in hot sun.\nFor mealybugs on a few spots: touch each with a swab of 70% rubbing alcohol.\nFor fungus gnats: let the top inch of mix dry, add yellow sticky traps, and water once with Bti (Mosquito Bits) soaked water.\nRemove leaves with leaf spot, keep the foliage dry and give the plant airflow.",
+   "pests_current": "Spotted spurge (weed) in the pot.",
+   "site": "Outdoors",
+   "water_every_days": null,
+   "leaf_type": "Large leaves",
+   "pot_size": "Small: fits in a bucket",
+   "pests_found": null,
+   "npk_ratio": "3-1-2",
+   "fert_strength": "Half strength",
+   "growth_habit": "Tropical perennial from a rhizome or corm (an aroid); can go dormant in cool or dry spells",
+   "kingdom": "Plantae (plants)",
+   "taxon_order": "Alismatales",
+   "family": "Araceae",
+   "genus": "Alocasia",
+   "height_ground": "2 to 6 ft (by cultivar)",
+   "width_ground": "2 to 4 ft",
+   "height_pot": "2 to 4 ft",
+   "width_pot": "1.5 to 3 ft",
+   "growth_rate": "Fast in summer, slow or dormant in winter",
+   "lifespan": "Many years; the corm survives dormancy",
+   "zone_low": "10a",
+   "zone_high": "11",
+   "zone_notes": "Leaves are damaged below about 50°F. A dormant plant loses its leaves but can regrow from the corm in spring if kept just moist.",
+   "native_range": "The genus grows wild from tropical Asia to eastern Australia. Houseplant kinds like these are mostly cultivated hybrids.",
+   "conservation_status": "Not applicable for cultivated hybrids.",
+   "invasive": "Not a risk here.",
+   "bloom": "A cream spathe, occasional on mature plants.",
+   "fruit": "Red berries after flowering. Not edible.",
+   "danger_humans": "All parts contain needle-like calcium oxalate crystals. Chewing them causes burning pain and swelling of the mouth, tongue and throat, drooling and trouble swallowing; the sap can irritate skin and eyes. Rarely serious, but keep it from children and wash your hands after pruning.",
+   "danger_animals": "Toxic to cats and dogs (ASPCA): the calcium oxalate crystals cause pawing at the mouth, drooling, mouth swelling, vomiting and trouble swallowing.",
+   "propagation": "Separate offset corms (\"bulbils\") found in the soil when repotting, and start them in damp moss or perlite.\nDivide clumps in spring.",
+   "sources": "UF/IFAS EDIS: Alocasia | https://ask.ifas.ufl.edu/publication/fp033\nASPCA Animal Poison Control: Toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants",
+   "pet_safety": "Toxic to pets",
+   "photos": [
+    {
+     "file": "img_b1_fry_1.jpg",
+     "caption": "November 1: from above, on its saucer",
+     "primary": true,
+     "source": "Ethan, November 1"
+    },
+    {
+     "file": "img_b1_fry_2.jpg",
+     "caption": "November 1: the yellow tag: 'Alocasia Frydek'",
+     "primary": false,
+     "source": "Ethan, November 1"
+    },
+    {
+     "file": "img_b1_fry_3.jpg",
+     "caption": "November 1: close up: velvety leaves, pale veins, spurge in the pot",
+     "primary": false,
+     "source": "Ethan, November 1"
+    },
+    {
+     "file": "img_b1_fry_4.jpg",
+     "caption": "November 1: from above, the spurge spreading over the rim",
+     "primary": false,
+     "source": "Ethan, November 1"
+    },
+    {
+     "file": "img_b1_fry_5.jpg",
+     "caption": "November 1: new leaves and shoots",
+     "primary": false,
+     "source": "Ethan, November 1"
+    }
+   ]
+  },
+  {
+   "common_name": "Monstera, young (maroon pot, 'Monstera' tag)",
+   "scientific_name": "Monstera deliciosa (young, probable)",
+   "aliases": "Store tag: 'Monstera' (water once a week; medium to bright indirect light; 65-85°F)",
+   "plant_type": "Tropical climbing aroid",
+   "location": "Porch bench (shelf with the yellow edge)",
+   "container": "Maroon nursery pot inside a grey pot, peat and perlite mix, printed 'Monstera' tag",
+   "id_confidence": 75,
+   "id_basis": "The printed store tag reads 'Monstera'. Many slim green stalks come up close together, each with one glossy, heart-shaped, unsplit leaf, and each stalk has a winged sheath at its base: the way young Monstera deliciosa grown from seed looks before its leaves start to split. Stores often plant several seedlings in one pot.",
+   "id_alternatives": "Monstera deliciosa (young, seed-grown)\nMonstera borsigiana (the smaller, faster form of deliciosa)\nRhaphidophora tetrasperma (less likely: its young leaves are narrower)",
+   "id_improve": "A photo of the next leaf: splits or holes would confirm deliciosa",
+   "temp_ideal_low": 65,
+   "temp_ideal_high": 85,
+   "temp_damage_below": 45,
+   "temp_lethal_below": 32,
+   "temp_notes": "Leaves are damaged below about 45 F. Frost kills them.",
+   "humidity_low": 40,
+   "humidity_high": 70,
+   "humidity_notes": "Tolerates average indoor humidity; the leaf edges dry out below about 35%.",
+   "light_summary": "Bright indirect light",
+   "light_hours": "4+ h",
+   "light_notes": "Direct hot sun scorches the leaves. The tan or yellow margins on the front leaves may be sun, cold or dry air.",
+   "winter_plan": "Move indoors",
+   "winter_summary": "Tropical climber. Bring it in before nights fall under 50 F.",
+   "winter_triggers": "Target Nov 1; before any night under 50 F.",
+   "winter_steps": "Target: indoors by about Nov 1, before the first night forecast under 50 F.\nPre-move: rinse the leaves with a hose, check undersides and stem nodes for spider mites, mealybugs, scale and fungus gnats, treat with insecticidal soap or neem, then quarantine 2 weeks away from other houseplants.\nAcclimate in two steps to limit leaf drop: about a week on the covered porch or in the garage, then inside.\nDo not repot or fertilize for the move; trim only dead tissue.",
+   "indoor_setup": "Indoors: within 3 ft of an east or south window, or under a full-spectrum grow light 12-14 h/day at 6-12 in. Winter sun in Round Rock is only ~4.5-6 hours of real sunshine per day in Dec-Jan, so supplement.\nIndoor winter air is typically 20-35% RH; raise it with a humidifier (target 50-60%), grouping plants, or a pebble tray, and keep plants away from heater vents.\nWater when the top 2 in of the mix are dry; reduce watering in winter.\nKeep the pole damp to encourage aerial roots to grab it.",
+   "health_rating": "Good",
+   "health_summary": "Healthy and full: many young plants with glossy green leaves. Several old stalks have been cut or broken off near the base, and the pot is crowded.",
+   "health_observations": "Many young stalks in one pot, each with a heart-shaped unsplit leaf\nGlossy, firm leaves; a few pale from bright light\nSeveral cut or broken stalk stubs at the base\nA few dry old leaf sheaths\nMix looks evenly moist",
+   "health_steps": "Give it bright light but not hours of direct afternoon sun, which pales and scorches the leaves.\nBring it in before nights fall below 55°F.\nWater when the top inch is dry; let the outer pot drain so it never stands in water.\nIn spring, split it into two or three pots, or move it to a bigger pot with a moss pole: crowded seedlings stay small.\nPull off the dry sheaths and stubs once they come away easily.",
+   "notes": "Ethan's photos of November 1, 2026: the 'maroon Monstera pot' on the photo list.",
+   "temp_damage_above": 100,
+   "vpd_low": 0.4,
+   "vpd_high": 1.0,
+   "par_low": 150,
+   "par_high": 400,
+   "dli_low": 6.0,
+   "dli_high": 12.0,
+   "water_notes": "Water when the top 1-2 in (3-5 cm) of mix is dry. Soak until water drains out, then empty the saucer. Indoors in winter this stretches to every 10-14 days. Cold, wet mix is the commonest way to lose these plants.",
+   "soil_medium": "Chunky, fast-draining aroid mix: about 40% potting soil, 30% orchid bark, 20% perlite or pumice and 10% coco coir or worm castings. The pot must have drainage holes.",
+   "soil_ph_low": 5.5,
+   "soil_ph_high": 6.5,
+   "soil_moisture_low": 35,
+   "soil_moisture_high": 60,
+   "soil_temp_low": 65,
+   "soil_temp_high": 85,
+   "fertilizer": "Balanced liquid, such as 3-1-2 or 20-20-20, at half strength",
+   "nutrients": "Feed every 2-4 weeks from March to September at half strength, and stop from November to February. Pale new leaves point to low nitrogen. Yellow older leaves with green veins point to low magnesium (1 tsp Epsom salt per gallon, once a season). Brown crisp tips can be salt build-up: flush the pot with plain water every 2-3 months.",
+   "fert_from_month": 3,
+   "fert_to_month": 9,
+   "fert_every_days": 21,
+   "pests_watch": "Spider mites: fine webbing and stippled leaves, worst in dry heated air\nThrips: silvery streaks and black specks on leaves\nMealybugs: white cottony clumps in leaf joints\nFungus gnats: small flies over damp mix\nRoot rot from cold, soggy mix\nBacterial or fungal leaf spot: brown, water-soaked spots",
+   "pest_steps": "Check leaf undersides and leaf joints once a week, and before any plant comes indoors.\nKeep newly moved plants apart from the others for 2 weeks.\nWipe leaves with a damp cloth to remove dust and mites.\nFor mites, thrips or mealybugs: spray insecticidal soap or neem oil every 5-7 days for three rounds. Test one leaf first and do not spray in hot sun.\nFor mealybugs on a few spots: touch each with a swab of 70% rubbing alcohol.\nFor fungus gnats: let the top inch of mix dry, add yellow sticky traps, and water once with Bti (Mosquito Bits) soaked water.\nRemove leaves with leaf spot, keep the foliage dry and give the plant airflow.",
+   "pests_current": "",
+   "site": "Outdoors",
+   "water_every_days": null,
+   "leaf_type": "Large leaves",
+   "pot_size": "Small: fits in a bucket",
+   "pests_found": null,
+   "npk_ratio": "3-1-2",
+   "fert_strength": "Half strength",
+   "growth_habit": "Evergreen climbing tropical vine (an aroid) with aerial roots",
+   "kingdom": "Plantae (plants)",
+   "taxon_order": "Alismatales",
+   "family": "Araceae",
+   "genus": "Monstera",
+   "height_ground": "Climbs 30 to 60 ft on trees",
+   "width_ground": "3 to 8 ft",
+   "height_pot": "6 to 10 ft on a pole",
+   "width_pot": "3 to 6 ft",
+   "growth_rate": "Moderate to fast",
+   "lifespan": "Decades",
+   "zone_low": "10",
+   "zone_high": "12",
+   "zone_notes": "Damaged below about 50°F; a houseplant here. Grown outdoors in South Florida and Hawaii.",
+   "native_range": "Southern Mexico to Panama, in tropical forest.",
+   "conservation_status": "No IUCN Red List assessment that Claude could confirm.",
+   "invasive": "Not a risk in Central Texas.",
+   "bloom": "A cream spathe around a thick spadix, on mature plants; rare indoors.",
+   "fruit": "Mature plants grow a long green fruit, the \"fruit salad\" fruit. Fully ripe flesh is edible, tasting of pineapple and banana; unripe fruit is full of irritating crystals. Rarely forms indoors.",
+   "danger_humans": "All parts contain needle-like calcium oxalate crystals. Chewing them causes burning pain and swelling of the mouth, tongue and throat, drooling and trouble swallowing; the sap can irritate skin and eyes. Rarely serious, but keep it from children and wash your hands after pruning. Only fully ripe fruit is safe to eat.",
+   "danger_animals": "Toxic to cats and dogs (ASPCA): the calcium oxalate crystals cause pawing at the mouth, drooling, mouth swelling, vomiting and trouble swallowing.",
+   "propagation": "Stem cuttings with a node and an aerial root, in water, moss or moist chunky mix.\nAir layering on a tall plant.\nSeed, rarely available.",
+   "sources": "Plants of the World Online (Kew): Monstera deliciosa | https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:87478-1/general-information\nQueensland Poisons Information Centre: Fruit salad plant | https://www.poisonsinfo.health.qld.gov.au/plants-and-mushrooms/fruit-salad-plant-monstera-deliciosa\nASPCA Animal Poison Control: Toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants",
+   "pet_safety": "Toxic to pets",
+   "photos": [
+    {
+     "file": "img_b1_mm_1.jpg",
+     "caption": "November 1: the whole plant in its maroon pot",
+     "primary": true,
+     "source": "Ethan, November 1"
+    },
+    {
+     "file": "img_b1_mm_2.jpg",
+     "caption": "November 1: the 'Monstera' tag",
+     "primary": false,
+     "source": "Ethan, November 1"
+    },
+    {
+     "file": "img_b1_mm_3.jpg",
+     "caption": "November 1: from above, heart-shaped young leaves",
+     "primary": false,
+     "source": "Ethan, November 1"
+    },
+    {
+     "file": "img_b1_mm_4.jpg",
+     "caption": "November 1: stalks and stubs at the base",
+     "primary": false,
+     "source": "Ethan, November 1"
+    },
+    {
+     "file": "img_b1_mm_5.jpg",
+     "caption": "November 1: the tag from the other side",
+     "primary": false,
+     "source": "Ethan, November 1"
+    }
+   ]
+  },
+  {
+   "common_name": "Mini Monstera (Rhaphidophora tetrasperma)",
+   "scientific_name": "Rhaphidophora tetrasperma",
+   "aliases": "Mini Monstera; Monstera ginny; tag: Costa Farms 'Mini Monstera, Collector's Plant' (TT-37)",
+   "plant_type": "Tropical climbing aroid",
+   "location": "Porch bench, beside the Monstera",
+   "container": "Clear nursery pot on a terracotta saucer, chunky bark mix, two bamboo stakes with plant tape",
+   "id_confidence": 95,
+   "id_basis": "The Costa Farms tags read 'Mini Monstera' and 'Rhaphidophora tetrasperma', and the plant fits: a climbing vine with small, deeply split leaves with a few holes near the midrib, thick green stems with aerial roots, tied to bamboo stakes. It is not a true Monstera.",
+   "id_alternatives": "Rhaphidophora tetrasperma\nMonstera adansonii (holes instead of splits; less likely)",
+   "id_improve": "",
+   "temp_ideal_low": 65,
+   "temp_ideal_high": 85,
+   "temp_damage_below": 45,
+   "temp_lethal_below": 32,
+   "temp_notes": "Leaves are damaged below about 45 F. Frost kills them.",
+   "humidity_low": 40,
+   "humidity_high": 70,
+   "humidity_notes": "Tolerates average indoor humidity; the leaf edges dry out below about 35%.",
+   "light_summary": "Bright indirect light",
+   "light_hours": "4+ h",
+   "light_notes": "Direct hot sun scorches the leaves. The tan or yellow margins on the front leaves may be sun, cold or dry air.",
+   "winter_plan": "Move indoors",
+   "winter_summary": "Tropical climber. Bring it in before nights fall under 50 F.",
+   "winter_triggers": "Target Nov 1; before any night under 50 F.",
+   "winter_steps": "Target: indoors by about Nov 1, before the first night forecast under 50 F.\nPre-move: rinse the leaves with a hose, check undersides and stem nodes for spider mites, mealybugs, scale and fungus gnats, treat with insecticidal soap or neem, then quarantine 2 weeks away from other houseplants.\nAcclimate in two steps to limit leaf drop: about a week on the covered porch or in the garage, then inside.\nDo not repot or fertilize for the move; trim only dead tissue.",
+   "indoor_setup": "Indoors: within 3 ft of an east or south window, or under a full-spectrum grow light 12-14 h/day at 6-12 in. Winter sun in Round Rock is only ~4.5-6 hours of real sunshine per day in Dec-Jan, so supplement.\nIndoor winter air is typically 20-35% RH; raise it with a humidifier (target 50-60%), grouping plants, or a pebble tray, and keep plants away from heater vents.\nWater when the top 2 in of the mix are dry; reduce watering in winter.\nKeep the pole damp to encourage aerial roots to grab it.",
+   "health_rating": "Fair",
+   "health_summary": "Alive and putting out new split leaves from the base, but the main stems have been cut back and lost most of their leaves, and the oldest stem section is dry and papery.",
+   "health_observations": "A cluster of new, split leaves low on the plant\nMain stems cut back to bare green canes with aerial roots\nOldest stem section brown, dry and papery\nStems held to bamboo stakes with plant tape\nChunky bark mix, fairly dry on top",
+   "health_steps": "Leave the bare green canes: each node can sprout a new leaf. Remove only stem sections that are brown and hollow.\nTie the new growth up the stake as it lengthens; it climbs and gets bigger leaves when it can grip something (a moss pole is best).\nBright light, but not hours of direct afternoon sun.\nBring it in before nights fall below 50°F (the tag says keep above 50°F).\nWater when the top inch is dry, about weekly in summer and less in winter.",
+   "notes": "Ethan's photos of November 1, 2026: the 'climbing aroid beside the Monstera' on the photo list.",
+   "temp_damage_above": 100,
+   "vpd_low": 0.4,
+   "vpd_high": 1.0,
+   "par_low": 150,
+   "par_high": 400,
+   "dli_low": 6.0,
+   "dli_high": 12.0,
+   "water_notes": "Water when the top 1-2 in (3-5 cm) of mix is dry. Soak until water drains out, then empty the saucer. Indoors in winter this stretches to every 10-14 days. Cold, wet mix is the commonest way to lose these plants.",
+   "soil_medium": "Chunky, fast-draining aroid mix: about 40% potting soil, 30% orchid bark, 20% perlite or pumice and 10% coco coir or worm castings. The pot must have drainage holes.",
+   "soil_ph_low": 5.5,
+   "soil_ph_high": 6.5,
+   "soil_moisture_low": 35,
+   "soil_moisture_high": 60,
+   "soil_temp_low": 65,
+   "soil_temp_high": 85,
+   "fertilizer": "Balanced liquid, such as 3-1-2 or 20-20-20, at half strength",
+   "nutrients": "Feed every 2-4 weeks from March to September at half strength, and stop from November to February. Pale new leaves point to low nitrogen. Yellow older leaves with green veins point to low magnesium (1 tsp Epsom salt per gallon, once a season). Brown crisp tips can be salt build-up: flush the pot with plain water every 2-3 months.",
+   "fert_from_month": 3,
+   "fert_to_month": 9,
+   "fert_every_days": 21,
+   "pests_watch": "Spider mites: fine webbing and stippled leaves, worst in dry heated air\nThrips: silvery streaks and black specks on leaves\nMealybugs: white cottony clumps in leaf joints\nFungus gnats: small flies over damp mix\nRoot rot from cold, soggy mix\nBacterial or fungal leaf spot: brown, water-soaked spots",
+   "pest_steps": "Check leaf undersides and leaf joints once a week, and before any plant comes indoors.\nKeep newly moved plants apart from the others for 2 weeks.\nWipe leaves with a damp cloth to remove dust and mites.\nFor mites, thrips or mealybugs: spray insecticidal soap or neem oil every 5-7 days for three rounds. Test one leaf first and do not spray in hot sun.\nFor mealybugs on a few spots: touch each with a swab of 70% rubbing alcohol.\nFor fungus gnats: let the top inch of mix dry, add yellow sticky traps, and water once with Bti (Mosquito Bits) soaked water.\nRemove leaves with leaf spot, keep the foliage dry and give the plant airflow.",
+   "pests_current": "",
+   "site": "Outdoors",
+   "water_every_days": null,
+   "leaf_type": "Small or many leaves",
+   "pot_size": "Small: fits in a bucket",
+   "pests_found": null,
+   "npk_ratio": "3-1-2",
+   "fert_strength": "Half strength",
+   "growth_habit": "Evergreen climbing tropical vine (an aroid) with aerial roots",
+   "kingdom": "Plantae (plants)",
+   "taxon_order": "Alismatales",
+   "family": "Araceae",
+   "genus": "Monstera",
+   "height_ground": "Climbs 30 to 60 ft on trees",
+   "width_ground": "3 to 8 ft",
+   "height_pot": "6 to 10 ft on a pole",
+   "width_pot": "3 to 6 ft",
+   "growth_rate": "Moderate to fast",
+   "lifespan": "Decades",
+   "zone_low": "10",
+   "zone_high": "12",
+   "zone_notes": "Damaged below about 50°F; a houseplant here. Grown outdoors in South Florida and Hawaii.",
+   "native_range": "Southern Mexico to Panama, in tropical forest.",
+   "conservation_status": "No IUCN Red List assessment that Claude could confirm.",
+   "invasive": "Not a risk in Central Texas.",
+   "bloom": "A cream spathe around a thick spadix, on mature plants; rare indoors.",
+   "fruit": "Mature plants grow a long green fruit, the \"fruit salad\" fruit. Fully ripe flesh is edible, tasting of pineapple and banana; unripe fruit is full of irritating crystals. Rarely forms indoors.",
+   "danger_humans": "All parts contain needle-like calcium oxalate crystals. Chewing them causes burning pain and swelling of the mouth, tongue and throat, drooling and trouble swallowing; the sap can irritate skin and eyes. Rarely serious, but keep it from children and wash your hands after pruning. Only fully ripe fruit is safe to eat.",
+   "danger_animals": "Toxic to cats and dogs (ASPCA): the calcium oxalate crystals cause pawing at the mouth, drooling, mouth swelling, vomiting and trouble swallowing.",
+   "propagation": "Stem cuttings with a node and an aerial root, in water, moss or moist chunky mix.\nAir layering on a tall plant.\nSeed, rarely available.",
+   "sources": "Plants of the World Online (Kew): Monstera deliciosa | https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:87478-1/general-information\nQueensland Poisons Information Centre: Fruit salad plant | https://www.poisonsinfo.health.qld.gov.au/plants-and-mushrooms/fruit-salad-plant-monstera-deliciosa\nASPCA Animal Poison Control: Toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants",
+   "pet_safety": "Toxic to pets",
+   "photos": [
+    {
+     "file": "img_b1_rt_1.jpg",
+     "caption": "November 1: new split leaves in Ethan's hand",
+     "primary": true,
+     "source": "Ethan, November 1"
+    },
+    {
+     "file": "img_b1_rt_2.jpg",
+     "caption": "November 1: the cut-back stems on bamboo stakes, Costa Farms tag",
+     "primary": false,
+     "source": "Ethan, November 1"
+    },
+    {
+     "file": "img_b1_rt_3.jpg",
+     "caption": "November 1: tag: 'Mini Monstera, Collector's Plant'",
+     "primary": false,
+     "source": "Ethan, November 1"
+    },
+    {
+     "file": "img_b1_rt_4.jpg",
+     "caption": "November 1: tag back: 'Rhaphidophora tetrasperma', bright light, weekly water, keep above 50°F",
+     "primary": false,
+     "source": "Ethan, November 1"
+    }
+   ]
+  }
+ ],
+ "existing_photos": [
+  {
+   "code": "P-054",
+   "file": "img_b1_grass_1.jpg",
+   "caption": "November 1: mostly dried to straw, some burgundy blades still green",
+   "primary": false,
+   "source": "Ethan, November 1"
+  },
+  {
+   "code": "P-054",
+   "file": "img_b1_grass_2.jpg",
+   "caption": "November 1: from above, one plume left",
+   "primary": false,
+   "source": "Ethan, November 1"
+  },
+  {
+   "code": "P-064",
+   "file": "img_b1_iris_1.jpg",
+   "caption": "November 1: leaf tips browning, pine straw on top",
+   "primary": false,
+   "source": "Ethan, November 1"
+  },
+  {
+   "code": "P-064",
+   "file": "img_b1_iris_2.jpg",
+   "caption": "November 1: from the side, brown tips and new fans",
+   "primary": false,
+   "source": "Ethan, November 1"
+  },
+  {
+   "code": "P-084",
+   "file": "img_b1_mon_1.jpg",
+   "caption": "November 1: from the side",
+   "primary": false,
+   "source": "Ethan, November 1"
+  },
+  {
+   "code": "P-084",
+   "file": "img_b1_mon_2.jpg",
+   "caption": "November 1: young leaves with notches and holes",
+   "primary": false,
+   "source": "Ethan, November 1"
+  },
+  {
+   "code": "P-084",
+   "file": "img_b1_mon_3.jpg",
+   "caption": "November 1: from above",
+   "primary": false,
+   "source": "Ethan, November 1"
+  },
+  {
+   "code": "P-084",
+   "file": "img_b1_mon_4.jpg",
+   "caption": "November 1: the whole pot",
+   "primary": false,
+   "source": "Ethan, November 1"
+  },
+  {
+   "code": "P-083",
+   "file": "img_b1_fern_1.jpg",
+   "caption": "November 1: mostly dead fronds, new curly frond by the stake",
+   "primary": false,
+   "source": "Ethan, November 1"
+  },
+  {
+   "code": "P-083",
+   "file": "img_b1_fern_2.jpg",
+   "caption": "November 1: close up: a fresh green curly frond and spurge seedlings",
+   "primary": false,
+   "source": "Ethan, November 1"
+  }
+ ],
+ "updates": [
+  {
+   "code": "P-054",
+   "name": "Purple fountain grass",
+   "photos": [
+    "img_b2_15.jpg"
+   ],
+   "note": "Photos of November 1 (batch B1)",
+   "set": {
+    "health_summary": [
+     "Vigorous green and burgundy blades with a plume starting, but a lot of dry straw thatch in the centre and around the base.",
+     "Mostly dried to straw for the season; some burgundy blades are still green. 'Rubrum' does not survive a hard freeze."
+    ],
+    "health_steps": [
+     "Pull out dead straw by hand (wear gloves) for airflow\nCut back hard in late winter\nDivide the clump in spring if the pot is full of roots\nCheck for spider mites in dry weather",
+     "Cut the dry blades back to the green ones, or to about 6 inches if all of it browns.\nBring the pot into a garage or the house before a hard freeze (below about 25°F) if you want to keep it; water it a little once a month there.\nIn spring, cut it back to a few inches and feed it once growth starts."
+    ]
+   }
+  },
+  {
+   "code": "P-064",
+   "name": "Bearded iris (potted)",
+   "photos": [
+    "img_b2_26.jpg"
+   ],
+   "note": "Photos of November 1 (batch B1)",
+   "set": {
+    "health_summary": [
+     "A healthy upright blue-green fan. The oldest leaves are dying back from the tips, which is normal in fall.",
+     "Healthy fans of leaves. The browning tips are normal autumn dieback, not a disease."
+    ],
+    "health_steps": [
+     "Pull off dead leaves at the base\nClear the pine straw from the rhizome\nCheck the rhizome for soft, smelly rot",
+     "Cut the brown tips off with clean scissors.\nPull the pine straw back from the rhizomes: bearded iris rhizomes need sun on their tops.\nWater only when the mix is dry; let the pot drain."
+    ]
+   }
+  },
+  {
+   "code": "P-083",
+   "name": "Boston fern, curly (grey bowl)",
+   "photos": [
+    "img_a7_fern_1.jpg"
+   ],
+   "note": "Photos of November 1 (batch B1)",
+   "set": {
+    "health_summary": [
+     "Mostly dead, crisped fronds, but healthy new curly fronds are coming from the crown, as on P-024.",
+     "Still mostly dead, crisped fronds, but fresh bright-green curly fronds are coming from the crown, so it is recovering."
+    ],
+    "pests_current": [
+     "Spurge weed in the pot.",
+     "Spotted spurge (weed) in the pot."
+    ],
+    "health_steps": [
+     "Cut the dead fronds off at the base. Leave every green frond.\nPull the spurge weed. Wear gloves: its milky sap irritates skin.\nKeep the mix evenly moist and never let it dry out completely; ferns die back when they dry out.\nBright light without afternoon sun.\nBring it in before nights fall below 40°F.",
+     "Cut off the dead fronds at the base so light reaches the new ones.\nKeep the mix evenly moist; never let it dry out completely.\nPull the spotted spurge with gloves on, roots and all, before it sets more seed. Its milky sap irritates skin and is toxic to pets.\nBring it in before nights fall below 50°F."
+    ]
+   }
+  }
+ ],
+ "to_photograph_done": [
+  "Fuzzy pale-green-leaved plant",
+  "Pot with the 'Monstera' tag",
+  "Climbing aroid beside the Monstera"
+ ],
+ "species_facts_add": [
+  {
+   "key": "rhaphidophora tetrasperma",
+   "name": "Rhaphidophora tetrasperma",
+   "kind": "plant",
+   "data": {
+    "summary": "A fast climbing aroid with split leaves, sold as 'Mini Monstera'; grown for looks.",
+    "uses": [
+     {
+      "kind": "Ornamental",
+      "text": "Climbs a pole or trellis indoors; the leaves split more as it climbs.",
+      "caution": "Contains calcium oxalate crystals: chewing it burns the mouth. Keep it away from pets and children."
+     }
+    ],
+    "compost": {
+     "verdict": "Good",
+     "why": "Soft leaves and stems rot quickly; wear gloves when chopping it."
+    },
+    "partners_good": [
+     {
+      "name": "Monstera",
+      "sci": "Monstera",
+      "why": "Same light, water and humidity; both climb a moss pole.",
+      "evidence": "Same needs"
+     },
+     {
+      "name": "Philodendron",
+      "sci": "Philodendron",
+      "why": "Same needs.",
+      "evidence": "Same needs"
+     }
+    ],
+    "partners_bad": [
+     {
+      "name": "Cacti and other succulents",
+      "sci": "Opuntia",
+      "why": "They need full sun and dry soil, which this plant does not.",
+      "evidence": "Different needs"
+     }
+    ],
+    "deters": [],
+    "attracts": [],
+    "propagation": [
+     {
+      "method": "Stem cuttings",
+      "when": "Spring to summer",
+      "how": "Cut below a node with an aerial root and root it in water or moss; new leaves come in 3 to 6 weeks."
+     },
+     {
+      "method": "Layering",
+      "when": "Spring to summer",
+      "how": "Pin a node onto moist mix in a second pot; cut it free once it has rooted."
+     }
+    ],
+    "breeding": {
+     "text": "It rarely flowers indoors, so crossing it at home is not practical.",
+     "cross_genera": [],
+     "patent": "",
+     "same_genus": false
+    },
+    "sources": [
+     {
+      "title": "NC State Extension Plant Toolbox",
+      "url": "https://plants.ces.ncsu.edu/find_a_plant/?q=Rhaphidophora+tetrasperma"
+     },
+     {
+      "title": "Wikipedia",
+      "url": "https://en.wikipedia.org/w/index.php?search=Rhaphidophora+tetrasperma"
+     }
+    ]
+   }
+  }
+ ]
+}
