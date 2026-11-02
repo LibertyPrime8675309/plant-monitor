@@ -34,6 +34,28 @@
      "Label: \"LED Wing Grow Light\", rated for damp locations (a covered porch is fine, not direct rain). Not for totally enclosed fixtures: hang it bare or in an open shade so it can shed heat."
     ]
    }
+  },
+  {
+   "key": "sansi-pot-clip",
+   "note": "model number and ratings from its label and manual (batch B2)",
+   "set": {
+    "model": [
+     null,
+     "C23ZW013-T0005A27"
+    ],
+    "power": [
+     "USB (5 V): a phone charger, power bank or computer; 78.7 in cord",
+     "USB (5 V, 1 A): its own plug adapter (120 V AC, 60 Hz, 0.05 A), a phone charger, power bank or computer; 78.7 in cord"
+    ],
+    "size": [
+     "12.8 in gooseneck; clips onto a rim up to 0.8 in thick",
+     "12.8 in gooseneck; clips onto a pot rim up to 0.4 in (1 cm) thick, the maker's suggestion"
+    ],
+    "notes": [
+     "",
+     "Buttons on the cord: on/off, brightness (4 levels) and timer (3, 6 or 12 hours; a red, green or yellow dot shows which). Turning it off by hand cancels the timer. 120 degree beam. For indoor damp places, not rain. Works from 14 to 104 F. The LED cannot be replaced; the whole light is replaced when it wears out (about 25,000 hours)."
+    ]
+   }
   }
  ]
 }
