@@ -73,7 +73,7 @@ with sync_playwright() as p:
     check('Downloading:' in t and pg.locator('[data-act=libprestop]').is_visible(), 'it shows its progress, with a Stop button')
     pg.screenshot(path=os.path.join(OUT, 'wishlist-3-download.png'))
     st, pr = call('GET', '/api/library/prefetch')
-    check(pr['running'] and 0 < pr['total'] <= 32, f'it queued the Texas species not yet kept ({pr["total"]})')
+    check(pr['running'] and 0 < pr['total'] <= 33, f'it queued the Texas species not yet kept ({pr["total"]})')
     time.sleep(8)
     st, pr2 = call('GET', '/api/library/prefetch')
     check(pr2['done'] > pr['done'], f'and works through them in the background ({pr2["done"]} of {pr2["total"]})')

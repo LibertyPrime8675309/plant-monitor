@@ -13,6 +13,8 @@ os.environ.setdefault('PLANTDB_PLANTNET_URL', os.environ['PLANTDB_VISION_URL'] +
 os.environ.setdefault('PLANTDB_CLAUDE_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/claude')
 os.environ.setdefault('PLANTDB_INAT_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/inat/v1')                 # 1.21.0: library photos
 os.environ.setdefault('PLANTDB_INAT_IMG_OK', os.environ['PLANTDB_VISION_URL'] + '/mock/inat/img/')
+os.environ.setdefault('PLANTDB_ASPCA_MIN', '3')
+os.environ.setdefault('PLANTDB_ASPCA_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/aspca')                       # 1.23.0: pet safety lists
 sys.path.insert(0,os.environ.get('APPDIR', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'app')))
 import server as S
 from datetime import datetime, timedelta, timezone
