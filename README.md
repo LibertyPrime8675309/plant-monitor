@@ -84,7 +84,7 @@ Double-click **Update Plant Database.cmd**. It:
 5. unzips the release and copies it over the `plant-database` folder. **`data` and `backups` are never touched.**
 6. adds plant photos from any photo packs the release needs (see below).
 7. runs `docker compose up -d --build` and waits until the new version answers.
-8. offers to delete the previous version's Docker image to free disk space.
+8. lists the Docker images that older versions left behind (the app's and, from 1.18.0, the picture checker's, about 2 GB each) and offers to delete them to free disk space. With `-RemoveOldImage` it deletes them without asking.
 
 #### Photo packs (from 1.8.0)
 
@@ -155,7 +155,18 @@ docker ps --filter name=plant-database --format '{{.Image}}'
 curl http://localhost:8080/api/version
 ```
 
-If the version in the app is older than the newest zip in your folder, that update has not been applied yet. Each update leaves the previous image behind; to free the space, remove old ones with `docker image rm plant-database:1.6.1` (any shell), using the old version number.
+If the version in the app is older than the newest zip in your folder, that update has not been applied yet.
+
+Each update leaves the previous version's images behind until the updater deletes them (it asks at the end). To see them yourself, and to delete one by its name and version:
+
+Windows (cmd.exe):
+
+```
+docker image ls --filter "reference=plant-database*"
+docker image rm plant-database:1.18.1 plant-database-vision:1.18.1
+```
+
+Windows (PowerShell) and bash: the same commands. Never delete the images for the version that is running.
 
 ## Using the app away from home (from 1.12.0)
 
