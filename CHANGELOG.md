@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.27.2 (2026-11-02)
+- **Grow light details from your labels.** Six of your lights now have their model numbers and power ratings on the Grow lights page:
+  - **Barrina standing light:** model T10F20, 100 to 277 V.
+  - **SANSI 80 W folding bulb** (the 4-arm light): model C21FS-BE26, 120 V, 1.1 A.
+  - **SANSI 30 W bulbs:** model C23ZW005-V0030A29, 120 V, 0.65 A.
+  - **SANSI 10 W bulbs:** model C21GL-GE26-10W, 120 V, 0.2 A.
+  - **SANSI pot clip lights:** model C23ZW013-T0005A27, a 120 V adapter (0.05 A) and a 5 V USB lamp. The clip fits a pot rim up to 0.4 in thick (the page said 0.8 in).
+  - **GooingTop 2-bar clip lights:** 40 LEDs on each bar. The light estimate is adjusted to match.
+- **Notes from the labels** on each of the SANSI lights: none of them work on a dimmer, they are fine in damp places such as a covered porch but not in rain, and they need an open fixture or shade, not a closed globe.
+- Anything you changed on these lights yourself is left as you set it.
+- No new photo pack this time.
+- Includes everything in 1.27.1 below.
+
 ## 1.27.1 (2026-11-01)
 - **Five new plant pages** from your photos of November 1:
   - **P-085** and **P-086**: the two philodendrons with "Philodendron Royal Queen" stakes. A true 'Royal Queen' has near-black leaves, and these are orange from the sun, so each page says the name may be 'Prince of Orange' instead. A new leaf grown in bright shade will tell.
