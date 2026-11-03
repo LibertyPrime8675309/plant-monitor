@@ -3,13 +3,13 @@ services:
     build:
       context: .
       args:
-        PLANTDB_VERSION: "1.27.2"
+        PLANTDB_VERSION: "1.27.3"
     # The tag is the release number, so Docker Desktop shows which version is running (Containers > Image column).
-    image: plant-database:1.27.2
+    image: plant-database:1.27.3
     pull_policy: build              # built here from this folder; never looked for on Docker Hub
     container_name: plant-database
     labels:
-      plantdb.version: "1.27.2"
+      plantdb.version: "1.27.3"
     ports:
       # Since 1.12: only this computer can open http://localhost:8080 (the updater and backups use it). Everyone else, at home
       # or away, comes in through Tailscale (the "tailscale" service below), signed in.
@@ -68,7 +68,7 @@ services:
     build:
       context: .
       dockerfile: vision/Dockerfile
-    image: plant-database-vision:1.27.2
+    image: plant-database-vision:1.27.3
     pull_policy: build
     container_name: plant-vision
     volumes:

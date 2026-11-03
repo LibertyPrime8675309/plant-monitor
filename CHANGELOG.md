@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.27.3 (2026-11-03)
+- **Fixed: the "On this page" menu.** Choosing a section near the end of a short page (such as "How groups work" on Groups) now marks that section in the menu. Before, the page could not scroll far enough, so the menu kept marking the section above it, or seemed to ignore the click.
+  - The section you choose stays marked until you scroll the page yourself.
+  - The section you jump to gets a thick outline for a couple of seconds, so you can see where it is, even when the page did not need to move.
+  - The same goes for the row of section buttons on plant pages.
+- Includes everything in 1.27.2 below.
+
 ## 1.27.2 (2026-11-02)
 - **Grow light details from your labels.** Six of your lights now have their model numbers and power ratings on the Grow lights page:
   - **Barrina standing light:** model T10F20, 100 to 277 V.

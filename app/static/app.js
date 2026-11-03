@@ -332,7 +332,7 @@ async function route() {
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
     if (view.after) view.after();
     buildSideNav(); navLayout(); addReadButtons(); setTimeout(() => { buildSideNav(); navLayout(); addReadButtons(); }, 1200);
-    if (h !== lastPath) { window.scrollTo(0, 0); app.focus({ preventScroll: true }); }
+    if (h !== lastPath) { window.scrollTo(0, 0); app.focus({ preventScroll: true }); NAVPIN = -1; navActive(); }
     lastPath = h;
   } catch (e) {
     if (my !== token) return;
@@ -392,7 +392,8 @@ function buildSideNav() {
   const list = document.getElementById('sn-list'); if (!list) return;
   const app = document.getElementById('app'), used = new Set();
   const slug = t => { let b = 'sec-' + t.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'sec', k = b, i = 2; while (used.has(k) || (document.getElementById(k) && document.getElementById(k).dataset.navid !== '1')) k = b + '-' + i++; used.add(k); return k; };
-  NAVITEMS = [];
+  const pinned = NAVPIN >= 0 && NAVITEMS[NAVPIN] ? (NAVITEMS[NAVPIN].id || 'top') : null;   // a rebuild of the same page keeps your choice
+  NAVITEMS = []; NAVPIN = -1;
   const h1 = app.querySelector('h1');
   if (h1) NAVITEMS.push({ el: h1, text: 'Top of the page', id: null, top: true });
   // 1.14.1: every section title (h2) plus any part marked data-section="Its name", in page order, so new sections join by themselves
@@ -409,6 +410,7 @@ function buildSideNav() {
   buildJumpRow();
   list.innerHTML = rend(html`${NAVITEMS.map((it, i) => html`<li><a href="#${it.id || 'app'}" data-act="navgo" data-i="${i}">${it.text}</a></li>`)}`);
   if (!NAVITEMS.length) list.innerHTML = rend(html`<li class="muted">This page has no sections.</li>`);
+  if (pinned) NAVPIN = NAVITEMS.findIndex(it => (it.id || 'top') === pinned);
   navActive();
 }
 // the row of section buttons on plant pages: the same sections as the menu, with shorter names where the title is long
@@ -434,16 +436,35 @@ function scrollToSection(t) {
   const h = t.matches('h1,h2') ? t : (t.querySelector('h2,h1') || t);
   if (h) { if (!h.hasAttribute('tabindex')) h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
 }
-let navRaf = 0;
+let navRaf = 0, NAVPIN = -1;   // 1.27.3: the section just chosen in the menu stays marked until you scroll yourself
+function navPin(i) { NAVPIN = i; navActive(); }
+function navFlash(t) {             // a short outline round the section you jumped to, so you can see where it is (also on short pages that cannot scroll)
+  const h = t.matches('h1,h2') ? t : (t.querySelector('h2,h1') || t);
+  document.querySelectorAll('.sn-flash').forEach(x => x.classList.remove('sn-flash'));
+  h.classList.add('sn-flash'); clearTimeout(navFlash.t); navFlash.t = setTimeout(() => h.classList.remove('sn-flash'), 2500);
+}
 function navActive() {
   cancelAnimationFrame(navRaf);
   navRaf = requestAnimationFrame(() => {
-    const th = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--top-h')) || 64, line = th + (window.innerHeight - th) * 0.35;
     let cur = 0;
-    NAVITEMS.forEach((it, i) => { const r = it.el.getBoundingClientRect(); if (r.top <= line && r.bottom > 0) cur = i; });
+    if (NAVPIN >= 0 && NAVPIN < NAVITEMS.length) cur = NAVPIN;
+    else {
+      const th = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--top-h')) || 64, line = th + (window.innerHeight - th) * 0.35;
+      const se = document.scrollingElement || document.documentElement, panes = [...document.querySelectorAll('.pane')].filter(p => p.scrollHeight > p.clientHeight + 2);
+      const atTop = se.scrollTop < 4 && panes.every(p => p.scrollTop < 4);
+      const atEnd = se.scrollHeight > se.clientHeight + 2 && se.scrollTop + se.clientHeight >= se.scrollHeight - 4;
+      NAVITEMS.forEach((it, i) => { const r = it.el.getBoundingClientRect(); if (r.top <= line && r.bottom > 0) cur = i; });
+      if (atEnd) NAVITEMS.forEach((it, i) => { const r = it.el.getBoundingClientRect(); if (r.top < window.innerHeight - 40 && r.bottom > 0 && i > cur) cur = i; });   // the last sections cannot reach the line
+      else if (atTop && NAVITEMS[0] && NAVITEMS[0].top) cur = 0;
+    }
     document.querySelectorAll('#sn-list a').forEach((a, i) => { if (i === cur) a.setAttribute('aria-current', 'true'); else a.removeAttribute('aria-current'); });
   });
 }
+const navUnpin = () => { if (NAVPIN >= 0) { NAVPIN = -1; navActive(); } };
+window.addEventListener('wheel', navUnpin, { capture: true, passive: true });
+window.addEventListener('touchmove', navUnpin, { capture: true, passive: true });
+window.addEventListener('pointerdown', e => { if (!e.target.closest('#sidenav,#jumprow,.jump')) navUnpin(); }, { capture: true, passive: true });   // dragging a scroll bar
+window.addEventListener('keydown', e => { if (['PageUp', 'PageDown', 'Home', 'End', 'ArrowUp', 'ArrowDown', ' '].includes(e.key) && !e.target.closest('input,textarea,select,#sidenav')) navUnpin(); }, true);
 window.addEventListener('scroll', navActive, { capture: true, passive: true });
 
 // ---------- gallery ----------
@@ -4456,7 +4477,8 @@ const acts = {
     if (e) e.preventDefault();
     const it = NAVITEMS[+el.dataset.i]; if (!it) return;
     if (it.top) { window.scrollTo({ top: 0, behavior: 'smooth' }); const p = document.querySelector('.pane'); if (p) document.querySelectorAll('.pane').forEach(x => x.scrollTo({ top: 0 })); }
-    else scrollToSection(it.el);
+    else { scrollToSection(it.el); navFlash(it.el); }
+    navPin(+el.dataset.i);
     if (document.documentElement.dataset.narrow === '1') { NAVSESSION = false; navLayout(); }
   },
   navtoggle() {
@@ -4470,7 +4492,8 @@ const acts = {
   navside() { window.PlantPrefs.set('navside', window.PlantPrefs.get().navside === 'left' ? 'right' : 'left'); navLayout(); fitPanes(); paintAllCharts(); },
   jump(el) {
     const t = document.getElementById(el.dataset.id); if (!t) return;
-    scrollToSection(t);
+    scrollToSection(t); navFlash(t);
+    const ni = NAVITEMS.findIndex(it => it.id === el.dataset.id); if (ni >= 0) navPin(ni);
     if (!t.hasAttribute('tabindex')) t.setAttribute('tabindex', '-1');
     t.focus({ preventScroll: true });
   },

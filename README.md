@@ -316,7 +316,7 @@ Keyboard shortcuts work on every page, except while you are typing in a box. **D
 
 ### Section menu ("On this page")
 
-Every page has a menu down the side listing its sections (for example on the Weather page: Tracked history, All logged weather data, Location and updates). Choose one to jump straight to it; the section you are reading is highlighted. On plant pages it scrolls the details half, like the section buttons.
+Every page has a menu down the side listing its sections (for example on the Weather page: Tracked history, All logged weather data, Location and updates). Choose one to jump straight to it; the section you are reading is highlighted. On plant pages it scrolls the details half, like the section buttons. From 1.27.3 the section you choose stays highlighted until you scroll yourself (even a short last section that cannot reach the top of the window), and it gets a thick outline for a couple of seconds so you can find it.
 
 - **Hide** folds the menu away; the **Sections** button at the edge of the screen brings it back.
 - **Move to the right / Move to the left** swaps its side.
