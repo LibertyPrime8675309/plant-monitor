@@ -561,6 +561,7 @@ document.addEventListener('touchend', e => {
 document.addEventListener('click', e => { if (Date.now() - GSW.used < 500 && e.target.closest && e.target.closest('#grid .sheet')) { e.preventDefault(); e.stopPropagation(); } }, true);
 function drawGrid() {
   gSave();
+  if (document.getElementById('idph-tbl')) { drawIdPhotos(); return; }      // 1.28.0: the photo table on the Identify page
   if (!document.getElementById('grid')) { drawPnav(); return; }
   const r = filteredPlants();
   const pool = ALL.filter(statusOk).length;
@@ -4490,6 +4491,7 @@ const acts = {
     await guard(async () => { await api('DELETE', '/api/backups/' + enc(el.dataset.file)); toast('Backup deleted'); route(); });
   },
   needs() { G.needs = !G.needs; gSave(); route(); },
+  idphmore() { IDPH.shown += IDPH_PAGE; drawIdPhotos(); const rows = document.querySelectorAll('#idph-tbl tbody tr'); const a = rows[IDPH.shown - IDPH_PAGE] && rows[IDPH.shown - IDPH_PAGE].querySelector('a'); if (a) a.focus(); },
   layout() { const P = window.PlantPrefs.get(); window.PlantPrefs.set('layout', P.layout === 'single' ? 'split' : 'single'); route(); },
   navgo(el, e) {
     if (e) e.preventDefault();
@@ -4925,9 +4927,12 @@ async function viewIdentify() {
   try { keys = await api('GET', '/api/identify/settings'); } catch (e) { /* shown as not set up */ }
   ID.keys = keys;
   const sc = idScope(), owner = ME().role === 'owner';
+  try { ALL = await api('GET', '/api/plants?status=all'); } catch (e) { /* the table says so */ }
+  await loadGroups();
+  IDPH.shown = IDPH_PAGE;
   return {
     title: 'Identify a plant',
-    after: () => { idLoadStatus(); },
+    after: () => { idLoadStatus(); drawIdPhotos(); },
     html: html`<h1>Identify a plant</h1>
     <p>Point your camera at a plant. This computer compares the picture with your plant photos and says which plant it thinks it is, and how sure it is. If it is not one of yours, it suggests what the plant could be. Nothing is saved unless you choose to save it.</p>
     <p id="id-st" class="notice" role="status">Checking the picture checker…</p>
@@ -4963,8 +4968,46 @@ async function viewIdentify() {
             ${keys && keys.claude ? html`<button class="btn ghost" type="button" data-act="idkeydel" data-k="claude_key">Remove the Claude key</button>` : ''}</div>
         </form></details>` : html`<p class="muted">${ME().owner_name || 'The owner'} can set these up.</p>`}
     </section>
+    <section class="id-sec" aria-labelledby="h-idph"><h2 id="h-idph">Your plant photos</h2>
+      <p>These are the photos Identify compares your pictures with, one row per plant. Choose a plant or a photo to open its page. The search and filters are the same as on the Plants page; changing them here changes them there too.</p>
+      <div class="filters">
+        <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
+        <label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
+        ${homeFilter()}${siteFilter()}${groupFilter()}${statusFilter()}
+        <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
+        <label class="chk"><input type="checkbox" data-f="idphnone" ${IDPH.none ? raw('checked') : ''}>Only plants with no photos</label>
+        <button class="btn ghost small" type="button" data-act="clearfilters">Clear filters</button>
+      </div>
+      ${moreSelects()}
+      <p id="idph-count" class="muted" role="status" aria-live="polite"></p>
+      <div id="idph-tbl"></div>
+      <p class="row"><button class="btn" type="button" data-act="idphmore" id="idph-more" hidden>Show more</button></p>
+    </section>
     <p><a href="#/library">Search the plant library</a></p>`,
   };
+}
+// 1.28.0: the photo table (one row per plant, its photos in a strip), using the Plants page filters
+const IDPH_PAGE = 30, IDPH = { shown: 30, none: false };
+function drawIdPhotos() {
+  const box = document.getElementById('idph-tbl'); if (!box) return;
+  gSave();
+  const r = filteredPlants().filter(p => !IDPH.none || !(p.photos || []).length);
+  const nPh = r.reduce((n, p) => n + (p.photos || []).length, 0), show = r.slice(0, IDPH.shown);
+  const mf = document.querySelector('#more-f > summary'); if (mf) { const n = moreOn(); mf.textContent = 'More filters' + (n ? ` (${n} on)` : ''); }
+  document.getElementById('idph-count').textContent = `Showing ${show.length} of ${r.length} plants, with ${num(nPh)} photo${nPh === 1 ? '' : 's'} between them.`;
+  const day = t => t ? new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  const multi = HOMES().length > 1;
+  box.innerHTML = rend(r.length ? html`<div class="tbl-wrap"><table class="tbl idph"><caption class="sr">Your plants and their photos</caption><thead><tr>
+    <th scope="col">Plant</th><th scope="col">Photos</th><th scope="col">${multi ? 'Home and spot' : 'Where'}</th><th scope="col">Newest photo</th></tr></thead><tbody>
+    ${show.map(p => { const ph = p.photos || [];
+      return html`<tr><th scope="row"><a href="#/plant/${enc(p.code)}"><strong>${p.code}</strong> ${p.common_name}</a><div class="latin muted">${p.scientific_name || ''}</div><div>${ph.length} photo${ph.length === 1 ? '' : 's'}</div></th>
+      <td>${ph.length ? html`<div class="idph-strip">${ph.slice(0, 8).map((f, i) => html`<a href="#/plant/${enc(p.code)}"><img src="${thumbUrl(f)}" alt="${p.common_name}, photo ${i + 1} of ${ph.length}${i === 0 ? ' (main photo)' : ''}" loading="lazy"></a>`)}
+        ${ph.length > 8 ? html`<a class="btn ghost small" href="#/plant/${enc(p.code)}">${ph.length - 8} more</a>` : ''}</div>` : html`<span class="muted">No photos yet. Identify cannot recognise it until it has one.</span>`}</td>
+      <td>${multi ? html`<div>${plantHome(p).name}</div>` : ''}<div class="${multi ? 'muted' : ''}">${p.location || p.site || ''}</div></td>
+      <td>${day(p.photo_at)}</td></tr>`; })}</tbody></table></div>`
+    : html`<p class="notice">No plants match these filters. <button class="btn ghost small" type="button" data-act="clearfilters">Clear filters</button></p>`);
+  const more = document.getElementById('idph-more'); if (more) { more.hidden = r.length <= IDPH.shown; more.textContent = `Show ${Math.min(IDPH_PAGE, r.length - IDPH.shown)} more`; }
+  if (typeof fitTables === 'function') fitTables();
 }
 function idStop() {
   clearTimeout(ID.timer); ID.timer = null;
@@ -6554,6 +6597,7 @@ document.addEventListener('change', e => {
   else if (f === 'status') { G.status = el.value; drawGrid(); }
   else if (f === 'site') { G.site = el.value; drawGrid(); }
   else if (f === 'home') { G.home = el.value; drawGrid(); }
+  else if (f === 'idphnone') { IDPH.none = el.checked; drawIdPhotos(); }
   else if (f === 'more') { G[el.dataset.key] = el.value; if (el.dataset.key === 'care' && el.value && !CAREDUE) loadCareDue().then(drawGrid); drawGrid(); }
 });
 document.addEventListener('toggle', e => { const d = e.target; if (d.classList && d.classList.contains('histbox') && d.open) histOpen(d.dataset.hist); }, true);
