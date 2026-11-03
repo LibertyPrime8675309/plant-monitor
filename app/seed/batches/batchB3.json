@@ -1,0 +1,13 @@
+{
+ "id": "B3",
+ "created": "2026-11-03",
+ "author": "Claude (Ethan's second home, Nov 2026)",
+ "homes_add": [
+  {
+   "name": "Nevada City, CA",
+   "lat": 39.2616,
+   "lon": -121.0161,
+   "tz": "America/Los_Angeles"
+  }
+ ]
+}

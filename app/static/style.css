@@ -938,11 +938,11 @@ html[data-role=viewer] :is(a[href="#/new"], a[href$="/edit"], .quick-btns, label
   [data-act=frostin], [data-act=frostcover], [data-act=frostallin], [data-act=frostallcover], [data-act=frostundo],
   [data-act=fzadd], [data-act=fzedit], [data-act=fzdel], [data-act=fertedit], [data-act=fertdel], [data-act=tododone], [data-act=tododel], [data-act=todoedit],
   [data-act=mainphoto], [data-act=movephoto], [data-act=rmphoto], [data-act=capedit], [data-act=assign], [data-act=rmloose], [data-act=setcond], [data-act=wxrefresh],
-  [data-act=placehome], [data-act=placedel], [data-act=placeonoff], [data-act=plchome], [data-act=plcsearch], [data-act=plcadd], .plc-search, [data-act=tokregen], [data-act=forclaude],
+  [data-act=placehome], [data-act=placedel], [data-act=placeonoff], [data-act=placeplants], [data-act=plchome], [data-act=plcsearch], [data-act=plcadd], .plc-search, [data-act=tokregen], [data-act=forclaude],
   [data-act=spotnew], [data-act=spotedit], [data-act=spotdel], [data-act=lightedit], [data-act=lightnew],
   [data-act=roomnew], [data-act=roomedit], [data-act=roomdel]){display:none!important}
 /* only the owner changes the label address, places' settings and who is home */
-html:not([data-role=owner]) :is(form[data-form=base], form[data-form=wxloc], [data-act=placehome], [data-act=placedel], [data-act=placeonoff], [data-act=plchome]){display:none!important}
+html:not([data-role=owner]) :is(form[data-form=base], form[data-form=wxloc], [data-act=placehome], [data-act=placedel], [data-act=placeonoff], [data-act=placeplants], [data-act=plchome]){display:none!important}
 .who-name{align-items:end;gap:.6rem;flex-wrap:wrap}
 .who-name .f{flex:1 1 14rem;margin:0}
 ul.people{list-style:none;padding:0;margin:0;display:grid;gap:.6rem}

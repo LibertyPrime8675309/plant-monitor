@@ -8,7 +8,7 @@ import csv, hmac, html as html_mod, io, json, math, os, re, secrets, shutil, sql
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import urlparse
 
-from flask import Flask, Response, abort, g, has_request_context, jsonify, request, send_from_directory
+from flask import Flask, Response, abort, g, has_app_context, has_request_context, jsonify, request, send_from_directory
 from PIL import Image, ImageOps
 import segno
 import writable                 # 1.12.1: the start-up write check, shared with start.py
@@ -56,6 +56,7 @@ FIELDS = [
     ('common_name', 'text', 'Common name'), ('scientific_name', 'text', 'Scientific name'),
     ('aliases', 'text', 'Other names / cultivar'), ('plant_type', 'text', 'Plant type'),
     ('location', 'text', 'Spot (where exactly)'), ('container', 'text', 'Container'),
+    ('home_id', 'home', 'Home'),                                                    # 1.28.0: which home it is at (empty: the main home)
     ('id_confidence', 'int', 'ID confidence (%)'), ('id_basis', 'long', 'Why Claude thinks so'),
     ('id_alternatives', 'list', 'Other possibilities'), ('id_improve', 'list', 'What would raise confidence'),
     ('temp_ideal_low', 'int', 'Ideal temp low (F)'), ('temp_ideal_high', 'int', 'Ideal temp high (F)'),
@@ -138,7 +139,7 @@ def close_db(_):
     c = g.pop('db', None)
     if c: c.close()
 
-SQLTYPE = {'int': 'INTEGER', 'num': 'REAL'}
+SQLTYPE = {'int': 'INTEGER', 'num': 'REAL', 'home': 'INTEGER'}
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS plants(
@@ -240,6 +241,7 @@ def init_db():
     for n, k, _ in FIELDS:                      # upgrade an older database: add any column this version needs
         if n not in have: c.execute(f"ALTER TABLE plants ADD COLUMN {n} {SQLTYPE.get(k, 'TEXT')}")
     if 'extra' not in {r[1] for r in c.execute('PRAGMA table_info(readings)')}: c.execute('ALTER TABLE readings ADD COLUMN extra TEXT')
+    if 'plants_here' not in {r[1] for r in c.execute('PRAGMA table_info(locations)')}: c.execute('ALTER TABLE locations ADD COLUMN plants_here INTEGER NOT NULL DEFAULT 0')   # 1.28.0: homes
     if 'place_id' not in {r[1] for r in c.execute('PRAGMA table_info(light_spots)')}: c.execute('ALTER TABLE light_spots ADD COLUMN place_id INTEGER')   # 1.13.1
     migrate_places(c)
     if not c.execute('SELECT 1 FROM weather_runs LIMIT 1').fetchone():       # readings gathered before runs were logged (version 1.2)
@@ -322,6 +324,13 @@ def apply_batches(c):
         label = b['id']
         try:
             c.execute('BEGIN')
+            for h in b.get('homes_add', []):                 # 1.28.0: another home where plants live (skipped if a place is already there)
+                r = c.execute('SELECT id FROM locations WHERE ABS(lat-?)<0.05 AND ABS(lon-?)<0.05', (h['lat'], h['lon'])).fetchone()
+                if r: c.execute('UPDATE locations SET plants_here=1 WHERE id=?', (r[0],)); continue
+                hid = c.execute('INSERT INTO locations(name,lat,lon,tz,enabled,is_home,plants_here,created_at) VALUES(?,?,?,?,1,0,1,?)',
+                                (h['name'], h['lat'], h['lon'], h['tz'], ts)).lastrowid
+                c.execute('UPDATE locations SET device=? WHERE id=?', (f'place-{hid}', hid))
+                audit_only(c, 'setting', 'weather_place', None, json.dumps(h), who, f'Home added ({label}): {h["name"]}')
             for p in b.get('plants', []):
                 n = c.execute("SELECT COALESCE(MAX(CAST(SUBSTR(code,3) AS INTEGER)),0)+1 FROM plants").fetchone()[0]
                 code = f'P-{n:03d}'
@@ -484,6 +493,15 @@ def norm(name, v):
         lo, hi = NUM_RANGES[name]
         if not lo <= x <= hi: abort(400, f'{FIELD_LABEL[name]} must be between {lo} and {hi}')
         return x
+    if kind == 'home':                                      # 1.28.0: a home's id; empty means the main home
+        if v in (None, '', 0, '0'): return None
+        try: i = int(v)
+        except (TypeError, ValueError): abort(400, 'Home must be one of your homes')
+        if has_app_context():
+            r = db().execute('SELECT is_home, plants_here FROM locations WHERE id=?', (i,)).fetchone()
+            if r is None or not (r[0] or r[1]): abort(400, 'Home must be one of your homes (a place where plants live)')
+            if r[0]: return None                     # the main home is stored as empty, so plants follow if another place becomes the main home
+        return i
     s = '' if v is None else str(v).replace('\r\n', '\n').strip()
     if len(s) > 8000: abort(400, f'{FIELD_LABEL[name]} is too long')
     if kind == 'enum':
@@ -748,8 +766,9 @@ def water_factor(avg_high, inside):
 def water_report(c, codes=None):
     today = local_today(c)
     avg_high, rain = water_weather(c, today)
-    q = "SELECT * FROM plants WHERE status='active'" + (' AND code IN (%s)' % ','.join('?' * len(codes)) if codes else '') + ' ORDER BY code'
-    plants = c.execute(q, codes or []).fetchall()
+    at, at_args = plants_at(c, location(c)) if not codes else ('', [])     # 1.28.0: the plants at the place in use
+    q = "SELECT * FROM plants WHERE status='active'" + at + (' AND code IN (%s)' % ','.join('?' * len(codes)) if codes else '') + ' ORDER BY code'
+    plants = c.execute(q, at_args + list(codes or [])).fetchall()
     last = {}
     for code, kind, d in c.execute("SELECT plant_code, CASE WHEN kind IN ('prep_soak','prep_repot') THEN 'water' ELSE kind END AS k, MAX(done_on) "
                                    "FROM care_log WHERE kind IN ('water','check','prep_soak','prep_repot') GROUP BY plant_code, k"):     # a soak or a repot waters the plant
@@ -855,7 +874,8 @@ def meta():
                    password_protected=bool(PASSWORD), int_ranges=INT_RANGES, num_ranges=NUM_RANGES, version=APP_VERSION,
                    home_tz=L['tz'],              # the browser uses this for "today", so dates match the server's
                    place=place_brief(L), climate=place_climate(c, L), zone=place_zone(c, L), me=me_dict(c), runs_as=runs_as(),
-                   places=[place_brief(loc_dict(r)) for r in c.execute('SELECT * FROM locations ORDER BY is_home DESC, name')])
+                   places=[place_brief(loc_dict(r)) for r in c.execute('SELECT * FROM locations ORDER BY is_home DESC, name')],
+                   homes=[place_brief(h) for h in homes(c)])
 
 REF_PLACE = (30.5083, -97.6789)       # the written winter reference (climate table and notes) is for Round Rock, TX
 
@@ -2429,7 +2449,7 @@ def list_plants():
                     # 1.17.0: for the filters on the Plants page
                     'dli_low': r['dli_low'], 'dli_high': r['dli_high'], 'zone_low': r['zone_low'], 'pet_safety': r['pet_safety'] or '',
                     'leaf_type': r['leaf_type'] or '', 'pot_size': r['pot_size'] or '', 'photo_count': pn, 'photo_at': pat,
-                    'light_spot': spots.get(r['code']),
+                    'light_spot': spots.get(r['code']), 'home_id': r['home_id'],
                     'photos': files})                      # 1.20.0: every photo, main photo first, to browse on the Plants page
     return jsonify(out)
 
@@ -2782,7 +2802,8 @@ def outside_report(c):
     lows = bo_daily_lows(c, L)
     usual_at = {}
     photo = lambda pid: (c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC,id LIMIT 1', (pid,)).fetchone() or [None])[0]
-    rows = c.execute("SELECT * FROM plants WHERE status='active' ORDER BY code").fetchall()
+    at, at_args = plants_at(c, L)                  # 1.28.0: only the plants at this home
+    rows = c.execute("SELECT * FROM plants WHERE status='active'" + at + " ORDER BY code", at_args).fetchall()
     out = []
     for r in rows:
         if (r['site'] or 'Outdoors') not in INSIDE_SITES: continue
@@ -3557,10 +3578,10 @@ def migrate_places(c):
                    st('forecast'), st('weather_status'), st('wx_detail_since'), now()))
     c.commit()
 
-LOC_COLS = ('id', 'name', 'lat', 'lon', 'tz', 'enabled', 'is_home', 'device', 'detail_since', 'note', 'created_at')
+LOC_COLS = ('id', 'name', 'lat', 'lon', 'tz', 'enabled', 'is_home', 'device', 'detail_since', 'note', 'created_at', 'plants_here')
 def loc_dict(r):
-    d = {k: r[k] for k in LOC_COLS}
-    d['enabled'], d['is_home'] = bool(d['enabled']), bool(d['is_home'])
+    d = {k: (r[k] if k in r.keys() else 0) for k in LOC_COLS}
+    d['enabled'], d['is_home'], d['plants_here'] = bool(d['enabled']), bool(d['is_home']), bool(d['plants_here']) or bool(d['is_home'])
     return d
 
 def loc_get(c, loc_id=None):
@@ -3573,7 +3594,7 @@ def loc_get(c, loc_id=None):
     else:
         cur = c.execute('SELECT * FROM locations ORDER BY is_home DESC, id LIMIT 1'); r = cur.fetchone()
     if r is not None and not isinstance(r, sqlite3.Row): r = dict(zip([d[0] for d in cur.description], r))   # works with plain connections too
-    if r is None: return {**DEFAULT_LOC, 'id': 1, 'device': 'open-meteo', 'enabled': True, 'is_home': True, 'detail_since': None, 'note': '', 'created_at': None}
+    if r is None: return {**DEFAULT_LOC, 'id': 1, 'device': 'open-meteo', 'enabled': True, 'is_home': True, 'plants_here': True, 'detail_since': None, 'note': '', 'created_at': None}
     return loc_dict(r)
 
 def loc_json(c, loc_id, col):
@@ -3593,6 +3614,17 @@ def req_loc(c, key='loc'):
     L = loc_get(c, v)
     if L is None: abort(404, 'That place does not exist (it may have been removed)')
     return L
+
+def homes(c):
+    """1.28.0: the places where plants live: the main home first, then any place marked "Plants live here"."""
+    return [loc_dict(r) for r in c.execute('SELECT * FROM locations WHERE is_home=1 OR plants_here=1 ORDER BY is_home DESC, name')]
+
+def plants_at(c, L):
+    """1.28.0: SQL (and its argument) that keeps the plants at the place in use. A place where no plants live (a weather place
+    you are only watching) shows the main home's plants, as before homes existed."""
+    H = home_place(c)
+    if not (L.get('is_home') or L.get('plants_here')): L = H
+    return ' AND COALESCE(home_id, ?)=?', [H['id'], L['id']]
 
 def home_place(c):
     """The home place: the one every browser starts with, and the one background work (hourly updates, backups) uses."""
@@ -3666,7 +3698,7 @@ def place_climate(c, L):
     return out
 
 def place_brief(L):
-    return {k: L[k] for k in ('id', 'name', 'tz', 'is_home', 'enabled')}
+    return {k: L.get(k) for k in ('id', 'name', 'tz', 'is_home', 'enabled', 'plants_here')}
 
 def tzinfo(name):
     try:
@@ -4319,6 +4351,8 @@ def places_list(c):
         try: st = json.loads(r['status'] or '{}')
         except ValueError: st = {}
         d.update(first=first[0], last=first[1], count=first[2], daily_first=dd[0], daily_count=dd[2], last_update=st.get('at'), last_ok=st.get('ok'), last_error=st.get('error'))
+        H = home_place(c)                                # 1.28.0: how many plants live here
+        d['plant_count'] = c.execute("SELECT COUNT(*) FROM plants WHERE status='active' AND COALESCE(home_id, ?)=?", (H['id'], d['id'])).fetchone()[0]
         out.append(d)
     return out
 
@@ -4333,6 +4367,7 @@ def places():
     cur = c.execute('INSERT INTO locations(name,lat,lon,tz,enabled,is_home,created_at) VALUES(?,?,?,?,1,0,?)', (P['name'], P['lat'], P['lon'], P['tz'], now()))
     pid = cur.lastrowid
     c.execute('UPDATE locations SET device=? WHERE id=?', (f'place-{pid}', pid))
+    if b.get('plants_here'): c.execute('UPDATE locations SET plants_here=1 WHERE id=?', (pid,))
     audit_only(c, 'setting', 'weather_place', None, json.dumps(P), editor(), f'Weather place added: {P["name"]}')
     c.commit()
     started = start_job('auto-first', None, [(pid, P['name'])])          # fetch its last 3 months and forecast straight away
@@ -4345,6 +4380,7 @@ def place_one(pid):
     if L is None: abort(404, 'That place does not exist')
     if request.method == 'DELETE':
         if L['is_home']: abort(400, 'This is the home place your plants use. Make another place home first.')
+        if c.execute('SELECT COUNT(*) FROM plants WHERE home_id=?', (pid,)).fetchone()[0]: abort(409, 'Some plants are at this home. Move them to another home first.')
         if WX_JOB.get('running') and WX_JOB.get('place_id') == pid: abort(409, 'This place is being updated right now. Try again when it finishes.')
         n = c.execute("DELETE FROM readings WHERE source='weather' AND device=?", (L['device'],)).rowcount
         c.execute('DELETE FROM weather_daily WHERE loc_id=?', (pid,))
@@ -4360,6 +4396,10 @@ def place_one(pid):
     if 'enabled' in b: c.execute('UPDATE locations SET enabled=? WHERE id=?', (1 if b['enabled'] else 0, pid))
     if b.get('is_home'):
         c.execute('UPDATE locations SET is_home=CASE WHEN id=? THEN 1 ELSE 0 END', (pid,))
+    if 'plants_here' in b:                                  # 1.28.0: a home of its own (its plants follow its weather)
+        if not b['plants_here'] and c.execute("SELECT COUNT(*) FROM plants WHERE home_id=? AND status='active'", (pid,)).fetchone()[0]:
+            abort(409, 'Some plants are at this home. Move them to another home first.')
+        c.execute('UPDATE locations SET plants_here=? WHERE id=?', (1 if b['plants_here'] else 0, pid))
     if 'detail_years' in b and b['detail_years'] not in (None, ''):
         try: dy = int(b['detail_years'])
         except (TypeError, ValueError): abort(400, 'Years of detail must be a whole number')
@@ -6114,7 +6154,8 @@ def frost_report(c):
     today = local_today(c).isoformat()
     days = [d for d in (fc.get('days') or []) if d.get('date', '') >= today and d.get('low') is not None][:7]
     done = frost_done(c)
-    plants = c.execute("SELECT * FROM plants WHERE status='active' AND temp_damage_below IS NOT NULL ORDER BY code").fetchall()
+    at, at_args = plants_at(c, L)                  # 1.28.0: only the plants at this home
+    plants = c.execute("SELECT * FROM plants WHERE status='active' AND temp_damage_below IS NOT NULL" + at + " ORDER BY code", at_args).fetchall()
     outdoor = [r for r in plants if (r['site'] or 'Outdoors') not in INSIDE_SITES]
     photo = lambda pid: (c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC,id LIMIT 1', (pid,)).fetchone() or [None])[0]
     nights, worst = [], None

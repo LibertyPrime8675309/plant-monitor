@@ -468,13 +468,13 @@ window.addEventListener('keydown', e => { if (['PageUp', 'PageDown', 'Home', 'En
 window.addEventListener('scroll', navActive, { capture: true, passive: true });
 
 // ---------- gallery ----------
-const G = { q: '', plan: '', health: '', low: false, needs: false, sort: 'code', group: '', status: 'active', site: '',   // 1.16.2: status and site
+const G = { q: '', plan: '', health: '', low: false, needs: false, sort: 'code', group: '', status: 'active', site: '', home: '',   // 1.28.0: home   // 1.16.2: status and site
   light: '', pets: '', hardy: '', care: '', grow: '', leaf: '', pot: '', photo: '' };                                      // 1.17.0: more filters
 const MORE_KEYS = ['light', 'pets', 'hardy', 'care', 'grow', 'leaf', 'pot', 'photo'];     // the More filters (defined further down)
 // the Plants page filters are remembered in this browser and also decide where Previous / Next plant go on plant pages
-try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort', 'group', 'status', 'site', ...MORE_KEYS]) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ }
-function gSave() { try { localStorage.setItem('plantdb.filters', JSON.stringify({ q: G.q, plan: G.plan, health: G.health, low: G.low, needs: G.needs, sort: G.sort, group: G.group, status: G.status, site: G.site, ...Object.fromEntries(MORE_KEYS.map(k => [k, G[k]])) })); } catch (e) { /* not saved */ } }
-const gActive = () => !!(G.q.trim() || G.plan || G.health || G.low || G.needs || (G.group && groupById(G.group)) || G.status !== 'active' || G.site || moreOn());
+try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort', 'group', 'status', 'site', 'home', ...MORE_KEYS]) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ }
+function gSave() { try { localStorage.setItem('plantdb.filters', JSON.stringify({ q: G.q, plan: G.plan, health: G.health, low: G.low, needs: G.needs, sort: G.sort, group: G.group, status: G.status, site: G.site, home: G.home, ...Object.fromEntries(MORE_KEYS.map(k => [k, G[k]])) })); } catch (e) { /* not saved */ } }
+const gActive = () => !!(G.q.trim() || G.plan || G.health || G.low || G.needs || (G.group && groupById(G.group)) || G.status !== 'active' || G.site || (G.home && homeById(G.home)) || moreOn());
 const STATUS_WORD = { active: 'Active only', all: 'Active and archived', archived: 'Archived only' };
 const isArch = p => p.status === 'archived';
 const statusOk = p => G.status === 'all' || (G.status === 'archived' ? isArch(p) : !isArch(p));
@@ -485,7 +485,7 @@ const SORTS = { code: 'Code', health: 'Health, worst first', conf: 'ID confidenc
 function filteredPlants(list) {
   const q = G.q.trim().toLowerCase();
   let r = (list || ALL).filter(p =>
-    statusOk(p) && (!G.site || (p.site || 'Outdoors') === G.site) && moreOk(p) &&
+    statusOk(p) && (!G.site || (p.site || 'Outdoors') === G.site) && homeOk(p) && moreOk(p) &&
     (!G.plan || p.winter_plan === G.plan) && (!G.health || p.health_rating === G.health) &&
     (!G.low || (p.id_confidence != null && p.id_confidence < 70)) && (!G.needs || needsYou(p)) && inGroupFilter(p.code) &&
     (!q || [p.code, p.common_name, p.scientific_name, p.aliases, p.plant_type, p.location].join(' ').toLowerCase().includes(q)));
@@ -519,7 +519,7 @@ function sheet(p) {
     <div class="mat">${sheetMat(p)}</div>
     <h3 class="name"><a class="sheet-link" href="#/plant/${enc(p.code)}">${p.common_name}</a></h3>
     <p class="sci latin">${p.scientific_name || 'Scientific name not set'}</p>
-    <div class="tags">${isArch(p) ? html`<span class="tag tag-arch">Archived</span>` : ''}${planTag(p.winter_plan)}${healthTag(p.health_rating)}</div>
+    <div class="tags">${isArch(p) ? html`<span class="tag tag-arch">Archived</span>` : ''}${HOMES().length > 1 ? html`<span class="tag tag-homeat">⌂ ${plantHome(p).name}</span>` : ''}${planTag(p.winter_plan)}${healthTag(p.health_rating)}</div>
     ${needsYou(p) ? html`<p class="needs-badge">Needs from you: ${[p.requests_open ? `${p.requests_open} request${p.requests_open === 1 ? '' : 's'}` : '', p.id_confidence != null && p.id_confidence < 70 ? 'ID info' : ''].filter(Boolean).join(', ')}</p>` : ''}
     <div class="meter"><span>ID ${p.id_confidence == null ? 'not rated' : p.id_confidence + '%'}</span><i style="--v:${p.id_confidence || 0}%;--mc:${confColor(p.id_confidence)}"></i></div>
   </article>`;
@@ -598,7 +598,7 @@ async function viewGallery() {
     <div class="filters">
       <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
       <label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
-      ${siteFilter()}${groupFilter()}${statusFilter()}
+      ${homeFilter()}${siteFilter()}${groupFilter()}${statusFilter()}
       <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
       <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70% (${lowN})</label>
     </div>
@@ -678,6 +678,16 @@ function moreFilters() {
 }
 function statusFilter() {
   return html`<label>Show<select data-f="status">${Object.entries(STATUS_WORD).map(([k, v]) => html`<option value="${k}" ${G.status === k ? raw('selected') : ''}>${v}</option>`)}</select></label>`;
+}
+// 1.28.0: homes. A plant's home_id is empty for the main home; other homes are places marked "Plants live here".
+const HOMES = () => (META && META.homes) || [];
+const homeById = id => HOMES().find(h => String(h.id) === String(id)) || null;
+const mainHome = () => HOMES().find(h => h.is_home) || HOMES()[0] || { id: '', name: 'Home' };
+const plantHome = p => (p && p.home_id && homeById(p.home_id)) || mainHome();
+const homeOk = p => !G.home || !homeById(G.home) || String(plantHome(p).id) === String(G.home);
+function homeFilter() {
+  if (HOMES().length < 2) return '';
+  return html`<label>Home<select data-f="home"><option value="">All homes</option>${HOMES().map(h => html`<option value="${h.id}" ${String(G.home) === String(h.id) ? raw('selected') : ''}>${h.name}</option>`)}</select></label>`;
 }
 function siteFilter() {
   return html`<label>Location<select data-f="site"><option value="">Any</option>${(META.sites || []).map(s => html`<option ${G.site === s ? raw('selected') : ''}>${s}</option>`)}</select></label>`;
@@ -1383,7 +1393,7 @@ async function viewPlant(code) {
   PIDX = KEEP != null ? KEEP : Math.max(0, p.photos.findIndex(x => x.is_primary));
   KEEP = null;
   const archived = p.status === 'archived';
-  const dl = [['Also known as', p.aliases], ['Plant type', p.plant_type], ['Spot', p.location], ['Container', p.container]].filter(x => x[1]);
+  const dl = [['Also known as', p.aliases], ['Plant type', p.plant_type], ['Home', HOMES().length > 1 ? plantHome(p).name : ''], ['Spot', p.location], ['Container', p.container]].filter(x => x[1]);
   const single = document.documentElement.dataset.layout === 'single';
   return {
     title: p.common_name,
@@ -1519,6 +1529,7 @@ function filterWords() {
   if (G.low) w.push('ID under 70%'); if (G.q.trim()) w.push('"' + G.q.trim() + '"');
   if (G.group && groupById(G.group)) w.push('group ' + groupById(G.group).name);
   if (G.site) w.push(G.site.toLowerCase());
+  if (G.home && homeById(G.home)) w.push('at ' + homeById(G.home).name);
   if (G.status !== 'active') w.push(G.status === 'all' ? 'archived included' : 'archived only');
   for (const d of MORE) if (G[d.key]) { const o = moreOpts(d).find(x => x[0] === G[d.key]); if (o) w.push(o[1].toLowerCase()); }
   return (w.length ? w.join(', ') : 'all plants') + '; sorted by ' + (SORTS[G.sort] || 'code').toLowerCase();
@@ -1532,7 +1543,7 @@ function pnavBlock(code) {
         <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
         <label>Winter plan<select data-f="pnplan"><option value="">Any</option>${META.winter_plans.map(pl => html`<option ${G.plan === pl ? raw('selected') : ''}>${pl}</option>`)}</select></label>
         <label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
-        ${siteFilter()}${groupFilter()}${statusFilter()}${moreSelects()}
+        ${homeFilter()}${siteFilter()}${groupFilter()}${statusFilter()}${moreSelects()}
         <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
         <label class="chk"><input type="checkbox" data-f="pnneeds" ${G.needs ? raw('checked') : ''}>Needs something from you</label>
         <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70%</label>
@@ -2444,7 +2455,7 @@ const HMAP_RANGE = { temp: ['temp_ideal_low', 'temp_ideal_high'], humidity: ['hu
 
 // ---------- edit and create ----------
 const GROUPS = [
-  ['Names and place', ['common_name', 'scientific_name', 'aliases', 'plant_type', 'site', 'location', 'container']],
+  ['Names and place', ['common_name', 'scientific_name', 'aliases', 'plant_type', 'home_id', 'site', 'location', 'container']],
   ['Identification', ['id_confidence', 'id_basis', 'id_alternatives', 'id_improve']],
   ['About this plant', ['growth_habit', 'kingdom', 'taxon_order', 'family', 'genus', 'height_ground', 'width_ground', 'height_pot', 'width_pot', 'growth_rate', 'lifespan',
     'zone_low', 'zone_high', 'zone_notes', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'pet_safety', 'propagation', 'sources']],
@@ -2471,6 +2482,7 @@ const HINTS = {
   npk_ratio: 'Three numbers for nitrogen, phosphate and potash, such as 3-1-2. The Fertilizer page finds your closest fertilizer.',
   fert_strength: 'How strong to mix it. The Fertilizer page works out the amount per gallon from this.',
   pet_safety: 'Used by the Pets filter on the Plants page. "Safe for pets" only where the ASPCA lists the plant as non-toxic.',
+  home_id: 'Where the plant lives. Weather, frost warnings and watering for a home only list its own plants.',
   zone_low: 'USDA zone, such as 9b or 10. The page compares it with the zone where you are.', zone_high: 'USDA zone, such as 11.',
   height_ground: 'For example 6 to 10 ft.', height_pot: 'For example 3 to 5 ft.', propagation: 'One method per line.',
   sources: 'One per line: a title, a | and the web address, for example "NC State Extension: Aloe vera | https://...".',
@@ -2485,6 +2497,10 @@ function fieldInput(f, val) {
   if (f.kind === 'long' || f.kind === 'list') inp = html`<textarea name="${f.name}" rows="${f.kind === 'list' ? 5 : 4}">${v}</textarea>`;
   else if (f.kind === 'int') { const mm = rangeOf(f.name); inp = html`<input type="number" inputmode="numeric" step="1" min="${mm[0]}" max="${mm[1]}" name="${f.name}" value="${v}">`; }
   else if (f.kind === 'num') { const mm = rangeOf(f.name); inp = html`<input type="number" inputmode="decimal" step="any" min="${mm[0]}" max="${mm[1]}" name="${f.name}" value="${v}">`; }
+  else if (f.kind === 'home') {       // 1.28.0
+    const hs = HOMES(); if (hs.length < 2 && !v) return '';
+    inp = html`<select name="${f.name}">${hs.map(h => html`<option value="${h.is_home ? '' : h.id}" ${(h.is_home ? !v : String(v) === String(h.id)) ? raw('selected') : ''}>${h.name}${h.is_home ? ' (main home)' : ''}</option>`)}</select>`;
+  }
   else if (f.kind === 'enum') {
     const opts = (META.enums && META.enums[f.name]) || (f.name === 'winter_plan' ? META.winter_plans : f.name === 'site' ? (META.sites || ['Outdoors', 'Indoors']) : META.health);
     const optional = (META.optional_enums || []).includes(f.name);
@@ -2965,15 +2981,17 @@ async function loadWxCharts() {
 function placesBlock(W) {
   const P = W.places || [];
   return html`<p>Track the weather for as many places as you like. Each place keeps its own hourly readings, daily summaries, forecast and update log. The <strong>Location</strong> button at the top of every page chooses the place this browser uses for weather, frost warnings, watering and the Winter plan. The home place is the one a browser starts with, and the one hourly updates and backups use.</p>
-    <div class="tbl-wrap"><table class="tbl"><caption class="sr">Places with tracked weather</caption><thead><tr><th scope="col">Place</th><th scope="col">Where</th><th scope="col">Stored</th><th scope="col">Last update</th><th scope="col">Hourly updates</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
-    ${P.map(p => html`<tr><th scope="row">${p.name}${p.is_home ? html`<div><strong class="tag-home">Home</strong></div>` : ''}${String(p.id) === String(W.location.id) ? html`<div class="hint">In use in this browser</div>` : ''}</th>
+    <div class="tbl-wrap"><table class="tbl"><caption class="sr">Places with tracked weather</caption><thead><tr><th scope="col">Place</th><th scope="col">Where</th><th scope="col">Stored</th><th scope="col">Last update</th><th scope="col">Hourly updates</th><th scope="col">Plants</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
+    ${P.map(p => html`<tr><th scope="row">${p.name}${p.is_home ? html`<div><strong class="tag-home">Main home</strong></div>` : p.plants_here ? html`<div><strong class="tag-home">Home</strong></div>` : ''}${String(p.id) === String(W.location.id) ? html`<div class="hint">In use in this browser</div>` : ''}</th>
       <td>${p.lat}, ${p.lon}<div class="hint">${p.tz}</div></td>
       <td>${p.count ? `${num(p.count)} hourly readings from ${dayLong((p.first || '').slice(0, 10))}` : 'Nothing yet'}${p.daily_count ? html`<div class="hint">${num(p.daily_count)} daily summaries</div>` : ''}</td>
       <td>${p.last_update ? html`${when(p.last_update)}${p.last_ok === false ? html`<div class="bad-text"><strong>Failed:</strong> ${p.last_error}</div>` : ''}` : 'Not yet'}</td>
       <td>${p.enabled ? 'On' : 'Off'}</td>
+      <td>${p.plants_here ? `Plants live here: ${num(p.plant_count || 0)}` : 'No plants (weather only)'}</td>
       <td><div class="row" style="gap:.4rem">
         ${String(p.id) === String(W.location.id) ? '' : html`<button class="btn small" type="button" data-act="placeshow" data-id="${p.id}">Use this place</button>`}
-        ${p.is_home ? '' : html`<button class="btn small ghost" type="button" data-act="placehome" data-id="${p.id}">Make home</button>`}
+        ${p.is_home ? '' : html`<button class="btn small ghost" type="button" data-act="placehome" data-id="${p.id}">Make main home</button>`}
+        ${p.is_home ? '' : html`<button class="btn small ghost" type="button" data-act="placeplants" data-id="${p.id}" data-on="${p.plants_here ? '0' : '1'}">${p.plants_here ? 'No plants live here' : 'Plants live here'}</button>`}
         <button class="btn small ghost" type="button" data-act="placeonoff" data-id="${p.id}" data-on="${p.enabled ? '0' : '1'}">${p.enabled ? 'Stop hourly updates' : 'Start hourly updates'}</button>
         ${p.is_home ? '' : html`<button class="btn small danger" type="button" data-act="placedel" data-id="${p.id}">Remove</button>`}</div></td></tr>`)}</tbody></table></div>
     <h3>Add a place</h3>
@@ -4559,6 +4577,12 @@ const acts = {
     if (!(await confirmBox(`Make ${p.name} home?`, `Every computer or phone that has not chosen its own location will use the weather for ${p.name} instead of ${WX.home.name}, and so will the hourly updates and backups.`, 'Make home'))) return;
     await guard(async () => { await api('PUT', '/api/places/' + p.id, { is_home: true }); if (String(PLACE) === String(p.id)) savePlace(null); META = null; COND = null; FROST = null; FROST_AT = 0; toast(`${p.name} is now home`); route(); });
   },
+  async placeplants(el) {             // 1.28.0: a home of its own
+    if (!(await needName())) return;
+    const on = el.dataset.on === '1';
+    await guard(async () => { await api('PUT', '/api/places/' + el.dataset.id, { plants_here: on }); META = null; COND = null; FROST = null; FROST_AT = 0;
+      toast(on ? 'Plants can now be given this home' : 'No plants live there now'); route(); });
+  },
   async placeonoff(el) {
     if (!(await needName())) return;
     await guard(async () => { await api('PUT', '/api/places/' + el.dataset.id, { enabled: el.dataset.on === '1' }); toast(el.dataset.on === '1' ? 'Hourly updates on' : 'Hourly updates stopped; its stored weather is kept'); route(); });
@@ -4622,7 +4646,7 @@ const acts = {
   },
   grprulerm(el) { const row = el.closest('.rule-row'); const box = row.parentElement; row.remove();
     box.querySelectorAll('.rule-row').forEach((r, i) => { r.dataset.row = i; r.querySelector('legend').textContent = 'Part ' + (i + 1); }); rulePreview(); box.querySelector('select').focus(); },
-  clearfilters() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '', status: 'active', site: '' }, Object.fromEntries(MORE_KEYS.map(k => [k, '']))); MOREOPEN = false; gSave(); route(); },
+  clearfilters() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '', status: 'active', site: '', home: '' }, Object.fromEntries(MORE_KEYS.map(k => [k, '']))); MOREOPEN = false; gSave(); route(); },
   plan(el) { G.plan = G.plan === el.dataset.plan ? '' : el.dataset.plan; document.querySelectorAll('.ledger button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.plan === G.plan))); drawGrid(); },
   pick(el) { PIDX = +el.dataset.i; repaintPhotos(); },
   zoom() { const c = curPhoto(); if (c) modal(html`<form method="dialog"><img src="${photoUrl(c.file)}" alt="${c.caption || CUR.p.common_name}"><p class="cap">${c.caption}</p><button class="btn" value="ok" autofocus>Close</button></form>`, 'photo'); },
@@ -6485,6 +6509,7 @@ document.addEventListener('change', e => {
   else if (f === 'low') { G.low = el.checked; drawGrid(); }
   else if (f === 'status') { G.status = el.value; drawGrid(); }
   else if (f === 'site') { G.site = el.value; drawGrid(); }
+  else if (f === 'home') { G.home = el.value; drawGrid(); }
   else if (f === 'more') { G[el.dataset.key] = el.value; if (el.dataset.key === 'care' && el.value && !CAREDUE) loadCareDue().then(drawGrid); drawGrid(); }
 });
 document.addEventListener('toggle', e => { const d = e.target; if (d.classList && d.classList.contains('histbox') && d.open) histOpen(d.dataset.hist); }, true);
