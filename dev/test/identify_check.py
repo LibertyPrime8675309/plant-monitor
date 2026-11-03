@@ -42,7 +42,7 @@ check(st == 200 and s['state'] == 'ready' and s['plantnet'] is False and s['clau
 st, r = call('POST', '/api/identify?scope=texas', image=pic('red'))
 check(st == 200 and r['matches'][0]['code'] == 'P-020' and r['matches'][0]['confidence'] == 0.93 and r['matches'][0]['common_name'] and r['matches'][0]['photo'],
       'a picture comes back with the closest plant, its name, photo and confidence')
-check(r['scope'] == 'texas' and r['species'][0]['scientific_name'] and 'yours' in r['species'][0], 'and species guesses from the chosen list, marked when you have them')
+check(r['scope'] == 'state:Texas' and r['species'][0]['scientific_name'] and 'yours' in r['species'][0], 'and species guesses from the chosen list, marked when you have them')
 mon = [x for x in r['species'] if x['scientific_name'] == 'Monstera deliciosa']
 check(mon and mon[0]['yours'], f"Monstera deliciosa is marked as one you have ({mon[0]['yours'] if mon else ''})")
 st, r = call('POST', '/api/identify', image=b'not a picture')

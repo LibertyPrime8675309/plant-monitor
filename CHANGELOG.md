@@ -1,5 +1,24 @@
 # Changelog
 
+## 1.28.0 (2026-11-03)
+- **A second home: Nevada City, California.** It has its own weather, frost warnings, watering and hardiness zone.
+  - Every plant has a **Home**. Your plants stay at Round Rock.
+  - The Plants page has a **Home** filter, and each card says its home.
+  - Choose a home with the **Location** button: its frost warnings, watering and Back outside list only its own plants.
+  - On the Weather page, each place says whether plants live there, and how many.
+- **Add several plants at once.** Add a plant now has **Several plants from photos**:
+  - choose all the photos at once, and the picture checker looks at each one;
+  - photos taken close together that look alike become one plant;
+  - names, family, genus, plant type, safety for pets and ID confidence are filled in from the likeliest species;
+  - a review screen lets you pick another name, fix anything, and move or leave out photos. A plant that looks like one you already have is flagged and not ticked;
+  - nothing is added until you press **Add N plants**.
+- **Your plant photos on the Identify page:** one row per plant with its photos in a strip, and the same search and filters as the Plants page.
+- **Not tied to Texas any more.** The Library's lists, filters and tags (now **Your area**), Identify's state list and the question sent to Claude follow the place in use. Nevada City gets California's lists. The Texas invasive list only shows for places in Texas.
+- **Photos for offline use, by area.** The Library downloads the plants of any country, state, county, city or park, in a table showing photos downloaded out of how many, the percent, **Check for updates** and the date last updated. The offline copy on phones keeps these areas.
+- Fixed in 1.27.3 and included here: the "On this page" menu marks the section you chose.
+- No new photo pack. The picture checker container is rebuilt by the updater (its code changed; nothing new to download).
+- Includes everything in 1.27.3 below.
+
 ## 1.27.3 (2026-11-03)
 - **Fixed: the "On this page" menu.** Choosing a section near the end of a short page (such as "How groups work" on Groups) now marks that section in the menu. Before, the page could not scroll far enough, so the menu kept marking the section above it, or seemed to ignore the click.
   - The section you choose stays marked until you scroll the page yourself.
