@@ -295,6 +295,7 @@ async function route() {
     if (!META) { META = await api('GET', '/api/meta'); const v = document.getElementById('app-ver'); if (v && META.version) v.textContent = 'v' + META.version; paintPlace(); paintWho(); }
     if (parts[0] === 'plant' && parts[1] && parts[2] === 'edit') view = await viewEdit(decodeURIComponent(parts[1]));
     else if (parts[0] === 'plant' && parts[1]) view = await viewPlant(decodeURIComponent(parts[1]));
+    else if (parts[0] === 'new' && parts[1] === 'several') view = viewSeveral();
     else if (parts[0] === 'new') view = viewForm(null);
     else if (parts[0] === 'winter') view = await viewWinter();
     else if (parts[0] === 'weather') view = await viewWeather();
@@ -2518,6 +2519,7 @@ function viewForm(p) {
     title: isNew ? 'Add a plant' : 'Edit ' + p.common_name,
     html: html`<p class="crumb"><a href="${isNew ? '#/' : '#/plant/' + enc(p.code)}">${isNew ? 'All plants' : 'Back to ' + p.common_name}</a></p>
     <h1>${isNew ? 'Add a plant' : 'Edit ' + p.code}</h1>
+    ${isNew ? addModeRow('one') : ''}
     <p class="muted">${isNew ? 'Only the common name is required. You can add photos after saving.' : 'Saving makes version ' + (p.version + 1) + '. The old text stays in the page history.'}</p>
     <form data-form="${isNew ? 'new' : 'edit'}" ${p ? raw('data-code="' + esc(p.code) + '" data-ver="' + p.version + '"') : ''} autocomplete="off">
       ${isNew && NEWFILL ? html`<p class="notice ok" role="note">${NEWFILL.__from}: the names are filled in${NEWFILL.__pic ? ', and the picture is added when you save' : ''}. Check them before saving.</p>` : ''}
@@ -2528,6 +2530,124 @@ function viewForm(p) {
         <a class="btn ghost" href="${isNew ? '#/' : '#/plant/' + enc(p.code)}">Cancel</a></div>
     </form>`,
   };
+}
+// 1.28.0: add several plants at once from photos: each photo is checked, photos of one plant are grouped, the fields are filled
+// in from the likeliest species, and nothing is added until you have checked them on the review screen.
+function addModeRow(cur) {
+  return html`<nav class="row add-mode" aria-label="How many plants">
+    <a class="btn ${cur === 'one' ? '' : 'ghost'}" href="#/new" ${cur === 'one' ? raw('aria-current="page"') : ''}>One plant</a>
+    <a class="btn ${cur === 'several' ? '' : 'ghost'}" href="#/new/several" ${cur === 'several' ? raw('aria-current="page"') : ''}>Several plants from photos</a></nav>`;
+}
+const SEV = { step: 'pick', photos: [], plants: [], gap: 3, home: '', site: 'Outdoors', busy: false, done: null };
+const SEV_FIELDS = [['common_name', 'Common name', 'text'], ['scientific_name', 'Scientific name', 'text'], ['plant_type', 'Plant type', 'text'],
+  ['family', 'Family', 'text'], ['genus', 'Genus', 'text'], ['pet_safety', 'Safety for pets', 'pets'], ['id_confidence', 'ID confidence (%)', 'int'],
+  ['location', 'Spot (where exactly)', 'text'], ['notes', 'Notes', 'long']];
+function sevDefaultHome() { const cur = META.place, h = HOMES().find(x => String(x.id) === String(cur && cur.id)); return h && !h.is_home ? String(h.id) : ''; }
+function viewSeveral() {
+  if (SEV.step === 'pick' && !SEV.photos.length) { SEV.home = sevDefaultHome(); }
+  return { title: 'Add several plants', html: html`<p class="crumb"><a href="#/">All plants</a></p><h1>Add a plant</h1>${addModeRow('several')}
+    <div id="sev">${sevHtml()}</div>` };
+}
+function sevHtml() {
+  if (SEV.done) return html`<div class="notice ok" role="status"><strong>${SEV.done.length} plant${SEV.done.length === 1 ? '' : 's'} added:</strong>
+    <ul>${SEV.done.map(c => html`<li><a href="#/plant/${enc(c)}">${c} ${(ALL.find(p => p.code === c) || {}).common_name || ''}</a></li>`)}</ul>
+    <p>Each one has a page of its own now. The care details (temperature, water, light and so on) are still empty: fill them in on each page, or ask Claude with "Copy my answers for Claude".</p></div>
+    <p class="row"><button class="btn" type="button" data-act="sevreset">Add more plants</button><a class="btn ghost" href="#/">Go to the Plants page</a></p>`;
+  const homes = HOMES();
+  const homeSel = homes.length > 1 ? html`<label class="f">Home<small>Where these plants live.</small><select data-f="sevset" data-k="home">${homes.map(h => html`<option value="${h.is_home ? '' : h.id}" ${(h.is_home ? !SEV.home : String(SEV.home) === String(h.id)) ? raw('selected') : ''}>${h.name}</option>`)}</select></label>` : '';
+  const siteSel = html`<label class="f">Location<select data-f="sevset" data-k="site">${(META.sites || ['Outdoors', 'Indoors']).map(x => html`<option ${x === SEV.site ? raw('selected') : ''}>${x}</option>`)}</select></label>`;
+  if (SEV.step !== 'review') return html`<p>Choose photos of several plants at once, from this device or your phone. Each photo is checked by the picture checker on this computer. Photos of the same plant are put together, and each plant's names and details are filled in from what it looks like. You check everything before anything is added.</p>
+    <form data-form="sevgo" class="sev-pick">
+      <div class="field-grid">${homeSel}${siteSel}
+        <label class="f">Photos taken this close together belong to one plant<small>Minutes. Photos of one plant are usually taken one after another. You can move any photo to another plant on the next screen.</small>
+          <input type="number" min="0" max="60" step="1" name="gap" value="${SEV.gap}" inputmode="numeric"></label>
+        <label class="f wide">Photos<small>Choose as many as you like (JPG or PNG). A photo of the plant's label or tag helps.</small><input type="file" name="files" accept="image/*" multiple required></label></div>
+      <div class="row"><button class="btn" type="submit" ${SEV.busy ? raw('disabled') : ''}>Check these photos</button></div>
+      <p id="sev-prog" role="status" aria-live="polite" class="muted"></p></form>`;
+  const N = SEV.plants.length, keep = SEV.plants.filter(p => p.add).length;
+  return html`<p>${SEV.photos.length} photo${SEV.photos.length === 1 ? '' : 's'}, put together as ${N} plant${N === 1 ? '' : 's'}. Check each one: pick the right name, fix anything that is wrong, and move any photo that is in the wrong plant. Plants are only added when you press <strong>Add ${keep} plant${keep === 1 ? '' : 's'}</strong>.</p>
+    <div class="field-grid sev-all">${homeSel}${siteSel}</div>
+    ${SEV.plants.map((P, gi) => sevPlantHtml(P, gi, N))}
+    <div class="sticky-save"><button class="btn" type="button" data-act="sevsave" ${keep && !SEV.busy ? '' : raw('disabled')}>Add ${keep} plant${keep === 1 ? '' : 's'}</button>
+      <button class="btn ghost" type="button" data-act="sevreset">Start again</button><span id="sev-err" role="alert"></span></div>`;
+}
+function sevPlantHtml(P, gi, N) {
+  const pics = SEV.photos.map((ph, i) => [ph, i]).filter(([ph]) => ph.group === gi);
+  const f = P.fields, sp = P.species || [];
+  const moveOpts = i => html`${Array.from({ length: N }, (_, k) => html`<option value="${k}" ${k === gi ? raw('selected') : ''}>Plant ${k + 1}</option>`)}<option value="new">A new plant of its own</option><option value="out">Leave this photo out</option>`;
+  return html`<fieldset class="sev-plant ${P.add ? '' : 'sev-off'}" id="sev-p${gi}" data-section="Plant ${gi + 1}${f.common_name ? ': ' + f.common_name : ''}"><legend>Plant ${gi + 1} of ${N}${f.common_name ? `: ${f.common_name}` : ''}</legend>
+    <label class="chk"><input type="checkbox" data-f="sevadd" data-g="${gi}" ${P.add ? raw('checked') : ''}>Add this plant</label>
+    ${(P.matches || []).length ? html`<p class="notice" role="note"><strong>This may be a plant you already have:</strong> ${P.matches.map((m, k) => html`${k ? ', ' : ''}<a href="#/plant/${enc(m.code)}" target="_blank" rel="noopener">${m.code} ${m.common_name}</a> (${Math.round(m.confidence * 100)}% sure)`)}. If it is, untick "Add this plant" and add the photos on that plant's page instead.</p>` : ''}
+    <ul class="sev-pics">${pics.map(([ph, i]) => html`<li><img src="${ph.url}" alt="Photo ${i + 1}${ph.name ? ', ' + ph.name : ''}">
+      <span class="hint">${ph.taken ? new Date(ph.taken).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'No date in the photo'}${ph.error ? html`<br><span class="bad-text">${ph.error}</span>` : ''}</span>
+      <label class="f">Belongs to<select data-f="sevmove" data-p="${i}">${moveOpts(i)}</select></label></li>`)}</ul>
+    ${sp.length ? html`<fieldset class="sev-names"><legend>What the picture checker thinks it is</legend>${sp.map((x, k) => html`<label class="chk"><input type="radio" name="sevsp${gi}" data-f="sevpick" data-g="${gi}" value="${k}" ${P.pick === k ? raw('checked') : ''}>
+        <span><strong>${x.common_name || x.scientific_name}</strong> <i>${x.common_name ? x.scientific_name : ''}</i>: ${Math.round((x.probability || 0) * 100)}% likely</span></label>`)}
+      <label class="chk"><input type="radio" name="sevsp${gi}" data-f="sevpick" data-g="${gi}" value="-1" ${P.pick === -1 ? raw('checked') : ''}><span>None of these: I will type the names</span></label></fieldset>`
+      : html`<p class="muted">The picture checker had no suggestion for this plant. Type its names below.</p>`}
+    <div class="field-grid">${SEV_FIELDS.map(([k, label, kind]) => {
+      const v = f[k] == null ? '' : f[k], at = raw(`data-f="sevfield" data-g="${gi}" data-k="${k}"`);
+      if (kind === 'pets') return html`<label class="f">${label}<select ${at}><option value="">Not set</option>${(META.enums.pet_safety || []).map(o => html`<option ${o === v ? raw('selected') : ''}>${o}</option>`)}</select></label>`;
+      if (kind === 'long') return html`<label class="f wide">${label}<textarea rows="2" ${at}>${v}</textarea></label>`;
+      return html`<label class="f">${label}${k === 'common_name' ? html`<small>Required.</small>` : ''}<input type="${kind === 'int' ? 'number' : 'text'}" ${kind === 'int' ? raw('min="0" max="100" inputmode="numeric"') : ''} value="${v}" ${at}></label>`; })}</div>
+  </fieldset>`;
+}
+function sevFill(P) {          // the fields from the chosen species; anything you typed yourself stays
+  const x = P.pick >= 0 ? (P.species || [])[P.pick] : null, f = P.fields, mine = P.typed;
+  const want = x ? { common_name: x.common_name || x.scientific_name, scientific_name: x.scientific_name, family: x.family || '', genus: x.genus || '',
+    plant_type: LIB_KIND_SHORT[x.kind] || '', pet_safety: x.pets || '', id_confidence: Math.round((x.probability || 0) * 100) } : { id_confidence: '' };
+  for (const [k, v] of Object.entries(want)) if (!mine.has(k)) f[k] = v;
+}
+function sevGroup() {          // photos taken close together, and that look like the same species, are one plant
+  const order = SEV.photos.map((p, i) => i).filter(i => SEV.photos[i].group !== 'out').sort((a, b) => (SEV.photos[a].taken || '').localeCompare(SEV.photos[b].taken || '') || a - b);
+  let g = -1, prev = null;
+  for (const i of order) {
+    const p = SEV.photos[i], top = (p.species || [])[0];
+    const gap = prev && p.taken && prev.taken ? (new Date(p.taken) - new Date(prev.taken)) / 60000 : Infinity;
+    const ptop = prev && (prev.species || [])[0];
+    const differ = top && ptop && top.probability >= .5 && ptop.probability >= .5 && top.scientific_name !== ptop.scientific_name;
+    if (!prev || !(gap <= SEV.gap) || differ) g++;
+    p.group = g; prev = p;
+  }
+  sevPlants(g + 1);
+}
+function sevPlants(n) {        // one entry per group, with the species of its photos added together
+  const old = SEV.plants; SEV.plants = [];
+  for (let gi = 0; gi < n; gi++) {
+    const pics = SEV.photos.filter(p => p.group === gi), tot = {};
+    pics.forEach(p => (p.species || []).forEach(x => { const t = tot[x.scientific_name] || (tot[x.scientific_name] = { ...x, probability: 0 }); t.probability += (x.probability || 0) / pics.length; }));
+    const species = Object.values(tot).sort((a, b) => b.probability - a.probability).slice(0, 3);
+    const matches = []; pics.forEach(p => (p.matches || []).forEach(m => { if (!matches.some(x => x.code === m.code)) matches.push(m); }));
+    const was = old[gi] && old[gi].key === pics.map(p => p.file).join('|') ? old[gi] : null;
+    const P = was || { add: true, pick: species.length ? 0 : -1, fields: {}, typed: new Set() };
+    P.key = pics.map(p => p.file).join('|'); P.species = species; P.matches = matches;
+    if (!was) { if (matches.length && matches[0].confidence >= .8) P.add = false; sevFill(P); }
+    SEV.plants.push(P);
+  }
+  SEV.plants = SEV.plants.filter((P, gi) => SEV.photos.some(p => p.group === gi) || true);
+}
+function sevDraw(focusSel) {
+  const box = document.getElementById('sev'); if (!box) return;
+  box.innerHTML = rend(sevHtml()); buildSideNav();
+  if (focusSel) { const el = box.querySelector(focusSel); if (el) el.focus(); }
+}
+async function sevGo(form) {
+  if (!(await needName())) return;
+  const files = [...form.elements.files.files]; if (!files.length) { toast('Choose some photos first.', true); return; }
+  SEV.gap = Math.max(0, Math.min(60, +form.elements.gap.value || 0)); SEV.busy = true; SEV.photos = [];
+  form.querySelector('button[type=submit]').disabled = true;
+  const prog = document.getElementById('sev-prog');
+  for (let i = 0; i < files.length; i++) {
+    if (prog) prog.textContent = `Checking photo ${i + 1} of ${files.length}…`;
+    const fd = new FormData(); fd.append('image', files[i], files[i].name);
+    try { const r = await api('POST', '/api/plants/several/photo?scope=' + enc(idScope()), null, fd); SEV.photos.push({ ...r, url: URL.createObjectURL(files[i]) }); }
+    catch (e) { toast(`${files[i].name}: ${e.message}`, true); }
+  }
+  SEV.busy = false;
+  if (!SEV.photos.length) { sevDraw(); return; }
+  sevGroup(); SEV.step = 'review'; sevDraw('#sev-p0 legend') ;
+  const lg = document.querySelector('#sev-p0'); if (lg) lg.scrollIntoView({ block: 'start' });
+  toast(`${SEV.photos.length} photos checked: ${SEV.plants.length} plant${SEV.plants.length === 1 ? '' : 's'}. Check them before adding.`);
 }
 async function viewEdit(code) { return viewForm(await api('GET', '/api/plants/' + enc(code))); }
 async function submitForm(form) {
@@ -4491,6 +4611,21 @@ const acts = {
     await guard(async () => { await api('DELETE', '/api/backups/' + enc(el.dataset.file)); toast('Backup deleted'); route(); });
   },
   needs() { G.needs = !G.needs; gSave(); route(); },
+  sevreset() { SEV.photos.forEach(p => { try { URL.revokeObjectURL(p.url); } catch (e) { /* gone */ } }); Object.assign(SEV, { step: 'pick', photos: [], plants: [], done: null, busy: false }); SEV.home = sevDefaultHome(); sevDraw('input[type=file]'); },
+  async sevsave() {
+    if (!(await needName())) return;
+    const err = document.getElementById('sev-err');
+    const list = SEV.plants.map((P, gi) => [P, gi]).filter(([P]) => P.add);
+    const bad = list.find(([P]) => !String(P.fields.common_name || '').trim());
+    if (bad) { if (err) err.textContent = `Plant ${bad[1] + 1} needs a common name.`; const i = document.querySelector(`[data-f=sevfield][data-g="${bad[1]}"][data-k=common_name]`); if (i) i.focus(); return; }
+    const plants = list.map(([P, gi]) => { const n = SEV.photos.filter(p => p.group === gi).length;
+      const fields = { ...P.fields, site: SEV.site, home_id: SEV.home || '',
+        id_basis: P.pick >= 0 ? `Suggested by the picture checker on this computer from ${n} photo${n === 1 ? '' : 's'} (${P.fields.id_confidence || 0}% likely). Check it.` : '' };
+      return { fields, photos: SEV.photos.filter(p => p.group === gi).map(p => p.file) }; });
+    SEV.busy = true; const b = document.querySelector('[data-act=sevsave]'); if (b) b.disabled = true;
+    try { const r = await api('POST', '/api/plants/several', { plants }); ALL = await api('GET', '/api/plants?status=all'); META = await api('GET', '/api/meta'); SEV.done = r.codes; SEV.busy = false; sevDraw('.notice.ok'); toast(`${r.codes.length} plants added`); }
+    catch (e) { SEV.busy = false; if (b) b.disabled = false; if (err) err.textContent = e.message; }
+  },
   idphmore() { IDPH.shown += IDPH_PAGE; drawIdPhotos(); const rows = document.querySelectorAll('#idph-tbl tbody tr'); const a = rows[IDPH.shown - IDPH_PAGE] && rows[IDPH.shown - IDPH_PAGE].querySelector('a'); if (a) a.focus(); },
   layout() { const P = window.PlantPrefs.get(); window.PlantPrefs.set('layout', P.layout === 'single' ? 'split' : 'single'); route(); },
   navgo(el, e) {
@@ -4860,6 +4995,7 @@ const formActs = {
       <button class="btn small" type="button" data-act="libareaadd" data-pid="${r.place_id}" data-name="${r.name}">Add and download</button></li>`)}</ul>`
       : html`<p class="notice">Nothing found for "${q}". Check the spelling or try a larger area.</p>`);
   },
+  sevgo(form) { return sevGo(form); },
   placeadd(form) { const f = form.elements; return addPlace({ name: f.name.value, lat: f.lat.value, lon: f.lon.value, tz: f.tz.value }); },
   wtgo(form) {
     const max = +form.elements.page.dataset.max, n = Math.round(+form.elements.page.value);
@@ -6597,6 +6733,18 @@ document.addEventListener('change', e => {
   else if (f === 'status') { G.status = el.value; drawGrid(); }
   else if (f === 'site') { G.site = el.value; drawGrid(); }
   else if (f === 'home') { G.home = el.value; drawGrid(); }
+  else if (f === 'sevset') { SEV[el.dataset.k] = el.value; }
+  else if (f === 'sevadd') { const P = SEV.plants[+el.dataset.g]; P.add = el.checked; el.closest('fieldset').classList.toggle('sev-off', !el.checked); const b = document.querySelector('[data-act=sevsave]'), k = SEV.plants.filter(p => p.add).length; if (b) { b.textContent = `Add ${k} plant${k === 1 ? '' : 's'}`; b.disabled = !k; } }
+  else if (f === 'sevpick') { const P = SEV.plants[+el.dataset.g]; P.pick = +el.value; P.typed = new Set(); sevFill(P); sevDraw(`[data-f=sevpick][data-g="${el.dataset.g}"][value="${el.value}"]`); }
+  else if (f === 'sevmove') { const ph = SEV.photos[+el.dataset.p], n = SEV.plants.length;
+    ph.group = el.value === 'out' ? 'out' : el.value === 'new' ? n : +el.value;
+    const used = [...new Set(SEV.photos.map(p => p.group).filter(g => g !== 'out'))].sort((a, b) => a - b), map = Object.fromEntries(used.map((g, k) => [g, k]));
+    const keepP = used.map(g => SEV.plants[g]).map(P => P && { ...P, key: '' });
+    SEV.photos.forEach(p => { if (p.group !== 'out') p.group = map[p.group]; });
+    const typed = keepP.map(P => P && { add: P.add, pick: P.pick, fields: P.fields, typed: P.typed });
+    sevPlants(used.length);
+    SEV.plants.forEach((P, k) => { if (typed[k] && typed[k].typed.size) Object.assign(P, typed[k]); });
+    toast(el.value === 'out' ? 'Photo left out' : 'Photo moved'); sevDraw(); }
   else if (f === 'idphnone') { IDPH.none = el.checked; drawIdPhotos(); }
   else if (f === 'more') { G[el.dataset.key] = el.value; if (el.dataset.key === 'care' && el.value && !CAREDUE) loadCareDue().then(drawGrid); drawGrid(); }
 });
@@ -6610,6 +6758,8 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); const [Y, M] = b.dataset.date.split('-').map(Number); calGo(id, ymd(new Date(Y, e.key === 'Home' ? M - 1 : M, e.key === 'Home' ? 1 : 0, 12)), true); }
 });
 document.addEventListener('input', e => {
+  if (e.target.dataset && e.target.dataset.f === 'sevfield') { const P = SEV.plants[+e.target.dataset.g]; P.fields[e.target.dataset.k] = e.target.value; P.typed.add(e.target.dataset.k);
+    if (e.target.dataset.k === 'common_name') { const lg = e.target.closest('fieldset.sev-plant').querySelector('legend'); lg.textContent = lg.textContent.replace(/(: .*)?$/, e.target.value ? ': ' + e.target.value : ''); } }
   if (e.target.closest && e.target.closest('form[data-spot]')) spotPreview();
   if (e.target.closest && e.target.closest('form[data-fert]')) {
     if (e.target.name === 'product') { const x = FERT.products.find(q => q.product.toLowerCase() === e.target.value.trim().toLowerCase()); const f = e.target.form; if (x && !f.elements.n.value && !f.elements.amount.value) { ['form', 'n', 'p', 'k', 'amount', 'amount_unit', 'water_amount', 'water_unit', 'method'].forEach(k => { if (x[k] != null && f.elements[k]) f.elements[k].value = x[k]; }); } }

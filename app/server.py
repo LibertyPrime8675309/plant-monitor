@@ -2856,6 +2856,99 @@ def create_plant():
     c.commit()
     return jsonify(plant_dict(c, plant_row(c, code))), 201
 
+# ---------------------------------------------------------------- 1.28.0: add several plants at once, from photos
+# Each photo is sent on its own: it is kept in photos/pending (not yet in the record), checked by the picture checker, and its
+# date taken (from the photo) comes back so the page can group photos of one plant. Nothing is added until the review is saved;
+# pending photos left behind are deleted after two days.
+PENDING_DIR = os.path.join(PHOTO_DIR, 'pending')
+
+def pending_tidy():
+    try:
+        for f in os.listdir(PENDING_DIR):
+            p = os.path.join(PENDING_DIR, f)
+            if time.time() - os.path.getmtime(p) > 2 * 86400: os.remove(p)
+    except OSError: pass
+
+def photo_taken(im):
+    try:
+        ex = im.getexif(); v = ex.get_ifd(0x8769).get(36867) or ex.get(306)        # DateTimeOriginal, else DateTime
+        return datetime.strptime(str(v).strip()[:19], '%Y:%m:%d %H:%M:%S').isoformat() if v else None
+    except Exception: return None
+
+def pets_word(name):
+    """ASPCA's answer for a species as the Safety for pets field (1.17.0's words), or '' when they do not list it."""
+    p = pets_for(name or '')
+    if not p: return ''
+    if 'toxic' in (p.get('dogs'), p.get('cats')): return PET_SAFETY[0]
+    if p.get('dogs') == 'non-toxic' and p.get('cats') == 'non-toxic': return PET_SAFETY[3]
+    return ''
+
+@app.route('/api/plants/several/photo', methods=['POST'])
+def several_photo():
+    c = db()
+    f = request.files.get('image')
+    if not f: abort(400, 'Send a picture')
+    raw = f.read(30_000_000)
+    try:
+        im0 = Image.open(io.BytesIO(raw)); taken = photo_taken(im0)
+        im = ImageOps.exif_transpose(im0).convert('RGB')
+    except Exception: abort(400, f'{f.filename or "That file"} is not a picture this can read (use JPG or PNG)')
+    os.makedirs(PENDING_DIR, exist_ok=True); pending_tidy()
+    keep = im.copy(); keep.thumbnail((1600, 1600))
+    name = f'up_{uuid.uuid4().hex[:16]}.jpg'
+    keep.save(os.path.join(PENDING_DIR, name), 'JPEG', quality=84, optimize=True)
+    small = im.copy(); small.thumbnail((1024, 1024)); b = io.BytesIO(); small.save(b, 'JPEG', quality=88)
+    out = {'file': name, 'taken': taken, 'name': (f.filename or '')[:120], 'species': [], 'matches': [], 'error': None}
+    try:
+        body, ct = multipart({}, [('image', 'picture.jpg', b.getvalue(), 'image/jpeg')])
+        r = vision_call('/identify?scope=' + vscope(c, request.args.get('scope', 'common')), body, ct, timeout=90)
+        out['species'] = [{k: x.get(k) for k in ('scientific_name', 'common_name', 'family', 'genus', 'kind', 'probability')} | {'pets': pets_word(x.get('scientific_name'))}
+                          for x in (r.get('species') or [])[:3]]
+        out['matches'] = [plant_brief(c, m['code']) | {'confidence': m.get('confidence')} for m in (r.get('matches') or [])[:3]
+                          if m.get('confidence') and m['confidence'] >= 0.6 and plant_brief(c, m['code'])]
+        out['likely_new'] = r.get('likely_new')
+    except Exception as e:
+        out['error'] = getattr(e, 'description', None) or 'The picture checker could not look at it.'
+    return jsonify(out)
+
+@app.route('/api/plants/several', methods=['POST'])
+def several_create():
+    """{plants: [{fields: {...}, photos: [pending file names, main photo first]}]} -> the new plants, all added together."""
+    c = db()
+    b = request.get_json(silent=True) or {}
+    items = b.get('plants') or []
+    if not items: abort(400, 'There are no plants to add')
+    if len(items) > 200: abort(400, 'Add at most 200 plants at a time')
+    who, ts, made = editor(), now(), []
+    for i, it in enumerate(items):
+        f = dict(it.get('fields') or {})
+        if not str(f.get('common_name', '')).strip(): abort(400, f'Plant {i + 1} needs a common name')
+        for ph in it.get('photos') or []:
+            if not re.match(r'^up_[0-9a-f]{16}\.jpg$', str(ph)) or not os.path.exists(os.path.join(PENDING_DIR, ph)):
+                abort(400, f'A photo for plant {i + 1} is no longer waiting here (they are kept for two days). Add the photos again.')
+        f['winter_plan'] = f.get('winter_plan') or 'Move indoors'
+        f['health_rating'] = f.get('health_rating') or 'Fair'
+        f['site'] = f.get('site') or 'Outdoors'
+        if not f.get('pet_safety'): f['pet_safety'] = pets_word(f.get('scientific_name'))
+        items[i] = (it, {k: norm(k, f.get(k)) for k in FIELD_NAMES})        # every plant is checked before any is added
+    cols = ['code'] + FIELD_NAMES + ['version', 'status', 'created_at', 'created_by', 'updated_at', 'updated_by']
+    for it, vals in items:
+        n = c.execute("SELECT COALESCE(MAX(CAST(SUBSTR(code,3) AS INTEGER)),0)+1 FROM plants").fetchone()[0]
+        code = f'P-{n:03d}'
+        pid = c.execute(f"INSERT INTO plants({','.join(cols)}) VALUES({','.join('?' * len(cols))})",
+                        [code] + [vals[k] for k in FIELD_NAMES] + [1, 'active', ts, who, ts, who]).lastrowid
+        for j, ph in enumerate(it.get('photos') or []):
+            os.replace(os.path.join(PENDING_DIR, ph), os.path.join(PHOTO_DIR, ph))
+            c.execute('INSERT INTO photos(plant_id,file,caption,kind,is_primary,source_name,added_by,added_at) VALUES(?,?,?,?,?,?,?,?)',
+                      (pid, ph, '', 'plant', 1 if j == 0 else 0, ph, who, ts))
+        c.execute('INSERT INTO plant_versions(plant_id,version,snapshot,changed_by,changed_at,summary) VALUES(?,?,?,?,?,?)',
+                  (pid, 1, json.dumps(snapshot(c, pid)), who, ts, 'Record created (added with several others from photos)'))
+        audit_only(c, 'create', None, None, None, who, 'Record created (added with several others from photos)', pid, code)
+        c.execute('UPDATE audit_log SET version=1 WHERE plant_id=? AND action=?', (pid, 'create'))
+        made.append(code)
+    c.commit()
+    return jsonify(codes=made), 201
+
 @app.route('/api/plants/<code>', methods=['PUT'])
 def update_plant(code):
     c = db()
