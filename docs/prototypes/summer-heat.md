@@ -61,6 +61,7 @@ The screenshots use made-up weather in the test copy, so the numbers are not Rou
 - Plant fields `heat_zone_high`, `heat_zone_low` (`INT_RANGES` 1 to 12) and `heat_zone_source` (`Title | URL`). Batch B3 is built by `dev/seed_src/build_batchB3.py`.
 - Front end: `heatRange()`, the `heat` key in `MORE` / `MORE_KEYS` / `moreOk()` (`heatOk()`, loading `HEATP` on first use), and `loadWeatherHeat()` with its own MutationObserver for `#wx-heat`. Links on the Weather page set the filter with `data-heatf`.
 - `dev/test/filters_check.py` now expects 9 More filters. Its "Care today: water due" check fails on main too, before this change.
+- Merges cleanly with the open prototypes except one line of `docs/IDEAS.md` next to proto/sensor-dashboard's (keep both "in progress" notes).
 - Test: `dev/test/heat_check.py` (zones, counts, refusals, placement, the three verdicts, phone, dark, large text, high contrast).
 
 ## How to try it

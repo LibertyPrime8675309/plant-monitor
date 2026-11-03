@@ -87,6 +87,7 @@ check(pl['P-012']['fit'] == 'within' and pl['P-069']['fit'] == 'hotter' and pl['
 # ---- the browser part
 srv = os.environ.get('SERVER_DATA', os.path.join(HERE, '..', 'tmp', 'heat-data'))
 fill(os.path.join(srv, 'plants.db'))
+_c = sqlite3.connect(os.path.join(srv, 'plants.db')); _c.execute("UPDATE plants SET heat_zone_high=8 WHERE code='P-069'"); _c.commit(); _c.close()   # one plant hotter than its range
 with sync_playwright() as p:
     b = p.chromium.launch()
     for name, w, hgt, prefs in (('laptop', 1280, 900, {'theme': 'light'}), ('phone-dark', 390, 844, {'theme': 'dark'}), ('phone-bigtext', 390, 844, {'theme': 'light', 'size': '190'}),
