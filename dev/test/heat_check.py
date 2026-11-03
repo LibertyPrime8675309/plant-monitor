@@ -69,7 +69,7 @@ check([S.heat_zone_fit(9, 12, 7), S.heat_zone_fit(9, 8, 1), S.heat_zone_fit(9, 1
 # ---- batch B3: AHS heat zone ranges with their sources, only where a page printed one
 db = sqlite3.connect(os.path.join(data, 'plants.db')); db.row_factory = sqlite3.Row
 got = {r['code']: r for r in db.execute('SELECT code, heat_zone_high, heat_zone_low, heat_zone_source FROM plants WHERE heat_zone_high IS NOT NULL')}
-check(len(got) == 18 and all(r['heat_zone_high'] >= r['heat_zone_low'] and 1 <= r['heat_zone_low'] <= 12 for r in got.values()), f'batch B3 fills 18 plants with ranges from 1 to 12, hottest first ({len(got)})')
+check(len(got) == 20 and all(r['heat_zone_high'] >= r['heat_zone_low'] and 1 <= r['heat_zone_low'] <= 12 for r in got.values()), f'batch B3 fills 20 plants with ranges from 1 to 12, hottest first ({len(got)})')
 check(all(' | https://' in r['heat_zone_source'] for r in got.values()), 'every range has its source link')
 check((got['P-012']['heat_zone_high'], got['P-012']['heat_zone_low']) == (9, 4) and 'P-009' not in got and 'P-008' not in got, 'Aeonium is 9 to 4; Philodendron and Bougainvillea (no trustworthy range) are left empty')
 db.execute("UPDATE plants SET heat_zone_high=11 WHERE code='P-013'"); db.execute("DELETE FROM settings WHERE key='batch_applied:batchB3'"); db.commit()

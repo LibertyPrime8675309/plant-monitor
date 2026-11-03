@@ -8,6 +8,10 @@ Monrovia) list USDA hardiness zones only. Plants with no published range are lef
 - Bougainvillea: listed as 1 to 12, which looks like a placeholder for a frost-tender tropical.
 - Celosia: listed as 2 to 9, which does not fit a heat-loving summer annual.
 - Begonias, Alocasias, Agave: only other species had a range, and these plants' species are not certain.
+- The variegated Tradescantia (P-051): fluminensis and albiflora are both possible, and fluminensis is listed 1 to 12 against zebrina's 12 to 7.
+- Miniature roses: no range found ('Tiny Tot' says "not defined"). Figs: listed "1 to 1", which is a placeholder.
+A second pass on November 3 also tried Backyard Gardener, Clemson, UF/IFAS, Costa Farms and nursery catalogs; most of these plants are
+marked "not defined" there.
 Every field is only filled while still empty, so anything Ethan types himself stays.
 Run against a copy of a database with batches up to B2 applied:  python3 dev/seed_src/build_batchB3.py <plants.db>"""
 import json, os, sqlite3, sys
@@ -31,11 +35,15 @@ RANGES = {
     'artemisia':    (9, 1, G + 'Artemisia ludoviciana (White Sage)', 'https://www.gardenia.net/plant/artemisia-ludoviciana-white-sage', 'for the species'),
     'monarda':      (9, 1, G + 'Monarda fistulosa (Wild Bergamot)', 'https://www.gardenia.net/plant/monarda-fistulosa', 'for the species'),
     'iris':         (9, 1, G + 'Bearded Iris (Iris germanica)', 'https://www.gardenia.net/genus/iris-germanica-bearded-iris', 'for bearded irises'),
+    # second search pass (November 3, 2026, after Ethan asked to keep looking): Backyard Gardener prints "AHS Heat Zone"
+    'tradescantia_zebrina': (12, 7, 'Backyard Gardener: Zebrina pendula (Wandering Jew)', 'https://www.backyardgardener.com/plantname/zebrina-pendula-wandering-jew/', 'listed under its older name Zebrina pendula'),
+    'rosa_floribunda': (9, 3, "Backyard Gardener: Rosa 'Cherish' (floribunda)", 'https://www.backyardgardener.com/plantname/rosa-cherish-rose/', "from floribunda roses ('Cherish' and 'Judy Garland' are both listed 9 to 3), not 'Queen of Elegance' itself"),
 }
 MAP = {'P-012': 'aeonium', 'P-045': 'aeonium', 'P-013': 'opuntia', 'P-016': 'haworthiopsis', 'P-043': 'haworthiopsis',
        'P-019': 'portulacaria', 'P-020': 'ficus_lyrata', 'P-023': 'cosmos', 'P-027': 'coleus', 'P-033': 'coleus',
        'P-040': 'euphorbia_milii', 'P-047': 'tradescantia_pallida', 'P-052': 'gardenia', 'P-054': 'pennisetum',
-       'P-068': 'petunia', 'P-069': 'artemisia', 'P-070': 'monarda', 'P-064': 'iris'}
+       'P-068': 'petunia', 'P-069': 'artemisia', 'P-070': 'monarda', 'P-064': 'iris',
+       'P-059': 'tradescantia_zebrina', 'P-022': 'rosa_floribunda'}
 
 c = sqlite3.connect(sys.argv[1]); c.row_factory = sqlite3.Row
 ups = []
@@ -45,7 +53,7 @@ for code, key in sorted(MAP.items()):
     hi, lo, title, url, level = RANGES[key]
     photos = [x[0] for x in c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY id LIMIT 1', (r['id'],))]
     ups.append({'code': code, 'name': r['common_name'], 'photos': photos,
-                'note': f'AHS heat zones {hi} to {lo} added from Gardenia.net ({level}) (batch B3)',
+                'note': f'AHS heat zones {hi} to {lo} added from {title.split(":")[0]} ({level}) (batch B3)',
                 'set': {'heat_zone_high': ['', hi], 'heat_zone_low': ['', lo], 'heat_zone_source': ['', f'{title} | {url}']}})
 batch = {'id': 'batchB3', 'created': '2026-11-03', 'author': 'Claude (AHS heat zones with sources, Nov 3, 2026)', 'updates': ups}
 out = os.path.join(REPO, 'app', 'seed', 'batches', 'batchB3.json')

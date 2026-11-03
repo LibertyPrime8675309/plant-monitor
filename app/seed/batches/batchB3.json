@@ -114,6 +114,28 @@
    }
   },
   {
+   "code": "P-022",
+   "name": "Rose 'Queen of Elegance'",
+   "photos": [
+    "img_1000021182.jpg"
+   ],
+   "note": "AHS heat zones 9 to 3 added from Backyard Gardener (from floribunda roses ('Cherish' and 'Judy Garland' are both listed 9 to 3), not 'Queen of Elegance' itself) (batch B3)",
+   "set": {
+    "heat_zone_high": [
+     "",
+     9
+    ],
+    "heat_zone_low": [
+     "",
+     3
+    ],
+    "heat_zone_source": [
+     "",
+     "Backyard Gardener: Rosa 'Cherish' (floribunda) | https://www.backyardgardener.com/plantname/rosa-cherish-rose/"
+    ]
+   }
+  },
+  {
    "code": "P-023",
    "name": "Cosmos (volunteers)",
    "photos": [
@@ -308,6 +330,28 @@
     "heat_zone_source": [
      "",
      "Gardenia.net: Pennisetum advena 'Rubrum' (Purple Fountain Grass) | https://www.gardenia.net/plant/pennisetum-setaceum-rubrum"
+    ]
+   }
+  },
+  {
+   "code": "P-059",
+   "name": "Wandering jew (silver-striped)",
+   "photos": [
+    "img_b2_21.jpg"
+   ],
+   "note": "AHS heat zones 12 to 7 added from Backyard Gardener (listed under its older name Zebrina pendula) (batch B3)",
+   "set": {
+    "heat_zone_high": [
+     "",
+     12
+    ],
+    "heat_zone_low": [
+     "",
+     7
+    ],
+    "heat_zone_source": [
+     "",
+     "Backyard Gardener: Zebrina pendula (Wandering Jew) | https://www.backyardgardener.com/plantname/zebrina-pendula-wandering-jew/"
     ]
    }
   },

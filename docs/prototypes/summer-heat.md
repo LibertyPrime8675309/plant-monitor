@@ -20,9 +20,10 @@ Ethan answered the four questions on the pull request: the heat-damage line is r
 - **Summer here filter** on the Plants page (under More filters, and in the Previous / Next panel): "Summer heat is hard on it", "A few days a summer are too hot", "Summer heat is fine for it", "Hotter than its heat zones" and "No summer verdict yet".
 - **Weather page:** a "Summer heat" section before All logged weather data, with the heat zone, how many of your plants fall in each verdict (each count is a link to the Plants page with the filter set), and the hot-days table.
 - **AHS heat zone range for each plant:** three new fields under About this plant in Edit (Heat zone, hottest; Heat zone, coolest; Heat zone source). The plant page says whether your place is within, hotter than or cooler than the plant's range, with the source link.
-- **Upgrade batch B3** fills the range for 18 plants. It uses only ranges that a web page actually printed, and each one keeps its link. The only site that printed heat zones for these plants was Gardenia.net, a plant encyclopedia. NC State, Missouri Botanical Garden, Texas Tech, Proven Winners and Monrovia list USDA hardiness zones only. The rest are left empty on purpose:
-  - No range found anywhere: Dieffenbachia, Boobie cactus, fig, mustang grape, both morning glories, Mexican bird of paradise, Philodendrons, peace lilies, Aloe vera, hardy aloe, majesty palms, Graptosedum, desert rose, roses, Boston ferns, Chinese evergreens, Calathea, moth orchid, ZZ plants, moon cactus, vanilla, arrowhead plants, Monstera, water hyacinth, the other Tradescantias, Zexmenia, Texas star hibiscus, money tree, rubber tree and mini Monstera.
-  - Found but not trusted: Bougainvillea (listed as 1 to 12, which looks like a placeholder for a frost-tender tropical) and Celosia (listed as 2 to 9, which does not fit a heat-loving summer annual).
+- **Upgrade batch B3** fills the range for 20 plants. It uses only ranges that a web page actually printed, and each one keeps its link. 18 come from Gardenia.net, a plant encyclopedia. After Ethan asked to keep looking, a second pass added the silver-striped wandering jew (12 to 7) and the 'Queen of Elegance' floribunda rose (9 to 3, from other floribundas) from Backyard Gardener. NC State, Missouri Botanical Garden, Texas Tech, Proven Winners and Monrovia list USDA hardiness zones only. The rest are left empty on purpose:
+  - No range found anywhere: Dieffenbachia, Boobie cactus, fig, mustang grape, both morning glories, Mexican bird of paradise, Philodendrons, peace lilies, Aloe vera, hardy aloe, majesty palms, Graptosedum, desert rose, miniature roses, Boston ferns, Chinese evergreens, Calathea, moth orchid, ZZ plants, moon cactus, vanilla, arrowhead plants, Monstera, water hyacinth, the variegated Tradescantia (its species is not certain), Zexmenia, Texas star hibiscus, money tree, rubber tree and mini Monstera.
+  - Found but not trusted: Bougainvillea (listed as 1 to 12, which looks like a placeholder for a frost-tender tropical), Celosia (listed as 2 to 9, which does not fit a heat-loving summer annual) and figs (listed as 1 to 1).
+  - Ethan said to leave anything not found empty for him to fill in later, and to keep "hotter than its heat zones" separate from the heat-damage verdict.
   - Only a different species had a range: begonias, Alocasias and the agave (its species is not known yet).
 
 ## How it looks
@@ -88,5 +89,4 @@ SERVER_DATA=dev/tmp/heat-data python3 dev/test/heat_check.py
 ```
 
 ## Open questions for Ethan
-1. Only 18 of your plants have a published heat zone range. Do you want to fill in others yourself (Edit, under About this plant), or should I keep looking for sources for particular plants?
-2. Should "Hotter than its heat zones" also count towards the "Summer heat is hard on it" verdict, or keep them separate as now?
+None left: Ethan answered them all on pull request #33.
