@@ -4849,6 +4849,15 @@ const formActs = {
     el.innerHTML = rend(PLACE_RESULTS.length ? html`<p>${PLACE_RESULTS.length} found. Choose the right one:</p><ul class="place-res">${PLACE_RESULTS.map((r, i) => html`<li><span><strong>${r.label}</strong><br><span class="hint">${r.lat}, ${r.lon}, ${r.tz}${r.elevation_m != null ? `, ${Math.round(r.elevation_m * 3.281)} ft up` : ''}${r.population ? `, ${num(r.population)} people` : ''}</span></span><button class="btn small" type="button" data-act="placepick" data-i="${i}">Add ${r.name}</button></li>`)}</ul>`
       : html`<p class="notice">Nothing found for "${q}". Check the spelling, try the nearest larger town, or type the place in yourself below.</p>`);
   },
+  async libareafind(form) {
+    const q = form.elements.q.value.trim(), el = document.getElementById('libarea-res');
+    if (q.length < 2) { toast('Type at least 2 letters of the place.', true); return; }
+    el.innerHTML = rend(html`<p class="loading" role="status">Searching</p>`);
+    let R; try { R = await api('GET', '/api/library/areas/search?q=' + enc(q)); } catch (e) { el.innerHTML = rend(html`<p class="notice bad">${e.message}</p>`); return; }
+    el.innerHTML = rend(R.length ? html`<p>${R.length} found. Choose the right one:</p><ul class="place-res">${R.map(r => html`<li><span><strong>${r.name}</strong><br><span class="hint">${r.kind}</span></span>
+      <button class="btn small" type="button" data-act="libareaadd" data-pid="${r.place_id}" data-name="${r.name}">Add and download</button></li>`)}</ul>`
+      : html`<p class="notice">Nothing found for "${q}". Check the spelling or try a larger area.</p>`);
+  },
   placeadd(form) { const f = form.elements; return addPlace({ name: f.name.value, lat: f.lat.value, lon: f.lon.value, tz: f.tz.value }); },
   wtgo(form) {
     const max = +form.elements.page.dataset.max, n = Math.round(+form.elements.page.value);
@@ -4884,9 +4893,16 @@ const formActs = {
 // ---------- 1.18.0: identify a plant with the camera, and the plant library ----------
 // The pictures go to this computer's picture checker (the "plant-vision" container) through the app. Pl@ntNet and Claude are only
 // asked when someone presses their buttons. Nothing is saved unless someone presses "Add this picture to its photos" or adds a plant.
-const ID_SCOPES = [['common', 'Plants with a common name, and all US plants'], ['texas', 'Texas plants'], ['us', 'US plants'], ['world', 'All plants worldwide'], ['fungi', 'Fungi worldwide: mushrooms, lichens and moulds']];
+// 1.28.0: the place in use's state or country (META.region), instead of Texas everywhere
+const REGION = () => (META && META.region) || null;
+const regionName = () => (REGION() && REGION().name) || 'your state or country';
+const regionState = () => (REGION() && REGION().usda) || '';
+const inRegion = s => !!(regionState() && ((s.us_states || []).some(Boolean) ? s.us_states.includes(regionState()) : s.in_texas));   // offline rows carry only a yes or no
+const ID_SCOPES_ALL = [['common', 'Plants with a common name, and all US plants'], ['state', 'Plants of your state'], ['us', 'US plants'], ['world', 'All plants worldwide'], ['fungi', 'Fungi worldwide: mushrooms, lichens and moulds']];
 const ID = { stream: null, timer: null, busy: false, last: null, streak: 0, shot: null, paused: false, said: '', qr: null, mode: 'live', st: null, keys: null };
-function idScope() { try { const s = localStorage.getItem('plantdb.idscope'); if (ID_SCOPES.some(x => x[0] === s)) return s; } catch (e) { /* default */ } return 'common'; }
+function idScopes() { return ID_SCOPES_ALL.filter(x => x[0] !== 'state' || regionState()).map(x => x[0] === 'state' ? ['state', `${LIB_STATE_WORD(regionState())} plants`] : x); }
+let ID_SCOPES = ID_SCOPES_ALL;            // filled in by idScopes() once the place is known
+function idScope() { ID_SCOPES = idScopes(); try { let s = localStorage.getItem('plantdb.idscope'); if (s === 'texas') s = 'state'; if (ID_SCOPES.some(x => x[0] === s)) return s; } catch (e) { /* default */ } return 'common'; }
 const pct = p => Math.round((p || 0) * 100) + '%';
 const sureWord = c => c >= 0.9 ? 'Very likely' : c >= 0.75 ? 'Likely' : c >= 0.5 ? 'Possibly' : 'Unsure';
 const canChange = () => ME().role !== 'viewer';
@@ -5089,7 +5105,7 @@ function spLinks(s) {
 }
 function spCard(s, i, src, withAdd) {
   const tags = [];
-  if (s.in_texas) tags.push(html`<span class="tag">Grows wild in Texas</span>`);
+  if (inRegion(s)) tags.push(html`<span class="tag">Grows wild in ${LIB_STATE_WORD(regionState())}</span>`);
   else if (s.us_states && s.us_states.length) tags.push(html`<span class="tag">In ${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}</span>`);
   if (s.yours && s.yours.length) tags.push(html`<span class="tag tag-yours">You have this: ${s.yours.join(', ')}</span>`);
   else if (s.yours_genus && s.yours_genus.length) tags.push(html`<span class="tag">Same genus as ${s.yours_genus.slice(0, 4).join(', ')}</span>`);
@@ -5194,8 +5210,12 @@ function idNewPlant(s, withPic) {
 // The list comes from the picture checker (offline). Photos come from iNaturalist through the app, which keeps them in
 // data/library; the cards ask for the photos of the plants on screen and fill them in as they arrive.
 const LIB_DEF = { q: '', scope: 'common', kind: '', family: '', state: '', common: false, mine: '', know: '', sort: 'known', view: 'cards' };
-const KNOW_WORD = { native: 'Native to Texas', introduced: 'Introduced to Texas', invasive: 'On the Texas invasive list', near: 'Grows wild near home', bloom: 'Flowering near home this month',
-  fruiting: 'Fungi found near home this month', hardy: 'Likely to survive outside here', petsafe: 'Safe for dogs and cats (ASPCA)', pettoxic: 'Toxic to dogs or cats (ASPCA)' };
+function knowWord() {         // 1.28.0: named for the place in use; the invasive list is only built in for Texas
+  const w = { native: `Native to ${regionName()}`, introduced: `Introduced to ${regionName()}`, invasive: 'On the Texas invasive list', near: 'Grows wild near here', bloom: 'Flowering near here this month',
+    fruiting: 'Fungi found near here this month', hardy: 'Likely to survive outside here', petsafe: 'Safe for dogs and cats (ASPCA)', pettoxic: 'Toxic to dogs or cats (ASPCA)' };
+  if (!(REGION() && REGION().id === 18)) delete w.invasive;
+  return w;
+}
 const LIB = Object.assign({ res: [], total: 0, facets: null, facetsFor: '', photos: {}, t: 0, poll: 0, my: 0 }, LIB_DEF);
 try { const s = JSON.parse(localStorage.getItem('plantdb.library') || '{}'); Object.keys(LIB_DEF).forEach(k => { if (s[k] != null && typeof s[k] === typeof LIB_DEF[k]) LIB[k] = s[k]; }); } catch (e) { /* defaults */ }
 const libSave = () => { try { localStorage.setItem('plantdb.library', JSON.stringify(Object.fromEntries(Object.keys(LIB_DEF).map(k => [k, LIB[k]])))); } catch (e) { /* not remembered */ } };
@@ -5205,31 +5225,46 @@ const LIB_STATE_WORD = s => s.replace(/([a-z])([A-Z])/g, '$1 $2');
 const LIB_KIND_SHORT = { dicot: 'Flowering plant', monocot: 'Flowering plant (monocot)', fern: 'Fern', lycophyte: 'Clubmoss', conifer: 'Conifer', cycad: 'Cycad', ginkgo: 'Ginkgo', gnetophyte: 'Gnetophyte', moss: 'Moss', liverwort: 'Liverwort', hornwort: 'Hornwort', alga: 'Alga', other: '',
   mushroom: 'Mushroom', cupfungus: 'Cup fungus', lichen: 'Lichen', rust: 'Rust or smut', mould: 'Mould or mildew', otherfungus: 'Fungus' };
 const spHref = s => '#/species/' + enc(s);
-function libPreHtml(p) {
-  const btn = p.running ? html`<button class="btn ghost" type="button" data-act="libprestop">Stop the download</button>`
-    : html`<button class="btn" type="button" data-act="libpre" ${p.online ? '' : raw('disabled')}>Download photos for the Texas list</button>`;
-  const msg = p.running ? `Downloading: ${p.done.toLocaleString()} of ${p.total.toLocaleString()} done, about ${Math.max(1, Math.round(p.left * 1.1 / 60))} minutes left. You can leave this page; it carries on.`
-    : p.total ? `Finished: ${p.done.toLocaleString()} species fetched${p.all ? ` (the other ${(p.all - p.total).toLocaleString()} were already kept)` : ''}.`
-    : p.online ? '' : 'Turn on the iNaturalist photos above first.';
-  return html`<p class="pre-msg">${msg}</p><p class="row">${btn}</p>`;
+// 1.28.0: library photos for offline use, by area (any place iNaturalist knows), in a table
+function libAreasHtml(d) {
+  const owner = ME().role === 'owner', A = d.areas || [];
+  const day = t => t ? new Date(t).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) : 'Not yet';
+  const stateWords = a => a.error ? html`<div class="bad-text"><strong>Last try failed:</strong> ${a.error}</div>`
+    : a.state === 'list' ? html`<div class="hint">Getting the list of plants recorded there…</div>`
+    : a.state === 'photos' ? html`<div class="hint">Downloading: ${num(a.left)} left, about ${Math.max(1, Math.round(a.left * 1.1 / 60))} minutes</div>` : '';
+  return html`${A.length ? html`<div class="tbl-wrap"><table class="tbl lib-areas"><caption class="sr">Download areas</caption><thead><tr><th scope="col">Area</th><th scope="col">Photos downloaded</th><th scope="col">Percent</th><th scope="col">Last updated</th>${owner ? html`<th scope="col"><span class="sr">Actions</span></th>` : ''}</tr></thead><tbody>
+    ${A.map(a => html`<tr><th scope="row">${a.name}${stateWords(a)}</th>
+      <td>${a.total ? `${num(a.kept)} of ${num(a.total)}` : a.state === 'list' ? 'Counting…' : 'Not counted yet'}${a.no_photo ? html`<div class="hint">${num(a.no_photo)} ${a.no_photo === 1 ? 'has' : 'have'} no photo on iNaturalist</div>` : ''}</td>
+      <td><span class="pct-num">${a.total ? `${a.percent}%` : '—'}</span>${a.total ? html`<span class="pct-bar" aria-hidden="true"><i style="width:${Math.min(100, a.percent)}%"></i></span>` : ''}</td>
+      <td>${day(a.checked_at)}</td>
+      ${owner ? html`<td><div class="row" style="gap:.4rem"><button class="btn small" type="button" data-act="libareaupd" data-id="${a.id}" ${a.state !== 'idle' || !d.online ? raw('disabled') : ''}>Check for updates</button>
+        <button class="btn small ghost" type="button" data-act="libareadel" data-id="${a.id}" data-name="${a.name}">Remove</button></div></td>` : ''}</tr>`)}</tbody></table></div>`
+    : html`<p class="muted">No areas yet.${owner ? ' Add one below.' : ' The owner can add them.'}</p>`}
+  ${owner && d.running ? html`<p class="row"><button class="btn ghost" type="button" data-act="libareastop">Stop all downloads</button></p>` : ''}
+  ${owner ? html`<h3>Add an area</h3>${d.online ? html`<form class="todo-add" data-form="libareafind"><label style="flex:1 1 18rem;font-weight:700">Country, state, county, city or park<input type="text" name="q" placeholder="California" autocomplete="off"></label><button class="btn" type="submit" style="align-self:end">Search</button></form>
+    <div id="libarea-res" aria-live="polite"></div>` : html`<p class="muted">Turn on the iNaturalist photos above first.</p>`}` : ''}`;
 }
-async function libPrePoll() {
+async function libAreasPoll() {
   clearTimeout(LIB.prePoll);
   const box = document.getElementById('lib-pre'); if (!box) return;
-  let p; try { p = await api('GET', '/api/library/prefetch'); } catch (e) { return; }
+  let d; try { d = await api('GET', '/api/library/areas'); } catch (e) { return; }
   if (!document.getElementById('lib-pre')) return;
-  const tmp = document.createElement('div'); tmp.innerHTML = rend(libPreHtml(p));
-  const ob = box.querySelector('button'), nb = tmp.querySelector('button'), om = box.querySelector('.pre-msg');
-  if (ob && nb && om && ob.dataset.act === nb.dataset.act && ob.disabled === nb.disabled) om.textContent = tmp.querySelector('.pre-msg').textContent;   // keep the button, so a press is never lost
-  else { const had = box.contains(document.activeElement); box.innerHTML = tmp.innerHTML; if (had) { const b = box.querySelector('button'); if (b) b.focus(); } }
-  if (p.running) LIB.prePoll = setTimeout(libPrePoll, 5000);
+  const tbl = box.querySelector('.lib-areas-wrap'), had = tbl && tbl.contains(document.activeElement) ? document.activeElement.dataset : null;
+  const keepRes = document.getElementById('libarea-res'), resHtml = keepRes ? keepRes.innerHTML : '', q = box.querySelector('[name=q]'), qv = q ? q.value : '';
+  const focusedQ = q && document.activeElement === q;
+  box.innerHTML = rend(html`<div class="lib-areas-wrap">${libAreasHtml(d)}</div>`);
+  const nr = document.getElementById('libarea-res'); if (nr) nr.innerHTML = resHtml;
+  const nq = box.querySelector('[name=q]'); if (nq) { nq.value = qv; if (focusedQ) nq.focus(); }
+  if (had && had.act) { const b = box.querySelector(`[data-act="${had.act}"][data-id="${had.id}"]`); if (b && !b.disabled) b.focus(); }
+  if (d.running) LIB.prePoll = setTimeout(libAreasPoll, 5000);
 }
 function libListsHtml(d) {
   const day = t => t ? new Date(t).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) : '';
   return html`<ul class="lib-lists">${d.lists.map(l => html`<li><strong>${l.label}:</strong> ${l.fetched ? `${l.count.toLocaleString()} species, fetched ${day(l.fetched)}.` : d.queued.includes(l.name) || (d.now && d.now[0] === l.name) ? 'Being fetched…' : 'Not fetched yet.'}
       ${l.error ? html` <span class="bad-text">Last try failed: ${l.error}</span>` : ''}</li>`)}</ul>
     ${d.now ? html`<p>Fetching now: ${(d.lists.find(l => l.name === d.now[0]) || { label: d.now[0] }).label}${d.now[2] ? `, ${d.now[1].toLocaleString()} of ${d.now[2].toLocaleString()}` : ''}.</p>` : ''}
-    <p class="hint">From iNaturalist (what people have recorded, and whether it is native or introduced in Texas), the ASPCA's lists, and the Texas Department of Agriculture's noxious and invasive plant list (<a href="${d.noxious_law}" target="_blank" rel="noopener noreferrer">about the list</a>). Your hardiness zone, from your own weather history: ${d.zone}.</p>
+    <p class="hint">These are for ${d.place}, the place chosen with the Location button. From iNaturalist (what people have recorded, and whether it is native or introduced in ${d.region ? d.region.name : 'its state or country'}) and the ASPCA's lists${d.noxious ? html`, and the Texas Department of Agriculture's noxious and invasive plant list (<a href="${d.noxious_law}" target="_blank" rel="noopener noreferrer">about the list</a>)` : ''}. Hardiness zone, from the place's own weather history: ${d.zone}.</p>
+    ${d.noxious ? '' : html`<p class="hint">The app has no built-in list of plants that are illegal to grow or sell here. Ask your state or country's agriculture department, or look for the place on EDDMapS.</p>`}
     ${d.online ? (canChange() ? html`<p class="row"><button class="btn ghost" type="button" data-act="liblists" ${d.now || d.queued.length ? raw('disabled') : ''}>Fetch the lists again now</button></p>` : '') : html`<p class="muted">Library lookups are turned off, so these are not fetched.</p>`}`;
 }
 async function libListsPoll() {
@@ -5245,19 +5280,22 @@ async function libListsPoll() {
 function libFiltersOn() { return ['kind', 'family', 'state', 'mine', 'know'].filter(k => LIB[k]).length + (LIB.common ? 1 : 0); }
 async function viewLibrary(qs) {
   for (const k of ['q', 'scope', 'kind', 'family', 'state', 'mine', 'know', 'sort']) if (qs.get(k) != null) LIB[k] = qs.get(k);
+  ID_SCOPES = idScopes(); if (LIB.scope === 'texas') LIB.scope = 'state';
+  if (!ID_SCOPES.some(x => x[0] === LIB.scope)) LIB.scope = 'common';
+  if (LIB.know && !knowWord()[LIB.know]) LIB.know = '';
   let st = null;
   try { st = await api('GET', '/api/identify/status'); } catch (e) { /* shown below */ }
   const ready = st && st.state === 'ready';
   let fac = null;
   if (ready) { try { fac = await api('GET', '/api/library/facets?scope=' + enc(LIB.scope)); LIB.facets = fac; LIB.facetsFor = LIB.scope; } catch (e) { /* filters without counts */ } }
-  let lset = null, pre = null; if (ME().role === 'owner') { try { [lset, pre] = await Promise.all([api('GET', '/api/library/settings'), api('GET', '/api/library/prefetch')]); } catch (e) { /* hidden */ } }
+  let lset = null; if (ME().role === 'owner') { try { lset = await api('GET', '/api/library/settings'); } catch (e) { /* hidden */ } }
   let mine = { tags: [] }, wl = { wishlist: [] };
   try { [mine, wl] = await Promise.all([api('GET', '/api/library/notes'), api('GET', '/api/wishlist')]); } catch (e) { /* no extras */ }
   const sel = (f, opts) => html`<select data-f="${f}">${opts.map(([v, l]) => html`<option value="${v}" ${String(LIB[f.slice(3)]) === v ? raw('selected') : ''}>${l}</option>`)}</select>`;
   const fungi = LIB.scope === 'fungi';
   return {
     title: 'Library',
-    after: () => { if (ready) libLoad(); if (pre && pre.running) libPrePoll(); libListsPoll(); },
+    after: () => { if (ready) libLoad(); libAreasPoll(); libListsPoll(); },
     html: html`<h1>Library</h1>
     <p>Every plant species this computer knows, ${st && st.species ? Number(st.species).toLocaleString() : 'about 349,000'} in all${st && st.fungi ? html`, and ${Number(st.fungi).toLocaleString()} fungi (choose "Fungi worldwide" under Look in)` : ''}. Search, filter, and open any of them for its photos, description, classification, where it grows in the US, and the species it is most often mistaken for.</p>
     ${ready ? '' : html`<p class="notice bad" role="status">${idStatusText(st)}</p>`}
@@ -5268,10 +5306,10 @@ async function viewLibrary(qs) {
       <label>${fungi ? 'Kind of fungus' : 'Kind of plant'}${sel('libkind', [['', 'Any kind'], ...((fac && fac.kinds) || []).map(k => [k.key, `${k.label} (${k.count.toLocaleString()})`])])}</label>
       <label>Family<input type="text" data-f="libfamily" list="lib-fams" value="${LIB.family}" placeholder="Any family" autocomplete="off">
         <datalist id="lib-fams">${((fac && fac.families) || []).map(f => html`<option value="${f.name}">${f.name} (${f.count})</option>`)}</datalist></label>
-      <label>Grows wild in${sel('libstate', [['', 'Anywhere'], ['us', 'The United States'], ['Texas', 'Texas'], ...((fac && fac.states) || []).map(x => [x, LIB_STATE_WORD(x)])])}${fungi ? html`<small>Lichens only: the USDA lists have no other fungi</small>` : ''}</label>
+      <label>Grows wild in${sel('libstate', [['', 'Anywhere'], ['us', 'The United States'], ...(regionState() ? [[regionState(), LIB_STATE_WORD(regionState())]] : []), ...((fac && fac.states) || []).filter(x => x !== regionState()).map(x => [x, LIB_STATE_WORD(x)])])}${fungi ? html`<small>Lichens only: the USDA lists have no other fungi</small>` : ''}</label>
       <label>Show${sel('libmine', [['', 'All of them'], ['species', 'Only ones I have'], ['genus', 'Ones I have, or of the same genus'], ['wish', 'On my wishlist'], ['notes', 'Ones with notes or tags'],
         ...mine.tags.map(t => ['tag:' + t, `Tagged "${t}"`])])}</label>
-      <label>Texas and home${sel('libknow', [['', 'Any'], ...Object.entries(KNOW_WORD).filter(([k]) => fungi ? ['near', 'fruiting', 'hardy'].includes(k) : k !== 'fruiting')])}</label>
+      <label>Your area${sel('libknow', [['', 'Any'], ...Object.entries(knowWord()).filter(([k]) => fungi ? ['near', 'fruiting', 'hardy'].includes(k) : k !== 'fruiting')])}</label>
       <label>Sort by${sel('libsort', LIB_SORTS)}</label>
       <label>Show as${sel('libview', [['cards', 'Cards with photos'], ['table', 'A table']])}</label>
       <label class="chk"><input type="checkbox" data-f="libcommon" ${LIB.common ? raw('checked') : ''}>Only ${fungi ? 'fungi' : 'plants'} with a common name</label>
@@ -5287,11 +5325,11 @@ async function viewLibrary(qs) {
       ${lset ? html`<label class="chk"><input type="checkbox" data-f="libonline" ${lset.online ? raw('checked') : ''}>Look up photos and descriptions on iNaturalist (turn off to keep the library fully offline)</label>` : ''}
     </section>
     <section class="id-sec" aria-labelledby="h-liblists"><h2 id="h-liblists">Lists about your area</h2>
-      <p>The "Texas and home" filter, the tags on the cards and each species' page use these lists. They are fetched in the background and kept on this computer, and fetched again when they get old.</p>
+      <p>The "Your area" filter, the tags on the cards and each species' page use these lists. They are fetched in the background and kept on this computer, and fetched again when they get old.</p>
       <div id="lib-lists" aria-live="polite"><p class="muted">Loading…</p></div></section>
-    ${pre ? html`<section class="id-sec" aria-labelledby="h-libpre"><h2 id="h-libpre">Photos for offline use</h2>
-      <p>Download the photo and short facts for every Texas plant now (about ${st && st.scopes && st.scopes.texas ? Number(st.scopes.texas.count).toLocaleString() : '4,700'} species), so the library shows them even without the internet. It runs in the background at about one species a second (roughly an hour and a half), after anything someone is looking at, and takes about 300 MB in data\\library. Ones already kept are skipped.</p>
-      <div id="lib-pre" aria-live="polite">${libPreHtml(pre)}</div></section>` : ''}`,
+    <section class="id-sec" aria-labelledby="h-libpre"><h2 id="h-libpre">Photos for offline use</h2>
+      <p>Download the photo and short facts of every plant species recorded in an area, so the library shows them even without the internet. An area can be any country, state, county, city or park that iNaturalist knows. Downloads run in the background at about one species a second, after anything someone is looking at, and the photos are kept in data\\library (about 70 KB each). <strong>Check for updates</strong> gets the area's list again and downloads only what is new. Removing an area keeps its photos.</p>
+      <div id="lib-pre" aria-live="polite"><p class="muted">Loading…</p></div></section>`,
   };
 }
 function libQuery(offset) {
@@ -5319,7 +5357,7 @@ function offKnowOk(k, f) {
     : f === 'fruiting' ? !!k.fruiting : f === 'hardy' ? ['wild-near', 'zone-yes'].includes(k.hardy) : f === 'petsafe' ? !!k.pets && k.pets.dogs === 'non-toxic' && k.pets.cats === 'non-toxic'
     : f === 'pettoxic' ? !!k.pets && (k.pets.dogs === 'toxic' || k.pets.cats === 'toxic') : true;
 }
-async function offLibBrowse(off) {             // the library without a connection: the Texas list saved on this device
+async function offLibBrowse(off) {             // the library without a connection: the download areas' list saved on this device
   const idx = await offSavedJson('/api/library/offline-index'); if (!idx) return null;
   const q = LIB.q.toLowerCase(), fam = LIB.family.toLowerCase(), m = LIB.mine;
   let r = idx.species.filter(x => (!q || (x.n + ' ' + x.c).toLowerCase().includes(q)) && (!LIB.kind || x.k === LIB.kind) && (!fam || x.f.toLowerCase() === fam) && (!LIB.common || x.c)
@@ -5337,14 +5375,14 @@ function libTags(s) {
   else if (s.yours_genus && s.yours_genus.length) t.push(html`<span class="tag">Same genus as ${s.yours_genus.slice(0, 3).join(', ')}</span>`);
   const k = s.know || {};
   if (k.invasive) t.push(html`<span class="tag tag-warn">⚠ Texas invasive list</span>`);
-  if (k.tx === 'native') t.push(html`<span class="tag">Native to Texas</span>`); else if (k.tx === 'introduced') t.push(html`<span class="tag">Introduced to Texas</span>`);
+  if (k.tx === 'native') t.push(html`<span class="tag">Native to ${regionName()}</span>`); else if (k.tx === 'introduced') t.push(html`<span class="tag">Introduced to ${regionName()}</span>`);
   if (k.bloom) t.push(html`<span class="tag">Flowering near home now</span>`);
   if (k.fruiting) t.push(html`<span class="tag">Found near home this month</span>`);
   else if (k.near) t.push(html`<span class="tag">Wild near home</span>`);
   if (k.pets) { const tox = ['dogs', 'cats'].filter(a => k.pets[a] === 'toxic'); t.push(tox.length ? html`<span class="tag tag-warn">⚠ Toxic to ${tox.join(' and ')}</span>` : k.pets.dogs === 'non-toxic' && k.pets.cats === 'non-toxic' ? html`<span class="tag">Safe for dogs and cats</span>` : ''); }
   if (s.wish) t.push(html`<span class="tag tag-wish">${s.wish === 'got' ? 'Wishlist: got it' : 'On your wishlist'}</span>`);
   (s.tags || []).forEach(x => t.push(html`<span class="tag tag-own">Tag: ${x}</span>`));
-  if (s.in_texas) t.push(html`<span class="tag">Wild in Texas</span>`);
+  if (inRegion(s)) t.push(html`<span class="tag">Wild in ${LIB_STATE_WORD(regionState())}</span>`);
   else if (s.us_states && s.us_states.length) t.push(html`<span class="tag">Wild in ${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}</span>`);
   return t;
 }
@@ -5367,7 +5405,7 @@ function libRow(s) {
   return html`<tr data-sp="${s.scientific_name}"><td class="lib-th">${libPhotoHtml(s, 'lib-thumb')}</td>
     <td><a href="${spHref(s.scientific_name)}">${s.common_name || s.scientific_name}</a></td><td class="latin">${s.scientific_name}</td>
     <td>${s.family}</td><td>${LIB_KIND_SHORT[s.kind] || ''}</td>
-    <td>${s.in_texas ? 'Texas' + (s.us_states.length > 1 ? ` and ${s.us_states.length - 1} more states` : '') : s.us_states && s.us_states.length ? `${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}` : ''}</td>
+    <td>${inRegion(s) ? LIB_STATE_WORD(regionState()) + (s.us_states.length > 1 ? ` and ${s.us_states.length - 1} more states` : '') : s.us_states && s.us_states.length ? `${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}` : ''}</td>
     <td>${s.yours && s.yours.length ? s.yours.join(', ') : s.yours_genus && s.yours_genus.length ? 'Same genus: ' + s.yours_genus.slice(0, 3).join(', ') : ''}</td></tr>`;
 }
 function libDraw(added) {
@@ -5375,7 +5413,7 @@ function libDraw(added) {
   const n = LIB.res.length, cnt = document.getElementById('lib-count'), more = document.getElementById('lib-more'), clr = document.getElementById('lib-clear');
   const sc = ID_SCOPES.find(x => x[0] === LIB.scope);
   if (cnt && LIB.offline) cnt.dataset.off = '1'; else if (cnt) delete cnt.dataset.off;
-  if (cnt) cnt.textContent = (LIB.offline ? 'Offline: searching the Texas list saved on this device. ' : '') + (LIB.total ? `Showing ${n.toLocaleString()} of ${LIB.total.toLocaleString()} in ${sc ? sc[1][0].toLowerCase() + sc[1].slice(1) : 'the list'}${LIB.q ? ` matching "${LIB.q}"` : ''}.` : `Nothing found${LIB.q ? ` for "${LIB.q}"` : ''} with these filters.`);
+  if (cnt) cnt.textContent = (LIB.offline ? 'Offline: searching the plants of your download areas saved on this device. ' : '') + (LIB.total ? `Showing ${n.toLocaleString()} of ${LIB.total.toLocaleString()} in ${sc ? sc[1][0].toLowerCase() + sc[1].slice(1) : 'the list'}${LIB.q ? ` matching "${LIB.q}"` : ''}.` : `Nothing found${LIB.q ? ` for "${LIB.q}"` : ''} with these filters.`);
   if (more) { more.hidden = n >= LIB.total; more.textContent = `Show ${Math.min(LIB_PAGE, LIB.total - n)} more`; }
   if (clr) clr.hidden = !(libFiltersOn() || LIB.q);
   if (!LIB.total) {
@@ -5528,7 +5566,7 @@ function spHomeHtml(d, fungus) {
   const k = d.know || {}, mi = MILES(d.near_km || 50), care = d.care && d.care.sheet;
   const lines = [];
   if (k.invasive) lines.push(html`<div class="notice bad" role="note"><strong>⚠ On the Texas noxious and invasive plant list</strong> (as ${k.invasive}). Texas law says it may not be sold, distributed or brought into Texas. If it is growing wild on your land, removing it helps. <a href="${d.noxious_law}" target="_blank" rel="noopener noreferrer">About the list</a>.</div>`);
-  if (!fungus) lines.push(html`<p><strong>In Texas:</strong> ${k.tx === 'native' ? 'native.' : k.tx === 'introduced' ? 'introduced (not native), growing wild here.' : 'not on the iNaturalist lists of Texas plants (or the lists are not fetched yet).'}</p>`);
+  if (!fungus) lines.push(html`<p><strong>In ${regionName()}:</strong> ${k.tx === 'native' ? 'native.' : k.tx === 'introduced' ? 'introduced (not native), growing wild here.' : `not on the iNaturalist lists of ${regionName()} plants (or the lists are not fetched yet).`}</p>`);
   lines.push(html`<p><strong>Near ${d.home}:</strong> ${k.near ? `recorded growing wild ${k.near.toLocaleString()} time${k.near === 1 ? '' : 's'} within ${mi} miles` : `not recorded wild within ${mi} miles`}${k.bloom ? ', and seen flowering there this month' : ''}${k.fruiting ? ', and found there this month' : ''}.</p>`);
   if (!fungus) {
     const zz = care ? `zones ${care.zone_low || '?'} to ${care.zone_high || '?'}` : '';
@@ -5785,11 +5823,17 @@ Object.assign(acts, {
     if (!SPCUR || !(await needName())) return;
     await guard(async () => { await api('PUT', '/api/wishlist', { name: SPCUR.scientific_name, common_name: SPCUR.common_name || '' }); toast('Added to your wishlist'); await route(); });
   },
-  async libpre() {
-    await guard(async () => { const p = await api('POST', '/api/library/prefetch', { scope: 'texas' }); toast(p.total ? `Downloading ${p.total.toLocaleString()} species in the background` : 'They are all kept already'); await libPrePoll(); });
+  async libareaadd(el) {
+    if (!(await needName())) return;
+    await guard(async () => { await api('POST', '/api/library/areas', { place_id: +el.dataset.pid, name: el.dataset.name }); toast(`${el.dataset.name} added. Its download has started.`);
+      const r = document.getElementById('libarea-res'); if (r) r.innerHTML = ''; await libAreasPoll(); });
   },
-  async liblists() { await guard(async () => { await api('POST', '/api/library/local'); toast('Fetching the lists again in the background'); await libListsPoll(); }); },
-  async libprestop() { await guard(async () => { await api('DELETE', '/api/library/prefetch'); toast('Download stopped'); await libPrePoll(); }); },
+  async libareaupd(el) { if (!(await needName())) return; await guard(async () => { await api('POST', '/api/library/areas/' + el.dataset.id); toast('Checking for updates in the background'); await libAreasPoll(); }); },
+  async libareadel(el) {
+    if (!(await confirmBox(`Remove ${el.dataset.name}?`, 'It leaves the table and any download for it stops. Its photos stay on this computer.', 'Remove area', true))) return;
+    await guard(async () => { await api('DELETE', '/api/library/areas/' + el.dataset.id); toast('Area removed'); await libAreasPoll(); });
+  },
+  async libareastop() { await guard(async () => { await api('POST', '/api/library/areas/stop'); toast('Downloads stopped'); await libAreasPoll(); }); },
   spnew: () => { if (SPCUR) idNewPlant(Object.assign({}, SPCUR, { src: 'the plant library' }), false); },
 });
 function spFrom(src, i) {
@@ -5891,7 +5935,7 @@ function viewFungiSafety() {
     <ul><li>Photograph the cap from above, the underside (gills or pores), the whole stem, and the very base. Dig gently around the base first: a cup or sac there (a volva) is a warning sign of <i>Amanita</i>.</li>
       <li>Note what it grew on, and which trees are near: many mushrooms grow only with certain trees.</li>
       <li>A spore print helps an expert most: put the cap gills-down on half white, half dark paper under a bowl for a few hours, and note the colour.</li>
-      <li>Ask for help on iNaturalist or a local mycological society, such as the Texas Mycological Society.</li></ul>` };
+      <li>Ask for help on iNaturalist or a local mycological society (most states and many cities have one; the North American Mycological Association lists them).</li></ul>` };
 }
 function muField(meta, f, v, plants) {
   const id = 'mu-' + f.name;
@@ -6323,7 +6367,7 @@ async function viewOffline() {
     ${OFF.conflicts ? html`<p class="notice bad" role="status"><strong>${OFF.conflicts} change${OFF.conflicts === 1 ? '' : 's'} need${OFF.conflicts === 1 ? 's' : ''} your decision:</strong> the same thing was changed on two devices. <a href="#/decisions">Choose which to keep</a>.</p>` : ''}
     <section aria-labelledby="off-copy-h"><h2 id="off-copy-h">Keep a copy on this device</h2>
       <div class="off-opts"><label class="chk"><input type="checkbox" data-f="offkeep" ${keep ? raw('checked') : ''}>Keep a copy of every plant, mushroom find, care log and photo (full size) on this device, so it works without a connection</label>
-      <label class="chk"><input type="checkbox" data-f="offkeeplib" ${keeplib ? raw('checked') : ''}>Also keep the library's Texas plant list with its photos (about 300 MB, once the owner has downloaded those photos)</label></div>
+      <label class="chk"><input type="checkbox" data-f="offkeeplib" ${keeplib ? raw('checked') : ''}>Also keep the library's download areas (their plant lists and photos, from the Library page) on this device</label></div>
       <p>${dl ? `Last saved ${when(dl)}.` : 'Not saved on this device yet.'} ${keep ? 'It is saved again by itself when it is a few hours old and the device is online.' : ''}</p>
       <p id="off-dl" role="status" aria-live="polite"></p>
       ${keep ? html`<p class="row"><button class="btn" type="button" data-act="offdl" ${navigator.onLine ? '' : raw('disabled')}>Save it again now</button></p>` : ''}

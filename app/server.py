@@ -165,6 +165,9 @@ CREATE TABLE IF NOT EXISTS readings(
 CREATE UNIQUE INDEX IF NOT EXISTS readings_uq ON readings(source, device, ts);
 CREATE INDEX IF NOT EXISTS readings_ts ON readings(ts);
 CREATE INDEX IF NOT EXISTS readings_src_ts ON readings(source, ts);
+CREATE TABLE IF NOT EXISTS lib_areas(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, place_id INTEGER UNIQUE NOT NULL, name TEXT NOT NULL, total INTEGER NOT NULL DEFAULT 0,
+  checked_at TEXT, added_by TEXT, added_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS locations(
   id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, lat REAL NOT NULL, lon REAL NOT NULL, tz TEXT NOT NULL,
   enabled INTEGER NOT NULL DEFAULT 1, is_home INTEGER NOT NULL DEFAULT 0, device TEXT UNIQUE, forecast TEXT, status TEXT,
@@ -583,7 +586,7 @@ def owner_name(c):
     return r[0] if r else 'the owner'
 
 OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people')        # any request (the people list shows everyone's login)
-OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/prefetch', '/api/shops')   # changes only
+OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/areas', '/api/shops')   # changes only
 VIEWER_POSTS = ('/api/identify',)            # 1.18.0: asks this computer what a picture shows; changes nothing, so viewers may use it
 
 def role_refusal(u):
@@ -875,7 +878,7 @@ def meta():
                    home_tz=L['tz'],              # the browser uses this for "today", so dates match the server's
                    place=place_brief(L), climate=place_climate(c, L), zone=place_zone(c, L), me=me_dict(c), runs_as=runs_as(),
                    places=[place_brief(loc_dict(r)) for r in c.execute('SELECT * FROM locations ORDER BY is_home DESC, name')],
-                   homes=[place_brief(h) for h in homes(c)])
+                   homes=[place_brief(h) for h in homes(c)], region=place_region(c, L))
 
 REF_PLACE = (30.5083, -97.6789)       # the written winter reference (climate table and notes) is for Round Rock, TX
 
@@ -932,7 +935,17 @@ VISION_URL = os.environ.get('PLANTDB_VISION_URL', 'http://vision:8090').rstrip('
 PLANTNET_URL = os.environ.get('PLANTDB_PLANTNET_URL', 'https://my-api.plantnet.org/v2/identify/all')
 CLAUDE_URL = os.environ.get('PLANTDB_CLAUDE_URL', 'https://api.anthropic.com/v1/messages')
 CLAUDE_MODEL = 'claude-sonnet-5-5'
-ID_SCOPES = ('common', 'texas', 'us', 'world', 'fungi')
+ID_SCOPES = ('common', 'state', 'us', 'world', 'fungi')   # 1.28.0: 'state' is the US state of the place in use ('texas' before)
+
+def vscope(c, scope, default='common'):
+    """1.28.0: a list name for the picture checker. 'state' (or the old 'texas') becomes the US state of the place in use,
+    such as 'state:California'; outside the US it becomes 'us' is not right either, so the worldwide list is used."""
+    if scope == 'texas': scope = 'state'
+    if scope not in ID_SCOPES: scope = default
+    if scope == 'state':
+        R = place_region(c, location(c))
+        return f'state:{R["usda"]}' if R and R.get('usda') else 'world'
+    return scope
 
 def vision_call(path, data=None, ctype=None, timeout=60):
     req = urllib.request.Request(VISION_URL + path, data=data, headers={'Content-Type': ctype} if ctype else {}, method='POST' if data is not None else 'GET')
@@ -1002,8 +1015,7 @@ def mark_owned(c, items, key='scientific_name'):
 @app.route('/api/identify', methods=['POST'])
 def identify():
     """A picture (field 'image') in; the closest plants in the record and the likeliest species out (from this computer)."""
-    scope = request.args.get('scope', 'common')
-    if scope not in ID_SCOPES: scope = 'common'
+    scope = vscope(db(), request.args.get('scope', 'common'))
     body, ct = multipart({}, [('image', 'picture.jpg', picture_bytes(1024), 'image/jpeg')])
     out = vision_call('/identify?scope=' + scope, body, ct, timeout=90)
     c = db()
@@ -1017,10 +1029,14 @@ def identify():
 
 @app.route('/api/identify/status')
 def identify_status():
-    try: st = vision_call('/status', timeout=5)
+    c = db(); vs = vscope(c, 'state')
+    try: st = vision_call('/status' + ('?' + urllib.parse.urlencode({'state': vs}) if vs.startswith('state:') else ''), timeout=5)
     except Exception as e:
         st = {'state': 'off', 'step': getattr(e, 'description', 'The picture checker is not running.')}
-    c = db()
+    if isinstance(st.get('scopes'), dict):            # 1.28.0: 'state' is the place's own state
+        st['scopes']['state'] = st['scopes'].get(vs) or ({'label': '', 'count': 0})
+        st['scopes'].pop('texas', None); st['scopes'].pop(vs, None)
+    st['region'] = place_region(c, location(c))
     st['plantnet'] = bool(setting(c, 'plantnet_key')); st['claude'] = bool(setting(c, 'claude_key'))
     return jsonify(st)
 
@@ -1028,7 +1044,7 @@ def identify_status():
 def library():
     """Search the species list (?q=, &scope=texas|us|common|world)."""
     q, scope = request.args.get('q', '').strip()[:80], request.args.get('scope', 'world')
-    if scope not in ID_SCOPES: scope = 'world'
+    scope = vscope(db(), scope, 'world')
     if len(q) < 2: return jsonify(results=[], total=0)
     out = vision_call('/names?' + urllib.parse.urlencode({'q': q, 'scope': scope, 'limit': 60}), timeout=30)
     mark_owned(db(), out.get('results', []))
@@ -1674,34 +1690,118 @@ def lib_enqueue(names, front=True):
         if LIBQ['queue'] and not LIBQ['thread']:
             LIBQ['thread'] = threading.Thread(target=lib_worker, daemon=True); LIBQ['thread'].start()
 
-PREFETCH = {'scope': None, 'names': set(), 'total': 0, 'started': None, 'by': None}
+# ---------------------------------------------------------------- 1.28.0: library photos for offline use, by area
+# An area is any place iNaturalist knows (a country, state, county, park or city). Its list is every plant species recorded
+# there (research-grade and needs-ID observations, wild or planted), fetched with the area lists' one-a-second limit. Then the
+# photo and short facts of each species are downloaded like any library photo. "Check for updates" fetches the list again and
+# downloads what is new. Photos stay when an area is removed (another area or a page may use them).
+AREA_JOB = {}            # place_id: {'names': set(), 'total': n, 'started': ts}
 
-@app.route('/api/library/prefetch', methods=['GET', 'POST', 'DELETE'])
-def library_prefetch():
-    """1.22.0: download the photo and facts for every species in a list (Texas plants), so the library works offline.
-    Owner only (OWNER_ONLY_CHANGES). It goes about one species a second, after anything someone is looking at."""
+def area_names(pid):
+    j = local_get(f'area-{pid}')
+    return [x[0] for x in (j or {}).get('species', [])]
+
+def lib_kept_files():
+    try: return {f[:-4] for f in os.listdir(LIB_DIR) if f.endswith('.jpg')}
+    except OSError: return set()
+
+def lib_checked_files():
+    try: return {f[:-5] for f in os.listdir(LIB_DIR) if f.endswith('.json')}
+    except OSError: return set()
+
+def area_after(pid):
+    """After an area's list is fetched: note when, and queue the photos it does not have yet."""
+    names, kept = area_names(pid), lib_kept_files()
+    todo = [n for n in names if lib_slug(n) not in kept]
+    fresh = lib_checked_files()
+    todo = [n for n in todo if lib_slug(n) not in fresh or not (lib_meta(n) or {}).get('checked')
+            or (date.today() - date.fromisoformat(lib_meta(n)['checked'])).days >= LIB_RECHECK_DAYS]     # no photo there, looked recently: skip
+    AREA_JOB[pid] = {'names': set(todo), 'total': len(todo), 'started': now()}
+    c2 = sqlite3.connect(DB_PATH, timeout=10)
+    try:
+        c2.execute('UPDATE lib_areas SET total=?, checked_at=? WHERE place_id=?', (len(names), now(), pid)); c2.commit()
+    finally: c2.close()
+    lib_enqueue(todo, front=False)
+
+def area_queue(pid):
+    params = {'place_id': pid, 'iconic_taxa': 'Plantae', 'verifiable': 'true'}
+    with KNOW['lock']:
+        if not any(n == f'area-{pid}' for n, _ in KNOW['queue']) and not (KNOW['now'] and KNOW['now'][0] == f'area-{pid}'):
+            KNOW['queue'].append((f'area-{pid}', params))
+        if not KNOW['thread']:
+            KNOW['thread'] = threading.Thread(target=know_worker, daemon=True); KNOW['thread'].start()
+
+def areas_list(c):
+    kept, checked = lib_kept_files(), lib_checked_files()
+    with LIBQ['lock']: queued = set(LIBQ['set'])
+    with KNOW['lock']: lists_q = {n for n, _ in KNOW['queue']} | ({KNOW['now'][0]} if KNOW['now'] else set())
+    out = []
+    for r in c.execute('SELECT * FROM lib_areas ORDER BY name'):
+        names = area_names(r['place_id']); slugs = [lib_slug(n) for n in names]
+        have = sum(1 for x in slugs if x in kept)
+        none = sum(1 for x in slugs if x not in kept and x in checked)            # looked up: iNaturalist has no photo
+        job = AREA_JOB.get(r['place_id']) or {}
+        left = len(job.get('names', set()) & queued)
+        fetching = f'area-{r["place_id"]}' in lists_q
+        out.append({'id': r['id'], 'place_id': r['place_id'], 'name': r['name'], 'total': len(names) or r['total'] or 0, 'kept': have, 'no_photo': none,
+                    'percent': round(100 * have / len(names), 1) if names else 0, 'checked_at': r['checked_at'], 'added_at': r['added_at'], 'added_by': r['added_by'],
+                    'state': 'list' if fetching else 'photos' if left else 'idle', 'left': left, 'error': KNOW['error'].get(f'area-{r["place_id"]}', {}).get('error')})
+    return out
+
+@app.route('/api/library/areas', methods=['GET', 'POST'])
+def library_areas():
+    """Owner only for changes (OWNER_ONLY_CHANGES). POST {place_id, name} adds an area and starts its download."""
     c = db()
     if request.method == 'POST':
         if not lib_online(c): abort(409, 'Library photos are turned off. Turn them on first.')
-        scope = (request.get_json(silent=True) or {}).get('scope', 'texas')
-        if scope not in ('texas',): abort(400, 'Only the Texas list can be downloaded')
-        names = vision_call('/scope_names?scope=' + scope, timeout=60).get('names', [])
-        todo = []
-        for n in names:
-            m = lib_meta(n)
-            if not (m and m.get('checked') and (m.get('photo') or (date.today() - date.fromisoformat(m['checked'])).days < LIB_RECHECK_DAYS)): todo.append(n)
-        PREFETCH.update(scope=scope, names=set(todo), total=len(todo), started=now(), by=editor(), all=len(names))
-        lib_enqueue(todo, front=False)
-        audit_only(c, 'library', 'prefetch', None, f'{len(todo)} of {len(names)}', editor(), f'Download of the photos for the {scope.title()} list started ({len(todo)} to fetch)')
-        c.commit()
-    elif request.method == 'DELETE':
-        with LIBQ['lock']:
-            LIBQ['queue'] = [n for n in LIBQ['queue'] if n not in PREFETCH['names']]
-            LIBQ['set'] -= PREFETCH['names']
-        PREFETCH.update(names=set(), total=0)
-    with LIBQ['lock']: left = len(PREFETCH['names'] & LIBQ['set'])
-    return jsonify(scope=PREFETCH['scope'], total=PREFETCH['total'], left=left, done=PREFETCH['total'] - left, started=PREFETCH['started'],
-                   by=PREFETCH['by'], all=PREFETCH.get('all'), running=left > 0, online=lib_online(c))
+        b = request.get_json(silent=True) or {}
+        try: pid = int(b.get('place_id'))
+        except (TypeError, ValueError): abort(400, 'Choose a place from the search')
+        name = str(b.get('name') or '').strip()[:120] or f'Place {pid}'
+        if c.execute('SELECT 1 FROM lib_areas WHERE place_id=?', (pid,)).fetchone(): abort(409, f'{name} is already in the table')
+        c.execute('INSERT INTO lib_areas(place_id,name,total,added_by,added_at) VALUES(?,?,0,?,?)', (pid, name, editor(), now()))
+        audit_only(c, 'library', 'area', None, name, editor(), f'Library photos: area added and download started: {name}'); c.commit()
+        area_queue(pid)
+    return jsonify(areas=areas_list(c), online=lib_online(c), running=any(a['state'] != 'idle' for a in areas_list(c)))
+
+@app.route('/api/library/areas/search')
+def library_areas_search():
+    q = (request.args.get('q') or '').strip()
+    if len(q) < 2: abort(400, 'Type at least 2 letters')
+    try: j = inat_get('/places/autocomplete?' + urllib.parse.urlencode({'q': q, 'per_page': 12}))
+    except Exception as e: abort(502, f'iNaturalist could not be reached ({type(e).__name__}). Try again later.')
+    kinds = {0: 'Country', 10: 'State or province', 20: 'County or district', 30: 'Town or city', 100: 'Park or reserve'}
+    return jsonify([{'place_id': p['id'], 'name': p.get('display_name') or p.get('name'), 'kind': kinds.get(p.get('admin_level'), 'Area')}
+                    for p in (j.get('results') or []) if p.get('id')])
+
+@app.route('/api/library/areas/<int:aid>', methods=['POST', 'DELETE'])
+def library_area_one(aid):
+    """POST: check for updates (fetch the list again and download what is new). DELETE: remove from the table (photos stay)."""
+    c = db()
+    r = c.execute('SELECT * FROM lib_areas WHERE id=?', (aid,)).fetchone()
+    if not r: abort(404, 'That area is not in the table')
+    if request.method == 'DELETE':
+        job = AREA_JOB.pop(r['place_id'], None)
+        if job:
+            with LIBQ['lock']:
+                LIBQ['queue'] = [n for n in LIBQ['queue'] if n not in job['names']]; LIBQ['set'] -= job['names']
+        c.execute('DELETE FROM lib_areas WHERE id=?', (aid,))
+        audit_only(c, 'library', 'area', r['name'], None, editor(), f'Library photos: area removed (its photos are kept): {r["name"]}'); c.commit()
+    else:
+        if not lib_online(c): abort(409, 'Library photos are turned off. Turn them on first.')
+        audit_only(c, 'library', 'area', None, r['name'], editor(), f'Library photos: checked for updates: {r["name"]}'); c.commit()
+        area_queue(r['place_id'])
+    return jsonify(areas=areas_list(c))
+
+@app.route('/api/library/areas/stop', methods=['POST'])
+def library_areas_stop():
+    c = db()
+    with LIBQ['lock']:
+        for job in AREA_JOB.values():
+            LIBQ['queue'] = [n for n in LIBQ['queue'] if n not in job['names']]; LIBQ['set'] -= job['names']
+    with KNOW['lock']: KNOW['queue'] = [q for q in KNOW['queue'] if not q[0].startswith('area-')]
+    audit_only(c, 'library', 'area', None, None, editor(), 'Library photos: downloads stopped'); c.commit()
+    return jsonify(areas=areas_list(c))
 
 # ---------------------------------------------------------------- 1.23.0: the library part 2 (status in Texas, near home, pets, care sheets)
 # Lists about the area come from iNaturalist's species counts, fetched in the background (about one request a second, shared with
@@ -1742,17 +1842,73 @@ def tx_noxious(name):
         if (k.endswith(' ') and b.split(' ')[0] == k.strip().lower()) or b == k.lower(): return v
     return None
 
-def local_lists(c):
+# 1.28.0: the lists follow the place in use (the Location button), not Texas. Each place has a "region" on iNaturalist: its US state,
+# Canadian province or similar (admin level 10), or else its country (level 0). It is looked up once and kept in settings.
+TX_REGION = {'id': 18, 'name': 'Texas', 'level': 10, 'country': 'United States', 'usda': 'Texas'}
+USDA_STATES = {'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho',
+               'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota',
+               'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'NewHampshire', 'NewJersey', 'NewMexico', 'NewYork', 'NorthCarolina',
+               'NorthDakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'PuertoRico', 'RhodeIsland', 'SouthCarolina', 'SouthDakota', 'Tennessee',
+               'Texas', 'Utah', 'Vermont', 'VirginIslands', 'Virginia', 'Washington', 'WestVirginia', 'Wisconsin', 'Wyoming'}
+
+def place_region(c, L):
+    """The iNaturalist region of a place, or None until it has been looked up (see region_fetch)."""
+    v = setting(c, f'inat_region:{L["id"]}')
+    if v:
+        try: return json.loads(v)
+        except ValueError: pass
+    if L.get('lat') is not None and abs(L['lat'] - REF_PLACE[0]) < 1.5 and abs(L['lon'] - REF_PLACE[1]) < 1.5: return dict(TX_REGION)
+    return None
+
+def region_fetch(loc_id):
+    """Looks up a place's state (or country) on iNaturalist and keeps it."""
+    c2 = sqlite3.connect(DB_PATH, timeout=10); c2.row_factory = sqlite3.Row
+    try:
+        L = loc_get(c2, loc_id)
+        d = 0.01
+        j = inat_get('/places/nearby?' + urllib.parse.urlencode({'nelat': L['lat'] + d, 'nelng': L['lon'] + d, 'swlat': L['lat'] - d, 'swlng': L['lon'] - d, 'per_page': 50}))
+        std = (j.get('results') or {}).get('standard') or []
+        country = next((p for p in std if p.get('admin_level') == 0), None)
+        state = next((p for p in std if p.get('admin_level') == 10), None)
+        pick = state or country
+        if not pick: raise ValueError('iNaturalist knows no state or country for this place')
+        cn = (country or {}).get('name') or ''
+        usda = pick['name'].replace(' ', '') if state and cn in ('United States', 'United States of America') else None
+        R = {'id': pick['id'], 'name': pick.get('name'), 'level': pick.get('admin_level'), 'country': cn, 'usda': usda if usda in USDA_STATES else None}
+        c2.execute('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)', (f'inat_region:{loc_id}', json.dumps(R))); c2.commit()
+    finally: c2.close()
+
+def lib_place(c):
+    """The place the library's lists are about: the place in use (Location button)."""
+    return location(c)
+
+def local_migrate(c):
+    """Lists kept before 1.28.0 had Texas and the home place in their names: give them their new names once."""
+    if not os.path.isdir(LOCAL_DIR) or setting(c, 'lists_renamed_1280'): return
+    hid = home_place(c)['id']
+    pairs = [('tx_native', 'native-18'), ('tx_introduced', 'introduced-18'), ('near', f'near-{hid}')]
+    pairs += [(f'{k}-{m:02d}', f'{k}-{hid}-{m:02d}') for k in ('bloom', 'fungi') for m in range(1, 13)]
+    for a, b in pairs:
+        if os.path.exists(local_path(a)) and not os.path.exists(local_path(b)):
+            try: os.replace(local_path(a), local_path(b))
+            except OSError: pass
+    set_setting(c, 'lists_renamed_1280', now()); c.commit()
+
+def local_lists(c, L=None):
     """The lists about the area: their names, what they ask iNaturalist, and how long they stay fresh (days)."""
-    L = home_place(c); month = local_today(c).month
+    local_migrate(c)
+    L = L or lib_place(c); month = local_today(c).month; R = place_region(c, L)
     near = {'lat': round(L['lat'], 4), 'lng': round(L['lon'], 4), 'radius': NEAR_KM, 'captive': 'false', 'verifiable': 'true'}
-    return {
-        'tx_native': ({'place_id': 18, 'native': 'true', 'iconic_taxa': 'Plantae', 'verifiable': 'true'}, 90, 'Plants native to Texas'),
-        'tx_introduced': ({'place_id': 18, 'introduced': 'true', 'iconic_taxa': 'Plantae', 'verifiable': 'true'}, 90, 'Plants introduced to Texas'),
-        'near': (near | {'iconic_taxa': 'Plantae,Fungi'}, 30, f'Wild plants and fungi recorded within {NEAR_KM} km ({round(NEAR_KM * 0.621)} miles) of {L["name"]}'),
-        f'bloom-{month:02d}': (near | {'iconic_taxa': 'Plantae', 'term_id': 12, 'term_value_id': 13, 'month': month}, 14, f'Plants seen flowering near {L["name"]} in {date(2000, month, 1):%B}'),
-        f'fungi-{month:02d}': (near | {'iconic_taxa': 'Fungi', 'month': month}, 14, f'Fungi recorded near {L["name"]} in {date(2000, month, 1):%B}'),
-    }
+    out = {}
+    if R:
+        out[f'native-{R["id"]}'] = ({'place_id': R['id'], 'native': 'true', 'iconic_taxa': 'Plantae', 'verifiable': 'true'}, 90, f'Plants native to {R["name"]}')
+        out[f'introduced-{R["id"]}'] = ({'place_id': R['id'], 'introduced': 'true', 'iconic_taxa': 'Plantae', 'verifiable': 'true'}, 90, f'Plants introduced to {R["name"]}')
+    else:
+        out[f'region-{L["id"]}'] = (None, 3650, f'The state or country {L["name"]} is in')
+    out[f'near-{L["id"]}'] = (near | {'iconic_taxa': 'Plantae,Fungi'}, 30, f'Wild plants and fungi recorded within {NEAR_KM} km ({round(NEAR_KM * 0.621)} miles) of {L["name"]}')
+    out[f'bloom-{L["id"]}-{month:02d}'] = (near | {'iconic_taxa': 'Plantae', 'term_id': 12, 'term_value_id': 13, 'month': month}, 14, f'Plants seen flowering near {L["name"]} in {date(2000, month, 1):%B}')
+    out[f'fungi-{L["id"]}-{month:02d}'] = (near | {'iconic_taxa': 'Fungi', 'month': month}, 14, f'Fungi recorded near {L["name"]} in {date(2000, month, 1):%B}')
+    return out
 
 KNOW = {'lock': threading.Lock(), 'queue': [], 'thread': None, 'now': None, 'error': {}, 'cache': {}}
 
@@ -1868,7 +2024,11 @@ def know_worker():
             return
         KNOW['now'] = (name, 0, 0)
         try:
-            aspca_fetch() if name == 'aspca' else local_fetch(name, params)
+            if name == 'aspca': aspca_fetch()
+            elif name.startswith('region-'): region_fetch(int(name[7:]))
+            else:
+                local_fetch(name, params)
+                if name.startswith('area-'): area_after(int(name[5:]))
             KNOW['error'].pop(name, None)
         except Exception as e:
             if str(e) == 'library lookups were turned off':
@@ -1883,6 +2043,7 @@ def know_refresh(c, force=False):
     todo = []
     for name, (params, days, _) in list(local_lists(c).items()) + [('aspca', (None, 90, ''))]:
         j = local_get(name)
+        if name.startswith('region-'): j = None
         old = not j or force or (datetime.now(timezone.utc) - datetime.fromisoformat(j['fetched'].replace('Z', '+00:00'))).days >= days
         err = KNOW['error'].get(name)
         if err and not force and (datetime.now(timezone.utc) - datetime.fromisoformat(err['at'].replace('Z', '+00:00'))).total_seconds() < 6 * 3600: old = False
@@ -1912,10 +2073,11 @@ def care_get(name):
 def know_of(c, name, month=None, zone=None):
     """What the lists say about one species."""
     b = binomial(name); month = month or local_today(c).month
-    tn, ti, nr = local_get('tx_native'), local_get('tx_introduced'), local_get('near')
-    bl, fu = local_get(f'bloom-{month:02d}'), local_get(f'fungi-{month:02d}')
-    k = {'tx': 'native' if tn and b in tn['by'] else 'introduced' if ti and b in ti['by'] else None,
-         'invasive': tx_noxious(name), 'near': nr['by'][b][2] if nr and b in nr['by'] else 0,
+    L = lib_place(c); R = place_region(c, L)
+    tn, ti = (local_get(f'native-{R["id"]}'), local_get(f'introduced-{R["id"]}')) if R else (None, None)
+    nr, bl, fu = local_get(f'near-{L["id"]}'), local_get(f'bloom-{L["id"]}-{month:02d}'), local_get(f'fungi-{L["id"]}-{month:02d}')
+    k = {'tx': 'native' if tn and b in tn['by'] else 'introduced' if ti and b in ti['by'] else None,      # 'tx': the region (the name is from 1.23.0)
+         'invasive': tx_noxious(name) if R and R['id'] == 18 else None, 'near': nr['by'][b][2] if nr and b in nr['by'] else 0,
          'bloom': bool(bl and b in bl['by']), 'fruiting': bool(fu and b in fu['by']), 'pets': pets_for(name)}
     cs = care_get(name)
     z = zone_num(zone) if zone else None
@@ -1929,22 +2091,27 @@ def know_mark(c, items, key='scientific_name'):
     for x in items: x['know'] = know_of(c, x.get(key) or '', month, zone)
     return items
 
-KNOW_FILTERS = {'native': 'Native to Texas', 'introduced': 'Introduced to Texas', 'invasive': 'On the Texas invasive list', 'near': 'Grows wild near home',
-                'bloom': 'Flowering near home this month', 'fruiting': 'Fungi found near home this month', 'hardy': 'Likely to survive outside here',
-                'petsafe': 'Safe for dogs and cats (ASPCA)', 'pettoxic': 'Toxic to dogs or cats (ASPCA)'}
+def know_filters(c):
+    """The library's "Your area" filters, named for the place in use (1.28.0). The invasive list is only built in for Texas."""
+    R = place_region(c, lib_place(c)); rn = R['name'] if R else 'your state or country'
+    f = {'native': f'Native to {rn}', 'introduced': f'Introduced to {rn}', 'invasive': 'On the Texas invasive list', 'near': 'Grows wild near here',
+         'bloom': 'Flowering near here this month', 'fruiting': 'Fungi found near here this month', 'hardy': 'Likely to survive outside here',
+         'petsafe': 'Safe for dogs and cats (ASPCA)', 'pettoxic': 'Toxic to dogs or cats (ASPCA)'}
+    if not (R and R['id'] == 18): f.pop('invasive')
+    return f
 
 def know_names(c, f):
     """(names, genera) for a library filter."""
-    month = local_today(c).month
+    month = local_today(c).month; L = lib_place(c); R = place_region(c, L) or {'id': 0}
     names = lambda n: [s[0] for s in (local_get(n) or {}).get('species', [])]
-    if f == 'native': return names('tx_native'), []
-    if f == 'introduced': return names('tx_introduced'), []
-    if f == 'invasive': return [k for k in TX_NOXIOUS if not k.endswith(' ')], [k.strip() for k in TX_NOXIOUS if k.endswith(' ')]
-    if f == 'near': return names('near'), []
-    if f == 'bloom': return names(f'bloom-{month:02d}'), []
-    if f == 'fruiting': return names(f'fungi-{month:02d}'), []
+    if f == 'native': return names(f'native-{R["id"]}'), []
+    if f == 'introduced': return names(f'introduced-{R["id"]}'), []
+    if f == 'invasive': return ([k for k in TX_NOXIOUS if not k.endswith(' ')], [k.strip() for k in TX_NOXIOUS if k.endswith(' ')]) if R['id'] == 18 else ([], [])
+    if f == 'near': return names(f'near-{L["id"]}'), []
+    if f == 'bloom': return names(f'bloom-{L["id"]}-{month:02d}'), []
+    if f == 'fruiting': return names(f'fungi-{L["id"]}-{month:02d}'), []
     if f == 'hardy':
-        z, out = zone_num(home_zone(c)), names('near')
+        z, out = zone_num(home_zone(c)), names(f'near-{L["id"]}')
         if os.path.isdir(CARE_DIR):
             for fn in os.listdir(CARE_DIR):
                 try:
@@ -1974,21 +2141,23 @@ def library_local():
     out = []
     for name, (params, days, label) in list(local_lists(c).items()) + [('aspca', (None, 90, 'Plants toxic and non-toxic to dogs, cats and horses (ASPCA)'))]:
         j = local_get(name)
+        if name.startswith('region-'): j = None
         out.append({'name': name, 'label': label, 'fetched': j['fetched'] if j else None,
                     'count': (len(j.get('plants', {})) if name == 'aspca' else len(j.get('species', []))) if j else 0, 'error': KNOW['error'].get(name, {}).get('error')})
     with KNOW['lock']: queued = [n for n, _ in KNOW['queue']]
-    return jsonify(lists=out, now=KNOW['now'], queued=queued, online=lib_online(c), filters=KNOW_FILTERS, zone=home_zone(c), near_km=NEAR_KM,
-                   noxious_source=TX_NOXIOUS_SRC, noxious_law=TX_NOXIOUS_LAW)
+    R = place_region(c, lib_place(c))
+    return jsonify(lists=out, now=KNOW['now'], queued=queued, online=lib_online(c), filters=know_filters(c), zone=home_zone(c), near_km=NEAR_KM,
+                   noxious_source=TX_NOXIOUS_SRC, noxious_law=TX_NOXIOUS_LAW, region=R, place=lib_place(c)['name'], noxious=bool(R and R['id'] == 18))
 
 @app.route('/api/library/around')
 def library_around():
     """The Around home page: what flowers and fruits near home this month, and what is recorded wild nearby most often."""
     c = db(); know_refresh(c)
-    month = local_today(c).month; L = home_place(c)
+    month = local_today(c).month; L = lib_place(c)
     secs = []
-    for key, name, title in (('bloom', f'bloom-{month:02d}', f'Flowering near {L["name"]} in {date(2000, month, 1):%B}'),
-                             ('fruiting', f'fungi-{month:02d}', f'Mushrooms and other fungi found near {L["name"]} in {date(2000, month, 1):%B}'),
-                             ('near', 'near', f'Recorded wild most often within {round(NEAR_KM * 0.621)} miles')):
+    for key, name, title in (('bloom', f'bloom-{L["id"]}-{month:02d}', f'Flowering near {L["name"]} in {date(2000, month, 1):%B}'),
+                             ('fruiting', f'fungi-{L["id"]}-{month:02d}', f'Mushrooms and other fungi found near {L["name"]} in {date(2000, month, 1):%B}'),
+                             ('near', f'near-{L["id"]}', f'Recorded wild most often within {round(NEAR_KM * 0.621)} miles of {L["name"]}')):
         j = local_get(name)
         top = (j or {}).get('species', [])[:48]
         res = []
@@ -2235,7 +2404,7 @@ def library_browse():
     c, a = db(), request.args
     own, owngenus = owned_lists(c)
     q = {k: a.get(k, '')[:80] for k in ('scope', 'q', 'kind', 'family', 'genus', 'order', 'state', 'common', 'mine', 'sort', 'offset', 'limit')}
-    if q['scope'] not in ID_SCOPES: q['scope'] = 'common'
+    q['scope'] = vscope(db(), q['scope'])
     if q['mine'] == 'wish':                        # 1.22.0: your wishlist, your notes and tags (names sent as the "own" list)
         q.update(mine='species', own='|'.join(r[0] for r in c.execute('SELECT name FROM wishlist')), owngenus='')
     elif q['mine'] == 'notes':
@@ -2246,7 +2415,7 @@ def library_browse():
     elif q['mine']: q.update(own=own, owngenus=owngenus)
     if q['mine'] == 'species' and not q.get('own'): q['own'] = '-'           # an empty list matches nothing
     kf = a.get('know', '')[:20]
-    if kf in KNOW_FILTERS:                         # 1.23.0: the lists about the area, sent in the body (they can be long)
+    if kf in know_filters(c):                      # 1.23.0: the lists about the area, sent in the body (they can be long)
         only, genera = know_names(c, kf)
         body = {k: v for k, v in q.items() if v} | {'only': only or [], 'only_genera': genera or []}
         out = vision_call('/browse', json.dumps(body).encode(), 'application/json', timeout=30)
@@ -2260,7 +2429,7 @@ def library_browse():
 @app.route('/api/library/facets')
 def library_facets():
     scope = request.args.get('scope', 'common')
-    return jsonify(vision_call('/facets?' + urllib.parse.urlencode({'scope': scope if scope in ID_SCOPES else 'common'}), timeout=30))
+    return jsonify(vision_call('/facets?' + urllib.parse.urlencode({'scope': vscope(db(), scope)}), timeout=30))
 
 @app.route('/api/library/photos')
 def library_photos():
@@ -2393,11 +2562,20 @@ def identify_plantnet():
     mark_owned(c, out)
     return jsonify(species=out, remaining=j.get('remainingIdentificationRequests'), source='Pl@ntNet')
 
-CLAUDE_ASK = ('Identify the plant in this photo. It is one of the potted or garden plants of a home grower in Round Rock, Texas '
-              '(USDA zone 8b/9a). Reply with JSON only, no other text: {"plant": true or false (is there a plant in the photo), '
+CLAUDE_ASK = ('Identify the plant in this photo. It is one of the potted or garden plants of a home grower in {place} '
+              '({zone}). Reply with JSON only, no other text: {"plant": true or false (is there a plant in the photo), '
               '"guesses": [up to 3 of {"scientific_name": "Genus species", "common_name": "...", "family": "...", '
               '"probability": 0 to 1, "why": "one short sentence on the features you used"}], '
               '"photo_tip": "one short sentence on what photo would make you surer, or empty"}')
+
+def claude_ask(c):
+    """1.28.0: the question names the place in use and its zone, not always Round Rock."""
+    L = location(c)
+    try: z = place_zone(c, L).get('zone')
+    except Exception: z = None
+    R = place_region(c, L)
+    where = L['name'] + (f' ({R["name"]})' if R and R['name'] not in L['name'] else '')
+    return CLAUDE_ASK.replace('{place}', where).replace('{zone}', f'USDA zone {z}' if z else 'climate zone not known')
 
 @app.route('/api/identify/claude', methods=['POST'])
 def identify_claude():
@@ -2408,7 +2586,7 @@ def identify_claude():
     if not key: abort(400, 'Claude is not set up. The owner can save an Anthropic API key on the Identify page, under "Second opinions".')
     pic = base64.b64encode(picture_bytes(1280)).decode()
     body = json.dumps({'model': CLAUDE_MODEL, 'max_tokens': 800, 'messages': [{'role': 'user', 'content': [
-        {'type': 'image', 'source': {'type': 'base64', 'media_type': 'image/jpeg', 'data': pic}}, {'type': 'text', 'text': CLAUDE_ASK}]}]}).encode()
+        {'type': 'image', 'source': {'type': 'base64', 'media_type': 'image/jpeg', 'data': pic}}, {'type': 'text', 'text': claude_ask(c)}]}]}).encode()
     st, j = outside_call(CLAUDE_URL, body, {'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01'}, timeout=90)
     if st in (401, 403): abort(502, 'Anthropic refused the key. Check it at console.anthropic.com and save it again.')
     if st == 429 or st == 529: abort(502, 'Claude is busy or the key has reached its limit. Try again in a minute.')
@@ -2870,7 +3048,7 @@ PREP_METHODS = [
         'Use your phone camera\'s zoom or a lighted magnifier, or send Claude close-up photos of the leaf undersides.',
         'Tick what you found under "Pests you found" on the plant\'s page. If you found nothing, tick nothing: the other methods still work as a precaution.']},
     {'key': 'potclean', 'title': 'Clean the pot and saucer', 'steps': [
-        'Wear gloves: in Central Texas, bark scorpions hide under pots.',
+        'Wear gloves: scorpions, spiders and other biters hide under pots.',
         'Lift the pot, look underneath, and knock off anything clinging to the bottom.',
         'Scrub the outside of the pot, the bottom and the drainage holes with soapy water and a brush.',
         'Empty and wash the saucer, and check under the rim of the pot.']},
@@ -6110,24 +6288,26 @@ def offline_manifest():
 
 @app.route('/api/library/offline-index')
 def library_offline_index():
-    """Every species in the Texas list in short (name, common name, family, kind, tags) and its kept photo, so the library can be
-    searched and browsed on a device without a connection."""
+    """Every species in the library's download areas (1.28.0; the Texas list before) in short (name, common name, family, kind,
+    tags) and its kept photo, so the library can be searched and browsed on a device without a connection."""
     c = db()
-    scope = 'texas'
-    rows, off = [], 0
-    while True:
-        r = vision_call('/browse?' + urllib.parse.urlencode({'scope': scope, 'sort': 'known', 'offset': off, 'limit': 120}), timeout=60)
-        rows += r.get('results', [])
-        off += 120
-        if off >= r.get('total', 0) or not r.get('results'): break
-    mark_owned(c, rows)
+    names = list(dict.fromkeys(n for r in c.execute('SELECT place_id FROM lib_areas') for n in area_names(r[0])))
+    rows = []
+    for i in range(0, len(names), 400):
+        part = names[i:i + 400]; off = 0
+        while True:
+            r = vision_call('/browse', json.dumps({'scope': 'world', 'only': part, 'sort': 'known', 'offset': off, 'limit': 120}).encode(), 'application/json', timeout=60)
+            rows += r.get('results', []); off += 120
+            if off >= r.get('total', 0) or not r.get('results'): break
+    mark_owned(c, rows); know_mark(c, rows)
+    R = place_region(c, lib_place(c)) or {}
     out = []
     for x in rows:
         ph = lib_photo_state(x['scientific_name'])
         out.append({'n': x['scientific_name'], 'c': x.get('common_name') or '', 'f': x.get('family') or '', 'k': x.get('kind') or '', 'g': x.get('genus') or '',
-                    'st': len(x.get('us_states') or []), 'tx': x.get('in_texas'), 'y': x.get('yours') or [], 'w': x.get('wish'), 't': x.get('tags') or [],
+                    'st': len(x.get('us_states') or []), 'tx': bool(R.get('usda') and R['usda'] in (x.get('us_states') or [])), 'y': x.get('yours') or [], 'w': x.get('wish'), 't': x.get('tags') or [],
                     'kn': x.get('know') or {}, 'p': ph['url'] if isinstance(ph, dict) else None})
-    return jsonify(scope=scope, species=out, made=now())
+    return jsonify(scope='areas', species=out, made=now(), areas=[r[0] for r in c.execute('SELECT name FROM lib_areas ORDER BY name')])
 
 @app.route('/sw.js')
 def service_worker():
