@@ -317,6 +317,7 @@ async function route() {
     else if (parts[0] === 'offline') view = await viewOffline();
     else if (parts[0] === 'decisions') view = await viewDecisions();
     else if (parts[0] === 'around') view = await viewAround();
+    else if (parts[0] === 'checkup') view = await viewCheckup(parts[1]);            // prototype proto/health-walk
     else if (parts[0] === 'fungi' && !parts[1]) view = await viewFungi();
     else if (parts[0] === 'fungi' && parts[1] === 'safety') view = viewFungiSafety();
     else if (parts[0] === 'fungi' && parts[1] === 'new') view = await viewFindForm(null);
@@ -5539,6 +5540,190 @@ async function viewAround() {
 
 // ---------- 1.22.0: the wishlist (#/wishlist) ----------
 let WL = [];
+// ---------- prototype proto/health-walk: a walk round the plants, one at a time, to say how each one looks now ----------
+// #/checkup chooses which plants (due ones, where, in what order); #/checkup/walk shows one plant at a time with big health
+// choices. "Looks the same" is logged as care kind 'looked'; a new rating is saved on the plant page (version checked) and
+// logged too. The walk is kept in CK while the app is open; the choices are remembered in localStorage plantdb.checkup.
+Object.assign(CARE_WORD, { looked: 'Looked over' });
+const CK = { data: null, list: null, i: 0, done: {}, focus: false };
+const CK_KEY = 'plantdb.checkup', CK_ORDER = { oldest: 'Longest since looked over first', worst: 'Worst health first', code: 'By plant code' };
+function ckOpts() {
+  let o = {};
+  try { o = JSON.parse(localStorage.getItem(CK_KEY) || '{}') || {}; } catch (e) { o = {}; }
+  return { which: o.which === 'all' ? 'all' : 'due', site: typeof o.site === 'string' ? o.site : '', order: CK_ORDER[o.order] ? o.order : 'oldest' };
+}
+function ckKeep(o) { try { localStorage.setItem(CK_KEY, JSON.stringify(o)); } catch (e) { /* storage blocked: fine for this visit */ } }
+const ckAgo = p => p.last_looked == null ? 'Not looked over yet' : p.days <= 0 ? 'Looked over today' : p.days === 1 ? 'Looked over yesterday'
+  : `Looked over ${p.days} days ago (${relDay(p.last_looked)})`;
+function ckPick(D, o) {
+  const l = D.plants.filter(p => (o.which === 'all' || p.due) && (!o.site || p.site === o.site));
+  const age = p => p.days == null ? 1e6 : p.days;
+  const hw = p => HEALTH_ORDER[p.health] == null ? 9 : HEALTH_ORDER[p.health];
+  if (o.order === 'oldest') l.sort((a, b) => age(b) - age(a) || a.code.localeCompare(b.code));
+  else if (o.order === 'worst') l.sort((a, b) => hw(a) - hw(b) || age(b) - age(a) || a.code.localeCompare(b.code));
+  else l.sort((a, b) => a.code.localeCompare(b.code));
+  return l;
+}
+const ckN = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+function ckCountText() {
+  const f = document.querySelector('form[data-form=ckstart]'); if (!f || !CK.data) return '';
+  const o = { which: f.elements.which.value, site: f.elements.site.value, order: f.elements.order.value };
+  const n = ckPick(CK.data, o).length;
+  const b = f.querySelector('button[type=submit]'); if (b) b.disabled = !n;
+  return n ? `This walk-through has ${ckN(n, 'plant', 'plants')}.` : 'No plants match these choices.';
+}
+function ckSetupHtml(D) {
+  const o = ckOpts(), due = D.plants.filter(p => p.due);
+  const sites = D.sites.filter(s => D.plants.some(p => p.site === s));
+  if (o.site && !sites.includes(o.site)) o.site = '';
+  const radio = (name, v, label) => html`<label><input type="radio" name="${name}" value="${v}" data-act="ckopt" ${o[name] === v ? raw('checked') : ''}><span>${label}</span></label>`;
+  const left = CK.list && CK.i < CK.list.length;
+  return html`<h1>Health walk-through</h1>
+    <p>Go round your plants one at a time and say how each one looks today. If nothing has changed, one press saves it and moves on. A plant is due when it hasn't been looked over for ${D.due_days} days.</p>
+    <div class="verdict-box" role="status"><p><strong>${due.length ? `${ckN(due.length, 'plant is', 'plants are')} due to be looked over.` : 'Every plant has been looked over in the last ' + D.due_days + ' days.'}</strong>
+      ${due.length && D.plants.length - due.length ? ` ${ckN(D.plants.length - due.length, 'plant was', 'plants were')} looked over recently.` : ''}</p></div>
+    ${left ? html`<p class="ck-resume"><a class="btn" href="#/checkup/walk" data-act="ckresume">Carry on where you stopped: plant ${CK.i + 1} of ${CK.list.length}</a></p>` : ''}
+    <form data-form="ckstart" class="ck-setup noprint">
+      <fieldset class="opt-group"><legend>Which plants</legend><div class="opts">${radio('which', 'due', `Due ones (${due.length})`)}${radio('which', 'all', `All of them (${D.plants.length})`)}</div></fieldset>
+      <fieldset class="opt-group"><legend>Where</legend><div class="opts">${radio('site', '', 'Everywhere')}${sites.map(s => radio('site', s, s))}</div></fieldset>
+      <fieldset class="opt-group"><legend>In what order</legend><div class="opts">${Object.entries(CK_ORDER).map(([k, v]) => radio('order', k, v))}</div></fieldset>
+      <p id="ck-count" class="ck-count" role="status" aria-live="polite"></p>
+      <p><button class="btn ck-big" type="submit">${left ? 'Start a new walk-through' : 'Start the walk-through'}</button></p>
+    </form>
+    <section class="blk" id="ck-due"><h2>Due to be looked over (${due.length})</h2>
+      ${due.length ? html`<details class="ck-notes"><summary>Show the ${ckN(due.length, 'plant', 'plants')}, longest since looked over first</summary><ul class="ck-due">${ckPick(D, { which: 'due', site: '', order: 'oldest' }).map(p => html`<li><a href="#/plant/${enc(p.code)}">${p.code}</a> ${p.name}
+        <span class="ck-meta">${p.site}${p.health ? ', health ' + p.health : ''}. ${ckAgo(p)}.</span></li>`)}</ul></details>` : html`<p class="notice ok">Nothing is due.</p>`}</section>`;
+}
+function ckCardHtml() {
+  const p = CK.list[CK.i], n = CK.list.length, prev = CK.done[p.code];
+  const opts = (CK.data.health || ['Good', 'Fair', 'Poor', 'Critical']);
+  const cur = prev && prev.now ? prev.now : p.health;
+  return html`<h1>Health walk-through</h1>
+    <div class="ck-prog"><p><strong>Plant ${CK.i + 1} of ${n}</strong>${Object.keys(CK.done).length ? `. Saved so far: ${Object.values(CK.done).filter(d => d.kind !== 'skip').length}` : ''}</p>
+      <progress max="${n}" value="${CK.i}" aria-label="${`Plant ${CK.i + 1} of ${n}`}"></progress></div>
+    <article class="ck-card" aria-labelledby="ck-name">
+      <div class="ck-photo">${p.photo ? html`<a href="${photoUrl(p.photo)}" target="_blank" rel="noopener"><img src="${thumbUrl(p.photo)}" alt="${'Photo of ' + p.name}"></a>` : html`<div class="ck-nophoto">No photo yet</div>`}</div>
+      <div class="ck-body">
+        <h2 id="ck-name" tabindex="-1"><a href="#/plant/${enc(p.code)}">${p.code}</a> ${p.name}</h2>
+        <p>${p.site}${p.location ? ': ' + p.location : ''}</p>
+        <p>${p.health ? healthTag(p.health) : html`<span class="tag">Health: not set</span>`} <span class="ck-meta">${ckAgo(p)}.</span></p>
+        ${prev ? html`<p class="notice ok">Already saved on this walk: ${prev.text}. Saving again adds another entry.</p>` : ''}
+        ${p.summary ? html`<details class="ck-notes"><summary>Health notes on its page</summary><p class="pl">${p.summary}</p></details>` : ''}
+        ${canChange() ? html`<form data-form="cksave" class="ck-form">
+          <fieldset class="opt-group"><legend>How does it look now?</legend><div class="opts ck-health">${opts.map(h => html`<label><input type="radio" name="health" value="${h}" data-act="ckpick" ${cur === h ? raw('checked') : ''}><span>${h}${h === p.health ? ' (as before)' : ''}</span></label>`)}</div></fieldset>
+          <label class="f">Anything you noticed? (optional)<textarea name="note" rows="2" maxlength="400"></textarea></label>
+          <div class="ck-acts"><button class="btn ck-big" type="submit" id="ck-save">${ckSaveWord(p, cur)}</button>
+            <button class="btn ghost" type="button" data-act="ckskip">Skip this plant</button></div>
+        </form>` : html`<p class="notice">Changes are turned off for you, so you can look through the plants but not save.</p>
+          <div class="ck-acts"><button class="btn" type="button" data-act="ckskip">Next plant</button></div>`}
+        <div class="ck-nav"><button class="btn ghost small" type="button" data-act="ckback" ${CK.i ? '' : raw('disabled')}>Back to the previous plant</button>
+          <button class="btn ghost small" type="button" data-act="ckstop">Stop and see what you've done</button></div>
+      </div>
+    </article>`;
+}
+const ckSaveWord = (p, h) => !h || h === p.health ? 'Looks the same: save and go on' : `Save "${h}" and go on`;
+function ckDoneHtml() {
+  const all = Object.values(CK.done), changed = all.filter(d => d.kind === 'changed'), same = all.filter(d => d.kind === 'same'), skipped = all.filter(d => d.kind === 'skip');
+  const left = CK.list ? CK.list.length - CK.i : 0;
+  const li = d => html`<li><a href="#/plant/${enc(d.code)}">${d.code}</a> ${d.name}: ${d.text}</li>`;
+  return html`<h1>${left > 0 ? 'Walk-through paused' : 'Walk-through finished'}</h1>
+    <div class="verdict-box" role="status"><p><strong>You looked over ${ckN(changed.length + same.length, 'plant', 'plants')}${changed.length ? `, and ${ckN(changed.length, 'has', 'have')} a new health rating` : ''}.</strong>
+      ${skipped.length ? ` ${ckN(skipped.length, 'plant was', 'plants were')} skipped.` : ''}${left > 0 ? ` ${ckN(left, 'plant is', 'plants are')} left on this walk.` : ''}</p></div>
+    <p class="ck-acts">${left > 0 ? html`<a class="btn" href="#/checkup/walk" data-act="ckresume">Carry on: plant ${CK.i + 1} of ${CK.list.length}</a>` : ''}
+      <a class="btn ghost" href="#/checkup">Start another walk-through</a> <a class="btn ghost" href="#/today">Back to Today</a></p>
+    ${changed.length ? html`<section class="blk"><h2>New health ratings (${changed.length})</h2><ul class="ck-list">${changed.map(li)}</ul></section>` : ''}
+    ${skipped.length ? html`<section class="blk"><h2>Skipped (${skipped.length})</h2><ul class="ck-list">${skipped.map(li)}</ul></section>` : ''}
+    ${same.length ? html`<section class="blk"><h2>Look the same (${same.length})</h2><ul class="ck-list">${same.map(li)}</ul></section>` : ''}`;
+}
+async function viewCheckup(sub) {
+  const navToday = () => { document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === 'today') a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }); pagesMenu(false); };   // a part of Today
+  if (sub === 'walk' && CK.list) {
+    const end = CK.stopped || CK.i >= CK.list.length;
+    return { title: 'Health walk-through', html: end ? ckDoneHtml() : ckCardHtml(), after: () => {
+      navToday();
+      if (CK.focus) { CK.focus = false; setTimeout(() => { const h = document.getElementById(end ? 'app' : 'ck-name'); window.scrollTo(0, 0); if (h) h.focus({ preventScroll: true }); }, 0); }     // after route() focuses #app
+    } };
+  }
+  CK.data = await api('GET', '/api/checkup');
+  return { title: 'Health walk-through', html: ckSetupHtml(CK.data), after: () => {
+    navToday(); const c = document.getElementById('ck-count'); if (c) c.textContent = ckCountText();
+  } };
+}
+function ckNext(rec) {
+  const p = CK.list[CK.i];
+  if (rec) CK.done[p.code] = Object.assign({ code: p.code, name: p.name }, rec);
+  CK.i++; CK.focus = true; go('#/checkup/walk');
+}
+Object.assign(acts, {
+  ckskip() { if (!CK.list) return; const p = CK.list[CK.i]; ckNext(CK.done[p.code] && CK.done[p.code].kind !== 'skip' ? null : { kind: 'skip', text: 'skipped' }); },
+  ckback() { if (!CK.list || !CK.i) return; CK.i = Math.min(CK.i, CK.list.length) - 1; CK.stopped = false; CK.focus = true; go('#/checkup/walk'); },
+  ckstop() { CK.stopped = true; CK.focus = true; go('#/checkup/walk'); },
+  ckresume() { CK.stopped = false; CK.focus = true; go('#/checkup/walk'); },
+});
+Object.assign(changeActs, {
+  ckopt() {
+    const f = document.querySelector('form[data-form=ckstart]'); if (!f) return;
+    ckKeep({ which: f.elements.which.value, site: f.elements.site.value, order: f.elements.order.value });
+    const c = document.getElementById('ck-count'); if (c) c.textContent = ckCountText();
+  },
+  ckpick(el) { const b = document.getElementById('ck-save'); if (b && CK.list) b.textContent = ckSaveWord(CK.list[CK.i], el.value); },
+});
+Object.assign(formActs, {
+  ckstart(form) {
+    const o = { which: form.elements.which.value, site: form.elements.site.value, order: form.elements.order.value };
+    ckKeep(o);
+    CK.list = ckPick(CK.data, o).map(p => Object.assign({}, p)); CK.i = 0; CK.done = {}; CK.stopped = false; CK.focus = true;
+    if (!CK.list.length) { toast('No plants match these choices.', true); return; }
+    go('#/checkup/walk');
+  },
+  async cksave(form) {
+    if (!(await needName())) return;
+    const p = CK.list[CK.i], nh = form.elements.health.value, note = form.elements.note.value.trim().slice(0, 400);
+    const changed = !!nh && nh !== p.health;
+    const btn = form.querySelector('button[type=submit]'); if (btn) btn.disabled = true;
+    try {
+      if (changed) {
+        const r = await api('PUT', '/api/plants/' + enc(p.code), { base_version: p.version, fields: { health_rating: nh }, note: 'Health walk-through' + (note ? ': ' + note : '') });
+        if (r && r.version) p.version = r.version;
+      }
+      const text = changed ? `health ${p.health || 'not set'} to ${nh}` : 'looks the same';
+      await api('POST', '/api/care', { plant: p.code, kind: 'looked', note: (changed ? `Health ${p.health || 'not set'} to ${nh}` : 'Looks the same') + (note ? '. ' + note : '') });
+      const rec = { kind: changed ? 'changed' : 'same', now: nh || p.health, text: text + (note ? ` ("${note}")` : '') };
+      if (changed) { rec.was = p.health; }
+      toast(`Saved: ${p.code} ${text}`);
+      ckNext(rec);
+    } catch (e) {
+      if (btn) btn.disabled = false;
+      if (e.status === 409 && e.data && e.data.current) {          // changed elsewhere since the walk started: show what it is now, and choose again
+        p.version = e.data.current.version; p.health = e.data.current.health_rating || '';
+        toast(`${p.code} was changed by someone else since you started. Its health is now ${p.health || 'not set'}. Choose again and save.`, true);
+        route(); return;
+      }
+      throw e;
+    }
+  },
+});
+// the Today page gets a line about the walk-through, added when the page draws (no changes to viewToday)
+(function ckTodayLink() {
+  const main = document.getElementById('app'); if (!main) return;
+  let busy = false;
+  new MutationObserver(() => {
+    if (location.hash !== '#/today' || busy || main.querySelector('.ck-today')) return;
+    const at = main.querySelector('#today-water'); if (!at) return;
+    busy = true;
+    api('GET', '/api/checkup').then(D => {
+      busy = false;
+      if (location.hash !== '#/today' || main.querySelector('.ck-today')) return;
+      const at2 = main.querySelector('#today-water'); if (!at2) return;
+      const due = D.plants.filter(p => p.due).length;
+      const p = document.createElement('p'); p.className = 'ck-today noprint';
+      p.innerHTML = rend(html`<span>${due ? `${ckN(due, 'plant hasn\'t', 'plants haven\'t')} been looked over for ${D.due_days} days or more.` : 'Every plant has been looked over lately.'}</span>
+        <a class="btn ghost" href="#/checkup">Health walk-through</a>`);
+      at2.before(p);
+    }).catch(() => { busy = false; });
+  }).observe(main, { childList: true, subtree: true });
+})();
+
 async function viewWishlist() {
   const [wl, sh] = await Promise.all([api('GET', '/api/wishlist'), api('GET', '/api/shops').catch(() => null)]);
   WL = wl.wishlist; WLSHOPS = sh;

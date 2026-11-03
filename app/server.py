@@ -3313,6 +3313,34 @@ def audit_facets():
     return jsonify(who=who, fields=sorted(fields, key=lambda f: str(f['label']).lower()), plants=plants,
                    kinds=[{'key': k, 'label': v[0]} for k, v in AUDIT_KINDS.items()], first=first[0], total=first[1])
 
+# ---------------------------------------------------------------- health walk-through (prototype: proto/health-walk)
+# A walk round the plants, one at a time, to say how each one looks now. "Looks the same" is logged as care kind 'looked';
+# a new health rating is saved on the plant page (with its version check) and logged as 'looked' too, with what changed.
+CARE_KINDS['looked'] = 'Looked over'
+CHECKUP_DAYS = 14              # a plant not looked over for this many days is due again
+
+@app.route('/api/checkup')
+def checkup():
+    c = db()
+    today = local_today(c)
+    tz = tzinfo(location(c)['tz'])
+    last = {k: d for k, d in c.execute("SELECT plant_code, MAX(done_on) FROM care_log WHERE kind='looked' GROUP BY plant_code")}
+    # a health rating changed by a person on the edit page counts as a look too (upgrade batches, signed "Claude (...)", do not)
+    for code, ts in c.execute("SELECT plant_code, MAX(changed_at) FROM audit_log WHERE field='health_rating' AND changed_by NOT LIKE 'Claude%' "
+                              "AND plant_code IS NOT NULL GROUP BY plant_code"):
+        try: d = datetime.strptime(ts, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc).astimezone(tz).date().isoformat()
+        except (TypeError, ValueError): continue
+        if d > last.get(code, ''): last[code] = d
+    out = []
+    for r in c.execute("SELECT * FROM plants WHERE status='active' ORDER BY code").fetchall():
+        ph = c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC, id LIMIT 1', (r['id'],)).fetchone()
+        lk = last.get(r['code'])
+        days = (today - date.fromisoformat(lk)).days if lk else None
+        out.append({'code': r['code'], 'name': r['common_name'], 'site': r['site'] or 'Outdoors', 'location': r['location'] or '',
+                    'health': r['health_rating'] or '', 'summary': (r['health_summary'] or '').strip()[:400], 'photo': ph[0] if ph else None,
+                    'version': r['version'], 'last_looked': lk, 'days': days, 'due': days is None or days >= CHECKUP_DAYS})
+    return jsonify(today=today.isoformat(), due_days=CHECKUP_DAYS, health=HEALTH, sites=SITES, plants=out)
+
 # ---------------------------------------------------------------- photos
 def save_image(file_storage):
     try:
