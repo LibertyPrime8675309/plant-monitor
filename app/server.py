@@ -787,7 +787,6 @@ def sitter_api():
         if not codes: return jsonify(today=today.isoformat(), start=d0.isoformat(), end=d1.isoformat(), group=group, days=[], before=[], plants=[], nights=[], rain_counts_in=RAIN_COUNTS_IN)
     W = water_report(c, codes)
     rows = {r['code']: r for r in c.execute("SELECT * FROM plants WHERE status='active'")}
-    photo = {pid: f for pid, f in c.execute('SELECT plant_id, file FROM photos p WHERE id=(SELECT id FROM photos q WHERE q.plant_id=p.plant_id ORDER BY is_primary DESC, id LIMIT 1)')}
     days = {(d0 + timedelta(days=i)).isoformat(): [] for i in range((d1 - d0).days + 1)}
     plants, before = [], []
     for w in W['plants']:
@@ -804,7 +803,7 @@ def sitter_api():
         plants.append({'code': r['code'], 'name': r['common_name'], 'scientific': r['scientific_name'], 'site': w['site'], 'spot': r['location'] or '',
                        'every': w['every'], 'why': w['why'], 'state': w['state'], 'next': w['next'], 'visits': visits,
                        'water_notes': r['water_notes'] or '', 'damage_below': r['temp_damage_below'], 'damage_above': r['temp_damage_above'],
-                       'winter_plan': r['winter_plan'] or '', 'photo': photo.get(r['id']), 'open_sky': w['site'] == 'Outdoors'})
+                       'winter_plan': r['winter_plan'] or '', 'open_sky': w['site'] == 'Outdoors'})
     order = {s: i for i, s in enumerate(SITES)}
     walk = {p['code']: (order.get(p['site'], 9), p['spot'].lower(), p['code']) for p in plants}     # one walk round: place, then spot
     plants.sort(key=lambda p: walk[p['code']])

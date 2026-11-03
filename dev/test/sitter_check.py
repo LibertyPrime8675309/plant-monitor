@@ -1,5 +1,5 @@
 """Checks the prototype plant-sitter sheet (proto/sitter-sheet): the link on Today and on group pages, the day-by-day plan,
-the choices (dates, group, note, plant list, photos; remembered), errors in plain words, no sideways scrolling, and the printout
+the choices (dates, group, note, plant list, a page per day; remembered), errors in plain words, no sideways scrolling, and the printout
 (black on white, large print, the choices left off).
 Start the mock server with a fresh data folder (MOCK_BASE_F=40 gives cold nights), then:  python3 dev/test/sitter_check.py [base]
 Screenshots and a printed PDF: dev/tmp/shots/sitter-*"""
@@ -62,11 +62,11 @@ with sync_playwright() as p:
             gl = pg.locator('.ps-link a')
             check(gl.count() == 1 and gl.inner_text() == 'Plant-sitter sheet for this group', f'{name}: a group page has a plant-sitter link')
             gl.click(); pg.wait_for_selector('.ps-doc'); pg.wait_for_timeout(500)
-            check(pg.locator('#ps-group').input_value() == str(gid) and pg.locator('.ps-card').count() == 3, f'{name}: from a group page, the sheet has just its 3 plants')
+            check(pg.locator('#ps-group').input_value() == str(gid) and pg.locator('#ps-count').inner_text().startswith('3 plants'), f'{name}: from a group page, the sheet has just its 3 plants')
             for e in errs: check(False, f'{name}: {e}')
             pg.close()
 
-    # choices: dates, note, plant list, photos; remembered
+    # choices: dates, note, plant list, a page per day; remembered
     pg = b.new_page(viewport={'width': 1280, 'height': 900}); errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.goto(BASE + '/sitter.html'); pg.wait_for_selector('.ps-doc')
@@ -78,14 +78,18 @@ with sync_playwright() as p:
     check(pg.locator('.ps-before').count() == 1 and 'not printed' in pg.locator('.ps-before').inner_text(), '"Before you go" lists plants to water before leaving')
     pg.get_by_label('Printed at the top', exact=False).fill('Call Ethan: 555-0100. The watering can is by the back door.'); pg.wait_for_timeout(800)
     check('555-0100' in pg.locator('.ps-msg').inner_text(), 'the note for the sitter is on the sheet')
-    pg.get_by_label('A photo of each plant', exact=False).uncheck(); pg.wait_for_timeout(500)
-    check(pg.locator('.ps-photo').count() == 0, 'photos can be left out')
+    D = call('GET', f'/api/sitter?from={a}&to={z}')
+    want = sum(1 for x in D['plants'] if x['visits'] or any(x['code'] in [y['code'] for y in n['plants']] for n in D['nights']))
+    check(pg.locator('.ps-pls li').count() == want, f'the plant list is one line each, only for the {want} plants with something to do')
+    check(pg.locator('.ps-photo').count() == 0, 'the plant list has no photos')
+    pg.get_by_label('Each day on its own page', exact=False).check(); pg.wait_for_timeout(500)
+    check(pg.locator('.ps-doc.ps-pageday').count() == 1, '"Each day on its own page" marks the page breaks')
     pg.reload(); pg.wait_for_selector('.ps-doc'); pg.wait_for_timeout(400)
     check(pg.get_by_label('First day').input_value() == a and pg.get_by_label('Last day').input_value() == z and '555-0100' in pg.locator('.ps-msg').inner_text()
-          and pg.locator('.ps-photo').count() == 0, 'the choices are remembered')
+          and pg.get_by_label('Each day on its own page', exact=False).is_checked(), 'the choices are remembered')
     pg.get_by_label('The plant list at the end', exact=False).uncheck(); pg.wait_for_timeout(500)
-    check(pg.locator('.ps-plants').count() == 0 and pg.get_by_label('A photo of each plant', exact=False).is_disabled(), 'the plant list can be left out (and the photo choice goes grey)')
-    pg.get_by_label('The plant list at the end', exact=False).check(); pg.get_by_label('A photo of each plant', exact=False).check(); pg.wait_for_timeout(500)
+    check(pg.locator('.ps-plants').count() == 0, 'the plant list can be left out')
+    pg.get_by_label('The plant list at the end', exact=False).check(); pg.wait_for_timeout(500)
     pg.get_by_label('Last day').fill((today + timedelta(days=60)).isoformat()); pg.wait_for_timeout(800)
     check('6 weeks' in pg.locator('#ps-sheet [role=alert]').inner_text(), 'too long a stay is refused in plain words')
     pg.get_by_label('Last day').fill((today + timedelta(days=8)).isoformat()); pg.wait_for_timeout(800)
@@ -98,6 +102,13 @@ with sync_playwright() as p:
         return { color: cs.color, bg: getComputedStyle(document.body).backgroundColor, min: Math.min(...sizes) }; })()''')
     check(st['color'] == 'rgb(0, 0, 0)' and st['bg'] == 'rgb(255, 255, 255)', f'the printout is black on white ({st["color"]} on {st["bg"]})')
     check(st['min'] >= 20.5, f'nothing in the printout is smaller than about 15.5 point ({st["min"]:.1f}px)')
+    brk = pg.evaluate("[...document.querySelectorAll('.ps-days .ps-day')].map(e => getComputedStyle(e).breakBefore)")
+    check(brk[1:] and all(x == 'page' for x in brk[1:]) and pg.evaluate("getComputedStyle(document.querySelector('.ps-days')).breakBefore") == 'page',
+          'with "Each day on its own page", every day starts a new printed page')
+    pg.pdf(path=os.path.join(OUT, 'sitter-print-pageday.pdf'), format='Letter', print_background=True)
+    pg.emulate_media(media='screen'); pg.get_by_label('Each day on its own page', exact=False).uncheck(); pg.wait_for_timeout(500); pg.emulate_media(media='print')
+    brk = pg.evaluate("[...document.querySelectorAll('.ps-days .ps-day')].map(e => getComputedStyle(e).breakBefore)")
+    check(not any(x == 'page' for x in brk), 'without it, the days run on one after another')
     pg.pdf(path=os.path.join(OUT, 'sitter-print.pdf'), format='Letter', print_background=True)
     pg.screenshot(path=os.path.join(OUT, 'sitter-print.png'), full_page=True)
     for e in errs: check(False, f'choices: {e}')

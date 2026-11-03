@@ -787,28 +787,24 @@ html[data-role=viewer] :is([data-act=boporch], [data-act=boout], [data-act=bolea
 .ps-code{font-weight:700;white-space:nowrap}
 .ps-where{display:block}
 .ps-none,.ps-note{margin:.2rem 0;font-style:italic}
-.ps-cards{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,24rem),1fr));gap:.8rem}
-.ps-card{display:flex;gap:.8rem;align-items:flex-start;border:2px solid var(--line);border-left:.45rem solid var(--ink);border-radius:6px;padding:.5rem .7rem;break-inside:avoid;min-width:0}
-.ps-photo{width:6rem;height:6rem;flex:none;object-fit:cover;border:2px solid var(--ink);border-radius:4px}
-.ps-card-txt{min-width:0}
-.ps-card p{margin:.15rem 0}
-.ps-card-h{font-size:1.2rem}
+.ps-pls{margin:.3rem 0 0;padding-left:1.2rem}
+.ps-pls li{margin:.25rem 0;break-inside:avoid}
+/* each day on its own page: shown on screen as a dashed line where the page will turn */
+.ps-pageday .ps-days{border-top:3px dashed var(--line);padding-top:.8rem}
+.ps-pageday .ps-day+.ps-day,.ps-pageday .ps-plants{border-top:3px dashed var(--line);padding-top:.8rem}
 .ps-printed{margin:1.2rem 0 0;font-size:1rem;color:var(--ink-2)}
 html[data-narrow="1"] .ps-main{padding:1rem .5rem 3rem}
 html[data-narrow="1"] .ps-doc{padding:.7rem .6rem;font-size:1rem}
 html[data-narrow="1"] .ps-doc h2{font-size:1.6rem}
 html[data-narrow="1"] .ps-opts{padding:.7rem .7rem .2rem}
-html[data-narrow="1"] .ps-card{flex-direction:column;border-left-width:.3rem}
-html[data-narrow="1"] .ps-photo{width:min(10rem,100%);height:auto;aspect-ratio:1}
 @media print{
   html:has(body.ps-body){font-size:15.5pt}
   body.ps-body{background:#fff;color:#000}
   .ps-main{max-width:none;padding:0}
   .ps-doc{--ink:#000;--ink-2:#000;--line:#000;--sheet:#fff;background:#fff;color:#000;border:0;border-radius:0;padding:0;font-size:1.05rem;line-height:1.3}
   .ps-sec h3{break-after:avoid}
-  .ps-cards{display:block}
-  .ps-card{margin:0 0 .12in}
-  .ps-photo{width:1.1in;height:1.1in}
+  .ps-pageday .ps-days,.ps-pageday .ps-day+.ps-day,.ps-pageday .ps-plants{break-before:page;border-top:0;padding-top:0}
+  .ps-pageday .ps-day{break-inside:auto}
   .ps-printed{font-size:1rem}
 }
 

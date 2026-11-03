@@ -9,7 +9,7 @@ const enc = encodeURIComponent;
 const $ = id => document.getElementById(id);
 const KEY = 'plantdb.sitter';
 
-let OPT = { from: '', to: '', group: '', photos: true, list: true, note: '' };
+let OPT = { from: '', to: '', group: '', list: true, pageday: false, note: '' };
 try { Object.assign(OPT, JSON.parse(localStorage.getItem(KEY) || '{}') || {}); } catch (e) { /* storage blocked: defaults */ }
 const saveOpt = () => { try { localStorage.setItem(KEY, JSON.stringify(OPT)); } catch (e) { /* this visit only */ } };
 
@@ -30,10 +30,10 @@ const addDays = (s, n) => { const d = asDate(s); d.setDate(d.getDate() + n); ret
 const dayName = s => asDate(s).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 const dayShort = s => asDate(s).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 
-// the first two sentences of a note
+// the first sentence of a note
 function short(s) {
   const t = String(s || '').replace(/\s+/g, ' ').trim();
-  const m = t.match(/^(.+?[.!?])(\s+.+?[.!?])?(?=\s+[A-Z0-9"(]|$)/);
+  const m = t.match(/^.+?[.!?](?=\s+[A-Z0-9"(]|$)/);
   return m ? m[0] : t;
 }
 const where = p => p.spot && p.spot.toLowerCase().startsWith(p.site.toLowerCase()) ? p.spot : [p.site, p.spot].filter(Boolean).join(', ');
@@ -64,19 +64,16 @@ function sheet(D) {
     : beyond || !D.forecast_to ? `<section class="ps-sec ps-cold" aria-labelledby="ps-cold-h"><h3 id="ps-cold-h">Cold nights</h3>
       <p>${D.forecast_to && D.start <= D.forecast_to ? `No cold nights for these plants in the forecast up to ${esc(dayName(D.forecast_to))}.` : 'There is no forecast for these days yet.'}
       Check the weather. If a night near freezing is forecast, ask me what to bring in.</p></section>` : '';
-  const days = `<section class="ps-sec" aria-labelledby="ps-days-h"><h3 id="ps-days-h">Day by day</h3>
+  const days = `<section class="ps-sec ps-days" aria-labelledby="ps-days-h"><h3 id="ps-days-h">Day by day</h3>
     ${D.days.map(d => `<div class="ps-day"><h4>${esc(dayName(d.date))}${d.high != null ? `<span class="ps-wx">Forecast: high ${esc(d.high)}°F, low ${esc(d.low)}°F</span>` : ''}</h4>
       ${d.plants.length ? `<ul class="ps-list">${d.plants.map(c => item(c)).join('')}</ul>` : '<p class="ps-none">Nothing to check today.</p>'}</div>`).join('')}</section>`;
-  const list = OPT.list ? `<section class="ps-sec ps-plants" aria-labelledby="ps-pl-h"><h3 id="ps-pl-h">The plants</h3>
-    <ul class="ps-cards">${D.plants.map(p => `<li class="ps-card">
-      ${OPT.photos && p.photo ? `<img class="ps-photo" src="/photos/${enc(p.photo)}" alt="Photo of ${esc(p.name)}">` : ''}
-      <div class="ps-card-txt"><p class="ps-card-h"><strong>${esc(p.name)}</strong> <span class="ps-code">${esc(p.code)}</span></p>
-        <p><strong>Where:</strong> ${esc(where(p))}</p>
-        <p><strong>Check:</strong> about every ${esc(p.every)} ${p.every === 1 ? 'day' : 'days'}${p.visits.length ? ` (${p.visits.map(dayShort).map(esc).join('; ')})` : ' (not needed during these dates)'}</p>
-        ${p.water_notes ? `<p><strong>How to water:</strong> ${esc(short(p.water_notes))}</p>` : ''}
-        ${p.damage_below != null && p.site !== 'Indoors' ? `<p><strong>Cold:</strong> harmed below ${esc(p.damage_below)}°F</p>` : ''}
-      </div></li>`).join('')}</ul></section>` : '';
-  return { jobs, html: `<article class="ps-doc" aria-labelledby="ps-title">
+  // the plant list, one short entry each, only for plants the sitter has something to do for (Ethan asked for it shorter)
+  const listed = D.plants.filter(p => p.visits.length || coldBy[p.code]);
+  const list = OPT.list && listed.length ? `<section class="ps-sec ps-plants" aria-labelledby="ps-pl-h"><h3 id="ps-pl-h">The plants</h3>
+    <p class="ps-note">Only the plants that need something while I'm away.</p>
+    <ul class="ps-pls">${listed.map(p => `<li><strong>${esc(p.name)}</strong> <span class="ps-code">${esc(p.code)}</span>. ${esc(where(p))}.
+      ${p.visits.length ? `Check about every ${esc(p.every)} ${p.every === 1 ? 'day' : 'days'}.` : ''} ${p.water_notes ? esc(short(p.water_notes)) : ''}</li>`).join('')}</ul></section>` : '';
+  return { jobs, html: `<article class="ps-doc${OPT.pageday ? ' ps-pageday' : ''}" aria-labelledby="ps-title">
     <header class="ps-head"><h2 id="ps-title">Looking after the plants</h2><p class="ps-span">${esc(span)}</p>
       ${OPT.note.trim() ? `<p class="ps-msg">${esc(OPT.note.trim())}</p>` : ''}${intro}</header>
     ${cold}${days}${list}
@@ -96,7 +93,6 @@ async function load() {
     return;
   }
   if (my !== busy) return;
-  f.querySelector('[name=photos]').disabled = !OPT.list;
   if (!D.plants.length) {
     $('ps-count').textContent = '';
     $('ps-sheet').innerHTML = '<p class="notice">There are no plants in this group, so there is nothing to print.</p>';
@@ -115,7 +111,7 @@ function paintOpts() {
   const f = $('ps-opts');
   f.from.value = OPT.from; f.to.value = OPT.to; f.group.value = OPT.group;
   if (f.group.value !== OPT.group) { OPT.group = ''; f.group.value = ''; }      // the group was removed
-  f.photos.checked = !!OPT.photos; f.list.checked = !!OPT.list; f.note.value = OPT.note || '';
+  f.list.checked = !!OPT.list; f.pageday.checked = !!OPT.pageday; f.note.value = OPT.note || '';
 }
 
 async function start() {
