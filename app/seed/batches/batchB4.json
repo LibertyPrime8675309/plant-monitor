@@ -1,0 +1,52 @@
+{
+ "id": "B4",
+ "created": "2026-11-03",
+ "author": "Claude (Ethan's grow light details, Nov 2026)",
+ "lights_update": [
+  {
+   "key": "sansi-t8",
+   "note": "model number, watts and ratings from its label; one strip (batch B4)",
+   "set": {
+    "name": [
+     "SANSI 2 ft T8 strip set",
+     "SANSI 2 ft T8 strip"
+    ],
+    "kind": [
+     "Strip lights",
+     "Strip light"
+    ],
+    "model": [
+     null,
+     "C21GL-LT01-25W"
+    ],
+    "watts": [
+     null,
+     25
+    ],
+    "power": [
+     "Plugs into an outlet; 6 ft cord. Splash-proof (IP54).",
+     "Plugs into an outlet (120 V AC, 60 Hz, 0.5 A); 6 ft cord. Splash-proof (IP54)."
+    ],
+    "dimming": [
+     [
+      25,
+      50,
+      75,
+      100
+     ],
+     [
+      100
+     ]
+    ],
+    "ppfd_note": [
+     "The maker's figures. Claude does not know yet how many strips the set has or their watts.",
+     "The maker's figures, for one 25 W strip with 32 LEDs."
+    ],
+    "notes": [
+     "",
+     "The control box has an on/off button and a timer button (4, 8 or 12 hours a day; a red, green or yellow dot shows which). There is no brightness button. Do not put it on a dimmer. Rated for damp locations (a covered porch is fine, not direct rain). Not for totally enclosed fixtures."
+    ]
+   }
+  }
+ ]
+}

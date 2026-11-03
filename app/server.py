@@ -415,9 +415,9 @@ def apply_batches(c):
                 if not L: continue
                 d, cols, done = light_specs(L), {}, []
                 for f, (old, new) in u['set'].items():
-                    cur = L[f] if f in ('fixture', 'notes', 'count') else d.get(f)
+                    cur = L[f] if f in ('fixture', 'notes', 'count', 'name') else d.get(f)
                     if str(cur if cur is not None else '') != str(old if old is not None else ''): continue
-                    if f in ('fixture', 'notes', 'count'): cols[f] = new
+                    if f in ('fixture', 'notes', 'count', 'name'): cols[f] = new
                     else: d[f] = new
                     done.append(f)
                 if done:
