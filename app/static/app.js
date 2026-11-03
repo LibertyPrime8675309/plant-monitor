@@ -76,13 +76,21 @@ function paintWho() {
   const n = viaTS() ? ME().name : getName(), el = document.getElementById('who-name');
   if (el) el.textContent = viaTS() ? 'Signed in as ' + n : n ? 'Editing as ' + n : 'Set your name';
   document.documentElement.dataset.role = ME().role;
+  topSoon();
 }
+let TOPRAF = 0;                  // 1.26.1: the name and the place change the width of their buttons, so the top bar is fitted again
+function topSoon() { cancelAnimationFrame(TOPRAF); TOPRAF = requestAnimationFrame(() => navLayout()); }
 
 // ---------- api ----------
 // the place this browser uses for weather, frost, watering and "today" (1.11.0); null = the home place
 let PLACE = null;
 try { PLACE = localStorage.getItem('plantdb.place') || null; } catch (e) { /* ignore */ }
 async function api(method, url, body, form) {
+  if (method === 'GET' && /^\/api\/fungi\/NEW-/i.test(url)) {        // 1.24.0: a find made offline that is not sent yet
+    const f = await idbGet('finds', decodeURIComponent(url.split('/')[3].split('?')[0]));
+    if (!f) { const e = new Error('That find was sent to the plant record. Open the Mushrooms page to see it with its new code.'); e.status = 404; throw e; }
+    return offFindDict(f);
+  }
   const opts = { method, headers: {} };
   if (PLACE) opts.headers['X-Place'] = PLACE;
   if (method !== 'GET') opts.headers['X-Editor'] = cleanName(viaTS() ? ME().name : getName()) || 'Unknown';
@@ -91,11 +99,25 @@ async function api(method, url, body, form) {
   }
   if (form) opts.body = form;
   else if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  // 1.24.0: changes that can wait are kept on this device when the server can't be reached, and sent later (offSync)
+  const q = method !== 'GET' && offQueueable(method, url);
+  if (q && (!navigator.onLine || /\/NEW-/i.test(url))) return offQueue(method, url, body, form);
+  if (q) opts.headers['X-Offline-Op'] = offId();          // so a retry after a dropped answer is made only once
   let r;
-  try { r = await fetch(url, opts); } catch (e) { throw new Error('Cannot reach the plant server. Check that the container is running.'); }
+  try { r = await fetch(url, opts); } catch (e) {
+    if (q) return offQueue(method, url, body, form);
+    if (method === 'POST' && url.startsWith('/api/identify?') && form) return offIdQueue(url, form);
+    throw new Error(navigator.onLine ? 'Cannot reach the plant server. Check that the container is running.' : 'You are offline. This needs a connection to the plant server.');
+  }
+  if (method === 'GET') offSeen(r.headers.get('X-Offline-Saved'));
   let data = null;
   try { data = await r.json(); } catch (e) { /* not json */ }
-  if (!r.ok) { const e = new Error((data && data.error) || ('Request failed (' + r.status + ')')); e.status = r.status; e.data = data; throw e; }
+  if (!r.ok) {
+    const off = r.status === 503 && data && data.offline;
+    const e = new Error(off ? 'You are offline, and this page was not saved on this device. Turn on "Keep a copy on this device" on the Offline page while you are online.' : (data && data.error) || ('Request failed (' + r.status + ')'));
+    e.status = r.status; e.data = data; e.offline = off; throw e;
+  }
+  if (method === 'GET' && /^\/api\/fungi\?status=(active|all)/.test(url) && data && data.finds) data.finds = (await offPendingFinds()).concat(data.finds);
   return data;
 }
 
@@ -119,6 +141,7 @@ function paintPlace() {
   const n = document.getElementById('place-name'); if (n) n.textContent = META.place.name;
   const b = document.getElementById('place-btn');
   if (b) b.setAttribute('aria-label', `Location: ${META.place.name}${META.place.is_home ? ' (home)' : ''}. Choose another place`);
+  topSoon();
 }
 function placeDialog() {
   const cur = META && META.place, list = (META && META.places) || [];
@@ -198,6 +221,7 @@ function peoplePaint(P) { const b = document.getElementById('people-box'); if (b
 
 // ---------- toast, dialog ----------
 function toast(msg, isErr) {
+  if (!isErr && Date.now() - OFF.queuedAt < 2500) { msg = String(msg).replace(/\.$/, '') + '. Kept on this device; it will be sent when you are back online.'; OFF.queuedAt = 0; }
   const t = document.createElement('div');
   t.className = 'toast' + (isErr ? ' err' : '');
   t.textContent = msg;
@@ -205,14 +229,21 @@ function toast(msg, isErr) {
   setTimeout(() => t.remove(), isErr ? 7000 : 3500);
 }
 const dlg = document.getElementById('dlg');
+// 1.25.0: a press that starts and ends outside the window closes it, as Cancel would (a drag that ends outside does not)
+let DLGDOWN = false;
+const outsideDlg = e => { const r = dlg.getBoundingClientRect(); return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom; };
+dlg.addEventListener('pointerdown', e => { DLGDOWN = e.target === dlg && outsideDlg(e); });
+dlg.addEventListener('click', e => { if (DLGDOWN && e.target === dlg && outsideDlg(e)) { dlg.close(''); } DLGDOWN = false; });
 function modal(content, cls) {
   dlg.className = cls || '';
   dlg.innerHTML = rend(content);
+  const h2 = dlg.querySelector('h2');               // the window is named by its heading, for screen readers
+  if (h2) { h2.id = h2.id || 'dlg-title'; dlg.setAttribute('aria-labelledby', h2.id); } else dlg.removeAttribute('aria-labelledby');
   return new Promise(res => {
     const done = () => { dlg.removeEventListener('close', done); res(dlg.returnValue); };
     dlg.addEventListener('close', done);
     dlg.returnValue = '';
-    dlg.showModal();
+    if (!dlg.open) dlg.showModal();
     const f = dlg.querySelector('[autofocus]') || dlg.querySelector('input,select,textarea');
     if (f) f.focus();
   });
@@ -220,7 +251,7 @@ function modal(content, cls) {
 async function confirmBox(title, text, okLabel, danger) {
   const r = await modal(html`<form method="dialog"><h2>${title}</h2><p>${text}</p>
     <div class="row"><button class="btn ${danger ? 'danger' : ''}" value="ok">${okLabel}</button>
-    <button class="btn ghost" value="cancel" autofocus>Cancel</button></div></form>`);
+    <button class="btn ghost" value="cancel" autofocus>Cancel</button></div></form>`, 'small');
   return r === 'ok';
 }
 async function askName(force) {
@@ -247,13 +278,17 @@ function go(h) { if (location.hash === h) route(); else location.hash = h; }
 window.addEventListener('hashchange', route);
 async function route() {
   const my = ++token;
+  OFF.saved = null;
   const h = location.hash.replace(/^#/, '') || '/';
   const [hp, hq] = h.split('?');                     // 1.18.0: #/library?q=... keeps the search in the address
   const parts = hp.split('/').filter(Boolean), qs = new URLSearchParams(hq || '');
   if (parts[0] !== 'identify') idStop();
   if (parts[0] !== 'new') NEWFILL = null;
-  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' ? 'library' : 'plants';
+  if (parts[0] !== 'fungi' || parts[1] !== 'new') MUFILL = null;
+  const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' || parts[0] === 'species' || parts[0] === 'wishlist' || parts[0] === 'around' ? 'library' : parts[0] === 'fungi' ? 'fungi' : parts[0] === 'offline' || parts[0] === 'decisions' ? 'offline' : parts[0] === 'today' ? 'today' : 'plants';
   document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  pagesMenu(false);
+  wlBadge();
   try {
     let view;
     await Promise.all([loadCodes(), loadFrost(), loadGroups(parts[0] === 'groups' || parts[0] === 'group' || !parts.length), G.care && !CAREDUE ? loadCareDue() : null]);
@@ -277,10 +312,22 @@ async function route() {
     else if (parts[0] === 'outside') view = await viewOutside();
     else if (parts[0] === 'identify') view = await viewIdentify();
     else if (parts[0] === 'library') view = await viewLibrary(qs);
+    else if (parts[0] === 'species' && parts[1]) view = await viewSpecies(decodeURIComponent(parts[1]));
+    else if (parts[0] === 'wishlist') view = await viewWishlist();
+    else if (parts[0] === 'offline') view = await viewOffline();
+    else if (parts[0] === 'decisions') view = await viewDecisions();
+    else if (parts[0] === 'around') view = await viewAround();
+    else if (parts[0] === 'fungi' && !parts[1]) view = await viewFungi();
+    else if (parts[0] === 'fungi' && parts[1] === 'safety') view = viewFungiSafety();
+    else if (parts[0] === 'fungi' && parts[1] === 'new') view = await viewFindForm(null);
+    else if (parts[0] === 'fungi' && parts[2] === 'edit') view = await viewFindForm(decodeURIComponent(parts[1]));
+    else if (parts[0] === 'fungi') view = await viewFind(decodeURIComponent(parts[1]));
     else view = await viewGallery();
     if (my !== token) return;
     app.innerHTML = rend(view.html);
     if (parts[0] !== 'frost' && parts[0] !== 'plant') app.insertAdjacentHTML('afterbegin', rend(frostBanner()));   // plant pages have their own note
+    if (OFF.saved && OFF.saved !== 'none') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice off-note noprint" role="note"><strong>Offline.</strong> This is what this device saved${OFF.saved ? ' on ' + when(OFF.saved) : ''}. Changes you make are kept here and sent when you are back online. <a href="#/offline">Offline page</a></p>`));
+    offNotice(parts);
     if (ME().role === 'viewer') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice vw-note noprint" role="note"><strong>View only.</strong> You can look at everything here, but changes are turned off. Ask ${ME().owner_name} if you would like to edit.</p>`));
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
     if (view.after) view.after();
@@ -298,9 +345,29 @@ async function route() {
 // ---------- section menu (left or right, can be folded away) ----------
 let NAVSESSION = null;                // on narrow screens the menu starts folded; opening it there lasts until a link is chosen
 function navOpen() { const P = window.PlantPrefs.get(), narrow = document.documentElement.dataset.narrow === '1'; return NAVSESSION != null ? NAVSESSION : (P.navopen === '1' && !narrow); }
+// 1.26.0: with large text on a computer, the page links fold behind the Pages button once they would take more than two rows (or
+// the top bar more than a fifth of the window), and a top bar still taller than a fifth of the window scrolls away with the page, as on phones, instead of staying pinned
+function topFit() {
+  const r = document.documentElement, nav = document.getElementById('main-nav'), top = document.querySelector('.top');
+  if (!nav || !top) return;
+  if (r.dataset.narrow === '1') { r.dataset.pagesfold = '0'; r.dataset.toptall = '0'; r.dataset.topmode = ''; r.dataset.navrow = '0'; return; }
+  const was = top.classList.contains('pages-open'); top.classList.remove('pages-open');
+  r.dataset.pagesfold = '0';
+  // 1.26.1: the bar spans the window. Everything on one line if it fits; otherwise the name and the buttons on the first line and
+  // the page links on a line of their own, spread across the whole width
+  const rows = () => new Set([...nav.querySelectorAll('a')].map(x => Math.round(x.getBoundingClientRect().top))).size;
+  r.dataset.topmode = 'one'; r.dataset.navrow = '0';
+  if (rows() > 1) r.dataset.topmode = 'tier';
+  r.dataset.navrow = rows() === 1 ? '1' : '0';
+  const a = nav.querySelector('a');
+  if (a && (nav.offsetHeight > a.offsetHeight * 2.5 || top.offsetHeight > innerHeight * 0.2)) { r.dataset.pagesfold = '1'; r.dataset.topmode = ''; r.dataset.navrow = '0'; }
+  if (was) top.classList.add('pages-open');
+  r.dataset.toptall = top.offsetHeight > innerHeight * 0.2 ? '1' : '0';
+}
 function navLayout() {
   const r = document.documentElement, top = document.querySelector('.top');
-  r.style.setProperty('--top-h', (r.dataset.narrow === '1' ? 0 : (top ? top.getBoundingClientRect().height : 64)) + 'px');   // on phones the top bar scrolls away
+  topFit();
+  r.style.setProperty('--top-h', (r.dataset.narrow === '1' || r.dataset.toptall === '1' ? 0 : (top ? top.getBoundingClientRect().height : 64)) + 'px');   // on phones the top bar scrolls away
   const open = navOpen();
   r.dataset.navopen = open ? '1' : '0';
   const side = window.PlantPrefs.get().navside;
@@ -346,7 +413,7 @@ function buildSideNav() {
 }
 // the row of section buttons on plant pages: the same sections as the menu, with shorter names where the title is long
 const JUMP_SHORT = { 'Name and details': 'Details', 'Current conditions': 'Now', 'Needed from you': 'Needed', 'Requests (all answered)': 'Requests',
-  'Getting this plant back in range': 'Back in range', 'In range': 'In range', 'Plant identification': 'Identification', 'About this plant': 'About',
+  'Getting this plant back in range': 'Back in range', 'In range': 'In range', 'Plant identification': 'Identification', 'About this plant': 'About', 'Uses, partners and propagation': 'Uses',
   'Sunlight': 'Light', 'Getting ready to come inside': 'Coming inside', 'Pests and diseases': 'Pests', 'Page history': 'History' };
 function buildJumpRow() {
   const row = document.getElementById('jumprow'), pane = document.getElementById('pane-r'); if (!row || !pane) return;
@@ -413,17 +480,64 @@ function plantCmp() {
     group: (a, b) => { const x = groupNames(a.code)[0], y = groupNames(b.code)[0]; return (!x - !y) || (x || '').localeCompare(y || '') || a.code.localeCompare(b.code); },
   }[G.sort] || ((a, b) => a.code.localeCompare(b.code));
 }
+// 1.20.0: the card is no longer one big link, so it can hold buttons. The name is the link, and it stretches over the whole
+// card (CSS), so the card still opens the plant from anywhere. The photo has its own Previous and Next buttons and can be swiped.
+const GPIX = new Map();                       // plant code -> which of its photos the card shows (kept while the page is open)
+function sheetPhotos(p) { return p.photos && p.photos.length ? p.photos : p.photo ? [p.photo] : []; }
+function sheetMat(p) {
+  const ph = sheetPhotos(p), n = ph.length, i = n ? ((GPIX.get(p.code) || 0) % n + n) % n : 0;
+  return html`${n ? html`<img src="${thumbUrl(ph[i])}" alt="${n > 1 ? `Photo ${i + 1} of ${n}` : ''}" loading="lazy" decoding="async" width="520" height="650">` : html`<div class="nophoto">No photo yet</div>`}
+      <span class="acc">${p.code}</span>
+      ${n > 1 ? html`<div class="ph-nav noprint"><button type="button" class="ph-btn" data-act="gphoto" data-code="${p.code}" data-d="-1" aria-label="Previous photo of ${p.common_name}">‹</button>
+        <span class="ph-n" aria-live="polite">${i + 1} of ${n}</span>
+        <button type="button" class="ph-btn" data-act="gphoto" data-code="${p.code}" data-d="1" aria-label="Next photo of ${p.common_name}">›</button></div>` : ''}
+      <div class="bar" style="--hb:${HEALTH_COLOR[p.health_rating] || 'var(--line)'}"></div>`;
+}
 function sheet(p) {
-  return html`<a class="sheet" href="#/plant/${enc(p.code)}">
-    <div class="mat">${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy" decoding="async" width="520" height="650">` : html`<div class="nophoto">No photo yet</div>`}
-      <span class="acc">${p.code}</span><div class="bar" style="--hb:${HEALTH_COLOR[p.health_rating] || 'var(--line)'}"></div></div>
-    <h3 class="name">${p.common_name}</h3>
+  return html`<article class="sheet" data-code="${p.code}">
+    <div class="mat">${sheetMat(p)}</div>
+    <h3 class="name"><a class="sheet-link" href="#/plant/${enc(p.code)}">${p.common_name}</a></h3>
     <p class="sci latin">${p.scientific_name || 'Scientific name not set'}</p>
     <div class="tags">${isArch(p) ? html`<span class="tag tag-arch">Archived</span>` : ''}${planTag(p.winter_plan)}${healthTag(p.health_rating)}</div>
     ${needsYou(p) ? html`<p class="needs-badge">Needs from you: ${[p.requests_open ? `${p.requests_open} request${p.requests_open === 1 ? '' : 's'}` : '', p.id_confidence != null && p.id_confidence < 70 ? 'ID info' : ''].filter(Boolean).join(', ')}</p>` : ''}
     <div class="meter"><span>ID ${p.id_confidence == null ? 'not rated' : p.id_confidence + '%'}</span><i style="--v:${p.id_confidence || 0}%;--mc:${confColor(p.id_confidence)}"></i></div>
-  </a>`;
+  </article>`;
 }
+document.addEventListener('load', e => {       // 1.21.0: wide photos on cards get class "wide" (see the photofit Display setting)
+  const im = e.target; if (!im || im.tagName !== 'IMG' || !im.closest('.mat')) return;
+  im.classList.toggle('wide', im.naturalWidth > im.naturalHeight * 1.1);
+}, true);
+function sheetStep(code, d) {
+  const p = ALL.find(x => x.code === code), card = document.querySelector(`#grid .sheet[data-code="${CSS.escape(code)}"]`);
+  if (!p || !card) return;
+  const n = sheetPhotos(p).length; if (n < 2) return;
+  GPIX.set(code, (((GPIX.get(code) || 0) + d) % n + n) % n);
+  const had = document.activeElement && document.activeElement.closest('.ph-btn') ? document.activeElement.dataset.d : null;
+  card.querySelector('.mat').innerHTML = rend(sheetMat(p));
+  if (had) { const b = card.querySelector(`.ph-btn[data-d="${had}"]`); if (b) b.focus(); }   // keep the keyboard on the same button
+}
+document.addEventListener('keydown', e => {          // Left and Right arrows on a photo button step through the photos too
+  const b = e.target.closest && e.target.closest('#grid .ph-btn'); if (!b || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+  e.preventDefault(); const card = b.closest('.sheet'); sheetStep(card.dataset.code, e.key === 'ArrowRight' ? 1 : -1);
+  const nb = card.querySelector(`.ph-btn[data-d="${e.key === 'ArrowRight' ? 1 : -1}"]`); if (nb) nb.focus();
+});
+// swipe left or right on a card's photo for the next or previous photo (phones and tablets)
+const GSW = { x: 0, y: 0, code: null, t: 0, used: 0 };
+document.addEventListener('touchstart', e => {
+  GSW.code = null;
+  const m = e.touches.length === 1 && e.target.closest && e.target.closest('#grid .sheet'); if (!m) return;
+  const t = e.touches[0], r = m.querySelector('.mat').getBoundingClientRect();
+  if (t.clientY < r.top || t.clientY > r.bottom || e.target.closest('.ph-btn')) return;
+  Object.assign(GSW, { x: t.clientX, y: t.clientY, code: m.dataset.code, t: Date.now() });
+}, { passive: true });
+document.addEventListener('touchend', e => {
+  if (!GSW.code) return;
+  const t = e.changedTouches[0], dx = t.clientX - GSW.x, dy = t.clientY - GSW.y, code = GSW.code; GSW.code = null;
+  if (Math.abs(dx) < 40 || Math.abs(dx) < Math.abs(dy) * 1.5 || Date.now() - GSW.t > 1000) return;
+  GSW.used = Date.now();                       // the click that follows a swipe must not open the plant
+  sheetStep(code, dx < 0 ? 1 : -1);
+}, { passive: true });
+document.addEventListener('click', e => { if (Date.now() - GSW.used < 500 && e.target.closest && e.target.closest('#grid .sheet')) { e.preventDefault(); e.stopPropagation(); } }, true);
 function drawGrid() {
   gSave();
   if (!document.getElementById('grid')) { drawPnav(); return; }
@@ -432,6 +546,7 @@ function drawGrid() {
   const led = document.querySelector('.ledger'); if (led) led.innerHTML = rend(ledger());
   const mf = document.querySelector('#more-f > summary'); if (mf) { const n = moreOn(); mf.textContent = 'More filters' + (n ? ` (${n} on)` : ''); }
   const gt = document.getElementById('g-title'); if (gt) gt.textContent = G.status === 'archived' ? 'Archived plants' : 'Outdoor plants';
+  const wa = document.getElementById('wa-btn'); if (wa) { const n = r.filter(p => !isArch(p)).length; wa.textContent = `Water all ${n} shown`; wa.disabled = !n; }
   document.getElementById('count').textContent = `${r.length} of ${pool} ${G.status === 'archived' ? 'archived ' : G.status === 'all' ? '' : 'active '}plants shown`;
   document.getElementById('grid').innerHTML = r.length
     ? rend(r.map(sheet))
@@ -468,6 +583,8 @@ async function viewGallery() {
     </div>
     ${moreFilters()}
     <p id="count" class="muted" aria-live="polite"></p>
+    <div class="water-all noprint"><button class="btn ghost" type="button" data-act="waterall" id="wa-btn">Water all</button>
+      <span class="hint">Marks every plant shown (with the filters above) as watered today. Plants already watered today are skipped.</span></div>
     <div class="grid" id="grid"></div>
     ${archN ? html`<p class="hint" style="margin-top:2rem">${archN} archived plant${archN === 1 ? ' is' : 's are'} hidden from this list. Choose <strong>Show: Active and archived</strong> in the filters to see ${archN === 1 ? 'it' : 'them'} too.</p>` : ''}`,
     after: drawGrid,
@@ -816,6 +933,24 @@ function fitNowTags() {         // 1.11.0: keep each "Now" label inside its stri
   });
 }
 new MutationObserver(() => requestAnimationFrame(fitNowTags)).observe(document.getElementById('app'), { childList: true, subtree: true });
+// 1.26.0: a table too wide for the screen becomes a list, one box per row, each value with its column's name beside it, instead of
+// scrolling sideways. The long weather log (.tbl-wrap.wide) keeps its scrolling table.
+function fitTables() {
+  document.querySelectorAll('#app .tbl-wrap:not(.wide) > table.tbl').forEach(t => {
+    if (!t.dataset.labelled) {
+      const names = [...t.querySelectorAll('thead tr:last-child > th')].map(th => th.textContent.trim());
+      t.querySelectorAll('tbody tr, tfoot tr').forEach(tr => { let i = 0;
+        [...tr.children].forEach(c => { const n = names[i] || ''; if (n && !c.dataset.label && c.colSpan === 1) c.dataset.label = n; i += c.colSpan || 1; }); });
+      t.dataset.labelled = '1';
+    }
+    t.classList.remove('stacked');
+    if (t.scrollWidth > t.parentElement.clientWidth + 2 && t.querySelector('thead')) t.classList.add('stacked');
+  });
+}
+let FITT = 0;
+function fitTablesSoon() { cancelAnimationFrame(FITT); FITT = requestAnimationFrame(fitTables); }
+new MutationObserver(fitTablesSoon).observe(document.getElementById('app'), { childList: true, subtree: true });
+window.addEventListener('resize', fitTablesSoon); document.addEventListener('prefs', fitTablesSoon);
 new MutationObserver(() => {                      // 1.12.0: for people who can only view, menus and tick boxes that save straight away are switched off
   if (ME().role !== 'viewer') return;
   document.querySelectorAll('#app select[data-act=site], #app select[data-act=plan], #app [data-act=preptrait], #app [data-act=preppest], #app input[type=file]').forEach(el => { if (!el.disabled) el.disabled = true; });
@@ -1147,11 +1282,13 @@ function requestText(p) {
 function photoPanel(p) {
   const ph = p.photos, i = clamp(PIDX, 0, Math.max(0, ph.length - 1)), cur = ph[i];
   return html`${cur ? html`<button type="button" class="main-photo" data-act="zoom" aria-label="Enlarge photo"><img src="${photoUrl(cur.file)}" alt="${cur.caption || p.common_name}"></button>
-      <p class="cap">${cur.caption || 'No caption'}${cur.is_primary ? ' (main photo)' : ''}. Added ${when(cur.added_at)} by ${cur.added_by}.</p>`
+      <p class="cap">${cur.caption || 'No caption'}. Added ${when(cur.added_at)} by ${cur.added_by}.</p>
+      ${ph.length > 1 ? html`<p class="main-note noprint">${cur.is_primary
+        ? html`<strong>★ This is the main photo.</strong> It is the one shown on the Plants page, on care cards and in plant link previews.`
+        : html`<button class="btn small" type="button" data-act="mainphoto">Make this the main photo</button> <span class="hint">The main photo is the one shown on the Plants page, on care cards and in plant link previews.</span>`}</p>` : ''}`
       : html`<div class="empty">No photos yet. Add one below.</div>`}
-    ${ph.length > 1 ? html`<div class="thumbs">${ph.map((x, j) => html`<button type="button" data-act="pick" data-i="${j}" aria-label="Photo ${j + 1} of ${ph.length}" aria-current="${String(j === i)}"><img src="${thumbUrl(x.file)}" alt=""></button>`)}</div>` : ''}
+    ${ph.length > 1 ? html`<div class="thumbs">${ph.map((x, j) => html`<button type="button" data-act="pick" data-i="${j}" aria-label="Photo ${j + 1} of ${ph.length}${x.is_primary ? ', the main photo' : ''}" aria-current="${String(j === i)}"><img src="${thumbUrl(x.file)}" alt="">${x.is_primary ? html`<span class="th-main" aria-hidden="true">★ Main</span>` : ''}</button>`)}</div>` : ''}
     <div class="row noprint">
-      ${cur && !cur.is_primary ? html`<button class="btn ghost small" type="button" data-act="mainphoto">Make main photo</button>` : ''}
       ${cur ? html`<button class="btn ghost small" type="button" data-act="capedit">Edit caption</button>
         <button class="btn ghost small" type="button" data-act="movephoto">Move to another plant</button>
         <button class="btn danger small" type="button" data-act="rmphoto">Remove photo</button>` : ''}
@@ -1213,6 +1350,57 @@ async function loadTimeline(box) {
   if (TL.code !== code) { TL.code = code; TL.a = TL.b = null; }
   tlRender();
 }
+// ---------- 1.27.0: uses, partners, deterrents, propagation and breeding (one species' facts, on plant, species and find pages) ----------
+const FACT_EVIDENCE = { Tested: 'shown in trials', Traditional: "gardeners' lore, not proven", 'Same needs': 'same light, water and soil', 'Different needs': 'needs different light, water or soil' };
+function factYours(list, lead) {
+  return list && list.length ? html`<span class="fact-yours">${lead} ${list.map((x, i) => html`${i ? ', ' : ''}<a href="#/plant/${enc(x.code)}">${x.code} ${x.name}</a>`)}</span>` : '';
+}
+function factsHtml(f, box) {
+  const fungus = box.dataset.factsKind === 'fungus', name = box.dataset.factsCommon || box.dataset.factsName;
+  if (!f) {
+    const can = canChange() && box.dataset.canWrite === '1';
+    return html`<p class="muted">Nothing kept for ${name} yet.</p>
+      ${can && box.dataset.factsName ? html`<p><button class="btn" type="button" data-act="factswrite">Write them with Claude</button></p>
+        <p class="hint">Claude writes the uses, ${fungus ? 'partner trees and plants, and how it is grown' : 'good and bad partner plants, deterrents, propagation and breeding'} for this species, for ${fungus ? 'your area' : 'Round Rock'}. It takes about half a minute, uses the owner's Anthropic key, and is kept.</p>`
+        : html`<p class="hint">${box.dataset.factsName ? 'The owner can let Claude write them by saving an Anthropic API key on the Identify page.' : 'Set the scientific name (Edit this page) so they can be looked up.'}</p>`}`;
+  }
+  const ev = e => html`<span class="fact-ev">(${FACT_EVIDENCE[e] || e})</span>`;
+  const partner = p => html`<li><strong>${p.name}</strong>${p.sci && p.sci.toLowerCase() !== (p.name || '').toLowerCase() ? html` <i class="latin">${p.sci}</i>` : ''}: ${p.why} ${ev(p.evidence)}${p.yours && p.yours.length ? html`<br>${factYours(p.yours, 'You have it:')}` : ''}</li>`;
+  const genus = f.key.split(' ')[0], same = f.cross_same || [], other = f.cross_other || [];
+  const src = f.origin === 'researched' ? `Written for your plants by ${f.written_by || 'Claude'}, from general horticultural knowledge` : `Written by Claude when ${f.written_by || 'someone'} asked`;
+  const sp = (box.dataset.factsName || '').replace(/^[x\u00d7]\s*/, '');
+  return html`${!f.key.includes(' ') && /^[A-Z][a-z]+\s+[a-z]{3,}/.test(sp) && !/^[A-Z][a-z]+\s+(sp|spp|cultivar|type|hybrid|or|cf)\b/.test(sp) ? html`<p class="hint">For the genus <i class="latin">${f.name}</i> as a whole.</p>` : ''}
+    ${f.summary ? html`<p>${f.summary}</p>` : ''}
+    <div class="facts">
+      <div><h3>Uses</h3>${f.uses.length ? html`<ul class="fact-list">${f.uses.map(u => html`<li><strong>${u.kind}:</strong> ${u.text}${u.caution ? html`<br><span class="fact-warn">⚠ ${u.caution}</span>` : ''}</li>`)}</ul>` : html`<p class="muted">None known beyond being grown for its looks.</p>`}
+        ${fungus ? html`<p class="hint">Uses never include eating it. Never eat a wild mushroom because of an app, a photo, or this record.</p>` : html`<p class="hint">Traditional uses are not medical advice.</p>`}
+        ${f.compost.verdict ? html`<h3>In the compost</h3><p><strong>${f.compost.verdict}.</strong> ${f.compost.why}</p>` : ''}</div>
+      ${f.deters.length || f.attracts.length ? html`<div>${f.deters.length ? html`<h3>Keeps away</h3><ul class="fact-list">${f.deters.map(x => html`<li><strong>${x.what}:</strong> ${x.how} ${ev(x.evidence)}</li>`)}</ul>` : ''}
+        ${f.attracts.length ? html`<h3>Brings in</h3><ul class="fact-list">${f.attracts.map(x => html`<li><strong>${x.what}:</strong> ${x.why}</li>`)}</ul>` : ''}</div>` : ''}
+      <div><h3>Good partners</h3>${f.partners_good.length ? html`<ul class="fact-list">${f.partners_good.map(partner)}</ul>` : html`<p class="muted">None noted.</p>`}
+        <h3>Keep apart from</h3>${f.partners_bad.length ? html`<ul class="fact-list">${f.partners_bad.map(partner)}</ul>` : html`<p class="muted">None noted.</p>`}</div>
+      <div><h3>${fungus ? 'Growing it' : 'Propagation'}</h3>${f.propagation.length ? html`<ul class="fact-list">${f.propagation.map(x => html`<li><strong>${x.method}</strong>${x.when ? html` (${x.when})` : ''}: ${x.how}</li>`)}</ul>` : html`<p class="muted">Not noted.</p>`}
+        ${fungus ? '' : html`<h3>Breeding</h3>${f.breeding.text ? html`<p>${f.breeding.text}</p>` : ''}
+          ${same.length ? html`<p>${factYours(same, 'Your plants of the same species:')}</p>` : ''}
+          ${other.length ? html`<p>${factYours(other, `Your plants it may cross with (${[genus].concat(f.breeding.cross_genera || []).map(g => g.charAt(0).toUpperCase() + g.slice(1)).join(' or ')}):`)}</p>` : ''}
+          ${!same.length && !other.length ? html`<p class="muted">None of your plants are close enough relatives to cross with it.</p>` : ''}
+          ${f.breeding.patent ? html`<p class="fact-warn">⚠ ${f.breeding.patent}</p>` : ''}`}</div>
+    </div>
+    <p class="hint">${src}${f.written_at ? `, ${when(f.written_at)}` : ''}. Not checked by a person. Evidence: "shown in trials" has been tested; "gardeners' lore" is widely repeated but not proven.
+      ${f.sources.length ? html`Read more: ${f.sources.map((x, i) => html`${i ? '; ' : ''}<a href="${x.url}" target="_blank" rel="noopener noreferrer">${x.title}</a>`)}.` : ''}</p>
+    ${f.origin === 'claude' && canChange() && box.dataset.canWrite === '1' ? html`<p><button class="btn ghost small" type="button" data-act="factswrite">Write them again with Claude</button></p>` : ''}`;
+}
+async function loadFacts(box) {
+  const q = box.dataset.factsCode ? 'code=' + enc(box.dataset.factsCode) : 'name=' + enc(box.dataset.factsName || '');   // by code alone, so it is saved for offline use
+  try {
+    const r = await api('GET', '/api/facts?' + q);
+    box.dataset.canWrite = r.can_write ? '1' : '0';
+    box.innerHTML = rend(factsHtml(r.facts, box));
+  } catch (e) { box.innerHTML = rend(html`<p class="muted">${e.offline || !navigator.onLine ? 'Not saved on this device. They load once you are back online.' : e.message}</p>`); }
+}
+new MutationObserver(() => document.querySelectorAll('.facts-box:not([data-loaded])').forEach(b => { b.dataset.loaded = '1'; loadFacts(b); }))
+  .observe(document.getElementById('app'), { childList: true, subtree: true });
+
 new MutationObserver(() => { const b = document.getElementById('tl-box'); if (b && !b.dataset.loaded) { b.dataset.loaded = '1'; loadTimeline(b); } })
   .observe(document.getElementById('app'), { childList: true });
 function slips(h) {
@@ -1275,6 +1463,7 @@ async function viewPlant(code) {
         </section>
 
         <section class="blk" id="about"><h2>About this plant</h2>${aboutBlock(p)}</section>
+        <section class="blk" id="uses"><h2>Uses, partners and propagation</h2><div class="facts-box" data-facts-code="${p.code}" data-facts-name="${p.scientific_name || ''}" data-facts-common="${p.common_name}"><p class="loading">Loading</p></div></section>
 
         <section class="blk" id="temp"><h2>Temperature</h2>${tempBlock(p, cur)}${paras(p.temp_notes)}${histBlock('temp')}</section>
         <section class="blk" id="hum"><h2>Humidity</h2>${humBlock(p, cur)}${histBlock('hum')}</section>
@@ -1453,7 +1642,8 @@ function careQuick(p) {
       <button class="btn ghost" type="button" data-act="fertlog" data-code="${p.code}">Log feeding</button>
       <label class="btn ghost quick-photo">Add a photo<input type="file" accept="image/*" capture="environment" data-act="addphotos" class="sr"></label>
       <button class="btn ghost" type="button" data-act="careother" data-code="${p.code}" data-name="${p.common_name}">Log other care</button>
-    </div></div>`;
+    </div>
+    <p class="hint" id="water-done-note" hidden>Already watered today, so "Watered today" is off until tomorrow. To take it back, use Undo in the message, or Remove in the care log.</p></div>`;
 }
 async function loadCarePlant() {
   const box = document.getElementById('care-plant'); if (!box || !CUR) return;
@@ -1464,6 +1654,11 @@ async function loadCarePlant() {
   if (!CUR || CUR.p.code !== code) return;
   const w = W.plants.find(x => x.code === code);
   const qs = document.getElementById('quick-status'); if (qs) qs.textContent = w ? 'Water: ' + waterWords(w) : '';
+  // 1.21.0: once watered today, "Watered today" is switched off until tomorrow (Undo or Remove in the care log switch it back on)
+  const wb = document.querySelector('.quick-btns [data-act=care][data-kind=water]'), wn = document.getElementById('water-done-note');
+  const done = !!(w && w.last_water === W.today);
+  if (wb) { wb.disabled = done; wb.classList.toggle('done-today', done); wb.textContent = done ? '✓ Watered today' : 'Watered today'; }
+  if (wn) wn.hidden = !done;
   box.innerHTML = rend(html`<div class="verdict-box v-${w && w.state === 'due' ? 'due' : 'wait'}" role="status"><h3>Watering</h3><p>${w ? waterWords(w) : ''}</p>
       <p class="hint">Change the gap with "Check for water every (days)" in Edit this page. Rain of ${W.rain_counts_in} in or more counts as a watering for plants whose Location is Outdoors.</p></div>
     <h3>Care log</h3>${log.length ? html`<ul class="care-log">${log.map(e => html`<li><strong>${CARE_WORD[e.kind] || e.kind}</strong> ${relDay(e.done_on)}${e.note ? ': ' + e.note : ''} <span class="muted">(${e.created_by})</span>
@@ -1674,7 +1869,8 @@ function todayPrep(PR, t) {
     ${!again.length && !free.length ? html`<p class="notice ok">No sprays due and nobody to move today.</p>` : ''}</section>`;
 }
 async function viewToday() {
-  const [W, reqs, , PR] = await Promise.all([api('GET', '/api/water'), api('GET', '/api/requests?open=1'), loadFertData(true), api('GET', '/api/prep').catch(() => null)]);
+  const [W, reqs, , PR, WA] = await Promise.all([api('GET', '/api/water'), api('GET', '/api/requests?open=1'), loadFertData(true), api('GET', '/api/prep').catch(() => null),
+    api('GET', '/api/wishlist/alerts').catch(() => ({ alerts: [] }))]);
   const by = Object.fromEntries(FERT.plants.map(p => [p.code, p])), t = todayStr();
   const ws = W.plants.filter(w => by[w.code]);
   const due = ws.filter(w => w.state === 'due').sort((a, b) => b.overdue - a.overdue), soon = ws.filter(w => w.state === 'soon'), unk = ws.filter(w => w.state === 'unknown');
@@ -1686,6 +1882,7 @@ async function viewToday() {
   return {
     title: 'Today',
     html: html`<h1>Today</h1><p class="muted">${longDay(t)}. Watering, feeding and anything Claude has asked you for, most urgent first.</p>
+    ${WA.alerts.length ? html`<section class="blk wl-alerts" id="today-wish"><h2>Wishlist alerts (${WA.alerts.length})</h2>${wlAlertsHtml(WA.alerts.slice(0, 6), true)}</section>` : ''}
     <div class="verdict-box" role="status"><p><strong>${n(due.length, 'plant to water', 'plants to water')}, ${n(feed.length, 'to feed', 'to feed')}, and ${n(needs.length, 'plant that needs something from you', 'plants that need something from you')}.</strong>
       ${W.avg_high != null ? `Highs have been about ${W.avg_high}°F lately.` : ''} ${Object.keys(W.rain).length ? `Rain counted as watering for plants out in the open: ${Object.entries(W.rain).slice(-3).map(([d, i]) => relDay(d) + ', ' + i + ' in').join('; ')}.` : ''}</p></div>
     <section class="blk" id="today-water"><h2>Water (${due.length})</h2>
@@ -2376,7 +2573,7 @@ async function submitForm(form) {
       toast('Added ' + p.code); go('#/plant/' + enc(p.code));
     } else {
       const r = await api('PUT', '/api/plants/' + enc(form.dataset.code), { base_version: +form.dataset.ver, fields, note: fd.get('__note') || '' });
-      toast(r.changed ? 'Saved as version ' + r.version : 'Nothing was changed'); go('#/plant/' + enc(form.dataset.code));
+      toast(r.offline ? (r.changed ? 'Saved' : 'Nothing was changed') : r.changed ? 'Saved as version ' + r.version : 'Nothing was changed'); go('#/plant/' + enc(form.dataset.code));
     }
   } catch (e) {
     btn.disabled = false;
@@ -3261,26 +3458,48 @@ new MutationObserver(() => {
 function displayDialog() {
   const P = window.PlantPrefs.get();
   const group = (key, title, opts, hint) => html`<fieldset class="opt-group"><legend>${title}</legend><div class="opts">${opts.map(([v, l]) => html`<label><input type="radio" name="pref-${key}" data-pref="${key}" value="${v}" ${P[key] === v ? raw('checked') : ''}><span>${l}</span></label>`)}</div>${hint ? html`<p class="hint">${hint}</p>` : ''}</fieldset>`;
-  modal(html`<form method="dialog"><h2>Display settings</h2>
-    <p class="muted">Changes apply right away and are remembered in this browser. Each computer or phone keeps its own.</p>
-    <p><strong>App version:</strong> ${META && META.version ? META.version : 'unknown'}</p>
-    ${group('size', 'Text and button size', [['100', 'Standard'], ['115', 'Comfortable'], ['135', 'Large'], ['160', 'Larger'], ['190', 'Largest']], 'Everything scales together, including buttons, bars and charts.')}
-    ${group('space', 'Spacing', [['normal', 'Normal'], ['roomy', 'Roomy']], 'Roomy adds space between lines, letters and words.')}
-    ${group('contrast', 'Contrast', [['normal', 'Normal'], ['high', 'High']], 'High contrast uses black and white, stronger lines and heavier outlines.')}
-    ${group('theme', 'Colours', [['auto', 'Match my device'], ['light', 'Light'], ['dark', 'Dark']])}
-    ${group('navside', 'Section menu side', [['left', 'Left'], ['right', 'Right']], 'The "On this page" menu lists the sections of the page you are on.')}
-    ${group('navopen', 'Section menu', [['1', 'Open'], ['0', 'Folded away (the Sections button opens it)']], 'On narrow windows and phones it starts folded and covers the page while open.')}
-    ${group('width', 'Page width', [['normal', 'Normal'], ['wide', 'Use the full width of the window']], 'Full width gives charts and tables more room on a wide screen.')}
-    ${group('layout', 'Plant pages', [['split', 'Photos and details side by side'], ['single', 'One column']], 'Side by side lets each half scroll on its own: scroll with the pointer over the half you want to move. One column stacks the photos above the details.')}
-    ${canSpeak() ? html`${group('readbtns', 'Read aloud buttons', [['1', 'Show them on each section'], ['0', 'Hide them']], 'Your browser reads the section aloud with its own voices. The R key reads the whole page either way.')}
+  const G = {};
+  G.size = group('size', 'Text and button size', [['100', 'Standard'], ['115', 'Comfortable'], ['135', 'Large'], ['160', 'Larger'], ['190', 'Largest']], 'Everything scales together, including buttons, bars and charts.');
+  G.space = group('space', 'Spacing', [['normal', 'Normal'], ['roomy', 'Roomy']], 'Roomy adds space between lines, letters and words.');
+  G.contrast = group('contrast', 'Contrast', [['normal', 'Normal'], ['high', 'High']], 'High contrast uses black and white, stronger lines and heavier outlines.');
+  G.theme = group('theme', 'Colours', [['auto', 'Match my device'], ['light', 'Light'], ['dark', 'Dark']]);
+  G.navside = group('navside', 'Section menu side', [['left', 'Left'], ['right', 'Right']], 'The "On this page" menu lists the sections of the page you are on.');
+  G.navopen = group('navopen', 'Section menu', [['1', 'Open'], ['0', 'Folded away (the Sections button opens it)']], 'On narrow windows and phones it starts folded and covers the page while open.');
+  G.width = group('width', 'Page width', [['normal', 'Normal'], ['wide', 'Use the full width of the window']], 'Full width gives charts and tables more room on a wide screen.');
+  G.lines = group('lines', 'Line length', [['full', 'Use the full width'], ['short', 'Shorter lines (about 70 letters)']], 'Full width fits more on the screen. Shorter lines can be easier to follow from one line to the next.');
+  G.layout = group('layout', 'Plant pages', [['split', 'Photos and details side by side'], ['single', 'One column']], 'Side by side lets each half scroll on its own: scroll with the pointer over the half you want to move. One column stacks the photos above the details.');
+  const speak = canSpeak() ? html`${group('readbtns', 'Read aloud buttons', [['1', 'Show them on each section'], ['0', 'Hide them']], 'Your browser reads the section aloud with its own voices. The R key reads the whole page either way.')}
     ${group('rate', 'Reading speed', [['0.8', 'Slower'], ['1', 'Normal'], ['1.25', 'Faster'], ['1.5', 'Fastest']])}
     <fieldset class="opt-group"><legend>Voice</legend><label class="f">Voice<select data-pref="voice" id="pref-voice">${voiceOptions(P.voice)}</select></label>
       <p class="row"><button class="btn ghost small" type="button" data-act="voicetest">Try this voice</button></p>
-      <p class="hint">"Natural" or "Online" voices in Microsoft Edge sound the most human.</p></fieldset>` : ''}
-    ${group('swipe', 'Swipe between plants', [['1', 'On'], ['0', 'Off']], 'On a phone or tablet, swipe left on a plant page for the next plant, or right for the previous one. Start away from the edges of the screen, which your phone uses for Back.')}
-    ${group('keys', 'Keyboard shortcuts', [['1', 'On'], ['0', 'Off']], 'R reads the page aloud, [ and ] go to the previous and next plant, ? lists them all.')}
-    <div class="row"><button class="btn" value="ok" autofocus>Done</button><button class="btn ghost" type="button" data-act="prefreset">Reset to defaults</button></div></form>`);
+      <p class="hint">"Natural" or "Online" voices in Microsoft Edge sound the most human.</p></fieldset>` : html`<p class="muted">This browser cannot read aloud.</p>`;
+  G.photofit = group('photofit', 'Photos on the Plants page', [['auto', 'Show wide photos whole, fill the card with tall ones'], ['fill', 'Fill the card (wide photos lose their sides)'], ['whole', 'Always show the whole photo']], 'A wide photo cut down to fit a tall card loses its sides. Shown whole, it has a plain band above and below.');
+  G.swipe = group('swipe', 'Swipe between plants', [['1', 'On'], ['0', 'Off']], 'On a phone or tablet, swipe left on a plant page for the next plant, or right for the previous one. Start away from the edges of the screen, which your phone uses for Back.');
+  G.keys = group('keys', 'Keyboard shortcuts', [['1', 'On'], ['0', 'Off']], 'R reads the page aloud, [ and ] go to the previous and next plant, ? lists them all.');
+  const SECS = [['Text and colours', html`${G.size}${G.space}${G.contrast}${G.theme}`], ['Page layout', html`${G.width}${G.lines}${G.layout}${G.navside}${G.navopen}`],
+    ['Reading aloud', speak], ['Photos and touch', html`${G.photofit}${G.swipe}`], ['Keyboard', G.keys]];
+  const keep = DVSCROLL; DVSCROLL = 0;
+  modal(html`<form method="dialog" class="dv-form">
+    <div class="dv-head"><div class="dv-title"><h2 id="dv-title">Display settings</h2>
+        <p class="muted dv-intro">Changes apply right away and are remembered in this browser. Each computer or phone keeps its own.</p>
+        <p class="dv-ver"><strong>App version:</strong> ${META && META.version ? META.version : 'unknown'}</p></div>
+      <div class="row dv-acts"><button class="btn" value="ok" autofocus>Done</button><button class="btn ghost" type="button" data-act="prefreset">Reset to defaults</button></div></div>
+    <div class="dv-main"><nav class="dv-tabs" aria-label="Parts of the display settings">${SECS.map(([n], i) => html`<button type="button" class="dv-tab" data-act="dvjump" data-to="dv-s${i}" ${i ? '' : raw('aria-current="true"')}>${n}</button>`)}</nav>
+      <div class="dv-body" id="dv-body" tabindex="-1">${SECS.map(([n, body], i) => html`<section id="dv-s${i}" aria-labelledby="dv-h${i}"><h3 id="dv-h${i}">${n}</h3><div class="dv-cols">${body}</div></section>`)}</div></div></form>`, 'dv');
+  dlg.setAttribute('aria-labelledby', 'dv-title');
+  const body = document.getElementById('dv-body');
+  if (keep) body.scrollTop = keep;
+  const mark = () => {                         // the part being read is marked in the menu, in words for screen readers too
+    const top = body.getBoundingClientRect().top + 8;
+    let cur = 'dv-s0';
+    body.querySelectorAll('section').forEach(sc => { if (sc.getBoundingClientRect().top <= top + 40) cur = sc.id; });
+    if (body.scrollTop + body.clientHeight >= body.scrollHeight - 4) cur = body.querySelector('section:last-child').id;
+    dlg.querySelectorAll('.dv-tab').forEach(b => { if (b.dataset.to === cur) b.setAttribute('aria-current', 'true'); else b.removeAttribute('aria-current'); });
+  };
+  body.addEventListener('scroll', () => { DVSCROLL = body.scrollTop; mark(); }, { passive: true });
+  mark();
 }
+let DVSCROLL = 0;              // Reset to defaults redraws the window; it stays where it was
 // ---------- swipe between plants on touch screens (added in 1.14.1) ----------
 // A quick sideways swipe on a plant page opens the next plant (swipe left) or the previous one (swipe right), the same as
 // the Previous / Next Plant buttons. It stays out of the way of scrolling, zooming, tables and charts that scroll sideways,
@@ -3672,7 +3891,9 @@ async function viewLabels() {
         : local ? html`<div class="notice">The codes currently point to <strong>${base}</strong>, which only works on this computer. A phone cannot open that. Use the app's Tailscale address (README: "Using the app away from home").</div>`
         : html`<div class="notice">Codes open <strong>${base}</strong>. That address only works on your home network, and from version 1.12.0 the app is closed to the home network unless you open it again (README). The Tailscale address works everywhere.</div>`}
       ${/\.ts\.net$/i.test(location.hostname) && base !== location.origin && ME().role === 'owner' ? html`<p><button class="btn ghost" type="button" data-act="usethisbase">Use this address for the codes: ${location.origin}</button></p>` : ''}
-      <p><button class="btn" type="button" data-act="print">Print labels</button></p></div>
+      <p class="row"><button class="btn" type="button" data-act="print">Print labels</button>
+        <a class="btn ghost" href="/card.html?all=1">Print care cards for all plants</a></p>
+      <p class="hint">Care cards: a 4 × 6 inch card (or a full page) for each plant, with its water, light, temperature, humidity, feeding and dangers in big type.</p></div>
     <div class="lsheet">${list.map(p => labelCard(p, base, true))}</div>`,
   };
 }
@@ -3815,19 +4036,30 @@ async function conPoll() {
   } catch (e) { CON.failed++; if (!CON.paused) conState('Cannot reach the app, trying again'); }
   finally { CON.busy = false; }
 }
+// 1.26.0: on phones (narrow windows) the list of pages folds behind one "Pages" button, which names the page you are on
+function pagesMenu(open) {
+  const b = document.getElementById('pages-btn'), top = document.querySelector('header.top'); if (!b || !top) return;
+  const cur = document.querySelector('#main-nav a[aria-current=page]'), c = document.getElementById('pages-cur');
+  if (c) c.textContent = cur ? cur.childNodes[0].textContent : 'Plants';     // without the wishlist alert count
+  b.setAttribute('aria-expanded', open ? 'true' : 'false'); top.classList.toggle('pages-open', !!open);
+}
+document.addEventListener('keydown', e => {      // Escape folds the list of pages again and goes back to its button
+  const top = document.querySelector('header.top');
+  if (e.key === 'Escape' && top && top.classList.contains('pages-open') && top.contains(document.activeElement)) { pagesMenu(false); const b = document.getElementById('pages-btn'); if (b) b.focus(); }
+});
 function pinLayout() {           // phones: the buttons pinned to the bottom of the screen stack up instead of covering each other
   const r = document.documentElement, tab = conEl('nav-tab'), corner = conEl('corner'), job = conEl('job-badge');
-  const shown = e => e && e.getClientRects().length && getComputedStyle(e).display !== 'none';
-  if (r.dataset.narrow !== '1' || !corner) { r.dataset.tabup = '0'; if (tab) tab.style.bottom = ''; if (job) job.style.bottom = ''; return; }
+  // 1.26.0: on phones Sections, Debug and Display share one bar along the bottom of the screen
+  if (tab && corner) {
+    const home = document.getElementById('sidenav');
+    if (r.dataset.narrow === '1' && tab.parentNode !== corner) corner.prepend(tab);
+    else if (r.dataset.narrow !== '1' && tab.parentNode === corner && home) home.after(tab);
+  }
+  r.dataset.tabup = '0'; if (tab) tab.style.bottom = '';
+  if (r.dataset.narrow !== '1' || !corner) { r.style.removeProperty('--pin-h'); if (job) job.style.bottom = ''; return; }
   const cr = corner.getBoundingClientRect();
-  let top = cr.top;
-  if (shown(tab)) {             // Sections sits beside Debug and Display when there is room, above them when not
-    const up = tab.getBoundingClientRect().right > cr.left - 8;
-    tab.style.bottom = up ? Math.round(innerHeight - cr.top + 8) + 'px' : '';
-    r.dataset.tabup = up ? '1' : '0';
-    top = Math.min(top, tab.getBoundingClientRect().top);
-  } else r.dataset.tabup = '0';
-  if (job) job.style.bottom = Math.round(innerHeight - top + 8) + 'px';
+  r.style.setProperty('--pin-h', Math.round(cr.height) + 'px');
+  if (job) job.style.bottom = Math.round(innerHeight - cr.top + 8) + 'px';
 }
 function conLayout() {
   pinLayout();
@@ -3901,7 +4133,7 @@ document.addEventListener('keydown', e => {      // Enter in the Location window
   if (e.key === 'Enter' && e.target && e.target.name === 'plcq') { e.preventDefault(); placeSearch(); }
 });
 { const b = conEl('con-body'); if (b) b.addEventListener('scroll', conScrolled, { passive: true }); }
-if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { conLayout(); fitPanes(); });   // rows grow a little once the fonts arrive
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { navLayout(); conLayout(); fitPanes(); });   // rows grow a little once the fonts arrive
 
 // ---------- grow lights (1.13.0) ----------
 let LT = null;                     // the last answer from /api/lights
@@ -4130,6 +4362,7 @@ async function pickPlant(title, text, withNone) {
   return r === 'ok' ? dlg.querySelector('[name=t]').value : null;
 }
 const acts = {
+  gphoto: el => sheetStep(el.dataset.code, +el.dataset.d),
   who() { whoDialog(); },
   spotnew(el) { const p = el.dataset.plan != null ? LT.plan[+el.dataset.plan] : null; spotDialog(p ? { name: p.name, light_id: p.light_id, units: p.units, distance_in: p.distance_in, hours: p.hours, dim_pct: p.dim_pct, codes: p.codes } : { light_id: LT.lights[0] && LT.lights[0].id }); },
   spotedit(el) { const s = LT.spots.find(x => x.id === +el.dataset.id); if (s) spotDialog({ ...s, codes: s.plants.map(p => p.code) }); },
@@ -4198,7 +4431,12 @@ const acts = {
   },
   histmetric(el) { const S = HS[el.dataset.kind]; S.metric = el.dataset.m; S.day = S.day; histOpen(el.dataset.kind); },
   display() { displayDialog(); },
-  prefreset() { window.PlantPrefs.reset(); displayDialog(); },
+  prefreset() { DVSCROLL = (document.getElementById('dv-body') || {}).scrollTop || 0; window.PlantPrefs.reset(); displayDialog(); },
+  dvjump(el) {
+    const t = document.getElementById(el.dataset.to); if (!t) return;
+    t.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    const h = t.querySelector('h3'); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
+  },
   async reqdone(el) { if (!(await needName())) return; await guard(async () => { await api('PUT', '/api/requests/' + el.dataset.id, { done: true }); toast('Marked done'); reloadPlant(); }); },
   async reqreopen(el) { if (!(await needName())) return; await guard(async () => { await api('PUT', '/api/requests/' + el.dataset.id, { done: false }); toast('Reopened'); reloadPlant(); }); },
   async reqanswer(el) {
@@ -4291,6 +4529,8 @@ const acts = {
     navLayout(); fitPanes(); paintAllCharts();
     const f = open ? document.querySelector('#sn-list a') : document.getElementById('nav-tab'); if (f) f.focus();
   },
+  pages() { const b = document.getElementById('pages-btn'); const open = b && b.getAttribute('aria-expanded') !== 'true'; pagesMenu(open);
+    if (open) { const a = document.querySelector('#main-nav a[aria-current=page]') || document.querySelector('#main-nav a'); if (a) a.focus(); } },
   navside() { window.PlantPrefs.set('navside', window.PlantPrefs.get().navside === 'left' ? 'right' : 'left'); navLayout(); fitPanes(); paintAllCharts(); },
   jump(el) {
     const t = document.getElementById(el.dataset.id); if (!t) return;
@@ -4430,7 +4670,7 @@ const acts = {
   zoomloose(el) { modal(html`<form method="dialog"><img src="${photoUrl(el.dataset.file)}" alt="${el.dataset.cap}"><p class="cap">${el.dataset.cap}</p><button class="btn" value="ok" autofocus>Close</button></form>`, 'photo'); },
   copyreq() { return copyRequest(); },
   print() { window.print(); },
-  async mainphoto() { if (!(await needName())) return; await guard(async () => { await api('PATCH', '/api/photos/' + curPhoto().id, { is_primary: true }); toast('Main photo changed'); await reloadPlant(); }); },
+  async mainphoto() { if (!(await needName())) return; await guard(async () => { await api('PATCH', '/api/photos/' + curPhoto().id, { is_primary: true }); toast('Main photo changed. It now shows on the Plants page and care cards.'); await loadCodes(true); await reloadPlant(0); }); },
   async capedit() {
     if (!(await needName())) return;
     const c = curPhoto();
@@ -4491,6 +4731,19 @@ const acts = {
     if (!(await needName())) return;
     if (!(await confirmBox(`Mark ${codes.length} plants as watered today?`, 'Each one gets a "Watered" entry for today in its care log. You can remove any of them on the plant\'s page.', 'Mark as watered'))) return;
     await guard(async () => { const r = await api('POST', '/api/care', { plants: codes, kind: el.dataset.kind }); careUndoToast(codes.length + ' plants marked as watered', r && r.ids); await careRefresh(); });
+  },
+  async waterall() {                    // 1.21.0: Plants page, every plant the filters show
+    const shown = filteredPlants().filter(p => !isArch(p)); if (!shown.length) return;
+    if (!(await needName())) return;
+    await guard(async () => {
+      const W = await api('GET', '/api/water'), done = new Set(W.plants.filter(w => w.last_water === W.today).map(w => w.code));
+      const todo = shown.filter(p => !done.has(p.code)), skip = shown.length - todo.length;
+      if (!todo.length) { toast(`All ${shown.length} plants shown were already watered today.`); return; }
+      if (!(await confirmBox(`Mark ${todo.length} plant${todo.length === 1 ? '' : 's'} as watered today?`,
+        `These are the plants shown with your filters.${skip ? ` ${skip} of them ${skip === 1 ? 'was' : 'were'} already watered today and ${skip === 1 ? 'is' : 'are'} skipped.` : ''} Each gets a "Watered" entry for today in its care log.`, 'Mark as watered'))) return;
+      const r = await api('POST', '/api/care', { plants: todo.map(p => p.code), kind: 'water' });
+      careUndoToast(`${r.ids.length} plant${r.ids.length === 1 ? '' : 's'} marked as watered${skip ? ` (${skip} already watered today were skipped)` : ''}`, r.ids);
+    });
   },
   careother(el) { return careDialog(el.dataset.code, el.dataset.name); },
   async caredel(el) {
@@ -4648,7 +4901,7 @@ const formActs = {
 // ---------- 1.18.0: identify a plant with the camera, and the plant library ----------
 // The pictures go to this computer's picture checker (the "plant-vision" container) through the app. Pl@ntNet and Claude are only
 // asked when someone presses their buttons. Nothing is saved unless someone presses "Add this picture to its photos" or adds a plant.
-const ID_SCOPES = [['common', 'Plants with a common name, and all US plants'], ['texas', 'Texas plants'], ['us', 'US plants'], ['world', 'All plants worldwide']];
+const ID_SCOPES = [['common', 'Plants with a common name, and all US plants'], ['texas', 'Texas plants'], ['us', 'US plants'], ['world', 'All plants worldwide'], ['fungi', 'Fungi worldwide: mushrooms, lichens and moulds']];
 const ID = { stream: null, timer: null, busy: false, last: null, streak: 0, shot: null, paused: false, said: '', qr: null, mode: 'live', st: null, keys: null };
 function idScope() { try { const s = localStorage.getItem('plantdb.idscope'); if (ID_SCOPES.some(x => x[0] === s)) return s; } catch (e) { /* default */ } return 'common'; }
 const pct = p => Math.round((p || 0) * 100) + '%';
@@ -4679,7 +4932,7 @@ async function viewIdentify() {
     html: html`<h1>Identify a plant</h1>
     <p>Point your camera at a plant. This computer compares the picture with your plant photos and says which plant it thinks it is, and how sure it is. If it is not one of yours, it suggests what the plant could be. Nothing is saved unless you choose to save it.</p>
     <p id="id-st" class="notice" role="status">Checking the picture checker…</p>
-    <section class="id-sec id-cam" aria-labelledby="h-cam"><h2 id="h-cam">Camera</h2>
+    <div class="id-two"><section class="id-sec id-cam" aria-labelledby="h-cam"><h2 id="h-cam">Camera</h2>
       <div class="id-view" id="id-view"><video id="id-video" playsinline muted aria-label="Camera picture"></video>
         <p class="id-placeholder" id="id-ph">The camera is off.</p></div>
       <p id="id-live" class="id-live" role="status" aria-live="polite"></p>
@@ -4692,7 +4945,7 @@ async function viewIdentify() {
       <label class="f id-scope">When it is not one of your plants, suggest names from
         <select data-f="idscope">${ID_SCOPES.map(([k, l]) => html`<option value="${k}" ${k === sc ? raw('selected') : ''}>${l}</option>`)}</select></label>
     </section>
-    <section class="id-sec" aria-labelledby="h-idres"><h2 id="h-idres">What it found</h2><div id="id-res"><p class="muted">Start the camera or choose a photo.</p></div></section>
+    <section class="id-sec" aria-labelledby="h-idres"><h2 id="h-idres">What it found</h2><div id="id-res"><p class="muted">Start the camera or choose a photo.</p></div></section></div>
     <section class="id-sec" aria-labelledby="h-second"><h2 id="h-second">Second opinions</h2>
       <p>When this computer is unsure, you can ask Pl@ntNet (free, up to 500 pictures a day) and then Claude (paid per picture, about a cent or two). They only see a picture when you press their button. Pl@ntNet does not keep pictures.</p>
       <ul class="id-keys">
@@ -4862,7 +5115,8 @@ function spCard(s, i, src, withAdd) {
     <div class="muted">${[s.family, s.order].filter(Boolean).join(', ')}</div>
     ${s.why ? html`<div>${s.why}</div>` : ''}
     ${tags.length ? html`<div class="id-tags">${tags}</div>` : ''}
-    <div class="id-acts">${spLinks(s)}${withAdd ? html`<button class="btn small" type="button" data-act="idnew" data-src="${src}" data-i="${i}">Add as a new plant</button>` : ''}</div></li>`;
+    <div class="id-acts">${spLinks(s)}${withAdd ? s.kingdom === 'Fungi' ? html`<button class="btn small" type="button" data-act="idfind" data-src="${src}" data-i="${i}">Record a mushroom find</button>`
+      : html`<button class="btn small" type="button" data-act="idnew" data-src="${src}" data-i="${i}">Add as a new plant</button>` : ''}</div></li>`;
 }
 function idPaint(r, picUrl, live) {
   const res = document.getElementById('id-res'); if (!res) return;
@@ -4873,6 +5127,7 @@ function idPaint(r, picUrl, live) {
       <p>${c >= 0.5 && !r.likely_new ? html`${sureWord(c)} <b>${top.code}, ${top.common_name}</b>: ${pct(c)} sure.` : html`Probably none of your plants: the closest is ${top.code}, ${top.common_name}, ${pct(c)} sure${r.likely_new ? ', and it looks different from all your photos' : ''}.`}</p>
       <ol class="id-ms ${c >= 0.5 && !r.likely_new ? 'id-sure' : ''}">${m.slice(0, 3).map((x, i) => idMatchCard(x, i === 0))}</ol>` : html`<p>There are no photos of your plants to compare with yet.</p>`}
     <h3>What it could be</h3>
+    ${r.scope === 'fungi' ? fungiSafety(true) : ''}
     ${r.genera && r.genera[0] ? html`<p>Most likely genus: <i>${r.genera[0].genus}</i> (${pct(r.genera[0].probability)}). Names below are from: ${sc ? sc[1] : 'the species list'}.</p>` : ''}
     <ol class="id-sps">${(r.species || []).map((s, i) => spCard(s, i, 'local', !live && canChange()))}</ol>
     ${live ? '' : html`<div id="id-more">${idMoreBtns()}</div>`}
@@ -4952,47 +5207,608 @@ function idNewPlant(s, withPic) {
   idStop(); go('#/new');
 }
 
-// ---------- the plant library ----------
-const LIB = { q: '', scope: 'world', res: null };
+// ---------- the plant library (1.18.0; 1.21.0: browse every species, filters, records with photos) ----------
+// The list comes from the picture checker (offline). Photos come from iNaturalist through the app, which keeps them in
+// data/library; the cards ask for the photos of the plants on screen and fill them in as they arrive.
+const LIB_DEF = { q: '', scope: 'common', kind: '', family: '', state: '', common: false, mine: '', know: '', sort: 'known', view: 'cards' };
+const KNOW_WORD = { native: 'Native to Texas', introduced: 'Introduced to Texas', invasive: 'On the Texas invasive list', near: 'Grows wild near home', bloom: 'Flowering near home this month',
+  fruiting: 'Fungi found near home this month', hardy: 'Likely to survive outside here', petsafe: 'Safe for dogs and cats (ASPCA)', pettoxic: 'Toxic to dogs or cats (ASPCA)' };
+const LIB = Object.assign({ res: [], total: 0, facets: null, facetsFor: '', photos: {}, t: 0, poll: 0, my: 0 }, LIB_DEF);
+try { const s = JSON.parse(localStorage.getItem('plantdb.library') || '{}'); Object.keys(LIB_DEF).forEach(k => { if (s[k] != null && typeof s[k] === typeof LIB_DEF[k]) LIB[k] = s[k]; }); } catch (e) { /* defaults */ }
+const libSave = () => { try { localStorage.setItem('plantdb.library', JSON.stringify(Object.fromEntries(Object.keys(LIB_DEF).map(k => [k, LIB[k]])))); } catch (e) { /* not remembered */ } };
+const LIB_PAGE = 48;
+const LIB_SORTS = [['known', 'Best known first'], ['common', 'Common name A to Z'], ['sci', 'Scientific name A to Z'], ['family', 'Family']];
+const LIB_STATE_WORD = s => s.replace(/([a-z])([A-Z])/g, '$1 $2');
+const LIB_KIND_SHORT = { dicot: 'Flowering plant', monocot: 'Flowering plant (monocot)', fern: 'Fern', lycophyte: 'Clubmoss', conifer: 'Conifer', cycad: 'Cycad', ginkgo: 'Ginkgo', gnetophyte: 'Gnetophyte', moss: 'Moss', liverwort: 'Liverwort', hornwort: 'Hornwort', alga: 'Alga', other: '',
+  mushroom: 'Mushroom', cupfungus: 'Cup fungus', lichen: 'Lichen', rust: 'Rust or smut', mould: 'Mould or mildew', otherfungus: 'Fungus' };
+const spHref = s => '#/species/' + enc(s);
+function libPreHtml(p) {
+  const btn = p.running ? html`<button class="btn ghost" type="button" data-act="libprestop">Stop the download</button>`
+    : html`<button class="btn" type="button" data-act="libpre" ${p.online ? '' : raw('disabled')}>Download photos for the Texas list</button>`;
+  const msg = p.running ? `Downloading: ${p.done.toLocaleString()} of ${p.total.toLocaleString()} done, about ${Math.max(1, Math.round(p.left * 1.1 / 60))} minutes left. You can leave this page; it carries on.`
+    : p.total ? `Finished: ${p.done.toLocaleString()} species fetched${p.all ? ` (the other ${(p.all - p.total).toLocaleString()} were already kept)` : ''}.`
+    : p.online ? '' : 'Turn on the iNaturalist photos above first.';
+  return html`<p class="pre-msg">${msg}</p><p class="row">${btn}</p>`;
+}
+async function libPrePoll() {
+  clearTimeout(LIB.prePoll);
+  const box = document.getElementById('lib-pre'); if (!box) return;
+  let p; try { p = await api('GET', '/api/library/prefetch'); } catch (e) { return; }
+  if (!document.getElementById('lib-pre')) return;
+  const tmp = document.createElement('div'); tmp.innerHTML = rend(libPreHtml(p));
+  const ob = box.querySelector('button'), nb = tmp.querySelector('button'), om = box.querySelector('.pre-msg');
+  if (ob && nb && om && ob.dataset.act === nb.dataset.act && ob.disabled === nb.disabled) om.textContent = tmp.querySelector('.pre-msg').textContent;   // keep the button, so a press is never lost
+  else { const had = box.contains(document.activeElement); box.innerHTML = tmp.innerHTML; if (had) { const b = box.querySelector('button'); if (b) b.focus(); } }
+  if (p.running) LIB.prePoll = setTimeout(libPrePoll, 5000);
+}
+function libListsHtml(d) {
+  const day = t => t ? new Date(t).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+  return html`<ul class="lib-lists">${d.lists.map(l => html`<li><strong>${l.label}:</strong> ${l.fetched ? `${l.count.toLocaleString()} species, fetched ${day(l.fetched)}.` : d.queued.includes(l.name) || (d.now && d.now[0] === l.name) ? 'Being fetched…' : 'Not fetched yet.'}
+      ${l.error ? html` <span class="bad-text">Last try failed: ${l.error}</span>` : ''}</li>`)}</ul>
+    ${d.now ? html`<p>Fetching now: ${(d.lists.find(l => l.name === d.now[0]) || { label: d.now[0] }).label}${d.now[2] ? `, ${d.now[1].toLocaleString()} of ${d.now[2].toLocaleString()}` : ''}.</p>` : ''}
+    <p class="hint">From iNaturalist (what people have recorded, and whether it is native or introduced in Texas), the ASPCA's lists, and the Texas Department of Agriculture's noxious and invasive plant list (<a href="${d.noxious_law}" target="_blank" rel="noopener noreferrer">about the list</a>). Your hardiness zone, from your own weather history: ${d.zone}.</p>
+    ${d.online ? (canChange() ? html`<p class="row"><button class="btn ghost" type="button" data-act="liblists" ${d.now || d.queued.length ? raw('disabled') : ''}>Fetch the lists again now</button></p>` : '') : html`<p class="muted">Library lookups are turned off, so these are not fetched.</p>`}`;
+}
+async function libListsPoll() {
+  clearTimeout(LIB.listPoll);
+  const box = document.getElementById('lib-lists'); if (!box) return;
+  let d; try { d = await api('GET', '/api/library/local'); } catch (e) { box.innerHTML = rend(html`<p class="muted">${e.message}</p>`); return; }
+  if (!document.getElementById('lib-lists')) return;
+  const had = box.contains(document.activeElement);
+  box.innerHTML = rend(libListsHtml(d));
+  if (had) { const b = box.querySelector('button'); if (b) b.focus(); }
+  if (d.now || d.queued.length) LIB.listPoll = setTimeout(libListsPoll, 4000);
+}
+function libFiltersOn() { return ['kind', 'family', 'state', 'mine', 'know'].filter(k => LIB[k]).length + (LIB.common ? 1 : 0); }
 async function viewLibrary(qs) {
-  if (qs.get('q')) LIB.q = qs.get('q');
-  if (qs.get('scope')) LIB.scope = qs.get('scope');
+  for (const k of ['q', 'scope', 'kind', 'family', 'state', 'mine', 'know', 'sort']) if (qs.get(k) != null) LIB[k] = qs.get(k);
   let st = null;
   try { st = await api('GET', '/api/identify/status'); } catch (e) { /* shown below */ }
-  const ready = st && st.scopes && st.state !== 'off';
+  const ready = st && st.state === 'ready';
+  let fac = null;
+  if (ready) { try { fac = await api('GET', '/api/library/facets?scope=' + enc(LIB.scope)); LIB.facets = fac; LIB.facetsFor = LIB.scope; } catch (e) { /* filters without counts */ } }
+  let lset = null, pre = null; if (ME().role === 'owner') { try { [lset, pre] = await Promise.all([api('GET', '/api/library/settings'), api('GET', '/api/library/prefetch')]); } catch (e) { /* hidden */ } }
+  let mine = { tags: [] }, wl = { wishlist: [] };
+  try { [mine, wl] = await Promise.all([api('GET', '/api/library/notes'), api('GET', '/api/wishlist')]); } catch (e) { /* no extras */ }
+  const sel = (f, opts) => html`<select data-f="${f}">${opts.map(([v, l]) => html`<option value="${v}" ${String(LIB[f.slice(3)]) === v ? raw('selected') : ''}>${l}</option>`)}</select>`;
+  const fungi = LIB.scope === 'fungi';
   return {
-    title: 'Plant library',
-    after: () => { if (LIB.q && ready) libSearch(); },
-    html: html`<h1>Plant library</h1>
-    <p>Look up any of ${st && st.species ? Number(st.species).toLocaleString() : 'about 349,000'} plant species by scientific or common name. It works without the internet, from this computer's lists.</p>
+    title: 'Library',
+    after: () => { if (ready) libLoad(); if (pre && pre.running) libPrePoll(); libListsPoll(); },
+    html: html`<h1>Library</h1>
+    <p>Every plant species this computer knows, ${st && st.species ? Number(st.species).toLocaleString() : 'about 349,000'} in all${st && st.fungi ? html`, and ${Number(st.fungi).toLocaleString()} fungi (choose "Fungi worldwide" under Look in)` : ''}. Search, filter, and open any of them for its photos, description, classification, where it grows in the US, and the species it is most often mistaken for.</p>
     ${ready ? '' : html`<p class="notice bad" role="status">${idStatusText(st)}</p>`}
-    <form data-form="libsearch" role="search" class="lib-form" autocomplete="off">
-      <label class="f">Name<small>Part of a scientific or common name, at least 2 letters. For example: monstera, bluebonnet, Agave.</small>
-        <input type="search" name="q" value="${LIB.q}" required minlength="2"></label>
-      <label class="f">Look in<select name="scope">${ID_SCOPES.map(([k, l]) => html`<option value="${k}" ${k === LIB.scope ? raw('selected') : ''}>${l}${st && st.scopes && st.scopes[k] ? ` (${Number(st.scopes[k].count).toLocaleString()})` : ''}</option>`)}</select></label>
-      <div class="row"><button class="btn" type="submit">Search</button></div>
-    </form>
-    <div id="lib-res" aria-live="polite"></div>
-    <section class="id-sec" aria-labelledby="h-libsrc"><h2 id="h-libsrc">Where the names come from</h2>
-      <ul><li>Scientific names, families and common names: the Tree of Life list that the BioCLIP model was trained with (TreeOfLife-200M, Imageomics Institute, free to use).</li>
-      <li>Which states a plant grows wild in, and USDA symbols: the USDA PLANTS state lists (public domain).</li>
-      <li>The links open USDA PLANTS, Kew's Plants of the World Online and Wikipedia for care, range and pictures.</li></ul></section>`,
+    <p class="row"><a class="btn ghost" href="#/around">Around home: what's flowering and fruiting</a><a class="btn ghost" href="#/wishlist">Your wishlist (${wl.wishlist.filter(w => w.status === 'want').length} wanted)</a></p>
+    <div class="filters lib-filters" role="search" aria-label="Search and filter the library">
+      <label>Search<input type="search" data-f="libq" value="${LIB.q}" placeholder="Common or scientific name" autocomplete="off"></label>
+      <label>Look in${sel('libscope', ID_SCOPES.map(([k, l]) => [k, l + (st && st.scopes && st.scopes[k] ? ` (${Number(st.scopes[k].count).toLocaleString()})` : '')]))}</label>
+      <label>${fungi ? 'Kind of fungus' : 'Kind of plant'}${sel('libkind', [['', 'Any kind'], ...((fac && fac.kinds) || []).map(k => [k.key, `${k.label} (${k.count.toLocaleString()})`])])}</label>
+      <label>Family<input type="text" data-f="libfamily" list="lib-fams" value="${LIB.family}" placeholder="Any family" autocomplete="off">
+        <datalist id="lib-fams">${((fac && fac.families) || []).map(f => html`<option value="${f.name}">${f.name} (${f.count})</option>`)}</datalist></label>
+      <label>Grows wild in${sel('libstate', [['', 'Anywhere'], ['us', 'The United States'], ['Texas', 'Texas'], ...((fac && fac.states) || []).map(x => [x, LIB_STATE_WORD(x)])])}${fungi ? html`<small>Lichens only: the USDA lists have no other fungi</small>` : ''}</label>
+      <label>Show${sel('libmine', [['', 'All of them'], ['species', 'Only ones I have'], ['genus', 'Ones I have, or of the same genus'], ['wish', 'On my wishlist'], ['notes', 'Ones with notes or tags'],
+        ...mine.tags.map(t => ['tag:' + t, `Tagged "${t}"`])])}</label>
+      <label>Texas and home${sel('libknow', [['', 'Any'], ...Object.entries(KNOW_WORD).filter(([k]) => fungi ? ['near', 'fruiting', 'hardy'].includes(k) : k !== 'fruiting')])}</label>
+      <label>Sort by${sel('libsort', LIB_SORTS)}</label>
+      <label>Show as${sel('libview', [['cards', 'Cards with photos'], ['table', 'A table']])}</label>
+      <label class="chk"><input type="checkbox" data-f="libcommon" ${LIB.common ? raw('checked') : ''}>Only ${fungi ? 'fungi' : 'plants'} with a common name</label>
+    </div>
+    <p class="row lib-count"><span id="lib-count" class="muted" role="status" aria-live="polite"></span>
+      <button class="btn ghost small" type="button" data-act="libclear" id="lib-clear" ${libFiltersOn() || LIB.q ? '' : raw('hidden')}>Clear search and filters</button></p>
+    <div id="lib-res"></div>
+    <p class="row"><button class="btn" type="button" data-act="libmore" id="lib-more" hidden>Show more</button></p>
+    <section class="id-sec" aria-labelledby="h-libsrc"><h2 id="h-libsrc">Where the names and photos come from</h2>
+      <ul><li>Names, classification and the lookalikes: the Tree of Life list behind the BioCLIP model (Imageomics Institute, free to use), on this computer.</li>
+      <li>Where a plant grows wild in the US: the USDA PLANTS state lists (public domain), on this computer.</li>
+      <li>Photos and the short description: iNaturalist, whose members share their photos under Creative Commons licences (each photo names its photographer and licence), and Wikipedia. They are fetched once per species, only the species name is sent, and they are kept on this computer in data\\library.</li></ul>
+      ${lset ? html`<label class="chk"><input type="checkbox" data-f="libonline" ${lset.online ? raw('checked') : ''}>Look up photos and descriptions on iNaturalist (turn off to keep the library fully offline)</label>` : ''}
+    </section>
+    <section class="id-sec" aria-labelledby="h-liblists"><h2 id="h-liblists">Lists about your area</h2>
+      <p>The "Texas and home" filter, the tags on the cards and each species' page use these lists. They are fetched in the background and kept on this computer, and fetched again when they get old.</p>
+      <div id="lib-lists" aria-live="polite"><p class="muted">Loading…</p></div></section>
+    ${pre ? html`<section class="id-sec" aria-labelledby="h-libpre"><h2 id="h-libpre">Photos for offline use</h2>
+      <p>Download the photo and short facts for every Texas plant now (about ${st && st.scopes && st.scopes.texas ? Number(st.scopes.texas.count).toLocaleString() : '4,700'} species), so the library shows them even without the internet. It runs in the background at about one species a second (roughly an hour and a half), after anything someone is looking at, and takes about 300 MB in data\\library. Ones already kept are skipped.</p>
+      <div id="lib-pre" aria-live="polite">${libPreHtml(pre)}</div></section>` : ''}`,
   };
 }
-async function libSearch() {
-  const box = document.getElementById('lib-res'); if (!box) return;
-  box.innerHTML = rend(html`<p role="status">Searching…</p>`);
-  try {
-    const r = await api('GET', '/api/library?' + new URLSearchParams({ q: LIB.q, scope: LIB.scope }));
-    LIB.res = r.results;
-    const sc = ID_SCOPES.find(x => x[0] === LIB.scope);
-    box.innerHTML = rend(html`<h2 id="h-libres" tabindex="-1">${r.total ? `${r.total >= 400 ? 'More than 400' : r.total} found` : 'Nothing found'} for "${LIB.q}" in ${sc ? sc[1].toLowerCase() : 'the list'}</h2>
-      ${r.total > r.results.length ? html`<p class="muted">Showing the first ${r.results.length}. Type more of the name to narrow it down.</p>` : ''}
-      ${!r.total && LIB.scope !== 'world' ? html`<p>Try "All plants worldwide".</p>` : ''}
-      <ol class="id-sps">${r.results.map((s, i) => spCard(s, i, 'library', canChange()))}</ol>`);
-    const h = document.getElementById('h-libres'); if (h) h.focus();
-  } catch (e) { box.innerHTML = rend(html`<div class="notice bad" role="alert">${e.message}</div>`); }
+function libQuery(offset) {
+  const p = { scope: LIB.scope, q: LIB.q, kind: LIB.kind, family: LIB.family, state: LIB.state, mine: LIB.mine, know: LIB.know, sort: LIB.sort, offset: String(offset), limit: String(LIB_PAGE) };
+  if (LIB.common) p.common = '1';
+  return new URLSearchParams(Object.fromEntries(Object.entries(p).filter(([, v]) => v !== '')));
 }
+async function libLoad(more) {
+  const box = document.getElementById('lib-res'); if (!box) return;
+  const my = ++LIB.my, off = more ? LIB.res.length : 0;
+  if (!more) { box.setAttribute('aria-busy', 'true'); }
+  try {
+    let r = !navigator.onLine ? await offLibBrowse(off) : null;          // 1.24.0: offline, search the list saved on this device
+    if (!r) { r = await api('GET', '/api/library/browse?' + libQuery(off)); if (OFF.saved) r = (await offLibBrowse(off)) || r; }
+    LIB.offline = !!r.offline;
+    if (my !== LIB.my) return;
+    LIB.res = more ? LIB.res.concat(r.results) : r.results; LIB.total = r.total;
+    libDraw(more ? r.results.length : 0);
+  } catch (e) { if (my === LIB.my) box.innerHTML = rend(html`<div class="notice bad" role="alert">${e.message}</div>`); }
+  box.removeAttribute('aria-busy');
+}
+function offKnowOk(k, f) {
+  k = k || {};
+  return f === 'native' ? k.tx === 'native' : f === 'introduced' ? k.tx === 'introduced' : f === 'invasive' ? !!k.invasive : f === 'near' ? !!k.near : f === 'bloom' ? !!k.bloom
+    : f === 'fruiting' ? !!k.fruiting : f === 'hardy' ? ['wild-near', 'zone-yes'].includes(k.hardy) : f === 'petsafe' ? !!k.pets && k.pets.dogs === 'non-toxic' && k.pets.cats === 'non-toxic'
+    : f === 'pettoxic' ? !!k.pets && (k.pets.dogs === 'toxic' || k.pets.cats === 'toxic') : true;
+}
+async function offLibBrowse(off) {             // the library without a connection: the Texas list saved on this device
+  const idx = await offSavedJson('/api/library/offline-index'); if (!idx) return null;
+  const q = LIB.q.toLowerCase(), fam = LIB.family.toLowerCase(), m = LIB.mine;
+  let r = idx.species.filter(x => (!q || (x.n + ' ' + x.c).toLowerCase().includes(q)) && (!LIB.kind || x.k === LIB.kind) && (!fam || x.f.toLowerCase() === fam) && (!LIB.common || x.c)
+    && (!m || (m === 'species' && x.y.length) || (m === 'genus' && x.y.length) || (m === 'wish' && x.w) || (m === 'notes' && x.t.length) || (m.startsWith('tag:') && x.t.includes(m.slice(4))))
+    && (!LIB.know || offKnowOk(x.kn, LIB.know)));
+  if (LIB.sort === 'sci') r = r.slice().sort((a, b) => a.n.localeCompare(b.n)); else if (LIB.sort === 'common') r = r.slice().sort((a, b) => (a.c || '~').localeCompare(b.c || '~'));
+  else if (LIB.sort === 'family') r = r.slice().sort((a, b) => a.f.localeCompare(b.f) || a.n.localeCompare(b.n));
+  const page = r.slice(off, off + LIB_PAGE).map(x => { LIB.photos[x.n] = x.p ? { url: x.p } : null; return { scientific_name: x.n, common_name: x.c, family: x.f, kind: x.k, genus: x.g,
+    in_texas: x.tx, us_states: new Array(x.st).fill(''), yours: x.y, yours_genus: [], wish: x.w, tags: x.t, know: x.kn, own_photo: null }; });
+  return { total: r.length, results: page, offline: true };
+}
+function libTags(s) {
+  const t = [];
+  if (s.yours && s.yours.length) t.push(html`<span class="tag tag-yours">You have it: ${s.yours.join(', ')}</span>`);
+  else if (s.yours_genus && s.yours_genus.length) t.push(html`<span class="tag">Same genus as ${s.yours_genus.slice(0, 3).join(', ')}</span>`);
+  const k = s.know || {};
+  if (k.invasive) t.push(html`<span class="tag tag-warn">⚠ Texas invasive list</span>`);
+  if (k.tx === 'native') t.push(html`<span class="tag">Native to Texas</span>`); else if (k.tx === 'introduced') t.push(html`<span class="tag">Introduced to Texas</span>`);
+  if (k.bloom) t.push(html`<span class="tag">Flowering near home now</span>`);
+  if (k.fruiting) t.push(html`<span class="tag">Found near home this month</span>`);
+  else if (k.near) t.push(html`<span class="tag">Wild near home</span>`);
+  if (k.pets) { const tox = ['dogs', 'cats'].filter(a => k.pets[a] === 'toxic'); t.push(tox.length ? html`<span class="tag tag-warn">⚠ Toxic to ${tox.join(' and ')}</span>` : k.pets.dogs === 'non-toxic' && k.pets.cats === 'non-toxic' ? html`<span class="tag">Safe for dogs and cats</span>` : ''); }
+  if (s.wish) t.push(html`<span class="tag tag-wish">${s.wish === 'got' ? 'Wishlist: got it' : 'On your wishlist'}</span>`);
+  (s.tags || []).forEach(x => t.push(html`<span class="tag tag-own">Tag: ${x}</span>`));
+  if (s.in_texas) t.push(html`<span class="tag">Wild in Texas</span>`);
+  else if (s.us_states && s.us_states.length) t.push(html`<span class="tag">Wild in ${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}</span>`);
+  return t;
+}
+function libPhotoHtml(s, cls) {
+  const ph = s.own_photo ? { url: s.own_photo, mine: true } : LIB.photos[s.scientific_name];
+  if (ph && ph.url) return html`<img class="${cls}" src="${ph.url}" alt="" loading="lazy" decoding="async">`;
+  return html`<div class="nophoto ${cls}" data-ph="${s.scientific_name}">${ph === null ? 'No photo found' : LIB.photos.__off ? 'Photos are off' : 'Finding a photo…'}</div>`;
+}
+function libCard(s) {
+  return html`<article class="sheet lib-card" data-sp="${s.scientific_name}">
+    <div class="mat">${libPhotoHtml(s, '')}${s.kind && LIB_KIND_SHORT[s.kind] ? html`<span class="acc">${LIB_KIND_SHORT[s.kind]}</span>` : ''}</div>
+    <h3 class="name"><a class="sheet-link" href="${spHref(s.scientific_name)}">${s.common_name || s.scientific_name}</a></h3>
+    ${s.common_name ? html`<p class="sci latin">${s.scientific_name}</p>` : ''}
+    <p class="lib-fam">${s.family || 'Family not known'}</p>
+    ${s.records ? html`<p class="lib-rec">${s.records.toLocaleString()} record${s.records === 1 ? '' : 's'} near home</p>` : ''}
+    <div class="tags">${libTags(s)}</div>
+  </article>`;
+}
+function libRow(s) {
+  return html`<tr data-sp="${s.scientific_name}"><td class="lib-th">${libPhotoHtml(s, 'lib-thumb')}</td>
+    <td><a href="${spHref(s.scientific_name)}">${s.common_name || s.scientific_name}</a></td><td class="latin">${s.scientific_name}</td>
+    <td>${s.family}</td><td>${LIB_KIND_SHORT[s.kind] || ''}</td>
+    <td>${s.in_texas ? 'Texas' + (s.us_states.length > 1 ? ` and ${s.us_states.length - 1} more states` : '') : s.us_states && s.us_states.length ? `${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}` : ''}</td>
+    <td>${s.yours && s.yours.length ? s.yours.join(', ') : s.yours_genus && s.yours_genus.length ? 'Same genus: ' + s.yours_genus.slice(0, 3).join(', ') : ''}</td></tr>`;
+}
+function libDraw(added) {
+  const box = document.getElementById('lib-res'); if (!box) return;
+  const n = LIB.res.length, cnt = document.getElementById('lib-count'), more = document.getElementById('lib-more'), clr = document.getElementById('lib-clear');
+  const sc = ID_SCOPES.find(x => x[0] === LIB.scope);
+  if (cnt && LIB.offline) cnt.dataset.off = '1'; else if (cnt) delete cnt.dataset.off;
+  if (cnt) cnt.textContent = (LIB.offline ? 'Offline: searching the Texas list saved on this device. ' : '') + (LIB.total ? `Showing ${n.toLocaleString()} of ${LIB.total.toLocaleString()} in ${sc ? sc[1][0].toLowerCase() + sc[1].slice(1) : 'the list'}${LIB.q ? ` matching "${LIB.q}"` : ''}.` : `Nothing found${LIB.q ? ` for "${LIB.q}"` : ''} with these filters.`);
+  if (more) { more.hidden = n >= LIB.total; more.textContent = `Show ${Math.min(LIB_PAGE, LIB.total - n)} more`; }
+  if (clr) clr.hidden = !(libFiltersOn() || LIB.q);
+  if (!LIB.total) {
+    box.innerHTML = rend(html`<div class="empty"><p>Try another spelling, fewer filters${LIB.scope !== 'world' ? ', or "All plants worldwide" under Look in' : ''}.</p></div>`);
+    return;
+  }
+  if (LIB.view === 'table') {
+    box.innerHTML = rend(html`<div class="tbl-wrap"><table class="tbl lib-tbl"><caption class="sr">Plant species, ${LIB.total} in all</caption><thead><tr><th scope="col">Photo</th><th scope="col">Name</th><th scope="col">Scientific name</th><th scope="col">Family</th><th scope="col">Kind</th><th scope="col">Grows wild in</th><th scope="col">Yours</th></tr></thead>
+      <tbody>${LIB.res.map(libRow)}</tbody></table></div>`);
+  } else if (added && box.querySelector('.grid')) {
+    box.querySelector('.grid').insertAdjacentHTML('beforeend', rend(LIB.res.slice(n - added).map(libCard)));
+  } else {
+    box.innerHTML = rend(html`<div class="grid lib-grid">${LIB.res.map(libCard)}</div>`);
+  }
+  if (added) { const first = box.querySelectorAll('[data-sp]')[n - added]; const a = first && first.querySelector('a'); if (a) a.focus(); }
+  libPhotos();
+}
+async function libPhotos() {
+  clearTimeout(LIB.poll);
+  const want = [...new Set([...document.querySelectorAll('#lib-res [data-ph]')].map(e => e.dataset.ph).filter(n => LIB.photos[n] === undefined || LIB.photos[n] === 'pending'))];
+  if (!want.length) return;
+  let r;
+  try { r = await api('GET', '/api/library/photos?names=' + enc(want.slice(0, 150).join('|'))); } catch (e) { return; }
+  LIB.photos.__off = !r.online;
+  let pending = 0;
+  for (const [name, v] of Object.entries(r.photos)) {
+    LIB.photos[name] = v; if (v === 'pending') pending++;
+    if (v === 'pending') continue;
+    document.querySelectorAll(`#lib-res [data-ph="${CSS.escape(name)}"]`).forEach(el => {
+      const s = LIB.res.find(x => x.scientific_name === name); if (!s) return;
+      el.outerHTML = rend(libPhotoHtml(s, el.classList.contains('lib-thumb') ? 'lib-thumb' : ''));
+    });
+  }
+  if (!r.online) document.querySelectorAll('#lib-res [data-ph]').forEach(el => { el.textContent = 'Photos are off'; });
+  if (pending && document.getElementById('lib-res')) LIB.poll = setTimeout(libPhotos, 3000);     // the background fetch does about one a second
+}
+function libChanged(reload) {
+  libSave();
+  history.replaceState(null, '', '#/library' + (LIB.q ? '?' + new URLSearchParams({ q: LIB.q }) : ''));
+  lastPath = location.hash.replace(/^#/, '');
+  if (reload) route(); else libLoad();
+}
+
+// ---------- one species: the library record (1.21.0) ----------
+async function viewSpecies(name) {
+  let d;
+  try { d = await api('GET', '/api/library/taxon?name=' + enc(name)); }
+  catch (e) {                                  // 1.24.0: offline, and this species was not opened before: what the saved Texas list knows
+    const idx = e.offline || !navigator.onLine ? await offSavedJson('/api/library/offline-index') : null, x = idx && idx.species.find(y => y.n === name);
+    if (!x) throw e;
+    d = { scientific_name: x.n, common_name: x.c, family: x.f, genus: x.g, kind: LIB_KIND_SHORT[x.k] || '', in_texas: x.tx, us_states: [], classification: [{ rank: 'Family', name: x.f }, { rank: 'Genus', name: x.g }],
+      common_names: x.c ? [x.c] : [], similar: [], yours: x.y, yours_genus: [], your_plants: [], your_finds: [], know: x.kn, wish: x.w, tags: x.t, wishlist: null,
+      notes: { notes: '', tags: x.t.join(', ') }, care: null, zone: '', home: 'home', near_km: 50, online: false, own_photo: x.p, offline_row: true };
+  }
+  SPCUR = d;
+  const title = d.common_name || d.scientific_name;
+  const cls = d.classification || [], states = d.us_states || [];
+  const fungus = d.kingdom === 'Fungi';
+  const filt = (k, v) => `#/library?${new URLSearchParams({ [k]: v, scope: fungus ? 'fungi' : 'world' })}`;
+  return {
+    title,
+    after: () => spInfo(d),
+    html: html`<p class="crumb"><a href="#/library">Back to the library</a></p>
+    <article class="species" aria-labelledby="sp-h">
+      <header class="sp-head"><h1 id="sp-h">${title}</h1>
+        ${d.common_name ? html`<p class="sp-sci latin">${d.scientific_name}</p>` : ''}
+        <p class="muted">${[d.kind, d.family ? 'family ' + d.family : ''].filter(Boolean).join(', ')}</p>
+        <div class="tags">${libTags(d)}</div></header>
+      ${fungus ? fungiSafety(true) : ''}
+      <div class="sp-grid">
+        <section class="sp-photos" aria-labelledby="sp-ph-h"><h2 id="sp-ph-h">Photos</h2><div id="sp-gallery"><p class="muted" role="status">${d.online ? 'Finding photos…' : 'Photos from iNaturalist are turned off.'}</p></div></section>
+        <section aria-labelledby="sp-about-h"><h2 id="sp-about-h">About</h2><div id="sp-about"><p class="muted">${d.online ? 'Looking up the description…' : 'The description comes from iNaturalist and Wikipedia, which are turned off.'}</p></div>
+          ${d.your_plants && d.your_plants.length ? html`<h3>Your plants</h3><ul class="sp-yours">${d.your_plants.map(p => html`<li><a href="#/plant/${enc(p.code)}">${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : ''}<span><b>${p.code}</b> ${p.common_name}${(d.yours || []).includes(p.code) ? '' : html` <small>(same genus)</small>`}</span></a></li>`)}</ul>` : ''}
+          ${d.your_finds && d.your_finds.length ? html`<h3>Your finds</h3><ul class="sp-yours">${d.your_finds.map(f => html`<li><a href="#/fungi/${enc(f.code)}"><span><b>${f.code}</b> ${f.name || 'Unnamed'}, found ${longDay(f.found_on)} <small>(${(MU_ID_TAG[f.id_status] || f.id_status).toLowerCase()})</small></span></a></li>`)}</ul>` : ''}
+          ${spWishHtml(d)}
+          <div class="row sp-acts">${canChange() ? fungus ? html`<button class="btn" type="button" data-act="munewfrom">Record a find of this</button>` : html`<button class="btn" type="button" data-act="spnew">Add to my plants</button>` : ''}
+            <a class="btn ghost" href="#/identify">${fungus ? 'Identify from a photo' : 'Identify a plant'}</a></div>
+        </section>
+      </div>
+      <div class="sp-more">${spHomeHtml(d, fungus)}
+      ${fungus ? '' : spPetsHtml(d)}
+      ${fungus ? '' : html`<section aria-labelledby="sp-care-h"><h2 id="sp-care-h">Care sheet</h2><div id="sp-care">${spCareHtml(d)}</div></section>`}
+      <section aria-labelledby="sp-facts-h"><h2 id="sp-facts-h">${fungus ? 'What it does, and growing it' : 'Uses, partners and propagation'}</h2><div class="facts-box" data-facts-name="${d.scientific_name}" data-facts-common="${d.common_name || ''}" data-facts-kind="${fungus ? 'fungus' : 'plant'}"><p class="loading">Loading</p></div></section>
+      <section aria-labelledby="sp-notes-h"><h2 id="sp-notes-h">Your notes and tags</h2>
+        <p class="hint">Shared with everyone you have given access to the app.</p>
+        ${d.notes.notes || d.notes.tags ? html`<div class="sp-mynotes">${d.notes.notes ? html`<p class="pl">${d.notes.notes}</p>` : ''}
+          ${d.notes.tags ? html`<div class="tags">${d.notes.tags.split(',').map(t => t.trim()).filter(Boolean).map(t => html`<a class="tag tag-own" href="#/library?${new URLSearchParams({ mine: 'tag:' + t, scope: fungus ? 'fungi' : 'world' })}">Tag: ${t}</a>`)}</div>` : ''}
+          <p class="hint">Last changed by ${d.notes.updated_by} on ${when(d.notes.updated_at)}.</p></div>` : html`<p class="muted">No notes yet.</p>`}
+        ${canChange() ? html`<details class="sp-notes-edit"><summary>${d.notes.notes || d.notes.tags ? 'Edit the notes and tags' : 'Add notes and tags'}</summary>
+          <form data-form="spnotes" autocomplete="off"><label class="f">Notes<textarea name="notes" rows="5">${d.notes.notes}</textarea></label>
+            <label class="f">Tags<small>Separate them with commas, for example: shade, gift idea, saw at the nursery</small><input type="text" name="tags" value="${d.notes.tags}"></label>
+            <div class="row"><button class="btn" type="submit">Save notes and tags</button></div></form></details>` : ''}</section>
+      <section aria-labelledby="sp-names-h"><h2 id="sp-names-h">Names</h2>
+        <dl class="dl"><dt>Scientific name</dt><dd class="latin">${d.scientific_name}</dd>
+          <dt>Common names</dt><dd id="sp-common">${(d.common_names || []).length ? d.common_names.join('; ') : 'None in the lists on this computer.'}</dd></dl></section>
+      <section aria-labelledby="sp-cls-h"><h2 id="sp-cls-h">Classification</h2>
+        <ol class="sp-cls">${cls.map(c => html`<li><span class="muted">${c.rank}:</span> ${['Order', 'Family', 'Genus'].includes(c.rank) ? html`<a href="${filt(c.rank.toLowerCase(), c.name)}">${c.name}</a>` : c.name}</li>`)}
+          <li><span class="muted">Species:</span> <i>${d.scientific_name}</i></li></ol>
+        <p class="hint">The links list every species in that order, family or genus.</p></section>
+      <section aria-labelledby="sp-us-h"><h2 id="sp-us-h">${fungus ? 'Where it grows' : 'Where it grows wild in the US'}</h2>
+        ${fungus && !states.length ? html`<p>The USDA PLANTS lists cover plants and lichens, not other fungi, so this computer has no US range for it. iNaturalist (below) shows where people have seen it.</p>` : states.length ? html`<p>${states.length === 1 ? 'One state or territory' : states.length + ' states and territories'}, from the USDA PLANTS lists: ${states.map(LIB_STATE_WORD).join(', ')}.</p>`
+          : html`<p>It is not on the USDA PLANTS state lists, so it does not grow wild in the US (or is not recorded there). It may still be grown in gardens and homes.</p>`}</section></div>
+      ${d.similar && d.similar.length ? html`<section aria-labelledby="sp-sim-h"><h2 id="sp-sim-h">Looks like</h2>
+        <p class="hint">The species the BioCLIP model finds closest to this one. ${fungus ? 'Never use this to tell an edible mushroom from a poisonous one. ' : ''}Species that look alike sit close together, so these are the ones it is easy to mix up with, not always close relatives.</p>
+        <div class="grid lib-grid" id="lib-res">${d.similar.map(libCard)}</div></section>` : ''}
+      <section aria-labelledby="sp-links-h"><h2 id="sp-links-h">More about it elsewhere</h2>
+        <ul class="sp-links" id="sp-links">${d.usda_symbol ? html`<li><a href="https://plants.usda.gov/plant-profile/${enc(d.usda_symbol)}" target="_blank" rel="noopener noreferrer">USDA PLANTS</a>: range map, native status, growth habit</li>` : ''}
+          ${fungus ? html`<li><a href="https://www.gbif.org/species/search?q=${enc(d.scientific_name)}" target="_blank" rel="noopener noreferrer">GBIF</a>: records worldwide and accepted name</li>`
+            : html`<li><a href="https://powo.science.kew.org/results?q=${enc(d.scientific_name)}" target="_blank" rel="noopener noreferrer">Kew, Plants of the World Online</a>: native range and accepted name</li>`}
+          <li><a href="https://www.inaturalist.org/search?q=${enc(d.scientific_name)}" target="_blank" rel="noopener noreferrer">iNaturalist</a>: photos and sightings near you</li>
+          <li><a href="https://en.wikipedia.org/wiki/${enc(d.scientific_name.replace(/ /g, '_'))}" target="_blank" rel="noopener noreferrer">Wikipedia</a></li></ul></section>
+    </article>`,
+  };
+}
+async function spInfo(d) {
+  LIB.res = d.similar || [];
+  libPhotos();
+  const gal = document.getElementById('sp-gallery'), about = document.getElementById('sp-about');
+  if (!gal) return;
+  if (!d.online) { if (d.offline_row) spGallery(d, d.own_photo ? [{ url: d.own_photo, credit: 'Photo from iNaturalist (saved on this device)' }] : []); else if (d.own_photo || (d.your_plants || []).some(p => p.photo)) spGallery(d, []); return; }
+  let r;
+  try { r = await api('GET', '/api/library/info?name=' + enc(d.scientific_name)); } catch (e) { r = { error: e.message }; }
+  if (!document.getElementById('sp-gallery')) return;
+  if (r.error) { gal.innerHTML = rend(html`<p class="notice">${r.error}</p>`); about.innerHTML = ''; return; }
+  spGallery(d, r.photos || []);
+  about.innerHTML = rend(html`${r.inat_common ? html`<p><strong>Also called:</strong> ${r.inat_common}</p>` : ''}
+    ${r.summary ? html`<p>${r.summary}</p><p class="hint">From Wikipedia${r.wikipedia_url ? html` (<a href="${r.wikipedia_url}" target="_blank" rel="noopener noreferrer">read more</a>)` : ''}, CC BY-SA.</p>` : html`<p class="muted">No description found for this species.</p>`}
+    ${r.observations ? html`<p class="hint">iNaturalist members have recorded it ${Number(r.observations).toLocaleString()} times${r.inat_url ? html` (<a href="${r.inat_url}" target="_blank" rel="noopener noreferrer">see them</a>)` : ''}.</p>` : ''}`);
+  const cm = document.getElementById('sp-common');
+  if (cm && r.inat_common && !(d.common_names || []).some(x => x.toLowerCase() === r.inat_common.toLowerCase())) cm.textContent = [r.inat_common, ...(d.common_names || [])].join('; ');
+}
+function spGallery(d, photos) {
+  const gal = document.getElementById('sp-gallery'); if (!gal) return;
+  const mine = (d.your_plants || []).filter(p => p.photo && (d.yours || []).includes(p.code)).map(p => ({ url: thumbUrl(p.photo), credit: `Your plant ${p.code}`, mine: true }));
+  const all = mine.concat(photos);
+  if (!all.length) { gal.innerHTML = rend(html`<p class="muted">No photos found for this species.</p>`); return; }
+  let i = 0;
+  const draw = () => {
+    const p = all[i];
+    gal.innerHTML = rend(html`<figure class="sp-fig"><img src="${p.url}" alt="${p.mine ? 'Your plant' : 'Photo of ' + (d.common_name || d.scientific_name)}">
+      <figcaption>${p.mine ? p.credit : html`${p.credit || 'Photo from iNaturalist'}${p.license && !/\bcc\b|rights|public domain/i.test(p.credit || '') ? ` (${p.license})` : ''}${p.page ? html`. <a href="${p.page}" target="_blank" rel="noopener noreferrer">On iNaturalist</a>` : ''}`}</figcaption></figure>
+      ${all.length > 1 ? html`<div class="row sp-step"><button class="btn ghost small" type="button" data-act="spph" data-d="-1">‹ Previous photo</button><span class="muted">${i + 1} of ${all.length}</span><button class="btn ghost small" type="button" data-act="spph" data-d="1">Next photo ›</button></div>` : ''}`);
+  };
+  SPG.step = dd => { i = (i + dd + all.length) % all.length; draw(); const b = gal.querySelector(`[data-act=spph][data-d="${dd}"]`); if (b) b.focus(); };
+  draw();
+}
+// 1.23.0: here at home, pets, care sheet
+const MILES = km => Math.round(km * 0.621);
+function spHomeHtml(d, fungus) {
+  const k = d.know || {}, mi = MILES(d.near_km || 50), care = d.care && d.care.sheet;
+  const lines = [];
+  if (k.invasive) lines.push(html`<div class="notice bad" role="note"><strong>⚠ On the Texas noxious and invasive plant list</strong> (as ${k.invasive}). Texas law says it may not be sold, distributed or brought into Texas. If it is growing wild on your land, removing it helps. <a href="${d.noxious_law}" target="_blank" rel="noopener noreferrer">About the list</a>.</div>`);
+  if (!fungus) lines.push(html`<p><strong>In Texas:</strong> ${k.tx === 'native' ? 'native.' : k.tx === 'introduced' ? 'introduced (not native), growing wild here.' : 'not on the iNaturalist lists of Texas plants (or the lists are not fetched yet).'}</p>`);
+  lines.push(html`<p><strong>Near ${d.home}:</strong> ${k.near ? `recorded growing wild ${k.near.toLocaleString()} time${k.near === 1 ? '' : 's'} within ${mi} miles` : `not recorded wild within ${mi} miles`}${k.bloom ? ', and seen flowering there this month' : ''}${k.fruiting ? ', and found there this month' : ''}.</p>`);
+  if (!fungus) {
+    const zz = care ? `zones ${care.zone_low || '?'} to ${care.zone_high || '?'}` : '';
+    const v = k.hardy === 'wild-near' ? html`<strong>Likely.</strong> It grows wild within ${mi} miles of you, so it copes with the weather here.`
+      : k.hardy === 'zone-yes' ? html`<strong>Likely.</strong> The care sheet gives ${zz}, and yours is ${d.zone}.`
+      : k.hardy === 'zone-no' ? html`<strong>Probably not all year.</strong> The care sheet gives ${zz}, and yours is ${d.zone}. Bring it in, or cover it, on cold nights.`
+      : html`Not known yet. ${canChange() ? 'Write a care sheet below to get its hardiness zones.' : ''}`;
+    lines.push(html`<p><strong>Will it survive outside here all year?</strong> ${v}</p>`);
+  }
+  return html`<section aria-labelledby="sp-home-h"><h2 id="sp-home-h">Here at home</h2>${lines}</section>`;
+}
+function spPetsHtml(d) {
+  const p = (d.know || {}).pets, w = v => v === 'toxic' ? '⚠ Toxic' : v === 'non-toxic' ? 'Not toxic' : 'Not listed';
+  return html`<section aria-labelledby="sp-pets-h"><h2 id="sp-pets-h">Pets</h2>
+    ${p ? html`<table class="tbl sp-pets"><caption class="sr">ASPCA toxicity</caption><thead><tr><th scope="col">Animal</th><th scope="col">ASPCA says</th></tr></thead>
+      <tbody>${[['Dogs', p.dogs], ['Cats', p.cats], ['Horses', p.horses]].map(([a, v]) => html`<tr><th scope="row">${a}</th><td>${w(v)}</td></tr>`)}</tbody></table>
+      <p class="hint">The ASPCA lists it as ${p.common} (<i>${p.listed_as}</i>)${p.genus ? ', for the whole genus' : ''}.</p>`
+      : html`<p>Not on the ASPCA's lists of toxic and non-toxic plants (or the lists are not fetched yet). That does not mean it is safe.</p>`}
+    <p class="hint">If a pet may have eaten a plant, call your vet or ASPCA Animal Poison Control at (888) 426-4435.</p></section>`;
+}
+function spCareHtml(d) {
+  const c = d.care;
+  const btn = canChange() ? html`<p class="row"><button class="btn ${c ? 'ghost' : ''}" type="button" data-act="spcare">${c ? 'Write it again' : 'Write a care sheet with Claude'}</button></p>` : '';
+  if (!c) return html`<p class="muted">No care sheet yet.</p>${canChange() ? html`<p class="hint">Claude writes one in about half a minute with the owner's Anthropic key (a cent or two), for your place and zone. It is kept, and anyone with access can read it.</p>` : ''}${btn}`;
+  const sh = c.sheet, F = [['summary', 'In short'], ['light', 'Light'], ['water', 'Water'], ['soil', 'Soil'], ['temperature', 'Temperature'], ['humidity', 'Humidity'], ['feeding', 'Feeding'],
+    ['pruning', 'Pruning'], ['propagation', 'Propagation'], ['pests', 'Pests and problems'], ['containers', 'In a pot'], ['outdoors_here', 'Outdoors here']];
+  return html`<div class="notice" role="note"><strong>Written by Claude, not checked by a person.</strong> Check anything important before relying on it.</div>
+    <dl class="dl">${F.filter(([k]) => sh[k]).map(([k, l]) => html`<dt>${l}</dt><dd>${sh[k]}</dd>`)}
+      ${sh.zone_low ? html`<dt>Hardiness</dt><dd>USDA zones ${sh.zone_low} to ${sh.zone_high || '?'}${sh.min_temp_f != null ? `; survives down to about ${sh.min_temp_f}°F` : ''}. Yours is ${d.zone}.</dd>` : ''}</dl>
+    <p class="hint">Written ${when(c.written_at)} by ${c.model}, asked by ${c.asked_by}, for ${c.place} (zone ${c.zone}).</p>${btn}`;
+}
+function spWishHtml(d) {
+  const w = d.wishlist;
+  if (!w) return canChange() ? html`<div class="sp-wish"><button class="btn ghost" type="button" data-act="spwish">Add to my wishlist</button></div>` : '';
+  return html`<div class="sp-wish notice" role="note"><p><strong>${w.status === 'got' ? 'On your wishlist: you got it.' : 'On your wishlist.'}</strong> Added by ${w.added_by} on ${when(w.added_at)}.
+    ${w.where_seen ? html`Where to find it: ${w.where_seen}.` : ''}</p>${w.notes ? html`<p class="pl">${w.notes}</p>` : ''}
+    <p class="row"><a href="#/wishlist">Open the wishlist</a>${canChange() ? html`<button class="btn ghost small" type="button" data-act="wledit" data-name="${w.name}">Edit</button>` : ''}</p></div>`;
+}
+// ---------- 1.23.0: around home (#/around) ----------
+async function viewAround() {
+  const d = await api('GET', '/api/library/around');
+  LIB.res = d.sections.flatMap(x => x.species);
+  const empty = d.sections.every(x => !x.fetched);
+  return {
+    title: 'Around home', after: () => { libPhotos(); if (empty && d.online) setTimeout(() => { if (location.hash === '#/around') route(); }, 15000); },
+    html: html`<p class="crumb"><a href="#/library">Back to the library</a></p><h1>Around ${d.place}</h1>
+    <p>What people have recorded growing wild within ${MILES(d.near_km)} miles of ${d.place}, from iNaturalist: what is flowering this month, the mushrooms and other fungi found this month, and the plants and fungi recorded most often. Open any of them for its page.</p>
+    ${d.sections.some(x => x.key === 'fruiting' && x.total) ? fungiSafety(true) : ''}
+    ${!d.online ? html`<p class="notice">Library lookups are turned off, so these lists are not fetched. The owner can turn them on at the bottom of the Library page.</p>` : empty ? html`<p class="notice" role="status">The lists are being fetched for the first time. This page fills in by itself in a minute or two.</p>` : ''}
+    <div id="lib-res">${d.sections.map(x => html`<section aria-labelledby="ar-${x.key}"><h2 id="ar-${x.key}">${x.title}</h2>
+      ${x.total ? html`<p class="muted">${x.total > x.species.length ? `The ${x.species.length} recorded most, of ${x.total.toLocaleString()}.` : `${x.total} species.`} <a href="#/library?${new URLSearchParams({ know: x.key, scope: x.key === 'fruiting' ? 'fungi' : 'world', q: '' })}">See them all in the library</a>.</p>
+        <div class="grid lib-grid">${x.species.map(libCard)}</div>` : html`<p class="muted">${x.fetched ? 'Nothing recorded yet.' : 'Not fetched yet.'}</p>`}</section>`)}</div>`,
+  };
+}
+
+// ---------- 1.22.0: the wishlist (#/wishlist) ----------
+let WL = [];
+async function viewWishlist() {
+  const [wl, sh] = await Promise.all([api('GET', '/api/wishlist'), api('GET', '/api/shops').catch(() => null)]);
+  WL = wl.wishlist; WLSHOPS = sh;
+  const want = WL.filter(w => w.status === 'want'), got = WL.filter(w => w.status === 'got'), owner = ME().role === 'owner';
+  const money = n => n == null ? '' : '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const item = (w, i) => html`<li class="wl-item"><h3><a href="${spHref(w.name)}">${w.common_name || w.name}</a></h3>
+    ${w.common_name ? html`<p class="latin">${w.name}</p>` : ''}
+    ${w.yours && w.yours.length ? html`<p><span class="tag tag-yours">You have it: ${w.yours.join(', ')}</span></p>` : ''}
+    ${w.status === 'want' ? html`<div class="wl-price">
+      ${w.offers && w.offers.best ? html`<p><strong>Cheapest now:</strong> ${money(w.offers.best.price)} at ${w.offers.best.shop_name}: <a href="${w.offers.best.url}" target="_blank" rel="noopener noreferrer">${w.offers.best.title}</a></p>` : ''}
+      <p>${w.offers && w.offers.count ? `In stock at ${w.offers.shops} shop${w.offers.shops === 1 ? '' : 's'} (${w.offers.count} listing${w.offers.count === 1 ? '' : 's'}).` : wl.checked ? 'Not found at the shops checked.' : 'The shops have not been checked yet.'}
+        <strong>Alerts:</strong> ${[w.max_price != null ? `${money(w.max_price)} or less` : '', w.alert_stock ? 'when it is in stock' : ''].filter(Boolean).join('; ') || 'none set (Edit to add one)'}.</p>
+      <p class="hint">Searching for: ${(w.terms || []).join('; ') || 'nothing (Edit to add search words)'}.</p>
+      <details class="wl-offers" data-wish="${w.name}"><summary>Every listing found, with past prices</summary><div class="wl-offers-box"><p class="loading">Loading</p></div></details></div>` : ''}
+    ${w.where_seen ? html`<p><strong>Where to find it:</strong> ${w.where_seen}</p>` : ''}
+    ${w.notes ? html`<p class="pl">${w.notes}</p>` : ''}
+    <p class="hint">Added by ${w.added_by} on ${when(w.added_at)}.</p>
+    <div class="row wl-acts"><button class="btn small" type="button" data-act="wlgot" data-i="${i}">${w.status === 'got' ? 'Move back to wanted' : 'Got it'}</button>
+      <button class="btn ghost small" type="button" data-act="wledit" data-name="${w.name}">Edit, and set alerts</button>
+      <button class="btn danger small" type="button" data-act="wlrm" data-i="${i}">Take it off the list</button></div></li>`;
+  const al = wl.alerts || [];
+  return {
+    title: 'Wishlist',
+    after: () => { if (sh && sh.busy) wlPoll(); },
+    html: html`<p class="crumb"><a href="#/library">Back to the library</a></p><h1>Wishlist</h1>
+    <p>Plants (or fungi) you would like to have or find. Add one from its page in the <a href="#/library">library</a>. Everyone you have given access to the app sees this list.
+      The shops listed below are checked ${sh && sh.hours !== '0' ? `every ${sh.hours} hours` : 'only when you ask'} for everything you want, with alerts here and on the Today page.</p>
+    ${al.length ? html`<section class="blk wl-alerts" aria-labelledby="wl-al-h"><h2 id="wl-al-h">Alerts (${al.length})</h2>${wlAlertsHtml(al)}</section>` : ''}
+    <div class="row wl-check"><button class="btn" type="button" data-act="wlcheck" ${want.length ? '' : raw('disabled')}>Check the shops now</button>
+      <span id="wl-check-msg" role="status" aria-live="polite">${wl.checked ? `Last checked ${when(wl.checked)}.` : 'Not checked yet.'}</span></div>
+    <h2>Wanted (${want.length})</h2>${want.length ? html`<ul class="wl-list">${want.map(w => item(w, WL.indexOf(w)))}</ul>` : html`<p class="muted">Nothing wanted yet. Open a species in the library and press "Add to my wishlist".</p>`}
+    ${got.length ? html`<h2>Got them (${got.length})</h2><ul class="wl-list">${got.map(w => item(w, WL.indexOf(w)))}</ul>` : ''}
+    ${sh ? wlShopsHtml(sh, owner) : ''}`,
+  };
+}
+let WLSHOPS = null, WLBADGE = 0;
+async function wlBadge() {           // 1.27.0: the number of wishlist alerts beside Library in the top bar (checked at most once a minute)
+  if (Date.now() - WLBADGE < 60000) return;
+  WLBADGE = Date.now();
+  let n = 0; try { n = (await api('GET', '/api/wishlist/alerts')).alerts.length; } catch (e) { return; }
+  const a = document.querySelector('#main-nav a[data-nav=library]'); if (!a) return;
+  let b = a.querySelector('.nav-badge');
+  if (!n) { if (b) b.remove(); return; }
+  if (!b) { b = document.createElement('span'); b.className = 'nav-badge'; a.append(b); }
+  b.innerHTML = rend(html` <span aria-hidden="true">(${n})</span><span class="sr">, ${n} wishlist alert${n === 1 ? '' : 's'}</span>`);
+}
+function wlAlertsHtml(al, today) {
+  return html`<ul class="wl-alert-list">${al.map(a => html`<li><span class="tag ${a.kind === 'price' ? 'tag-yours' : ''}">${a.kind === 'price' ? 'Price' : 'In stock'}</span>
+      ${a.url ? html`<a href="${a.url}" target="_blank" rel="noopener noreferrer">${a.text}</a>` : a.text} <small class="muted">${when(a.created_at)}</small>
+      <button class="btn ghost small" type="button" data-act="wldismiss" data-id="${a.id}">Dismiss</button></li>`)}</ul>
+    <div class="row">${al.length > 1 ? html`<button class="btn ghost small" type="button" data-act="wldismiss" data-id="all">Dismiss them all</button>` : ''}${today ? html`<a class="btn ghost small" href="#/wishlist">Open the wishlist</a>` : ''}</div>`;
+}
+function wlShopsHtml(sh, owner) {
+  const kindWord = s => s.kind === 'api' ? 'Searches its listings' : s.platform === 'shopify' || s.platform === 'woo' ? 'Reads its online store' : s.platform === 'page' || s.kind === 'page' ? 'Reads its pages for your plant names' : 'Finds out on the first check';
+  return html`<section class="blk" aria-labelledby="wl-shops-h"><h2 id="wl-shops-h">Shops checked</h2>
+    <p class="hint">Online stores give prices and whether each plant is in stock. Local nurseries with no online store are read for your plants' names, with a price if the page shows one: call them to be sure.</p>
+    <div class="tbl-wrap"><table class="tbl wl-shops"><thead><tr><th>Shop</th><th>How</th><th>Last check</th>${owner ? html`<th>Check it</th>` : ''}</tr></thead><tbody>
+      ${sh.shops.map(s => html`<tr><th scope="row"><a href="${s.url}" target="_blank" rel="noopener noreferrer">${s.name}</a>${s.local ? html` <small class="tag">Near home</small>` : ''}</th>
+        <td>${kindWord(s)}</td>
+        <td>${s.error ? html`<span class="bad-text">⚠ ${s.status}</span>` : s.status || (s.enabled ? 'Not checked yet' : 'Off')}${s.checked_at ? html`<br><small class="muted">${when(s.checked_at)}</small>` : ''}</td>
+        ${owner ? html`<td><label class="chk"><input type="checkbox" data-act="shopon" data-key="${s.key}" ${s.enabled ? raw('checked') : ''}> On</label>
+          ${s.kind !== 'api' ? html`<button class="btn ghost small" type="button" data-act="shopedit" data-key="${s.key}">Change address</button>` : ''}
+          ${s.custom ? html`<button class="btn danger small" type="button" data-act="shoprm" data-key="${s.key}">Remove</button>` : ''}</td>` : ''}</tr>`)}
+    </tbody></table></div>
+    ${owner ? html`<h3>How often</h3><label class="f">Check the shops<select data-act="shophours">${[['6', 'Every 6 hours'], ['12', 'Every 12 hours (twice a day)'], ['24', 'Once a day'], ['48', 'Every 2 days'], ['0', 'Only when I press "Check the shops now"']].map(([v, t]) => html`<option value="${v}" ${sh.hours === v ? raw('selected') : ''}>${t}</option>`)}</select></label>
+      <h3>Add a shop</h3>
+      <form data-form="shopadd" class="row plc-search" autocomplete="off"><label class="f">Shop name<input type="text" name="name" maxlength="80" required></label>
+        <label class="f">Web address<small>Its home page, or the page that lists its plants</small><input type="url" name="url" maxlength="300" placeholder="https://" required></label>
+        <label class="chk"><input type="checkbox" name="local"> Near home</label><button class="btn" type="submit">Add the shop</button></form>
+      <h3>eBay and Etsy keys</h3>
+      <p class="hint">eBay and Etsy are searched through their official services, which need free keys. They are kept on this computer and never shown again.</p>
+      <form data-form="shopkeys" data-shop="ebay" class="f-grid" autocomplete="off"><p><strong>eBay</strong>: ${sh.have_ebay ? 'saved.' : 'not set.'} Create a free account at <a href="https://developer.ebay.com/" target="_blank" rel="noopener noreferrer">developer.ebay.com</a>, make a "Production" keyset, and paste its App ID (Client ID) and Cert ID (Client Secret).</p>
+        <label class="f">App ID<input type="password" name="ebay_app_id" autocomplete="off"></label><label class="f">Cert ID<input type="password" name="ebay_cert_id" autocomplete="off"></label>
+        <div class="row"><button class="btn" type="submit">Save the eBay keys</button>${sh.have_ebay ? html`<button class="btn ghost" type="button" data-act="shopkeyrm" data-shop="ebay">Remove them</button>` : ''}</div></form>
+      <form data-form="shopkeys" data-shop="etsy" autocomplete="off"><p><strong>Etsy</strong>: ${sh.have_etsy ? 'saved.' : 'not set.'} Register an app at <a href="https://www.etsy.com/developers/register" target="_blank" rel="noopener noreferrer">etsy.com/developers</a> and paste its key (keystring).</p>
+        <label class="f">Etsy key<input type="password" name="etsy_key" autocomplete="off"></label>
+        <div class="row"><button class="btn" type="submit">Save the Etsy key</button>${sh.have_etsy ? html`<button class="btn ghost" type="button" data-act="shopkeyrm" data-shop="etsy">Remove it</button>` : ''}</div></form>` : ''}
+  </section>`;
+}
+async function wlPoll() {
+  const msg = () => document.getElementById('wl-check-msg');
+  for (let n = 0; n < 900 && msg(); n++) {
+    let r; try { r = await api('GET', '/api/wishlist/check'); } catch (e) { return; }
+    if (!r.busy) { if (msg()) { toast('Shops checked'); WLBADGE = 0; await route(); } return; }
+    if (msg()) msg().textContent = `Checking ${r.now || 'the shops'} (${r.done + 1} of ${r.total})…`;
+    await new Promise(res => setTimeout(res, 2000));
+  }
+}
+document.addEventListener('toggle', async e => {         // the listings for one entry, loaded when opened
+  const d = e.target; if (!d.matches || !d.matches('details.wl-offers') || !d.open || d.dataset.loaded) return;
+  d.dataset.loaded = '1';
+  const box = d.querySelector('.wl-offers-box');
+  try {
+    const r = await api('GET', '/api/wishlist/offers?name=' + enc(d.dataset.wish));
+    const money = n => n == null ? 'no price shown' : '$' + Number(n).toFixed(2);
+    box.innerHTML = rend(r.offers.length ? html`<ul class="wl-offer-list">${r.offers.map(o => html`<li class="${o.gone ? 'muted' : ''}">
+        <strong>${money(o.price)}</strong> at ${o.shop_name}: <a href="${o.url}" target="_blank" rel="noopener noreferrer">${o.title}</a>
+        ${o.gone ? html` <span class="tag">No longer listed</span>` : o.available ? '' : html` <span class="tag">Out of stock</span>`}
+        ${o.detail ? html`<br><small>${o.detail}</small>` : ''}
+        ${o.history.length > 1 ? html`<br><small>Past: ${o.history.slice(-6).map(h => `${when(h.at)} ${h.available ? money(h.price) : 'gone or out of stock'}`).join('; ')}</small>` : ''}
+        <br><small class="muted">First seen ${when(o.first_seen)}, last seen ${when(o.last_seen)}</small></li>`)}</ul>` : html`<p class="muted">Nothing found yet.</p>`);
+  } catch (err) { box.innerHTML = rend(html`<p class="muted">${err.message}</p>`); }
+}, true);
+Object.assign(acts, {
+  async wlcheck(el) {
+    if (!(await needName())) return;
+    el.disabled = true;
+    await guard(async () => { await api('POST', '/api/wishlist/check'); wlPoll(); });
+  },
+  async wldismiss(el) {
+    if (!(await needName())) return;
+    await guard(async () => { await api('POST', '/api/wishlist/alerts', el.dataset.id === 'all' ? { all: true } : { id: +el.dataset.id }); toast('Dismissed'); WLBADGE = 0; await route(); });
+  },
+  async shopedit(el) {
+    const s = WLSHOPS && WLSHOPS.shops.find(x => x.key === el.dataset.key); if (!s) return;
+    const r = await modal(html`<form method="dialog"><h2>${s.name}</h2>
+      <label class="f">Web address<input type="url" name="url" maxlength="300" value="${s.url}"></label>
+      <label class="f">More pages to read<small>For a shop without an online store: the pages that list its plants, one per line</small><textarea name="pages" rows="5">${s.pages.join('\n')}</textarea></label>
+      <div class="row"><button class="btn" value="ok">Save changes</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`);
+    if (r !== 'ok') return;
+    await guard(async () => { await api('PUT', '/api/shops', { key: s.key, url: dlg.querySelector('[name=url]').value, pages: dlg.querySelector('[name=pages]').value }); toast('Saved'); await route(); });
+  },
+  async shoprm(el) {
+    const s = WLSHOPS && WLSHOPS.shops.find(x => x.key === el.dataset.key); if (!s) return;
+    if (!(await confirmBox('Remove this shop?', `${s.name} is no longer checked, and what it had is forgotten.`, 'Remove the shop', true))) return;
+    await guard(async () => { await api('DELETE', '/api/shops?key=' + enc(s.key)); toast('Removed'); await route(); });
+  },
+  async shopkeyrm(el) {
+    if (!(await confirmBox('Remove the key?', `${el.dataset.shop === 'ebay' ? 'eBay' : 'Etsy'} is not searched again until a key is saved.`, 'Remove it', true))) return;
+    await guard(async () => { await api('DELETE', '/api/shops/keys', { shop: el.dataset.shop }); toast('Removed'); await route(); });
+  },
+});
+Object.assign(changeActs, {
+  async shopon(el) { await guard(async () => { await api('PUT', '/api/shops', { key: el.dataset.key, enabled: el.checked }); toast(el.checked ? 'Turned on' : 'Turned off'); }); },
+  async shophours(el) { await guard(async () => { await api('PUT', '/api/shops', { hours: el.value }); toast('Saved'); }); },
+});
+Object.assign(formActs, {
+  async shopadd(form) { await api('POST', '/api/shops', { name: form.elements.name.value, url: form.elements.url.value, local: form.elements.local.checked }); toast('Shop added. It is read on the next check.'); route(); },
+  async shopkeys(form) {
+    const b = { shop: form.dataset.shop }; [...form.elements].forEach(x => { if (x.name) b[x.name] = x.value.trim(); });
+    await api('PUT', '/api/shops/keys', b); toast('Saved'); route();
+  },
+});
+Object.assign(acts, {
+  async wlgot(el) {
+    const w = WL[+el.dataset.i]; if (!w || !(await needName())) return;
+    await guard(async () => { await api('PUT', '/api/wishlist', { name: w.name, status: w.status === 'got' ? 'want' : 'got' }); toast(w.status === 'got' ? 'Moved back to wanted' : 'Marked as got it'); await route(); });
+  },
+  async wlrm(el) {
+    const w = WL[+el.dataset.i]; if (!w || !(await needName())) return;
+    if (!(await confirmBox('Take it off the wishlist?', `${w.common_name || w.name} and its notes leave the list.`, 'Take it off the list', true))) return;
+    await guard(async () => { await api('DELETE', '/api/wishlist', { name: w.name }); toast('Taken off the wishlist'); await route(); });
+  },
+  async wledit(el) {
+    if (!(await needName())) return;
+    const all = (await api('GET', '/api/wishlist')).wishlist, w = all.find(x => x.name === el.dataset.name); if (!w) return;
+    const r = await modal(html`<form method="dialog"><h2>Edit: ${w.common_name || w.name}</h2>
+      <label class="f">Where to find it<small>A nursery, a website, a friend's garden</small><input type="text" name="where" maxlength="300" value="${w.where_seen}"></label>
+      <label class="f">Notes<textarea name="notes" rows="4" maxlength="2000">${w.notes}</textarea></label>
+      <label class="f">Status<select name="status"><option value="want" ${w.status === 'want' ? raw('selected') : ''}>Wanted</option><option value="got" ${w.status === 'got' ? raw('selected') : ''}>Got it</option></select></label>
+      <fieldset class="opt-group"><legend>Shops and alerts</legend>
+        <label class="f">Search the shops for<small>One search per line, such as a variety: Monstera Thai Constellation. Left empty, its common and scientific names are used.</small><textarea name="search" rows="2" maxlength="300">${w.search_words || ''}</textarea></label>
+        <label class="f">Alert me when the price is at or under<small>In dollars, such as 25. Shipping is not included. Leave empty for no price alert.</small><input type="number" name="max_price" min="0.01" step="0.01" inputmode="decimal" value="${w.max_price == null ? '' : w.max_price}"></label>
+        <label class="chk"><input type="checkbox" name="alert_stock" ${w.alert_stock ? raw('checked') : ''}> Alert me when a shop has it in stock</label></fieldset>
+      <div class="row"><button class="btn" value="ok">Save changes</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`);
+    if (r !== 'ok') return;
+    const q = n => dlg.querySelector(`[name=${n}]`);
+    await guard(async () => { await api('PUT', '/api/wishlist', { name: w.name, where_seen: q('where').value, notes: q('notes').value, status: q('status').value,
+      search_words: q('search').value, max_price: q('max_price').value, alert_stock: q('alert_stock').checked }); toast('Saved'); await route(); });
+  },
+});
+Object.assign(acts, {
+  async factswrite(el) {
+    const box = el.closest('.facts-box'); if (!box || !(await needName())) return;
+    el.disabled = true;
+    box.insertAdjacentHTML('beforeend', rend(html`<p role="status" class="facts-wait">Claude is writing them. This takes about half a minute…</p>`));
+    try {
+      const r = await api('POST', '/api/facts', { name: box.dataset.factsName, common_name: box.dataset.factsCommon || '', kind: box.dataset.factsKind || 'plant' });
+      box.innerHTML = rend(factsHtml(r.facts, box)); toast('Written and kept');
+      const h = box.closest('section') && box.closest('section').querySelector('h2'); if (h) { h.setAttribute('tabindex', '-1'); h.focus(); }
+    } catch (e) { const w = box.querySelector('.facts-wait'); if (w) w.remove(); el.disabled = false; box.insertAdjacentHTML('beforeend', rend(html`<div class="notice bad" role="alert">${e.message}</div>`)); }
+  },
+});const SPG = { step: null };
+let SPCUR = null;          // the species page on screen, for "Add to my plants"
+Object.assign(acts, {
+  libmore: () => libLoad(true),
+  libclear: () => { Object.assign(LIB, { q: '', kind: '', family: '', state: '', common: false, mine: '', know: '' }); libChanged(true); },
+  spph: el => SPG.step && SPG.step(+el.dataset.d),
+  async spcare(el) {
+    if (!SPCUR || !(await needName())) return;
+    const box = document.getElementById('sp-care'); el.disabled = true;
+    box.insertAdjacentHTML('beforeend', rend(html`<p role="status" id="sp-care-wait">Claude is writing the care sheet. This takes about half a minute…</p>`));
+    try { const r = await api('POST', '/api/library/care', { name: SPCUR.scientific_name, common_name: SPCUR.common_name || '' }); SPCUR.care = r.care; box.innerHTML = rend(spCareHtml(SPCUR)); toast('Care sheet written'); const h = document.getElementById('sp-care-h'); if (h) { h.setAttribute('tabindex', '-1'); h.focus(); } }
+    catch (e) { const w = document.getElementById('sp-care-wait'); if (w) w.remove(); el.disabled = false; box.insertAdjacentHTML('beforeend', rend(html`<div class="notice bad" role="alert">${e.message}</div>`)); }
+  },
+  async spwish() {
+    if (!SPCUR || !(await needName())) return;
+    await guard(async () => { await api('PUT', '/api/wishlist', { name: SPCUR.scientific_name, common_name: SPCUR.common_name || '' }); toast('Added to your wishlist'); await route(); });
+  },
+  async libpre() {
+    await guard(async () => { const p = await api('POST', '/api/library/prefetch', { scope: 'texas' }); toast(p.total ? `Downloading ${p.total.toLocaleString()} species in the background` : 'They are all kept already'); await libPrePoll(); });
+  },
+  async liblists() { await guard(async () => { await api('POST', '/api/library/local'); toast('Fetching the lists again in the background'); await libListsPoll(); }); },
+  async libprestop() { await guard(async () => { await api('DELETE', '/api/library/prefetch'); toast('Download stopped'); await libPrePoll(); }); },
+  spnew: () => { if (SPCUR) idNewPlant(Object.assign({}, SPCUR, { src: 'the plant library' }), false); },
+});
 function spFrom(src, i) {
   const list = src === 'library' ? LIB.res : src === 'local' ? ID.shot && ID.shot.result && ID.shot.result.species : ID.shot && ID.shot[src] && ID.shot[src].species;
   const s = list && list[+i];
@@ -5004,6 +5820,7 @@ Object.assign(acts, {
   idopen: el => { idStop(); go('#/plant/' + enc(el.dataset.code)); },
   idask: el => idAskOutside(el.dataset.who),
   idnew: el => { const s = spFrom(el.dataset.src, el.dataset.i); if (s) idNewPlant(s, el.dataset.src !== 'library'); },
+  idfind: el => { const s = spFrom(el.dataset.src, el.dataset.i); if (!s) return; idStop(); MUFILL = { name: s.common_name || '', scientific_name: s.scientific_name, id_status: 'A guess' }; go('#/fungi/new'); },
   async idkeydel(el) {
     if (!(await confirmBox('Remove the key?', 'The button for this second opinion goes away until a key is saved again.', 'Remove the key', true))) return;
     await guard(async () => { await api('PUT', '/api/identify/settings', { [el.dataset.k]: '' }); toast('Key removed'); route(); });
@@ -5011,21 +5828,610 @@ Object.assign(acts, {
 });
 Object.assign(changeActs, { idfile: el => idFile(el) });
 Object.assign(formActs, {
+  async spnotes(form) {
+    if (!SPCUR || !(await needName())) return;
+    await guard(async () => { await api('PUT', '/api/library/notes', { name: SPCUR.scientific_name, notes: form.elements.notes.value, tags: form.elements.tags.value }); toast('Notes and tags saved'); await route(); });
+  },
   async idkeys(form) {
     const b = {};
     ['plantnet_key', 'claude_key'].forEach(k => { const v = form.elements[k].value.trim(); if (v) b[k] = v; });
     if (!Object.keys(b).length) { toast('Paste a key first.', true); return; }
     await api('PUT', '/api/identify/settings', b); toast('Keys saved'); route();
   },
-  async libsearch(form) {
-    LIB.q = form.elements.q.value.trim(); LIB.scope = form.elements.scope.value;
-    if (LIB.q.length < 2) { toast('Type at least 2 letters.', true); return; }
-    history.replaceState(null, '', '#/library?' + new URLSearchParams({ q: LIB.q, scope: LIB.scope }));
-    lastPath = location.hash.replace(/^#/, '');
-    await libSearch();
-  },
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && ID.stream) { idStop(); idCamUi(false); } });
+
+// ---------- 1.22.0: mushroom finds (#/fungi), a page of their own ----------
+// A find is a mushroom (or a cluster) seen anywhere: the yard, a plant pot, a walk. It has photos, where and when, what it grew
+// on, what it looks like, and its name with how sure that is. The app never says a mushroom is safe to eat.
+const MU = { q: '', id: '', place: '', year: '', status: 'active', list: null, meta: null };
+try { const s = JSON.parse(localStorage.getItem('plantdb.fungi') || '{}'); ['q', 'id', 'place', 'year', 'status'].forEach(k => { if (typeof s[k] === 'string') MU[k] = s[k]; }); } catch (e) { /* defaults */ }
+const muSave = () => { try { localStorage.setItem('plantdb.fungi', JSON.stringify({ q: MU.q, id: MU.id, place: MU.place, year: MU.year, status: MU.status })); } catch (e) { /* not remembered */ } };
+const MU_ID_TAG = { 'Not identified yet': 'Not identified', 'A guess': 'Name is a guess', 'Fairly sure': 'Fairly sure of the name', 'Confirmed by an expert': 'Confirmed name' };
+function fungiSafety(short) {
+  return html`<aside class="notice bad mu-safe" role="note" aria-label="Safety"><strong>Never eat a wild mushroom because of an app, a photo, or this record.</strong>
+    ${short ? html` Deadly mushrooms look like edible ones, and photo IDs are often wrong. <a href="#/fungi/safety">Read more</a>.`
+      : html`<ul><li>Deadly species, such as death caps and destroying angels (<i>Amanita</i>), look like common edible ones, and some poisons only show symptoms a day later, when the liver is already damaged.</li>
+      <li>Names here come from photos, your notes or Identify. They are leads, not proof. Only an experienced local expert, with the whole mushroom in hand, can confirm one.</li>
+      <li><strong>Pets:</strong> dogs often eat mushrooms in yards, and several common lawn species are toxic to them. Pick mushrooms from the yard before letting pets out. If a pet may have eaten one, call your vet or ASPCA Animal Poison Control at (888) 426-4435.</li>
+      <li><strong>People:</strong> if someone may have eaten a wild mushroom, call Poison Control at 1-800-222-1222 (or 911 if they are very ill), and keep any leftover pieces.</li>
+      <li>Wash your hands after handling wild mushrooms.</li></ul>`}</aside>`;
+}
+function muYears(list) { return [...new Set(list.map(f => (f.found_on || '').slice(0, 4)).filter(Boolean))].sort().reverse(); }
+function muFiltered() {
+  const q = MU.q.toLowerCase();
+  return (MU.list || []).filter(f => (!MU.id || f.id_status === MU.id) && (!MU.place || f.place_kind === MU.place) && (!MU.year || (f.found_on || '').startsWith(MU.year))
+    && (!q || [f.code, f.name, f.scientific_name, f.place, f.near, f.notes, f.cap_colour, f.plant_code].join(' ').toLowerCase().includes(q)));
+}
+function muCard(f) {
+  return html`<article class="sheet mu-card" data-code="${f.code}">
+    <div class="mat">${f.photo ? html`<img src="${thumbUrl(f.photo)}" alt="" loading="lazy" decoding="async">` : f.photo_url ? html`<img src="${f.photo_url}" alt="" decoding="async">` : html`<div class="nophoto">No photo yet</div>`}<span class="acc">${f.pending ? 'Not sent yet' : f.code}</span></div>
+    <h3 class="name"><a class="sheet-link" href="#/fungi/${enc(f.code)}">${f.name || 'Unnamed mushroom'}</a></h3>
+    ${f.scientific_name ? html`<p class="sci latin">${f.scientific_name}</p>` : ''}
+    <p class="mu-when">${f.found_on ? longDay(f.found_on) : ''}${f.place_kind ? ' · ' + f.place_kind.replace(/^In (the|a) /, '').replace(/^\w/, c => c.toUpperCase()) : ''}${f.plant_code ? ' ' + f.plant_code : ''}</p>
+    <div class="tags"><span class="tag ${f.id_status === 'Confirmed by an expert' ? 'tag-yours' : ''}">${MU_ID_TAG[f.id_status] || f.id_status}</span>${f.status === 'archived' ? html`<span class="tag tag-arch">Archived</span>` : ''}</div>
+  </article>`;
+}
+function muDraw() {
+  const box = document.getElementById('mu-grid'); if (!box) return;
+  muSave();
+  const r = muFiltered();
+  document.getElementById('mu-count').textContent = `${r.length} of ${(MU.list || []).length} finds shown`;
+  box.innerHTML = rend(r.length ? r.map(muCard) : html`<div class="empty" style="grid-column:1/-1"><p>${(MU.list || []).length ? 'No finds match these filters.' : 'No finds yet. When you spot a mushroom, press "Add a find" and take its photos.'}</p></div>`);
+}
+async function viewFungi() {
+  const d = await api('GET', '/api/fungi?status=' + enc(MU.status));
+  MU.list = d.finds; MU.meta = d;
+  const sel = (f, opts) => html`<select data-f="${f}">${opts.map(([v, l]) => html`<option value="${v}" ${MU[f.slice(2)] === v ? raw('selected') : ''}>${l}</option>`)}</select>`;
+  return {
+    title: 'Mushroom finds', after: muDraw,
+    html: html`<div class="hero"><div><h1>Mushroom finds</h1>
+      <p class="muted">Mushrooms you have spotted in the yard, in your plant pots, or anywhere else, with their photos, where they grew and what they look like.</p></div>
+      <a class="btn" href="#/fungi/new">Add a find</a></div>
+    ${fungiSafety(true)}
+    <div class="filters mu-filters">
+      <label>Search<input type="search" data-f="muq" value="${MU.q}" placeholder="Name, place, colour, notes" autocomplete="off"></label>
+      <label>Name${sel('muid', [['', 'Any'], ...d.enums.id_status.map(x => [x, x])])}</label>
+      <label>Where${sel('muplace', [['', 'Anywhere'], ...d.enums.place_kind.map(x => [x, x])])}</label>
+      <label>Year${sel('muyear', [['', 'Any year'], ...muYears(d.finds).map(y => [y, y])])}</label>
+      <label>Show${sel('mustatus', [['active', 'Current finds'], ['all', 'Current and archived'], ['archived', 'Archived only']])}</label>
+    </div>
+    <p id="mu-count" class="muted" aria-live="polite"></p>
+    <div class="grid" id="mu-grid"></div>
+    <p><a class="btn ghost" href="#/around">Fungi found near home this month</a></p>
+    <p class="hint">Look up mushrooms by name in the <a href="#/library?scope=fungi">library</a> (Look in: Fungi worldwide), or take a picture with <a href="#/identify">Identify</a>.</p>`,
+  };
+}
+function viewFungiSafety() {
+  return { title: 'Mushroom safety', html: html`<p class="crumb"><a href="#/fungi">Back to the mushroom finds</a></p><h1>Mushroom safety</h1>${fungiSafety(false)}
+    <h2>Good habits when you record a find</h2>
+    <ul><li>Photograph the cap from above, the underside (gills or pores), the whole stem, and the very base. Dig gently around the base first: a cup or sac there (a volva) is a warning sign of <i>Amanita</i>.</li>
+      <li>Note what it grew on, and which trees are near: many mushrooms grow only with certain trees.</li>
+      <li>A spore print helps an expert most: put the cap gills-down on half white, half dark paper under a bowl for a few hours, and note the colour.</li>
+      <li>Ask for help on iNaturalist or a local mycological society, such as the Texas Mycological Society.</li></ul>` };
+}
+function muField(meta, f, v, plants) {
+  const id = 'mu-' + f.name;
+  if (f.name === 'lat' || f.name === 'lon') return '';
+  if (f.name === 'plant_code') return html`<label class="f" data-show="pot">${f.label}<select name="plant_code" id="${id}"><option value="">Not in a pot</option>${plants.map(p => html`<option value="${p.code}" ${p.code === v ? raw('selected') : ''}>${p.code} ${p.common_name}</option>`)}</select></label>`;
+  if (f.kind === 'enum') return html`<label class="f">${f.label}<select name="${f.name}" id="${id}"><option value="">Not set</option>${meta.enums[f.name].map(o => html`<option ${o === v ? raw('selected') : ''}>${o}</option>`)}</select></label>`;
+  if (f.kind === 'long') return html`<label class="f wide">${f.label}<textarea name="${f.name}" id="${id}" rows="4">${v || ''}</textarea></label>`;
+  if (f.kind === 'date') return html`<label class="f">${f.label}<input type="date" name="${f.name}" id="${id}" value="${v || todayStr()}" max="${todayStr()}"></label>`;
+  const hint = { name: 'A common name, or your own description such as "small brown one by the oak"', cap_size: 'For example 2 inches', spore_print: 'For example white, cream, pink, brown, purple-brown, black' }[f.name];
+  return html`<label class="f">${f.label}${hint ? html`<small>${hint}</small>` : ''}<input type="text" name="${f.name}" id="${id}" value="${v || ''}"></label>`;
+}
+const MU_GROUPS = [['Name', ['name', 'scientific_name', 'id_status']], ['Where and when', ['found_on', 'place_kind', 'plant_code', 'place']],
+  ['What it grew on', ['substrate', 'near', 'abundance']], ['What it looks like', ['cap_size', 'cap_colour', 'underside', 'ring', 'volva', 'spore_print', 'bruising', 'smell']], ['Notes', ['notes']]];
+let MUFILL = null;            // a new find started from a species page or from Identify
+async function viewFindForm(code) {
+  const [meta, plants] = await Promise.all([code ? api('GET', '/api/fungi/' + enc(code)) : api('GET', '/api/fungi?status=none'), api('GET', '/api/plants')]);
+  MU.meta = meta;
+  const F = Object.fromEntries(meta.fields.map(f => [f.name, f])), v = code ? meta : (MUFILL || {});
+  return {
+    title: code ? 'Edit ' + code : 'Add a mushroom find',
+    after: () => muPlaceShow(),
+    html: html`<p class="crumb"><a href="${code ? '#/fungi/' + enc(code) : '#/fungi'}">${code ? 'Back to ' + code : 'Back to the mushroom finds'}</a></p>
+    <h1>${code ? 'Edit ' + code : 'Add a mushroom find'}</h1>
+    ${code ? '' : html`<p class="muted">Only the photos and where you found it really matter now; fill in the rest any time.</p>`}
+    <form data-form="musave" ${code ? raw(`data-code="${esc(code)}" data-ver="${meta.version}"`) : ''} autocomplete="off">
+      ${code ? '' : html`<fieldset><legend>Photos</legend><label class="f">Photos of the cap, the underside, the stem and the base<small>On a phone this can open the camera. If the photos carry their location, it is offered for the find.</small>
+        <input type="file" name="photos" accept="image/*" multiple capture="environment"></label></fieldset>`}
+      ${MU_GROUPS.map(([t, names]) => html`<fieldset><legend>${t}</legend><div class="field-grid">${names.map(n => muField(meta, F[n], v[n], plants))}</div>
+        ${t === 'Where and when' ? html`<div class="mu-loc"><input type="hidden" name="lat" value="${v.lat == null ? '' : v.lat}"><input type="hidden" name="lon" value="${v.lon == null ? '' : v.lon}">
+          <p id="mu-loc-txt" aria-live="polite">${v.lat != null ? html`Location saved: ${(+v.lat).toFixed(5)}, ${(+v.lon).toFixed(5)}.` : 'No map location saved.'}</p>
+          <div class="row"><button class="btn ghost small" type="button" data-act="muhere">Use my location now</button><button class="btn ghost small" type="button" data-act="muclearloc">Clear the location</button></div>
+          <p class="hint">Saved locations are seen by everyone you have given access to the app.</p></div>` : ''}</fieldset>`)}
+      <div id="form-err"></div>
+      <div class="sticky-save"><button class="btn" type="submit">${code ? 'Save changes' : 'Add this find'}</button><a class="btn ghost" href="${code ? '#/fungi/' + enc(code) : '#/fungi'}">Cancel</a></div>
+    </form>`,
+  };
+}
+function muPlaceShow() {
+  const s = document.getElementById('mu-place_kind'), pot = document.querySelector('[data-show=pot]');
+  if (s && pot) pot.hidden = s.value !== 'In a plant pot';
+}
+async function viewFind(code) {
+  const f = await api('GET', '/api/fungi/' + enc(code));
+  MUCUR = f;
+  const ph = f.photos, gps = ph.find(p => p.gps_lat != null);
+  const show = n => f[n] != null && f[n] !== '';
+  const dl = names => names.filter(show).map(n => html`<dt>${f.fields.find(x => x.name === n).label}</dt><dd>${n === 'plant_code' && f.plant ? html`<a href="#/plant/${enc(f.plant_code)}">${f.plant_code} ${f.plant.common_name}</a>` : n === 'found_on' ? longDay(f[n]) : f[n]}</dd>`);
+  return {
+    title: (f.name || 'Unnamed mushroom') + ' (' + f.code + ')',
+    after: () => muGallery(0),
+    html: html`<div class="species mu-find"><p class="crumb"><a href="#/fungi">All mushroom finds</a></p>
+    <header class="sp-head"><h1>${f.name || 'Unnamed mushroom'}</h1>
+      ${f.scientific_name ? html`<p class="sp-sci latin">${f.scientific_name}${f.id_status !== 'Not identified yet' ? html` <a href="#/species/${enc(f.scientific_name)}">(in the library)</a>` : ''}</p>` : ''}
+      <p class="muted"><strong>${f.code}</strong> · found ${longDay(f.found_on)} · page version ${f.version}</p>
+      <div class="tags"><span class="tag ${f.id_status === 'Confirmed by an expert' ? 'tag-yours' : ''}">${MU_ID_TAG[f.id_status] || f.id_status}</span>${f.status === 'archived' ? html`<span class="tag tag-arch">Archived</span>` : ''}</div></header>
+    ${fungiSafety(true)}
+    <div class="sp-grid">
+      <section aria-labelledby="mu-ph-h"><h2 id="mu-ph-h">Photos</h2><div id="mu-gallery"></div>
+        <label class="f noprint mu-add">Add photos<small>On a phone this can open the camera.</small><input type="file" accept="image/*" multiple capture="environment" data-act="muaddphotos"></label></section>
+      <section aria-labelledby="mu-id-h"><h2 id="mu-id-h">What could it be?</h2>
+        <p>Identify compares a photo with about 49,000 fungi, on this computer. Treat its answer as a lead to check, never as proof.</p>
+        <div class="row"><button class="btn" type="button" data-act="muident" ${ph.length ? '' : raw('disabled')}>Identify the photo shown</button></div>
+        <div id="mu-ident" aria-live="polite"></div></section>
+    </div>
+    <div class="mu-info"><section aria-labelledby="mu-where-h"><h2 id="mu-where-h">Where and when</h2><dl class="dl">${dl(['found_on', 'place_kind', 'plant_code', 'place'])}
+      ${f.lat != null ? html`<dt>Map location</dt><dd>${(+f.lat).toFixed(5)}, ${(+f.lon).toFixed(5)} (<a href="https://www.openstreetmap.org/?mlat=${f.lat}&mlon=${f.lon}#map=18/${f.lat}/${f.lon}" target="_blank" rel="noopener noreferrer">open the map</a>)</dd>` : ''}</dl>
+      ${f.lat == null && gps ? html`<p><button class="btn ghost" type="button" data-act="mugps" data-lat="${gps.gps_lat}" data-lon="${gps.gps_lon}">Save the location from the photo (${(+gps.gps_lat).toFixed(4)}, ${(+gps.gps_lon).toFixed(4)})</button></p>` : ''}</section>
+    <section aria-labelledby="mu-grew-h"><h2 id="mu-grew-h">What it grew on</h2>${['substrate', 'near', 'abundance'].some(show) ? html`<dl class="dl">${dl(['substrate', 'near', 'abundance'])}</dl>` : html`<p class="muted">Not noted yet.</p>`}</section>
+    <section aria-labelledby="mu-look-h"><h2 id="mu-look-h">What it looks like</h2>${['cap_size', 'cap_colour', 'underside', 'ring', 'volva', 'spore_print', 'bruising', 'smell'].some(show) ? html`<dl class="dl">${dl(['cap_size', 'cap_colour', 'underside', 'ring', 'volva', 'spore_print', 'bruising', 'smell'])}</dl>` : html`<p class="muted">Not noted yet. Edit the find to add the cap, the underside, the ring, the base and the spore print.</p>`}</section>
+    ${show('notes') ? html`<section aria-labelledby="mu-notes-h"><h2 id="mu-notes-h">Notes</h2><p class="pl">${f.notes}</p></section>` : ''}
+    ${f.scientific_name && f.id_status !== 'Not identified yet' ? html`<section aria-labelledby="mu-facts-h"><h2 id="mu-facts-h">What it does, and growing it</h2><div class="facts-box" data-facts-name="${f.scientific_name}" data-facts-common="${f.name || ''}" data-facts-kind="fungus"><p class="loading">Loading</p></div></section>` : ''}</div>
+    <div class="row noprint mu-acts"><a class="btn" href="#/fungi/${enc(f.code)}/edit">Edit this find</a>
+      <button class="btn ghost" type="button" data-act="muarch" data-to="${f.status === 'archived' ? '0' : '1'}">${f.status === 'archived' ? 'Bring it back' : 'Archive this find'}</button></div>
+    <p class="hint">Added by ${f.created_by} on ${when(f.created_at)}${f.updated_at && f.updated_at !== f.created_at ? `; last changed by ${f.updated_by} on ${when(f.updated_at)}` : ''}. Changes are listed in the Audit log under "Mushroom finds".</p></div>`,
+  };
+}
+let MUCUR = null, MUPIX = 0;
+function muGallery(i) {
+  const box = document.getElementById('mu-gallery'); if (!box || !MUCUR) return;
+  const ph = MUCUR.photos;
+  if (!ph.length) { box.innerHTML = rend(html`<p class="muted">No photos yet. Add them below.</p>`); return; }
+  MUPIX = ((i % ph.length) + ph.length) % ph.length;
+  const p = ph[MUPIX];
+  box.innerHTML = rend(html`<figure class="sp-fig"><img src="${p.url || photoUrl(p.file)}" alt="${p.caption || 'Photo ' + (MUPIX + 1) + ' of ' + MUCUR.code}">
+    <figcaption>${p.caption || 'No caption'}${p.taken_at ? `. Taken ${when(p.taken_at)}` : ''}${p.gps_lat != null ? '. Has a location.' : ''}${p.is_primary ? html` <strong>★ Main photo</strong>` : ''}</figcaption></figure>
+    ${ph.length > 1 ? html`<div class="row sp-step"><button class="btn ghost small" type="button" data-act="mustep" data-d="-1">‹ Previous photo</button><span class="muted">${MUPIX + 1} of ${ph.length}</span><button class="btn ghost small" type="button" data-act="mustep" data-d="1">Next photo ›</button></div>` : ''}
+    ${MUCUR.pending ? html`<p class="hint">Captions and the main photo can be changed once the find is sent.</p>` : html`<div class="row noprint">${!p.is_primary ? html`<button class="btn ghost small" type="button" data-act="mumain">Make this the main photo</button>` : ''}
+      <button class="btn ghost small" type="button" data-act="mucap">Edit caption</button><button class="btn danger small" type="button" data-act="murmphoto">Remove photo</button></div>`}`);
+}
+async function muReload(i) { MUCUR = await api('GET', '/api/fungi/' + enc(MUCUR.code)); await route(); muGallery(i == null ? MUPIX : i); }
+function muSetLoc(lat, lon, how) {
+  const f = document.querySelector('form[data-form=musave]'); if (!f) return;
+  f.elements.lat.value = lat == null ? '' : lat; f.elements.lon.value = lon == null ? '' : lon;
+  document.getElementById('mu-loc-txt').textContent = lat == null ? 'No map location saved.' : `Location ${how}: ${(+lat).toFixed(5)}, ${(+lon).toFixed(5)}. It is saved with the find.`;
+}
+Object.assign(acts, {
+  muhere: () => {
+    if (!navigator.geolocation) { toast('This browser cannot give a location.', true); return; }
+    document.getElementById('mu-loc-txt').textContent = 'Finding your location…';
+    navigator.geolocation.getCurrentPosition(p => muSetLoc(p.coords.latitude.toFixed(6), p.coords.longitude.toFixed(6), 'from this device'),
+      e => { document.getElementById('mu-loc-txt').textContent = e.code === 1 ? 'Location was not allowed. Allow it in the browser\'s site settings, or leave it empty.' : 'Could not get the location: ' + e.message; },
+      { enableHighAccuracy: true, timeout: 20000 });
+  },
+  muclearloc: () => muSetLoc(null, null),
+  mustep: el => { muGallery(MUPIX + +el.dataset.d); const b = document.querySelector(`[data-act=mustep][data-d="${el.dataset.d}"]`); if (b) b.focus(); },
+  async mumain() { if (!(await needName())) return; await guard(async () => { await api('PATCH', '/api/fungi/photos/' + MUCUR.photos[MUPIX].id, { is_primary: true }); toast('Main photo changed'); await muReload(0); }); },
+  async mucap() {
+    if (!(await needName())) return;
+    const p = MUCUR.photos[MUPIX];
+    const r = await modal(html`<form method="dialog"><h2>Edit caption</h2><label class="f">Caption<input type="text" name="c" maxlength="200" value="${p.caption}" placeholder="For example: underside, gills"></label>
+      <div class="row"><button class="btn" value="ok">Save caption</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`);
+    if (r !== 'ok') return;
+    await guard(async () => { await api('PATCH', '/api/fungi/photos/' + p.id, { caption: dlg.querySelector('[name=c]').value }); toast('Caption saved'); await muReload(); });
+  },
+  async murmphoto() {
+    if (!(await needName())) return;
+    if (!(await confirmBox('Remove this photo?', 'It leaves the find. The file is kept in the photos_deleted folder.', 'Remove photo', true))) return;
+    await guard(async () => { await api('DELETE', '/api/fungi/photos/' + MUCUR.photos[MUPIX].id); toast('Photo removed'); await muReload(0); });
+  },
+  async mugps(el) {
+    if (!(await needName())) return;
+    await guard(async () => { await api('PUT', '/api/fungi/' + enc(MUCUR.code), { base_version: MUCUR.version, fields: { lat: el.dataset.lat, lon: el.dataset.lon } }); toast('Location saved'); await muReload(); });
+  },
+  async muarch(el) {
+    if (!(await needName())) return;
+    await guard(async () => { await api('POST', '/api/fungi/' + enc(MUCUR.code) + '/status', { archived: el.dataset.to === '1' }); toast(el.dataset.to === '1' ? 'Archived' : 'Brought back'); await muReload(); });
+  },
+  async muident() {
+    const p = MUCUR.photos[MUPIX], box = document.getElementById('mu-ident'); if (!p) return;
+    box.innerHTML = rend(html`<p role="status">Checking the photo…</p>`);
+    try {
+      const blob = await (await fetch(p.url || photoUrl(p.file))).blob(), fd = new FormData(); fd.append('image', blob, 'find.jpg');
+      const r = await api('POST', '/api/identify?scope=fungi', undefined, fd);
+      MUIDENT = r.species || [];
+      box.innerHTML = rend(html`<h3>It looks most like</h3>${r.genera && r.genera[0] ? html`<p>Most likely genus: <i>${r.genera[0].genus}</i> (${pct(r.genera[0].probability)}).</p>` : ''}
+        <ol class="id-sps">${MUIDENT.map((s, i) => html`<li class="id-sp"><div><i class="sci">${s.scientific_name}</i>${s.common_name ? html` <span>${s.common_name}</span>` : ''} <b class="id-p">${pct(s.probability)}</b></div>
+          <div class="muted">${s.family}</div><div class="id-acts"><a href="#/species/${enc(s.scientific_name)}">Open in the library</a>${canChange() ? html`<button class="btn small ghost" type="button" data-act="muusename" data-i="${i}">Use this name (as a guess)</button>` : ''}</div></li>`)}</ol>
+        <p class="hint">Checked in ${r.seconds} seconds on this computer. A second opinion from Pl@ntNet or Claude is on the Identify page.</p>`);
+    } catch (e) { box.innerHTML = rend(html`<div class="notice bad" role="alert">${e.message}</div>`); }
+  },
+  async muusename(el) {
+    const s = MUIDENT[+el.dataset.i]; if (!s || !(await needName())) return;
+    await guard(async () => { await api('PUT', '/api/fungi/' + enc(MUCUR.code), { base_version: MUCUR.version, fields: { name: MUCUR.name || s.common_name || s.scientific_name, scientific_name: s.scientific_name, id_status: 'A guess' } }); toast('Name saved as a guess'); await muReload(); });
+  },
+  munewfrom: () => { if (!SPCUR) return; MUFILL = { name: SPCUR.common_name || '', scientific_name: SPCUR.scientific_name, id_status: 'A guess' }; go('#/fungi/new'); },
+});
+let MUIDENT = [];
+Object.assign(changeActs, {
+  async muaddphotos(el) {
+    const files = [...el.files]; el.value = ''; if (!files.length || !(await needName())) return;
+    const fd = new FormData(); files.forEach(f => fd.append('files', f));
+    await guard(async () => { const r = await api('POST', '/api/fungi/' + enc(MUCUR.code) + '/photos', undefined, fd); toast(`${files.length} photo${files.length === 1 ? '' : 's'} added`); MUCUR = r; await route(); muGallery(r.photos.length - 1); });
+  },
+});
+Object.assign(formActs, {
+  async musave(form) {
+    if (!(await needName())) return;
+    const fields = {};
+    for (const f of (MU.meta ? MU.meta.fields : [])) if (form.elements[f.name]) fields[f.name] = form.elements[f.name].value;
+    if (!fields.place_kind || fields.place_kind !== 'In a plant pot') fields.plant_code = '';
+    const err = document.getElementById('form-err'); err.innerHTML = '';
+    try {
+      let code = form.dataset.code;
+      if (code) await api('PUT', '/api/fungi/' + enc(code), { base_version: +form.dataset.ver, fields });
+      else {
+        const r = await api('POST', '/api/fungi', { fields }); code = r.code;
+        const files = form.elements.photos ? [...form.elements.photos.files] : [];
+        if (files.length) {
+          const fd = new FormData(); files.forEach(f => fd.append('files', f));
+          const p = await api('POST', '/api/fungi/' + enc(code) + '/photos', undefined, fd);
+          if (p.located && fields.lat === '') toast('The location from the photo was saved with the find.');
+        }
+        MUFILL = null;
+      }
+      toast(form.dataset.code ? 'Saved' : /^NEW-/.test(code) ? 'Find added' : 'Find ' + code + ' added'); go('#/fungi/' + enc(code));
+    } catch (e) { err.innerHTML = rend(html`<div class="notice bad" role="alert"><strong>Not saved.</strong> ${e.message}</div>`); err.scrollIntoView({ block: 'center' }); }
+  },
+});
+
+// ---------- 1.24.0: offline use (phones and tablets out of reach of the server) ----------
+// sw.js keeps the app's files, the answers its pages asked for and the photos. This part keeps changes made without a connection
+// in an outbox (IndexedDB, on this device only) and sends them when the server can be reached again, each with its own id so that
+// it is made only once. Mushroom finds added offline get a temporary code (NEW-…) until the server gives them their F- code.
+const OFF = { online: navigator.onLine, sending: false, n: 0, failed: 0, conflicts: 0, saved: null, queuedAt: 0, k: 0, dl: null, idq: 0 };
+const OFF_OK = [                              // the changes that can wait for a connection
+  ['POST', /^\/api\/care$/], ['DELETE', /^\/api\/care\/\d+$/],
+  ['PUT', /^\/api\/plants\/[^/]+$/], ['POST', /^\/api\/plants\/[^/]+\/(site|status|photos)$/],
+  ['POST', /^\/api\/fungi$/], ['PUT', /^\/api\/fungi\/[^/]+$/], ['POST', /^\/api\/fungi\/[^/]+\/(status|photos)$/], ['PATCH', /^\/api\/fungi\/photos\/\d+$/], ['DELETE', /^\/api\/fungi\/photos\/\d+$/],
+  ['PUT', /^\/api\/library\/notes$/], ['PUT', /^\/api\/wishlist$/], ['DELETE', /^\/api\/wishlist$/]];
+const offQueueable = (m, url) => OFF_OK.some(([mm, re]) => mm === m && re.test(url.split('?')[0]));
+const offId = () => Date.now().toString(36) + '-' + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join('');
+let OFFDB = null;
+function idb() {
+  if (!OFFDB) OFFDB = new Promise((ok, no) => {
+    const r = indexedDB.open('plantdb-offline', 1);
+    r.onupgradeneeded = () => { const d = r.result; d.createObjectStore('outbox', { keyPath: 'id' }); d.createObjectStore('finds', { keyPath: 'code' }); d.createObjectStore('idq', { keyPath: 'id' }); d.createObjectStore('kv'); };
+    r.onsuccess = () => ok(r.result); r.onerror = () => no(r.error);
+  });
+  return OFFDB;
+}
+async function idbDo(store, mode, fn) {
+  const d = await idb();
+  return new Promise((ok, no) => { const t = d.transaction(store, mode), req = fn(t.objectStore(store)); t.oncomplete = () => ok(req ? req.result : undefined); t.onerror = () => no(t.error); t.onabort = () => no(t.error); });
+}
+const idbAll = st => idbDo(st, 'readonly', s => s.getAll()).catch(() => []);
+const idbGet = (st, k) => idbDo(st, 'readonly', s => s.get(k)).catch(() => undefined);
+const idbPut = (st, v, k) => idbDo(st, 'readwrite', s => (k === undefined ? s.put(v) : s.put(v, k)));
+const idbDel = (st, k) => idbDo(st, 'readwrite', s => s.delete(k));
+const offKv = async (k, d) => { const v = await idbGet('kv', k); return v === undefined ? d : v; };
+function offGuessDevice() {
+  const u = navigator.userAgent;
+  return /iPhone/.test(u) ? 'iPhone' : /iPad|Macintosh.*Mobile/.test(u) || (/Macintosh/.test(u) && navigator.maxTouchPoints > 1) ? 'iPad' : /Android/.test(u) ? (/Mobile/.test(u) ? 'Android phone' : 'Android tablet') : /Windows/.test(u) ? 'Windows PC' : /Macintosh/.test(u) ? 'Mac' : 'This device';
+}
+let OFFDEV = null;
+const offDevice = () => OFFDEV || offGuessDevice();
+async function offOps() { return (await idbAll('outbox')).sort((a, b) => a.seq - b.seq); }
+function offWords(op) {                       // what a waiting change is, in words
+  const u = op.url.split('?')[0], b = op.body || {}, code = (u.match(/\/(P-\d+|F-\d+|NEW-[a-z0-9-]+)/i) || [])[1] || '';
+  const KIND = { water: 'Watered', check: 'Checked: still moist', note: 'Note' };
+  if (u === '/api/care') return `${KIND[b.kind] || 'Care logged'}${b.note ? ': ' + b.note : ''} for ${(b.plants || [b.plant]).join(', ')} (${b.done_on})`;
+  if (/^\/api\/care\//.test(u)) return 'A care log entry removed';
+  if (/\/site$/.test(u)) return `${code}: moved to ${b.site}`;
+  if (/\/status$/.test(u)) return `${code}: ${b.archived ? 'archived' : 'brought back'}`;
+  if (/\/photos$/.test(u)) { const n = (op.form || []).filter(p => p.blob).length; return `${code}: ${n} photo${n === 1 ? '' : 's'} added`; }
+  if (/^\/api\/plants\//.test(u)) return `${code}: edited ${Object.keys(b.fields || {}).join(', ') || 'details'}`;
+  if (u === '/api/fungi') return `New mushroom find ${op.temp}${b.fields && b.fields.name ? ': ' + b.fields.name : ''}`;
+  if (/^\/api\/fungi\/photos\//.test(u)) return 'A mushroom photo changed';
+  if (/^\/api\/fungi\//.test(u)) return `${code}: edited ${Object.keys(b.fields || {}).join(', ') || 'details'}`;
+  if (u === '/api/library/notes') return `Notes and tags for ${b.name}`;
+  if (u === '/api/wishlist') return op.method === 'DELETE' ? `${b.name} taken off the wishlist` : `${b.name} on the wishlist`;
+  return op.method + ' ' + u;
+}
+async function offSavedJson(url) {
+  try { const c = await caches.open('plantdb-api'), r = await c.match(url); return r ? await r.json() : null; } catch (e) { return null; }
+}
+async function offPatch(url, fn) {            // so the page shows a change made offline before it is sent
+  try {
+    const c = await caches.open('plantdb-api'), r = await c.match(url); if (!r) return;
+    const j = await r.json(); fn(j);
+    await c.put(url, new Response(JSON.stringify(j), { status: 200, headers: r.headers }));
+  } catch (e) { /* only for show */ }
+}
+async function offFormParts(form) { return [...form.entries()].map(([k, v]) => (v instanceof Blob ? { k, blob: v, name: v.name || 'photo.jpg' } : { k, v: String(v) })); }
+async function offQueue(method, url, body, form) {
+  if (ME().role === 'viewer') { const e = new Error('You can only view, so nothing can be saved.'); e.status = 403; throw e; }
+  const op = { id: offId(), seq: Date.now() + (OFF.k++) / 1000, method, url, body: body === undefined ? null : JSON.parse(JSON.stringify(body)), form: form ? await offFormParts(form) : null,
+    who: cleanName(viaTS() ? ME().name : getName()) || 'Unknown', made: new Date().toISOString(), device: offDevice(), place: PLACE || null };
+  const path = url.split('?')[0];
+  let shim = { offline: true };
+  if (path === '/api/care' && method === 'POST') { if (!op.body.done_on) op.body.done_on = todayStr(); shim = { ids: [], skipped: [], water: [], offline: true }; }
+  const pend = path.match(/^\/api\/fungi\/(NEW-[a-z0-9-]+)(\/[a-z]+)?$/i);
+  if (pend) {                                  // a find that has not been sent yet: change the waiting record itself
+    const f = await idbGet('finds', pend[1]); if (!f) throw new Error('That find is not on this device any more.');
+    if (method === 'PUT' && !pend[2]) { Object.assign(f.fields, op.body.fields || {}); const cr = (await offOps()).find(o => o.temp === f.code); if (cr) { Object.assign(cr.body.fields, op.body.fields || {}); await idbPut('outbox', cr); } }
+    else if (pend[2] === '/photos') { op.form.filter(p => p.blob).forEach(p => f.photos.push({ id: 'p' + offId(), blob: p.blob, caption: '' })); await idbPut('outbox', op); }
+    else if (pend[2] === '/status') { f.status = op.body.archived ? 'archived' : 'active'; await idbPut('outbox', op); }
+    f.version++; await idbPut('finds', f);
+    OFF.queuedAt = Date.now(); offPaint();
+    return Object.assign(await offFindDict(f), { offline: true, added: [] });
+  }
+  if (path === '/api/fungi' && method === 'POST') {
+    op.temp = 'NEW-' + offId().slice(-10);
+    await idbPut('finds', { code: op.temp, fields: Object.assign({}, op.body.fields || {}), photos: [], status: 'active', version: 1, made: op.made, who: op.who });
+    shim = { code: op.temp, version: 1, offline: true };
+  }
+  if ((method === 'PUT') && /^\/api\/(plants|fungi)\/[^/]+$/.test(path)) {
+    const saw = await offSavedJson(path), fields = op.body.fields || {};
+    if (saw) {
+      op.body.base_values = {};
+      for (const k of Object.keys(fields)) {
+        const a = saw[k] == null ? '' : String(saw[k]).trim(), b = fields[k] == null ? '' : String(fields[k]).trim();
+        if (a === b) delete fields[k]; else op.body.base_values[k] = saw[k] == null ? null : saw[k];
+      }
+      op.body.base_version = op.body.base_version || saw.version;
+      shim = Object.assign({}, saw, fields, { changed: Object.keys(fields).length > 0, offline: true });
+    }
+    await offPatch(path, j => Object.assign(j, fields));
+  }
+  if (/\/site$/.test(path)) await offPatch(path.replace(/\/site$/, ''), j => { j.site = op.body.site; });
+  if (/\/status$/.test(path) && /^\/api\/plants\//.test(path)) await offPatch(path.replace(/\/status$/, ''), j => { j.status = op.body.archived ? 'archived' : 'active'; });
+  await idbPut('outbox', op);
+  OFF.queuedAt = Date.now();
+  offPaint();
+  return shim;
+}
+async function offFindDict(f) {                // a waiting find, in the shape the mushroom pages use
+  const meta = (await offSavedJson('/api/fungi?status=none')) || (await offSavedJson('/api/fungi?status=active')) || { fields: [], enums: {} };
+  const photos = f.photos.map((p, i) => ({ id: p.id, file: null, url: URL.createObjectURL(p.blob), caption: p.caption || '', is_primary: i === 0 ? 1 : 0, gps_lat: null, gps_lon: null, taken_at: null }));
+  const d = Object.assign({ code: f.code, status: f.status, version: f.version, created_by: f.who, created_at: f.made, updated_by: f.who, updated_at: f.made, plant: null, pending: true },
+    Object.fromEntries((meta.fields || []).map(x => [x.name, null])), f.fields, { photos, photo: null, photo_url: photos[0] ? photos[0].url : null, photo_count: photos.length,
+      fields: meta.fields || [], enums: meta.enums || {} });
+  if (!d.found_on) d.found_on = f.made.slice(0, 10);
+  if (!d.id_status) d.id_status = 'Not identified yet';
+  return d;
+}
+async function offPendingFinds() { return Promise.all((await idbAll('finds')).map(offFindDict)); }
+async function offIdQueue(url, form) {
+  const parts = await offFormParts(form), img = parts.find(p => p.blob);
+  if (!img) throw new Error('No picture to keep.');
+  const scope = new URLSearchParams(url.split('?')[1] || '').get('scope') || 'common';
+  await idbPut('idq', { id: offId(), made: new Date().toISOString(), scope, blob: img.blob, ref: MUCUR && location.hash.startsWith('#/fungi/') ? MUCUR.code : null, result: null });
+  OFF.idq++; offPaint();
+  const e = new Error('You are offline. The picture is kept on this device and will be checked when you are back online; the answer will be on the Offline page.'); e.queued = true; throw e;
+}
+function offSeen(h) { if (h && h !== 'none') OFF.saved = h; }          // route() clears it; any saved answer marks the page
+async function offCount() {
+  const ops = await offOps(); OFF.n = ops.filter(o => !o.failed).length; OFF.failed = ops.filter(o => o.failed).length;
+  OFF.idq = (await idbAll('idq')).filter(x => !x.result).length;
+}
+async function offPaint() {
+  await offCount();
+  const b = document.getElementById('net'); if (!b) return;
+  const on = navigator.onLine && !OFF.forced;
+  const bits = [OFF.sending === true ? `Sending ${OFF.n}…` : on ? 'Online' : 'Offline'];
+  if (OFF.sending !== true && OFF.n) bits.push(`${OFF.n} to send`);
+  if (OFF.failed) bits.push(`${OFF.failed} not sent`);
+  if (OFF.conflicts) bits.push(`${OFF.conflicts} to decide`);
+  b.textContent = bits.join(' · ');
+  b.dataset.state = OFF.sending === true ? 'sending' : on ? (OFF.n || OFF.failed || OFF.conflicts ? 'waiting' : 'online') : 'offline';
+  document.documentElement.toggleAttribute('data-offline', !on);
+}
+async function offSync() {
+  if (OFF.sending || !navigator.onLine) return;
+  OFF.sending = 'checking';                    // one at a time: the online event, the timer and the page can all ask
+  let st;
+  try { const r = await fetch('/api/offline/status', { cache: 'no-store' }); if (!r.ok || r.headers.get('X-Offline-Saved')) { OFF.sending = false; return; } st = await r.json(); } catch (e) { OFF.sending = false; return; }
+  OFF.conflicts = st.conflicts || 0;
+  const ops = (await offOps()).filter(o => !o.failed);
+  if (!ops.length && !(await idbAll('idq')).some(x => !x.result)) { OFF.sending = false; offPaint(); return; }
+  OFF.sending = true; offPaint();
+  const map = await offKv('idmap', {});
+  let sent = 0, problems = 0;
+  try {
+    for (const op of ops) {
+      const url = op.url.replace(/NEW-[a-z0-9-]+/gi, m => map[m] || m);
+      if (/NEW-/i.test(url)) { op.failed = true; op.error = 'The find it belongs to could not be sent.'; await idbPut('outbox', op); problems++; continue; }
+      const h = { 'X-Editor': op.who, 'X-Offline-Op': op.id, 'X-Offline-Made': op.made, 'X-Offline-Device': op.device };
+      if (op.place) h['X-Place'] = op.place;
+      let body;
+      if (op.form) { body = new FormData(); op.form.forEach(p => (p.blob ? body.append(p.k, p.blob, p.name) : body.append(p.k, p.v))); }
+      else if (op.body != null) { h['Content-Type'] = 'application/json'; body = JSON.stringify(op.body); }
+      let r;
+      try { r = await fetch(url, { method: op.method, headers: h, body }); } catch (e) { break; }      // the connection dropped: try again later
+      let d = null; try { d = await r.json(); } catch (e) { /* no answer */ }
+      if (r.ok) {
+        if (op.temp && d && d.code) { map[op.temp] = d.code; await idbPut('kv', map, 'idmap'); await idbDel('finds', op.temp); }
+        await idbDel('outbox', op.id); sent++;
+      } else if (r.status >= 500) break;
+      else { op.failed = true; op.error = (d && d.error) || `Refused (${r.status})`; await idbPut('outbox', op); problems++; }
+    }
+    var checked = await offIdRun();
+    try { const r2 = await fetch('/api/offline/status', { cache: 'no-store' }); if (r2.ok && !r2.headers.get('X-Offline-Saved')) OFF.conflicts = (await r2.json()).conflicts || 0; } catch (e) { /* later */ }
+  } finally { OFF.sending = false; await offPaint(); }
+  if (sent || problems || checked) {
+    toast(`${sent ? `${sent} change${sent === 1 ? '' : 's'} made offline ${sent === 1 ? 'was' : 'were'} sent.` : ''}${checked ? ` ${checked} picture${checked === 1 ? ' was' : 's were'} checked with Identify; see the Offline page.` : ''}${problems ? ` ${problems} could not be sent; see the Offline page.` : ''}${OFF.conflicts ? ` ${OFF.conflicts} need${OFF.conflicts === 1 ? 's' : ''} your decision.` : ''}`.trim(), problems > 0);
+    if (!document.querySelector('main form[data-form]') || location.hash.startsWith('#/offline')) route();
+    if (await offKv('keep', false)) setTimeout(() => offDownload(true), 1500);
+  }
+}
+async function offIdRun() {                    // pictures taken for Identify while offline
+  let n = 0;
+  for (const x of await idbAll('idq')) {
+    if (x.result) continue;
+    const fd = new FormData(); fd.append('image', x.blob, 'picture.jpg');
+    let r; try { r = await fetch('/api/identify?scope=' + enc(x.scope), { method: 'POST', headers: { 'X-Editor': cleanName(viaTS() ? ME().name : getName()) || 'Unknown' }, body: fd }); } catch (e) { break; }
+    if (!r.ok) { if (r.status >= 500) break; x.result = { error: ((await r.json().catch(() => ({}))).error) || 'Could not be checked.' }; }
+    else x.result = await r.json();
+    x.checked = new Date().toISOString(); await idbPut('idq', x); n++;
+  }
+  return n;
+}
+async function offDownload(quick) {            // "Keep a copy on this device": the answers the pages use, and every photo
+  if (OFF.dl || !navigator.onLine) return;
+  OFF.dl = { done: 0, total: 1, step: 'Finding what to save' }; offDlPaint();
+  try {
+    const m = await (await fetch('/api/offline/manifest', { cache: 'no-store' })).json();
+    const pics = await caches.open('plantdb-photos');
+    const want = [];
+    for (const f of m.photos) for (const u of ['/photos/' + enc(f), '/thumbs/' + enc(f)]) if (!(await pics.match(u))) want.push(u);
+    const lib = (await offKv('keeplib', false)) ? ['/api/library/offline-index'] : [];
+    const jobs = m.urls.concat(lib, want);
+    OFF.dl = { done: 0, total: jobs.length, step: 'Saving', bytes: m.photo_bytes, failed: 0 };
+    const head = PLACE ? { 'X-Place': PLACE } : {};
+    let i = 0;
+    const worker = async () => { while (i < jobs.length) { const u = jobs[i++]; try { const r = await fetch(u, { headers: head }); if (!r.ok) OFF.dl.failed++; } catch (e) { OFF.dl.failed++; } OFF.dl.done++; if (OFF.dl.done % 10 === 0) offDlPaint(); } };
+    await Promise.all([worker(), worker(), worker(), worker()]);
+    if (lib.length) await offLibPhotos();
+    await idbPut('kv', new Date().toISOString(), 'downloaded');
+    OFF.dl.step = 'Done';
+  } catch (e) { OFF.dl = Object.assign(OFF.dl || {}, { step: 'Stopped: ' + e.message }); }
+  const fin = OFF.dl; OFF.dl = null; offDlPaint(fin);
+}
+async function offLibPhotos() {                // the library's Texas list photos, when asked for
+  const idx = await offSavedJson('/api/library/offline-index'); if (!idx) return;
+  const c = await caches.open('plantdb-library-photos'), urls = idx.species.map(s => s.p).filter(Boolean);
+  OFF.dl = Object.assign(OFF.dl, { step: 'Saving library photos', done: 0, total: urls.length });
+  let i = 0;
+  const worker = async () => { while (i < urls.length) { const u = urls[i++]; if (!(await c.match(u))) { try { await fetch(u); } catch (e) { /* later */ } } OFF.dl.done++; if (OFF.dl.done % 20 === 0) offDlPaint(); } };
+  await Promise.all([worker(), worker(), worker()]);
+}
+function offDlPaint(fin) {
+  const box = document.getElementById('off-dl'); if (!box) return;
+  const d = OFF.dl || fin;
+  box.textContent = !d ? '' : OFF.dl ? `${d.step}: ${d.done.toLocaleString()} of ${d.total.toLocaleString()}…` : `${d.step}.${d.failed ? ` ${d.failed} could not be saved; they are tried again next time.` : ''}`;
+  if (!OFF.dl && fin) offPagePaint();
+}
+function offNotice(parts) {                    // on a plant or find page: its changes that are still waiting
+  const code = (parts[0] === 'plant' || parts[0] === 'fungi') && parts[1] ? decodeURIComponent(parts[1]) : null;
+  if (!code) return;
+  offOps().then(ops => {
+    const mine = ops.filter(o => o.url.includes('/' + code) || (o.body && (o.body.plant === code || (o.body.plants || []).includes(code))) || o.temp === code);
+    if (!mine.length || !document.getElementById('app')) return;
+    document.getElementById('app').insertAdjacentHTML('afterbegin', rend(html`<div class="notice off-note noprint" role="note"><strong>Not sent yet:</strong> ${mine.map(offWords).join('; ')}. ${navigator.onLine ? 'Sending soon.' : 'They will be sent when this device is back online.'} <a href="#/offline">Offline page</a></div>`));
+  });
+}
+// the Offline page
+async function viewOffline() {
+  const [keep, keeplib, dl, ops, idq] = await Promise.all([offKv('keep', false), offKv('keeplib', false), offKv('downloaded', null), offOps(), idbAll('idq')]);
+  let est = null; try { est = navigator.storage && navigator.storage.estimate ? await navigator.storage.estimate() : null; } catch (e) { /* not told */ }
+  let persisted = null; try { persisted = navigator.storage && navigator.storage.persisted ? await navigator.storage.persisted() : null; } catch (e) { /* not told */ }
+  if (navigator.onLine) { try { const s = await (await fetch('/api/offline/status', { cache: 'no-store' })).json(); OFF.conflicts = s.conflicts || 0; } catch (e) { /* offline */ } }
+  const mb = b => (b / 1048576).toLocaleString(undefined, { maximumFractionDigits: b < 10485760 ? 1 : 0 }) + ' MB';
+  const wait = ops.filter(o => !o.failed), bad = ops.filter(o => o.failed);
+  const ios = /iPhone|iPad/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+  return {
+    title: 'Offline use', after: () => { offDlPaint(); },
+    html: html`<h1>Offline use</h1>
+    <p>This device: <strong>${navigator.onLine ? 'online' : 'offline'}</strong>${OFF.saved && !navigator.onLine ? '' : ''}. Changes you make without a connection are kept on this device and sent to the plant record as soon as it can be reached again.</p>
+    ${OFF.conflicts ? html`<p class="notice bad" role="status"><strong>${OFF.conflicts} change${OFF.conflicts === 1 ? '' : 's'} need${OFF.conflicts === 1 ? 's' : ''} your decision:</strong> the same thing was changed on two devices. <a href="#/decisions">Choose which to keep</a>.</p>` : ''}
+    <section aria-labelledby="off-copy-h"><h2 id="off-copy-h">Keep a copy on this device</h2>
+      <div class="off-opts"><label class="chk"><input type="checkbox" data-f="offkeep" ${keep ? raw('checked') : ''}>Keep a copy of every plant, mushroom find, care log and photo (full size) on this device, so it works without a connection</label>
+      <label class="chk"><input type="checkbox" data-f="offkeeplib" ${keeplib ? raw('checked') : ''}>Also keep the library's Texas plant list with its photos (about 300 MB, once the owner has downloaded those photos)</label></div>
+      <p>${dl ? `Last saved ${when(dl)}.` : 'Not saved on this device yet.'} ${keep ? 'It is saved again by itself when it is a few hours old and the device is online.' : ''}</p>
+      <p id="off-dl" role="status" aria-live="polite"></p>
+      ${keep ? html`<p class="row"><button class="btn" type="button" data-act="offdl" ${navigator.onLine ? '' : raw('disabled')}>Save it again now</button></p>` : ''}
+      ${est ? html`<p class="hint">This device is using ${mb(est.usage || 0)} for the plant record${est.quota ? `, of the ${mb(est.quota)} the browser allows` : ''}.${persisted === false ? ' The browser may clear it if the device runs short of space.' : persisted ? ' The browser has agreed to keep it.' : ''}</p>` : ''}
+      <p class="hint">${ios ? html`On an iPhone or iPad, add the plant record to the Home Screen (Share, then <strong>Add to Home Screen</strong>) and open it from there: Safari clears saved copies of sites that are not on the Home Screen after a few weeks.`
+        : html`On Android, choose <strong>Install app</strong> (or <strong>Add to Home screen</strong>) in the browser's menu, and open it from there.`} Open it once while online after each update, so the new version is saved too.</p>
+      <label class="f off-dev">This device's name<small>Shown in the Audit log and on decisions, so you know where a change came from</small><input type="text" data-f="offdev" value="${offDevice()}" maxlength="40" autocomplete="off"></label>
+    </section>
+    <section aria-labelledby="off-out-h"><h2 id="off-out-h">Waiting to be sent (${wait.length})</h2>
+      ${wait.length ? html`<ol class="off-list">${wait.map(o => html`<li>${offWords(o)} <span class="muted">(${when(o.made)}, ${o.who})</span> <button class="btn ghost small" type="button" data-act="offrm" data-id="${o.id}">Don't send this</button></li>`)}</ol>
+        <p class="row"><button class="btn" type="button" data-act="offsend" ${navigator.onLine ? '' : raw('disabled')}>Send them now</button></p>` : html`<p class="muted">Nothing is waiting.</p>`}
+      ${bad.length ? html`<h3>Could not be sent (${bad.length})</h3><ol class="off-list">${bad.map(o => html`<li>${offWords(o)} <span class="muted">(${when(o.made)})</span>: <strong>${o.error}</strong>
+        <span class="row"><button class="btn ghost small" type="button" data-act="offretry" data-id="${o.id}">Try again</button><button class="btn ghost small" type="button" data-act="offrm" data-id="${o.id}">Remove it</button></span></li>`)}</ol>` : ''}
+    </section>
+    <section aria-labelledby="off-id-h"><h2 id="off-id-h">Pictures to identify</h2>
+      ${idq.length ? html`<ul class="off-list">${idq.map(x => html`<li><img class="off-pic" src="${URL.createObjectURL(x.blob)}" alt="Picture taken ${when(x.made)}"> Taken ${when(x.made)}${x.ref ? html` for <a href="#/fungi/${enc(x.ref)}">${x.ref}</a>` : ''}.
+          ${!x.result ? html`<span>Waiting for a connection.</span>` : x.result.error ? html`<span>${x.result.error}</span>`
+            : html`<span>It looks most like: ${(x.result.species || []).slice(0, 3).map((s, i) => html`${i ? '; ' : ''}<a href="#/species/${enc(s.scientific_name)}"><i>${s.scientific_name}</i></a>${s.common_name ? ` (${s.common_name})` : ''} ${pct(s.probability)}`)}${(x.result.matches || [])[0] && (x.result.matches[0].confidence || 0) >= 0.5 ? html`. Your plant ${x.result.matches[0].code}?` : ''}</span>`}
+          <button class="btn ghost small" type="button" data-act="offidrm" data-id="${x.id}">Remove</button></li>`)}</ul>` : html`<p class="muted">None. Pictures taken for Identify without a connection wait here and are checked when you're back online.</p>`}
+    </section>
+    ${keep || dl ? html`<section aria-labelledby="off-forget-h"><h2 id="off-forget-h">Forget the copy</h2><p>Deletes what this device saved (not the changes waiting to be sent, and nothing on the plant record itself).</p>
+      <p class="row"><button class="btn danger" type="button" data-act="offforget">Delete the saved copy on this device</button></p></section>` : ''}`,
+  };
+}
+function offPagePaint() { if (location.hash.startsWith('#/offline') && !document.querySelector('#app input:focus')) route(); }
+// the Needs your decision page
+async function viewDecisions() {
+  const d = await api('GET', '/api/conflicts?all=1');
+  const open = d.conflicts.filter(x => x.open), done = d.conflicts.filter(x => !x.open).slice(0, 30);
+  const v = x => (x == null || x === '' ? '(empty)' : x);
+  const href = x => x.kind === 'plant' ? `#/plant/${enc(x.code)}` : `#/fungi/${enc(x.code)}`;
+  return {
+    title: 'Needs your decision',
+    html: html`<h1>Needs your decision</h1>
+    <p>When the same thing was changed on a device without a connection and on the plant record, both versions are kept here until someone chooses. Everything else from the device has already been saved.</p>
+    ${open.length ? html`<ul class="dec-list">${open.map(x => html`<li class="dec"><h2><a href="${href(x)}">${x.code}</a>: ${x.label}</h2>
+        <div class="dec-sides"><div><h3>Changed on ${x.device || 'a device'}</h3><p class="dec-v">${v(x.phone_value)}</p><p class="hint">By ${x.phone_by}, ${when(x.phone_made_at)}</p>
+          ${canChange() ? html`<button class="btn" type="button" data-act="decide" data-id="${x.id}" data-choice="phone">Keep this: ${String(v(x.phone_value)).slice(0, 40)}</button>` : ''}</div>
+        <div><h3>On the plant record</h3><p class="dec-v">${v(x.server_value)}</p><p class="hint">${x.server_by ? `By ${x.server_by}, ${when(x.server_at)}` : ''}</p>
+          ${canChange() ? html`<button class="btn ghost" type="button" data-act="decide" data-id="${x.id}" data-choice="server">Keep this: ${String(v(x.server_value)).slice(0, 40)}</button>` : ''}</div></div>
+        <p class="hint">Before either change it was: ${v(x.base)}.</p></li>`)}</ul>` : html`<p class="muted">Nothing to decide.</p>`}
+    ${done.length ? html`<h2>Decided</h2><ul class="off-list">${done.map(x => html`<li><a href="${href(x)}">${x.code}</a> ${x.label}: kept ${x.choice === 'phone' ? `the change from ${x.device || 'the device'} (${v(x.phone_value)})` : `the plant record's value (${v(x.server_value)})`}, chosen by ${x.resolved_by}.</li>`)}</ul>` : ''}`,
+  };
+}
+Object.assign(acts, {
+  offdl: () => offDownload(false),
+  offsend: async () => { await offSync(); route(); },
+  async offrm(el) {
+    if (!(await confirmBox('Don\'t send this change?', 'It is deleted from this device and never reaches the plant record.', 'Delete it', true))) return;
+    const op = (await offOps()).find(o => o.id === el.dataset.id);
+    if (op && op.temp) { await idbDel('finds', op.temp); for (const o of await offOps()) if (o.url.includes(op.temp)) await idbDel('outbox', o.id); }
+    await idbDel('outbox', el.dataset.id); await offPaint(); route();
+  },
+  async offretry(el) { const op = (await offOps()).find(o => o.id === el.dataset.id); if (op) { delete op.failed; delete op.error; await idbPut('outbox', op); } await offSync(); route(); },
+  async offidrm(el) { await idbDel('idq', el.dataset.id); await offPaint(); route(); },
+  async offforget() {
+    if (!(await confirmBox('Delete the saved copy?', 'This device will need a connection to show the plant record until it is saved again. Changes waiting to be sent are kept.', 'Delete the saved copy', true))) return;
+    await Promise.all(['plantdb-api', 'plantdb-photos', 'plantdb-library-photos'].map(n => caches.delete(n)));
+    await idbPut('kv', false, 'keep'); await idbPut('kv', false, 'keeplib'); await idbDel('kv', 'downloaded'); toast('The saved copy is deleted'); route();
+  },
+  async decide(el) {
+    if (!(await needName())) return;
+    await guard(async () => { await api('POST', '/api/conflicts/' + el.dataset.id, { choice: el.dataset.choice }); OFF.conflicts = Math.max(0, OFF.conflicts - 1); toast('Kept'); offPaint(); await route(); });
+  },
+});
+async function offChange(el) {                 // the Offline page's settings
+  const f = el.dataset.f;
+  if (f === 'offkeep') {
+    await idbPut('kv', el.checked, 'keep');
+    if (el.checked) { try { if (navigator.storage && navigator.storage.persist) await navigator.storage.persist(); } catch (e) { /* asked */ } offDownload(false); }
+    route(); return true;
+  }
+  if (f === 'offkeeplib') { await idbPut('kv', el.checked, 'keeplib'); if (el.checked && (await offKv('keep', false))) offDownload(false); return true; }
+  if (f === 'offdev') { OFFDEV = el.value.trim().slice(0, 40) || null; await idbPut('kv', OFFDEV, 'device'); toast('Saved: this device is ' + offDevice()); return true; }
+  return false;
+}
+async function offStart() {
+  if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
+    try { await navigator.serviceWorker.register('/sw.js', { scope: '/' }); } catch (e) { console.warn('Offline use is not available here: ' + e.message); }
+  }
+  OFFDEV = await offKv('device', null);
+  window.addEventListener('online', () => { offPaint(); offSync(); });
+  window.addEventListener('offline', () => offPaint());
+  setInterval(() => { offSync(); }, 60000);
+  await offPaint();
+  setTimeout(async () => {
+    await offSync();
+    const keep = await offKv('keep', false), dl = await offKv('downloaded', null);
+    if (keep && navigator.onLine && (!dl || Date.now() - new Date(dl).getTime() > 3 * 3600 * 1000)) offDownload(true);
+  }, 2500);
+}
 
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]');
@@ -5036,6 +6442,7 @@ document.addEventListener('click', e => {
 document.addEventListener('change', e => {
   const el = e.target;
   if (el.dataset && el.dataset.act && changeActs[el.dataset.act]) { changeActs[el.dataset.act](el); return; }
+  if (el.dataset && /^off(keep|keeplib|dev)$/.test(el.dataset.f || '')) { offChange(el); return; }
   if (el.dataset && el.dataset.plc) {        // Location window: switch straight away, as Display settings do
     placeChanged(el.dataset.plc);
     route().then(() => { const m = document.getElementById('plc-msg'); if (m) m.textContent = `Now using the weather for ${placeName()}.`; const h = document.getElementById('plc-home'); if (h) h.innerHTML = rend(plcHomeRow()); });
@@ -5055,9 +6462,24 @@ document.addEventListener('change', e => {
   }
   if (el.dataset && el.dataset.f === 'aud') { AUD.f[el.name] = el.value; AUD.offset = 0; audSave(); audLoad(`[name="${el.name}"][data-f=aud]`); return; }
   if (el.dataset && el.dataset.pref) { window.PlantPrefs.set(el.dataset.pref, el.value); if (el.dataset.pref === 'layout' && document.querySelector('.plant')) route(); return; }
+  if (el.id === 'mu-place_kind') { muPlaceShow(); return; }
   if (el.name === 'csrc') { const mf = document.getElementById('manual-fields'); if (mf) mf.hidden = el.value !== 'manual'; return; }
   const f = el.dataset && el.dataset.f;
   if (!f) return;
+  if (f.startsWith('mu') && f !== 'muq') {   // 1.22.0: the mushroom finds' filters
+    MU[f.slice(2)] = el.value;
+    if (f === 'mustatus') { muSave(); route(); } else muDraw();
+    return;
+  }
+  if (f.startsWith('lib')) {             // 1.21.0: the library's filters
+    const k = f.slice(3);
+    if (k === 'online') { api('PUT', '/api/library/settings', { online: el.checked }).then(() => { LIB.photos = {}; toast(el.checked ? 'Library photos from iNaturalist are on' : 'Library photos are off: nothing is looked up online'); }).catch(e => toast(e.message, true)); return; }
+    if (k === 'q') return;               // typing is handled as you type
+    LIB[k] = el.type === 'checkbox' ? el.checked : el.value.trim();
+    if (k === 'view') { libSave(); libDraw(0); return; }
+    libChanged(k === 'scope');
+    return;
+  }
   if (f === 'wxperiod') {
     WX.period = el.value; if (/^\d+$/.test(el.value)) WX.days = +el.value;
     const d = document.getElementById('wx-dates'); if (d) d.hidden = el.value !== 'custom';
@@ -5127,6 +6549,8 @@ document.addEventListener('input', e => {
     e.target.closest('fieldset').querySelectorAll('li').forEach(li => { li.hidden = !!q && !li.textContent.toLowerCase().includes(q); });
   }
   const f = e.target.dataset && e.target.dataset.f;
+  if (f === 'muq') { MU.q = e.target.value.trim(); muDraw(); }
+  if (f === 'libq') { LIB.q = e.target.value.trim(); clearTimeout(LIB.t); LIB.t = setTimeout(() => libChanged(false), 300); }
   if (f === 'q') { G.q = e.target.value; drawGrid(); }
   else if (f === 'audq') { AUD.f.q = e.target.value; AUD.offset = 0; audSave(); clearTimeout(AUD.t); AUD.t = setTimeout(() => audLoad(), 400); }
 });
@@ -5347,5 +6771,6 @@ Object.assign(changeActs, {
 })();
 
 route();
+offStart();
 wxPoll();                      // shows the progress box on every page while a history load runs
 })();

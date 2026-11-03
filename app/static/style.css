@@ -1041,8 +1041,8 @@ html[data-narrow="1"] .heat-bar{display:none}
 .pc-box h3{margin:0 0 .2rem;font-size:1.05rem;text-transform:uppercase;letter-spacing:.06em}
 .pc-box p{margin:.25rem 0;overflow-wrap:anywhere}
 .pc-main-fact{font-size:1.4rem;font-weight:700;line-height:1.25}
-.pc-printed{margin:.3rem 0 0;font-size:1rem;color:var(--ink-2)}
-.pc-scan{margin:0;flex:none;width:7rem;text-align:center;font-size:.95rem;line-height:1.25}
+.pc-printed{margin:.3rem 0 0;font-size:1em;color:var(--ink-2)}            /* 1.20.0: as big as the rest of the card's text */
+.pc-scan{margin:0;flex:none;width:8rem;text-align:center;font-size:1em;line-height:1.25}
 .pc-qr{display:block;width:6rem;height:6rem;margin:0 auto .2rem;background:#fff;padding:.2rem;border-radius:4px}
 /* phones and very large text: smaller margins and headings so words are not split */
 html[data-narrow="1"] .pc-main{padding:1rem .5rem 3rem}
@@ -1070,8 +1070,8 @@ html[data-narrow="1"] .pc-opts{padding:.7rem .7rem .2rem}
   .pc-col{flex:1 1 0}
   .pc-box{padding:.06in .12in .08in}
   .pc-box p{margin:.04in 0}
-  .pc-printed{font-size:.8rem}
-  .pc-scan{width:1.15in;font-size:.75rem}
+  .pc-printed{font-size:1em}
+  .pc-scan{width:1.35in;font-size:1em}
   .pc-qr{width:1in;height:1in;padding:0}
 }
 
@@ -1176,3 +1176,264 @@ button.linkish{font:inherit;color:var(--cyan);background:none;border:0;padding:.
 .undo-toast .btn:focus-visible{outline-color:var(--paper);outline-offset:3px}
 .undo-toast .undo-left{flex-basis:100%;font-weight:400;font-size:.9em}
 html[data-role=viewer] .undo-toast .undo-acts [data-undo=undo]{display:none!important}
+
+/* 1.20.0: Plants page cards hold their own photo buttons. The name's link stretches over the whole card, so the card still
+   opens the plant from anywhere; the photo buttons sit above it. */
+.sheet{position:relative}
+.sheet .sheet-link{color:inherit;text-decoration:none}
+.sheet .sheet-link::after{content:"";position:absolute;inset:0;z-index:1}
+.sheet .sheet-link:focus-visible{outline:none}
+.sheet:has(.sheet-link:focus-visible){outline:var(--ring) solid var(--focus);outline-offset:4px}
+.sheet:hover .name a{text-decoration:underline;text-underline-offset:.2em;text-decoration-thickness:2px}
+.sheet .ph-nav{position:absolute;z-index:2;left:.5rem;right:.5rem;bottom:1.1rem;display:flex;align-items:center;justify-content:space-between;gap:.4rem;pointer-events:none}
+.sheet .ph-btn{pointer-events:auto;font:inherit;font-size:1.7rem;line-height:1;font-weight:700;width:2.9rem;height:2.9rem;display:grid;place-items:center;
+  background:var(--sheet);color:var(--ink);border:2px solid var(--ink);border-radius:50%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+.sheet .ph-btn:hover{background:var(--cyan);color:var(--cyan-ink);border-color:var(--cyan)}
+.sheet .ph-btn:focus-visible{outline:var(--ring) solid var(--focus);outline-offset:2px}
+.sheet .ph-n{background:var(--sheet);color:var(--ink);border:2px solid var(--ink);border-radius:1rem;padding:.05rem .6rem;font-weight:700;font-size:1rem;white-space:nowrap}
+/* 1.20.0: which photo is the main one, in words, on the plant page */
+.main-note{margin:.2rem 0 .6rem;display:flex;flex-wrap:wrap;gap:.4rem .8rem;align-items:center}
+.main-note .hint{flex:1 1 16rem}
+.thumbs button{position:relative}
+.thumbs .th-main{position:absolute;left:0;right:0;bottom:0;background:var(--ink);color:var(--paper);font-size:1rem;font-weight:700;line-height:1.3;text-align:center}
+html[data-role=viewer] .main-note button{display:none!important}
+
+/* 1.20.0: the 4 x 6 inch card (landscape): name, code and place, scan code and photo, then one row per need. Nothing on it is
+   smaller than about 16 point when printed. */
+.pc-46 .pc-head{flex-wrap:nowrap;align-items:flex-start}
+.pc-46 .pc-names{flex:1 1 auto}
+.pc-46 .pc-qr{flex:none;width:5.5rem;height:5.5rem}
+.pc-46 .pc-photo{flex:0 0 7rem;width:7rem}
+.pc-rows{display:grid;gap:.35rem}
+.pc-row{display:grid;grid-template-columns:7.5rem minmax(0,1fr);gap:.2rem .8rem;align-items:baseline;border-top:1px solid var(--line);padding-top:.3rem;break-inside:avoid}
+.pc-row:first-child{border-top:0;padding-top:0}
+.pc-row h3{margin:0;font-family:var(--sans);font-size:1em;font-weight:700;letter-spacing:0}
+.pc-row p{margin:0;overflow-wrap:anywhere}
+.pc-row .pc-main-fact{font-size:1.1em;font-weight:700}
+body.pc-c46 .pc-cards{grid-template-columns:repeat(auto-fill,minmax(min(100%,40rem),1fr))}
+body.pc-c46 .pc-card{max-width:48rem}
+html[data-narrow="1"] .pc-row{grid-template-columns:minmax(0,1fr)}
+html[data-narrow="1"] .pc-46 .pc-head{flex-wrap:wrap}
+@media print{
+  body.pc-c46 .pc-cards{display:block}
+  body.pc-c46 .pc-card{max-width:none;font-size:16pt;line-height:1.15}
+  .pc-46 .pc-head{gap:.1in;padding-bottom:.05in;margin-bottom:.06in;border-bottom-width:2px}
+  .pc-46 h2{font-size:1.35rem;line-height:1.1}
+  .pc-46 .pc-qr{width:.7in;height:.7in}
+  .pc-46 .pc-photo{width:.7in;flex:0 0 .7in;border-width:1px}
+  .pc-rows{gap:.02in}
+  .pc-row{grid-template-columns:.95in minmax(0,1fr);gap:0 .08in;padding-top:.015in;border-top:.5pt solid #000}
+  .pc-row .pc-main-fact{font-size:1.06em}
+}
+
+/* 1.21.0: "Watered today" once it is done (not faded: it says so in words and keeps full contrast) */
+.btn.done-today[disabled]{opacity:1;background:transparent;color:var(--moss);border-color:var(--moss);cursor:default}
+.water-all{display:flex;flex-wrap:wrap;gap:.4rem 1rem;align-items:center;margin:-.4rem 0 1.4rem}
+.water-all .hint{flex:1 1 18rem;margin:0}
+html[data-role=viewer] .water-all{display:none!important}
+/* 1.21.0: wide photos on the Plants page cards (Display setting "Photos on the Plants page") */
+html[data-photofit=whole] .sheet .mat img,html[data-photofit=auto] .sheet .mat img.wide{object-fit:contain;background:var(--line-2)}
+/* 1.21.0: the library as a browsable list, and a page for each species */
+.lib-filters{grid-template-columns:repeat(auto-fill,minmax(min(100%,15rem),1fr))}
+.lib-count{margin:.2rem 0 1rem}
+.lib-card .lib-fam{margin:.1rem 0 .5rem;color:var(--ink-2)}
+.lib-card .mat .nophoto{font-weight:700;text-align:center;padding:1rem}
+.lib-card .acc{max-width:calc(100% - .5rem);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lib-tbl td{vertical-align:middle}
+.lib-tbl .lib-th{width:5.5rem}
+.lib-tbl .lib-thumb{width:4.5rem;height:4.5rem;object-fit:cover;display:block;background:var(--line-2)}
+.lib-tbl div.lib-thumb{display:grid;place-items:center;font-size:.85rem;text-align:center;color:var(--ink-2);padding:.2rem}
+.species .sp-head{margin-bottom:1.2rem}
+.species .sp-sci{font-size:1.4rem;margin:.2rem 0}
+.species section>h2{margin:1.8rem 0 .6rem}
+.sp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,24rem),1fr));gap:0 2rem;align-items:start}
+.sp-fig{margin:0}
+.sp-fig img{display:block;width:100%;max-height:70vh;object-fit:contain;background:var(--line-2);border:1px solid var(--line)}
+.sp-fig figcaption{margin-top:.4rem;color:var(--ink-2);overflow-wrap:anywhere}
+.sp-step{margin:.6rem 0}
+.sp-yours{list-style:none;padding:0;display:grid;gap:.5rem}
+.sp-yours a{display:flex;gap:.7rem;align-items:center;border:var(--bw) solid var(--line);background:var(--sheet);padding:.4rem;text-decoration:none;color:var(--ink)}
+.sp-yours img{width:3.5rem;height:3.5rem;object-fit:cover;flex:none}
+.sp-cls{padding-left:1.4em}
+.sp-acts{margin-top:1rem}
+html[data-role=viewer] [data-act=spnew]{display:none!important}
+.lib-card .tags .tag,.species .tags .tag{white-space:normal}
+/* 1.22.0: mushroom finds */
+.mu-safe{margin:0 0 1.4rem}
+.mu-safe ul{margin:.5rem 0 0;padding-left:1.3em}
+.mu-safe li{margin:.3rem 0}
+.mu-card .mu-when{margin:0 0 .5rem;color:var(--ink-2)}
+.mu-card .tags .tag{white-space:normal}
+.mu-loc{margin-top:.6rem}
+.mu-loc .row{margin:.4rem 0}
+.mu-add{margin-top:1rem}
+.mu-acts{margin:1.6rem 0 1rem}
+.mu-find .dl{margin-bottom:.5rem}
+html[data-role=viewer] :is(a[href="#/fungi/new"], [data-act=muhere], [data-act=muclearloc], [data-act=mumain], [data-act=mucap], [data-act=murmphoto], [data-act=mugps], [data-act=muarch], [data-act=muusename], [data-act=munewfrom], .mu-add){display:none!important}
+/* 1.22.0: wishlist, your notes and tags */
+.tag.tag-wish{border-style:double;border-width:3px}
+.tag.tag-own{border-style:dotted}
+a.tag{text-decoration:none;color:inherit}
+a.tag:hover,a.tag:focus-visible{text-decoration:underline}
+.sp-wish{margin:1rem 0}
+.sp-wish p{margin:.3rem 0}
+.sp-notes-edit{margin:.8rem 0}
+.sp-notes-edit summary{cursor:pointer;font-weight:700;padding:.3rem 0}
+.sp-mynotes .tags{margin:.4rem 0}
+.wl-list{list-style:none;padding:0;display:grid;gap:1rem;grid-template-columns:repeat(auto-fill,minmax(min(100%,22rem),1fr))}
+.wl-item{border:var(--bw) solid var(--line);background:var(--sheet);padding:1rem}
+.wl-item h3{margin:0 0 .2rem}
+.wl-item p{margin:.3rem 0}
+.wl-acts{margin-top:.6rem}
+html[data-role=viewer] :is([data-act=spwish], [data-act=wledit], [data-act=wlgot], [data-act=wlrm], form[data-form=spnotes], .sp-notes-edit){display:none!important}
+/* 1.23.0: here at home, pets, care sheets, around home */
+.tag.tag-warn{border-width:3px;color:var(--madder)}
+.lib-card .lib-rec{margin:0 0 .4rem;color:var(--ink-2)}
+.lib-lists{padding-left:1.2em}
+.lib-lists li{margin:.3rem 0}
+.sp-pets{max-width:24rem}
+.sp-pets th[scope=row]{text-align:left}
+html[data-role=viewer] :is([data-act=spcare], [data-act=liblists]){display:none!important}
+/* 1.24.0: offline use */
+.net{display:inline-flex;align-items:center;justify-content:center;color:inherit;text-decoration:none;border:2px solid color-mix(in srgb,var(--top-ink) 60%,transparent);padding:.5rem .9rem;font-size:1rem;min-height:2.75rem;font-weight:700}
+.net:hover{background:color-mix(in srgb,var(--top-ink) 14%,transparent)}
+.net::before{content:"";display:inline-block;width:.7em;height:.7em;border-radius:50%;margin-right:.45em;border:2px solid currentColor}
+.net[data-state=online]::before{background:currentColor}
+.net[data-state=offline]{border-style:dashed}
+.net[data-state=waiting],.net[data-state=sending]{border-width:3px}
+.off-note{margin-bottom:1rem}
+.off-list{padding-left:1.3em}
+.off-list li{margin:.5rem 0}
+.off-pic{width:4.5rem;height:4.5rem;object-fit:cover;vertical-align:middle;margin-right:.5rem;border:1px solid var(--line)}
+.dec-list{list-style:none;padding:0;display:grid;gap:1.2rem}
+.dec{border:var(--bw) solid var(--line);background:var(--sheet);padding:1rem}
+.dec h2{margin:0 0 .6rem;font-size:1.25rem}
+.dec-sides{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:1rem}
+.dec-sides h3{margin:0 0 .3rem;font-size:1.05rem}
+.dec-v{font-weight:700;white-space:pre-wrap;overflow-wrap:anywhere;margin:.2rem 0}
+html[data-role=viewer] :is([data-act=decide]){display:none!important}
+.off-opts .chk{display:flex;gap:.6rem;align-items:flex-start;margin:.6rem 0;font-weight:400}
+.off-opts .chk input{margin-top:.3rem;flex:none}
+/* 1.25.0: pop-up windows use more of the screen; their buttons stay in view; Display settings in parts */
+dialog{width:min(94vw,64rem);max-width:none}
+dialog.small{width:min(94vw,36rem)}
+dialog.wide{width:min(96vw,104rem);max-width:none}
+dialog.photo{width:auto}
+dialog>form>.row:last-child{position:sticky;bottom:-1.4rem;z-index:2;background:var(--paper);margin:1.2rem -1.4rem -1.4rem;padding:.8rem 1.4rem;border-top:2px solid var(--line)}
+dialog.photo>form>.row:last-child{position:static;margin:.6rem 0 0;padding:0;border:0;background:none}
+dialog.dv[open]{display:flex;flex-direction:column;padding:0;width:min(96vw,104rem);height:min(92vh,60rem);max-height:92vh;overflow:hidden}
+dialog.dv .dv-form{display:flex;flex-direction:column;min-height:0;flex:1}
+dialog.dv .dv-head{display:flex;align-items:center;gap:.6rem 1.2rem;flex-wrap:wrap;padding:1rem 1.4rem .8rem;border-bottom:2px solid var(--line)}
+dialog.dv .dv-title{flex:1 1 22rem}
+dialog.dv .dv-title h2{margin:0 0 .2rem}
+dialog.dv .dv-title p{margin:.1rem 0}
+dialog.dv .dv-acts{margin:0;gap:.7rem}
+dialog.dv .dv-main{display:flex;min-height:0;flex:1}
+dialog.dv .dv-tabs{flex:0 0 15rem;border-right:2px solid var(--line);padding:1rem .8rem;display:flex;flex-direction:column;gap:.4rem;overflow:auto}
+dialog.dv .dv-tab{display:block;width:100%;text-align:left;padding:.55rem .8rem;border:2px solid transparent;background:none;color:var(--ink);font:inherit;font-weight:700;cursor:pointer;min-height:2.75rem}
+dialog.dv .dv-tab:hover{border-color:var(--line)}
+dialog.dv .dv-tab[aria-current]{border-color:var(--ink);background:var(--cyan);color:var(--cyan-ink)}
+dialog.dv .dv-body{flex:1;min-width:0;min-height:0;overflow:auto;padding:1rem 1.4rem 2rem;scroll-padding-top:.5rem}
+dialog.dv .dv-body section{margin-bottom:1.6rem}
+dialog.dv .dv-body section>h3{font-size:1.35rem;margin:0 0 .8rem;padding-bottom:.3rem;border-bottom:2px solid var(--line)}
+dialog.dv .dv-cols{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,24rem),1fr));gap:.4rem 2rem;align-items:start}
+dialog.dv .opt-group{margin:0 0 1rem}
+dialog.dv .opt-group .hint{margin:.45rem 0 0}
+@media (max-width:56rem){
+  dialog.dv[open]{width:100vw;max-width:100vw;height:100dvh;max-height:100dvh;margin:0;border:0}
+  dialog.dv .dv-head{padding:.7rem .9rem .6rem}
+  dialog.dv .dv-intro{display:none}
+  dialog.dv .dv-acts{width:100%}
+  dialog.dv .dv-main{flex-direction:column}
+  dialog.dv .dv-tabs{flex:none;flex-direction:row;flex-wrap:wrap;border-right:0;border-bottom:2px solid var(--line);padding:.5rem .9rem;gap:.35rem}
+  dialog.dv .dv-tab{width:auto;border-color:var(--line);padding:.35rem .6rem}
+  dialog.dv .dv-body{padding:.8rem .9rem 2rem}
+}
+@media (max-width:40rem){
+  dialog:not(.dv):not(.photo)[open]{width:100vw;max-width:100vw;max-height:100dvh;margin:auto 0 0;border-left:0;border-right:0;border-bottom:0;padding:1rem}
+  dialog:not(.dv):not(.photo)>form>.row:last-child{bottom:-1rem;margin:1rem -1rem -1rem;padding:.7rem 1rem}
+}
+dialog p,dialog ul,dialog ol,dialog .notice{max-width:none}
+/* 1.26.0: line length (Display setting): full width by default; lists used as grids and menus are never capped */
+html[data-lines=full] :is(p, ul, ol, .ask, .nowstate, .notice, .cal-legend, .job-txt>div, .fz-banner p, .bo-why, .danger-box){max-width:none}
+ul[class],ol[class]{max-width:none}
+.sheet .mat img{height:auto}           /* 1.26.0: the photo's width and height attributes made cards about three times too tall */
+/* 1.26.0: use the width of the screen: side by side where there is room */
+.jobs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,36rem),1fr));column-gap:2.5rem}
+.lib-card .tags,.mu-card .tags{display:flex;flex-wrap:wrap;gap:.3rem}
+.id-two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,34rem),1fr));gap:0 2.5rem;align-items:start}
+.sp-more,.mu-info{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,30rem),1fr));gap:0 2.5rem;align-items:start}
+.sp-more>section>h2,.mu-info>section>h2{margin-top:1.4rem}
+.field-grid{container-type:inline-size}
+@container (min-width:60rem){.field-grid>.wide{grid-column:span 2}}
+@container (min-width:96rem){.field-grid>.wide{grid-column:span 3}}
+.off-dev input{max-width:30rem}
+/* 1.26.0 phones and narrow windows: less of the screen spent on the top bar, the buttons pinned at the bottom and the margins */
+.pages-btn{display:none;align-items:center;gap:.5rem;background:transparent;color:inherit;border:2px solid color-mix(in srgb,var(--top-ink) 60%,transparent);padding:.45rem .8rem;font:inherit;font-weight:700;cursor:pointer;min-height:2.75rem;max-width:100%;text-align:left}
+.pages-btn:hover{background:color-mix(in srgb,var(--top-ink) 14%,transparent)}
+.pages-btn[aria-expanded=true]{background:var(--top-ink);color:var(--top-bg)}
+html:is([data-narrow="1"],[data-pagesfold="1"]) .pages-btn{display:inline-flex;order:2;flex:0 1 auto}
+html[data-narrow="1"] .pages-btn{flex:1 1 auto}
+html[data-pagesfold="1"] .pages-btn{order:0}
+html:is([data-narrow="1"],[data-pagesfold="1"]) .top:not(.pages-open) #main-nav{display:none}
+html:is([data-narrow="1"],[data-pagesfold="1"]) .top #main-nav{display:flex;flex-wrap:wrap;gap:0 .4rem;flex:1 1 100%;order:3;min-width:0}
+html[data-pagesfold="1"] .top-acts{flex-direction:row;flex-wrap:wrap;margin-left:auto}
+html[data-toptall="1"] .top{position:static}
+html[data-narrow="1"] .top-in,html[data-narrow="1"] main{padding-left:min(1.25rem,4vw);padding-right:min(1.25rem,4vw)}
+html[data-narrow="1"] .top-in{padding-top:.4rem;padding-bottom:.4rem;gap:.4rem}
+html[data-narrow="1"] .brand{font-size:1.2rem}
+html[data-narrow="1"] .top-acts{order:4;flex:1 1 100%;flex-direction:row;flex-wrap:wrap;gap:.4rem}
+html[data-narrow="1"] .top-acts>*,html[data-narrow="1"] .pages-btn{flex:1 1 auto;padding:.25em .5em;min-height:44px;line-height:1.25}
+html[data-narrow="1"] .fz-banner{padding:.6rem min(1rem,3vw);border-left-width:min(.5rem,2vw)}
+/* Sections, Debug and Display: one bar along the bottom, side by side, wrapping only when the text is too big for one row */
+html[data-narrow="1"] #corner{left:0;right:0;bottom:0;flex-direction:row;flex-wrap:wrap;align-items:stretch;gap:.4rem;
+  padding:.4rem min(1rem,3vw) calc(.4rem + env(safe-area-inset-bottom,0px));background:var(--paper);border-top:2px solid var(--line)}
+html[data-narrow="1"] #corner>button{flex:1 1 auto;justify-content:center;min-height:44px;line-height:1.25;padding:.25em .45em;gap:.35em;position:static;box-shadow:none}   /* 44px: the size of a fingertip, whatever the text size */
+html[data-narrow="1"] #corner #nav-tab{border:3px solid var(--ink);border-radius:0;left:auto;right:auto;bottom:auto;top:auto}
+html[data-narrow="1"] main{padding-bottom:calc(var(--pin-h,4rem) + 1.5rem)}
+html[data-narrow="1"] #job-badge{max-width:calc(100vw - 2rem)}
+html[data-narrow="1"] .ver{font-size:.8em;padding:.1em .35em}
+/* 1.26.0: tables too wide for the screen (app.js fitTables) become one box per row. The row's name is its title; each value follows
+   its column's name, two or more to a line when they fit */
+table.tbl.stacked,table.tbl.stacked tbody,table.tbl.stacked tfoot{display:block;width:100%}
+table.tbl.stacked thead{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+table.tbl.stacked caption:not(.sr){display:block;text-align:left;font-weight:700;margin-bottom:.4rem}
+table.tbl.stacked tr{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,9.5rem),1fr));gap:.1rem 1.2rem;border:2px solid var(--line);background:var(--sheet);padding:.35rem .7rem;margin:0 0 .6rem}
+table.tbl.stacked th,table.tbl.stacked td{display:block;border:0;padding:.2rem 0;text-align:left;overflow-wrap:anywhere;min-width:0}
+table.tbl.stacked tr>:first-child,table.tbl.stacked tr>:not([data-label]){grid-column:1/-1}
+table.tbl.stacked tr>:first-child{font-weight:700;border-bottom:1px solid var(--line);padding-bottom:.35rem;margin-bottom:.1rem}
+table.tbl.stacked [data-label]::before{content:attr(data-label) " ";font-weight:700;color:var(--ink-2);margin-right:.35rem}
+table.tbl.stacked tr>[data-label]:first-child::before{content:none}
+/* 1.26.0: phones and tablets have no keyboard, so the keyboard shortcut note under "Read this page aloud" only takes up a line there */
+html[data-touch="1"] .rd-page .hint{display:none}
+/* 1.26.1: on computers the top bar spans the whole window. app.js topFit() sets data-topmode: "one" puts the name, the page links and
+   Online, Location and Editing on one line; "tier" puts the name and those buttons on the first line and the page links on a line
+   of their own. Page links on one line spread evenly across the space they have */
+html[data-narrow="0"] .top-in{max-width:none;padding-left:clamp(1rem,1.5vw,2rem);padding-right:clamp(1rem,1.5vw,2rem)}
+html[data-narrow="0"]:is([data-topmode=one],[data-topmode=tier]) .top-acts{flex-direction:row;flex-wrap:nowrap;margin-left:auto}
+html[data-narrow="0"]:is([data-topmode=one],[data-topmode=tier]) .top-acts>*{white-space:nowrap}
+html[data-narrow="0"][data-topmode=one] .top-in{flex-wrap:nowrap}
+html[data-narrow="0"][data-topmode=one] .top nav{min-width:0}
+html[data-narrow="0"][data-topmode=tier] .top-in{row-gap:.3rem}
+html[data-narrow="0"][data-topmode=tier] .top nav{order:3;flex:1 1 100%;min-width:0}
+html[data-narrow="0"][data-navrow="1"] .top nav{flex-wrap:nowrap;justify-content:space-evenly}
+/* 1.27.0: uses, partners, deterrents, propagation and breeding */
+.facts{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,26rem),1fr));gap:0 2.5rem;align-items:start}
+.facts h3{margin:1rem 0 .4rem}
+.fact-list{margin:0 0 .6rem;padding-left:1.2rem}
+.fact-list li{margin:.35rem 0;line-height:1.5}
+.fact-ev{color:var(--ink-2);font-size:.92em}
+.fact-warn{color:var(--madder);font-weight:700}
+.fact-yours{display:inline-block;margin-top:.15rem;font-weight:700}
+html[data-role=viewer] [data-act=factswrite]{display:none!important}
+/* 1.27.0: wishlist prices, alerts and shops */
+.wl-price{border-left:4px solid var(--line);padding:.2rem 0 .2rem .8rem;margin:.6rem 0}
+.wl-price p{margin:.3rem 0}
+.wl-offers summary{cursor:pointer;font-weight:700;padding:.3rem 0}
+.wl-offer-list,.wl-alert-list{padding-left:1.2rem;margin:.4rem 0}
+.wl-offer-list li,.wl-alert-list li{margin:.5rem 0;line-height:1.5}
+.wl-alert-list .btn{margin-left:.4rem}
+.wl-check{align-items:center;gap:.6rem 1rem;flex-wrap:wrap;margin:.8rem 0}
+.wl-shops td .chk{display:inline-flex;gap:.4rem;align-items:center;margin-right:.6rem}
+html[data-role=viewer] :is([data-act=wlcheck], [data-act=wldismiss]){display:none!important}
+.nav-badge{font-weight:700}

@@ -134,7 +134,7 @@
 - `app.js`:
   - A hash router (`route()`) and one `view*()` function per page: gallery, plant, edit, today, winter, frost, inside, weather, fertilizer, photos, labels, history and backups. Each returns `{title, html, after}`.
   - 1.8.0 modules, each in its own block: frost banner and checklist, watering and Today, read aloud and shortcuts (`addReadButtons()`, Web Speech API), timeline (filled by a `MutationObserver` on `#app`), copy for Claude (`forClaudeDialog()`), and the photo check (`photoCheck()`, which runs before every upload).
-  - 1.10.0: the Audit log page (`viewHistory()`, state in `AUD`, filters remembered in localStorage `plantdb.auditf`), the Debug window (`debugDialog()`, settings in `DBG`, localStorage `plantdb.debug`, change events with `data-dbg`) and the console (`conPoll()` every 3 s via `/api/audit?after=`, `conAdd()`, `conLayout()`). `conLayout()` sizes the console to the newest 3, 4 or 5 rows, places it clear of the side menu and of every button pinned to the bottom, and sets `--console-space`, which `fitPanes()` and `main` use to leave room. `pinLayout()` stacks the Sections button and the job note above Debug and Display on phones when they would otherwise overlap.
+  - 1.10.0: the Audit log page (`viewHistory()`, state in `AUD`, filters remembered in localStorage `plantdb.auditf`), the Debug window (`debugDialog()`, settings in `DBG`, localStorage `plantdb.debug`, change events with `data-dbg`) and the console (`conPoll()` every 3 s via `/api/audit?after=`, `conAdd()`, `conLayout()`). `conLayout()` sizes the console to the newest 3, 4 or 5 rows, places it clear of the side menu and of every button pinned to the bottom, and sets `--console-space`, which `fitPanes()` and `main` use to leave room. `pinLayout()` keeps the job note above the buttons pinned to the bottom on phones (see 1.26.0 below).
   - 1.11.0: the Location button and window (`PLACE` in localStorage `plantdb.place`, sent by `api()` as `X-Place`; `placeDialog()`, `placeChanged()`, `paintPlace()`, `plcHomeRow()`; the L key). `META` is reloaded when the place changes, and `tempMarks()`/`humMarks()` come from `META.climate`. Fertilizer needs: `needLines()`, `loadNeeds()` (into `FERT.needs`), `productsBlock()` and `productDialog()`; `fertState0()` fills the feeding form from a plant's match.
   - 1.16.0 groups:
     - Tables `plant_groups(id, name UNIQUE NOCASE, kind 'smart'|'picked', rule JSON, notes)`, `group_members(group_id, plant_id)` and `bulk_changes(id, group_id, what, changes JSON, done_by/at, undone_by/at)`.
@@ -190,6 +190,87 @@
     - `NEWFILL` pre-fills the Add a plant form (and attaches `__pic` after saving). It is cleared on any other route.
     - Change buttons are in the viewer CSS block.
   - **Tests:** `dev/test/mock_vision.py` is a fake service (decides by picture colour, and also fakes Pl@ntNet and Claude), started by `mock_server.py` unless `MOCK_VISION=real`. `dev/test/identify_check.py` uses a fake red camera (`.y4m`).
+- **Care cards (1.19.0, 1.20.0):** a page of its own, `app/static/card.html` + `card.js` (no app.js; the printout carries only the cards).
+  - URLs: `/card.html?plant=P-006` (or several, comma-separated), `?group=<id>`, `?all=1` (every active plant, from the Labels page).
+  - Options are kept in localStorage `plantdb.card2`: `size` (`card` = 4 x 6 inch, the default, or `page`), `notes`, `photo`, `qr` and `pets` (on by default).
+  - `card()` draws the full page and `card46()` the 4 x 6 card, with shorter wording (`row()`).
+  - `pageSize()` writes the `@page` size into a `<style id="pc-page">`, because `@page` cannot depend on a class.
+  - The links on plant and group pages are added by `careCardLinks()` in app.js.
+  - Tested by `card_check.py`, which prints PDFs and checks font sizes and page counts.
+- **Plants page cards (1.20.0):**
+  - `sheet()` is an `<article class="sheet">`. The name's `a.sheet-link` stretches over the card with `::after`, so the card can hold buttons.
+  - `/api/plants` returns `photos` (every file, main first). `sheetMat()` draws the photo with `.ph-btn` Previous / Next (act `gphoto`) and the "n of N" count.
+  - `GPIX` remembers each card's photo while the page is open. `sheetStep()` redraws only that card's photo.
+  - Swipe: `GSW` touch listeners on the card's photo area, and a capture-phase click guard so a swipe never opens the plant.
+  - On plant pages, `photoPanel()` shows `.main-note` and the `.th-main` thumbnail badge. "Make this the main photo" (act `mainphoto`) PATCHes `is_primary`.
+  - Tested by `photos_check.py`.
+- **1.21.0:**
+  - **Watering:**
+    - `POST /api/care` skips a `water` entry for a plant that already has one on that day, and returns `skipped`.
+    - `loadCarePlant()` switches "Watered today" off (`.done-today`, `#water-done-note`) when `last_water` is today.
+    - The Plants page's `waterall` act waters the filtered plants that weren't watered today.
+  - **Thumbnails:** `/thumbs/` now makes them with a short side of at least 640 px, in `data/cache/thumbs2`. The Display setting `photofit` (auto, fill or whole) sets `html[data-photofit]`, and a load listener marks wide card photos with `img.wide`.
+  - **Library:**
+    - The vision service builds the `B` arrays (`build_browse()`) and serves `/browse`, `/facets` and `/taxon`. Kinds come from `KINDS` (class or phylum), and `/taxon` returns lookalikes as the nearest name fingerprints, worked out a block at a time with `dot_rows()`.
+    - The app proxies these as `/api/library/browse|facets|taxon`, adding `yours`, `yours_genus` and `own_photo`.
+    - Photos: `/api/library/photos?names=` answers from `data/library/<slug>.json`, and queues the missing ones for `lib_worker()`. The worker calls iNaturalist (`PLANTDB_INAT_URL`) at most once a second (`inat_get()`), downloads only from `PLANTDB_INAT_IMG_OK` addresses, and keeps the photo as `<slug>.jpg`.
+    - `/api/library/info` fetches a species' detail on first view: up to 6 photos and its Wikipedia summary. Empty results are looked up again after 30 days.
+    - Setting `library_online` (`/api/library/settings`, owner only) turns all of this off.
+    - Front end: `viewLibrary()` (state `LIB`, localStorage `plantdb.library`, `libLoad()`, `libDraw()`, `libPhotos()` polling) and `viewSpecies()` (`#/species/<name>`, `spInfo()`, `spGallery()`).
+  - **Tests:** `water_check.py` and `library_check.py`. `mock_vision.py` stands in for iNaturalist at `/mock/inat/`.
+- **1.22.0:**
+  - **Fungi in the vision service:** `fetch_names(kingdom, stem)` fetches the Fungi rows of TreeOfLife as `fungi.json` / `fungi.npy` (about 100 MB) beside the plant names; `load_all()` joins them (plants only if that fails). Masks `plant` / `fung`, scope `fungi`, kinds mushroom / cupfungus / lichen / rust / mould / otherfungus. `/status` has `fungi`, rows have `kingdom`, and `/scope_names?scope=` lists every name in a list.
+  - **Mushroom finds** (`#/fungi`, `#/fungi/new`, `#/fungi/<code>`, `#/fungi/<code>/edit`, `#/fungi/safety`): tables `fungi_finds` (fields in `FUNGI_FIELDS`, codes F-001…, `version` for edit conflicts) and `fungi_photos` (files in `data/photos`, with `gps_lat`, `gps_lon`, `taken_at` read by `exif_info()` before `save_image()` drops EXIF). Routes `/api/fungi`, `/api/fungi/<code>` (PUT needs `base_version`), `/status`, `/photos`, `/api/fungi/photos/<id>`. Audit kind `fungi`. Front end: state `MU` (localStorage `plantdb.fungi`), `viewFungi()`, `viewFind()`, `viewFindForm()`, `fungiSafety()`; acts and filters use the `mu` prefix (`fz` is the frost checklist's). `MUFILL` pre-fills a new find from a species page (`munewfrom`) or Identify (`idfind`). Permissions-Policy allows `geolocation=(self)`.
+  - **Library extras:** tables `species_notes` (notes, comma-separated lower-case tags) and `wishlist` (status want or got), routes `/api/library/notes` and `/api/wishlist`, audit kind `library`. `mark_owned()` adds `wish` and `tags` to each species. `/api/library/browse` takes `mine=wish|notes|tag:<tag>` and sends those names as the `own` list. `#/wishlist` is `viewWishlist()`.
+  - **Offline photos:** `/api/library/prefetch` (owner only) queues every Texas name not yet kept, at the back of the `lib_worker()` queue; `lib_enqueue(front=True)` puts what someone is looking at first. Progress is kept in memory (`PREFETCH`), so after a restart the button picks up where it stopped.
+  - **Tests:** `fungi_check.py`, `wishlist_check.py`. `mock_vision.py` has five fungi.
+- **1.23.0 (library part 2):**
+  - **Lists about the area:** `local_lists()` defines the iNaturalist species-count queries (`tx_native`, `tx_introduced`, `near` within `NEAR_KM` of the home place, and `bloom-MM` / `fungi-MM` for the current month). `aspca_fetch()` reads the ASPCA's three web pages (tags stripped, "| Scientific Names: … | Family:" entries before or after the "Non-Toxic" heading; it fails if it finds fewer than `PLANTDB_ASPCA_MIN`). They are kept in `data/library/local/*.json`, cached in memory by file time (`local_get()`), and refreshed by `know_worker()` through `know_refresh()` (it shares `inat_get()`'s one-a-second pace and the `library_online` switch).
+  - `TX_NOXIOUS` holds the TDA list. A key ending in a space is a whole genus.
+  - `know_of()` / `know_mark()` (called from `mark_owned()`) add `know` to every species: `tx`, `invasive`, `near`, `bloom`, `fruiting`, `pets`, `hardy`. `/api/library/browse?know=` (`KNOW_FILTERS`) sends name and genus lists to the vision service's `/browse` as a POST body (`only`, `only_genera`).
+  - **Care sheets:** `POST /api/library/care` asks Claude (`CARE_ASK`, the owner's key) for JSON and keeps it in `data/library/care/<slug>.json`. Its `zone_low` against `home_zone()` decides "zone-yes" or "zone-no".
+  - Routes `/api/library/local` (GET, and POST to refetch) and `/api/library/around`. Front end: `spHomeHtml()`, `spPetsHtml()`, `spCareHtml()`, `viewAround()` (`#/around`), and the `libknow` filter.
+  - **Tests:** `know_check.py`. `mock_vision.py` serves species counts, the ASPCA pages and care sheets.
+- **1.24.0 (offline use):**
+  - **Service worker** `app/static/sw.js`, served at `/sw.js` by `service_worker()` with the version substituted, so each update installs a new one:
+    - the app's files and `/api/` GETs are network-first with a 5 s timeout, then the saved copy (`X-Offline-Saved` header); after a failure it uses saved copies at once for 30 s;
+    - photos are cache-first;
+    - `NO_SAVE` lists the answers never kept (people, backups, audit, keys, status).
+  - Manifest and icons in `app/static/`.
+  - **Device side** (app.js, "offline use"):
+    - IndexedDB `plantdb-offline` with `outbox` (changes waiting), `finds` (finds made offline, code `NEW-…`, photos as Blobs), `idq` (pictures for Identify) and `kv` (keep, keeplib, device name, idmap from NEW- to F- codes, downloaded).
+    - `api()` puts queueable changes (`OFF_OK`) in the outbox when offline or when the fetch fails, and returns a stand-in answer. Every queueable request carries an `X-Offline-Op` id.
+    - `offQueue()` adds `base_values` (what the device saw) to PUTs and patches the saved answer so the page shows the change. `offSync()` sends the outbox in order on `online`, every minute and at start, rewriting NEW- codes.
+    - `offDownload()` saves what `/api/offline/manifest` lists, plus every photo. `OFFLINE_PAGES` and the per-plant and per-find lists were recorded by visiting every page.
+    - The library falls back to `/api/library/offline-index` (`offLibBrowse()`).
+  - **Server:**
+    - `offline_replay()` (end of `guard()`) answers a known `X-Offline-Op` from `sync_ops`, and `offline_remember()` (after_request) keeps new answers.
+    - `merge_fields()` is used by `PUT /api/plants/<code>` and `PUT /api/fungi/<code>` when the version moved on and `base_values` came with the edit. Fields only the device changed are applied, and clashes go to `sync_conflicts`.
+    - `/api/conflicts` and `/api/conflicts/<id>` (`choice`: phone or server).
+    - Audit kind `sync`. CSP allows `blob:` images and connections, for photos kept on the device.
+  - **Tests:** `offline_check.py` pauses the mock server (SIGSTOP), because Playwright's offline switch doesn't reach service-worker requests.
+- **1.26.0 layout:**
+  - `data-lines` on `<html>` (Display setting **Line length**, `full` by default). With `full`, paragraphs and lists have no `68ch` cap; `short` keeps it. Lists with a class (grids such as the group cards) are never capped.
+  - Wider pages: `.jobs` (Today), `.id-two` (Identify), `.sp-more` (species), `.mu-info` (mushroom finds) are auto-fill grids; `.field-grid` is a size container, so wide fields span 2 or 3 columns as the form gets wider.
+  - Narrow windows (`data-narrow="1"`, under 58rem): `#pages-btn` folds `#main-nav` (`pagesMenu()`, class `pages-open` on `header.top`, closed on every `route()` and by Escape). `pinLayout()` moves `#nav-tab` into `#corner`, which becomes a bar along the bottom, and sets `--pin-h` for `main`'s bottom padding. On wide windows `#nav-tab` goes back after `#sidenav`.
+  - `topFit()` (called by `navLayout()`): on wide windows sets `data-pagesfold="1"` when `#main-nav` would take more than 2.5 link heights or the top bar more than 20% of the window, then `data-toptall="1"` (top bar not sticky, `--top-h` 0) if it is still that tall.
+  - `data-touch="1"` (prefs.js, from `(hover: none) and (pointer: coarse)`) hides the keyboard shortcut note under Read this page aloud.
+  - 1.26.1, `topFit()` on wide windows: `.top-in` has no max-width. `data-topmode="one"` (everything on one line) when the links fit on one row that way, else `"tier"` (links `order:3` on a full-width line of their own). `data-navrow="1"` when the links are on one row: no wrapping, `space-evenly`. The function runs again from `paintWho()`/`paintPlace()` (`topSoon()`) and once the fonts load, because those change the buttons' widths.
+  - `fitTables()` (MutationObserver on `#app`, resize and `prefs`): a `.tbl` in a `.tbl-wrap` (not `.wide`) that is wider than its wrap gets class `stacked`, and each body cell gets `data-label` from its column heading once. CSS then shows each row as a box (first cell as title, `label value` pairs in an auto-fill grid).
+  - `dev/test/shots_all.py OUTDIR [devices] [combos] [pages]` takes a screenshot of every page on each of Ethan's devices (CSS sizes in `DEVICES`) with chosen Display settings, and marks where each screenful ends. `SHOTS_URL` points it at another server (for before-and-after sets).
+- **1.27.0 uses, partners and propagation (species facts):**
+  - Tables `species_facts(key, name, kind, data JSON, origin 'researched'|'claude', written_by, written_at)` and `facts_link(code, key)`.
+  - `facts_keys(sci)` gives the keys, most exact first ('genus species', then 'genus'; a leading x/× is dropped). `facts_row()` tries `facts_link`, then those keys. `facts_clean()` keeps the expected fields at set lengths, and for a fungus drops any use about eating it (`FACTS_FUNGUS_NO`).
+  - `facts_links()` marks the partners you have and lists your plants of the same species (`cross_same`) and genus or `cross_genera` (`cross_other`); `breeding.same_genus` false turns the genus off (figs, ZZ).
+  - `GET /api/facts?code=` (plant pages, saved for offline use) or `?name=`; `POST /api/facts {name, common_name, kind}` asks Claude (`FACTS_ASK`, owner's key) and never writes over researched rows.
+  - Batch keys `species_facts_add` (INSERT OR IGNORE) and `facts_link`. Batch A9 is built by `dev/seed_src/build_batchA9.py` from `facts_A9.py`.
+  - Front end: any `.facts-box` (`data-facts-code` or `data-facts-name`, `data-facts-kind`) is filled by `loadFacts()`/`factsHtml()`; `factswrite` is in the viewer CSS block. `facts_check.py` covers it, with a mock Claude answer in `mock_vision.py`.
+- **1.27.0 wishlist prices (app/shops.py, no Flask in it):**
+  - `DEFAULT_SHOPS` are seeded into `shops` (INSERT OR IGNORE). `kind` is `api` (eBay Browse API with an app token from client credentials; Etsy Open API v3 with `x-api-key`), `page` (lines of the listed pages that name a wishlist entry, with a `$` price on the line), or `auto`. `auto` is worked out by `detect()`: Shopify `/products.json`, then WooCommerce `/wp-json/wc/store/v1/products`, then page, and the result is kept in `shops.platform`.
+  - `terms_for()` gives a wishlist entry's searches (its `search_words`, else its common and scientific names). `matches()` needs every word of one search in the title.
+  - server.py: `shop_fetch()` waits `SHOP_GAP` seconds per host and sends `SHOP_UA`. `shops_worker()` (thread, `SHOPQ`) reads each enabled shop once per check, then `offers_save()` (`offers`, `offer_history`) and `wish_alerts_make()`, which makes one `wish_alerts` row per entry per check; `wish_alert_marks` stops repeats. `shops_loop()` runs it every `shops_hours` (setting, default 12; `PLANTDB_SHOPS=0` turns the loop off).
+  - Wishlist columns `max_price`, `alert_stock`, `search_words` (added by `init_db()`). Routes: `/api/shops` (changes owner-only, in `OWNER_ONLY_CHANGES`, which also covers `/api/shops/keys`), `/api/wishlist/check`, `/api/wishlist/offers`, `/api/wishlist/alerts`.
+  - Front end: `viewWishlist()`, `wlShopsHtml()`, `wlAlertsHtml()` (also on Today), `wlBadge()` (the count beside Library). Tests: `shops_check.py`, with stand-in shops in `mock_vision.py`. `PLANTDB_EBAY_API` and `PLANTDB_ETSY_API` point at them.
 - **Plants page filters:** the state lives in `G` and is remembered in localStorage `plantdb.filters`. It also drives Previous / Next on plant pages.
 - `style.css`: colour tokens on `:root`, overridden for dark mode and high contrast. Additions are appended in blocks headed with the version that added them.
 - **Charts:** hand-drawn SVG using a palette checked for colour-blind readers (see the CHANGELOG for 1.5.0).

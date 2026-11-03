@@ -84,7 +84,7 @@ Double-click **Update Plant Database.cmd**. It:
 5. unzips the release and copies it over the `plant-database` folder. **`data` and `backups` are never touched.**
 6. adds plant photos from any photo packs the release needs (see below).
 7. runs `docker compose up -d --build` and waits until the new version answers.
-8. offers to delete the previous version's Docker image to free disk space.
+8. lists the Docker images that older versions left behind (the app's and, from 1.18.0, the picture checker's, about 2 GB each) and offers to delete them to free disk space. With `-RemoveOldImage` it deletes them without asking.
 
 #### Photo packs (from 1.8.0)
 
@@ -155,7 +155,18 @@ docker ps --filter name=plant-database --format '{{.Image}}'
 curl http://localhost:8080/api/version
 ```
 
-If the version in the app is older than the newest zip in your folder, that update has not been applied yet. Each update leaves the previous image behind; to free the space, remove old ones with `docker image rm plant-database:1.6.1` (any shell), using the old version number.
+If the version in the app is older than the newest zip in your folder, that update has not been applied yet.
+
+Each update leaves the previous version's images behind until the updater deletes them (it asks at the end). To see them yourself, and to delete one by its name and version:
+
+Windows (cmd.exe):
+
+```
+docker image ls --filter "reference=plant-database*"
+docker image rm plant-database:1.18.1 plant-database-vision:1.18.1
+```
+
+Windows (PowerShell) and bash: the same commands. Never delete the images for the version that is running.
 
 ## Using the app away from home (from 1.12.0)
 
@@ -260,10 +271,30 @@ Press the **Display** button (bottom right of every page; it stays on screen) to
 - **Contrast**: Normal or High (black and white with heavier outlines).
 - **Colours**: match your device, light or dark.
 - **Plant pages**: photos and details side by side, or one column.
+- **Line length** (from 1.26.0): **Use the full width** (the usual choice: paragraphs and lists run across the whole page, so more fits on screen) or **Shorter lines** (about 70 letters per line, which some people find easier to follow).
 
 On a plant page in side-by-side view, the photos (left) and details (right) each scroll on their own: put the pointer over the half you want to move and scroll. A "Switch to one column" button at the top of the page does the same as the Display setting. With very large text or a narrow window the page switches to one column automatically. The row of section buttons (Now, Temperature, Humidity, Light, Water and soil, ...) jumps straight to a section; in side-by-side view it steps aside while the On this page menu is open, because the menu lists the same sections. All parts of the page can also be reached with the Tab key.
 
-On a phone the menu bar at the top scrolls away with the page (scroll back to the top to reach it), and every page fits the width of the screen at every text size. The Debug button sits just above the Display button. When there is no room for the Sections button beside them (larger text, or a narrow phone), it sits above Debug.
+On a computer (from 1.26.1) the menu bar at the top uses the whole width of the window: the name and version on the left, Online, Location and Editing on the right, and the page links in one row underneath, spread across the window. If the window is wide enough, everything sits on one line.
+
+On a phone the menu bar at the top scrolls away with the page (scroll back to the top to reach it), and every page fits the width of the screen at every text size. From 1.26.0:
+- The list of pages folds behind one **Pages** button, which names the page you're on (for example "Pages: Groups"). Press it to show every page; choosing one, or pressing Escape, folds the list again.
+- **Sections**, **Debug** and **Display** share one bar along the bottom of the screen. With the largest text there isn't room for all three in one row, so Sections takes the top row and Debug and Display share the second.
+- On a computer with large text (or a small window such as a tablet held sideways), the page links fold behind the same **Pages** button once they would take more than two rows, or the top bar more than a fifth of the window. If the top bar is still that tall, it scrolls away with the page, as on a phone.
+- Tables too wide for the screen become one box per row: the row's name (a day, a plant, a backup) at the top, then each value next to its column's name, two or more to a line when they fit. The long table on the Weather page still scrolls sideways.
+- The same happens on a tablet or a small window whenever the text is large enough that the page switches to one column.
+
+### Pop-up windows (from 1.25.0)
+
+- **Display settings** is divided into parts: Text and colours, Page layout, Reading aloud, Photos and touch, and Keyboard.
+  - On a computer, the parts are listed on the left. Press one to jump to it; the part you're looking at is highlighted.
+  - On a phone, or an upright tablet, the window covers the screen and the parts are a row of buttons above the settings.
+  - **Done** and **Reset to defaults** are at the top and stay there while you scroll. Reset to defaults keeps the window open.
+- **Every pop-up window:**
+  - uses more of the screen;
+  - keeps its buttons (Save, Cancel, Done…) in view at the bottom while you scroll;
+  - closes when you click or tap outside it, the same as Cancel or Done (a drag that only ends outside doesn't close it). Escape still closes it too.
+- Confirmations ("Remove this photo?") stay small. On a phone, windows rise from the bottom of the screen and use its full width.
 
 ### Read aloud and keyboard shortcuts (from 1.8.0)
 
@@ -292,6 +323,13 @@ Every page has a menu down the side listing its sections (for example on the Wea
 - The same choices, plus **Page width: Use the full width of the window** (more room for charts and tables on a wide screen), are in **Display**. They are remembered on that computer.
 - On phones, narrow windows and very large text the menu starts folded, the Sections button sits at the bottom left, and the menu closes after you choose a section.
 - On plant pages (from 1.14.1) it lists every part of the page: **Photos**, **Name and details** (the card at the top), and each section below. The row of section buttons has the same sections with shorter names. Both are made from the page itself, so new sections join them by themselves.
+
+## Photos on the Plants page, and the main photo (from 1.20.0)
+
+- **On the Plants page,** a plant with more than one photo has **‹** and **›** buttons on its photo, with "2 of 5" between them. They step through all its photos without opening the plant. On a phone or tablet you can also swipe left or right on the photo. With the keyboard, move to a photo button with Tab, then use the Left and Right arrow keys. Click anywhere else on the card to open the plant, as before.
+- **The main photo** is the one the Plants page shows first, and the one on care cards and in plant link previews. On a plant page, the photo panel says "★ This is the main photo" under it, and its thumbnail is marked **★ Main**. To change it, pick another photo and press **Make this the main photo**.
+
+- **Wide photos** (from 1.21.0): a photo taken sideways used to be cut down to a tall slice of its middle and stretched, so it looked blurry. Now the Plants page shows wide photos whole, with a plain band above and below, and every card photo is sharper. To change this, open **Display** and choose **Photos on the Plants page**: show wide photos whole (the usual choice), always fill the card, or always show the whole photo.
 
 ## Plants page filters
 
@@ -344,6 +382,10 @@ How the reminders work:
 3. Rain of 0.25 in or more on one day counts as a watering, but only for plants whose Location is Outdoors (not the covered porch).
 4. **Checked: still moist** moves the next check a third of the gap later.
 5. To set the gap yourself, fill in **Check for water every (days)** on the plant's Edit page.
+
+**Once a day** (from 1.21.0): after you press **Watered today** on a plant page, the button changes to **✓ Watered today** and is switched off until tomorrow, so a second press can't log it twice. Undo, or Remove in the care log, switches it back on. The app never logs two waterings for the same plant on the same day.
+
+**Water all** (from 1.21.0): on the Plants page, **Water all … shown** marks every plant the filters show as watered today, after asking. Plants already watered today are skipped, and the message has **Undo**. For example, choose Location: Covered porch, then **Water all**.
 
 ## Frost alert and cold-night checklist (from 1.8.0)
 
@@ -708,6 +750,8 @@ The first update to 1.18.0 takes longer than usual:
 
 `data\vision` is safe to delete; it downloads everything again on the next start. Backups leave it out.
 
+**From 1.22.0** it also knows about 49,000 fungi (mushrooms, lichens, moulds). The first start after that update downloads their fingerprints, about 100 MB, which takes a few minutes. Until then Identify and the Library still work for plants.
+
 ### Using the camera
 
 - Open **Identify** and press **Start camera**. It checks about once a second.
@@ -749,7 +793,105 @@ The keys are kept in the database on this computer, and so in its backups. The a
 
 ### The plant library
 
-**Library** searches the 349,000 species by scientific or common name, in any of the four lists. Each result shows its family, whether it grows wild in Texas (or how many US states), and whether you have it or a plant of the same genus. It also has links to USDA PLANTS, Kew and Wikipedia, and an **Add to my plants** button. The names come from the Tree of Life list that BioCLIP was trained with (Imageomics Institute, free to use) and the USDA PLANTS state lists (public domain).
+**Library** lists every species in the list chosen under **Look in**, straight away, with no search needed: about 34,000 in the usual list, up to 349,000 worldwide. From 1.21.0 it works like the Plants page:
+
+- **Search** narrows the list as you type, by scientific or common name.
+- **Filters:**
+  - **Kind of plant:** broadleaf flowering plants, monocots (grasses, lilies, palms, orchids), ferns, conifers, cycads, mosses, algae and so on.
+  - **Family:** type it, or pick from the list, which shows how many species each family has.
+  - **Grows wild in:** the US, Texas, or any state.
+  - **Show:** only the ones you have, or the ones you have plus others of the same genus.
+  - **Only plants with a common name.**
+- **Sort by:** best known first (common name, then how widespread in the US), common name, scientific name, or family.
+- **Show as** cards with photos, or a table. **Show more** adds the next 48.
+- The filters are remembered in this browser, and **Clear search and filters** starts over.
+
+**Each species has its own page.** Click a card to open it. It has:
+
+- Photos: yours first if you have the plant, then up to six from iNaturalist, each naming its photographer and licence.
+- A short description from Wikipedia, and how often iNaturalist members have recorded it.
+- Its common names.
+- Its classification. Each order, family and genus is a link to the library filtered to it.
+- The US states and territories where it grows wild.
+- Your plants of that species or genus.
+- **Looks like:** the species the BioCLIP model finds closest. They are the easiest to mix up with it, though not always close relatives.
+- Links to USDA PLANTS, Kew, iNaturalist and Wikipedia, and **Add to my plants**.
+
+**Where the photos come from.** Library photos and descriptions come from iNaturalist, whose members share their photos under Creative Commons licences. Only the species name is sent. The app fetches about one species a second, as iNaturalist asks, so a page of cards fills in over a minute the first time. Each photo is kept in `data\library`, so it is only fetched once. The owner can turn this off at the bottom of the Library page, and the library then works fully offline, without photos.
+
+The names come from the Tree of Life list that BioCLIP was trained with (Imageomics Institute, free to use), and the states from the USDA PLANTS state lists (public domain).
+
+#### Fungi in the library (from 1.22.0)
+
+Choose **Fungi worldwide: mushrooms, lichens and moulds** under **Look in** (on the Library or the Identify page). **Kind of fungus** then filters to mushrooms (with brackets, puffballs and jelly fungi), cup fungi, lichens, rusts and smuts, or moulds and mildews. The USDA state lists include lichens but no other fungi, so **Grows wild in** only works for lichens.
+
+A fungus page has a safety note at the top, your finds of that species, and **Record a find of this** instead of **Add to my plants**. Nothing in the app ever says a mushroom is safe to eat.
+
+#### Your notes and tags (from 1.22.0)
+
+Every species page has **Your notes and tags**. Press **Add notes and tags**, write anything, and add tags separated by commas (for example `shade, gift idea`). Tags are saved in lower case. Each tag is a link that lists every species with that tag, and the tags show on the library cards. Everyone you have given access to the app can read them; people who can only view can't change them.
+
+#### Your wishlist (from 1.22.0)
+
+On any species page, press **Add to my wishlist**. The Library page has a **Your wishlist** button, which opens the list:
+
+- **Got it** moves a plant to "Got them" (and **Move back to wanted** undoes that).
+- **Edit** adds where to find it (a nursery, a website) and notes.
+- **Take it off the list** asks first.
+
+In the library, **Show** can be set to **On my wishlist**, **Ones with notes or tags**, or any one of your tags.
+
+#### Prices, stock and alerts (from 1.27.0)
+
+The plant record checks shops for everything on your wishlist that you still want: every 12 hours, or when you press **Check the shops now** on the Wishlist page.
+- **On each wanted plant:** the cheapest listing now (with a link to it), how many shops have it, and **Every listing found, with past prices**.
+- **Edit, and set alerts** sets:
+  - **Search the shops for**: one search per line, such as a variety ("Monstera Thai Constellation"). If it's left empty, the common and scientific names are used.
+  - **Alert me when the price is at or under** $X, shipping not included.
+  - **Alert me when a shop has it in stock**.
+- **Alerts** appear at the top of the Wishlist page and on Today, and the top bar shows how many beside **Library**. Each check makes at most one alert per plant. A price alert comes again only if the price drops further, and a stock alert comes again only if it sold out and came back. **Dismiss** clears an alert.
+- **Shops checked** (at the bottom of the Wishlist page) lists every shop, how it is read, and its last check, or what went wrong. The owner can turn shops on and off, change an address, add a shop, and choose how often:
+  - **Online stores** (Steve's Leaves, Logee's, North Spore and others) are read for names, prices and stock. The kind of store is worked out on the first check.
+  - **Local nurseries with no online store** (Round Rock Garden Center, Snooper's, Cantu Imports, Barry Hill) have their plant pages read for the names on your wishlist, with the price if it's on the same line. Call them to be sure.
+  - **eBay and Etsy** are searched through their official services, which need free keys from developer.ebay.com and etsy.com/developers. The owner pastes them under **eBay and Etsy keys**. They're kept on your computer and never shown again.
+- Walmart, Home Depot, Lowe's, Amazon and Facebook Marketplace are left out on purpose.
+- Each shop gets at most one request every 2 seconds, a few times a day, and the requests say they come from a home plant record.
+
+#### Texas, home, pets and care sheets (from 1.23.0)
+
+Each plant's page in the library now has three more sections:
+
+- **Here at home:**
+  - whether it is native or introduced in Texas;
+  - how often people have recorded it growing wild within 31 miles of home, and whether it is flowering there this month;
+  - a warning if it is on the Texas noxious and invasive plant list (Texas law says those may not be sold, distributed or brought into Texas).
+- **Will it survive outside here all year?** "Likely" if it grows wild near home, or if its care sheet's hardiness zones include yours (worked out from your own weather history; 9a for Round Rock). Otherwise it says it doesn't know.
+- **Pets:** what the ASPCA's lists say for dogs, cats and horses. A plant not on their lists is not called safe.
+- **Care sheet:** press **Write a care sheet with Claude**. Claude writes one for your place and zone in about half a minute, using the owner's Anthropic key (the one on the Identify page; a cent or two each). It covers light, water, soil, temperature, feeding, pruning, propagation, pests, pots, hardiness and growing it outdoors here. It is kept, everyone with access can read it, and it is marked "not checked by a person". People who can only view can read care sheets but not ask for them.
+
+The cards show the same things as tags (for example "Native to Texas", "Flowering near home now", "⚠ Toxic to dogs and cats", "⚠ Texas invasive list"). The new filter **Texas and home** lists only:
+- the ones native to or introduced in Texas;
+- the ones on the invasive list;
+- the ones that grow wild near home, or are flowering there this month (or, for fungi, found there this month);
+- the ones likely to survive outside here;
+- the ones safe for, or toxic to, dogs and cats.
+
+**Around home** (a button at the top of the Library page, and on the Mushrooms page) shows three lists, with photos:
+- what is flowering near home this month;
+- the mushrooms and other fungi found there this month;
+- the plants and fungi recorded wild there most often.
+
+**Where this comes from.** These lists are fetched in the background, about one request a second, and kept in `data\library\local`. **Lists about your area**, at the bottom of the Library page, shows each one, when it was fetched, and **Fetch the lists again now**. The lists are fetched again by themselves when they get old (Texas lists and pets every 3 months, near home every month, this month's flowers and fungi every 2 weeks).
+
+- **iNaturalist:** what is native or introduced in Texas, and what people have recorded wild near home (only species names and the home place's position are sent).
+- **The ASPCA's** toxic and non-toxic plant lists, read from their web pages.
+- **The Texas Department of Agriculture's** noxious and invasive list, which is built in.
+
+When the owner turns library lookups off, none of this is fetched.
+
+#### Photos for offline use (from 1.22.0)
+
+At the bottom of the Library page the owner has **Download photos for the Texas list**. It fetches the photo and short facts for every Texas plant (about 4,750) in the background, so the library shows them without the internet. It goes at about one species a second, after anything someone is looking at, so it takes about an hour and a half. It uses about 300 MB in `data\library`. Species already kept are skipped. You can leave the page while it runs, and **Stop the download** stops it. If the app restarts part way through, press the button again to carry on where it stopped.
 
 ### Stopping the picture checker
 
@@ -781,6 +923,66 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
 
+## Offline use on phones and tablets (from 1.24.0)
+
+The plant record works on a phone or tablet without a connection: out in the woods, in a basement, anywhere. Changes you make there are kept on the device and sent to the plant record as soon as it can be reached again.
+
+**Setting up a device (once, while it's online):**
+
+1. Open the plant record on the phone (through Tailscale, at your https://plants… address).
+2. **iPhone or iPad:** in Safari, press Share, then **Add to Home Screen**, and from then on open it from the Home Screen. Safari clears what a site saved after a few weeks unless it's on the Home Screen. **Android:** in Chrome's menu choose **Install app** (or **Add to Home screen**).
+3. Press the **Online** button at the top of the page. It opens **Offline use**.
+4. Tick **Keep a copy on this device**. It saves every plant page, mushroom find, care log and photo (full size). The first time takes a few minutes. After that it saves again by itself whenever the copy is a few hours old and the device is online.
+5. Give the device a name (for example "Ethan's phone"). The name shows on changes that came from it.
+6. If you want the library offline too, tick **Also keep the library's Texas plant list with its photos** (about 300 MB). The owner has to press **Download photos for the Texas list** on the Library page first.
+
+**Without a connection:**
+
+- The button at the top says **Offline**, and each page says it is showing what the device saved, and when.
+- **You can:**
+  - read every plant, mushroom find and photo;
+  - log watering and care (with the day you did it);
+  - edit plants, move them and archive them;
+  - add photos;
+  - add mushroom finds with photos (a new find gets a temporary code until it is sent; its location still comes from the photo);
+  - use your notes, tags and wishlist;
+  - search the saved Texas list in the library.
+- **Identify** keeps the picture and checks it when you're back online. The answer appears on the Offline use page.
+- Things that need the computer (backups, settings, adding a new plant page, the weather update) say they need a connection.
+- The top button counts the changes waiting ("Offline · 3 to send"). The Offline use page lists them, and you can take any of them back before they're sent.
+
+**When the device can reach the plant record again**, the waiting changes are sent by themselves, in the order you made them. Each change is made only once, even if the connection drops halfway and it is sent again. Then:
+
+- If someone changed **other** things on the same plant meanwhile, both are kept.
+- If someone changed the **same** thing (say the pot) to something different, nothing is overwritten. Both versions wait on **Needs your decision** (the top button says "1 to decide"). There you see both side by side, who made each change, when and on which device, and press **Keep this** on the one you want. Owners and editors can decide.
+- A change the plant record refused (for example, the plant was deleted meanwhile) stays on the Offline use page under **Could not be sent**, with the reason. You can **Try again** or **Remove it**.
+
+Changes from a device are in the Audit log like any other, under the person's name. Clashes are listed under "Clashes between devices".
+
+**Delete the saved copy on this device** (Offline use page) removes the copy from that device. Changes still waiting to be sent are kept.
+
+## Mushroom finds (from 1.22.0)
+
+**Mushrooms** in the top menu is a page of its own for the mushrooms you spot: in the yard, in a plant pot, or anywhere else. Each find gets a code, F-001, F-002 and so on.
+
+**Adding a find.** Press **Add a find**.
+
+- **Photos:** take photos of the cap from above, the underside (gills or pores), the whole stem and the very base. On a phone the button can open the camera. If a photo carries its location (most phone photos do, if location is on for the camera), the find gets that location.
+- **Where and when:** the date, and whether it was in the yard, in a plant pot (then pick which plant) or somewhere else, plus a description. **Use my location now** asks the phone or browser for where you are. Locations are seen by everyone you have given access to the app.
+- **What it grew on:** soil, mulch, dead wood, a living tree, potting mix and so on; trees nearby; how many.
+- **What it looks like:** cap width and colour, gills or pores, a ring on the stem, a cup or sac at the base, spore print colour, colour change when cut, smell.
+- **Name:** a common name or your own description, the scientific name, and how sure the name is: not identified yet, a guess, fairly sure, or confirmed by an expert.
+
+Only the photos and the place really matter at first; you can fill in the rest any time with **Edit this find**.
+
+**A find's page** shows its photos (**Previous photo** and **Next photo**, **Make this the main photo**, **Edit caption**, **Remove photo**), where and when (with a link to the map), and what you noted. **Identify the photo shown** compares the photo on screen with the 49,000 fungi, on this computer. **Use this name (as a guess)** saves a suggestion as the scientific name, marked "A guess". **Archive this find** takes it off the list without deleting it.
+
+**The list of finds** can be searched and filtered by how sure the name is, where, and year. **Show** includes archived finds.
+
+**Safety.** Every mushroom page has a short safety note, and **Read more** opens the full one. Never eat a wild mushroom because of an app, a photo, or this record. If a pet may have eaten one, call your vet or ASPCA Animal Poison Control at (888) 426-4435. If a person may have, call Poison Control at 1-800-222-1222 (or 911 if they are very ill).
+
+Changes to finds are in the Audit log under "Mushroom finds", and the finds and their photos are in your backups like everything else.
+
 ## Undo right after a care button (from 1.19.0)
 
 After you press **Watered** or **Still moist** (on the Today page or a plant page), **Watered all**, or save **Log other care**, the message at the bottom says what was saved and has **Undo** and **Close** buttons. It stays for 30 seconds, and says how long is left. The countdown pauses while the pointer or the keyboard focus is on the message. With a keyboard, press **U** while it shows (Display settings can turn keyboard shortcuts off).
@@ -789,12 +991,14 @@ Undo removes only the entries that press made, so the rest of the care log is un
 
 ## Large-print care cards (from 1.19.0)
 
-A printable card with a plant's needs in big type, to keep beside the plants indoors and read without opening the app.
+A printable card with a plant's needs in big type, to tape to a pot or shelf or keep beside the plants indoors, and read without opening the app.
 
-- On a plant page, press **Large-print care card**. On a group's page, **Large-print care cards** makes one card for each plant in the group.
-- Each card has the plant's name, Latin name, code, where it is and its winter plan, its main photo, and a code to scan that opens its page. Under that are boxes headed **Water** (how often to check, the same figure as the Today list), **Light**, **Temperature**, **Humidity**, **Feeding** and, if you tick it, **Careful** (dangers to pets and people). The main fact in each box is in bold, with a short note under it.
-- Above the cards, choose short or full notes, and whether to show the photo, the scan code and the dangers. The choices are remembered in this browser. **Print** opens the browser's print window, where you can pick a printer or "Save as PDF".
-- The printout is always black on white and large print: notes about 16 point, main facts about 20 point, the name about 30 point. Each plant starts on a new page, and most fit on one.
+- On a plant page, press **Large-print care card**. On a group's page, **Large-print care cards** makes one card for each plant in the group. On the **Labels** page, **Print care cards for all plants** makes one for every active plant (from 1.20.0).
+- **Size** (from 1.20.0):
+  - **4 × 6 inch card** (the usual choice): the plant's name, code and spot, its main photo and a code to scan that opens its page. Under that is one line each for **Water** (how often to check, the same figure as the Today list), **Light**, **Temp**, **Humidity**, **Feeding** and **Careful** (pets and people). It prints on 6 × 4 inch paper, turned sideways: choose 4 × 6 inch paper (or index cards) in the print window. Most plants fit on one card; a few with long wording run onto a second.
+  - **Full page (Letter):** the same, plus the plant's winter plan and notes in boxes, with **Short** or **Full** notes.
+- Under **Also show**, choose whether to show the photo, the scan code and the dangers to pets and people (on to start with). The choices are remembered in this browser. **Print** opens the browser's print window, where you can pick a printer or "Save as PDF".
+- The printout is always black on white and large print. Nothing on it is smaller than about 16 point (from 1.20.0, the "Printed on" line and "Scan for the full page" are as big as the notes). The name is about 21 point on a card and 30 point on a page.
 - People who can only view the app can print cards too.
 
 ## Grow lights (from 1.13.0)
@@ -811,7 +1015,7 @@ How much light a plant gets is its **daily light (DLI)**, in mol/m² a day: the 
 - **Your lights.** Press **Change this light** to note where it is (for a bulb, the lamp or socket it screws into), correct how many you have, or fix its figures. **Add a light** adds one you buy later. Type its figures as distance and PAR, for example "12 in 719, 24 in 234".
 - **Plant pages** show the plant's spot, or what the suggested layout gives it, under Sunlight.
 - **Rooms and shelves (from 1.13.1).** The rooms, shelves and tables where plants go inside. Yours are listed already: the Downstairs Living Room (Tall Black Shelf, Tall Brown Shelf, Short Brown Shelf, Large Brown Hutch, Side Table), My Bedroom (Shelves), the Garage and the Upstairs Living Room. Press **Add a room or shelf** to add more, for example each new bedroom shelf, and choose one under **Where** when you set up a light spot.
-- **Manufacturer model (from 1.13.1).** Each light has a field for the model number on its box or label. Fill it in with **Change this light**.
+- **Manufacturer model (from 1.13.1).** Each light has a field for the model number on its box or label. Fill it in with **Change this light**. From 1.27.2, the Barrina standing light, the SANSI 80 W, 30 W and 10 W bulbs and the SANSI pot clip lights have theirs filled in from your label photos.
 
 Changes to lights, spots, rooms and shelves appear in the audit log under "Grow lights". People who can only view see everything but cannot change it.
 
@@ -829,6 +1033,18 @@ Every plant page has an **About this plant** section after Identification (also 
 - **Sources and further reading:** links to the pages the details came from. They open in a new tab.
 
 If the identification is less than 85% sure, a note says the details are for the closest match. Change anything with **Edit**, under "About this plant". In the **Sources** field, put one source per line as `Title | https://link`, and it shows as a link.
+
+## Uses, partners and propagation (from 1.27.0)
+
+Every plant page has a section **Uses, partners and propagation** (the **Uses** button in the row of section buttons). Species pages in the Library have it too, and mushroom finds have **What it does, and growing it**.
+- **Uses**: what people use it for (food, skin and first aid, dye, crafts, ground cover, cut flowers...), each with its safety warnings. Traditional uses are labelled as such and are not medical advice.
+- **In the compost**: good, fine in small amounts, poor, or keep it out, and why.
+- **Keeps away** and **Brings in**: pests or animals it deters, and the pollinators, birds and helpful insects it feeds.
+- **Good partners** and **Keep apart from**: each with how sure it is ("shown in trials", "gardeners' lore, not proven", "same light, water and soil", or "needs different light, water or soil"). When you have a partner plant, it says **You have it** and links to it.
+- **Propagation**: the ways to make more of it, and the best time of year here.
+- **Breeding**: how it crosses, then links to **your plants of the same species** and **your plants it may cross with**. Patented varieties are flagged: propagating a patented plant isn't allowed while the patent lasts, even for yourself.
+
+For your plants, Claude wrote these from general horticultural knowledge (upgrade batch A9, about 50 species, plus their genus for named hybrids). Nothing was checked by a person. For any other species, press **Write them with Claude** on its page. Like care sheets, it uses the owner's Anthropic key (saved on the Identify page) and keeps the result. For mushrooms, uses never include eating them.
 
 ## Audit log (from 1.10.0)
 

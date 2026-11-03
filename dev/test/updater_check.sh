@@ -24,6 +24,8 @@ cat > "$T/bin/docker" <<SH
 #!/bin/bash
 echo "docker \$*" >> "$T/docker.txt"
 case "\$*" in
+  "image ls --format {{.Repository}}:{{.Tag}}") printf '%s\n' plant-database:1.18.1 plant-database-vision:1.18.1 plant-database:1.17.0 plant-database:99.0.0 plant-database-vision:99.0.0 tailscale/tailscale:stable python:3.12-slim;;
+  "image rm "*) [ "\$3" = Stop ] && { echo 'Error response from daemon: invalid reference format: repository name (library/Stop) must be lowercase' >&2; exit 1; };;
   "compose build --pull"|"compose build") [ -f "$T/vision-fails" ] && { echo 'failed to solve: process "pip install torch" did not complete successfully' >&2; exit 1; };;
   *"compose logs"*) [ -f "$T/logs" ] && cat "$T/logs";;
   "compose up -d")
@@ -69,6 +71,11 @@ touch "$T/vision-fails"; : > "$T/docker.txt"; fresh; cp "$T/repo/dist"/plant-dat
 want "1.18.0: if the picture checker cannot be built, the rest of the app still updates and starts" '[[ "$out" == *"Starting the rest of Plant record without it"* && "$out" == *"Done. Plant record version 99.0.0"* ]] && grep -q "docker compose build plants" "$T/docker.txt" && grep -q "docker compose up -d plants tailscale" "$T/docker.txt"'
 rm -f "$T/vision-fails"; : > "$T/docker.txt"; fresh; cp "$T/repo/dist"/plant-database-photos-*.zip "$T/Plants/"; out=$(run)
 want "1.18.0: normally everything starts, the picture checker too" '[[ "$out" == *"Done."* && "$out" != *"without it"* ]] && grep -qx "docker compose up -d" "$T/docker.txt"'
+: > "$T/docker.txt"; fresh; cp "$T/repo/dist"/plant-database-photos-*.zip "$T/Plants/"; out=$(run -RemoveOldImage)
+rms=$(grep "^docker image rm" "$T/docker.txt" | sort | tr '\n' ' ')
+want "1.19.1: deletes every older app and picture-checker image, and nothing else" '[[ "$out" == *"Removed 3 old image(s)"* && "$out" != *"invalid reference"* && "$rms" == "docker image rm plant-database-vision:1.18.1 docker image rm plant-database:1.17.0 docker image rm plant-database:1.18.1 " ]]'
+: > "$T/docker.txt"; fresh; cp "$T/repo/dist"/plant-database-photos-*.zip "$T/Plants/"; out=$(run)
+want "1.19.1: with -Yes alone, old images are kept" '! grep -q "image rm" "$T/docker.txt"'
 rm -rf "$T/Plants"/*; (cd "$T/Plants" && unzip -q "$T/full.zip"); cp "$T/repo/dist"/plant-database-v*.zip "$T/repo/tools/update-plant-database.ps1" "$T/Plants/"
 touch "$T/stuck"; echo "PLANTDB_NOT_WRITABLE: the app cannot write to /data" > "$T/logs"
 out=$(run -WaitSeconds 6); rm -f "$T/stuck" "$T/logs"

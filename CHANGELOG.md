@@ -1,5 +1,136 @@
 # Changelog
 
+## 1.27.2 (2026-11-02)
+- **Grow light details from your labels.** Six of your lights now have their model numbers and power ratings on the Grow lights page:
+  - **Barrina standing light:** model T10F20, 100 to 277 V.
+  - **SANSI 80 W folding bulb** (the 4-arm light): model C21FS-BE26, 120 V, 1.1 A.
+  - **SANSI 30 W bulbs:** model C23ZW005-V0030A29, 120 V, 0.65 A.
+  - **SANSI 10 W bulbs:** model C21GL-GE26-10W, 120 V, 0.2 A.
+  - **SANSI pot clip lights:** model C23ZW013-T0005A27, a 120 V adapter (0.05 A) and a 5 V USB lamp. The clip fits a pot rim up to 0.4 in thick (the page said 0.8 in).
+  - **GooingTop 2-bar clip lights:** 40 LEDs on each bar. The light estimate is adjusted to match.
+- **Notes from the labels** on each of the SANSI lights: none of them work on a dimmer, they are fine in damp places such as a covered porch but not in rain, and they need an open fixture or shade, not a closed globe.
+- Anything you changed on these lights yourself is left as you set it.
+- No new photo pack this time.
+- Includes everything in 1.27.1 below.
+
+## 1.27.1 (2026-11-01)
+- **Five new plant pages** from your photos of November 1:
+  - **P-085** and **P-086**: the two philodendrons with "Philodendron Royal Queen" stakes. A true 'Royal Queen' has near-black leaves, and these are orange from the sun, so each page says the name may be 'Prince of Orange' instead. A new leaf grown in bright shade will tell.
+  - **P-087**: **Alocasia 'Frydek'**, your third Alocasia (the "fuzzy pale-green-leaved plant").
+  - **P-088**: the **young Monstera** in the maroon pot with the 'Monstera' tag.
+  - **P-089**: the **Mini Monstera** (Rhaphidophora tetrasperma) beside it, the "climbing aroid". It has its own uses, partners and propagation.
+- **New photos and health notes** for the purple fountain grass (P-054), the iris (P-064), the curly Boston fern (P-083) and the young Monstera in the beige pot (P-084).
+- **Still to photograph:** three items ticked off (the fuzzy plant, the 'Monstera' pot and the climbing aroid).
+- **Photos:** this release comes with a new photo pack, `plant-database-photos-B1.zip`. Keep it next to the release zip.
+- Includes everything in 1.27.0 below.
+
+## 1.27.0 (2026-11-01)
+- **New section on every plant page: Uses, partners and propagation.** It's also on Library species pages, and on mushroom finds as "What it does, and growing it".
+  - **Uses** with their safety warnings (aloe gel for minor burns, prickly pear pads, fig fruit, dye from cosmos and gardenia...), and whether it's good for **compost**, and why.
+  - **Keeps away** (deer, animals, aphids...) and **Brings in** (bees, hummingbirds, butterflies, helpful insects).
+  - **Good partners** and **Keep apart from**, each saying how well it's known: shown in trials, gardeners' lore, or simply the same (or different) light and water. Partners you already have are linked.
+  - **Propagation**: methods and the best time of year in Round Rock.
+  - **Breeding**: how it crosses, with links to your plants of the same species and the ones it may cross with (your three aloes, the haworthias and the hardy aloe, for example). Patented varieties such as the Queen of Elegance rose are flagged.
+- These are filled in for your plants (about 50 species). For any other species, **Write them with Claude** on its page uses the owner's key and keeps the result. For mushrooms they never include eating them.
+- **Wishlist prices and stock.** The shops you chose are checked every 12 hours (or when you press **Check the shops now**) for everything you still want.
+  - **Shops:** eBay, Etsy, Steve's Leaves, Gabriella Plants, Logee's, Costa Farms, Wildseed Farms, Native American Seed, Baker Creek, Burpee and North Spore, plus Round Rock Garden Center, Snooper's, Cantu Imports, Mind's Eye Plants and Barry Hill. The owner can add more.
+  - **On the Wishlist page:** the cheapest listing now, how many shops have it, and every listing with its past prices.
+  - **Alerts:** set a price to watch for, or ask to hear when it's in stock. Alerts show on the Wishlist page and on Today, with a count beside Library in the top bar.
+  - **eBay and Etsy** need free keys, which the owner saves at the bottom of the Wishlist page.
+- Includes everything in 1.26.1 below.
+
+## 1.26.1 (2026-11-01)
+- **The top bar on a computer uses the whole width of the window.** It used to stop well short of both edges.
+  - "Plant record" and its version are on the left, and **Online**, **Location** and **Editing as** (or **Signed in as**) are side by side on the right.
+  - The page links have a line of their own underneath, all in one row, spread evenly across the window. On your 1920 × 1080 and 2560 × 1440 (150%) monitors they no longer wrap onto a second row.
+  - On a window wide enough for everything, it is all on one line.
+- Includes everything in 1.26.0 below.
+
+## 1.26.0 (2026-10-31)
+- **Pages use more of the screen.**
+  - Paragraphs and lists run the full width of the page instead of stopping about two thirds of the way across. On the Groups page, for example, the groups now sit three or more across on your monitor.
+  - **Today** shows its jobs in two columns on a wide screen.
+  - Species pages, mushroom finds, Identify and the edit forms put their sections side by side when there is room.
+- **New Display setting: Line length** (under Page layout). **Use the full width** is the usual choice. **Shorter lines** brings back the old limit of about 70 letters, which some people find easier to read.
+- **Large text on a computer:** when the list of pages would take more than two rows (or the top bar more than a fifth of the window), it folds behind the same **Pages** button, so the bar at the top is one row. If the bar is still tall, it scrolls away with the page instead of staying pinned.
+- **Phones and tablets with large text:**
+  - The list of pages folds behind one **Pages** button at the top, which names the page you're on. Press it to see all the pages.
+  - **Sections**, **Debug** and **Display** share one bar along the bottom of the screen instead of piling up over the page.
+  - Smaller margins at the sides, so more words fit on each line.
+  - Tables too wide for the screen (the cold-night checklist, the 7-day forecast, Fertilizer, Grow lights, Backups) turn into one box per row, with each value next to its column's name, instead of scrolling sideways. The long weather log still scrolls.
+  - The "Shortcut: R" note under **Read this page aloud** is left out on phones and tablets, which have no keyboard.
+- **Fixed:** photos on the Plants page and in the Library were about three times taller than they should be.
+- Includes everything in 1.25.0 below.
+
+## 1.25.0 (2026-10-31)
+- **Display settings, rearranged as you chose (option C):**
+  - The settings are in five parts (Text and colours, Page layout, Reading aloud, Photos and touch, Keyboard), listed on the left. Press one to jump to it.
+  - The window fills most of the screen, and the settings sit side by side, so you scroll much less.
+  - **Done** and **Reset to defaults** stay at the top, however far you scroll. Reset to defaults now leaves the window open.
+  - On a phone or an upright tablet it covers the screen, with the parts as a row of buttons.
+- **All pop-up windows:**
+  - are wider;
+  - keep their buttons in view at the bottom while you scroll;
+  - close when you click or tap outside them, the same as Cancel or Done. Confirmations stay small.
+- Includes everything in 1.24.0 below.
+
+## 1.24.0 (2026-10-31)
+- **Works without a connection on phones and tablets.**
+  - Press **Online** at the top of the page and tick **Keep a copy on this device**. The phone then keeps every plant, mushroom find, care log and photo (full size) and opens the plant record with no signal at all.
+  - Offline you can log care, edit and move plants, add photos and mushroom finds, and use your notes and wishlist. Pictures for Identify are checked once you're back online.
+- **Changes are sent by themselves when the phone is back online**, each one only once. If someone changed other things on the same plant meanwhile, both are kept. If you both changed the same thing, nothing is overwritten: **Needs your decision** shows both side by side, and you choose.
+- The **Online / Offline** button at the top says, in words, how many changes are waiting and how many need a decision.
+- **iPhone and iPad:** add the plant record to the Home Screen (Share, then Add to Home Screen) and open it from there, so iOS keeps the saved copy. See README, "Offline use on phones and tablets".
+- A mushroom find now takes its location from its photo on the computer, so this also works for finds added offline.
+- Includes everything in 1.23.0 below.
+
+## 1.23.0 (2026-10-31)
+- **Every species page in the library now has more sections:**
+  - **Here at home:** native or introduced in Texas, how often it's been recorded growing wild within 31 miles of home, whether it's flowering there now, and a warning if it's on the Texas invasive plant list.
+  - **Will it survive outside here all year?** It answers from whether it grows wild nearby, or from its care sheet's hardiness zones against your zone (9a).
+  - **Pets:** the ASPCA's answer for dogs, cats and horses.
+  - **Care sheet:** **Write a care sheet with Claude** writes one for Round Rock, using the owner's key. It is kept, and marked as not checked by a person.
+- **A new library filter, Texas and home:** native to Texas, introduced, invasive, grows wild near home, flowering near home this month, fungi found near home this month, likely to survive outside here, and safe for (or toxic to) dogs and cats. The cards show the same things as tags.
+- **Around home:** what's flowering and the fungi found near home this month, and what's recorded wild there most often.
+- These lists come from iNaturalist and the ASPCA. They are fetched in the background the first time you open the library after updating, and kept on your computer. **Lists about your area**, at the bottom of the Library page, shows them.
+- Includes everything in 1.22.0 below.
+
+## 1.22.0 (2026-10-31)
+- **Mushrooms, on a page of their own.** **Mushrooms** in the top menu keeps a record of each mushroom you find (F-001, F-002…), in the yard, a plant pot or anywhere else:
+  - photos from your phone's camera, with the location taken from the photo or from **Use my location now**;
+  - where and when, what it grew on, and what it looks like (gills or pores, ring, cup at the base, spore print and so on);
+  - its name, and how sure it is;
+  - **Identify the photo shown** compares a find's photo with about 49,000 fungi, on your computer.
+  - A safety note on every mushroom page. The app never says a mushroom is safe to eat.
+- **Fungi in Identify and the Library.** Choose **Fungi worldwide** under **Look in**. Fungus pages offer **Record a find of this**.
+- **A wishlist.** **Add to my wishlist** on any species page, and **Your wishlist** on the Library page, with **Got it**, where to find it and notes.
+- **Your own notes and tags on any species**, shared with everyone who has access. Tags show on the library cards, and **Show** can list your wishlist, your notes or one tag.
+- **Photos for offline use.** The owner can download the photo and facts for every Texas plant in the background (about an hour and a half, about 300 MB).
+- **The first start after this update** downloads about 100 MB of fungus fingerprints for the picture checker, which takes a few minutes. Its container is rebuilt too.
+- Includes everything in 1.21.0 below.
+
+## 1.21.0 (2026-10-31)
+- **"Watered today" works once a day.** After you press it on a plant page it says **✓ Watered today** and is switched off until tomorrow. Undo, or Remove in the care log, switches it back on. A plant can't get two waterings logged for the same day any more, from any button.
+- **Water all** on the Plants page marks every plant shown (with your filters) as watered today. Plants already watered today are skipped. It asks first, and the message has Undo.
+- **Wide photos are no longer blurry on the Plants page.** They used to be cut down to a tall slice and stretched. Now they're shown whole, with a plain band above and below, and every card photo is sharper. Display, "Photos on the Plants page", changes this: you can always fill the card, or always show the whole photo.
+- **The library is now a browsable reference.** It lists every species in the chosen list without a search. You can search as you type, filter by kind of plant, family, where it grows wild, yours, and common name, sort, and switch between cards and a table. Each species has its own page with photos, a description, names, classification, US states, your plants, lookalikes and links. Photos and descriptions come from iNaturalist and Wikipedia, fetched once and kept on your computer; the owner can turn that off at the bottom of the Library page. See README, "The plant library".
+- Includes everything in 1.20.0 below.
+
+## 1.20.0 (2026-10-31)
+- **Browse a plant's photos on the Plants page.** Each card with more than one photo has **‹** and **›** buttons and says "2 of 5". On a phone or tablet you can swipe left or right on the photo. This doesn't open the plant; clicking anywhere else on the card still does.
+- **Choosing the main photo is easier to find.** On a plant page, the main photo now says "★ This is the main photo" under it, and its thumbnail is marked **★ Main**. Pick any other photo and press **Make this the main photo**. The Plants page, the care cards and plant link previews then show it.
+- **Care cards, as you asked:**
+  - **4 × 6 inch cards** are now the usual size: one line each for water, light, temperature, humidity, feeding and dangers, in large print. They print sideways on 4 × 6 inch paper. 78 of the 82 plants fit on one card; the rest run onto a second. The full page is still there under **Size**.
+  - **Dangers to pets and people are shown to start with.** (Your earlier choices on that page start over once, so the new defaults apply.)
+  - **The smallest text is bigger.** The "Printed on" line and "Scan for the full page" are now the same size as the notes. Nothing on a printed card is smaller than about 16 point.
+  - **Print care cards for all plants** is on the Labels page.
+- Includes everything in 1.19.1 below.
+
+## 1.19.1 (2026-10-31)
+- **Fixed: the updater can delete old Docker images again.** At the end of an update it offers to delete the images older versions left behind. When you answered yes, it said "invalid reference format: repository name (library/Stop) must be lowercase" and deleted nothing, because a name mix-up in the updater asked Docker for an image called "Stop". Your app and data were never affected.
+- The updater now lists every older image, including the picture checker's (about 2 GB each), and deletes all of them when you say yes. The fix takes effect from the update after this one, because each update runs the updater that was already installed. While installing 1.19.1, just press Enter at that question.
+- Includes everything in 1.19.0 below.
+
 ## 1.19.0 (2026-10-28)
 - **Undo right after a care button.** After you press **Watered**, **Still moist**, **Watered all** or save **Log other care**, the message that appears says what was saved and has an **Undo** button (and **Close**).
   - It stays for 30 seconds and counts down, and the countdown pauses while the pointer or keyboard focus is on it.

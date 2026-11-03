@@ -11,6 +11,14 @@ os.environ['PLANTDB_WEATHER']='0'
 os.environ.setdefault('PLANTDB_VISION_URL', 'http://127.0.0.1:' + os.environ.get('MOCK_VISION_PORT', '8090'))
 os.environ.setdefault('PLANTDB_PLANTNET_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/plantnet')
 os.environ.setdefault('PLANTDB_CLAUDE_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/claude')
+os.environ.setdefault('PLANTDB_EBAY_API', os.environ['PLANTDB_VISION_URL'] + '/mock/ebay')      # 1.27.0: wishlist shops
+os.environ.setdefault('PLANTDB_ETSY_API', os.environ['PLANTDB_VISION_URL'] + '/mock/etsy')
+os.environ.setdefault('PLANTDB_SHOP_GAP', '0')
+os.environ.setdefault('PLANTDB_SHOPS', '0')            # no checks on a schedule in tests (the real shops are not reachable)
+os.environ.setdefault('PLANTDB_INAT_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/inat/v1')                 # 1.21.0: library photos
+os.environ.setdefault('PLANTDB_INAT_IMG_OK', os.environ['PLANTDB_VISION_URL'] + '/mock/inat/img/')
+os.environ.setdefault('PLANTDB_ASPCA_MIN', '3')
+os.environ.setdefault('PLANTDB_ASPCA_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/aspca')                       # 1.23.0: pet safety lists
 sys.path.insert(0,os.environ.get('APPDIR', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'app')))
 import server as S
 from datetime import datetime, timedelta, timezone
@@ -58,8 +66,11 @@ if os.environ.get('MOCK_VISION', 'fake') == 'fake':
     from werkzeug.serving import make_server
     _spec = importlib.util.spec_from_file_location('mock_vision', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mock_vision.py'))
     _mv = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(_mv)
-    try:
-        _vs = make_server('127.0.0.1', int(os.environ.get('MOCK_VISION_PORT', '8090')), _mv.app, threaded=True)
+    import socket
+    _port = int(os.environ.get('MOCK_VISION_PORT', '8090'))
+    with socket.socket() as _s: _busy = _s.connect_ex(('127.0.0.1', _port)) == 0
+    if _busy: print(f'mock vision not started: port {_port} is in use (a real vision service, probably)')
+    else:
+        _vs = make_server('127.0.0.1', _port, _mv.app, threaded=True)
         threading.Thread(target=_vs.serve_forever, daemon=True).start()
-    except OSError as e: print('mock vision not started:', e)
 S.app.run(host='127.0.0.1', port=int(os.environ.get('PORT', '8080')), threaded=True)

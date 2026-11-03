@@ -4,7 +4,7 @@ Everything lives in DATA_DIR (default /data): plants.db, photos/, cache/.
 Edits are versioned: every save bumps the plant's page version, writes a full snapshot
 to plant_versions and one row per changed field to audit_log (what / before / after / who / when).
 """
-import csv, hmac, io, json, math, os, re, secrets, shutil, sqlite3, threading, time, urllib.error, urllib.parse, urllib.request, uuid
+import csv, hmac, html as html_mod, io, json, math, os, re, secrets, shutil, sqlite3, threading, time, urllib.error, urllib.parse, urllib.request, uuid
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import urlparse
 
@@ -12,13 +12,14 @@ from flask import Flask, Response, abort, g, has_request_context, jsonify, reque
 from PIL import Image, ImageOps
 import segno
 import writable                 # 1.12.1: the start-up write check, shared with start.py
+import shops as SH              # 1.27.0: reading shops for the plants on the wishlist
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.environ.get('DATA_DIR', '/data')
 DB_PATH = os.path.join(DATA_DIR, 'plants.db')
 PHOTO_DIR = os.path.join(DATA_DIR, 'photos')
 TRASH_DIR = os.path.join(DATA_DIR, 'photos_deleted')
-THUMB_DIR = os.path.join(DATA_DIR, 'cache', 'thumbs')
+THUMB_DIR = os.path.join(DATA_DIR, 'cache', 'thumbs2')     # 1.21.0: sized by the short side (thumbs/ was 520 px on the long side)
 SEED_DIR = os.path.join(APP_DIR, 'seed')
 PASSWORD = os.environ.get('PLANTDB_PASSWORD', '')
 # Backups go to /backups when that folder is mounted (docker-compose maps ./backups there), otherwise data/backups.
@@ -226,6 +227,15 @@ def init_db():
     # WAL can misbehave on Windows bind mounts; the default rollback journal is safe everywhere for a single-process home app.
     c.execute('PRAGMA journal_mode=' + os.environ.get('PLANTDB_JOURNAL', 'DELETE'))
     c.executescript(SCHEMA)
+    c.executescript(FUNGI_SCHEMA)                 # 1.22.0: mushroom finds, library notes and the wishlist
+    c.executescript(SYNC_SCHEMA)                  # 1.24.0: changes sent later from devices, and clashes to decide
+    c.executescript(FACTS_SCHEMA)                 # 1.27.0: uses, partners, deterrents, propagation and breeding for each species
+    c.executescript(SHOPS_SCHEMA)                 # 1.27.0: shops, what they have from the wishlist, and price alerts
+    wl = {r[1] for r in c.execute('PRAGMA table_info(wishlist)')}
+    for col, typ in (('max_price', 'REAL'), ('alert_stock', 'INTEGER NOT NULL DEFAULT 0'), ('search_words', "TEXT NOT NULL DEFAULT ''")):
+        if col not in wl: c.execute(f'ALTER TABLE wishlist ADD COLUMN {col} {typ}')
+    for i, (k, name, kind, url, pages, local) in enumerate(SH.DEFAULT_SHOPS):
+        c.execute('INSERT OR IGNORE INTO shops(key,name,kind,url,pages,local,sort) VALUES(?,?,?,?,?,?,?)', (k, name, kind, url, json.dumps(pages), int(local), i))
     have = {r[1] for r in c.execute('PRAGMA table_info(plants)')}
     for n, k, _ in FIELDS:                      # upgrade an older database: add any column this version needs
         if n not in have: c.execute(f"ALTER TABLE plants ADD COLUMN {n} {SQLTYPE.get(k, 'TEXT')}")
@@ -402,6 +412,12 @@ def apply_batches(c):
                     c.execute('UPDATE lights SET %s data=?, updated_by=?, updated_at=? WHERE id=?' % ''.join('%s=?, ' % k for k in cols),
                               (*cols.values(), json.dumps(d), who, ts, L['id']))
                     audit_only(c, 'light', 'light', None, ', '.join(done), who, 'Grow light updated (%s): %s, %s' % (label, L['name'], u.get('note') or ', '.join(done)))
+            for f in b.get('species_facts_add', []):       # 1.27.0: added once; a later batch or Claude never overwrites them
+                d = facts_clean(f['data'], f.get('kind', 'plant'))
+                c.execute('INSERT OR IGNORE INTO species_facts(key,name,kind,data,origin,written_by,written_at) VALUES(?,?,?,?,?,?,?)',
+                          (f['key'].lower(), f['name'], f.get('kind', 'plant'), json.dumps(d), 'researched', who, ts))
+            for code, k in b.get('facts_link', {}).items():   # plants whose scientific name does not say which facts are theirs
+                c.execute('INSERT OR IGNORE INTO facts_link(code,key) VALUES(?,?)', (code, k.lower()))
             for pre in b.get('to_photograph_done', []):
                 c.execute('UPDATE to_photograph SET done=1 WHERE done=0 AND label LIKE ?', (pre.replace('%', '') + '%',))
             for t in b.get('to_photograph_add', []):
@@ -549,7 +565,7 @@ def owner_name(c):
     return r[0] if r else 'the owner'
 
 OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people')        # any request (the people list shows everyone's login)
-OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings')   # changes only
+OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/prefetch', '/api/shops')   # changes only
 VIEWER_POSTS = ('/api/identify',)            # 1.18.0: asks this computer what a picture shows; changes nothing, so viewers may use it
 
 def role_refusal(u):
@@ -649,17 +665,20 @@ def guard():
         if not request.headers.get('X-Editor'): abort(403, 'missing X-Editor header')
         o = request.headers.get('Origin')
         if o and urlparse(o).netloc != request.host: abort(403, 'cross-origin request refused')
+        replay = offline_replay()                   # 1.24.0: a change from a device that was already made
+        if replay is not None: return replay
 
 @app.after_request
 def headers(resp):
+    resp = offline_remember(resp)
     if via_tailscale():                              # always HTTPS (Tailscale Serve), so browsers can be told to stay on HTTPS
         resp.headers['Strict-Transport-Security'] = 'max-age=31536000'
-    resp.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), payment=(), usb=(), camera=(self)'
+    resp.headers['Permissions-Policy'] = 'geolocation=(self), microphone=(), payment=(), usb=(), camera=(self)'   # 1.22.0: location for mushroom finds
     resp.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
     resp.headers['X-Content-Type-Options'] = 'nosniff'
     resp.headers['X-Frame-Options'] = 'DENY'
     resp.headers['Referrer-Policy'] = 'no-referrer'
-    resp.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'"
+    resp.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'"
     return resp
 
 @app.errorhandler(400)
@@ -787,15 +806,18 @@ def care():
     if day > local_today(c).isoformat(): abort(400, 'That date is in the future')
     note = str(b.get('note') or '').strip()[:500]
     if kind == 'note' and not note: abort(400, 'Write the note')
-    who, ids = editor(), []
+    who, ids, skipped = editor(), [], []
     for code in codes:
         r = plant_row(c, code)
+        # 1.21.0: a plant is watered at most once a day, so "Water all" and a second press skip it instead of logging it twice
+        if kind == 'water' and c.execute("SELECT 1 FROM care_log WHERE plant_code=? AND kind='water' AND done_on=?", (r['code'], day)).fetchone():
+            skipped.append(r['code']); continue
         ids.append(c.execute('INSERT INTO care_log(plant_code,kind,done_on,note,created_by,created_at) VALUES(?,?,?,?,?,?)',
                              (r['code'], kind, day, note, who, now())).lastrowid)
         audit_only(c, 'care', 'care_log', None, f'{CARE_KINDS[kind]} {day}' + (f': {note}' if note else ''), who,
                    CARE_KINDS[kind] + (f': {note}' if note else '') + ('' if day == local_today(c).isoformat() else f' (for {day_words(day)})'), r['id'], r['code'])
     c.commit()
-    return jsonify(ids=ids, water=water_report(c, codes)['plants']), 201
+    return jsonify(ids=ids, skipped=skipped, water=water_report(c, codes)['plants']), 201
 
 @app.route('/api/care/<int:i>', methods=['DELETE'])
 def care_one(i):
@@ -890,7 +912,7 @@ VISION_URL = os.environ.get('PLANTDB_VISION_URL', 'http://vision:8090').rstrip('
 PLANTNET_URL = os.environ.get('PLANTDB_PLANTNET_URL', 'https://my-api.plantnet.org/v2/identify/all')
 CLAUDE_URL = os.environ.get('PLANTDB_CLAUDE_URL', 'https://api.anthropic.com/v1/messages')
 CLAUDE_MODEL = 'claude-sonnet-5-5'
-ID_SCOPES = ('common', 'texas', 'us', 'world')
+ID_SCOPES = ('common', 'texas', 'us', 'world', 'fungi')
 
 def vision_call(path, data=None, ctype=None, timeout=60):
     req = urllib.request.Request(VISION_URL + path, data=data, headers={'Content-Type': ctype} if ctype else {}, method='POST' if data is not None else 'GET')
@@ -948,6 +970,13 @@ def mark_owned(c, items, key='scientific_name'):
     for x in items:
         n = (x.get(key) or '').lower()
         x['yours'] = sp.get(n, []); x['yours_genus'] = [] if x['yours'] else gn.get(n.split(' ')[0], [])
+    if items:                                     # 1.22.0: your wishlist and your tags, shown on the cards
+        wish = {r[0].lower(): r[1] for r in c.execute('SELECT name, status FROM wishlist')}
+        tags = {r[0].lower(): [t.strip() for t in r[1].split(',') if t.strip()] for r in c.execute("SELECT name, tags FROM species_notes WHERE tags<>''")}
+        for x in items:
+            n = (x.get(key) or '').lower()
+            x['wish'] = wish.get(n); x['tags'] = tags.get(n, [])
+        know_mark(c, items, key)                  # 1.23.0: Texas status, near home, pets, hardy here
     return items
 
 @app.route('/api/identify', methods=['POST'])
@@ -985,6 +1014,1313 @@ def library():
     mark_owned(db(), out.get('results', []))
     out['results'].sort(key=lambda x: (not x['yours'], not x['yours_genus']))      # yours first (a stable sort keeps the rest in order)
     return jsonify(out)
+
+# ---------------------------------------------------------------- 1.22.0: mushroom finds (a page of their own) and library notes
+# A find is one mushroom (or a cluster of them) seen somewhere: the yard, one of your plant pots, or anywhere else. Its photos go in
+# data/photos like the plants', but in their own table. The location can come from the phone ("Use my location") or from the
+# GPS in a photo, read before the photo is saved without its EXIF data. Nothing here ever says a mushroom is safe to eat.
+FUNGI_FIELDS = [
+    ('name', 'text', 'Name'), ('scientific_name', 'text', 'Scientific name'), ('id_status', 'enum', 'How sure is the name?'),
+    ('found_on', 'date', 'Found on'), ('place_kind', 'enum', 'Where'), ('plant_code', 'text', 'Which plant pot'),
+    ('place', 'text', 'Where exactly'), ('lat', 'num', 'Latitude'), ('lon', 'num', 'Longitude'),
+    ('substrate', 'enum', 'Growing on'), ('near', 'text', 'Trees or plants nearby'), ('abundance', 'enum', 'How many'),
+    ('cap_size', 'text', 'Cap width'), ('cap_colour', 'text', 'Cap colour and surface'), ('underside', 'enum', 'Under the cap'),
+    ('ring', 'enum', 'Ring on the stem'), ('volva', 'enum', 'Cup or sac at the base'), ('spore_print', 'text', 'Spore print colour'),
+    ('bruising', 'text', 'Colour change when cut or bruised'), ('smell', 'text', 'Smell'), ('notes', 'long', 'Notes')]
+FUNGI_ENUMS = {
+    'id_status': ['Not identified yet', 'A guess', 'Fairly sure', 'Confirmed by an expert'],
+    'place_kind': ['In the yard', 'In a plant pot', 'Somewhere else'],
+    'substrate': ['Soil or grass', 'Mulch or wood chips', 'Dead wood or a stump', 'A living tree', 'Potting mix', 'Compost or dung', 'Leaf litter', 'Something else'],
+    'abundance': ['Just one', 'A few', 'A cluster', 'A ring or arc', 'Many, scattered'],
+    'underside': ['Gills', 'Pores (like a sponge)', 'Teeth or spines', 'Smooth or wrinkled', 'No cap (puffball, coral, crust, cup)', 'Not checked'],
+    'ring': ['Yes', 'No', 'Not checked'], 'volva': ['Yes', 'No', 'Not checked (dig around the base to see)']}
+FUNGI_NAMES = [f[0] for f in FUNGI_FIELDS]
+FUNGI_LABEL = {f[0]: f[2] for f in FUNGI_FIELDS}
+FUNGI_SCHEMA = """
+CREATE TABLE IF NOT EXISTS fungi_finds(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL UNIQUE, %s,
+  status TEXT NOT NULL DEFAULT 'active', version INTEGER NOT NULL DEFAULT 1,
+  created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_by TEXT, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS fungi_photos(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, find_id INTEGER NOT NULL, file TEXT NOT NULL, caption TEXT NOT NULL DEFAULT '',
+  is_primary INTEGER NOT NULL DEFAULT 0, gps_lat REAL, gps_lon REAL, taken_at TEXT, added_by TEXT NOT NULL, added_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS species_notes(
+  name TEXT PRIMARY KEY, notes TEXT NOT NULL DEFAULT '', tags TEXT NOT NULL DEFAULT '', updated_by TEXT, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS wishlist(
+  name TEXT PRIMARY KEY, common_name TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '', where_seen TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'want', added_by TEXT NOT NULL, added_at TEXT NOT NULL, updated_by TEXT, updated_at TEXT);
+""" % ',\n  '.join(f"{n} {'REAL' if k == 'num' else 'TEXT'}" for n, k, _ in FUNGI_FIELDS)
+
+def fungi_norm(c, n, v):
+    kind = dict((f[0], f[1]) for f in FUNGI_FIELDS)[n]
+    if v is None: v = ''
+    if kind == 'num':
+        if v == '': return None
+        try: x = round(float(v), 6)
+        except (TypeError, ValueError): abort(400, f'{FUNGI_LABEL[n]} must be a number')
+        if not (-90 <= x <= 90 if n == 'lat' else -180 <= x <= 180): abort(400, f'{FUNGI_LABEL[n]} is out of range')
+        return x
+    v = str(v).strip()[:4000 if kind == 'long' else 300]
+    if kind == 'enum' and v and v not in FUNGI_ENUMS[n]: abort(400, f'{FUNGI_LABEL[n]}: choose one of the listed answers')
+    if kind == 'date' and v:
+        try: date.fromisoformat(v)
+        except ValueError: abort(400, 'Found on must be a date like 2026-10-31')
+    if n == 'plant_code' and v and not c.execute('SELECT 1 FROM plants WHERE code=?', (v,)).fetchone(): abort(400, f'There is no plant {v}')
+    return v
+
+def find_row(c, code):
+    r = c.execute('SELECT * FROM fungi_finds WHERE code=?', (code,)).fetchone()
+    if not r: abort(404, 'There is no mushroom find ' + code)
+    return r
+
+def find_photos(c, fid):
+    return [dict(x) for x in c.execute('SELECT * FROM fungi_photos WHERE find_id=? ORDER BY is_primary DESC, id', (fid,))]
+
+def find_dict(c, r, full=True):
+    d = {k: r[k] for k in ['code'] + FUNGI_NAMES + ['status', 'version', 'created_by', 'created_at', 'updated_by', 'updated_at']}
+    ph = find_photos(c, r['id'])
+    d['photo'] = ph[0]['file'] if ph else None; d['photo_count'] = len(ph)
+    if full:
+        d['photos'] = ph
+        d['plant'] = plant_brief(c, r['plant_code']) if r['plant_code'] else None
+    return d
+
+def exif_info(raw):
+    """(lat, lon, taken_at) from a photo's EXIF data, or Nones. Read before the photo is saved, which drops EXIF."""
+    try:
+        im = Image.open(io.BytesIO(raw)); ex = im.getexif()
+        when = ex.get(306) or ex.get_ifd(0x8769).get(36867)
+        g = ex.get_ifd(0x8825)
+        def deg(v): return float(v[0]) + float(v[1]) / 60 + float(v[2]) / 3600
+        lat = lon = None
+        if g and 2 in g and 4 in g:
+            lat = deg(g[2]) * (-1 if g.get(1) == 'S' else 1); lon = deg(g[4]) * (-1 if g.get(3) == 'W' else 1)
+            if not (-90 <= lat <= 90 and -180 <= lon <= 180) or (lat == 0 and lon == 0): lat = lon = None
+        t = None
+        if when:
+            try: t = datetime.strptime(str(when).strip(), '%Y:%m:%d %H:%M:%S').strftime('%Y-%m-%dT%H:%M')
+            except ValueError: t = None
+        return (round(lat, 6) if lat is not None else None, round(lon, 6) if lon is not None else None, t)
+    except Exception:
+        return None, None, None
+
+class _Upload:                                    # save_image() wants something with .stream and .filename
+    def __init__(self, raw, name): self.stream, self.filename = io.BytesIO(raw), name
+
+@app.route('/api/fungi', methods=['GET', 'POST'])
+def fungi_list():
+    c = db()
+    if request.method == 'POST':
+        b = (request.get_json(silent=True) or {}).get('fields') or {}
+        vals = {n: fungi_norm(c, n, b.get(n)) for n in FUNGI_NAMES}
+        if not vals['found_on']: vals['found_on'] = local_today(c).isoformat()
+        if not vals['id_status']: vals['id_status'] = 'Not identified yet'
+        n = (c.execute("SELECT MAX(CAST(SUBSTR(code,3) AS INTEGER)) FROM fungi_finds").fetchone()[0] or 0) + 1
+        code, who, t = f'F-{n:03d}', editor(), now()
+        cols = ['code'] + FUNGI_NAMES + ['created_by', 'created_at', 'updated_by', 'updated_at']
+        c.execute(f"INSERT INTO fungi_finds({','.join(cols)}) VALUES({','.join('?' * len(cols))})", [code] + [vals[k] for k in FUNGI_NAMES] + [who, t, who, t])
+        audit_only(c, 'fungi', 'find', None, code, who, f"Mushroom find {code} added: {vals['name'] or 'not identified'}", None, code)
+        c.commit()
+        return jsonify(find_dict(c, find_row(c, code))), 201
+    status = request.args.get('status', 'active')
+    rows = c.execute('SELECT * FROM fungi_finds' + ('' if status == 'all' else ' WHERE status=?') + ' ORDER BY found_on DESC, id DESC',
+                     () if status == 'all' else (status,)).fetchall()
+    return jsonify(finds=[find_dict(c, r, False) for r in rows], enums=FUNGI_ENUMS, fields=[{'name': n, 'kind': k, 'label': l} for n, k, l in FUNGI_FIELDS])
+
+@app.route('/api/fungi/<code>', methods=['GET', 'PUT'])
+def fungi_one(code):
+    c = db()
+    r = find_row(c, code)
+    if request.method == 'PUT':
+        b = request.get_json(silent=True) or {}
+        f, who, ch, nclash = b.get('fields') or {}, editor(), [], 0
+        if int(b.get('base_version', r['version'])) != r['version']:
+            if not isinstance(b.get('base_values'), dict):
+                abort(409, f'Someone else changed {code} while you were editing. Reload the page to see their changes, then make yours again.')
+            f, nclash = merge_fields(c, 'fungi', code, r, f, b['base_values'], lambda n: FUNGI_LABEL.get(n, n), lambda n, v: fungi_norm(c, n, v), (r['updated_by'], r['updated_at']))
+        for n in FUNGI_NAMES:
+            if n not in f: continue
+            v = fungi_norm(c, n, f[n])
+            if (r[n] if r[n] is not None else '') != (v if v is not None else ''): ch.append((n, r[n], v))
+        if ch:
+            c.execute(f"UPDATE fungi_finds SET {', '.join(n + '=?' for n, _, _ in ch)}, version=version+1, updated_by=?, updated_at=? WHERE id=?",
+                      [v for _, _, v in ch] + [who, now(), r['id']])
+            for n, o, v in ch:
+                audit_only(c, 'fungi', n, None if o is None else str(o)[:500], None if v is None else str(v)[:500], who, f'{code}: {FUNGI_LABEL[n]} changed', None, code)
+        if ch or nclash: c.commit()
+        return jsonify(find_dict(c, find_row(c, code)) | {'changed': len(ch), 'conflicts': nclash})
+    return jsonify(find_dict(c, r) | {'enums': FUNGI_ENUMS, 'fields': [{'name': n, 'kind': k, 'label': l} for n, k, l in FUNGI_FIELDS]})
+
+@app.route('/api/fungi/<code>/status', methods=['POST'])
+def fungi_status(code):
+    c = db(); r = find_row(c, code)
+    to = 'archived' if (request.get_json(silent=True) or {}).get('archived') else 'active'
+    c.execute('UPDATE fungi_finds SET status=?, version=version+1, updated_by=?, updated_at=? WHERE id=?', (to, editor(), now(), r['id']))
+    audit_only(c, 'fungi', 'status', r['status'], to, editor(), f'{code} ' + ('archived' if to == 'archived' else 'brought back'), None, code)
+    c.commit()
+    return jsonify(find_dict(c, find_row(c, code)))
+
+@app.route('/api/fungi/<code>/photos', methods=['POST'])
+def fungi_add_photos(code):
+    c = db(); r = find_row(c, code)
+    files = request.files.getlist('files')
+    if not files: abort(400, 'Choose at least one photo')
+    who, cap = editor(), request.form.get('caption', '').strip()[:200]
+    has = c.execute('SELECT 1 FROM fungi_photos WHERE find_id=? AND is_primary=1', (r['id'],)).fetchone()
+    added = []
+    for i, f in enumerate(files):
+        raw = f.read()
+        lat, lon, taken = exif_info(raw)
+        name = save_image(_Upload(raw, f.filename))
+        pid = c.execute('INSERT INTO fungi_photos(find_id,file,caption,is_primary,gps_lat,gps_lon,taken_at,added_by,added_at) VALUES(?,?,?,?,?,?,?,?,?)',
+                        (r['id'], name, cap, 0 if has or i else 1, lat, lon, taken, who, now())).lastrowid
+        added.append({'id': pid, 'file': name, 'gps_lat': lat, 'gps_lon': lon, 'taken_at': taken})
+    c.execute('UPDATE fungi_finds SET version=version+1, updated_by=?, updated_at=? WHERE id=?', (who, now(), r['id']))
+    audit_only(c, 'fungi', 'photo', None, ', '.join(a['file'] for a in added), who, f'{code}: {len(added)} photo(s) added', None, code)
+    gps = next((a for a in added if a['gps_lat'] is not None), None)
+    located = False
+    if gps and r['lat'] is None and request.form.get('use_location', '1') != '0':     # 1.24.0: the find gets the photo's location (also offline)
+        c.execute('UPDATE fungi_finds SET lat=?, lon=?, version=version+1 WHERE id=?', (gps['gps_lat'], gps['gps_lon'], r['id']))
+        audit_only(c, 'fungi', 'lat', None, f"{gps['gps_lat']}, {gps['gps_lon']}", who, f'{code}: location taken from a photo', None, code)
+        located = True
+    c.commit()
+    return jsonify(find_dict(c, find_row(c, code)) | {'added': added, 'located': located}), 201
+
+@app.route('/api/fungi/photos/<int:pid>', methods=['PATCH', 'DELETE'])
+def fungi_photo(pid):
+    c = db()
+    ph = c.execute('SELECT * FROM fungi_photos WHERE id=?', (pid,)).fetchone()
+    if not ph: abort(404, 'photo not found')
+    r = c.execute('SELECT * FROM fungi_finds WHERE id=?', (ph['find_id'],)).fetchone()
+    who = editor()
+    if request.method == 'DELETE':
+        c.execute('DELETE FROM fungi_photos WHERE id=?', (pid,))
+        src = os.path.join(PHOTO_DIR, ph['file'])
+        if os.path.exists(src): shutil.move(src, os.path.join(TRASH_DIR, ph['file']))
+        if not c.execute('SELECT 1 FROM fungi_photos WHERE find_id=? AND is_primary=1', (r['id'],)).fetchone():
+            c.execute('UPDATE fungi_photos SET is_primary=1 WHERE id=(SELECT MIN(id) FROM fungi_photos WHERE find_id=?)', (r['id'],))
+        audit_only(c, 'fungi', 'photo', ph['file'], None, who, f"{r['code']}: photo removed (file kept in photos_deleted)", None, r['code'])
+    else:
+        b = request.get_json(silent=True) or {}
+        if 'caption' in b:
+            c.execute('UPDATE fungi_photos SET caption=? WHERE id=?', (str(b['caption']).strip()[:200], pid))
+        if b.get('is_primary'):
+            c.execute('UPDATE fungi_photos SET is_primary=0 WHERE find_id=?', (r['id'],)); c.execute('UPDATE fungi_photos SET is_primary=1 WHERE id=?', (pid,))
+            audit_only(c, 'fungi', 'photo', None, ph['file'], who, f"{r['code']}: main photo changed", None, r['code'])
+    c.execute('UPDATE fungi_finds SET version=version+1, updated_by=?, updated_at=? WHERE id=?', (who, now(), r['id']))
+    c.commit()
+    return jsonify(find_dict(c, find_row(c, r['code'])))
+
+# ---- library notes, tags and wishlist (shared with everyone who can open the app; viewers can read them)
+@app.route('/api/library/notes', methods=['GET', 'PUT'])
+def library_notes():
+    c = db()
+    if request.method == 'PUT':
+        b = request.get_json(silent=True) or {}
+        name = str(b.get('name') or '').strip()[:120]
+        if not name: abort(400, 'Which species?')
+        notes = str(b.get('notes') or '').strip()[:5000]
+        tags = ', '.join(dict.fromkeys(t.strip().lower()[:40] for t in str(b.get('tags') or '').split(',') if t.strip()))[:500]
+        old = c.execute('SELECT * FROM species_notes WHERE name=?', (name,)).fetchone()
+        c.execute('INSERT OR REPLACE INTO species_notes(name,notes,tags,updated_by,updated_at) VALUES(?,?,?,?,?)', (name, notes, tags, editor(), now()))
+        audit_only(c, 'library', 'notes', (old['notes'] + ' | ' + old['tags']) if old else None, notes + ' | ' + tags, editor(), f'Library notes for {name} saved')
+        c.commit()
+    name = request.args.get('name') or (request.get_json(silent=True) or {}).get('name') or ''
+    if name:
+        r = c.execute('SELECT * FROM species_notes WHERE name=?', (name.strip(),)).fetchone()
+        return jsonify(dict(r) if r else {'name': name, 'notes': '', 'tags': ''})
+    return jsonify(notes=[dict(r) for r in c.execute("SELECT * FROM species_notes WHERE notes<>'' OR tags<>'' ORDER BY name")],
+                   tags=sorted({t.strip() for (x,) in c.execute('SELECT tags FROM species_notes') for t in x.split(',') if t.strip()}))
+
+@app.route('/api/wishlist', methods=['GET', 'PUT', 'DELETE'])
+def wishlist_api():
+    c = db()
+    if request.method in ('PUT', 'DELETE'):
+        b = request.get_json(silent=True) or {}
+        name = str(b.get('name') or request.args.get('name') or '').strip()[:120]
+        if not name: abort(400, 'Which species?')
+        old = c.execute('SELECT * FROM wishlist WHERE name=?', (name,)).fetchone()
+        if request.method == 'DELETE':
+            c.execute('DELETE FROM wishlist WHERE name=?', (name,))
+            audit_only(c, 'library', 'wishlist', name, None, editor(), f'{name} taken off the wishlist')
+        else:
+            st = b.get('status', old['status'] if old else 'want')
+            if st not in ('want', 'got'): abort(400, 'status must be want or got')
+            vals = (str(b.get('common_name', old['common_name'] if old else '') or '')[:120], str(b.get('notes', old['notes'] if old else '') or '').strip()[:2000],
+                    str(b.get('where_seen', old['where_seen'] if old else '') or '').strip()[:300], st)
+            mp = b.get('max_price', old['max_price'] if old else None)          # 1.27.0: price and stock alerts, and what to search the shops for
+            if mp in ('', None): mp = None
+            else:
+                try: mp = round(float(mp), 2)
+                except (TypeError, ValueError): abort(400, 'The price to watch for must be a number of dollars, such as 25')
+                if not 0 < mp < 100000: abort(400, 'The price to watch for must be more than $0')
+            more = (mp, 1 if b.get('alert_stock', old['alert_stock'] if old else 0) else 0,
+                    re.sub(r'[ \t]+', ' ', str(b.get('search_words', old['search_words'] if old else '') or '')).strip()[:300])
+            if old: c.execute('UPDATE wishlist SET common_name=?, notes=?, where_seen=?, status=?, max_price=?, alert_stock=?, search_words=?, updated_by=?, updated_at=? WHERE name=?',
+                              vals + more + (editor(), now(), name))
+            else: c.execute('INSERT INTO wishlist(name,common_name,notes,where_seen,status,max_price,alert_stock,search_words,added_by,added_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                            (name,) + vals + more + (editor(), now()))
+            if old and (old['search_words'] or '') != more[2]: c.execute('DELETE FROM offers WHERE wish=?', (name,))   # new searches: start the list again
+            audit_only(c, 'library', 'wishlist', None, name, editor(), f'{name} ' + ('updated on the wishlist' if old else 'added to the wishlist'))
+        c.commit()
+    rows = [dict(r) for r in c.execute("SELECT * FROM wishlist ORDER BY status='got', added_at DESC")]
+    sp, _ = species_owned(c)
+    for r in rows:
+        r['yours'] = sp.get(r['name'].lower(), [])
+        r['terms'] = SH.terms_for(r)
+        o = c.execute("SELECT COUNT(*) n, COUNT(DISTINCT shop) s, MAX(last_seen) seen FROM offers WHERE wish=? AND gone=0 AND available=1", (r['name'],)).fetchone()
+        best = c.execute("SELECT o.*, s.name shop_name FROM offers o JOIN shops s ON s.key=o.shop WHERE o.wish=? AND o.gone=0 AND o.available=1 AND o.price IS NOT NULL "
+                         "ORDER BY o.price LIMIT 1", (r['name'],)).fetchone()
+        r['offers'] = {'count': o['n'], 'shops': o['s'], 'best': dict(best) if best else None}
+    return jsonify(wishlist=rows, alerts=wish_alerts_open(c), checked=setting(c, 'shops_checked_at', ''))
+
+# ---------------------------------------------------------------- 1.27.0: prices and stock for the wishlist (app/shops.py)
+SHOPS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS shops(key TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL, url TEXT NOT NULL, pages TEXT NOT NULL DEFAULT '[]',
+  local INTEGER NOT NULL DEFAULT 0, enabled INTEGER NOT NULL DEFAULT 1, custom INTEGER NOT NULL DEFAULT 0, platform TEXT, status TEXT, error TEXT,
+  checked_at TEXT, sort INTEGER NOT NULL DEFAULT 99);
+CREATE TABLE IF NOT EXISTS offers(id INTEGER PRIMARY KEY AUTOINCREMENT, wish TEXT NOT NULL, shop TEXT NOT NULL, title TEXT NOT NULL, url TEXT NOT NULL,
+  price REAL, currency TEXT, available INTEGER, detail TEXT, first_seen TEXT NOT NULL, last_seen TEXT NOT NULL, avail_since TEXT,
+  gone INTEGER NOT NULL DEFAULT 0, UNIQUE(wish, shop, url, title));
+CREATE TABLE IF NOT EXISTS offer_history(offer_id INTEGER NOT NULL, price REAL, available INTEGER, at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS wish_alert_marks(offer_id INTEGER NOT NULL, kind TEXT NOT NULL, price REAL, at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS wish_alerts(id INTEGER PRIMARY KEY AUTOINCREMENT, wish TEXT NOT NULL, offer_id INTEGER, kind TEXT NOT NULL, text TEXT NOT NULL,
+  price REAL, url TEXT, shop TEXT, created_at TEXT NOT NULL, dismissed_by TEXT, dismissed_at TEXT);
+"""
+EBAY_API = os.environ.get('PLANTDB_EBAY_API', SH.EBAY_API).rstrip('/')
+ETSY_API = os.environ.get('PLANTDB_ETSY_API', SH.ETSY_API).rstrip('/')
+SHOP_UA = 'PlantRecord/1.27 (a home plant record checking its owner\'s wishlist, a few requests a day)'
+SHOP_GAP = float(os.environ.get('PLANTDB_SHOP_GAP', '2'))          # seconds between requests to the same shop
+SHOPQ = {'lock': threading.Lock(), 'thread': None, 'now': '', 'want': False, 'hosts': {}, 'ebay': None, 'done': 0, 'total': 0}
+
+def shop_fetch(url, headers=None, data=None, timeout=25):
+    host = urllib.parse.urlsplit(url).netloc
+    wait = SHOPQ['hosts'].get(host, 0) + SHOP_GAP - time.time()
+    if wait > 0: time.sleep(wait)
+    SHOPQ['hosts'][host] = time.time()
+    req = urllib.request.Request(url, data=data, headers={'User-Agent': SHOP_UA, 'Accept': 'application/json, text/html;q=0.9'} | (headers or {}),
+                                 method='POST' if data is not None else 'GET')
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r: return r.status, r.read(6_000_000)
+    except urllib.error.HTTPError as e:
+        return e.code, e.read(200_000) if e.fp else b''
+    except (urllib.error.URLError, OSError, TimeoutError) as e:
+        raise SH.ShopError('Could not reach the shop (' + str(getattr(e, 'reason', e))[:80] + ')')
+
+def shop_json(url, headers=None):
+    st, raw = shop_fetch(url, headers)
+    if st in (401, 403) and headers: raise SH.ShopError('The shop refused the key. Check it and save it again.')
+    if st == 429: raise SH.ShopError('The shop asked for fewer checks. It will be tried again next time.')
+    if st >= 500: raise SH.ShopError(f'The shop had a problem (status {st}). It will be tried again next time.')
+    try: return json.loads(raw) if st == 200 else None
+    except ValueError: return None
+
+def shop_text(url):
+    st, raw = shop_fetch(url)
+    if st != 200: raise SH.ShopError(f'The page did not open (status {st}). Check its address.')
+    return raw.decode('utf-8', 'replace')
+
+def shop_post_form(url, form, headers):
+    st, raw = shop_fetch(url, headers | {'Content-Type': 'application/x-www-form-urlencoded'}, urllib.parse.urlencode(form).encode())
+    try: return st, json.loads(raw)
+    except ValueError: return st, {}
+
+def offers_save(c, shop, wish, found):
+    """Keeps what a shop has for one wishlist entry: new ones are added, changes go in the history, and ones that went are marked gone."""
+    ts, keep = now(), set()
+    found = sorted(found, key=lambda o: (not o['available'], o['price'] if o['price'] is not None else 1e9))[:20]
+    for o in found:
+        r = c.execute('SELECT * FROM offers WHERE wish=? AND shop=? AND url=? AND title=?', (wish, shop, o['url'], o['title'])).fetchone()
+        av = None if o['available'] is None else int(bool(o['available']))
+        if r:
+            back = (r['gone'] or not r['available']) and av
+            c.execute('UPDATE offers SET price=?, currency=?, available=?, detail=?, last_seen=?, gone=0, avail_since=? WHERE id=?',
+                      (o['price'], o['currency'], av, o['detail'], ts, ts if back else r['avail_since'], r['id']))
+            if r['price'] != o['price'] or (r['available'] or 0) != (av or 0) or r['gone']:
+                c.execute('INSERT INTO offer_history(offer_id,price,available,at) VALUES(?,?,?,?)', (r['id'], o['price'], av, ts))
+            keep.add(r['id'])
+        else:
+            i = c.execute('INSERT INTO offers(wish,shop,title,url,price,currency,available,detail,first_seen,last_seen,avail_since) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
+                          (wish, shop, o['title'], o['url'], o['price'], o['currency'], av, o['detail'], ts, ts, ts if av else None)).lastrowid
+            c.execute('INSERT INTO offer_history(offer_id,price,available,at) VALUES(?,?,?,?)', (i, o['price'], av, ts))
+            keep.add(i)
+    for (i,) in c.execute('SELECT id FROM offers WHERE wish=? AND shop=? AND gone=0', (wish, shop)).fetchall():
+        if i not in keep:
+            c.execute('UPDATE offers SET gone=1 WHERE id=?', (i,))
+            c.execute('INSERT INTO offer_history(offer_id,price,available,at) VALUES(?,?,?,?)', (i, None, 0, ts))
+
+def wish_alerts_make(c):
+    """One alert per wishlist entry per check, when something comes into stock or its price is at or under the one set (again only if it
+    drops further). wish_alert_marks remembers what each listing has already been alerted for."""
+    ts = now()
+    money = lambda v: f'${v:,.2f}' if v is not None else 'price not shown'
+    for w in c.execute("SELECT * FROM wishlist WHERE status='want' AND (alert_stock=1 OR max_price IS NOT NULL)").fetchall():
+        nm, stock, cheap = w['common_name'] or w['name'], [], []
+        for o in c.execute("SELECT o.*, s.name shop_name FROM offers o JOIN shops s ON s.key=o.shop WHERE o.wish=? AND o.gone=0 AND o.available=1 "
+                           "ORDER BY o.price IS NULL, o.price", (w['name'],)).fetchall():
+            if w['alert_stock'] and not c.execute("SELECT 1 FROM wish_alert_marks WHERE offer_id=? AND kind='stock' AND at>=?", (o['id'], o['avail_since'] or o['first_seen'])).fetchone():
+                stock.append(o); c.execute('INSERT INTO wish_alert_marks(offer_id,kind,price,at) VALUES(?,?,?,?)', (o['id'], 'stock', o['price'], ts))
+            if w['max_price'] is not None and o['price'] is not None and o['price'] <= w['max_price']:
+                last = c.execute("SELECT MIN(price) FROM wish_alert_marks WHERE offer_id=? AND kind='price'", (o['id'],)).fetchone()[0]
+                if last is None or o['price'] < last:
+                    cheap.append(o); c.execute('INSERT INTO wish_alert_marks(offer_id,kind,price,at) VALUES(?,?,?,?)', (o['id'], 'price', o['price'], ts))
+        if not (stock or cheap): continue
+        parts, top = [], (cheap or stock)[0]
+        if cheap:
+            parts.append(f"{money(cheap[0]['price'])} at {cheap[0]['shop_name']}, at or under your {money(w['max_price'])}" + (f" (and {len(cheap) - 1} more)" if len(cheap) > 1 else '') + '.')
+        if stock:
+            parts.append(f"In stock at {len(stock)} shop{'s' if len(stock) > 1 else ''}: " + ', '.join(f"{o['shop_name']} {money(o['price'])}" for o in stock[:6]) + ('…' if len(stock) > 6 else '') + '.')
+        c.execute('INSERT INTO wish_alerts(wish,offer_id,kind,text,price,url,shop,created_at) VALUES(?,?,?,?,?,?,?,?)',
+                  (w['name'], top['id'], 'price' if cheap else 'stock', f"{nm}: " + ' '.join(parts), top['price'], top['url'], top['shop_name'], ts))
+
+def wish_alerts_open(c):
+    return [dict(r) for r in c.execute('SELECT * FROM wish_alerts WHERE dismissed_at IS NULL ORDER BY id DESC LIMIT 50')]
+
+def shop_check_one(c, s, wants):
+    """Reads one shop and keeps what it has for every wanted entry. Returns the status line shown on the Wishlist page."""
+    if s['kind'] == 'api':
+        if s['key'] == 'ebay':
+            app_id, cert = setting(c, 'ebay_app_id', ''), setting(c, 'ebay_cert_id', '')
+            if not (app_id and cert): return 'keys', 'Needs the owner\'s eBay keys (below).', None
+            if not SHOPQ['ebay'] or SHOPQ['ebay'][1] < time.time() or SHOPQ['ebay'][2] != app_id:
+                tok, exp = SH.ebay_token(shop_post_form, app_id, cert, EBAY_API); SHOPQ['ebay'] = (tok, exp, app_id)
+            look = lambda t: SH.search_ebay(shop_json, SHOPQ['ebay'][0], t, EBAY_API)
+        else:
+            key = setting(c, 'etsy_key', '')
+            if not key: return 'keys', 'Needs the owner\'s Etsy key (below).', None
+            look = lambda t: SH.search_etsy(shop_json, key, t, ETSY_API)
+        for w in wants:
+            terms, found = SH.terms_for(w), []
+            for t in terms[:2]:
+                found += [o for o in look(t) if SH.matches(o['title'], terms) and not any(o['url'] == f['url'] for f in found)]
+            offers_save(c, s['key'], w['name'], found)
+        return 'ok', f'Searched for {len(wants)} wishlist {"entry" if len(wants) == 1 else "entries"}.', 'api'
+    pages = json.loads(s['pages'] or '[]')
+    kind = s['kind'] if s['kind'] != 'auto' else (s['platform'] or '')
+    if kind == 'shopify': cat = SH.catalog_shopify(shop_json, s['url'])
+    elif kind == 'woo': cat = SH.catalog_woo(shop_json, s['url'])
+    elif kind == 'page': cat = SH.page_lines(shop_text, [s['url']] + pages)
+    else: kind, cat = SH.detect(shop_json, shop_text, s['url'], pages)
+    for w in wants:
+        terms = SH.terms_for(w)
+        found = SH.offers_from_lines(cat, terms) if kind == 'page' else [o for o in cat if SH.matches(o['title'], terms)]
+        offers_save(c, s['key'], w['name'], found)
+    if kind == 'page': return 'ok', f'Read {len(pages) + 1} page{"s" if pages else ""} for the names on your wishlist (this shop has no online store to read prices from).', kind
+    return 'ok', f'Read its online store: {len(cat):,} products.', kind
+
+def shops_worker():
+    while True:
+        with SHOPQ['lock']:
+            if not SHOPQ['want']: SHOPQ['thread'] = None; SHOPQ['now'] = ''; return
+            SHOPQ['want'] = False
+        c = sqlite3.connect(DB_PATH, timeout=30); c.row_factory = sqlite3.Row
+        try:
+            wants = [dict(r) for r in c.execute("SELECT * FROM wishlist WHERE status='want'")]
+            todo = c.execute('SELECT * FROM shops WHERE enabled=1 ORDER BY sort, name').fetchall()
+            SHOPQ['total'], SHOPQ['done'] = len(todo), 0
+            for s in todo:
+                SHOPQ['now'] = s['name']
+                if not wants: break
+                try: st, msg, kind = shop_check_one(c, s, wants); err = None
+                except SH.ShopError as e: st, msg, kind, err = 'error', str(e), None, str(e)
+                except Exception as e: st, msg, kind, err = 'error', 'Could not read it: ' + str(e)[:120], None, str(e)[:300]
+                c.execute('UPDATE shops SET status=?, error=?, checked_at=?, platform=COALESCE(?, platform) WHERE key=?', (msg, err, now(), kind, s['key']))
+                c.commit(); SHOPQ['done'] += 1
+            wish_alerts_make(c)
+            set_setting(c, 'shops_checked_at', now()); c.commit()
+        except Exception as e:
+            print('[shops] check failed:', e, flush=True)
+        finally: c.close()
+
+def shops_check_soon():
+    with SHOPQ['lock']:
+        SHOPQ['want'] = True
+        if not SHOPQ['thread']:
+            SHOPQ['thread'] = threading.Thread(target=shops_worker, daemon=True); SHOPQ['thread'].start()
+
+def shops_loop():
+    """Checks the shops on the schedule the owner set (every 12 hours unless changed). Off when set to 0."""
+    time.sleep(90)
+    while True:
+        try:
+            c = sqlite3.connect(DB_PATH, timeout=30); c.row_factory = sqlite3.Row
+            try:
+                hours = float(setting(c, 'shops_hours', '12') or 0)
+                last = setting(c, 'shops_checked_at', '')
+                due = hours > 0 and (not last or (datetime.now(timezone.utc) - datetime.fromisoformat(last.replace('Z', '+00:00'))).total_seconds() >= hours * 3600)
+                if due and c.execute("SELECT 1 FROM wishlist WHERE status='want'").fetchone(): shops_check_soon()
+            finally: c.close()
+        except Exception: pass
+        time.sleep(600)
+
+def shop_row(r):
+    d = dict(r); d['pages'] = json.loads(d['pages'] or '[]'); return d
+
+@app.route('/api/shops', methods=['GET', 'PUT', 'POST', 'DELETE'])
+def shops_api():
+    """GET: the shops, their last check and the settings. PUT {key, enabled, url, pages, name} changes one (owner). POST {name, url}
+    adds a shop (owner). DELETE ?key= removes one the owner added."""
+    c = db()
+    if request.method != 'GET':
+        b = request.get_json(silent=True) or {}
+        if request.method == 'POST':
+            name, url = str(b.get('name') or '').strip()[:80], str(b.get('url') or '').strip()[:300]
+            if not name or not re.match(r'^https?://[^\s/]+(/\S*)?$', url): abort(400, 'Give the shop a name and its web address, starting with https://')
+            key = 'custom-' + (re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')[:40] or 'shop')
+            if c.execute('SELECT 1 FROM shops WHERE key=?', (key,)).fetchone(): abort(409, 'There is already a shop with that name.')
+            c.execute('INSERT INTO shops(key,name,kind,url,pages,local,custom,sort) VALUES(?,?,?,?,?,?,1,99)', (key, name, 'auto', url, '[]', 1 if b.get('local') else 0))
+            audit_only(c, 'setting', 'shops', None, f'{name} ({url})', editor(), f'Shop added to the wishlist checks: {name}')
+        elif request.method == 'DELETE':
+            key = request.args.get('key', '')
+            r = c.execute('SELECT * FROM shops WHERE key=? AND custom=1', (key,)).fetchone()
+            if not r: abort(404, 'Only shops you added can be removed. Turn the others off instead.')
+            c.execute('DELETE FROM shops WHERE key=?', (key,)); c.execute('DELETE FROM offers WHERE shop=?', (key,))
+            audit_only(c, 'setting', 'shops', r['name'], None, editor(), f'Shop removed from the wishlist checks: {r["name"]}')
+        else:
+            if 'hours' in b:
+                h = b.get('hours')
+                if str(h) not in ('0', '6', '12', '24', '48'): abort(400, 'Choose how often: every 6, 12, 24 or 48 hours, or never')
+                set_setting(c, 'shops_hours', str(h))
+                audit_only(c, 'setting', 'shops_hours', None, str(h), editor(), 'Wishlist checks: how often changed')
+            if b.get('key'):
+                r = c.execute('SELECT * FROM shops WHERE key=?', (b['key'],)).fetchone()
+                if not r: abort(404, 'No such shop')
+                url = str(b.get('url', r['url']) or '').strip()[:300]
+                if not re.match(r'^https?://[^\s/]+(/\S*)?$', url): abort(400, 'The address must start with https://')
+                pages = b.get('pages', json.loads(r['pages']))
+                pages = [p.strip()[:300] for p in (pages.split('\n') if isinstance(pages, str) else pages) if str(p).strip().startswith('http')][:12]
+                en = 1 if b.get('enabled', r['enabled']) else 0
+                c.execute('UPDATE shops SET enabled=?, url=?, pages=?, platform=CASE WHEN url<>? THEN NULL ELSE platform END WHERE key=?', (en, url, json.dumps(pages), url, r['key']))
+                if not en: c.execute('UPDATE offers SET gone=1 WHERE shop=?', (r['key'],))
+                audit_only(c, 'setting', 'shops', None, r['name'], editor(), f'Wishlist checks: {r["name"]} ' + ('changed' if en else 'turned off'))
+        c.commit()
+    rows = [shop_row(r) for r in c.execute('SELECT * FROM shops ORDER BY sort, name')]
+    with SHOPQ['lock']: busy = bool(SHOPQ['thread'])
+    return jsonify(shops=rows, hours=setting(c, 'shops_hours', '12'), checked=setting(c, 'shops_checked_at', ''), busy=busy, now=SHOPQ['now'],
+                   done=SHOPQ['done'], total=SHOPQ['total'], have_ebay=bool(setting(c, 'ebay_app_id', '') and setting(c, 'ebay_cert_id', '')),
+                   have_etsy=bool(setting(c, 'etsy_key', '')))
+
+@app.route('/api/shops/keys', methods=['PUT', 'DELETE'])
+def shops_keys():
+    """The owner's eBay and Etsy keys. They are kept on this computer and never sent back to the browser."""
+    c = db(); b = request.get_json(silent=True) or {}
+    for k in (('ebay_app_id', 'ebay_cert_id') if b.get('shop') == 'ebay' else ('etsy_key',)):
+        v = '' if request.method == 'DELETE' else str(b.get(k) or '').strip()[:200]
+        if request.method == 'PUT' and not v: abort(400, 'Paste the key first.')
+        set_setting(c, k, v)
+    SHOPQ['ebay'] = None
+    audit_only(c, 'setting', 'shop keys', None, b.get('shop'), editor(), f'Wishlist checks: {b.get("shop")} key ' + ('removed' if request.method == 'DELETE' else 'saved'))
+    c.commit()
+    return jsonify(ok=True)
+
+@app.route('/api/wishlist/check', methods=['GET', 'POST'])
+def shops_check():
+    """POST: check every shop now (in the background). GET: how far it has got."""
+    if request.method == 'POST':
+        c = db()
+        if not c.execute("SELECT 1 FROM wishlist WHERE status='want'").fetchone(): abort(400, 'Nothing is on the wishlist to look for.')
+        shops_check_soon()
+        audit_only(c, 'library', 'shops', None, None, editor(), 'Wishlist: shops checked now'); c.commit()
+    with SHOPQ['lock']: busy = bool(SHOPQ['thread'])
+    return jsonify(busy=busy, now=SHOPQ['now'], done=SHOPQ['done'], total=SHOPQ['total'])
+
+@app.route('/api/wishlist/offers')
+def wishlist_offers():
+    """Everything the shops have for one wishlist entry, cheapest first, with each one's price history."""
+    c = db(); name = request.args.get('name', '')
+    rows = [dict(r) for r in c.execute("SELECT o.*, s.name shop_name, s.local FROM offers o JOIN shops s ON s.key=o.shop WHERE o.wish=? "
+                                       "ORDER BY o.gone, o.available DESC, o.price IS NULL, o.price", (name,))]
+    for r in rows:
+        r['history'] = [dict(h) for h in c.execute('SELECT price, available, at FROM offer_history WHERE offer_id=? ORDER BY at', (r['id'],))]
+    return jsonify(offers=rows)
+
+@app.route('/api/wishlist/alerts', methods=['GET', 'POST'])
+def wishlist_alerts():
+    """GET: the alerts not dismissed yet. POST {id} or {all: true}: dismiss."""
+    c = db()
+    if request.method == 'POST':
+        b = request.get_json(silent=True) or {}
+        if b.get('all'): c.execute('UPDATE wish_alerts SET dismissed_by=?, dismissed_at=? WHERE dismissed_at IS NULL', (editor(), now()))
+        else: c.execute('UPDATE wish_alerts SET dismissed_by=?, dismissed_at=? WHERE id=? AND dismissed_at IS NULL', (editor(), now(), int(b.get('id') or 0)))
+        c.commit()
+    return jsonify(alerts=wish_alerts_open(c))
+
+# ---------------------------------------------------------------- 1.21.0: the library as a browsable knowledge base
+# Names, classification and US states come from the picture checker (offline). Photos and the short description come from
+# iNaturalist (CC-licensed photos by its members; the description is from Wikipedia), fetched once per species in the
+# background, about one request a second as iNaturalist asks, and kept in data/library. Only species names are sent.
+LIB_DIR = os.path.join(DATA_DIR, 'library')
+INAT_URL = os.environ.get('PLANTDB_INAT_URL', 'https://api.inaturalist.org/v1').rstrip('/')
+INAT_IMG_OK = tuple(x for x in os.environ.get('PLANTDB_INAT_IMG_OK', 'https://inaturalist-open-data.s3.amazonaws.com/,https://static.inaturalist.org/').split(',') if x)
+LIB_RECHECK_DAYS = 30            # a species with no photo is looked up again after this many days
+LIBQ = {'queue': [], 'set': set(), 'lock': threading.Lock(), 'thread': None, 'last': 0.0}
+
+def lib_slug(name):
+    return re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')[:120]
+
+def lib_meta(name):
+    p = os.path.join(LIB_DIR, lib_slug(name) + '.json')
+    try:
+        with open(p, encoding='utf-8') as f: return json.load(f)
+    except (OSError, ValueError): return None
+
+def lib_save(name, meta):
+    os.makedirs(LIB_DIR, exist_ok=True)
+    p = os.path.join(LIB_DIR, lib_slug(name) + '.json')
+    with open(p + '.tmp', 'w', encoding='utf-8') as f: json.dump(meta, f)
+    os.replace(p + '.tmp', p)
+
+def lib_online(c=None):
+    return setting(c or db(), 'library_online', '1') == '1'
+
+def inat_get(path):
+    """One iNaturalist API call, at most one a second (shared by every request)."""
+    with LIBQ['lock']:
+        wait = 1.05 - (time.time() - LIBQ['last'])
+        if wait > 0: time.sleep(wait)
+        LIBQ['last'] = time.time()
+    req = urllib.request.Request(INAT_URL + path, headers={'User-Agent': f'plant-database/{APP_VERSION} (a home plant record)', 'Accept': 'application/json'})
+    with urllib.request.urlopen(req, timeout=20) as r: return json.loads(r.read())
+
+def lib_download(url, dest, big=1024):
+    if not url.startswith(INAT_IMG_OK): raise ValueError('not an iNaturalist photo address')
+    req = urllib.request.Request(url, headers={'User-Agent': f'plant-database/{APP_VERSION} (a home plant record)'})
+    with urllib.request.urlopen(req, timeout=30) as r: raw = r.read(8_000_000)
+    im = ImageOps.exif_transpose(Image.open(io.BytesIO(raw))); im = im.convert('RGB')
+    im.thumbnail((big, big))
+    im.save(dest + '.tmp', 'JPEG', quality=84, optimize=True); os.replace(dest + '.tmp', dest)
+
+def inat_find(name):
+    """The iNaturalist taxon with exactly this name, or None."""
+    j = inat_get('/taxa?' + urllib.parse.urlencode({'q': name, 'is_active': 'true', 'per_page': 10, 'locale': 'en'}))
+    for t in j.get('results') or []:
+        if (t.get('name') or '').lower() == name.lower(): return t
+    return None
+
+def photo_meta(ph, file):
+    return {'file': file, 'credit': ph.get('attribution') or '', 'license': (ph.get('license_code') or '').upper(),
+            'page': f"https://www.inaturalist.org/photos/{ph['id']}" if ph.get('id') else ''}
+
+def lib_fetch_photo(name):
+    """Looks a species up on iNaturalist and keeps its main photo (and the basic facts) in data/library."""
+    meta = lib_meta(name) or {}
+    t = inat_find(name)
+    meta.update(name=name, checked=date.today().isoformat(), taxon_id=t['id'] if t else None,
+                inat_common=(t or {}).get('preferred_common_name') or '', observations=(t or {}).get('observations_count'),
+                wikipedia_url=(t or {}).get('wikipedia_url') or '')
+    ph = (t or {}).get('default_photo') or {}
+    url = ph.get('medium_url') or ph.get('url')
+    if url:
+        f = lib_slug(name) + '.jpg'
+        lib_download(url, os.path.join(LIB_DIR, f), big=640)
+        meta['photo'] = photo_meta(ph, f)
+    else:
+        meta['photo'] = None
+    lib_save(name, meta)
+    return meta
+
+def lib_worker():
+    while True:
+        with LIBQ['lock']:
+            if not LIBQ['queue']: LIBQ['thread'] = None; return
+            name = LIBQ['queue'].pop(0)
+        try:                                                          # turned off since it was queued: stop
+            c2 = sqlite3.connect(DB_PATH, timeout=10)
+            try: online = lib_online(c2)
+            finally: c2.close()
+        except Exception: online = True
+        if not online:
+            with LIBQ['lock']: LIBQ['queue'].clear(); LIBQ['set'].clear(); LIBQ['thread'] = None
+            return
+        try: lib_fetch_photo(name)
+        except Exception as e:
+            print(f'[library] {name}: {e}', flush=True)
+            lib_save(name, (lib_meta(name) or {}) | {'name': name, 'checked': date.today().isoformat(), 'photo': None, 'error': str(e)[:200]})
+        finally:
+            with LIBQ['lock']: LIBQ['set'].discard(name)
+
+def lib_enqueue(names, front=True):
+    """Queues species for a photo. Ones someone is looking at go first (front=True); a whole-list download goes last."""
+    with LIBQ['lock']:
+        if front:
+            queued = set(LIBQ['queue'])
+            first = [n for n in dict.fromkeys(names) if n not in LIBQ['set'] or n in queued]   # in the set but not queued = being fetched now
+            moving = set(first)
+            LIBQ['queue'] = first + [n for n in LIBQ['queue'] if n not in moving]
+            LIBQ['set'].update(first)
+        else:
+            for n in names:
+                if n not in LIBQ['set']: LIBQ['set'].add(n); LIBQ['queue'].append(n)
+        if LIBQ['queue'] and not LIBQ['thread']:
+            LIBQ['thread'] = threading.Thread(target=lib_worker, daemon=True); LIBQ['thread'].start()
+
+PREFETCH = {'scope': None, 'names': set(), 'total': 0, 'started': None, 'by': None}
+
+@app.route('/api/library/prefetch', methods=['GET', 'POST', 'DELETE'])
+def library_prefetch():
+    """1.22.0: download the photo and facts for every species in a list (Texas plants), so the library works offline.
+    Owner only (OWNER_ONLY_CHANGES). It goes about one species a second, after anything someone is looking at."""
+    c = db()
+    if request.method == 'POST':
+        if not lib_online(c): abort(409, 'Library photos are turned off. Turn them on first.')
+        scope = (request.get_json(silent=True) or {}).get('scope', 'texas')
+        if scope not in ('texas',): abort(400, 'Only the Texas list can be downloaded')
+        names = vision_call('/scope_names?scope=' + scope, timeout=60).get('names', [])
+        todo = []
+        for n in names:
+            m = lib_meta(n)
+            if not (m and m.get('checked') and (m.get('photo') or (date.today() - date.fromisoformat(m['checked'])).days < LIB_RECHECK_DAYS)): todo.append(n)
+        PREFETCH.update(scope=scope, names=set(todo), total=len(todo), started=now(), by=editor(), all=len(names))
+        lib_enqueue(todo, front=False)
+        audit_only(c, 'library', 'prefetch', None, f'{len(todo)} of {len(names)}', editor(), f'Download of the photos for the {scope.title()} list started ({len(todo)} to fetch)')
+        c.commit()
+    elif request.method == 'DELETE':
+        with LIBQ['lock']:
+            LIBQ['queue'] = [n for n in LIBQ['queue'] if n not in PREFETCH['names']]
+            LIBQ['set'] -= PREFETCH['names']
+        PREFETCH.update(names=set(), total=0)
+    with LIBQ['lock']: left = len(PREFETCH['names'] & LIBQ['set'])
+    return jsonify(scope=PREFETCH['scope'], total=PREFETCH['total'], left=left, done=PREFETCH['total'] - left, started=PREFETCH['started'],
+                   by=PREFETCH['by'], all=PREFETCH.get('all'), running=left > 0, online=lib_online(c))
+
+# ---------------------------------------------------------------- 1.23.0: the library part 2 (status in Texas, near home, pets, care sheets)
+# Lists about the area come from iNaturalist's species counts, fetched in the background (about one request a second, shared with
+# the library photos) and kept in data/library/local: plants native to Texas, plants introduced to Texas, everything recorded wild
+# within 50 km of the home place, and what flowers (plants) or fruits (fungi) there in the current month. Pet safety comes from the
+# ASPCA's three lists (dogs, cats, horses), fetched once a quarter. The Texas noxious and invasive list is built in. Care sheets
+# are written by Claude with the owner's key, on request, and kept in data/library/care. Nothing here is sent anywhere but those.
+LOCAL_DIR = os.path.join(LIB_DIR, 'local')
+CARE_DIR = os.path.join(LIB_DIR, 'care')
+ASPCA_URL = os.environ.get('PLANTDB_ASPCA_URL', 'https://www.aspca.org/pet-care/animal-poison-control').rstrip('/')
+NEAR_KM = 50
+ASPCA_MIN = int(os.environ.get('PLANTDB_ASPCA_MIN', '50'))   # fewer plants than this means their page changed
+# Texas Department of Agriculture's noxious and invasive plant list (4 TAC 19.300), as copied by EDDMapS. Under Texas Agriculture
+# Code 71.152 these may not be sold, distributed or brought into Texas. A name ending in a space is a whole genus.
+TX_NOXIOUS = {
+    'Pueraria montana': 'kudzu', 'Solanum viarum': 'tropical soda apple', 'Alternanthera philoxeroides': 'alligatorweed', 'Salvinia molesta': 'giant salvinia',
+    'Arundo donax': 'giant reed', 'Hydrilla verticillata': 'hydrilla', 'Lonicera japonica': 'Japanese honeysuckle', 'Lygodium japonicum': 'Japanese climbing fern',
+    'Lythrum salicaria': 'purple loosestrife', 'Melia azedarach': 'chinaberry', 'Murdannia keisak': 'marsh dayflower', 'Myriophyllum aquaticum': 'parrotfeather',
+    'Myriophyllum spicatum': 'Eurasian watermilfoil', 'Triadica sebifera': 'Chinese tallow', 'Convolvulus arvensis': 'field bindweed',
+    'Monochoria hastata': 'arrowleaved monochoria', 'Commelina benghalensis': 'Benghal dayflower', 'Rottboellia cochinchinensis': 'itchgrass',
+    'Phelipanche ramosa': 'branched broomrape', 'Ottelia alismoides': 'duck-lettuce', 'Asphodelus fistulosus': 'onionweed', 'Limnophila sessiliflora': 'limnophila',
+    'Eichhornia azurea': 'anchored water hyacinth', 'Alhagi maurorum': 'camelthorn', 'Cardiospermum halicacabum': 'balloon vine', 'Calystegia sepium': 'hedge false bindweed',
+    'Cuscuta japonica': 'Japanese dodder', 'Ipomoea aquatica': 'swamp morning-glory', 'Leucaena leucocephala': 'white leadtree', 'Senna obtusifolia': 'sicklepod',
+    'Sorghum almum': 'sorghum-almum', 'Tamarix ramosissima': 'saltcedar', 'Cyperus entrerianus': 'deeprooted sedge', 'Ludwigia ': 'primrose-willow (some species)',
+    'Landoltia punctata': 'dotted duckmeat', 'Paspalum distichum': 'knotgrass', 'Schinus terebinthifolia': 'Brazilian peppertree',
+    'Pontederia crassipes': 'water hyacinth', 'Eichhornia crassipes': 'water hyacinth'}
+TX_NOXIOUS_SRC = 'https://www.eddmaps.org/lists/list.cfm?id=26'
+TX_NOXIOUS_LAW = 'https://texasagriculture.gov/Regulatory-Programs/Plant-Quality/Noxious-and-Invasive-Plants'
+
+def binomial(name):
+    """'Pueraria montana var. lobata' -> 'pueraria montana'; 'Sorghum x almum' -> 'sorghum almum'."""
+    w = [x for x in re.sub(r'[×]', ' ', str(name or '')).lower().split() if x not in ('x',)]
+    return ' '.join(w[:2])
+
+def tx_noxious(name):
+    b = binomial(name)
+    for k, v in TX_NOXIOUS.items():
+        if (k.endswith(' ') and b.split(' ')[0] == k.strip().lower()) or b == k.lower(): return v
+    return None
+
+def local_lists(c):
+    """The lists about the area: their names, what they ask iNaturalist, and how long they stay fresh (days)."""
+    L = home_place(c); month = local_today(c).month
+    near = {'lat': round(L['lat'], 4), 'lng': round(L['lon'], 4), 'radius': NEAR_KM, 'captive': 'false', 'verifiable': 'true'}
+    return {
+        'tx_native': ({'place_id': 18, 'native': 'true', 'iconic_taxa': 'Plantae', 'verifiable': 'true'}, 90, 'Plants native to Texas'),
+        'tx_introduced': ({'place_id': 18, 'introduced': 'true', 'iconic_taxa': 'Plantae', 'verifiable': 'true'}, 90, 'Plants introduced to Texas'),
+        'near': (near | {'iconic_taxa': 'Plantae,Fungi'}, 30, f'Wild plants and fungi recorded within {NEAR_KM} km ({round(NEAR_KM * 0.621)} miles) of {L["name"]}'),
+        f'bloom-{month:02d}': (near | {'iconic_taxa': 'Plantae', 'term_id': 12, 'term_value_id': 13, 'month': month}, 14, f'Plants seen flowering near {L["name"]} in {date(2000, month, 1):%B}'),
+        f'fungi-{month:02d}': (near | {'iconic_taxa': 'Fungi', 'month': month}, 14, f'Fungi recorded near {L["name"]} in {date(2000, month, 1):%B}'),
+    }
+
+KNOW = {'lock': threading.Lock(), 'queue': [], 'thread': None, 'now': None, 'error': {}, 'cache': {}}
+
+def local_path(name): return os.path.join(LOCAL_DIR, name + '.json')
+
+def local_get(name):
+    """{'fetched', 'species': {name lower: (name, common, count)}} for a kept list, read once and kept in memory."""
+    p = local_path(name)
+    try: mt = os.path.getmtime(p)
+    except OSError: return None
+    hit = KNOW['cache'].get(name)
+    if hit and hit[0] == mt: return hit[1]
+    try:
+        with open(p, encoding='utf-8') as f: j = json.load(f)
+    except (OSError, ValueError): return None
+    j['by'] = {binomial(s[0]): s for s in j.get('species', [])}
+    KNOW['cache'][name] = (mt, j)
+    return j
+
+def lists_wait():
+    """Lists wait while photos someone is looking at are being fetched (up to a minute), so pages fill in first. Then they stop
+    if the owner has turned library lookups off meanwhile."""
+    t = time.time()
+    while LIBQ['queue'] and time.time() - t < 60: time.sleep(0.5)
+    c2 = sqlite3.connect(DB_PATH, timeout=10)
+    try: on = lib_online(c2)
+    finally: c2.close()
+    if not on: raise ValueError('library lookups were turned off')
+
+def local_fetch(name, params):
+    """Every species in one iNaturalist species count, 500 a page (at most 30 pages)."""
+    out, page = [], 1
+    while page <= 30:
+        lists_wait()
+        j = inat_get('/observations/species_counts?' + urllib.parse.urlencode(params | {'per_page': 500, 'page': page, 'locale': 'en'}))
+        res = j.get('results') or []
+        for r in res:
+            t = r.get('taxon') or {}
+            if t.get('rank') in ('species', 'hybrid', 'subspecies', 'variety', 'form') and t.get('name'):
+                out.append([t['name'], t.get('preferred_common_name') or '', int(r.get('count') or 0)])
+        KNOW['now'] = (name, len(out), int(j.get('total_results') or 0))
+        if len(res) < 500 or page * 500 >= int(j.get('total_results') or 0): break
+        page += 1
+    merged = {}
+    for n, cm, k in out:                                  # varieties count towards their species
+        b = binomial(n); key = b
+        if key in merged: merged[key][2] += k
+        else: merged[key] = [n if len(n.split()) == 2 else n.split()[0] + ' ' + n.split()[1], cm, k]
+    os.makedirs(LOCAL_DIR, exist_ok=True)
+    tmp = local_path(name) + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump({'name': name, 'fetched': now(), 'params': {k: str(v) for k, v in params.items()}, 'species': sorted(merged.values(), key=lambda x: -x[2])}, f)
+    os.replace(tmp, local_path(name))
+
+def aspca_fetch():
+    """The ASPCA's toxic and non-toxic plant lists for dogs, cats and horses, read from their web pages."""
+    out = {}
+    for animal, page in (('dogs', 'dogs-plant-list'), ('cats', 'cats-plant-list'), ('horses', 'horse-plant-list')):
+        lists_wait()
+        with LIBQ['lock']:
+            wait = 1.05 - (time.time() - LIBQ['last'])
+            if wait > 0: time.sleep(wait)
+            LIBQ['last'] = time.time()
+        req = urllib.request.Request(f'{ASPCA_URL}/{page}', headers={'User-Agent': f'plant-database/{APP_VERSION} (a home plant record)'})
+        with urllib.request.urlopen(req, timeout=30) as r: raw = r.read(6_000_000).decode('utf-8', 'replace')
+        raw = re.sub(r'(?is)<(script|style).*?</\1>', ' ', raw)
+        raw = re.sub(r'(?i)<\s*(br|/?(div|li|p|h[1-6]|tr|ul|ol|section|article))\b[^>]*>', '\n', raw)   # one plant per line
+        text = html_mod.unescape(re.sub(r'<[^>]+>', ' ', raw))
+        text = re.sub(r'[ \t\r\f\v]+', ' ', text)
+        cut = re.search(r'Plants\s+Non-?\s*Toxic\s+to', text, re.I)
+        n = 0
+        for m in re.finditer(r'([^|\n]{2,160}?)\s*\|\s*Scientific Names?\s*:\s*([^|]+?)\s*\|\s*Family\s*:\s*([A-Za-z]*)', text):
+            toxic = not cut or m.start() < cut.start()
+            common = re.sub(r'\s*\(\s*\)\s*$', '', m.group(1).strip())
+            for sci in re.split(r'[,;]| and ', m.group(2)):
+                sci = sci.strip(' .')
+                if not re.match(r'^[A-Z][a-z]+', sci): continue
+                genus_only = bool(re.search(r'\bspp?\b', sci)) or len(sci.split()) == 1
+                key = sci.split()[0].lower() + ' ' if genus_only else binomial(sci)
+                e = out.setdefault(key, {'name': sci, 'common': common, 'family': m.group(3), 'genus': genus_only})
+                if e.get(animal) != 'toxic': e[animal] = 'toxic' if toxic else 'non-toxic'
+                n += 1
+        if n < ASPCA_MIN: raise ValueError(f'the ASPCA {animal} list could not be read (found {n} plants); their page may have changed')
+    os.makedirs(LOCAL_DIR, exist_ok=True)
+    with open(local_path('aspca') + '.tmp', 'w', encoding='utf-8') as f: json.dump({'fetched': now(), 'plants': out}, f)
+    os.replace(local_path('aspca') + '.tmp', local_path('aspca'))
+
+def aspca_get():
+    j = local_get('aspca')
+    return j.get('plants', {}) if j else {}
+
+def pets_for(name):
+    """The ASPCA's answer for a species, or for its genus when they list the genus, or None."""
+    a = aspca_get()
+    if not a: return None
+    b = binomial(name)
+    e = a.get(b) or a.get(b.split(' ')[0] + ' ')
+    if not e: return None
+    return {'dogs': e.get('dogs'), 'cats': e.get('cats'), 'horses': e.get('horses'), 'listed_as': e['name'], 'common': e['common'], 'genus': e['genus']}
+
+def know_worker():
+    while True:
+        with KNOW['lock']:
+            if not KNOW['queue']: KNOW['thread'] = None; KNOW['now'] = None; return
+            name, params = KNOW['queue'].pop(0)
+        try:
+            c2 = sqlite3.connect(DB_PATH, timeout=10)
+            try: online = lib_online(c2)
+            finally: c2.close()
+        except Exception: online = True
+        if not online:
+            with KNOW['lock']: KNOW['queue'].clear(); KNOW['thread'] = None; KNOW['now'] = None
+            return
+        KNOW['now'] = (name, 0, 0)
+        try:
+            aspca_fetch() if name == 'aspca' else local_fetch(name, params)
+            KNOW['error'].pop(name, None)
+        except Exception as e:
+            if str(e) == 'library lookups were turned off':
+                with KNOW['lock']: KNOW['queue'].clear(); KNOW['thread'] = None; KNOW['now'] = None
+                return
+            print(f'[library] list {name}: {e}', flush=True)
+            KNOW['error'][name] = {'at': now(), 'error': str(e)[:300]}
+
+def know_refresh(c, force=False):
+    """Queues the lists that are missing or out of date (all of them with force=True)."""
+    if not lib_online(c): return []
+    todo = []
+    for name, (params, days, _) in list(local_lists(c).items()) + [('aspca', (None, 90, ''))]:
+        j = local_get(name)
+        old = not j or force or (datetime.now(timezone.utc) - datetime.fromisoformat(j['fetched'].replace('Z', '+00:00'))).days >= days
+        err = KNOW['error'].get(name)
+        if err and not force and (datetime.now(timezone.utc) - datetime.fromisoformat(err['at'].replace('Z', '+00:00'))).total_seconds() < 6 * 3600: old = False
+        if old: todo.append((name, params))
+    with KNOW['lock']:
+        have = {n for n, _ in KNOW['queue']} | ({KNOW['now'][0]} if KNOW['now'] else set())
+        for t in todo:
+            if t[0] not in have: KNOW['queue'].append(t)
+        if KNOW['queue'] and not KNOW['thread']:
+            KNOW['thread'] = threading.Thread(target=know_worker, daemon=True); KNOW['thread'].start()
+    return [t[0] for t in todo]
+
+ZONE_CACHE = {'at': 0, 'zone': None}
+def home_zone(c):
+    """The home place's hardiness zone from its weather history (kept for 10 minutes; it changes once a year)."""
+    if time.time() - ZONE_CACHE['at'] > 600 or not ZONE_CACHE['zone']:
+        try: ZONE_CACHE['zone'] = place_zone(c, home_place(c)).get('zone') or '9a'
+        except Exception: ZONE_CACHE['zone'] = '9a'
+        ZONE_CACHE['at'] = time.time()
+    return ZONE_CACHE['zone']
+
+def care_get(name):
+    try:
+        with open(os.path.join(CARE_DIR, lib_slug(name) + '.json'), encoding='utf-8') as f: return json.load(f)
+    except (OSError, ValueError): return None
+
+def know_of(c, name, month=None, zone=None):
+    """What the lists say about one species."""
+    b = binomial(name); month = month or local_today(c).month
+    tn, ti, nr = local_get('tx_native'), local_get('tx_introduced'), local_get('near')
+    bl, fu = local_get(f'bloom-{month:02d}'), local_get(f'fungi-{month:02d}')
+    k = {'tx': 'native' if tn and b in tn['by'] else 'introduced' if ti and b in ti['by'] else None,
+         'invasive': tx_noxious(name), 'near': nr['by'][b][2] if nr and b in nr['by'] else 0,
+         'bloom': bool(bl and b in bl['by']), 'fruiting': bool(fu and b in fu['by']), 'pets': pets_for(name)}
+    cs = care_get(name)
+    z = zone_num(zone) if zone else None
+    zl = zone_num((cs or {}).get('sheet', {}).get('zone_low'))
+    k['hardy'] = 'wild-near' if k['near'] else ('zone-yes' if zl <= z else 'zone-no') if (zl is not None and z is not None) else None
+    return k
+
+def know_mark(c, items, key='scientific_name'):
+    if not items: return items
+    month, zone = local_today(c).month, home_zone(c)
+    for x in items: x['know'] = know_of(c, x.get(key) or '', month, zone)
+    return items
+
+KNOW_FILTERS = {'native': 'Native to Texas', 'introduced': 'Introduced to Texas', 'invasive': 'On the Texas invasive list', 'near': 'Grows wild near home',
+                'bloom': 'Flowering near home this month', 'fruiting': 'Fungi found near home this month', 'hardy': 'Likely to survive outside here',
+                'petsafe': 'Safe for dogs and cats (ASPCA)', 'pettoxic': 'Toxic to dogs or cats (ASPCA)'}
+
+def know_names(c, f):
+    """(names, genera) for a library filter."""
+    month = local_today(c).month
+    names = lambda n: [s[0] for s in (local_get(n) or {}).get('species', [])]
+    if f == 'native': return names('tx_native'), []
+    if f == 'introduced': return names('tx_introduced'), []
+    if f == 'invasive': return [k for k in TX_NOXIOUS if not k.endswith(' ')], [k.strip() for k in TX_NOXIOUS if k.endswith(' ')]
+    if f == 'near': return names('near'), []
+    if f == 'bloom': return names(f'bloom-{month:02d}'), []
+    if f == 'fruiting': return names(f'fungi-{month:02d}'), []
+    if f == 'hardy':
+        z, out = zone_num(home_zone(c)), names('near')
+        if os.path.isdir(CARE_DIR):
+            for fn in os.listdir(CARE_DIR):
+                try:
+                    with open(os.path.join(CARE_DIR, fn), encoding='utf-8') as fh: cs = json.load(fh)
+                except (OSError, ValueError): continue
+                zl = zone_num(cs.get('sheet', {}).get('zone_low'))
+                if zl is not None and z is not None and zl <= z: out.append(cs['name'])
+        return out, []
+    if f in ('petsafe', 'pettoxic'):
+        sp, gen = [], []
+        for k, e in aspca_get().items():
+            ok = e.get('dogs') == 'non-toxic' and e.get('cats') == 'non-toxic' if f == 'petsafe' else 'toxic' in (e.get('dogs'), e.get('cats'))
+            if ok: (gen.append(k.strip()) if e['genus'] else sp.append(e['name']))
+        return sp, gen
+    return None, None
+
+@app.route('/api/library/local', methods=['GET', 'POST'])
+def library_local():
+    """The lists about the area: what is kept, how old, and what is being fetched. POST fetches them again now."""
+    c = db()
+    if request.method == 'POST':
+        if not lib_online(c): abort(409, 'Library lookups are turned off. The owner can turn them on at the bottom of the Library page.')
+        queued = know_refresh(c, force=True)
+        audit_only(c, 'library', 'lists', None, ', '.join(queued), editor(), 'Lists about the area fetched again'); c.commit()
+    else:
+        know_refresh(c)
+    out = []
+    for name, (params, days, label) in list(local_lists(c).items()) + [('aspca', (None, 90, 'Plants toxic and non-toxic to dogs, cats and horses (ASPCA)'))]:
+        j = local_get(name)
+        out.append({'name': name, 'label': label, 'fetched': j['fetched'] if j else None,
+                    'count': (len(j.get('plants', {})) if name == 'aspca' else len(j.get('species', []))) if j else 0, 'error': KNOW['error'].get(name, {}).get('error')})
+    with KNOW['lock']: queued = [n for n, _ in KNOW['queue']]
+    return jsonify(lists=out, now=KNOW['now'], queued=queued, online=lib_online(c), filters=KNOW_FILTERS, zone=home_zone(c), near_km=NEAR_KM,
+                   noxious_source=TX_NOXIOUS_SRC, noxious_law=TX_NOXIOUS_LAW)
+
+@app.route('/api/library/around')
+def library_around():
+    """The Around home page: what flowers and fruits near home this month, and what is recorded wild nearby most often."""
+    c = db(); know_refresh(c)
+    month = local_today(c).month; L = home_place(c)
+    secs = []
+    for key, name, title in (('bloom', f'bloom-{month:02d}', f'Flowering near {L["name"]} in {date(2000, month, 1):%B}'),
+                             ('fruiting', f'fungi-{month:02d}', f'Mushrooms and other fungi found near {L["name"]} in {date(2000, month, 1):%B}'),
+                             ('near', 'near', f'Recorded wild most often within {round(NEAR_KM * 0.621)} miles')):
+        j = local_get(name)
+        top = (j or {}).get('species', [])[:48]
+        res = []
+        if top:
+            found = {}
+            for scope in (('fungi',) if key == 'fruiting' else ('world',) if key == 'bloom' else ('world', 'fungi')):
+                try:
+                    r = vision_call('/browse', json.dumps({'scope': scope, 'only': [s[0] for s in top], 'limit': 120}).encode(), 'application/json', timeout=30)
+                    found.update({x['scientific_name'].lower(): x for x in r.get('results', [])})
+                except Exception: pass
+            for n, cm, k in top:
+                x = found.get(n.lower()) or {'scientific_name': n, 'common_name': cm, 'family': '', 'kind': '', 'us_states': [], 'in_texas': False}
+                if not x.get('common_name') and cm: x['common_name'] = cm
+                x['records'] = k; res.append(x)
+            mark_owned(c, res)
+            for x in res: x['own_photo'] = own_photo(c, x['yours']) if x['yours'] else None
+        secs.append({'key': key, 'title': title, 'fetched': j['fetched'] if j else None, 'total': len((j or {}).get('species', [])), 'species': res})
+    return jsonify(sections=secs, place=L['name'], online=lib_online(c), near_km=NEAR_KM, month=month)
+
+# ---------- 1.27.0: uses, partners, deterrents, propagation and breeding, for each species ----------
+FACTS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS species_facts(
+  key TEXT PRIMARY KEY, name TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'plant', data TEXT NOT NULL,
+  origin TEXT NOT NULL, written_by TEXT, written_at TEXT);
+CREATE TABLE IF NOT EXISTS facts_link(code TEXT PRIMARY KEY, key TEXT NOT NULL);
+"""
+FACTS_EVIDENCE = ('Tested', 'Traditional', 'Same needs', 'Different needs')
+FACTS_COMPOST = ('Good', 'Fine in small amounts', 'Poor', 'Keep it out')
+# a fungus's uses never include eating it or taking it as medicine (the app never says a wild mushroom is edible or safe)
+FACTS_FUNGUS_NO = re.compile(r'edib|\beat|eaten|cook|culinar|food|meal|tea\b|tincture|medicin|supplement|extract|psychoactiv|hallucin|consum|forag|recipe|flavou?r|tast', re.I)
+
+def facts_keys(sci):
+    """The keys a species' facts can be filed under, most exact first: 'Aloe vera (spotted form)' -> ['aloe vera', 'aloe'],
+    'xGraptosedum 'Francesco Baldi'' -> ['graptosedum'], "Philodendron 'Birkin'" -> ['philodendron']."""
+    s = re.sub(r'^\s*[x\u00d7]\s*(?=[A-Z])', '', (sci or '').strip())
+    m = re.match(r'^([A-Z][a-z]+)(?:\s+([a-z][a-z\-]+))?', s)
+    if not m: return []
+    g, sp = m.group(1).lower(), m.group(2)
+    return ([g + ' ' + sp] if sp and sp not in ('sp', 'spp', 'x', 'cultivar', 'type', 'hybrid', 'var', 'or', 'cf') else []) + [g]
+
+def facts_clean(a, kind='plant'):
+    """Keeps only the expected keys, at sensible lengths (for batches and for what Claude writes)."""
+    a = a if isinstance(a, dict) else {}
+    t = lambda v, n: re.sub(r'\s+', ' ', str(v or '')).strip()[:n]
+    ev = lambda v: v if v in FACTS_EVIDENCE else 'Traditional'
+    def lst(k, fields, n):
+        out = []
+        for x in (a.get(k) or [])[:n]:
+            if isinstance(x, dict):
+                y = {f: (ev(x.get(f)) if f == 'evidence' else t(x.get(f), m)) for f, m in fields}
+                if any(v for f, v in y.items() if f != 'evidence'): out.append(y)
+        return out
+    d = {'summary': t(a.get('summary'), 400),
+         'uses': lst('uses', (('kind', 40), ('text', 400), ('caution', 300)), 8),
+         'partners_good': lst('partners_good', (('name', 80), ('sci', 80), ('why', 300), ('evidence', 0)), 8),
+         'partners_bad': lst('partners_bad', (('name', 80), ('sci', 80), ('why', 300), ('evidence', 0)), 8),
+         'deters': lst('deters', (('what', 80), ('how', 300), ('evidence', 0)), 6),
+         'attracts': lst('attracts', (('what', 80), ('why', 300)), 6),
+         'propagation': lst('propagation', (('method', 60), ('when', 160), ('how', 500)), 6)}
+    cp = a.get('compost') if isinstance(a.get('compost'), dict) else {}
+    d['compost'] = {'verdict': cp.get('verdict') if cp.get('verdict') in FACTS_COMPOST else '', 'why': t(cp.get('why'), 300)}
+    br = a.get('breeding') if isinstance(a.get('breeding'), dict) else {}
+    d['breeding'] = {'text': t(br.get('text'), 700), 'patent': t(br.get('patent'), 300), 'same_genus': br.get('same_genus') is not False,
+                     'cross_genera': [t(g, 40) for g in (br.get('cross_genera') or [])[:6] if re.fullmatch(r'[A-Za-z\u00d7 ]{3,40}', str(g or ''))]}
+    d['sources'] = [{'title': t(x.get('title'), 120), 'url': t(x.get('url'), 300)} for x in (a.get('sources') or [])[:6]
+                    if isinstance(x, dict) and str(x.get('url', '')).startswith('https://')]
+    if kind == 'fungus':
+        d['uses'] = [u for u in d['uses'] if not FACTS_FUNGUS_NO.search(u['kind'] + ' ' + u['text'] + ' ' + u['caution'])]
+        d['summary'] = '' if FACTS_FUNGUS_NO.search(d['summary']) else d['summary']
+    return d
+
+def facts_row(c, sci, code=None):
+    if code:
+        k = c.execute('SELECT key FROM facts_link WHERE code=?', (code,)).fetchone()
+        if k:
+            r = c.execute('SELECT * FROM species_facts WHERE key=?', (k[0],)).fetchone()
+            if r: return r
+    for k in facts_keys(sci):
+        r = c.execute('SELECT * FROM species_facts WHERE key=?', (k,)).fetchone()
+        if r: return r
+    return None
+
+def facts_links(c, d, sci, self_code=None):
+    """Marks which partner plants you have, and which of your plants could be crossed with this one."""
+    mine = []
+    for code, name, s in c.execute("SELECT code, common_name, scientific_name FROM plants WHERE status='active' ORDER BY code"):
+        lk = c.execute('SELECT key FROM facts_link WHERE code=?', (code,)).fetchone()
+        mine.append((code, name, ([lk[0]] if lk else []) + facts_keys(s)))
+    def have(target):
+        t = (target or '').lower().strip()
+        t = re.sub(r'^[x\u00d7]\s*', '', t)
+        return [{'code': code, 'name': name} for code, name, ks in mine if code != self_code and t and (t in ks or any(k.startswith(t + ' ') for k in ks))]
+    for p in d.get('partners_good', []) + d.get('partners_bad', []):
+        p['yours'] = have(p['sci']) if p.get('sci') else []
+    ks = facts_keys(sci)
+    if self_code:
+        lk = c.execute('SELECT key FROM facts_link WHERE code=?', (self_code,)).fetchone()
+        if lk: ks = [lk[0]] + ks
+    sp = next((k for k in ks if ' ' in k), None)
+    br = d.get('breeding', {})
+    genera = ({k for k in ks if ' ' not in k} if br.get('same_genus', True) else set()) | {g.lower().replace('\u00d7', '').strip() for g in br.get('cross_genera', [])}
+    same, other = [], []
+    for code, name, pks in mine:
+        if code == self_code: continue
+        if sp and sp in pks: same.append({'code': code, 'name': name})
+        elif genera & {k for k in pks if ' ' not in k}: other.append({'code': code, 'name': name})
+    d['cross_same'], d['cross_other'] = same, other
+    return d
+
+def facts_out(c, sci, code=None, kind='plant'):
+    r = facts_row(c, sci, code)
+    if not r: return None
+    d = facts_links(c, json.loads(r['data']), sci, code)
+    d.update(key=r['key'], name=r['name'], kind=r['kind'], origin=r['origin'], written_by=r['written_by'], written_at=r['written_at'])
+    return d
+
+@app.route('/api/facts', methods=['GET', 'POST'])
+def species_facts():
+    """GET ?name=<scientific name>[&code=P-001]: what is kept for that species (or its genus), with your plants linked.
+    POST {name, common_name, kind}: Claude writes them with the owner's key, and they are kept."""
+    c = db()
+    if request.method == 'GET':
+        a = request.args
+        code = a.get('code') or None
+        sci = a.get('name') or ''
+        if code and not sci:
+            r = c.execute('SELECT scientific_name FROM plants WHERE code=?', (code,)).fetchone()
+            sci = r[0] if r else ''
+        return jsonify(facts=facts_out(c, sci, code), keys=facts_keys(sci), can_write=bool(setting(c, 'claude_key', '')))
+    b = request.get_json(silent=True) or {}
+    name, kind = str(b.get('name') or '').strip()[:120], 'fungus' if b.get('kind') == 'fungus' else 'plant'
+    ks = facts_keys(name)
+    if not ks: abort(400, 'This needs a scientific name, such as "Aloe vera", to look up.')
+    old = c.execute('SELECT origin FROM species_facts WHERE key=?', (ks[0],)).fetchone()
+    if old and old['origin'] == 'researched': abort(409, 'These were researched for your plants and are kept as they are.')
+    key = setting(c, 'claude_key', '')
+    if not key: abort(400, 'These are written by Claude. The owner can save an Anthropic API key on the Identify page, under "Second opinions".')
+    L = home_place(c)
+    ask = FACTS_ASK.format(name=name, common=f' ({b["common_name"]})' if b.get('common_name') else '', place=L['name'],
+                           zone=home_zone(c), extra=FACTS_ASK_FUNGUS if kind == 'fungus' else FACTS_ASK_PLANT)
+    body = json.dumps({'model': CLAUDE_MODEL, 'max_tokens': 3000, 'messages': [{'role': 'user', 'content': ask}]}).encode()
+    st, j = outside_call(CLAUDE_URL, body, {'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01'}, timeout=150)
+    if st in (401, 403): abort(502, 'Anthropic refused the key. Check it at console.anthropic.com and save it again.')
+    if st in (429, 529): abort(502, 'Claude is busy or the key has reached its limit. Try again in a minute.')
+    if st != 200: abort(502, 'Could not reach Claude. Check the internet connection and try again.')
+    text = ''.join(x.get('text', '') for x in j.get('content', []) if x.get('type') == 'text')
+    m = re.search(r'\{.*\}', text, re.S)
+    try: a = json.loads(m.group(0)) if m else {}
+    except ValueError: a = {}
+    d = facts_clean(a, kind)
+    if not (d['uses'] or d['propagation'] or d['partners_good']): abort(502, 'Claude did not give an answer this could read. Try again.')
+    c.execute('INSERT OR REPLACE INTO species_facts(key,name,kind,data,origin,written_by,written_at) VALUES(?,?,?,?,?,?,?)',
+              (ks[0], name, kind, json.dumps(d), 'claude', editor(), now()))
+    audit_only(c, 'library', 'uses and partners', None, name, editor(), f'Uses, partners and propagation for {name} written by Claude'); c.commit()
+    return jsonify(facts=facts_out(c, name, None, kind))
+
+FACTS_ASK = """For the species {name}{common}, grown by a home gardener in {place} (USDA zone {zone}), answer with ONE JSON object only, no other
+text. Keys:
+"summary": one sentence on what it is most useful for.
+"uses": a list (0 to 6) of {{"kind": a short category such as "Skin and first aid", "Food for wildlife", "Dye", "Crafts", "Erosion control",
+  "Cut flowers", "Ornamental", "Soil", "text": one or two sentences, "caution": safety notes, or ""}}. Traditional or folk uses must say so.
+{extra}
+"compost": {{"verdict": one of "Good", "Fine in small amounts", "Poor", "Keep it out", "why": one sentence}}.
+"partners_good" and "partners_bad": lists (0 to 6) of {{"name": common name, "sci": its genus or "Genus species", "why": one sentence,
+  "evidence": "Tested" (shown in trials), "Traditional" (gardeners' lore, not shown), "Same needs" (same light, water and soil, for pots
+  and beds) or "Different needs" (for partners_bad: needs very different light, water or soil)}}.
+"deters": a list (0 to 4) of {{"what": the pest or animal, "how": one sentence, "evidence": as above}}. Only real, specific claims.
+"attracts": a list (0 to 4) of {{"what": pollinators, birds or beneficial insects, "why": one sentence}}.
+"propagation": a list (1 to 4) of {{"method": such as "Stem cuttings", "Division", "Seed", "Spore print", "when": the best time in {place},
+  "how": two or three practical sentences}}.
+"breeding": {{"text": how to cross it with others and what to expect (or that it does not cross), "cross_genera": genera it is known to
+  cross with besides its own (a list, often empty), "same_genus": false if it cannot practically be crossed with others of its genus at home,
+  "patent": a note if named varieties are commonly patented, or ""}}.
+"sources": a list (0 to 4) of {{"title", "url"}}: only well-known reference pages you are sure exist (extension services, botanic gardens).
+Use plain words. If you do not know the species well, keep each list short and general, and say so in "summary"."""
+FACTS_ASK_PLANT = "Medicinal or skin uses are folk or traditional information, never advice: put any toxicity to people or pets in \"caution\"."
+FACTS_ASK_FUNGUS = """This is a FUNGUS. Do not say or suggest that it is edible, safe, tasty, medicinal or psychoactive, and do not list any use
+that means eating it, drinking it or taking it in any form. Its uses are what it does: what it breaks down, which trees or plants it
+partners with (mycorrhizal), what it tells you about the soil, compost, spore prints, dye from its color, and how it is cultivated."""
+
+CARE_ASK = """Write a CARE SHEET for growing the plant species {name}{common} at home, for a gardener in {place} (USDA hardiness zone {zone}).
+Answer with one JSON object only, no other text, with these keys, each a short plain-English string of one to three sentences unless noted:
+"summary", "light", "water", "soil", "temperature", "min_temp_f" (a number: the coldest it survives, in Fahrenheit), "zone_low" and "zone_high"
+(USDA zones like "8b"), "humidity", "feeding", "pruning", "propagation", "pests", "outdoors_here" (can it live outside year round in {place}, and
+when to plant it there), "containers" (growing it in a pot). Do not include anything about whether it is safe for pets or people, or edible.
+If you do not know this species well, say so in "summary" and keep the rest general."""
+
+@app.route('/api/library/care', methods=['GET', 'POST'])
+def library_care():
+    """A care sheet for any plant species, written by Claude with the owner's key on request, and kept."""
+    c = db()
+    name = (request.get_json(silent=True) or {}).get('name') if request.method == 'POST' else request.args.get('name')
+    name = str(name or '').strip()[:120]
+    if not name: abort(400, 'Which species?')
+    if request.method == 'GET': return jsonify(care=care_get(name))
+    key = setting(c, 'claude_key', '')
+    if not key: abort(400, 'Care sheets are written by Claude. The owner can save an Anthropic API key on the Identify page, under "Second opinions".')
+    b = request.get_json(silent=True) or {}
+    L = home_place(c); zone = home_zone(c)
+    ask = CARE_ASK.format(name=name, common=f' ({b["common_name"]})' if b.get('common_name') else '', place=L['name'], zone=zone)
+    body = json.dumps({'model': CLAUDE_MODEL, 'max_tokens': 1500, 'messages': [{'role': 'user', 'content': ask}]}).encode()
+    st, j = outside_call(CLAUDE_URL, body, {'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01'}, timeout=120)
+    if st in (401, 403): abort(502, 'Anthropic refused the key. Check it at console.anthropic.com and save it again.')
+    if st in (429, 529): abort(502, 'Claude is busy or the key has reached its limit. Try again in a minute.')
+    if st != 200: abort(502, 'Could not reach Claude. Check the internet connection and try again.')
+    text = ''.join(x.get('text', '') for x in j.get('content', []) if x.get('type') == 'text')
+    m = re.search(r'\{.*\}', text, re.S)
+    try: a = json.loads(m.group(0)) if m else {}
+    except ValueError: a = {}
+    keys = ('summary', 'light', 'water', 'soil', 'temperature', 'humidity', 'feeding', 'pruning', 'propagation', 'pests', 'outdoors_here', 'containers')
+    sheet = {k: str(a.get(k) or '').strip()[:800] for k in keys}
+    if not any(sheet.values()): abort(502, 'Claude did not give a care sheet this could read. Try again.')
+    try: sheet['min_temp_f'] = round(float(a.get('min_temp_f')))
+    except (TypeError, ValueError): sheet['min_temp_f'] = None
+    for k in ('zone_low', 'zone_high'): sheet[k] = str(a.get(k) or '').strip()[:4] if zone_num(a.get(k)) is not None else None
+    os.makedirs(CARE_DIR, exist_ok=True)
+    rec = {'name': name, 'written_at': now(), 'asked_by': editor(), 'model': CLAUDE_MODEL, 'place': L['name'], 'zone': zone, 'sheet': sheet}
+    with open(os.path.join(CARE_DIR, lib_slug(name) + '.json.tmp'), 'w', encoding='utf-8') as f: json.dump(rec, f)
+    os.replace(os.path.join(CARE_DIR, lib_slug(name) + '.json.tmp'), os.path.join(CARE_DIR, lib_slug(name) + '.json'))
+    audit_only(c, 'library', 'care sheet', None, name, editor(), f'Care sheet for {name} written by Claude'); c.commit()
+    return jsonify(care=rec)
+
+def lib_photo_state(name):
+    """{'url', 'credit', ...} when kept, None when there is none, 'pending' while it is being fetched."""
+    m = lib_meta(name)
+    if m and m.get('photo'): return {'url': '/library-photos/' + m['photo']['file'], 'credit': m['photo']['credit'], 'license': m['photo']['license'], 'page': m['photo']['page']}
+    fresh = m and m.get('checked') and (date.today() - date.fromisoformat(m['checked'])).days < LIB_RECHECK_DAYS
+    if fresh or not lib_online(): return None
+    return 'pending'
+
+def owned_lists(c):
+    sp, gn = species_owned(c)
+    return '|'.join(sp), '|'.join(gn)
+
+def own_photo(c, codes):
+    for code in codes:
+        b = plant_brief(c, code)
+        if b and b['photo']: return '/thumbs/' + urllib.parse.quote(b['photo'])
+    return None
+
+@app.route('/api/library/browse')
+def library_browse():
+    """Every species in a list, filtered and sorted, a page at a time (see the picture checker's /browse)."""
+    c, a = db(), request.args
+    own, owngenus = owned_lists(c)
+    q = {k: a.get(k, '')[:80] for k in ('scope', 'q', 'kind', 'family', 'genus', 'order', 'state', 'common', 'mine', 'sort', 'offset', 'limit')}
+    if q['scope'] not in ID_SCOPES: q['scope'] = 'common'
+    if q['mine'] == 'wish':                        # 1.22.0: your wishlist, your notes and tags (names sent as the "own" list)
+        q.update(mine='species', own='|'.join(r[0] for r in c.execute('SELECT name FROM wishlist')), owngenus='')
+    elif q['mine'] == 'notes':
+        q.update(mine='species', own='|'.join(r[0] for r in c.execute("SELECT name FROM species_notes WHERE notes<>'' OR tags<>''")), owngenus='')
+    elif q['mine'].startswith('tag:'):
+        t = q['mine'][4:].strip().lower()
+        q.update(mine='species', own='|'.join(n for n, tg in c.execute("SELECT name, tags FROM species_notes WHERE tags<>''") if t in [x.strip() for x in tg.split(',')]), owngenus='')
+    elif q['mine']: q.update(own=own, owngenus=owngenus)
+    if q['mine'] == 'species' and not q.get('own'): q['own'] = '-'           # an empty list matches nothing
+    kf = a.get('know', '')[:20]
+    if kf in KNOW_FILTERS:                         # 1.23.0: the lists about the area, sent in the body (they can be long)
+        only, genera = know_names(c, kf)
+        body = {k: v for k, v in q.items() if v} | {'only': only or [], 'only_genera': genera or []}
+        out = vision_call('/browse', json.dumps(body).encode(), 'application/json', timeout=30)
+    else:
+        out = vision_call('/browse?' + urllib.parse.urlencode({k: v for k, v in q.items() if v}), timeout=30)
+    mark_owned(c, out.get('results', []))
+    for x in out['results']:
+        x['own_photo'] = own_photo(c, x['yours']) if x['yours'] else None
+    return jsonify(out)
+
+@app.route('/api/library/facets')
+def library_facets():
+    scope = request.args.get('scope', 'common')
+    return jsonify(vision_call('/facets?' + urllib.parse.urlencode({'scope': scope if scope in ID_SCOPES else 'common'}), timeout=30))
+
+@app.route('/api/library/photos')
+def library_photos():
+    """?names=a|b|c: each one's photo, null when there is none, or "pending" while it is fetched in the background."""
+    names = [n.strip() for n in request.args.get('names', '').split('|') if n.strip()][:150]
+    out = {n: lib_photo_state(n) for n in names}
+    if lib_online(): lib_enqueue([n for n, v in out.items() if v == 'pending'])
+    return jsonify(photos=out, online=lib_online())
+
+@app.route('/api/library/taxon')
+def library_taxon():
+    """One species in full, plus your plants of it and of its genus."""
+    c, name = db(), request.args.get('name', '').strip()[:120]
+    if not name: abort(400, 'Which species?')
+    out = vision_call('/taxon?' + urllib.parse.urlencode({'name': name}), timeout=30)
+    mark_owned(c, [out]); mark_owned(c, out.get('similar', []))
+    out['your_plants'] = [plant_brief(c, x) for x in out['yours'] + out['yours_genus']]
+    nt = c.execute('SELECT * FROM species_notes WHERE lower(name)=lower(?)', (out.get('scientific_name') or name,)).fetchone()
+    out['notes'] = dict(nt) if nt else {'notes': '', 'tags': '', 'updated_by': None, 'updated_at': None}
+    w = c.execute('SELECT * FROM wishlist WHERE lower(name)=lower(?)', (out.get('scientific_name') or name,)).fetchone()
+    out['wishlist'] = dict(w) if w else None
+    out['care'] = care_get(out.get('scientific_name') or name)
+    out['zone'] = home_zone(c); out['home'] = home_place(c)['name']; out['near_km'] = NEAR_KM
+    out['noxious_source'] = TX_NOXIOUS_SRC; out['noxious_law'] = TX_NOXIOUS_LAW; know_refresh(c)
+    out['your_finds'] = [{'code': r['code'], 'name': r['name'], 'found_on': r['found_on'], 'id_status': r['id_status']}
+                         for r in c.execute('SELECT * FROM fungi_finds WHERE lower(scientific_name)=lower(?) ORDER BY found_on DESC', (out.get('scientific_name') or name,))]
+    m = lib_meta(name) or {}
+    out['inat'] = {k: m.get(k) for k in ('inat_common', 'taxon_id', 'observations', 'wikipedia_url', 'summary', 'photos', 'detail_checked')}
+    out['online'] = lib_online(c)
+    return jsonify(out)
+
+@app.route('/api/library/info', methods=['GET'])
+def library_info():
+    """The species' photos (up to 6) and short description, from iNaturalist, fetched on first view and then kept."""
+    c, name = db(), request.args.get('name', '').strip()[:120]
+    if not name: abort(400, 'Which species?')
+    m = lib_meta(name) or {}
+    fresh = m.get('detail_checked') and (date.today() - date.fromisoformat(m['detail_checked'])).days < LIB_RECHECK_DAYS
+    if not fresh and lib_online(c):
+        try:
+            if 'taxon_id' not in m: m = lib_fetch_photo(name)
+            if m.get('taxon_id'):
+                t = (inat_get(f"/taxa/{int(m['taxon_id'])}?locale=en").get('results') or [{}])[0]
+                summ = re.sub(r'<[^>]+>', '', t.get('wikipedia_summary') or '')
+                photos = []
+                for k, tp in enumerate((t.get('taxon_photos') or [])[:6]):
+                    ph = tp.get('photo') or {}
+                    url = (ph.get('medium_url') or ph.get('url') or '').replace('/medium.', '/large.')
+                    if not url: continue
+                    f = f'{lib_slug(name)}-{k + 1}.jpg'
+                    try: lib_download(url, os.path.join(LIB_DIR, f)); photos.append(photo_meta(ph, f))
+                    except Exception as e: print(f'[library] {name} photo {k + 1}: {e}', flush=True)
+                m.update(summary=html_unescape(summ)[:3000], photos=photos, inat_common=t.get('preferred_common_name') or m.get('inat_common', ''),
+                         observations=t.get('observations_count'), wikipedia_url=t.get('wikipedia_url') or m.get('wikipedia_url', ''))
+            m['detail_checked'] = date.today().isoformat(); m.setdefault('name', name)
+            lib_save(name, m)
+        except Exception as e:
+            return jsonify(error='Could not reach iNaturalist for the photos and description. They are tried again next time.', detail=str(e)[:200], online=True)
+    return jsonify(summary=m.get('summary', ''), photos=[p | {'url': '/library-photos/' + p['file']} for p in (m.get('photos') or [])],
+                   inat_common=m.get('inat_common', ''), observations=m.get('observations'), wikipedia_url=m.get('wikipedia_url', ''),
+                   inat_url=f"https://www.inaturalist.org/taxa/{m['taxon_id']}" if m.get('taxon_id') else '', online=lib_online(c))
+
+def html_unescape(t):
+    import html as _h
+    return _h.unescape(t).strip()
+
+@app.route('/library-photos/<path:name>')
+def library_photo_file(name):
+    return send_from_directory(LIB_DIR, os.path.basename(name), max_age=86400)
+
+@app.route('/api/library/settings', methods=['GET', 'PUT'])
+def library_settings():
+    """Whether the library may look up photos and descriptions on iNaturalist (owner only to change)."""
+    c = db()
+    if request.method == 'PUT':
+        on = bool((request.get_json(silent=True) or {}).get('online'))
+        set_setting(c, 'library_online', '1' if on else '0')
+        audit_only(c, 'setting', 'library_online', None, 'on' if on else 'off', editor(), 'Library photos from iNaturalist turned ' + ('on' if on else 'off'))
+        c.commit()
+    return jsonify(online=lib_online(c))
 
 def key_hint(k):
     return ('…' + k[-4:]) if k else ''
@@ -1081,7 +2417,8 @@ def list_plants():
     for r in rows:
         hay = ' '.join(str(r[n] or '') for n in ('code', 'common_name', 'scientific_name', 'aliases', 'location', 'container', 'plant_type', 'notes')).lower()
         if q and q not in hay: continue
-        p = c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC,id LIMIT 1', (r['id'],)).fetchone()
+        files = [x[0] for x in c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC,id', (r['id'],))]
+        p = {'file': files[0]} if files else None
         pn, pat = c.execute('SELECT COUNT(*), MAX(added_at) FROM photos WHERE plant_id=?', (r['id'],)).fetchone()
         out.append({'code': r['code'], 'common_name': r['common_name'], 'scientific_name': r['scientific_name'], 'plant_type': r['plant_type'],
                     'location': r['location'], 'aliases': r['aliases'], 'id_confidence': r['id_confidence'], 'winter_plan': r['winter_plan'], 'health_rating': r['health_rating'],
@@ -1092,7 +2429,8 @@ def list_plants():
                     # 1.17.0: for the filters on the Plants page
                     'dli_low': r['dli_low'], 'dli_high': r['dli_high'], 'zone_low': r['zone_low'], 'pet_safety': r['pet_safety'] or '',
                     'leaf_type': r['leaf_type'] or '', 'pot_size': r['pot_size'] or '', 'photo_count': pn, 'photo_at': pat,
-                    'light_spot': spots.get(r['code'])})
+                    'light_spot': spots.get(r['code']),
+                    'photos': files})                      # 1.20.0: every photo, main photo first, to browse on the Plants page
     return jsonify(out)
 
 @app.route('/api/plants/<code>')
@@ -1325,13 +2663,18 @@ def update_plant(code):
     c = db()
     r = plant_row(c, code)
     body = request.get_json(silent=True) or {}
+    nclash = 0
     if int(body.get('base_version', -1)) != r['version']:
-        return jsonify(error='This page was changed by someone else since you opened it. Reload to see version %d.' % r['version'],
-                       current=plant_dict(c, r)), 409
+        if not isinstance(body.get('base_values'), dict):
+            return jsonify(error='This page was changed by someone else since you opened it. Reload to see version %d.' % r['version'],
+                           current=plant_dict(c, r)), 409
+        # 1.24.0: a change from a device that saw an older version: merge it field by field
+        body['fields'], nclash = merge_fields(c, 'plant', r['code'], r, body.get('fields') or {}, body['base_values'], lambda n: FIELD_LABEL.get(n, n),
+                                              lambda n, v: norm(n, v) if n in FIELD_KIND else v, (r['updated_by'], r['updated_at']))
     if 'common_name' in body.get('fields', {}) and not str(body['fields']['common_name']).strip(): abort(400, 'Common name is required')
     ver, changed = apply_changes(c, r, body.get('fields', {}), editor(), 'update', (body.get('note') or '').strip()[:300])
     c.commit()
-    return jsonify(plant_dict(c, plant_row(c, code)) | {'changed': changed})
+    return jsonify(plant_dict(c, plant_row(c, code)) | {'changed': changed, 'conflicts': nclash})
 
 @app.route('/api/plants/<code>/site', methods=['POST'])
 def plant_site(code):
@@ -1872,11 +3215,14 @@ AUDIT_KINDS = {                          # kind of change (the filter on the Aud
     'lights': ('Grow lights', ('light',)),
     'groups': ('Groups and changes to a whole group', ('group',)),
     'notes': ('Notes from updates', ('note',)),
+    'fungi': ('Mushroom finds', ('fungi',)),
+    'library': ('Library notes, tags and wishlist', ('library',)),
+    'sync': ('Clashes between devices', ('sync',)),
 }
 ACTION_WORD = {'create': 'Page created', 'update': 'Edited', 'edit': 'Updated', 'restore': 'Restored', 'archive': 'Archived', 'unarchive': 'Brought back',
                'photo_add': 'Photo added', 'photo_assign': 'Photo assigned', 'photo_move': 'Photo moved', 'photo_remove': 'Photo removed',
                'photo_caption': 'Caption edited', 'photo_primary': 'Main photo changed', 'care': 'Care', 'fertilizer': 'Feeding', 'frost': 'Cold night',
-               'request': 'Request', 'todo': 'Photo list', 'setting': 'Setting', 'backup': 'Backup', 'note': 'Note', 'light': 'Grow light', 'group': 'Group'}
+               'request': 'Request', 'todo': 'Photo list', 'setting': 'Setting', 'backup': 'Backup', 'note': 'Note', 'light': 'Grow light', 'group': 'Group', 'fungi': 'Mushroom find', 'library': 'Library', 'sync': 'Clash between devices'}
 
 def audit_query(c, a, count=False):
     """SQL and arguments for the audit log with the filters in `a` (request.args): q, plant, who, kind, field, from, to,
@@ -2075,7 +3421,13 @@ def thumb(name):
     src, dst = os.path.join(PHOTO_DIR, safe), os.path.join(THUMB_DIR, safe)
     if not os.path.exists(src): abort(404)
     if not os.path.exists(dst):
-        im = Image.open(src); im.thumbnail((520, 520)); im.save(dst, 'JPEG', quality=80)
+        # 1.21.0: the short side is at least 640 px, so a wide photo cropped to fill a tall card (or shown whole) stays sharp on
+        # high-resolution screens. Before, wide photos were 520 x 390 and blurry when cropped.
+        im = ImageOps.exif_transpose(Image.open(src)); im = im.convert('RGB') if im.mode not in ('RGB', 'L') else im
+        k = min(1.0, 640 / min(im.size), 1400 / max(im.size))
+        if k < 1: im = im.resize((round(im.width * k), round(im.height * k)), Image.LANCZOS)
+        os.makedirs(THUMB_DIR, exist_ok=True)
+        im.save(dst + '.tmp', 'JPEG', quality=82, optimize=True); os.replace(dst + '.tmp', dst)
     return send_from_directory(THUMB_DIR, safe, max_age=3600)
 
 # ---------------------------------------------------------------- to-photograph list
@@ -4624,6 +5976,190 @@ def plant_day(code):
     return jsonify(date=ds, tz=loc['tz'], version=ver, current_version=r['version'], ranges={n: f.get(n) for n in FIELD_NAMES if n.split('_')[0] in ('temp', 'humidity', 'vpd', 'par', 'dli', 'soil', 'fert')},
                    sources=out, source_names=SOURCE_NAME, fertilized=fert, last_fed=last[0] if last else None)
 
+# ---------------------------------------------------------------- 1.24.0: offline use on phones and tablets, and sending changes later
+# The page (app.js) keeps changes made without a connection in an outbox on the device, and sends each one later as the request it
+# would have made, with X-Offline-Op (a unique id for that change), X-Offline-Made (when it was made) and X-Offline-Device. The
+# server answers each id once and keeps the answer in sync_ops, so a change that is sent twice (a dropped connection, a retry) is
+# only made once. Edits carry base_values, the values the device saw: if someone else changed the record since, every field the
+# device changed is still applied when the server's value is the one the device saw; when both changed the same field to
+# different values, both are kept in sync_conflicts and the owner or an editor chooses on the "Needs your decision" page.
+SYNC_SCHEMA = """
+CREATE TABLE IF NOT EXISTS sync_ops(
+  op TEXT PRIMARY KEY, method TEXT NOT NULL, path TEXT NOT NULL, status INTEGER NOT NULL, response TEXT, who TEXT, device TEXT,
+  made_at TEXT, received_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS sync_conflicts(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, code TEXT NOT NULL, field TEXT NOT NULL, label TEXT NOT NULL,
+  base TEXT, server_value TEXT, server_by TEXT, server_at TEXT, phone_value TEXT, phone_by TEXT, phone_made_at TEXT, device TEXT,
+  created_at TEXT NOT NULL, resolved_at TEXT, resolved_by TEXT, choice TEXT);
+"""
+OFFLINE_PAGES = ['/api/meta', '/api/plants', '/api/plants?status=all', '/api/frost', '/api/groups', '/api/to-photograph', '/api/for-claude?range=last',
+                 '/api/fertilizer', '/api/fertilizer/needs', '/api/fertilizer/products', '/api/outside', '/api/prep', '/api/requests?open=1', '/api/water',
+                 '/api/weather', '/api/reference', '/api/weather/monthly', '/api/lights', '/api/current', '/api/settings', '/api/photos/unassigned',
+                 '/api/identify/status', '/api/library/browse?scope=common&sort=known&offset=0&limit=48', '/api/library/facets?scope=common', '/api/library/notes',
+                 '/api/library/settings', '/api/library/around', '/api/wishlist', '/api/wishlist/alerts', '/api/shops', '/api/fungi?status=active', '/api/fungi?status=all', '/api/fungi?status=archived',
+                 '/api/fungi?status=none', '/api/conflicts?all=1']        # what the pages ask for (recorded by visiting each page)
+OFFLINE_PLANT = ['/api/plants/{code}', '/api/care?n=12&plant={code}', '/api/fertilizer/needs?plant={code}', '/api/lights?plant={code}',
+                 '/api/plants/{code}/history', '/api/plants/{code}/prep', '/api/plants/{code}/timeline', '/api/plants/{code}/qr.svg', '/api/facts?code={code}']
+OFFLINE_FIND = ['/api/fungi/{code}']
+OFFLINE_OP_RE = re.compile(r'^[A-Za-z0-9_-]{8,64}$')
+
+def offline_op():
+    op = request.headers.get('X-Offline-Op', '')
+    return op if request.method not in ('GET', 'HEAD', 'OPTIONS') and OFFLINE_OP_RE.match(op) else None
+
+def offline_replay():
+    """The kept answer when this change was already made (called at the end of guard())."""
+    op = offline_op()
+    if not op: return None
+    c = db()
+    # claim the id first (status 0), so two copies arriving at once can't both be made
+    claimed = c.execute('INSERT OR IGNORE INTO sync_ops(op,method,path,status,received_at) VALUES(?,?,?,0,?)', (op, request.method, request.path[:300], now())).rowcount
+    c.commit()
+    if not claimed:
+        r = c.execute('SELECT status, response FROM sync_ops WHERE op=?', (op,)).fetchone()
+        if not r['status']: abort(503, 'This change is being made right now. It will be checked again shortly.')
+        return Response(r['response'] or '{}', r['status'], mimetype='application/json', headers={'X-Offline-Replayed': '1'})
+    g.offline_op = op
+    return None
+
+def offline_remember(resp):
+    """Keeps the answer to a change sent with X-Offline-Op, so sending it again does not make it twice (after_request)."""
+    op = g.get('offline_op')
+    if not op: return resp
+    try:
+        c = db()
+        if resp.status_code >= 500:                # not made: let it be sent again
+            c.rollback(); c.execute('DELETE FROM sync_ops WHERE op=? AND status=0', (op,)); c.commit()
+            return resp
+        body = resp.get_data(as_text=True) if resp.mimetype == 'application/json' else '{}'
+        c.execute('UPDATE sync_ops SET status=?, response=?, who=?, device=?, made_at=? WHERE op=?',
+                  (resp.status_code, body[:200_000], editor(), request.headers.get('X-Offline-Device', '')[:60], request.headers.get('X-Offline-Made', '')[:40], op))
+        c.commit()
+    except Exception as e:
+        print(f'[offline] could not keep the answer to {op}: {e}', flush=True)
+    return resp
+
+def same_value(a, b):
+    """Two field values are the same when they read the same (None, '' and numbers written either way)."""
+    if a is None: a = ''
+    if b is None: b = ''
+    if isinstance(a, (int, float)) or isinstance(b, (int, float)):
+        try: return float(a) == float(b)
+        except (TypeError, ValueError): pass
+    return str(a).strip() == str(b).strip()
+
+def merge_fields(c, kind, code, row, fields, base_values, label_of, norm_fn, last_change):
+    """Splits a device's edit into the fields to apply and the clashes to keep for a decision. A field the device did not change
+    (its new value is the one it saw) is left out; a field nobody else changed is applied; a field changed to the same value by
+    both is left as it is."""
+    apply, clashes = {}, []
+    for n, v in fields.items():
+        if n not in row.keys(): continue
+        if n not in base_values: apply[n] = v; continue
+        base, cur, new = base_values[n], row[n], norm_fn(n, v)
+        if same_value(new, base): continue
+        if same_value(cur, base): apply[n] = v
+        elif same_value(cur, new): continue
+        else: clashes.append((n, base, cur, new))
+    who, at = last_change
+    for n, base, cur, new in clashes:
+        c.execute('INSERT INTO sync_conflicts(kind,code,field,label,base,server_value,server_by,server_at,phone_value,phone_by,phone_made_at,device,created_at) '
+                  'VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                  (kind, code, n, label_of(n), None if base is None else str(base), None if cur is None else str(cur), who, at,
+                   None if new is None else str(new), editor(), request.headers.get('X-Offline-Made', '')[:40] or now(), request.headers.get('X-Offline-Device', '')[:60], now()))
+        audit_only(c, 'sync', n, None if cur is None else str(cur)[:500], None if new is None else str(new)[:500], editor(),
+                   f'{code}: {label_of(n)} was changed on {request.headers.get("X-Offline-Device") or "another device"} and here; waiting for a decision', None, code)
+    return apply, len(clashes)
+
+def conflict_dict(r):
+    d = dict(r)
+    d['open'] = r['resolved_at'] is None
+    return d
+
+@app.route('/api/conflicts')
+def conflicts_list():
+    c = db()
+    rows = c.execute('SELECT * FROM sync_conflicts ' + ('WHERE resolved_at IS NULL ' if request.args.get('all') != '1' else '') + 'ORDER BY id DESC LIMIT 300').fetchall()
+    return jsonify(conflicts=[conflict_dict(r) for r in rows], open=c.execute('SELECT COUNT(*) FROM sync_conflicts WHERE resolved_at IS NULL').fetchone()[0])
+
+@app.route('/api/conflicts/<int:i>', methods=['POST'])
+def conflict_decide(i):
+    """Keeps one side of a clash: 'phone' writes the device's value now; 'server' keeps what the server has."""
+    c = db()
+    r = c.execute('SELECT * FROM sync_conflicts WHERE id=?', (i,)).fetchone()
+    if not r: abort(404, 'That decision is not on the list')
+    if r['resolved_at']: abort(409, 'That one was already decided by ' + (r['resolved_by'] or 'someone') + '.')
+    choice = (request.get_json(silent=True) or {}).get('choice')
+    if choice not in ('phone', 'server'): abort(400, 'choice must be phone or server')
+    who = editor()
+    if choice == 'phone':
+        if r['kind'] == 'plant':
+            p = plant_row(c, r['code'])
+            apply_changes(c, p, {r['field']: r['phone_value'] or ''}, who, 'update', f"{FIELD_LABEL.get(r['field'], r['field'])}: kept the change made on {r['device'] or 'another device'}")
+        elif r['kind'] == 'fungi':
+            f = find_row(c, r['code'])
+            v = fungi_norm(c, r['field'], r['phone_value'])
+            c.execute(f"UPDATE fungi_finds SET {r['field']}=?, version=version+1, updated_by=?, updated_at=? WHERE id=?", (v, who, now(), f['id']))
+            audit_only(c, 'fungi', r['field'], f[r['field']], v, who, f"{r['code']}: {r['label']}: kept the change made on {r['device'] or 'another device'}", None, r['code'])
+    else:
+        audit_only(c, 'sync', r['field'], r['phone_value'], r['server_value'], who, f"{r['code']}: {r['label']}: kept the value that was here", None, r['code'])
+    c.execute('UPDATE sync_conflicts SET resolved_at=?, resolved_by=?, choice=? WHERE id=?', (now(), who, choice, i))
+    c.commit()
+    return jsonify(conflict_dict(c.execute('SELECT * FROM sync_conflicts WHERE id=?', (i,)).fetchone()))
+
+@app.route('/api/offline/status')
+def offline_status():
+    """What a device needs to know when it comes back online (never kept by the service worker)."""
+    c = db()
+    return jsonify(version=APP_VERSION, conflicts=c.execute('SELECT COUNT(*) FROM sync_conflicts WHERE resolved_at IS NULL').fetchone()[0], now=now())
+
+@app.route('/api/offline/manifest')
+def offline_manifest():
+    """Everything a device saves for offline use: the answers its pages ask for, and every photo (full size and thumbnail)."""
+    c = db()
+    codes = [r[0] for r in c.execute("SELECT code FROM plants ORDER BY code")]
+    active = [r[0] for r in c.execute("SELECT code FROM plants WHERE status='active' ORDER BY code")]
+    finds = [r[0] for r in c.execute('SELECT code FROM fungi_finds ORDER BY id')]
+    groups = [r[0] for r in c.execute('SELECT id FROM plant_groups ORDER BY id')]
+    urls = OFFLINE_PAGES + [u.format(code=urllib.parse.quote(x)) for x in codes for u in OFFLINE_PLANT] + \
+        [u.format(code=urllib.parse.quote(x)) for x in finds for u in OFFLINE_FIND] + [f'/api/groups/{gid}' for gid in groups]
+    names = sorted({r[0] for r in c.execute("SELECT scientific_name FROM plants WHERE status='active' AND scientific_name<>''")} |
+                   {r[0] for r in c.execute("SELECT scientific_name FROM fungi_finds WHERE scientific_name<>''")} | {r[0] for r in c.execute('SELECT name FROM wishlist')})
+    urls += [f'/api/library/taxon?name={urllib.parse.quote(n)}' for n in names]
+    photos = [r[0] for r in c.execute('SELECT file FROM photos ORDER BY id')] + [r[0] for r in c.execute('SELECT file FROM fungi_photos ORDER BY id')]
+    sizes = 0
+    for f in photos:
+        try: sizes += os.path.getsize(os.path.join(PHOTO_DIR, f))
+        except OSError: pass
+    return jsonify(urls=urls, photos=photos, photo_bytes=sizes, plants=len(active), finds=len(finds), version=APP_VERSION)
+
+@app.route('/api/library/offline-index')
+def library_offline_index():
+    """Every species in the Texas list in short (name, common name, family, kind, tags) and its kept photo, so the library can be
+    searched and browsed on a device without a connection."""
+    c = db()
+    scope = 'texas'
+    rows, off = [], 0
+    while True:
+        r = vision_call('/browse?' + urllib.parse.urlencode({'scope': scope, 'sort': 'known', 'offset': off, 'limit': 120}), timeout=60)
+        rows += r.get('results', [])
+        off += 120
+        if off >= r.get('total', 0) or not r.get('results'): break
+    mark_owned(c, rows)
+    out = []
+    for x in rows:
+        ph = lib_photo_state(x['scientific_name'])
+        out.append({'n': x['scientific_name'], 'c': x.get('common_name') or '', 'f': x.get('family') or '', 'k': x.get('kind') or '', 'g': x.get('genus') or '',
+                    'st': len(x.get('us_states') or []), 'tx': x.get('in_texas'), 'y': x.get('yours') or [], 'w': x.get('wish'), 't': x.get('tags') or [],
+                    'kn': x.get('know') or {}, 'p': ph['url'] if isinstance(ph, dict) else None})
+    return jsonify(scope=scope, species=out, made=now())
+
+@app.route('/sw.js')
+def service_worker():
+    """1.24.0: the service worker, with the version in it so every update replaces the saved copy of the app."""
+    with open(os.path.join(app.static_folder, 'sw.js'), encoding='utf-8') as f: js = f.read().replace('__VERSION__', APP_VERSION)
+    return Response(js, mimetype='application/javascript', headers={'Cache-Control': 'no-cache', 'Service-Worker-Allowed': '/'})
+
 @app.route('/')
 def index():
     return send_from_directory(app.static_folder, 'index.html')
@@ -5132,6 +6668,8 @@ def backup_file(name):
 
 init_db()
 threading.Thread(target=backup_loop, daemon=True).start()
+if os.environ.get('PLANTDB_SHOPS', '1') == '1':
+    threading.Thread(target=shops_loop, daemon=True).start()          # 1.27.0: the wishlist's shops, twice a day
 if os.environ.get('PLANTDB_WEATHER', '1') == '1':
     threading.Thread(target=weather_loop, daemon=True).start()
 
