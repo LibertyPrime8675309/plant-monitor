@@ -104,6 +104,8 @@ FIELDS = [
     ('danger_humans', 'long', 'Dangers to people'), ('danger_animals', 'long', 'Dangers to pets and other animals'),
     ('propagation', 'list', 'Propagation'), ('sources', 'list', 'Sources'),
     ('pet_safety', 'enum', 'Safety for pets'),                                                          # 1.17.0, for the pets filter
+    # ---- prototype proto/summer-heat: the AHS heat zones a plant is listed for (hottest first, as the AHS writes them), and where that came from
+    ('heat_zone_high', 'int', 'Heat zone, hottest (AHS)'), ('heat_zone_low', 'int', 'Heat zone, coolest (AHS)'), ('heat_zone_source', 'text', 'Heat zone source'),
 ]
 ENUMS = {'winter_plan': WINTER_PLANS, 'site': SITES, 'health_rating': HEALTH, 'leaf_type': LEAF_TYPES, 'pot_size': POT_SIZES, 'fert_strength': FERT_STRENGTHS, 'pet_safety': PET_SAFETY}
 OPTIONAL_ENUMS = ('leaf_type', 'pot_size', 'fert_strength', 'pet_safety')        # may be left as "Not set"
@@ -118,6 +120,7 @@ INT_RANGES = {'id_confidence': (0, 100), 'temp_ideal_low': (-60, 150), 'temp_ide
               'soil_moisture_low': (0, 100), 'soil_moisture_high': (0, 100), 'soil_temp_low': (-40, 150), 'soil_temp_high': (-40, 150),
               'fert_from_month': (1, 12), 'fert_to_month': (1, 12), 'fert_every_days': (1, 365),
               'water_every_days': (1, 60)}
+INT_RANGES.update({'heat_zone_high': (1, 12), 'heat_zone_low': (1, 12)})          # prototype proto/summer-heat
 NUM_RANGES = {'vpd_low': (0, 6), 'vpd_high': (0, 6), 'dli_low': (0, 80), 'dli_high': (0, 80), 'soil_ph_low': (0, 14), 'soil_ph_high': (0, 14)}
 
 def now():
@@ -3716,7 +3719,43 @@ def place_heat(c, L, above=None):
                 for m, x in years[y]:
                     if x >= above: by_month[m - 1] += 1
             out['months'] = [{'month': MONTH_ABBR[i], 'days': round(by_month[i] / n, 1)} for i in range(12) if by_month[i] / n >= 0.5]
+            out['level'] = heat_level(out['reach'])
     return out
+
+def heat_level(reach):
+    """How hard a usual summer is on a plant, from the days a year that reach its heat-damage temperature:
+    'fine' (under half a day), 'few' (under 10 days) or 'hard'."""
+    if reach is None: return None
+    return 'fine' if reach < 0.5 else 'few' if reach < 10 else 'hard'
+
+def heat_zone_fit(zone, hi, lo):
+    """Where the place's heat zone sits against a plant's AHS range: 'hotter' (above its hottest zone), 'cooler' or 'within'."""
+    if zone is None or hi is None or lo is None: return None
+    hi, lo = max(hi, lo), min(hi, lo)
+    return 'hotter' if zone > hi else 'cooler' if zone < lo else 'within'
+
+def plants_heat(c, L):
+    """Each active plant's summer verdict at a place, for the Summer heat filter and the Weather page."""
+    years, this_year = place_highs(c, L), local_today(c).year
+    whole = [y for y, v in years.items() if len(v) >= 330 and y < this_year]
+    base = place_heat(c, L)
+    out = {'zone': base['zone'], 'years': base['years'], 'plants': {}}
+    if len(whole) < 3: return out
+    cache = {}
+    for r in c.execute("SELECT code, temp_damage_above, heat_zone_high, heat_zone_low FROM plants WHERE status='active' ORDER BY code"):
+        t = r['temp_damage_above']
+        if t not in (None, '') and t not in cache:
+            cache[t] = round(sum(1 for y in whole for _, x in years[y] if x >= t) / len(whole), 1)
+        reach = cache.get(t) if t not in (None, '') else None
+        out['plants'][r['code']] = {'level': heat_level(reach), 'reach': reach, 'above': t if t not in (None, '') else None,
+                                    'fit': heat_zone_fit(base['zone'], r['heat_zone_high'], r['heat_zone_low'])}
+    return out
+
+@app.route('/api/heat/plants')
+def heat_plants_api():
+    """GET /api/heat/plants[?loc=ID]: every active plant's summer verdict where the plants are (see plants_heat)."""
+    c = db()
+    return jsonify(plants_heat(c, req_loc(c)))
 
 @app.route('/api/heat')
 def heat_api():

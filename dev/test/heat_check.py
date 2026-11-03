@@ -62,6 +62,27 @@ r2 = t.get('/api/heat', headers=h).get_json()
 check('reach' not in r2 and r2['above'] is None and r2['zone'] == r['zone'], 'without a plant temperature: just the place')
 check(t.get('/api/heat?above=hot', headers=h).status_code == 400 and t.get('/api/heat?above=20', headers=h).status_code == 400, 'a wrong temperature is refused')
 check(t.get('/api/heat?above=200', headers=h).status_code == 400, 'a temperature over 140°F is refused')
+check([S.heat_level(x) for x in (None, 0, 0.4, 0.5, 9.9, 10, 40)] == [None, 'fine', 'fine', 'few', 'few', 'hard', 'hard'], 'verdicts: under half a day is fine, under 10 days is a few, 10 or more is hard')
+check([S.heat_zone_fit(9, 12, 7), S.heat_zone_fit(9, 8, 1), S.heat_zone_fit(9, 12, 10), S.heat_zone_fit(9, 1, 9), S.heat_zone_fit(None, 9, 1), S.heat_zone_fit(9, None, 1)] == ['within', 'hotter', 'cooler', 'within', None, None],
+      'heat zone ranges: within, hotter than, cooler than (either order)')
+
+# ---- batch B3: AHS heat zone ranges with their sources, only where a page printed one
+db = sqlite3.connect(os.path.join(data, 'plants.db')); db.row_factory = sqlite3.Row
+got = {r['code']: r for r in db.execute('SELECT code, heat_zone_high, heat_zone_low, heat_zone_source FROM plants WHERE heat_zone_high IS NOT NULL')}
+check(len(got) == 18 and all(r['heat_zone_high'] >= r['heat_zone_low'] and 1 <= r['heat_zone_low'] <= 12 for r in got.values()), f'batch B3 fills 18 plants with ranges from 1 to 12, hottest first ({len(got)})')
+check(all(' | https://' in r['heat_zone_source'] for r in got.values()), 'every range has its source link')
+check((got['P-012']['heat_zone_high'], got['P-012']['heat_zone_low']) == (9, 4) and 'P-009' not in got and 'P-008' not in got, 'Aeonium is 9 to 4; Philodendron and Bougainvillea (no trustworthy range) are left empty')
+db.execute("UPDATE plants SET heat_zone_high=11 WHERE code='P-013'"); db.execute("DELETE FROM settings WHERE key='batch_applied:batchB3'"); db.commit()
+S.apply_batches(db); db.commit()
+check(db.execute("SELECT heat_zone_high FROM plants WHERE code='P-013'").fetchone()[0] == 11, 'running the batch again leaves a range you changed yourself alone')
+db.execute("UPDATE plants SET heat_zone_high=8 WHERE code='P-069'"); db.commit(); db.close()
+
+# ---- every plant's verdict (the Summer here filter and the Weather page)
+P = t.get('/api/heat/plants', headers=h).get_json()
+pl = P['plants']
+check(P['zone'] == r['zone'] and len(pl) >= 85, f'every active plant has a verdict ({len(pl)})')
+check(pl['P-012']['level'] == 'hard' and pl['P-044']['level'] == 'fine' and pl['P-009']['level'] in ('few', 'hard'), 'Aeonium hard, Boobie cactus fine, Philodendron Birkin warned')
+check(pl['P-012']['fit'] == 'within' and pl['P-069']['fit'] == 'hotter' and pl['P-009']['fit'] is None, 'Aeonium within its heat zones, white sage (now 8 to 1) hotter, Philodendron no range')
 
 # ---- the browser part
 srv = os.environ.get('SERVER_DATA', os.path.join(HERE, '..', 'tmp', 'heat-data'))
@@ -74,7 +95,7 @@ with sync_playwright() as p:
         pg.on('pageerror', lambda e: errs.append(str(e)))
         pg.on('console', lambda m: m.type == 'error' and 'Failed to load resource' not in m.text and errs.append(m.text))   # plant photos come in photo packs, not in git
         pg.add_init_script("localStorage.setItem('plantdb.editor','Heat Test');localStorage.setItem('plantdb.display',JSON.stringify(%s))" % json.dumps(prefs))
-        for code in ('P-012', 'P-009', 'P-002'):
+        for code in ('P-012', 'P-009', 'P-044'):
             pg.goto(BASE + '/#/plant/' + code); pg.wait_for_selector('#heat-box h3', timeout=15000); pg.wait_for_timeout(400)
             box = pg.locator('#heat-box')
             txt = box.inner_text()
@@ -86,10 +107,10 @@ with sync_playwright() as p:
                 check(box.locator('table[aria-labelledby=heat-cap]').count() == 1 and box.locator('th[scope=col]').count() == 4, f'{code}: a table with a heading and four column headings')
                 if code == 'P-012': check('■ Summer heat is hard on it here' in txt and '90°F' in txt, 'Aeonium (heat damage at 90°F): "Summer heat is hard on it here"')
                 if code == 'P-009': check('100°F' in txt and ('▲' in txt or '■' in txt), 'Philodendron Birkin (100°F): warned, with the temperature')
-                if code == 'P-002': check('✓ Summer heat is fine for it here' in txt, 'Boobie cactus (115°F): "Summer heat is fine for it here"')
+                if code == 'P-044': check('✓ Summer heat is fine for it here' in txt, 'Boobie cactus (115°F): "Summer heat is fine for it here"')
                 check('(so far)' in txt, f'{code}: this year is marked "so far"')
-            over = pg.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth')
-            check(over <= 2, f'{name} {code}: no sideways scrolling ({over}px)')
+            over = pg.evaluate("(() => { const W = document.documentElement.clientWidth; return Math.max(0, ...[...document.querySelectorAll('#heat-box, #heat-box *')].map(e => Math.round(e.getBoundingClientRect().right - W))); })()")
+            check(over <= 1, f'{name} {code}: Summer heat fits the screen width ({over}px over)')   # the whole page is checked by smoke.py
             if code == 'P-012':
                 box.scroll_into_view_if_needed(); pg.wait_for_timeout(300)
                 pg.evaluate("document.getElementById('heat-box').scrollIntoView({block: 'start'})"); pg.wait_for_timeout(300)
@@ -97,9 +118,39 @@ with sync_playwright() as p:
                 if w < 600: box.screenshot(path=os.path.join(OUT, f'heat-{name}-whole.png'))       # the whole box (phones scroll the page, not a pane)
                 wide = pg.evaluate("(() => { const w = document.querySelector('#heat-box .tbl-wrap'); return w.scrollWidth - w.clientWidth; })()")
                 check(wide <= 2, f'{name}: the table fits without scrolling sideways ({wide}px)')
+        if name == 'laptop':        # the plant's own AHS range against the zone here
+            pg.goto(BASE + '/#/plant/P-012'); pg.wait_for_selector('#heat-box h3'); pg.wait_for_timeout(400)
+            txt = pg.locator('#heat-box').inner_text()
+            check('within its heat zones' in txt and 'AHS heat zones 9 to 4' in txt and pg.locator('#heat-box a[href*="gardenia.net"]').count() == 1, 'Aeonium: "within its heat zones", 9 to 4, with the source link')
+            pg.goto(BASE + '/#/plant/P-069'); pg.wait_for_selector('#heat-box h3'); pg.wait_for_timeout(400)
+            check('hotter than its heat zones' in pg.locator('#heat-box').inner_text(), 'White sage at 8 to 1: "hotter than its heat zones"')
+            pg.goto(BASE + '/#/plant/P-009'); pg.wait_for_selector('#heat-box h3'); pg.wait_for_timeout(400)
+            check('No published AHS heat zone range' in pg.locator('#heat-box').inner_text(), 'Philodendron: says there is no published range yet')
+            pg.goto(BASE + '/#/plant/P-012/edit'); pg.wait_for_timeout(1500)
+            check(all(pg.get_by_label(l, exact=False).count() >= 1 for l in ('Heat zone, hottest (AHS)', 'Heat zone, coolest (AHS)', 'Heat zone source')), 'the edit form has the three heat zone fields, with labels')
+        if name in ('laptop', 'phone-dark', 'phone-bigtext'):     # the Weather page and the Summer here filter
+            pg.goto(BASE + '/#/weather'); pg.wait_for_selector('#wx-heat .heat-counts a', timeout=20000); pg.wait_for_timeout(500)
+            sec = pg.locator('#wx-heat')
+            st = sec.inner_text()
+            if name == 'laptop':
+                check('heat zone' in st and pg.locator('#wx-heat ~ #wx-logged, #wx-heat + #wx-logged').count() >= 1, 'Weather page: Summer heat comes before All logged weather data')
+                check(sec.locator('a[data-heatf=hard]').count() == 1 and sec.locator('a[data-heatf=hotter]').count() == 1, 'Weather page: links for "hard on them" and "hotter than their heat zones"')
+            over = pg.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth')
+            check(over <= 2, f'{name} Weather page: no sideways scrolling ({over}px)')
+            sec.scroll_into_view_if_needed(); pg.evaluate("document.getElementById('wx-heat').scrollIntoView({block: 'start'})"); pg.wait_for_timeout(300)
+            pg.screenshot(path=os.path.join(OUT, f'heat-weather-{name}.png'))
+            if w < 600: sec.screenshot(path=os.path.join(OUT, f'heat-weather-{name}-whole.png'))
+            if name == 'laptop':
+                n_hard = int(sec.locator('a[data-heatf=hard]').inner_text().split()[0])
+                sec.locator('a[data-heatf=hard]').click(); pg.wait_for_timeout(2500)
+                cards = pg.evaluate("[...document.querySelectorAll('#app a[href^=\"#/plant/\"]')].map(a => a.getAttribute('href').split('/')[2]).filter((v, i, a) => a.indexOf(v) === i)")
+                check('P-012' in cards and 'P-044' not in cards, f'the link opens the Plants page filtered to plants summer is hard on ({len(cards)} shown, {n_hard} counted)')
+                sel = pg.locator('select[data-key=heat]')
+                check(sel.count() == 0 or sel.input_value() == 'hard', 'the "Summer here" filter shows the choice')
+                pg.evaluate("localStorage.removeItem('plantdb.filters')")
         if name == 'laptop':        # swiping to the next plant redraws the box for that plant
             pg.goto(BASE + '/#/plant/P-012'); pg.wait_for_selector('#heat-box h3')
-            pg.goto(BASE + '/#/plant/P-002'); pg.wait_for_selector('#heat-box h3'); pg.wait_for_timeout(400)
+            pg.goto(BASE + '/#/plant/P-044'); pg.wait_for_selector('#heat-box h3'); pg.wait_for_timeout(400)
             check(pg.locator('#heat-box').count() == 1 and 'fine for it' in pg.locator('#heat-box').inner_text(), 'moving to another plant shows that plant\'s verdict, once')
         pg.close()
     b.close()

@@ -997,6 +997,7 @@ ul.srcs li{margin:.25rem 0;overflow-wrap:anywhere}
 /* ---- prototype proto/summer-heat: summer heat (AHS heat zones) under About this plant ---- */
 .heat{max-width:72ch}
 .heat h4{margin:.8rem 0 .2rem}
+.heat-counts li{margin:.3rem 0}
 .heat-n{display:inline-block;min-width:2.6em;font-variant-numeric:tabular-nums}
 .heat-bar{display:inline-block;vertical-align:middle;width:6em;height:.7em;border:1px solid var(--ink-2);margin-left:.4rem}
 .heat-bar>span{display:block;height:100%;background:var(--ochre)}

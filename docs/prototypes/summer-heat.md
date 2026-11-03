@@ -15,6 +15,16 @@ The USDA hardiness zone on About this plant says whether a plant survives a usua
 
 Each verdict starts with a symbol and words, so nothing depends on colour. With very large text, the table turns into a short list per year so nothing scrolls sideways.
 
+## Added after Ethan's review (November 3, 2026)
+Ethan answered the four questions on the pull request: the heat-damage line is right; add a filter; add it to the Weather page; add heat-zone ranges to his plants.
+- **Summer here filter** on the Plants page (under More filters, and in the Previous / Next panel): "Summer heat is hard on it", "A few days a summer are too hot", "Summer heat is fine for it", "Hotter than its heat zones" and "No summer verdict yet".
+- **Weather page:** a "Summer heat" section before All logged weather data, with the heat zone, how many of your plants fall in each verdict (each count is a link to the Plants page with the filter set), and the hot-days table.
+- **AHS heat zone range for each plant:** three new fields under About this plant in Edit (Heat zone, hottest; Heat zone, coolest; Heat zone source). The plant page says whether your place is within, hotter than or cooler than the plant's range, with the source link.
+- **Upgrade batch B3** fills the range for 18 plants. It uses only ranges that a web page actually printed, and each one keeps its link. The only site that printed heat zones for these plants was Gardenia.net, a plant encyclopedia. NC State, Missouri Botanical Garden, Texas Tech, Proven Winners and Monrovia list USDA hardiness zones only. The rest are left empty on purpose:
+  - No range found anywhere: Dieffenbachia, Boobie cactus, fig, mustang grape, both morning glories, Mexican bird of paradise, Philodendrons, peace lilies, Aloe vera, hardy aloe, majesty palms, Graptosedum, desert rose, roses, Boston ferns, Chinese evergreens, Calathea, moth orchid, ZZ plants, moon cactus, vanilla, arrowhead plants, Monstera, water hyacinth, the other Tradescantias, Zexmenia, Texas star hibiscus, money tree, rubber tree and mini Monstera.
+  - Found but not trusted: Bougainvillea (listed as 1 to 12, which looks like a placeholder for a frost-tender tropical) and Celosia (listed as 2 to 9, which does not fit a heat-loving summer annual).
+  - Only a different species had a range: begonias, Alocasias and the agave (its species is not known yet).
+
 ## How it looks
 Laptop, high contrast (Aeonium, heat damage at 90°F):
 
@@ -28,15 +38,29 @@ Phone with the largest text (the table becomes a list):
 
 ![Phone, largest text](summer-heat/phone-large-text.png)
 
+Weather page, laptop:
+
+![Weather page](summer-heat/weather-laptop.png)
+
+Weather page, phone with the largest text:
+
+![Weather page, largest text](summer-heat/weather-phone-large-text.png)
+
 The screenshots use made-up weather in the test copy, so the numbers are not Round Rock's real ones. Yours come from the weather history your app has already loaded.
 
 ## What it changes in your database
-Nothing. It only reads the daily weather history and each plant's heat-damage temperature. If a place has under 3 whole years of history, it says so and links to the Weather page.
+- Three new plant fields, added by `init_db()` on the next start: `heat_zone_high`, `heat_zone_low` and `heat_zone_source`. Nothing else in the table changes.
+- Upgrade batch B3 fills them for 18 plants, once, and only while they are still empty, so anything you type yourself stays.
+- Everything else only reads the daily weather history and each plant's heat-damage temperature. If a place has under 3 whole years of history, it says so and links to the Weather page.
 
 ## How it works (for Claude)
 - `server.py`, block "prototype proto/summer-heat" after `place_climate()`: `ahs_heat_zone()`, `place_highs()` (cached 6 hours per place), `place_heat()` and `GET /api/heat[?above=F][&loc=ID]`. Whole years have 330 or more days of highs; the zone needs 3 whole years. "Above 86°F" is strictly above, as the AHS defines it; the plant count is "at or above" its damage temperature.
 - `app.js`, block after `aboutBlock()`: a MutationObserver puts `#heat-box` after the hardiness zones and fills it (`loadHeat()`, `heatBlock()`, `heatVerdict()`, `heatTable()`, `heatFit()`). No edits to shared code.
 - `style.css`: its own block after the 1.14.0 block.
+- `GET /api/heat/plants[?loc=ID]` (`plants_heat()`, `heat_level()`, `heat_zone_fit()`): every active plant's verdict and range fit, for the filter and the Weather page.
+- Plant fields `heat_zone_high`, `heat_zone_low` (`INT_RANGES` 1 to 12) and `heat_zone_source` (`Title | URL`). Batch B3 is built by `dev/seed_src/build_batchB3.py`.
+- Front end: `heatRange()`, the `heat` key in `MORE` / `MORE_KEYS` / `moreOk()` (`heatOk()`, loading `HEATP` on first use), and `loadWeatherHeat()` with its own MutationObserver for `#wx-heat`. Links on the Weather page set the filter with `data-heatf`.
+- `dev/test/filters_check.py` now expects 9 More filters. Its "Care today: water due" check fails on main too, before this change.
 - Test: `dev/test/heat_check.py` (zones, counts, refusals, placement, the three verdicts, phone, dark, large text, high contrast).
 
 ## How to try it
@@ -63,7 +87,5 @@ SERVER_DATA=dev/tmp/heat-data python3 dev/test/heat_check.py
 ```
 
 ## Open questions for Ethan
-1. Is the plant's "Heat damage above" temperature the right line for the verdict, or would you rather it counted days above the top of its comfortable range (usually 85°F to 95°F), which would warn about far more plants?
-2. Should the verdict also show on the Plants page (for example a "Struggles in summer heat" filter), or is the plant page enough?
-3. Would you like the heat zone and the hot-days table on the Weather page too, next to the winter numbers?
-4. The AHS also gives each plant a heat-zone range (like "zones 9 to 1"). I could add that as a field and fill it for your plants in an upgrade batch, if you find it useful.
+1. Only 18 of your plants have a published heat zone range. Do you want to fill in others yourself (Edit, under About this plant), or should I keep looking for sources for particular plants?
+2. Should "Hotter than its heat zones" also count towards the "Summer heat is hard on it" verdict, or keep them separate as now?

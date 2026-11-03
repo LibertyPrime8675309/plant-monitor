@@ -448,8 +448,8 @@ window.addEventListener('scroll', navActive, { capture: true, passive: true });
 
 // ---------- gallery ----------
 const G = { q: '', plan: '', health: '', low: false, needs: false, sort: 'code', group: '', status: 'active', site: '',   // 1.16.2: status and site
-  light: '', pets: '', hardy: '', care: '', grow: '', leaf: '', pot: '', photo: '' };                                      // 1.17.0: more filters
-const MORE_KEYS = ['light', 'pets', 'hardy', 'care', 'grow', 'leaf', 'pot', 'photo'];     // the More filters (defined further down)
+  light: '', pets: '', hardy: '', care: '', grow: '', leaf: '', pot: '', photo: '', heat: '' };                                      // 1.17.0: more filters
+const MORE_KEYS = ['light', 'pets', 'hardy', 'care', 'grow', 'leaf', 'pot', 'photo', 'heat'];     // the More filters (defined further down)
 // the Plants page filters are remembered in this browser and also decide where Previous / Next plant go on plant pages
 try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort', 'group', 'status', 'site', ...MORE_KEYS]) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ }
 function gSave() { try { localStorage.setItem('plantdb.filters', JSON.stringify({ q: G.q, plan: G.plan, health: G.health, low: G.low, needs: G.needs, sort: G.sort, group: G.group, status: G.status, site: G.site, ...Object.fromEntries(MORE_KEYS.map(k => [k, G[k]])) })); } catch (e) { /* not saved */ } }
@@ -610,6 +610,7 @@ const MORE = [
   { key: 'light', label: 'Light needs', opts: [['low', 'Low light'], ['indirect', 'Bright indirect light'], ['sun', 'Some direct sun'], ['full', 'Full sun']] },
   { key: 'pets', label: 'Pets', opts: [['safe', 'Safe for pets (ASPCA)'], ['notknown', 'Not known to be toxic'], ['mild', 'Mildly toxic to pets'], ['toxic', 'Toxic to pets'], ['unset', 'Pet safety not set']] },
   { key: 'hardy', label: 'Winter here', opts: [['hardy', 'Hardy here'], ['tender', 'Not hardy here'], ['nozone', 'Annual or no zone set']] },
+  { key: 'heat', label: 'Summer here', opts: () => Object.entries(HEAT_WORD) },          // prototype proto/summer-heat
   { key: 'care', label: 'Care today', opts: [['any', 'Water or feeding due'], ['water', 'Water due'], ['feed', 'Feeding due']] },
   { key: 'grow', label: 'Grow light', opts: [['yes', 'Under a grow light spot'], ['no', 'Not under a grow light']] },
   { key: 'leaf', label: 'Leaf type', opts: () => [...((META.enums || {}).leaf_type || []).map(x => [x, x]), ['unset', 'Leaf type not set']] },
@@ -638,6 +639,7 @@ function moreOk(p) {
   if (k.light && lightBand(p) !== k.light) return false;
   if (k.pets && (k.pets === 'unset' ? !!p.pet_safety : PET_KEY[p.pet_safety] !== k.pets)) return false;
   if (k.hardy && hardyKey(p) !== k.hardy) return false;
+  if (k.heat && !heatOk(p, k.heat)) return false;                // prototype proto/summer-heat
   if (k.care && CAREDUE) { const c = CAREDUE.get(p.code) || {}; if (k.care === 'water' ? !c.water : k.care === 'feed' ? !c.feed : !(c.water || c.feed)) return false; }
   if (k.grow && (k.grow === 'yes') !== !!p.light_spot) return false;
   if (k.leaf && (k.leaf === 'unset' ? !!p.leaf_type : p.leaf_type !== k.leaf)) return false;
@@ -1065,14 +1067,26 @@ function heatVerdict(p, H) {
   if (T == null || n == null) return '';
   const when = H.months.length ? `, mostly in ${heatMonths(H.months)}` : '';
   const days = x => x < 1 ? 'Less than 1 day' : `About ${Math.round(x)} day${Math.round(x) === 1 ? '' : 's'}`;
-  if (n < 0.5) return html`<p class="nowstate v-ok"><strong>✓ Summer heat is fine for it here.</strong> A usual summer's hottest day, about ${H.hottest}°F, stays below the ${T}°F where its leaves start to scorch.${where}</p>`;
-  if (n < 10) return html`<p class="nowstate v-hot"><strong>▲ A few days a summer are too hot for it.</strong> ${days(n)} a year reach ${T}°F or more, where its leaves can scorch${when}. Move it into afternoon shade when the forecast is that hot.${where}</p>`;
+  if (H.level === 'fine') return html`<p class="nowstate v-ok"><strong>✓ Summer heat is fine for it here.</strong> A usual summer's hottest day, about ${H.hottest}°F, stays below the ${T}°F where its leaves start to scorch.${where}</p>`;
+  if (H.level === 'few') return html`<p class="nowstate v-hot"><strong>▲ A few days a summer are too hot for it.</strong> ${days(n)} a year reach ${T}°F or more, where its leaves can scorch${when}. Move it into afternoon shade when the forecast is that hot.${where}</p>`;
   return html`<p class="nowstate v-damage"><strong>■ Summer heat is hard on it here.</strong> ${days(n)} a year reach ${T}°F or more, where its leaves can scorch${when}. Keep it in afternoon shade, or bring it inside, through those months.${where}</p>`;
 }
-function heatTable(p, H) {
+function heatRange(p, H) {             // the AHS heat zones the plant is listed for, against the zone here
+  const hi = has(p.heat_zone_high) ? +p.heat_zone_high : null, lo = has(p.heat_zone_low) ? +p.heat_zone_low : null;
+  if (hi == null || lo == null) return html`<p>No published AHS heat zone range for this plant yet. You can add one with Edit, under About this plant.</p>`;
+  const top = Math.max(hi, lo), bot = Math.min(hi, lo), src = String(p.heat_zone_source || ''), i = src.lastIndexOf('|');
+  const t = i > 0 ? src.slice(0, i).trim() : src.trim(), u = i > 0 ? src.slice(i + 1).trim() : '';
+  const from = !src.trim() ? '' : /^https?:\/\//.test(u) ? html` (from <a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>)` : html` (from ${t})`;
+  const listed = html`It is listed for <strong>AHS heat zones ${top} to ${bot}</strong>${from}.`;
+  if (H.zone == null) return html`<p>${listed}</p>`;
+  if (H.zone > top) return html`<p class="nowstate v-damage"><strong>■ ${H.place} is hotter than its heat zones.</strong> ${listed} Here is zone ${H.zone}, so expect it to struggle through the summer unless it gets shade, extra water or a cooler spot.</p>`;
+  if (H.zone < bot) return html`<p class="nowstate v-cool"><strong>▼ Summers here are cooler than its heat zones.</strong> ${listed} Here is zone ${H.zone}, so it may grow or flower less than it would somewhere hotter.</p>`;
+  return html`<p class="nowstate v-ok"><strong>✓ ${H.place} is within its heat zones.</strong> ${listed} Here is zone ${H.zone}.</p>`;
+}
+function heatTable(H, cap = 'heat-cap', tag = 'h4') {
   if (!H.per_year.length) return '';
   const top = Math.max(1, ...H.per_year.map(y => y.over86));
-  return html`<h4 id="heat-cap">Hot days each year at ${H.place}</h4><div class="tbl-wrap"><table class="tbl heat-tbl" aria-labelledby="heat-cap">
+  return html`${raw(`<${tag} id="${cap}">`)}Hot days each year at ${H.place}${raw(`</${tag}>`)}<div class="tbl-wrap"><table class="tbl heat-tbl" aria-labelledby="${cap}">
     <thead><tr><th scope="col">Year</th><th scope="col">Days over ${H.line}°F</th>${H.above != null ? html`<th scope="col">Days at ${H.above}°F or more</th>` : ''}<th scope="col">Hottest</th></tr></thead>
     <tbody>${H.per_year.map(y => html`<tr><th scope="row">${y.year}${y.partial ? ' (so far)' : ''}</th>
       <td data-label="Days over ${H.line}°F: "><span class="heat-n">${y.over86}</span><span class="heat-bar" aria-hidden="true"><span style="width:${Math.round(y.over86 / top * 100)}%"></span></span></td>
@@ -1081,10 +1095,10 @@ function heatTable(p, H) {
 function heatBlock(p, H) {
   const head = html`<h3>Summer heat (AHS heat zones)</h3>`;
   if (H.zone == null) return html`${head}<p>Not enough weather history yet. Once ${H.place} has 3 whole years of weather, this shows how many hot days a usual year has and what that means for this plant.
-    <a href="#/weather">Load the weather history on the Weather page</a>.</p>${heatTable(p, H)}`;
+    <a href="#/weather">Load the weather history on the Weather page</a>.</p>${heatRange(p, H)}${heatTable(H)}`;
   return html`${head}<p>Where you are: over the last ${H.years} years at ${H.place}, an average of ${H.over86} days a year went above ${H.line}°F, which is <strong>heat zone ${H.zone}</strong>
       on the American Horticultural Society's scale of 1 (cool summers) to 12 (very hot). A usual year's hottest day is about ${H.hottest}°F.</p>
-    ${heatVerdict(p, H)}${heatTable(p, H)}
+    ${heatVerdict(p, H)}${heatRange(p, H)}${heatTable(H)}
     <p class="hint">${H.line}°F is where many plants start to suffer from heat. The highs are air temperatures in the shade from the weather history; in full sun, leaves and dark pots get hotter. ${has(p.temp_damage_above) ? html`This plant's heat damage temperature (${p.temp_damage_above}°F) is under Temperature, and you can change it with Edit.` : 'Add a heat damage temperature with Edit, under Temperature, to see how many days are too hot for this plant.'}</p>`;
 }
 async function loadHeat(box, p) {
@@ -1094,15 +1108,17 @@ async function loadHeat(box, p) {
     try { H = await api('GET', '/api/heat' + (above !== '' ? '?above=' + above : '')); HEAT_CACHE.set(key, { at: Date.now(), data: H }); }
     catch (e) { box.innerHTML = rend(html`<h3>Summer heat (AHS heat zones)</h3><p class="notice bad">Could not load the summer heat: ${e.message}</p>`); return; }
   }
-  if (box.isConnected) { box.innerHTML = rend(heatBlock(p, H)); heatFit(); }
+  if (box.isConnected) { box.innerHTML = rend(heatBlock(p, H)); heatFit(box); }
 }
-function heatFit() {                    // with very large text the table does not fit: show each year as a short list instead
-  const box = document.getElementById('heat-box'), w = box && box.querySelector('.tbl-wrap');
-  if (!w) return;
-  box.classList.remove('heat-stack');
-  if (w.scrollWidth - w.clientWidth > 2) box.classList.add('heat-stack');
+function heatFit(one) {                 // with very large text the table does not fit: show each year as a short list instead
+  for (const box of one ? [one] : document.querySelectorAll('#heat-box, #wx-heat-box')) {
+    const w = box.querySelector('.tbl-wrap');
+    if (!w) continue;
+    box.classList.remove('heat-stack');
+    if (w.scrollWidth - w.clientWidth > 2) box.classList.add('heat-stack');
+  }
 }
-window.addEventListener('resize', () => requestAnimationFrame(heatFit));
+window.addEventListener('resize', () => requestAnimationFrame(() => heatFit()));
 new MutationObserver(() => {
   const sec = document.getElementById('about');
   if (!sec || document.getElementById('heat-box') || !CUR || !CUR.p) return;
@@ -1113,6 +1129,52 @@ new MutationObserver(() => {
   while (next && !(next.tagName === 'H3' || next.classList.contains('danger-box'))) next = next.nextElementSibling;
   sec.insertBefore(box, next);
   loadHeat(box, CUR.p);
+}).observe(document.getElementById('app'), { childList: true, subtree: true });
+// Summer heat filter on the Plants page (G.heat), from /api/heat/plants, loaded the first time the filter is used
+let HEATP = null, HEATP_LOADING = false;      // {place, at, map: code -> {level, fit}}
+const HEAT_WORD = { hard: 'Summer heat is hard on it', few: 'A few days a summer are too hot', fine: 'Summer heat is fine for it', hotter: 'Hotter than its heat zones', nodata: 'No summer verdict yet' };
+function loadHeatPlants() {
+  if (HEATP_LOADING) return; HEATP_LOADING = true;
+  api('GET', '/api/heat/plants').then(r => { HEATP = { place: PLACE || '', at: Date.now(), zone: r.zone, map: new Map(Object.entries(r.plants || {})) }; })
+    .catch(() => { HEATP = { place: PLACE || '', at: Date.now(), zone: null, map: new Map() }; })
+    .finally(() => { HEATP_LOADING = false; if (location.hash === '' || location.hash === '#/' || location.hash === '#') drawGrid(); });
+}
+function heatOk(p, want) {
+  if (!HEATP || HEATP.place !== (PLACE || '') || Date.now() - HEATP.at > 10 * 60e3) { loadHeatPlants(); if (!HEATP) return true; }
+  const x = HEATP.map.get(p.code) || {};
+  if (want === 'hotter') return x.fit === 'hotter';
+  if (want === 'nodata') return !x.level;
+  return x.level === want;
+}
+// links from the Weather page set the filter, then open the Plants page
+document.addEventListener('click', e => { const a = e.target.closest && e.target.closest('a[data-heatf]'); if (!a) return; G.heat = a.dataset.heatf; try { gSave(); } catch (err) { /* not saved */ } });
+async function loadWeatherHeat(box) {
+  let H, P;
+  try { [H, P] = await Promise.all([api('GET', '/api/heat'), api('GET', '/api/heat/plants')]); }
+  catch (e) { box.innerHTML = rend(html`<p class="notice bad">Could not load the summer heat: ${e.message}</p>`); return; }
+  if (!box.isConnected) return;
+  const n = { hard: 0, few: 0, fine: 0, hotter: 0 };
+  for (const x of Object.values(P.plants || {})) { if (x.level) n[x.level]++; if (x.fit === 'hotter') n.hotter++; }
+  const link = (k, count, words) => count ? html`<li><a href="#/" data-heatf="${k}">${count} plant${count === 1 ? '' : 's'}</a>: ${words}</li>` : '';
+  box.innerHTML = rend(H.zone == null
+    ? html`<p>Not enough weather history yet. Once ${H.place} has 3 whole years of weather, this shows how many hot days a usual year has and which plants find the summer hard. Load it with "Load history" on this page.</p>${heatTable(H, 'wx-heat-cap', 'h3')}`
+    : html`<p>Over the last ${H.years} years at ${H.place}, an average of ${H.over86} days a year went above ${H.line}°F, which is <strong>heat zone ${H.zone}</strong>
+        on the American Horticultural Society's scale of 1 (cool summers) to 12 (very hot). A usual year's hottest day is about ${H.hottest}°F.</p>
+      <h3>Your plants in a usual summer here</h3>
+      <ul class="heat-counts">${link('hard', n.hard, 'summer heat is hard on them (10 days or more reach the temperature where their leaves scorch)')}
+        ${link('few', n.few, 'a few days a summer are too hot for them')}${link('fine', n.fine, 'summer heat is fine for them')}
+        ${link('hotter', n.hotter, `${H.place} is hotter than the AHS heat zones they are listed for`)}</ul>
+      <p class="hint">Each link opens the Plants page with the "Summer here" filter set. Each plant's page has the details, under About this plant.</p>
+      ${heatTable(H, 'wx-heat-cap', 'h3')}
+      <p class="hint">${H.line}°F is where many plants start to suffer from heat. The highs are air temperatures in the shade; in full sun, leaves and dark pots get hotter.</p>`);
+  heatFit(box);
+}
+new MutationObserver(() => {
+  if (!location.hash.startsWith('#/weather')) return;
+  const before = document.getElementById('wx-logged');
+  if (!before || document.getElementById('wx-heat')) return;
+  before.insertAdjacentHTML('beforebegin', rend(html`<section class="blk heat" id="wx-heat"><h2>Summer heat</h2><div id="wx-heat-box"><p class="loading">Loading the summer heat</p></div></section>`));
+  loadWeatherHeat(document.getElementById('wx-heat-box'));
 }).observe(document.getElementById('app'), { childList: true, subtree: true });
 function lightBlock(p, cur) {
   const lo = p.par_low, hi = p.par_high;
@@ -2490,7 +2552,7 @@ const GROUPS = [
   ['Names and place', ['common_name', 'scientific_name', 'aliases', 'plant_type', 'site', 'location', 'container']],
   ['Identification', ['id_confidence', 'id_basis', 'id_alternatives', 'id_improve']],
   ['About this plant', ['growth_habit', 'kingdom', 'taxon_order', 'family', 'genus', 'height_ground', 'width_ground', 'height_pot', 'width_pot', 'growth_rate', 'lifespan',
-    'zone_low', 'zone_high', 'zone_notes', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'pet_safety', 'propagation', 'sources']],
+    'zone_low', 'zone_high', 'zone_notes', 'heat_zone_high', 'heat_zone_low', 'heat_zone_source', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'pet_safety', 'propagation', 'sources']],
   ['Temperature', ['temp_ideal_low', 'temp_ideal_high', 'temp_damage_below', 'temp_lethal_below', 'temp_damage_above', 'temp_notes']],
   ['Humidity and air dryness', ['humidity_low', 'humidity_high', 'vpd_low', 'vpd_high', 'humidity_notes']],
   ['Sunlight', ['light_summary', 'light_hours', 'par_low', 'par_high', 'dli_low', 'dli_high', 'light_notes']],
@@ -2515,6 +2577,7 @@ const HINTS = {
   fert_strength: 'How strong to mix it. The Fertilizer page works out the amount per gallon from this.',
   pet_safety: 'Used by the Pets filter on the Plants page. "Safe for pets" only where the ASPCA lists the plant as non-toxic.',
   zone_low: 'USDA zone, such as 9b or 10. The page compares it with the zone where you are.', zone_high: 'USDA zone, such as 11.',
+  heat_zone_high: 'AHS heat zone, 1 to 12: the hottest it is listed for, such as 12.', heat_zone_low: 'AHS heat zone, 1 to 12: the coolest it is listed for, such as 1.', heat_zone_source: 'Where the range came from: a title, a | and the web address.',
   height_ground: 'For example 6 to 10 ft.', height_pot: 'For example 3 to 5 ft.', propagation: 'One method per line.',
   sources: 'One per line: a title, a | and the web address, for example "NC State Extension: Aloe vera | https://...".',
   leaf_type: 'Decides which pest treatments suit it before it comes inside.', pot_size: 'Whether the pot can be soaked in a bucket or tub.', health_steps: 'One step per line, in order.', indoor_setup: 'One item per line.',
