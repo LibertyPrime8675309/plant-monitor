@@ -6,7 +6,7 @@
 - **Watering from the sensor:** a jump in soil moisture logs a watering for the plant (once a day; turn it off per sensor).
 - **Sensor alerts** as notifications: a dry pot, dangerous cold, a sensor gone quiet, once a day each.
 - **Pot weight:** readings can carry `weight_g` from a weighing cell under the pot.
-- **ESPHome:** `docs/sensors/esphome-plant-sensor.yaml`, a ready file for an ESP32 node with a soil probe, air sensor, light sensor, soil thermometer and weighing cell; the README says how to flash it.
+- **ESPHome:** `sensors/esphome-plant-sensor.yaml`, a ready file for an ESP32 node with a soil probe, air sensor, light sensor, soil thermometer and weighing cell; the README says how to flash it.
 
 ## 1.34.0 (2026-11-04)
 - **Today is the page the app opens on.** One line says what needs you, with a button to jump to each part; the cold-night warning is a section of the page; "Quiet today" says what is not due (pest rounds, the last store check and backup, problems). All plants is one click away (its address is now `#/plants`).
