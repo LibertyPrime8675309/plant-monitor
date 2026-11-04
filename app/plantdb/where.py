@@ -433,3 +433,22 @@ def light_one(i):
     audit_only(c, 'light', 'light', a, z, who, 'Grow light changed: ' + z + ('' if light_specs(old) == d else ' (specs changed)'))
     c.commit()
     return jsonify(ok=True)
+
+# ---------- 1.34.0: labels for rooms, areas and spots (a code that opens the Plants page showing what lives there) ----------
+@app.route('/api/where/qr.svg')
+def where_qr():
+    """GET /api/where/qr.svg?area=ID or ?spot=ID[&base=URL]: the code for a room or area, or for a spot (shelf, bench, window)."""
+    c = db()
+    base = request.args.get('base', '').rstrip('/') or request.host_url.rstrip('/')
+    if not re.match(r'^https?://[\w.\-]+(:\d+)?$', base): abort(400, 'bad base url')
+    spot, area = request.args.get('spot'), request.args.get('area')
+    if spot:
+        if not c.execute('SELECT 1 FROM spots WHERE id=?', (spot,)).fetchone(): abort(404, 'No such spot')
+        target = f'{base}/#/plants?spot={int(spot)}'
+    elif area:
+        if not c.execute('SELECT 1 FROM areas WHERE id=?', (area,)).fetchone(): abort(404, 'No such area')
+        target = f'{base}/#/plants?area={int(area)}'
+    else: abort(400, 'area or spot is needed')
+    buf = io.BytesIO()
+    segno.make(target, error='m').save(buf, kind='svg', scale=6, border=2, dark='#000', light='#fff', xmldecl=False, svgns=True)
+    return Response(buf.getvalue(), mimetype='image/svg+xml')

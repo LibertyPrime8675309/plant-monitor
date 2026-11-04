@@ -90,7 +90,7 @@ def list_plants():
                     # 1.17.0: for the filters on the Plants page
                     'dli_low': r['dli_low'], 'dli_high': r['dli_high'], 'zone_low': r['zone_low'], 'pet_safety': r['pet_safety'] or '',
                     'leaf_type': r['leaf_type'] or '', 'pot_size': r['pot_size'] or '', 'photo_count': pn, 'photo_at': pat,
-                    'light_spot': spots.get(r['code']), 'home_id': r['home_id'],
+                    'light_spot': spots.get(r['code']), 'home_id': r['home_id'], 'area_id': r['area_id'], 'spot_id': r['spot_id'],   # 1.34.0: room and shelf labels
                     'photos': files})                      # 1.20.0: every photo, main photo first, to browse on the Plants page
     return jsonify(out)
 
