@@ -487,7 +487,7 @@ async function viewPlant(code) {
   const single = document.documentElement.dataset.layout === 'single';
   return {
     title: p.common_name,
-    html: html`${pnavBlock(p.code)}<p class="crumb"><a href="#/">All plants</a>
+    html: html`${pnavBlock(p.code)}<p class="crumb"><a href="#/plants">All plants</a>
       <button class="btn ghost small noprint" type="button" data-act="layout">${single ? 'Show photos and details side by side' : 'Switch to one column'}</button></p>
     ${archived ? html`<div class="notice">This record is archived. It is hidden from the main list.</div>` : ''}
     <div class="plant">

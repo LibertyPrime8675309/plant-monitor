@@ -182,7 +182,7 @@ function viewForm(p) {
   const isNew = !p;
   return {
     title: isNew ? 'Add a plant' : 'Edit ' + p.common_name,
-    html: html`<p class="crumb"><a href="${isNew ? '#/' : '#/plant/' + enc(p.code)}">${isNew ? 'All plants' : 'Back to ' + p.common_name}</a></p>
+    html: html`<p class="crumb"><a href="${isNew ? '#/plants' : '#/plant/' + enc(p.code)}">${isNew ? 'All plants' : 'Back to ' + p.common_name}</a></p>
     <h1>${isNew ? 'Add a plant' : 'Edit ' + p.code}</h1>
     ${isNew ? addModeRow('one') : ''}
     <p class="muted">${isNew ? 'Only the common name is required. You can add photos after saving.' : 'Saving makes version ' + (p.version + 1) + '. The old text stays in the page history.'}</p>
@@ -192,7 +192,7 @@ function viewForm(p) {
       ${isNew ? '' : html`<fieldset><legend>Change note</legend><label class="f">What did you change, and why?<small>Optional. It appears in the page history.</small><input type="text" name="__note" maxlength="300"></label></fieldset>`}
       <div id="form-err"></div>
       <div class="sticky-save"><button class="btn" type="submit">${isNew ? 'Add plant' : 'Save changes'}</button>
-        <a class="btn ghost" href="${isNew ? '#/' : '#/plant/' + enc(p.code)}">Cancel</a></div>
+        <a class="btn ghost" href="${isNew ? '#/plants' : '#/plant/' + enc(p.code)}">Cancel</a></div>
     </form>`,
   };
 }
@@ -210,14 +210,14 @@ const SEV_FIELDS = [['common_name', 'Common name', 'text'], ['scientific_name', 
 function sevDefaultHome() { const cur = META.place, h = HOMES().find(x => String(x.id) === String(cur && cur.id)); return h && !h.is_home ? String(h.id) : ''; }
 function viewSeveral() {
   if (SEV.step === 'pick' && !SEV.photos.length) { SEV.home = sevDefaultHome(); }
-  return { title: 'Add several plants', html: html`<p class="crumb"><a href="#/">All plants</a></p><h1>Add a plant</h1>${addModeRow('several')}
+  return { title: 'Add several plants', html: html`<p class="crumb"><a href="#/plants">All plants</a></p><h1>Add a plant</h1>${addModeRow('several')}
     <div id="sev">${sevHtml()}</div>` };
 }
 function sevHtml() {
   if (SEV.done) return html`<div class="notice ok" role="status"><strong>${SEV.done.length} plant${SEV.done.length === 1 ? '' : 's'} added:</strong>
     <ul>${SEV.done.map(c => html`<li><a href="#/plant/${enc(c)}">${c} ${(ALL.find(p => p.code === c) || {}).common_name || ''}</a></li>`)}</ul>
     <p>Each one has a page of its own now. The care details (temperature, water, light and so on) are still empty: fill them in on each page, or ask Claude with "Copy my answers for Claude".</p></div>
-    <p class="row"><button class="btn" type="button" data-act="sevreset">Add more plants</button><a class="btn ghost" href="#/">Go to the Plants page</a></p>`;
+    <p class="row"><button class="btn" type="button" data-act="sevreset">Add more plants</button><a class="btn ghost" href="#/plants">Go to the Plants page</a></p>`;
   const homes = HOMES();
   const homeSel = homes.length > 1 ? html`<label class="f">Home<small>Where these plants live.</small><select data-f="sevset" data-k="home">${homes.map(h => html`<option value="${h.is_home ? '' : h.id}" ${(h.is_home ? !SEV.home : String(SEV.home) === String(h.id)) ? raw('selected') : ''}>${h.name}</option>`)}</select></label>` : '';
   const siteSel = html`<label class="f">Location<select data-f="sevset" data-k="site">${(META.sites || ['Outdoors', 'Indoors']).map(x => html`<option ${x === SEV.site ? raw('selected') : ''}>${x}</option>`)}</select></label>`;

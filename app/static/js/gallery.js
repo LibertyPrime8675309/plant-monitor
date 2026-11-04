@@ -264,7 +264,7 @@ async function viewGroups() {
     <section class="blk" id="grp-how"><h2>How groups work</h2><ul>
       <li><strong>Smart groups</strong> have a rule, such as "Genus is Philodendron" or "Location is Indoors". Plants that fit join by themselves, and leave when they stop fitting.</li>
       <li><strong>Hand-picked groups</strong> hold the plants you choose. Add or take out plants on the group's page or on a plant's own page.</li>
-      <li>On the <a href="#/">Plants page</a>, choose a group under <strong>Group</strong> to see only those plants, or sort by group. Previous and Next Plant follow the same choice.</li>
+      <li>On the <a href="#/plants">Plants page</a>, choose a group under <strong>Group</strong> to see only those plants, or sort by group. Previous and Next Plant follow the same choice.</li>
       <li>A group's page shows the conditions that suit every plant in it, and lets you log care, move the plants, or change a setting for all of them. A change to a setting shows each plant first, and can be undone.</li>
       <li>Removing a group never changes the plants in it.</li></ul></section>`,
   };
@@ -294,7 +294,7 @@ async function viewGroup(id) {
     html: html`<p class="crumb"><a href="#/groups">All groups</a></p>
     <h1>${d.name}</h1><p>${groupKindWords(d)}</p>${paras(d.notes)}
     <div class="row noprint"><button class="btn ghost" type="button" data-act="grpedit">${picked ? 'Change the name, notes or plants' : 'Change the name, notes or rule'}</button>
-      <a class="btn ghost" href="#/" data-act="grpshow" data-id="${d.id}">Show them on the Plants page</a>
+      <a class="btn ghost" href="#/plants" data-act="grpshow" data-id="${d.id}">Show them on the Plants page</a>
       <button class="btn ghost danger" type="button" data-act="grpdel">Remove this group</button></div>
     <section class="blk" id="g-plants"><h2>Plants in this group (${d.members.length})</h2>
       ${d.members.length ? html`<ul class="jobs">${d.members.map(m => html`<li class="job" data-code="${m.code}">${m.photo ? html`<img src="${thumbUrl(m.photo)}" alt="" loading="lazy" width="64" height="64">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}

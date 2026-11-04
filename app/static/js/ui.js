@@ -229,7 +229,7 @@ document.addEventListener('keydown', e => {
     case ']': click('#pnav a.pn-next'); break;
     case 'r': case 'R': e.preventDefault(); { const b = document.querySelector('[data-act=readpage]'); readAloud(readTarget(), b, 'this page'); } break;
     case 'e': case 'E': if (CUR && location.hash.startsWith('#/plant/') && !location.hash.endsWith('/edit')) { e.preventDefault(); location.hash = '#/plant/' + enc(CUR.p.code) + '/edit'; } break;
-    case 'h': case 'H': e.preventDefault(); go('#/'); break;
+    case 'h': case 'H': e.preventDefault(); go('#/plants'); break;
     case 'm': case 'M': click('[data-act=navtoggle]:not([aria-hidden])'); break;
     case 'l': case 'L': e.preventDefault(); placeDialog(); break;          // 1.11.0: choose the location
     case '?': e.preventDefault(); shortcutsDialog(); break;

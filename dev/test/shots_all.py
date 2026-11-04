@@ -23,7 +23,7 @@ COMBOS = {
     'largest': ('Largest text', dict(USUAL, size='190')),
     'stress': ('Largest, Roomy, High contrast, Dark', dict(USUAL, size='190', space='roomy', contrast='high', theme='dark')),
 }
-PAGES = [('plants', 'Plants', '#/'), ('plant', 'A plant page', '#/plant/P-012'), ('plantedit', 'Editing a plant', '#/plant/P-012/edit'),
+PAGES = [('today', 'Today', '#/'), ('plants', 'Plants', '#/plants'), ('plant', 'A plant page', '#/plant/P-012'), ('plantedit', 'Editing a plant', '#/plant/P-012/edit'),
          ('groups', 'Groups', '#/groups'), ('group', 'A group', '#/group/1'), ('today', 'Today', '#/today'), ('winter', 'Winter plan', '#/winter'),
          ('frost', 'Cold-night checklist', '#/frost'), ('inside', 'Getting plants ready to come inside', '#/inside'), ('outside', 'Back outside', '#/outside'),
          ('weather', 'Weather', '#/weather'), ('fertilizer', 'Fertilizer', '#/fertilizer'), ('lights', 'Grow lights', '#/lights'),
