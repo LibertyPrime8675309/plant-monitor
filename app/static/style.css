@@ -1574,3 +1574,12 @@ html:is([data-narrow="1"],[data-topcompact="1"]) :is(.srch-btn .srch-l,.place-bt
 .sl-big .muted,.sl-big .tag{font-size:.8em}
 .sl-stores{padding-left:1.2rem}
 @media print{.sl-list{font-size:1.2em}.tick-list input[type=checkbox]{width:1.2em;height:1.2em}}
+/* 1.34.0: the Speak (dictation) button after a text box */
+.spk-btn{margin:.2rem 0 .6rem;display:none;align-items:center;gap:.4rem;justify-self:start;align-self:start;width:max-content}
+.f-grid>.spk-btn{grid-column:1/-1;margin-top:-.3rem}
+.spk-btn::before{content:"";width:.9em;height:.9em;border-radius:50%;border:2px solid currentColor;flex:none}
+.spk-btn.spk-show,.spk-btn.spk-on{display:inline-flex}
+.spk-btn.spk-on{background:var(--ink);color:var(--sheet)}
+.spk-btn.spk-on::before{background:currentColor;animation:spk-pulse 1s infinite alternate}
+@keyframes spk-pulse{from{transform:scale(.7)}to{transform:scale(1.15)}}
+@media (prefers-reduced-motion:reduce){.spk-btn.spk-on::before{animation:none}}

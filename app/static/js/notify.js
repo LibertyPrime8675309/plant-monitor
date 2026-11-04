@@ -1,4 +1,4 @@
-/* Plant record front end: push notifications (1.33.0) and the search window (1.33.0). One of the files loaded in order by
+/* Plant record front end: push notifications (1.33.0), the search window (1.33.0) and dictation (1.34.0). One of the files loaded in order by
    index.html; they share one scope. Plain JavaScript, no inline handlers (the server's content policy forbids them). */
 'use strict';
 
@@ -118,3 +118,66 @@ document.addEventListener('keydown', e => {
     if (n < 0) document.getElementById('srch-q').focus(); else links[n].focus();
   }
 });
+
+// ---------- 1.34.0: speak a note. A Speak button after every text box that takes several lines; what you say is written into it ----------
+// Uses the browser's own speech recognition (Chrome, Edge and Safari have it; the words go to the browser maker's service, as with
+// voice typing on a phone). Firefox does not have it, and the button then does not appear.
+const speechApi = () => window.SpeechRecognition || window.webkitSpeechRecognition || null;
+let DICT = null;                                  // the recognition running now: { rec, ta, btn, base }
+function addSpeakButtons(root) {
+  if (!speechApi()) return;
+  (root || document).querySelectorAll('textarea:not([data-speak])').forEach(ta => {
+    ta.dataset.speak = '1';
+    if (ta.readOnly || ta.disabled || ta.closest('[hidden]')) return;
+    const lab = ta.closest('label'), name = (lab ? lab.childNodes[0].textContent : ta.getAttribute('aria-label') || 'this box').trim();
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'btn small ghost spk-btn noprint'; b.dataset.act = 'dictate'; b.setAttribute('aria-pressed', 'false');
+    b.setAttribute('aria-label', `Speak into ${name}`); b.title = 'Dictate: what you say is added to the box'; b.textContent = 'Speak';
+    (lab || ta).insertAdjacentElement('afterend', b);
+    b.spkTarget = ta;
+  });
+}
+function dictateStop() {
+  if (!DICT) return;
+  const { rec, btn, ta, base } = DICT; DICT = null;
+  try { rec.onend = null; rec.stop(); } catch (e) { /* already stopped */ }
+  btn.textContent = 'Speak'; btn.setAttribute('aria-pressed', 'false'); btn.classList.remove('spk-on');
+  if (ta.value !== base) ta.dispatchEvent(new Event('change', { bubbles: true }));
+}
+function dictateStart(btn) {
+  const Api = speechApi(), ta = btn.spkTarget; if (!Api || !ta) return;
+  dictateStop();
+  const rec = new Api(); rec.lang = navigator.language || 'en-US'; rec.continuous = true; rec.interimResults = true;
+  const base = ta.value; let fixed = '';
+  DICT = { rec, btn, ta, base };
+  btn.textContent = 'Listening… press to stop'; btn.setAttribute('aria-pressed', 'true'); btn.classList.add('spk-on');
+  const cap = t => t.charAt(0).toUpperCase() + t.slice(1);            // a new sentence starts with a capital letter
+  const join = (a, b) => { a = (a || '').replace(/\s+$/, ''); b = (b || '').trim(); if (!b) return a; if (!a) return cap(b); return a + ' ' + (/[.!?]$/.test(a) ? cap(b) : b); };
+  rec.onresult = ev => {
+    let interim = '';
+    for (let i = ev.resultIndex; i < ev.results.length; i++) { const r = ev.results[i]; if (r.isFinal) fixed = join(fixed, r[0].transcript); else interim += r[0].transcript; }
+    ta.value = join(base, join(fixed, interim).trim());
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  rec.onerror = ev => { if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') toast('The browser did not allow the microphone. Allow it for this site and try again.', true); else if (ev.error !== 'aborted' && ev.error !== 'no-speech') toast('Dictation stopped: ' + ev.error, true); dictateStop(); };
+  rec.onend = () => { if (DICT && DICT.rec === rec) dictateStop(); };
+  try { rec.start(); } catch (e) { toast('Dictation could not start: ' + e.message, true); dictateStop(); }
+}
+Object.assign(acts, {
+  dictate(el) { if (DICT && DICT.btn === el) dictateStop(); else dictateStart(el); },
+});
+if (speechApi()) {
+  new MutationObserver(muts => { for (const m of muts) for (const n of m.addedNodes) if (n.nodeType === 1 && (n.tagName === 'TEXTAREA' || n.querySelector('textarea'))) addSpeakButtons(n.parentNode || n); }).observe(document.body, { childList: true, subtree: true });
+  addSpeakButtons();
+  window.addEventListener('hashchange', dictateStop);
+  // the button shows while the box or the button itself has the focus (and while listening), so forms do not fill up with buttons
+  const btnOf = ta => { const n = (ta.closest('label') || ta).nextElementSibling; return n && n.classList.contains('spk-btn') ? n : null; };
+  document.addEventListener('focusin', e => {
+    const t = e.target; const b = t.tagName === 'TEXTAREA' ? btnOf(t) : t.classList && t.classList.contains('spk-btn') ? t : null;
+    if (b) b.classList.add('spk-show');
+  });
+  document.addEventListener('focusout', e => {
+    const t = e.target; const b = t.tagName === 'TEXTAREA' ? btnOf(t) : t.classList && t.classList.contains('spk-btn') ? t : null;
+    if (b) setTimeout(() => { const f = document.activeElement; if (f !== b && f !== b.spkTarget && !(DICT && DICT.btn === b)) b.classList.remove('spk-show'); }, 150);
+  });
+}
