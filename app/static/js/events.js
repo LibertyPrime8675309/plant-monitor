@@ -323,7 +323,7 @@ const acts = {
     navLayout();
   },
   gotoplaces(el, e) { const t = document.getElementById('sec-places'); if (t) scrollToSection(t); },
-  jumpsec(el, e) { const t = document.getElementById(el.dataset.sec); if (t) { e.preventDefault(); scrollToSection(t); navFlash(t); const h = t.querySelector('h2'); if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); } } },   // 1.34.0: Today's jump buttons
+  jumpsec(el) { const t = document.getElementById(el.dataset.sec); if (t) { scrollToSection(t); navFlash(t); } },   // 1.34.0: Today's jump buttons (scrollToSection puts the focus on the heading)
   placeshow(el) { setPlace(el.dataset.id).then(() => window.scrollTo(0, 0)); },
   async placehome(el) {
     const p = WX.places.find(x => String(x.id) === el.dataset.id); if (!p || !(await needName())) return;
