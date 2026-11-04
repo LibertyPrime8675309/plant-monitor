@@ -1269,8 +1269,18 @@ html[data-role=viewer] [data-act=spnew]{display:none!important}
 .ck-acts{display:flex;flex-wrap:wrap;gap:.6rem;margin:.8rem 0}
 .ck-nav{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1rem;padding-top:.8rem;border-top:2px solid var(--line-2,var(--line))}
 .ck-nav .btn[disabled]{opacity:1;color:var(--ink-2);border-color:var(--line);cursor:default}
+.ck-photo-btn{position:relative;width:100%;margin-top:.6rem;cursor:pointer}
+.ck-photo-btn:focus-within{outline:var(--ring) solid var(--focus);outline-offset:2px}
+.ck-photo .ck-meta{margin:.3rem 0 0}
+.ck-group{max-width:30rem;margin:0 0 1.3rem}
+.ck-group select{width:100%}
+.ck-set{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.4rem 1.2rem}
+.ck-set .f{flex:1 1 16rem;max-width:26rem}
+.ck-set input[type=number]{display:block;margin-top:.3rem;width:8rem;max-width:100%}
+.ck-set p{margin:0 0 .3rem}
+.ck-setup button[disabled]{opacity:1;background:var(--sheet);color:var(--ink-2);border-color:var(--line);cursor:default}
 @media (max-width:640px){.ck-card{grid-template-columns:minmax(0,1fr);padding:.7rem}.ck-photo img,.ck-nophoto{aspect-ratio:4/3;max-height:38vh}.ck-acts .btn,.ck-nav .btn{flex:1 1 12rem}.ck-health label{flex:1 1 40%}}
-html[data-role=viewer] :is(form[data-form=ckstart] button[type=submit], form[data-form=cksave]){display:none!important}
+html[data-role=viewer] :is(form[data-form=ckstart] button[type=submit], form[data-form=cksave], form[data-form=ckset], form[data-form=ckgroupset], [data-act=ckgroupwalk], .ck-photo-btn){display:none!important}
 /* 1.22.0: mushroom finds */
 .mu-safe{margin:0 0 1.4rem}
 .mu-safe ul{margin:.5rem 0 0;padding-left:1.3em}
