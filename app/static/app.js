@@ -4268,7 +4268,7 @@ async function roomDialog(pl) {
   }
 }
 function ltSocketNote(L) {
-  return L && L.specs.needs_socket && !L.fixture ? html`<p class="notice"><strong>Needs a socket.</strong> This bulb screws into a lamp or clamp light. Note which one under "Where it is" on the light (Your lights, below).</p>` : '';
+  return L && L.specs.needs_socket && !L.fixture ? html`<p class="notice"><strong>Needs a socket.</strong> This bulb screws into a lamp or clamp light. Note which one under "Where it is" on the light (Your lights, at the top of the page).</p>` : '';
 }
 function ltSteps(steps) {
   if (!steps || !steps.length) return '';
@@ -4317,6 +4317,9 @@ function ltLightCard(L) {
     ${S.url ? html`<p class="hint"><a href="${S.url}" target="_blank" rel="noopener noreferrer">Product page</a></p>` : ''}
     <div class="row noprint"><button class="btn ghost small" type="button" data-act="lightedit" data-id="${L.id}">Change this light</button></div></div></article>`;
 }
+// 1.28.1: Your lights is at the top and folds; this browser remembers whether you left it open (open the first time)
+function ltLightsOpen() { try { return localStorage.getItem('plantdb.ltlights') !== '0'; } catch (e) { return true; } }
+document.addEventListener('toggle', e => { const d = e.target; if (d && d.dataset && d.dataset.remember === 'ltlights') { try { localStorage.setItem('plantdb.ltlights', d.open ? '1' : '0'); } catch (x) { /* this visit only */ } } }, true);
 async function viewLights() {
   LT = await api('GET', '/api/lights');
   const n = LT.candidates.length, inSpots = Object.keys(LT.assigned).length, sug = LT.plan.reduce((a, s) => a + s.codes.length, 0);
@@ -4324,6 +4327,8 @@ async function viewLights() {
     title: 'Grow lights',
     html: html`<h1>Grow lights</h1>
     <p class="muted">Your grow lights, the spots they light, and how much light each plant gets there. A plant's daily light (DLI, in mol/m² a day) is the light at its leaves while the light is on (PAR) times the hours it is on. Each plant page has the range it wants.</p>
+    <details class="blk lt-lights-box" id="lt-lights" data-remember="ltlights" ${ltLightsOpen() ? raw('open') : ''}><summary><h2>Your lights (${LT.lights.length})</h2><span class="hint">Show or hide</span></summary>
+      <div class="lt-lights">${LT.lights.map(ltLightCard)}</div></details>
     <div class="verdict-box" role="status"><h2 style="margin:0 0 .4rem">This winter</h2>
       <p>${n} plant${n === 1 ? ' lives' : 's live'} inside or ${n === 1 ? 'is' : 'are'} coming in. ${inSpots} ${inSpots === 1 ? 'is' : 'are'} in a light spot you set up.${LT.plan.length ? ` The suggested layout below places ${sug} more under your lights.` : ''}${LT.unplaced.length ? ` ${LT.unplaced.length} ${LT.unplaced.length === 1 ? 'has' : 'have'} no light left in it.` : ''}</p>
       ${has(LT.outdoor_dli) ? html`<p>Outdoors in the open, the last 7 days averaged about <strong>${LT.outdoor_dli} mol/m² a day</strong>. Under the porch roof it is much less.</p>` : ''}
@@ -4337,7 +4342,6 @@ async function viewLights() {
       ${LT.plan.length ? html`<div class="lt-grid">${LT.plan.map((s, i) => ltSpotCard(s, i, true))}</div>` : html`<p class="muted">Every plant that needs a light is in a spot.</p>`}
       ${LT.unplaced.length ? html`<h3>No light left for these</h3><ul class="lt-plants">${LT.unplaced.map(u => html`<li>${u.photo ? html`<img src="${thumbUrl(u.photo)}" alt="" loading="lazy">` : html`<span></span>`}
         <span><a class="nm" href="#/plant/${enc(u.code)}">${u.name}</a><br><span class="muted">${u.code}. Needs ${fmt(u.lo, 1)} to ${fmt(u.hi, 1)} mol/m² a day.</span> ${u.why}</span><span></span></li>`)}</ul>` : ''}</section>
-    <section class="blk" id="lt-lights"><h2>Your lights</h2><div class="lt-lights">${LT.lights.map(ltLightCard)}</div></section>
     <section class="blk"><h2>How the numbers work</h2>
       <p>Makers measure light straight under the centre of the light at a few distances. The app draws a smooth line through those figures to get the light at any distance, then multiplies by the hours a day: 100 PAR for 12 hours is about 4.3 mol/m².</p>
       <p>The edges of a light's circle get less, and a window adds some. Plants that stretch or go pale want more; bleached or crisp leaves want less. Several of the same light side by side light a bigger area at about the same strength.</p></section>`,

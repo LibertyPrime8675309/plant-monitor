@@ -1449,3 +1449,8 @@ html[data-role=viewer] :is([data-act=wlcheck], [data-act=wldismiss]){display:non
 .sev-names legend{font-weight:700;padding:0}
 .sev-names .chk{display:flex;gap:.5rem;align-items:flex-start;margin:.3rem 0}
 #sev-err{font-weight:700;margin-left:.5rem}
+/* 1.28.1: Your lights folds */
+.lt-lights-box > summary{cursor:pointer;display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap;list-style-position:outside}
+.lt-lights-box > summary h2{display:inline;margin:0}
+.lt-lights-box > summary:focus-visible{outline:3px solid var(--ink);outline-offset:4px}
+.lt-lights-box[open] > summary{margin-bottom:1rem}

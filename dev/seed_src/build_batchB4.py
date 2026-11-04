@@ -1,7 +1,8 @@
 """Batch B4 (draft): more grow light details from Ethan's label photos (November 2026).
 - SANSI T8 strip (sansi-t8): label reads 'T8 plant grow light, C21GL-LT01-25W, AC120V, 60Hz, 0.5A, 25W', suitable for damp locations,
   do not use with dimmers, not for totally enclosed luminaires, date 12.2024. Ethan: he has just the one strip, 32 LEDs, 25 W,
-  120 V, 0.5 A. Its control box has only an on/off button and a timer button (4, 8 or 12 hours), so it has no brightness steps.
+  120 V, 0.5 A. Its control box has a power button and a timer button (4, 8 or 12 hours). Ethan: the power button also steps the
+  brightness (low, medium, high, full; nothing shows which), and holding it down turns the strip off.
 Guarded like plant updates: each field changes only if it still holds the value the batch expects. 1.28.1 lets a batch rename a light.
 Run: python3 dev/seed_src/build_batchB4.py"""
 import json, os
@@ -14,11 +15,11 @@ lights_update = [
              'watts': [None, 25],
              'power': ['Plugs into an outlet; 6 ft cord. Splash-proof (IP54).',
                        'Plugs into an outlet (120 V AC, 60 Hz, 0.5 A); 6 ft cord. Splash-proof (IP54).'],
-             'dimming': [[25, 50, 75, 100], [100]],
              'ppfd_note': ['The maker\'s figures. Claude does not know yet how many strips the set has or their watts.',
                            'The maker\'s figures, for one 25 W strip with 32 LEDs.'],
-             'notes': ['', 'The control box has an on/off button and a timer button (4, 8 or 12 hours a day; a red, green or yellow dot shows which). '
-                           'There is no brightness button. Do not put it on a dimmer. Rated for damp locations (a covered porch is fine, not direct rain). '
+             'notes': ['', 'Press the power button to step the brightness: low, medium, high, full (nothing shows which step it is on). '
+                           'Press and hold the power button until the LEDs go out to turn it off. The timer button sets 4, 8 or 12 hours a day '
+                           '(a red, green or yellow dot shows which). Do not put it on a dimmer. Rated for damp locations (a covered porch is fine, not direct rain). '
                            'Not for totally enclosed fixtures.']}},
 ]
 b = {'id': 'B4', 'created': '2026-11-03', 'author': "Claude (Ethan's grow light details, Nov 2026)", 'lights_update': lights_update}

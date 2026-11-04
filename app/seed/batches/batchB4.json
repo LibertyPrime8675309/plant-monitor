@@ -27,24 +27,13 @@
      "Plugs into an outlet; 6 ft cord. Splash-proof (IP54).",
      "Plugs into an outlet (120 V AC, 60 Hz, 0.5 A); 6 ft cord. Splash-proof (IP54)."
     ],
-    "dimming": [
-     [
-      25,
-      50,
-      75,
-      100
-     ],
-     [
-      100
-     ]
-    ],
     "ppfd_note": [
      "The maker's figures. Claude does not know yet how many strips the set has or their watts.",
      "The maker's figures, for one 25 W strip with 32 LEDs."
     ],
     "notes": [
      "",
-     "The control box has an on/off button and a timer button (4, 8 or 12 hours a day; a red, green or yellow dot shows which). There is no brightness button. Do not put it on a dimmer. Rated for damp locations (a covered porch is fine, not direct rain). Not for totally enclosed fixtures."
+     "Press the power button to step the brightness: low, medium, high, full (nothing shows which step it is on). Press and hold the power button until the LEDs go out to turn it off. The timer button sets 4, 8 or 12 hours a day (a red, green or yellow dot shows which). Do not put it on a dimmer. Rated for damp locations (a covered porch is fine, not direct rain). Not for totally enclosed fixtures."
     ]
    }
   }
