@@ -940,6 +940,57 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
 
+## The top bar, rooms and spots, pots and trays, editing on the page, and settings that follow you (from 1.29.0)
+
+### The top bar
+
+Six sections: **Today**, **Plants**, **Care**, **Weather**, **Discover** and **Settings**. Choose one, and its pages appear on a second row under it:
+
+| Section | Its pages |
+|---|---|
+| Today | Today |
+| Plants | All plants, Groups, Add plants, Mushrooms, Rooms and spots, Photos, Labels |
+| Care | Winter plan, Fertilizer, Grow lights, Pots and trays |
+| Weather | Weather, Homes and places |
+| Discover | Identify, Library, Wishlist |
+| Settings | Settings, Offline use, Backups, Audit log |
+
+The version number is always beside "Plant record". The **Home** button (it said Location before) chooses which home or place the weather, frost warnings and watering are for. The **Settings** page gathers people and names, Display, Offline use, Backups, the Audit log, Homes and places, shops and keys, and **Debug** (which used to be at the bottom of the screen). On a phone the sections fold into the **Pages** button, and the row of pages stays under it.
+
+### Rooms and spots
+
+Where a plant is has three parts: **outside or inside**, the **area or room**, and the **spot**. For example: Outside, Yard, Pallet shelf; or Inside, Downstairs Living Room, Large Brown Hutch.
+
+- **Rooms and spots** (under Plants) lists each home's areas outside and rooms inside, with their spots. Type over a name to rename it; it saves when you leave the box. **Add area**, **Add room** and **Add spot** are under each list, and **Remove** beside each one. An area or room with plants in it can't be removed until they are moved; removing a spot leaves its plants in the room.
+- **Roof overhead** (outside) and **Heated** (inside) decide how frost warnings and watering treat the plants there. Outside with a roof counts as a covered porch; inside without heat counts as a garage or shed.
+- On a plant's page, choose **Inside** or **Outside**, then the area or room, then the spot. **More about where** (the old "Spot (where exactly)") keeps whatever you wrote.
+- Your Rooms and shelves from the Grow lights page became rooms and spots, and a light spot's **Where** chooses from the same list.
+- **Spots to sort out**, at the top of Rooms and spots, lists the places written on your plants with a suggested spot name for each. Change any names or areas, then press **Make these spots** to put those plants in them.
+
+### Pots and trays
+
+**Pots and trays** (under Care) keeps each kind of pot and catch tray you have:
+
+- **Name**, **Shape** (circle, square or rectangle) and its sizes in inches: across for a circle, the side for a square, length and width for a rectangle, and the height (pots) or depth (trays).
+- **Floor it covers**, worked out in square feet. A round one counts as the square around it.
+- For pots, **Drainage holes** (a pot with none gets a reminder to water less).
+- **Material**: terracotta, thin plastic, thick plastic, or **Other** to type your own.
+- **How many you have**, typed straight in, with **3 / 5 in use, 2 free** beside it and links to the plants using them. More in use than you have is allowed and shown.
+- **Photos**: **Add a photo** under the picture.
+- **Add a pot** and **Add a catch tray** add a new one to fill in.
+
+Choose a plant's **Pot** and **Catch tray** on its page. The Grow lights page then uses the real floor it takes: the tray's, or the pot's when it has no tray (the old Pot size guess otherwise).
+
+### Editing on the page
+
+On the light cards (Grow lights), Pots and trays, Rooms and spots, and the top of each plant's page (names, home, where, pot and tray, ID confidence, winter plan, health), type or choose a new value. It saves when you leave the box or press Enter. **Escape** puts back what was there before you started, and the message that follows has **Undo** (or press U). Notes and other long text have a small **Edit** button, so reading a page never changes it. **Edit this page** still has everything else. People who can only view see the values but cannot change them.
+
+### Settings that follow you
+
+These are saved for your sign-in as well as in the browser, so any device you sign in on picks them up: the Plants page filters, the Library's choices, the Mushrooms and Audit log filters, folded sections (such as Your lights), the weather chart choices, the Home button and Identify's list. On this computer (localhost) they are the owner's.
+
+**Display** settings stay on each device, because a phone and a big monitor usually want different text sizes. Each part of Display (Text and colours, Page layout, Reading aloud, Photos and touch, Keyboard) has **Use these on every device I sign in on**. Tick it on each device that should share that part; the first one to tick it shares its settings, and the others take them. Your name on this computer, the offline copy and the device name always stay on the device.
+
 ## Homes, adding several plants, and your plant photos (from 1.28.0)
 
 ### Homes

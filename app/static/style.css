@@ -1471,3 +1471,36 @@ html[data-narrow="1"] .sub-in a{padding:.35rem .55rem;min-height:2.4rem}
 .set-card{margin:0}
 .set-card h2{margin-top:0}
 .set-card .row{gap:.5rem;flex-wrap:wrap}
+/* 1.29.0: Rooms and spots */
+.wh-sides{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,28rem),1fr));gap:1rem}
+.wh-side h3{margin-top:0}
+.wh-areas,.wh-spots{list-style:none;padding:0;margin:0}
+.wh-area{border:2px solid var(--line, #8a9a96);border-radius:8px;padding:.7rem .9rem;margin:.6rem 0}
+.wh-row{display:flex;flex-wrap:wrap;gap:.4rem 1rem;align-items:end}
+.wh-name{flex:1 1 14rem}
+.wh-spots{margin:.5rem 0 0 1.2rem}
+.wh-spots li{display:flex;flex-wrap:wrap;gap:.4rem 1rem;align-items:end;margin:.35rem 0}
+.wh-add{gap:.5rem;align-items:end;flex-wrap:wrap;margin-top:.5rem}
+.where-f{border:0;padding:0;margin:0}
+.where-f legend{font-weight:700;padding:0}
+.where-f .opts{display:flex;gap:1.5rem;margin:.3rem 0 .5rem}
+/* 1.29.0: Pots and trays */
+.ct-list{display:grid;gap:1rem}
+.ct-card{display:grid;grid-template-columns:minmax(0,14rem) minmax(0,1fr);gap:1rem;border:2px solid var(--line, #8a9a96);border-radius:8px;padding:1rem;background:var(--sheet)}
+html[data-narrow="1"] .ct-card{grid-template-columns:minmax(0,1fr)}
+.ct-photos{display:flex;flex-direction:column;gap:.5rem}
+.ct-photos figure{margin:0;display:flex;flex-direction:column;gap:.3rem}
+.ct-photos img{width:100%;max-width:14rem;aspect-ratio:1;object-fit:cover;border-radius:6px}
+.ct-file input{position:absolute;opacity:0;width:1px;height:1px}
+.ct-file:focus-within{outline:3px solid var(--ink);outline-offset:2px}
+.ct-qty{display:flex;flex-wrap:wrap;gap:.5rem 1.2rem;align-items:end}
+.ct-use{margin:0 0 .4rem;font-size:1.1em}
+.ct-num input{max-width:9rem}
+.ct-sq{display:flex;flex-direction:column;justify-content:end;margin:0}
+.ct-l{font-weight:700}
+.ed-long label[hidden]{display:none}
+/* 1.29.0: details edited on the plant's own page */
+.pl-ed{margin:.6rem 0 1rem}
+.pl-ed .hint{grid-column:1/-1;margin:0}
+.lt-ed{margin:.4rem 0 .8rem}
+#wh-sort input[type=text]{min-width:min(100%,18rem);width:100%}
