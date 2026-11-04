@@ -2900,7 +2900,7 @@ async function viewEdit(code) { return viewForm(await api('GET', '/api/plants/' 
 async function submitForm(form) {
   if (!(await needName())) return;
   const fd = new FormData(form), fields = {};
-  META.fields.forEach(f => { fields[f.name] = fd.get(f.name); });
+  META.fields.forEach(f => { const v = fd.get(f.name); if (v !== null) fields[f.name] = v; });   // 1.29.0: a field not on the form (Location now follows the area) is left out
   const err = document.getElementById('form-err'); err.innerHTML = '';
   const btn = form.querySelector('[type=submit]'); btn.disabled = true;
   try {

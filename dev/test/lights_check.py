@@ -94,7 +94,9 @@ check(st == 200 and other not in call('GET', '/api/lights')[1]['assigned'], 'rem
 # ---- 1.13.1: rooms and shelves, the model field, Ethan's answers (batchA4)
 st, j7 = call('GET', '/api/lights')
 labels = [pl['label'] for pl in j7['places']]
-check(len(labels) == 8 and labels[0] == 'Downstairs Living Room, Tall Black Shelf' and 'Garage' in labels and 'My Bedroom, Shelves' in labels, f'his 8 rooms and shelves arrived ({len(labels)})')
+want = ['Downstairs Living Room, Tall Black Shelf', 'Downstairs Living Room, Tall Brown Shelf', 'Downstairs Living Room, Short Brown Shelf', 'Downstairs Living Room, Large Brown Hutch',
+        'Downstairs Living Room, Side Table', 'My Bedroom, Shelves', 'Garage', 'Upstairs Living Room']      # 1.29.0: each room can also be chosen itself
+check(all(w in labels for w in want), f'his 8 rooms and shelves arrived ({len(labels)} places, with each room itself)')
 d7 = {L['key']: L for L in j7['lights']}
 check(d7['disk-light']['fixture'].startswith('New, still in its box') and 'E26' in d7['sansi-gooseneck']['notes'], "the disk light and gooseneck carry his answers")
 st, rq2 = call('GET', '/api/requests')
@@ -151,14 +153,14 @@ with sync_playwright() as p:
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and '404' not in m.text else None)
     pg.add_init_script("localStorage.setItem('plantdb.editor','Light Test')")
     pg.goto(LOCAL + '/#/lights'); pg.wait_for_timeout(2500)
-    check(pg.locator('#lt-rooms .lt-room').count() == 4 and 'Big Brown Hutch' in pg.inner_text('#lt-rooms') and 'Living room window' in pg.inner_text('#lt-rooms'), 'the page lists his rooms with the spot on its shelf')
-    check('Manufacturer model' in pg.inner_text('#lt-lights') and 'SANSI-80W-TEST' in pg.inner_text('#lt-lights'), 'each light shows its manufacturer model')
+    check(pg.locator('#lt-rooms .lt-room').count() == 5 and 'Big Brown Hutch' in pg.inner_text('#lt-rooms') and 'Living room window' in pg.inner_text('#lt-rooms'), 'the page lists his rooms with the spot on its shelf')
+    check('Manufacturer model' in pg.inner_text('#lt-lights') and pg.locator('#lt-lights [data-k=model]').evaluate_all("els => els.some(e => e.value === 'SANSI-80W-TEST')"), 'each light shows its manufacturer model (1.29.0: in a box you can type in)')
     check(pg.locator('#lt-spots article').count() == 1 and pg.locator('#lt-plan article').count() >= 5 and pg.locator('.lt-light').count() == 11, 'the page shows your spot, the suggestions and your 11 lights')
     check(pg.locator('.lt-light img.lt-photo').count() == 10 and all(pg.locator('.lt-light img.lt-photo').nth(i).get_attribute('alt') for i in range(10)), 'every light photo has a description')
     check(pg.locator('.lv').count() > 10 and pg.locator('.lv span[aria-hidden]').count() == pg.locator('.lv').count(), 'verdicts are words with a symbol, not colour alone')
     pg.screenshot(path=os.path.join(OUT, 'lights-1-page.png'))
     pg.click('#lt-plan [data-act=spotnew]'); pg.wait_for_timeout(1200)
-    check(pg.locator('dialog select[name=place] optgroup').count() == 4, 'the spot window offers the rooms and shelves')
+    check(pg.locator('dialog select[name=place] optgroup').count() == 5, 'the spot window offers the rooms and shelves (and the second home\'s room)')
     t1 = pg.inner_text('#sp-prev')
     pg.fill('dialog input[name=distance]', '40'); pg.wait_for_timeout(900)
     t2 = pg.inner_text('#sp-prev')

@@ -108,7 +108,7 @@ with sync_playwright() as p:
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and '404' not in m.text else None)
     pg.add_init_script("localStorage.setItem('plantdb.editor','Group Test')")
     pg.goto(LOCAL + '/#/groups'); pg.wait_for_timeout(2500)
-    check(pg.locator('nav[aria-label=Main] a[data-nav=groups][aria-current=page]').count() == 1, 'Groups is in the top menu')
+    check(pg.locator('#sub-nav a[data-nav=groups][aria-current=page]').count() == 1, 'Groups is in the top menu')
     check(pg.locator('#grp-yours .grp-card').count() == 2 and pg.locator('#grp-suggest .grp-card').count() >= 10, 'the Groups page lists your groups and the suggestions')
     pg.screenshot(path=os.path.join(OUT, 'groups-1-page.png'))
     pg.locator('#grp-suggest .grp-card', has=pg.locator('h3', has_text='Majesty palms')).locator('[data-act=grpaddsug]').click(); pg.wait_for_timeout(1500)

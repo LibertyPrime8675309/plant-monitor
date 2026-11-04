@@ -71,7 +71,7 @@ with sync_playwright() as p:
     # a species page
     pg.fill('input[data-f=libq]', 'monstera'); pg.wait_for_timeout(1200)
     pg.locator('#lib-res .sheet-link').first.click(); pg.wait_for_timeout(5000)
-    check(pg.evaluate('location.hash') == '#/species/Monstera%20deliciosa' and pg.locator('nav[aria-label=Main] a[href="#/library"][aria-current=page]').count() == 1, 'a card opens the species page')
+    check(pg.evaluate('location.hash') == '#/species/Monstera%20deliciosa' and pg.locator('#sub-nav a[href="#/library"][aria-current=page]').count() == 1, 'a card opens the species page')
     t = pg.inner_text('main')
     check('Swiss cheese plant' in pg.locator('h1').inner_text() or 'Swiss cheese plant' in t, 'it shows the common name from iNaturalist')
     check('A test plant & its relatives' in t and 'From Wikipedia' in t, 'the short description, credited to Wikipedia')
