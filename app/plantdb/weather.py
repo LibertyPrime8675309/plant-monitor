@@ -532,7 +532,7 @@ def readings_series():
     names = list(dict.fromkeys(names))[:400]
     for v in names:
         if not re.match(r'^[a-z0-9_]{2,60}$', v): abort(400, 'unknown measurement')
-    inner = ['ts', 'temp_f', 'humidity', 'par', 'lux', 'soil_moisture', 'soil_temp_f', 'soil_ph'] + [f"json_extract(extra,'$.{v}') AS x{i}" for i, v in enumerate(names)]
+    inner = ['ts', 'temp_f', 'humidity', 'par', 'lux', 'soil_moisture', 'soil_temp_f', 'soil_ph', 'weight_g'] + [f"json_extract(extra,'$.{v}') AS x{i}" for i, v in enumerate(names)]
     sel = ['COUNT(*) AS n', 'AVG(temp_f) AS temp_f', 'MIN(temp_f) AS temp_min', 'MAX(temp_f) AS temp_max'] + \
           [f'AVG({m}) AS {m}' for m in METRICS if m != 'temp_f']
     for i, v in enumerate(names):
@@ -825,7 +825,7 @@ def weather_refresh():
 
 # ---- the table of everything logged
 SENSOR_COLS = [('temp_f', 'Temperature', '°F'), ('humidity', 'Humidity', '%'), ('par', 'PAR', 'µmol/m²/s'), ('lux', 'Light', 'lux'),
-               ('soil_moisture', 'Soil moisture', '%'), ('soil_temp_f', 'Soil temperature', '°F'), ('soil_ph', 'Soil pH', ''), ('note', 'Note', '')]
+               ('soil_moisture', 'Soil moisture', '%'), ('soil_temp_f', 'Soil temperature', '°F'), ('soil_ph', 'Soil pH', ''), ('weight_g', 'Pot weight', 'g'), ('note', 'Note', '')]   # 1.35.0: weight
 
 def wx_units(c):
     try: u = json.loads(setting(c, 'wx_units', '{}') or '{}')
