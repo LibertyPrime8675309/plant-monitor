@@ -27,7 +27,7 @@ for _ in range(40):
     time.sleep(1); d = call('GET', '/api/library/local')[1]
     if not d['now'] and not d['queued']: break
 by = {l['name']: l for l in d['lists']}
-check(by['tx_native']['count'] == 17 and by['tx_introduced']['count'] == 3 and by['near']['count'] == 5 and by['aspca']['count'] == 6, f'they are all fetched ({", ".join(f"{k} {v["count"]}" for k, v in by.items())})')
+check(by['native-18']['count'] == 17 and by['introduced-18']['count'] == 3 and by['near-1']['count'] == 5 and by['aspca']['count'] == 6, f'they are all fetched ({", ".join(f"{k} {v["count"]}" for k, v in by.items())})')
 check(not any(l['error'] for l in d['lists']), 'without errors')
 calls = json.loads(urllib.request.urlopen('http://127.0.0.1:8090/mock/inat/calls').read())
 sc = [c for c in calls if c.startswith('species_counts')]
@@ -52,7 +52,7 @@ with sync_playwright() as p:
     t = pg.inner_text('#lib-lists')
     check('Plants native to Texas: 17 species' in t and 'ASPCA' in t and 'zone' in t.lower(), 'the Library page lists the lists, how many species and when they were fetched')
     pg.select_option('select[data-f=libknow]', 'native'); pg.wait_for_timeout(1500)
-    check(pg.locator('#lib-res .lib-card').count() == 17 and 'Native to Texas' in pg.inner_text('#lib-res'), '"Texas and home: Native to Texas" filters the library, and the cards say so')
+    check(pg.locator('#lib-res .lib-card').count() == 17 and 'Native to Texas' in pg.inner_text('#lib-res'), '"Your area: Native to Texas" filters the library, and the cards say so')
     pg.select_option('select[data-f=libknow]', 'bloom'); pg.wait_for_timeout(1500)
     check(pg.locator('#lib-res .lib-card').count() == 2 and 'Flowering near home now' in pg.inner_text('#lib-res'), 'Flowering near home this month')
     pg.select_option('select[data-f=libknow]', 'pettoxic'); pg.wait_for_timeout(1500)

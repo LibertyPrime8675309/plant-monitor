@@ -1,5 +1,54 @@
 # Changelog
 
+## 1.29.0 (2026-11-04)
+- **A clearer top bar.** Six sections: **Today**, **Plants**, **Care**, **Weather**, **Discover** and **Settings**. The pages of the section you're in are on a second row:
+  - Plants: All plants, Groups, Add plants, Mushrooms, Rooms and spots, Photos, Labels.
+  - Care: Winter plan, Fertilizer, Grow lights, Pots and trays.
+  - Weather: Weather, Homes and places.
+  - Discover: Identify, Library, Wishlist (its own link now, with the alert count).
+  - Settings: a new Settings page (people, Display, Debug, keys and more), Offline use, Backups, Audit log.
+  - The version number stays beside the name on every page. The Location button now says **Home: Round Rock, TX**. Debug has moved to the Settings page.
+- **Where a plant is, in three steps:** outside or inside, then the area or room, then the spot.
+  - Each home has its own list on the new **Rooms and spots** page (under Plants). Rename anything by typing over it; add and remove areas, rooms and spots.
+  - Outside areas can have a **roof overhead** (counts as a covered porch) and inside rooms can be **heated** or not (not heated counts as a garage or shed), so frost warnings and watering keep working.
+  - Your Rooms and shelves from the Grow lights page are now rooms and spots here, and light spots choose from the same list.
+  - Your plants are already in the right area for their old Location. **Spots to sort out** suggests a spot for each place written on your plants; check the names and press **Make these spots**.
+- **Pots and trays** (under Care): each pot and catch tray you keep, with shape, sizes in inches, drainage holes (pots), material (or your own words), photos and how many you have. A **3 / 5 in use** count sits next to the quantity, with links to the plants using them. The square feet are worked out (a round one counts as the square around it). Choose a plant's pot and tray on its page.
+- **Grow lights use them:** a plant takes up the floor of its catch tray, or its pot when it has no tray, when the suggested layout works out how many plants fit under a light.
+- **Edit right on the page.** On the light cards, the pots and trays, Rooms and spots, and a plant's main details, type or choose a new value: it saves when you leave the box or press Enter, Escape puts back what was there, and the message that follows has **Undo**. Longer text (notes) has a small **Edit** button. People who can only view see the values but cannot change them.
+- **Your lights** is at the top of the Grow lights page and folds; it remembers how you left it.
+- **Settings follow you.** The Plants filters, the Library's choices, folded sections, the Location button and Identify's list are saved for your sign-in, so any device you sign in on picks them up. Display settings stay on each device unless you tick **Use these on every device I sign in on** in that part of Display.
+- **Grow lights (batch B4):** the SANSI T8 strip's model (C21GL-LT01-25W), 25 W, 120 V and 0.5 A. It is one strip, not a set, and its note says the power button steps the brightness and holding it turns the strip off.
+- **P-036:** the stems are round, so it is not in the mint family. It now asks only about the smell.
+- No new photo pack.
+- Includes everything in 1.28.0 below.
+
+## 1.28.0 (2026-11-03)
+- **A second home: Nevada City, California.** It has its own weather, frost warnings, watering and hardiness zone.
+  - Every plant has a **Home**. Your plants stay at Round Rock.
+  - The Plants page has a **Home** filter, and each card says its home.
+  - Choose a home with the **Location** button: its frost warnings, watering and Back outside list only its own plants.
+  - On the Weather page, each place says whether plants live there, and how many.
+- **Add several plants at once.** Add a plant now has **Several plants from photos**:
+  - choose all the photos at once, and the picture checker looks at each one;
+  - photos taken close together that look alike become one plant;
+  - names, family, genus, plant type, safety for pets and ID confidence are filled in from the likeliest species;
+  - a review screen lets you pick another name, fix anything, and move or leave out photos. A plant that looks like one you already have is flagged and not ticked;
+  - nothing is added until you press **Add N plants**.
+- **Your plant photos on the Identify page:** one row per plant with its photos in a strip, and the same search and filters as the Plants page.
+- **Not tied to Texas any more.** The Library's lists, filters and tags (now **Your area**), Identify's state list and the question sent to Claude follow the place in use. Nevada City gets California's lists. The Texas invasive list only shows for places in Texas.
+- **Photos for offline use, by area.** The Library downloads the plants of any country, state, county, city or park, in a table showing photos downloaded out of how many, the percent, **Check for updates** and the date last updated. The offline copy on phones keeps these areas.
+- Fixed in 1.27.3 and included here: the "On this page" menu marks the section you chose.
+- No new photo pack. The picture checker container is rebuilt by the updater (its code changed; nothing new to download).
+- Includes everything in 1.27.3 below.
+
+## 1.27.3 (2026-11-03)
+- **Fixed: the "On this page" menu.** Choosing a section near the end of a short page (such as "How groups work" on Groups) now marks that section in the menu. Before, the page could not scroll far enough, so the menu kept marking the section above it, or seemed to ignore the click.
+  - The section you choose stays marked until you scroll the page yourself.
+  - The section you jump to gets a thick outline for a couple of seconds, so you can see where it is, even when the page did not need to move.
+  - The same goes for the row of section buttons on plant pages.
+- Includes everything in 1.27.2 below.
+
 ## 1.27.2 (2026-11-02)
 - **Grow light details from your labels.** Six of your lights now have their model numbers and power ratings on the Grow lights page:
   - **Barrina standing light:** model T10F20, 100 to 277 V.

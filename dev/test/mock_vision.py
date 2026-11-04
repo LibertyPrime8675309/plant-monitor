@@ -22,7 +22,8 @@ def colour():
 def status():
     return jsonify(STATE | {'step': 'Ready' if STATE['state'] == 'ready' else 'Downloading the species fingerprints', 'done': 3, 'total': 1024,
                             'photos': 215, 'species': 335884, 'model': 'bioclip-2.5-vith14 (test)',
-                            'scopes': {k: {'label': k, 'count': n} for k, n in (('common', 32542), ('texas', 4606), ('us', 18168), ('world', 335884), ('fungi', 49210))}, 'fungi': 49210})
+                            'scopes': {k: {'label': k, 'count': n} for k, n in (('common', 32542), ('texas', 4606), ('us', 18168), ('world', 335884), ('fungi', 49210))}
+                                      | ({request.args['state']: {'label': request.args['state'][6:], 'count': 6105 if 'California' in request.args['state'] else 4606}} if request.args.get('state') else {}), 'fungi': 49210})
 
 @app.post('/mock/state')
 def set_state():
@@ -45,7 +46,8 @@ def identify():
 def names():
     q = request.args.get('q', '').lower()
     res = [x for x in SP if q in (x['scientific_name'] + ' ' + x['common_name']).lower()]
-    if request.args.get('scope') == 'texas': res = [x for x in res if x['in_texas']]
+    if request.args.get('scope') in ('texas', 'state:Texas'): res = [x for x in res if x['in_texas']]
+    elif str(request.args.get('scope', '')).startswith('state:'): res = [x for x in res if request.args['scope'][6:] in x['us_states']]
     return jsonify(results=res, total=len(res))
 
 @app.post('/mock/plantnet')
@@ -103,7 +105,7 @@ FUNGI.append({'scientific_name': 'Peziza vesiculosa', 'common_name': 'blistered 
 def browse():
     a = dict(request.args)
     if request.method == 'POST': a.update(request.get_json(silent=True) or {})
-    r = FUNGI if a.get('scope') == 'fungi' else [x for x in ALL if a.get('scope') != 'texas' or x['in_texas']]
+    r = FUNGI if a.get('scope') == 'fungi' else [x for x in ALL if not str(a.get('scope', '')).startswith(('texas', 'state:')) or (a['scope'] in ('texas', 'state:Texas') and x['in_texas']) or a['scope'][6:] in x['us_states']]
     if a.get('q'): r = [x for x in r if a['q'].lower() in (x['scientific_name'] + ' ' + x['common_name']).lower()]
     if a.get('kind'): r = [x for x in r if x['kind'] == a['kind']]
     if a.get('family'): r = [x for x in r if x['family'].lower() == a['family'].lower()]
@@ -121,7 +123,8 @@ def browse():
 
 @app.get('/scope_names')
 def scope_names():
-    return jsonify(names=[x['scientific_name'] for x in (FUNGI if request.args.get('scope') == 'fungi' else ALL) if request.args.get('scope') != 'texas' or x['in_texas']])
+    sc = request.args.get('scope', 'world')
+    return jsonify(names=[x['scientific_name'] for x in (FUNGI if sc == 'fungi' else ALL) if not sc.startswith(('texas', 'state:')) or (sc in ('texas', 'state:Texas') and x['in_texas']) or sc[6:] in x['us_states']])
 
 @app.get('/facets')
 def facets():
@@ -193,6 +196,28 @@ def inat_species_counts():
            else 'fungi' if a.get('iconic_taxa') == 'Fungi' else 'near')
     rows = _sc(SC[key]); per, page = int(a.get('per_page', 500)), int(a.get('page', 1))
     return jsonify(total_results=len(rows), page=page, per_page=per, results=rows[(page - 1) * per:page * per])
+
+# 1.28.0: places. Around 30 N it is Texas; around 39 N it is California; anything else is a country only (Mexico).
+MPLACES = {18: {'id': 18, 'name': 'Texas', 'display_name': 'Texas, US', 'admin_level': 10, 'place_type': 8},
+           14: {'id': 14, 'name': 'California', 'display_name': 'California, US', 'admin_level': 10, 'place_type': 8},
+           1: {'id': 1, 'name': 'United States', 'display_name': 'United States', 'admin_level': 0, 'place_type': 12},
+           6793: {'id': 6793, 'name': 'Mexico', 'display_name': 'Mexico', 'admin_level': 0, 'place_type': 12},
+           1214: {'id': 1214, 'name': 'Williamson', 'display_name': 'Williamson County, TX, US', 'admin_level': 20, 'place_type': 9}}
+
+@app.get('/mock/inat/v1/places/nearby')
+def inat_nearby():
+    lat = float(request.args.get('nelat', 0)); INAT_CALLS.append('places/nearby')
+    std = [MPLACES[18], MPLACES[1], MPLACES[1214]] if 25 < lat < 36.5 else [MPLACES[14], MPLACES[1]] if 36.5 <= lat < 42 else [MPLACES[6793]]
+    return jsonify(results={'standard': std, 'community': []})
+
+@app.get('/mock/inat/v1/places/autocomplete')
+def inat_autocomplete():
+    q = request.args.get('q', '').lower()
+    return jsonify(results=[p for p in MPLACES.values() if q in p['display_name'].lower()])
+
+@app.get('/mock/inat/v1/places/<int:pid>')
+def inat_place(pid):
+    return jsonify(results=[MPLACES[pid]] if pid in MPLACES else [])
 
 ASPCA = {'toxic': [('Swiss Cheese Plant (Ceriman, Cut-leaf Philodendron)', 'Monstera deliciosa', 'Araceae'), ('Century Plant (Agave)', 'Agave americana', 'Agavaceae'),
                    ('Chinaberry Tree (Bead Tree)', 'Melia azedarach', 'Meliaceae'), ('Alocasia (Elephant\'s Ear)', 'Alocasia spp.', 'Araceae')],

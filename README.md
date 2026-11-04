@@ -316,7 +316,7 @@ Keyboard shortcuts work on every page, except while you are typing in a box. **D
 
 ### Section menu ("On this page")
 
-Every page has a menu down the side listing its sections (for example on the Weather page: Tracked history, All logged weather data, Location and updates). Choose one to jump straight to it; the section you are reading is highlighted. On plant pages it scrolls the details half, like the section buttons.
+Every page has a menu down the side listing its sections (for example on the Weather page: Tracked history, All logged weather data, Location and updates). Choose one to jump straight to it; the section you are reading is highlighted. On plant pages it scrolls the details half, like the section buttons. From 1.27.3 the section you choose stays highlighted until you scroll yourself (even a short last section that cannot reach the top of the window), and it gets a thick outline for a couple of seconds so you can find it.
 
 - **Hide** folds the menu away; the **Sections** button at the edge of the screen brings it back.
 - **Move to the right / Move to the left** swaps its side.
@@ -773,7 +773,7 @@ The first update to 1.18.0 takes longer than usual:
 
 Under **When it is not one of your plants, suggest names from**, choose:
 
-- **Texas plants** (about 4,750 species, from the USDA list). Best for wild plants and weeds in your yard.
+- **Your state's plants**, such as **Texas plants** (about 4,750 species) or **California plants**, from the USDA lists. It follows the Location button (from 1.28.0), and is only offered for places in the US. Best for wild plants and weeds in your yard.
 - **Plants with a common name, and all US plants** (about 34,000; the usual choice). Good for houseplants and garden plants.
 - **US plants** (about 19,000).
 - **All plants worldwide** (about 349,000).
@@ -857,7 +857,10 @@ The plant record checks shops for everything on your wishlist that you still wan
 - Walmart, Home Depot, Lowe's, Amazon and Facebook Marketplace are left out on purpose.
 - Each shop gets at most one request every 2 seconds, a few times a day, and the requests say they come from a home plant record.
 
-#### Texas, home, pets and care sheets (from 1.23.0)
+#### Your area, pets and care sheets (from 1.23.0; from 1.28.0 for any place)
+
+From 1.28.0 everything here is about the place chosen with the **Location** button (Round Rock or Nevada City, or any other place), not always Texas. Each place's state (or, outside the US, its country) is looked up on iNaturalist once. Below, "Texas" means that state or country.
+
 
 Each plant's page in the library now has three more sections:
 
@@ -869,7 +872,7 @@ Each plant's page in the library now has three more sections:
 - **Pets:** what the ASPCA's lists say for dogs, cats and horses. A plant not on their lists is not called safe.
 - **Care sheet:** press **Write a care sheet with Claude**. Claude writes one for your place and zone in about half a minute, using the owner's Anthropic key (the one on the Identify page; a cent or two each). It covers light, water, soil, temperature, feeding, pruning, propagation, pests, pots, hardiness and growing it outdoors here. It is kept, everyone with access can read it, and it is marked "not checked by a person". People who can only view can read care sheets but not ask for them.
 
-The cards show the same things as tags (for example "Native to Texas", "Flowering near home now", "⚠ Toxic to dogs and cats", "⚠ Texas invasive list"). The new filter **Texas and home** lists only:
+The cards show the same things as tags (for example "Native to Texas", "Flowering near home now", "⚠ Toxic to dogs and cats", "⚠ Texas invasive list"). The filter **Your area** (called "Texas and home" before 1.28.0) lists only:
 - the ones native to or introduced in Texas;
 - the ones on the invasive list;
 - the ones that grow wild near home, or are flowering there this month (or, for fungi, found there this month);
@@ -885,13 +888,27 @@ The cards show the same things as tags (for example "Native to Texas", "Flowerin
 
 - **iNaturalist:** what is native or introduced in Texas, and what people have recorded wild near home (only species names and the home place's position are sent).
 - **The ASPCA's** toxic and non-toxic plant lists, read from their web pages.
-- **The Texas Department of Agriculture's** noxious and invasive list, which is built in.
+- **The Texas Department of Agriculture's** noxious and invasive list, which is built in. It is only used for places in Texas: the app has no such list for other states or countries yet, and says so.
 
 When the owner turns library lookups off, none of this is fetched.
 
-#### Photos for offline use (from 1.22.0)
+#### Photos for offline use (from 1.22.0; by area from 1.28.0)
 
-At the bottom of the Library page the owner has **Download photos for the Texas list**. It fetches the photo and short facts for every Texas plant (about 4,750) in the background, so the library shows them without the internet. It goes at about one species a second, after anything someone is looking at, so it takes about an hour and a half. It uses about 300 MB in `data\library`. Species already kept are skipped. You can leave the page while it runs, and **Stop the download** stops it. If the app restarts part way through, press the button again to carry on where it stopped.
+At the bottom of the Library page, **Photos for offline use** has a table of areas. An area is any country, state, county, city or park that iNaturalist knows. For each area the app gets the list of every plant species recorded there, then downloads each one's photo and short facts, so the library shows them without the internet.
+
+The table shows, for each area:
+- **Photos downloaded**, out of how many species there are (and how many have no photo on iNaturalist);
+- **Percent** downloaded, as a number and a bar;
+- **Last updated**: when its list was last fetched;
+- while it runs, how many are left and about how long it will take.
+
+The owner can:
+- **Add an area:** type a name (for example "California"), press **Search**, then **Add and download** beside the right place;
+- **Check for updates:** fetch the area's list again and download only what is new;
+- **Remove** an area: it leaves the table, but its photos stay (another area may use them);
+- **Stop all downloads.**
+
+Downloads go at about one species a second, after anything someone is looking at, so a state with 5,000 species takes about an hour and a half and uses about 350 MB in `data\library`. Species already kept are skipped. You can leave the page while it runs. If the app restarts part way through, press **Check for updates** to carry on.
 
 ### Stopping the picture checker
 
@@ -923,6 +940,93 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
 
+## The top bar, rooms and spots, pots and trays, editing on the page, and settings that follow you (from 1.29.0)
+
+### The top bar
+
+Six sections: **Today**, **Plants**, **Care**, **Weather**, **Discover** and **Settings**. Choose one, and its pages appear on a second row under it:
+
+| Section | Its pages |
+|---|---|
+| Today | Today |
+| Plants | All plants, Groups, Add plants, Mushrooms, Rooms and spots, Photos, Labels |
+| Care | Winter plan, Fertilizer, Grow lights, Pots and trays |
+| Weather | Weather, Homes and places |
+| Discover | Identify, Library, Wishlist |
+| Settings | Settings, Offline use, Backups, Audit log |
+
+The version number is always beside "Plant record". The **Home** button (it said Location before) chooses which home or place the weather, frost warnings and watering are for. The **Settings** page gathers people and names, Display, Offline use, Backups, the Audit log, Homes and places, shops and keys, and **Debug** (which used to be at the bottom of the screen). On a phone the sections fold into the **Pages** button, and the row of pages stays under it.
+
+### Rooms and spots
+
+Where a plant is has three parts: **outside or inside**, the **area or room**, and the **spot**. For example: Outside, Yard, Pallet shelf; or Inside, Downstairs Living Room, Large Brown Hutch.
+
+- **Rooms and spots** (under Plants) lists each home's areas outside and rooms inside, with their spots. Type over a name to rename it; it saves when you leave the box. **Add area**, **Add room** and **Add spot** are under each list, and **Remove** beside each one. An area or room with plants in it can't be removed until they are moved; removing a spot leaves its plants in the room.
+- **Roof overhead** (outside) and **Heated** (inside) decide how frost warnings and watering treat the plants there. Outside with a roof counts as a covered porch; inside without heat counts as a garage or shed.
+- On a plant's page, choose **Inside** or **Outside**, then the area or room, then the spot. **More about where** (the old "Spot (where exactly)") keeps whatever you wrote.
+- Your Rooms and shelves from the Grow lights page became rooms and spots, and a light spot's **Where** chooses from the same list.
+- **Spots to sort out**, at the top of Rooms and spots, lists the places written on your plants with a suggested spot name for each. Change any names or areas, then press **Make these spots** to put those plants in them.
+
+### Pots and trays
+
+**Pots and trays** (under Care) keeps each kind of pot and catch tray you have:
+
+- **Name**, **Shape** (circle, square or rectangle) and its sizes in inches: across for a circle, the side for a square, length and width for a rectangle, and the height (pots) or depth (trays).
+- **Floor it covers**, worked out in square feet. A round one counts as the square around it.
+- For pots, **Drainage holes** (a pot with none gets a reminder to water less).
+- **Material**: terracotta, thin plastic, thick plastic, or **Other** to type your own.
+- **How many you have**, typed straight in, with **3 / 5 in use, 2 free** beside it and links to the plants using them. More in use than you have is allowed and shown.
+- **Photos**: **Add a photo** under the picture.
+- **Add a pot** and **Add a catch tray** add a new one to fill in.
+
+Choose a plant's **Pot** and **Catch tray** on its page. The Grow lights page then uses the real floor it takes: the tray's, or the pot's when it has no tray (the old Pot size guess otherwise).
+
+### Editing on the page
+
+On the light cards (Grow lights), Pots and trays, Rooms and spots, and the top of each plant's page (names, home, where, pot and tray, ID confidence, winter plan, health), type or choose a new value. It saves when you leave the box or press Enter. **Escape** puts back what was there before you started, and the message that follows has **Undo** (or press U). Notes and other long text have a small **Edit** button, so reading a page never changes it. **Edit this page** still has everything else. People who can only view see the values but cannot change them.
+
+### Settings that follow you
+
+These are saved for your sign-in as well as in the browser, so any device you sign in on picks them up: the Plants page filters, the Library's choices, the Mushrooms and Audit log filters, folded sections (such as Your lights), the weather chart choices, the Home button and Identify's list. On this computer (localhost) they are the owner's.
+
+**Display** settings stay on each device, because a phone and a big monitor usually want different text sizes. Each part of Display (Text and colours, Page layout, Reading aloud, Photos and touch, Keyboard) has **Use these on every device I sign in on**. Tick it on each device that should share that part; the first one to tick it shares its settings, and the others take them. Your name on this computer, the offline copy and the device name always stay on the device.
+
+## Homes, adding several plants, and your plant photos (from 1.28.0)
+
+### Homes
+
+Plants can live at more than one home: Round Rock, and Nevada City in California (added with this update). Each home has its own weather, frost warnings, watering and hardiness zone.
+
+- **Every plant has a Home** (under Names and place when you edit it). Plants you already had are at the main home, Round Rock.
+- **The Plants page** has a **Home** filter, and each card says which home the plant is at (⌂ Nevada City, CA). The Identify photo table and Previous / Next follow the same filter.
+- **Choose a home with the Location button** to see its weather, frost warnings, watering and Back outside. Each of those only lists the plants at that home. A place where no plants live (one you only watch the weather for) shows the main home's plants, as before.
+- **The Weather page's Places table** has a **Plants** column, and **Plants live here** or **No plants live here** for each place. A home with plants in it can't be removed or turned back into a weather-only place until its plants are moved.
+- Hourly updates and backups still use the main home.
+
+### Add several plants at once
+
+**Add a plant** now starts with two buttons: **One plant** (the form, as before) and **Several plants from photos**.
+
+1. Choose the home and the location (Outdoors, Indoors...) for the plants.
+2. Choose all the photos at once. A photo of a plant's label or tag helps.
+3. Press **Check these photos**. Each photo is checked by the picture checker on this computer, one at a time ("Checking photo 3 of 12").
+4. **The review screen** shows one box per plant:
+   - Photos taken within 3 minutes of each other (you can change this) that look like the same plant are put together.
+   - **Belongs to** under each photo moves it to another plant, to a new plant of its own, or leaves it out.
+   - **What the picture checker thinks it is**: the 3 likeliest species, with how likely each is. The names, family, genus, plant type, safety for pets and ID confidence are filled in from the one chosen. Choose another, or **None of these** to type them yourself. Anything you type is kept.
+   - **This may be a plant you already have** appears when a plant looks like one in the record. It starts unticked, so it isn't added twice.
+5. Press **Add N plants**. Nothing is added until then. Each plant gets its photos (the first is the main photo), and its page says where its name came from.
+
+The care details (temperature, water, light...) start empty, as with one plant. Photos waiting on the review screen are kept for two days.
+
+### Your plant photos (Identify page)
+
+At the bottom of the Identify page, **Your plant photos** lists every plant, one row per plant, with its photos in a strip, its home and spot, and the date of its newest photo. These are the photos Identify compares your pictures with. Choose a plant or a photo to open its page. It has the same search and filters as the Plants page (changing them here changes them there), plus **Only plants with no photos**. It shows 30 plants at a time, with **Show more**.
+
+### Not tied to Texas
+
+From 1.28.0 the Library's lists, filters and tags, Identify's state list, and the question sent to Claude all follow the place chosen with the Location button. The cleaning-the-pot tip no longer mentions Central Texas, and the mushroom safety page points to a local mycological society anywhere. The written winter notes for Round Rock are still only used near Round Rock; other places use their own weather history. The wishlist's local nurseries are near Round Rock; the owner can add others under Shops.
+
 ## Offline use on phones and tablets (from 1.24.0)
 
 The plant record works on a phone or tablet without a connection: out in the woods, in a basement, anywhere. Changes you make there are kept on the device and sent to the plant record as soon as it can be reached again.
@@ -934,7 +1038,7 @@ The plant record works on a phone or tablet without a connection: out in the woo
 3. Press the **Online** button at the top of the page. It opens **Offline use**.
 4. Tick **Keep a copy on this device**. It saves every plant page, mushroom find, care log and photo (full size). The first time takes a few minutes. After that it saves again by itself whenever the copy is a few hours old and the device is online.
 5. Give the device a name (for example "Ethan's phone"). The name shows on changes that came from it.
-6. If you want the library offline too, tick **Also keep the library's Texas plant list with its photos** (about 300 MB). The owner has to press **Download photos for the Texas list** on the Library page first.
+6. If you want the library offline too, tick **Also keep the library's download areas** (their plant lists and photos). The owner adds the areas under **Photos for offline use** on the Library page first.
 
 **Without a connection:**
 
@@ -946,7 +1050,7 @@ The plant record works on a phone or tablet without a connection: out in the woo
   - add photos;
   - add mushroom finds with photos (a new find gets a temporary code until it is sent; its location still comes from the photo);
   - use your notes, tags and wishlist;
-  - search the saved Texas list in the library.
+  - search the saved download areas in the library.
 - **Identify** keeps the picture and checks it when you're back online. The answer appears on the Offline use page.
 - Things that need the computer (backups, settings, adding a new plant page, the weather update) say they need a connection.
 - The top button counts the changes waiting ("Offline · 3 to send"). The Offline use page lists them, and you can take any of them back before they're sent.
