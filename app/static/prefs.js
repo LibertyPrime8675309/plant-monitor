@@ -53,7 +53,9 @@
     try { var n = LS.getItem('plantdb.editor'); if (n) h['X-Editor'] = n; } catch (e) { /* none */ }
     fetch('/api/me/prefs', { method: 'PUT', headers: h, body: JSON.stringify(body), credentials: 'same-origin' }).catch(function () { for (var k in body) if (!(k in queue)) queue[k] = body[k]; });
   }
-  function push(k, v) { queue[k] = v; clearTimeout(timer); timer = setTimeout(send, 800); }
+  var loaded = false;               // 1.30.0: nothing is sent until what the server keeps has been read, so a page that saves its
+                                     // starting choices early does not overwrite the ones from another device
+  function push(k, v) { queue[k] = v; clearTimeout(timer); if (loaded) timer = setTimeout(send, 800); }
   function displayParts(raw) {      // the shared parts of the Display settings
     var p = {}; try { p = JSON.parse(raw || '{}') || {}; } catch (e) { p = {}; }
     var sh = shared();
@@ -100,8 +102,11 @@
           }
           if (dch) { for (var k2 in disp) window.PlantPrefs.set(k2, disp[k2]); changed = true; }
         } finally { applying = false; }
+        for (var q in queue) if (P[q] != null) delete queue[q];      // the server's own value wins over a choice this page made before it was read
+        // when something changed, this page still holds the old choices and starts again with the new ones: send nothing from it
+        if (!changed) { loaded = true; if (Object.keys(queue).length) timer = setTimeout(send, 800); }
         return changed;
-      }).catch(function () { return false; });
+      }).catch(function () { loaded = true; if (Object.keys(queue).length) timer = setTimeout(send, 800); return false; });
     }
   };
 })();
