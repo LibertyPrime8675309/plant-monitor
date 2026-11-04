@@ -941,7 +941,7 @@ html[data-role=viewer] :is(a[href="#/new"], a[href$="/edit"], .quick-btns, label
   [data-act=placehome], [data-act=placedel], [data-act=placeonoff], [data-act=placeplants], [data-act=plchome], [data-act=plcsearch], [data-act=plcadd], .plc-search, [data-act=tokregen], [data-act=forclaude],
   [data-act=spotnew], [data-act=spotedit], [data-act=spotdel], [data-act=lightedit], [data-act=lightnew], [data-act=sevsave], form[data-form=sevgo], .add-mode, [data-act=libareaadd],
   [data-act=roomnew], [data-act=roomedit], [data-act=roomdel],
-  [data-act=buynew], [data-act=buyedit], [data-act=buygot], [data-act=buyrm], [data-act=buywatch], [data-act=wlcheck], [data-act=storeedit], [data-act=storelookup],
+  [data-act=buynew], [data-act=buyedit], [data-act=buygot], [data-act=sldone], [data-act=buyrm], [data-act=buywatch], [data-act=wlcheck], [data-act=storeedit], [data-act=storelookup],
   [data-act=storenoterm], form[data-form=storenote]){display:none!important}
 /* only the owner changes the label address, places' settings and who is home */
 html:not([data-role=owner]) :is(form[data-form=base], form[data-form=wxloc], [data-act=placehome], [data-act=placedel], [data-act=placeonoff], [data-act=placeplants], [data-act=plchome]){display:none!important}
@@ -1564,3 +1564,13 @@ a[href^="tel:"]{white-space:nowrap}
 .srch-dlg #srch-res{max-height:55vh;overflow:auto}
 .srch-btn .srch-l{margin-left:.3rem}
 html:is([data-narrow="1"],[data-topcompact="1"]) :is(.srch-btn .srch-l,.place-btn .pl-l){position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+/* 1.34.0: the shopping list for a store visit */
+.tick-list{list-style:none;padding:0;margin:0 0 1rem}
+.tick-list li{display:flex;align-items:flex-start;gap:.6rem;padding:.5rem 0;border-bottom:1px solid var(--line)}
+.tick-list .chk{display:flex;align-items:flex-start;gap:.7rem;flex:1 1 auto;font-weight:400;cursor:pointer}
+.tick-list input[type=checkbox]{width:1.6em;height:1.6em;flex:none;margin-top:.15em}
+.tick-list input:checked+.sl-txt>strong{text-decoration:line-through;text-decoration-thickness:.12em}
+.sl-big{font-size:1.45em}
+.sl-big .muted,.sl-big .tag{font-size:.8em}
+.sl-stores{padding-left:1.2rem}
+@media print{.sl-list{font-size:1.2em}.tick-list input[type=checkbox]{width:1.2em;height:1.2em}}

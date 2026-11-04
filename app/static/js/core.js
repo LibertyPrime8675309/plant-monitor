@@ -634,6 +634,7 @@ async function route() {
     else if (parts[0] === 'species' && parts[1]) view = await viewSpecies(decodeURIComponent(parts[1]));
     else if (parts[0] === 'wishlist') view = await viewWishlist();
     else if (parts[0] === 'shopping' && parts[1] === 'stores') view = await viewStores();
+    else if (parts[0] === 'shopping' && parts[1] === 'list') view = await viewShopList();
     else if (parts[0] === 'shopping') view = await viewShopping();
     else if (parts[0] === 'store' && parts[1]) view = await viewStore(decodeURIComponent(parts[1]));
     else if (parts[0] === 'offline') view = await viewOffline();

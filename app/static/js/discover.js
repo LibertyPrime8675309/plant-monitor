@@ -985,10 +985,68 @@ async function viewShopping() {
         <span id="wl-check-msg" role="status" aria-live="polite">${d.checked ? `Last checked ${when(d.checked)}.` : 'Not checked yet.'}</span></div></div>
     <fieldset class="buy-kinds-r"><legend>Show</legend><div class="opts">${opts.map(([k, l]) => html`<label><input type="radio" name="buykind" data-act="shopkind" value="${k}" ${SHOPF.kind === k ? raw('checked') : ''}><span>${l} (${count(k)})</span></label>`)}</div></fieldset>
     <label class="f buy-kinds-s">Show<select data-act="shopkind">${opts.map(([k, l]) => html`<option value="${k}" ${SHOPF.kind === k ? raw('selected') : ''}>${l} (${count(k)})</option>`)}</select></label>
-    <div class="row">${canChange() ? html`<button class="btn" type="button" data-act="buynew">Add something to watch</button>` : ''}<a class="btn ghost" href="#/shopping/stores">Stores (${d.stores})</a></div>
+    <div class="row">${canChange() ? html`<button class="btn" type="button" data-act="buynew">Add something to watch</button>` : ''}<a class="btn ghost" href="#/shopping/list">Shopping list for a store visit</a><a class="btn ghost" href="#/shopping/stores">Stores (${d.stores})</a></div>
     <h2>Watching (${show.length})</h2>
     ${show.length ? html`<ul class="wl-list">${show.map(buyCard)}</ul>` : html`<p class="muted">${want.length ? 'Nothing of this kind yet.' : 'Nothing yet.'} ${canChange() ? 'Press "Add something to watch", or add a plant from its page in the library.' : ''}</p>`}
     ${shownGot.length ? html`<details class="blk"><summary><h2 class="sum-h">Got them (${shownGot.length})</h2></summary><ul class="wl-list">${shownGot.map(buyCard)}</ul></details>` : ''}`,
+  };
+}
+// ---------- 1.34.0: the shopping list for a store visit ----------
+// What to look for on a visit, from everything on Shopping. Ticks are kept on this device until "Done shopping"; the extra
+// items (things not on Shopping) follow your sign-in like the other settings (plantdb.shoplist in prefs.js).
+const SL = { store: null, big: false, ticks: {}, extra: [] };     // store null: not chosen yet, so the first store you can visit
+function slLoad() {
+  try { const x = JSON.parse(localStorage.getItem('plantdb.shoplist') || '{}'); if (Array.isArray(x.extra)) SL.extra = x.extra.filter(t => typeof t === 'string').slice(0, 60); if (typeof x.store === 'string') SL.store = x.store; } catch (e) { /* defaults */ }
+  try { const t = JSON.parse(sessionStorage.getItem('plantdb.shopticks') || '{}'); if (t && typeof t === 'object') SL.ticks = t; } catch (e) { /* none */ }
+}
+function slSave() {
+  try { localStorage.setItem('plantdb.shoplist', JSON.stringify({ extra: SL.extra, store: SL.store })); } catch (e) { /* this visit only */ }
+  try { sessionStorage.setItem('plantdb.shopticks', JSON.stringify(SL.ticks)); } catch (e) { /* not kept */ }
+}
+slLoad();
+function slCarries(store, w) {           // the store carries this kind, or a listing of it was found there
+  const o = w.offers || {};
+  return (store.carries || []).includes(w.kind) || (o.best && o.best.shop === store.key);
+}
+function slWhy(w) {
+  const o = w.offers || {}, b = o.best, bits = [];
+  if (w.max_price != null) bits.push(`Watching for ${money2(w.max_price)}${w.price_per === 'unit' ? ' a ' + kindUnit(w.kind) : ''} or less.`);
+  if (b) bits.push(`Online it is ${money2(b.price)}${b.unit && b.unit.unit !== 'each' ? ` for ${b.unit.size} (${unitMoney(b.unit)})` : ''} at ${b.shop_name}.`);
+  if (w.source) bits.push(w.source);
+  if (w.where_seen) bits.push(`Where to find it: ${w.where_seen}.`);
+  if (w.notes) bits.push(w.notes);
+  return bits.join(' ');
+}
+async function viewShopList() {
+  const d = SHOPD = await api('GET', '/api/shopping?near=all');
+  const want = d.items.filter(w => w.status === 'want');
+  const stores = (d.visit || []).map(s => ({ ...s, n: want.filter(w => slCarries(s, w)).length }));
+  const homes = d.homes || [];
+  const opts = [...stores.map(s => [s.key, `${s.name} (carries ${s.n} of these)`]), ...homes.map(h => ['home:' + h.id, `Any store near ${h.name}`]), ['', 'Everything you are watching']];
+  if (SL.store == null || !opts.some(o => o[0] === SL.store)) SL.store = stores.length ? stores[0].key : '';
+  const store = stores.find(s => s.key === SL.store) || null, homeId = SL.store.startsWith('home:') ? SL.store.slice(5) : '';
+  const carried = store ? want.filter(w => slCarries(store, w)) : want, missing = store ? want.filter(w => !slCarries(store, w)) : [];
+  const nearStores = homeId ? stores.filter(s => String(s.home_id_eff) === homeId) : [];
+  const ticked = k => !!SL.ticks[k];
+  const item = w => html`<li><label class="chk"><input type="checkbox" data-act="sltick" data-k="${w.name}" ${ticked(w.name) ? raw('checked') : ''}> <span class="sl-txt"><strong>${w.common_name || w.name}</strong> <span class="tag">${kindWord(w.kind)}</span>${w.kind === 'plant' && w.common_name ? html` <span class="latin">${w.name}</span>` : ''}
+    ${slWhy(w) ? html`<br><span class="muted">${slWhy(w)}</span>` : ''}</span></label></li>`;
+  const nTick = Object.keys(SL.ticks).filter(ticked).length;
+  return {
+    title: 'Shopping list',
+    html: html`<p class="crumb noprint"><a href="#/shopping">Back to Shopping</a></p><h1>Shopping list${store ? html`: ${store.name}` : homeId ? html`: near ${(homes.find(h => String(h.id) === homeId) || {}).name || ''}` : ''}</h1>
+    <p class="noprint">What to look for on a visit, from everything you are watching on Shopping. Tick what you bought; "Done shopping" then marks the ticked ones as <strong>got it</strong>. Print it, or show it large for the store.</p>
+    <div class="filters noprint"><label class="f">Store<select data-act="slstore">${opts.map(([v, t]) => html`<option value="${v}" ${v === SL.store ? raw('selected') : ''}>${t}</option>`)}</select></label>
+      <div class="row" style="align-items:end"><button class="btn ghost" type="button" data-act="slbig" aria-pressed="${SL.big ? 'true' : 'false'}">${SL.big ? 'Normal print' : 'Large print'}</button><button class="btn ghost" type="button" data-act="print">Print</button></div></div>
+    <section class="blk sl-list ${SL.big ? 'sl-big' : ''}" id="sl-main">
+      ${store ? html`<h2>${store.name}</h2><p>${store.address || ''}${store.address && store.phone ? ' · ' : ''}${store.phone ? phoneLinks(store.phone) : ''}${store.hours ? html` · ${store.hours}` : ''}${store.maps ? html` <a class="noprint" href="${store.maps}" target="_blank" rel="noopener noreferrer">Open in a map</a>` : ''}</p>`
+        : homeId ? html`<h2>Stores near ${(homes.find(h => String(h.id) === homeId) || {}).name || ''}</h2>${nearStores.length ? html`<ul class="sl-stores">${nearStores.map(s => html`<li><strong>${s.name}</strong>${s.n ? ` carries ${s.n} of these` : ''}${s.address ? html`<br>${s.address}` : ''}${s.phone ? html` · ${phoneLinks(s.phone)}` : ''}${s.hours ? html` · ${s.hours}` : ''}</li>`)}</ul>` : html`<p class="muted">No stores you can visit are set near here yet (Shopping → Stores).</p>`}`
+        : html`<h2>Everything you are watching</h2>`}
+      ${carried.length ? html`<ul class="tick-list">${carried.map(item)}</ul>` : html`<p class="muted">Nothing on Shopping ${store ? 'that this store carries, as far as the app knows' : 'yet'}.</p>`}
+      ${missing.length ? html`<h3>Not carried here, as far as the app knows (${missing.length})</h3><p class="hint noprint">Ask at the store, or set what it carries on its page under Shopping → Stores.</p><ul class="tick-list">${missing.map(item)}</ul>` : ''}
+      <h3>Anything else</h3>
+      <form class="row noprint" data-form="sladd"><label class="f" style="flex:1 1 16rem">Add to the list<small>Things not on Shopping: twine, a new trowel</small><input type="text" name="text" maxlength="80" autocomplete="off"></label><button class="btn ghost" type="submit" style="align-self:end">Add</button></form>
+      ${SL.extra.length ? html`<ul class="tick-list">${SL.extra.map(t => html`<li><label class="chk"><input type="checkbox" data-act="sltick" data-k="${'extra:' + t}" ${ticked('extra:' + t) ? raw('checked') : ''}> <span class="sl-txt"><strong>${t}</strong></span></label> <button class="btn small ghost noprint" type="button" data-act="slrm" data-t="${t}" aria-label="Remove ${t} from the list">Remove</button></li>`)}</ul>` : html`<p class="muted noprint">Nothing extra yet.</p>`}
+      <div class="row noprint"><button class="btn" type="button" data-act="sldone" ${nTick ? '' : raw('disabled')}>Done shopping: mark the ${nTick} ticked as got</button>${nTick ? html`<button class="btn ghost" type="button" data-act="slclear">Clear the ticks</button>` : ''}</div></section>`,
   };
 }
 function storeRows(list, cols) {
@@ -1124,6 +1182,18 @@ Object.assign(acts, {
     if ((await buyDialog(w)) !== 'ok') return;
     await guard(async () => { await api('PUT', '/api/wishlist', { name: w.name, ...buyBody(w) }); toast('Saved'); await route(); });
   },
+  slbig(el) { SL.big = !SL.big; const b = document.getElementById('sl-main'); if (b) b.classList.toggle('sl-big', SL.big); el.textContent = SL.big ? 'Normal print' : 'Large print'; el.setAttribute('aria-pressed', SL.big ? 'true' : 'false'); },
+  slclear() { SL.ticks = {}; slSave(); route(); },
+  slrm(el) { SL.extra = SL.extra.filter(t => t !== el.dataset.t); delete SL.ticks['extra:' + el.dataset.t]; slSave(); route(); },
+  async sldone() {
+    const names = Object.keys(SL.ticks).filter(k => SL.ticks[k] && !k.startsWith('extra:')), extras = Object.keys(SL.ticks).filter(k => SL.ticks[k] && k.startsWith('extra:')).map(k => k.slice(6));
+    if (names.length && !(await needName())) return;
+    await guard(async () => {
+      for (const n of names) await api('PUT', '/api/wishlist', { name: n, status: 'got' });
+      SL.extra = SL.extra.filter(t => !extras.includes(t)); SL.ticks = {}; slSave();
+      toast(names.length ? `Marked ${names.length} as got it` + (extras.length ? ` and crossed off ${extras.length} extra` : '') : `Crossed off ${extras.length}`); await route();
+    });
+  },
   async buygot(el) {
     const w = buyItem(el.dataset.name); if (!w || !(await needName())) return;
     await guard(async () => { await api('PUT', '/api/wishlist', { name: w.name, status: w.status === 'got' ? 'want' : 'got' }); toast(w.status === 'got' ? 'Moved back to watching' : 'Marked as got it'); await route(); });
@@ -1178,8 +1248,15 @@ Object.assign(changeActs, {
   shopkind(el) { SHOPF.kind = el.value; shopSave(); route(); },
   storeshow(el) { STF.show = el.value; route(); },
   storecarries(el) { STF.carries = el.value; route(); },
+  slstore(el) { SL.store = el.value; slSave(); route(); },
+  sltick(el) { SL.ticks[el.dataset.k] = el.checked; slSave(); const n = Object.values(SL.ticks).filter(Boolean).length, b = document.querySelector('[data-act=sldone]'); if (b) { b.disabled = !n; b.textContent = `Done shopping: mark the ${n} ticked as got`; } const c = document.querySelector('[data-act=slclear]'); if (c && !n) c.remove(); },
 });
 Object.assign(formActs, {
+  sladd(form) {                          // 1.34.0: an extra line on the shopping list
+    const t = form.elements.text.value.trim().slice(0, 80); if (!t) return;
+    if (!SL.extra.includes(t)) SL.extra.push(t);
+    slSave(); route();
+  },
   async storenote(form) {
     if (!(await needName())) return;
     await api('POST', '/api/stores/' + enc(STORE.key) + '/notes', { text: form.elements.text.value }); toast('Note saved'); await route();
