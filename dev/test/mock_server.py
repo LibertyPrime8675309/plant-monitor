@@ -15,6 +15,7 @@ os.environ.setdefault('PLANTDB_EBAY_API', os.environ['PLANTDB_VISION_URL'] + '/m
 os.environ.setdefault('PLANTDB_ETSY_API', os.environ['PLANTDB_VISION_URL'] + '/mock/etsy')
 os.environ.setdefault('PLANTDB_SHOP_GAP', '0')
 os.environ.setdefault('PLANTDB_SHOPS', '0')            # no checks on a schedule in tests (the real shops are not reachable)
+os.environ.setdefault('PLANTDB_OSM_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/osm')                         # 1.30.0: store addresses
 os.environ.setdefault('PLANTDB_INAT_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/inat/v1')                 # 1.21.0: library photos
 os.environ.setdefault('PLANTDB_INAT_IMG_OK', os.environ['PLANTDB_VISION_URL'] + '/mock/inat/img/')
 os.environ.setdefault('PLANTDB_ASPCA_MIN', '3')

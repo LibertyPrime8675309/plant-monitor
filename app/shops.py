@@ -86,9 +86,12 @@ def catalog_shopify(get_json, url, pages=8):
         for p in j['products']:
             vs = p.get('variants') or []
             prices = [x for x in (_num(v.get('price')) for v in vs) if x is not None]
+            cheap = min((v for v in vs if _num(v.get('price')) is not None), key=lambda v: (not v.get('available'), _num(v.get('price'))), default=None)
             out.append({'title': p.get('title', ''), 'url': f"{root}/products/{p.get('handle', '')}", 'price': min(prices) if prices else None,
                         'currency': 'USD', 'available': any(v.get('available') for v in vs) if vs else None,
-                        'detail': ', '.join(sorted({v.get('title') for v in vs if v.get('title') and v.get('title') != 'Default Title'}))[:200]})
+                        'detail': ', '.join(sorted({v.get('title') for v in vs if v.get('title') and v.get('title') != 'Default Title'}))[:200],
+                        # 1.30.0: the size of the cheapest variant, for the price per quart or pound
+                        'size': (cheap.get('title') or '')[:80] if cheap and cheap.get('title') != 'Default Title' else ''})
         if len(j['products']) < 250: break
     return out
 
@@ -181,3 +184,51 @@ def detect(get_json, get_text, url, pages):
         except ShopError: pass
         except Exception: pass
     return 'page', page_lines(get_text, [url] + list(pages))
+
+
+# ---------- 1.30.0: the price per quart, pound or square foot, read from a listing's name ----------
+# Potting mixes and amendments come in quarts, gallons, cubic feet and litres; fertilizers in pounds and ounces (or, liquid, in
+# fluid ounces and gallons); frost cloth by its sides in feet; pots and tools sometimes in packs. Dry quarts: 25.7 in a cubic foot.
+KIND_UNIT = {'mix': 'quart', 'amend': 'quart', 'fert': 'pound', 'frost': 'square foot', 'pots': 'each', 'tools': 'each', 'pest': 'each', 'light': 'each'}
+_N = r'(\d+(?:\.\d+)?(?:\s+\d/\d)?|\d/\d|\.\d+)'
+def _val(t):
+    t = t.strip()
+    if ' ' in t: a, b = t.split(None, 1); return float(a) + _val(b)
+    if '/' in t: a, b = t.split('/'); return float(a) / float(b) if float(b) else 0
+    return float(t)
+DRY = [(r'cu\.?\s*f(?:t|oot|eet)\.?|cubic\s*f(?:oo|ee)t|c\.?f\.?(?![a-z])', 25.71), (r'gal(?:lon)?s?\.?(?![a-z])', 4.0),
+       (r'(?:dry\s*)?(?:quarts?|qts?\.?)(?![a-z])', 1.0), (r'(?:liters?|litres?|l)(?![a-z])', 0.908)]
+WET = [(r'(?:fl\.?\s*oz|fluid\s*ounces?)\.?(?![a-z])', 1 / 32), (r'gal(?:lon)?s?\.?(?![a-z])', 4.0), (r'(?:quarts?|qts?\.?)(?![a-z])', 1.0),
+       (r'pints?(?![a-z])', 0.5), (r'(?:liters?|litres?|l)(?![a-z])', 1.0567), (r'ml(?![a-z])', 0.0010567)]
+WEIGHT = [(r'(?:lbs?|pounds?)\.?(?![a-z])', 1.0), (r'(?<!fl )(?<!fl\. )(?:oz|ounces?)\.?(?![a-z])', 1 / 16), (r'kgs?(?![a-z])', 2.2046), (r'(?:g|grams?)(?![a-z])', 1 / 453.6)]
+def _first(text, table):
+    best = None
+    for pat, f in table:
+        m = re.search(_N + r'\s*-?\s*(?:' + pat + ')', text, re.I)
+        if m and (best is None or m.start() < best[0]):
+            try: v = _val(m.group(1))
+            except (ValueError, ZeroDivisionError): continue
+            if v > 0: best = (m.start(), v * f, m.group(0).strip())
+    return best
+
+def unit_price(title, price, kind, size=''):
+    """{'per': price per unit, 'unit': 'quart' | 'pound' | 'square foot' | 'each', 'size': the words it came from}, or None."""
+    if price is None or kind not in KIND_UNIT: return None
+    text = ' '.join(x for x in (size, title) if x).replace('\u00d7', 'x')
+    if kind == 'frost':
+        m = re.search(_N + r"\s*(?:ft|feet|foot|')?\.?\s*(?:x|by)\s*" + _N + r"\s*(?:ft|feet|foot|')", text, re.I)
+        if m:
+            area = _val(m.group(1)) * _val(m.group(2))
+            if area > 0: return {'per': round(price / area, 3), 'unit': 'square foot', 'size': m.group(0).strip()}
+        return None
+    if kind in ('mix', 'amend', 'fert'):
+        tables = [('pound', WEIGHT), ('quart', WET)] if kind == 'fert' else [('quart', DRY), ('pound', WEIGHT)]
+        for unit, tab in tables:
+            got = _first(text, tab)
+            if got: return {'per': round(price / got[1], 3), 'unit': unit, 'size': got[2]}
+        return None
+    m = re.search(r'(?:pack|set|box|bag|case|lot)\s+of\s+(\d+)|(\d+)\s*-?\s*(?:pack|pk|count|ct|pcs|pieces|piece set)(?![a-z])', text, re.I)
+    if m:
+        n = int(m.group(1) or m.group(2))
+        if n > 1: return {'per': round(price / n, 3), 'unit': 'each', 'size': m.group(0).strip()}
+    return None
