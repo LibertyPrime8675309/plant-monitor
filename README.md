@@ -367,7 +367,7 @@ On the **Winter plan** page each plant in "Plant by plant" has a **Moved indoors
 
 ## Today page, watering and care (from 1.8.0)
 
-The **Today** link in the menu lists what to do today, most urgent first:
+The **Today** page (the page the app opens on, from 1.34.0) lists what to do today, most urgent first:
 
 - **Water:** plants due or overdue for a check, each with **Watered** and **Still moist**, and **Watered all** for a whole round. "Check tomorrow" lists the next day's plants. "No watering logged yet" has one button, **I watered all today**, to start the reminders for all of them.
 - **Feed:** plants due for fertilizer today, with **Log feeding** (the same schedule as the Fertilizer page).
@@ -939,6 +939,28 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 - bash: `echo 'PLANTDB_VISION_MODEL=bioclip-2' >> .env && docker compose up -d`
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
+
+## Today as the home page, the shopping list, speaking a note, room labels and summer heat (from 1.34.0)
+
+### Today is the page the app opens on
+
+The app now opens on **Today**: one line says what needs you (a cold night, plants to water and feed, Shopping alerts, my requests), with a button to jump to each part. The cold-night warning is a section of the page here, not a banner, so the sections menu lists it. **Quiet today** at the bottom says what is not due: pest rounds, when the stores were last checked, the last backup, and whether there are problems to look at. **All plants** is one click away in the Plants section (its address is now `#/plants`; the old `#/today` address still opens Today). The `H` shortcut still goes to the Plants page.
+
+### The shopping list for a store visit
+
+On **Shopping**, press **Shopping list for a store visit** (`#/shopping/list`). Choose a store: the items it carries (from what you set under Stores, and listings found there) come first with what you are watching for; the rest are under "Not carried here, as far as the app knows". Add anything else you need (twine, a trowel), tick what you bought, and press **Done shopping**: the ticked items are marked **got it** on Shopping and the extra lines are crossed off. **Large print** makes the list bigger for the store; **Print** prints it. Ticks are kept on this device until you are done; the extra lines follow your sign-in like the other settings.
+
+### Speak a note
+
+Every box that takes several lines of text (notes, change notes, answers) has a **Speak** button that appears when you are in the box. Press it, say what you want, and the words are written after what is already there; press it again to stop. It uses the browser's own voice typing (Chrome, Edge and Safari have it; the first time, the browser asks to use the microphone). Firefox has no voice typing, so the button does not appear there.
+
+### Room, area and shelf labels
+
+The **Labels** page now also has a label for every room or area and every spot under **Rooms and spots**. Stick one on the shelf or by the door: scanning it opens the Plants page showing just the plants that live there, with a **Show every place** button to clear it.
+
+### Summer heat next to winter cold
+
+The **Weather** page has a **Your climate** section: the USDA hardiness zone (how cold a usual winter gets) and, from the same weather history, the **AHS heat zone**: how many days a usual year go above 86°F (zone 1 has less than one, zone 12 more than 210), the hottest day, which months the hot days fall in, and a table of each year's count. Plant pages say the heat zone next to the winter zone under "About this plant". It appears once the app has 3 whole years of weather for the place.
 
 ## Notifications, a second copy of backups, and search (from 1.33.0)
 

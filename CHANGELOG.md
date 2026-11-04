@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.34.0 (2026-11-04)
+- **Today is the page the app opens on.** One line says what needs you, with a button to jump to each part; the cold-night warning is a section of the page; "Quiet today" says what is not due (pest rounds, the last store check and backup, problems). All plants is one click away (its address is now `#/plants`).
+- **Shopping list for a store visit** (Shopping → Shopping list): choose a store; what it carries comes first with what you are watching for, the rest under "Not carried here". Add extra lines, tick what you bought, and "Done shopping" marks them as got it. Large print and Print.
+- **Speak a note:** a Speak button on every box that takes several lines, when the browser has voice typing (Chrome, Edge, Safari). The words are added after what is there.
+- **Room, area and shelf labels** on the Labels page: scanning one opens the Plants page showing just that place's plants.
+- **Summer heat next to winter cold:** the Weather page's new "Your climate" section gives the USDA zone and the AHS heat zone (days above 86°F a year, hottest day, the hot months, each year's count) from your own weather history; plant pages say the heat zone next to the winter zone.
+
 ## 1.33.0 (2026-11-04)
 - **Notifications** (Settings): messages on your phone or computer even when the app is closed. Turn them on per device; choose for your own sign-in which kinds reach you: cold nights (when the forecast turns, and a reminder at 3 pm the day before), Shopping alerts, what is due today (at 8 am), and requests from Claude. Cold nights and what is due are for the home you start on. They go through the browser's own push service and need the app's Tailscale address (or this computer itself).
 - **Second copy of backups** (Backups page): each new backup is also copied to a folder on another drive (`PLANTDB_COPY_DIR` in `.env`; until then a `backups-copy` folder next to the data), and to another computer over Tailscale that runs the small **receiver** included in the release (`receiver` folder, with its own README). **Copy the newest backup now** tries it.
