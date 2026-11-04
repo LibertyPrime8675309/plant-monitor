@@ -84,7 +84,7 @@ with sync_playwright() as pw:
     b2 = pw.chromium.launch(args=['--host-resolver-rules=MAP plants.test 127.0.0.1'])
     r = b2.new_page(); r.on('pageerror', lambda e: errs.append(str(e)))
     r.add_init_script("localStorage.setItem('plantdb.editor','Copy Test')")
-    r.goto(f'http://plants.test:{port}/#/'); r.wait_for_timeout(2000)
+    r.goto(f'http://plants.test:{port}/#/plants'); r.wait_for_timeout(2000)
     r.locator('.needs-bar button[data-act=forclaude]').click(); r.wait_for_timeout(800)
     r.locator('button[data-act=fccopy]').click(); r.wait_for_timeout(800)
     check(not r.evaluate('window.isSecureContext') and 'Copied' in r.locator('#fc-status').inner_text(), 'copying works on a page opened by a network address too')
