@@ -25,8 +25,11 @@ with sync_playwright() as pw:
     pg.locator('#sidenav button[data-act=navtoggle]').click(); pg.wait_for_timeout(600)
     jh = pg.evaluate(JH); h = pg.evaluate("document.querySelector('.pane .jump').offsetHeight")
     check(pg.locator('.pane .jump').is_visible() and jh == f'{h}px', f'menu hidden: the row comes back and titles leave room for it ({jh})')
-    pg.locator('.pane .jump button[data-id=soil]').click(); pg.wait_for_timeout(900)
-    t = pg.evaluate("document.querySelector('#soil h2').getBoundingClientRect().top"); jb = pg.evaluate("document.querySelector('.pane .jump').getBoundingClientRect().bottom")
+    pg.locator('.pane .jump button[data-id=soil]').click()
+    for _ in range(8):                                   # smooth scrolling takes longer on a slow machine
+        pg.wait_for_timeout(400)
+        t = pg.evaluate("document.querySelector('#soil h2').getBoundingClientRect().top"); jb = pg.evaluate("document.querySelector('.pane .jump').getBoundingClientRect().bottom")
+        if t >= jb - 2: break
     check(t >= jb - 2, f'a section button scrolls its title into view below the row ({t:.0f} >= {jb:.0f})')
     pg.screenshot(path=f'{OUT}/jumprow-menu-hidden.png')
     pg.locator('#nav-tab').click(); pg.wait_for_timeout(600)
