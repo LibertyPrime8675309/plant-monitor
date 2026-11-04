@@ -5,7 +5,7 @@ Branch: `proto/health-walk`
 ## What it does and why
 Each plant has a health rating (Good, Fair, Poor or Critical). With about 85 plants, it's easy for the ratings to go stale, and there was no quick way to go round and check them. The health walk-through lets you go round your plants one at a time, on a phone in the garden or at the computer, and say how each one looks today.
 
-- **Today page:** a new line near the top says how many plants haven't been looked over for 14 days or more, with a **Health walk-through** button.
+- **Where to find it:** in the top bar, **Today** now has a second page, **Health walk-through**. The Today page also has a line saying how many plants are due, with a button.
 - **Choosing the plants** (`#/checkup`). Three rows of big buttons:
   - **Which plants:** the due ones, or all of them.
   - **Where:** everywhere, or one location (Outdoors, Covered porch...).
@@ -82,4 +82,4 @@ Nothing in its structure: no new tables or columns. It adds a new kind of care l
 
 ## Open questions for Ethan
 1. Should a group's number also make its plants due **later** than 7 days when they are in Poor or Critical health (for example cacti you only want to check monthly)? At the moment Poor or Critical always wins when it is shorter.
-2. Should the walk-through have its own link in the list of pages, or is the line on Today enough?
+2. With the new top bar (1.29.0), the walk-through is a second page under **Today**. Is that the right place, or would you rather have it under **Plants** or **Care**?
