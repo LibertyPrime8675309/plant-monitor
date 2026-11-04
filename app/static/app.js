@@ -4386,7 +4386,8 @@ async function conPoll() {
 function pagesMenu(open) {
   const b = document.getElementById('pages-btn'), top = document.querySelector('header.top'); if (!b || !top) return;
   const cur = document.querySelector('#main-nav a[aria-current=page]'), c = document.getElementById('pages-cur');
-  if (c) c.textContent = cur ? cur.childNodes[0].textContent : 'Plants';     // the section (1.29.0), without the wishlist alert count
+  const sub = document.querySelector('#sub-nav:not([hidden]) a[aria-current=page]'), word = a => a.childNodes[0].textContent.trim();
+  if (c) c.textContent = (cur ? word(cur) : 'Plants') + (sub && cur && word(sub) !== word(cur) ? ', ' + word(sub) : '');   // 1.29.0: the section and its page, without the wishlist alert count
   b.setAttribute('aria-expanded', open ? 'true' : 'false'); top.classList.toggle('pages-open', !!open);
 }
 document.addEventListener('keydown', e => {      // Escape folds the list of pages again and goes back to its button
