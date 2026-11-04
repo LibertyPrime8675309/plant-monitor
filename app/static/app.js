@@ -90,7 +90,7 @@ try { PLACE = localStorage.getItem('plantdb.place') || null; } catch (e) { /* ig
 // 15 minutes is used at once, and route() then asks again quietly and redraws if anything changed. Any change made (a POST, PUT
 // or DELETE) empties it. PF remembers which answers each page needs, so hovering a link, or a quiet moment, can fetch them ahead.
 const QC = new Map(), QC_MAX = 120, QC_AGE = 15 * 60000;
-let QUICK = null, TIMING = null;
+let QUICK = null, TIMING = null, QGEN = 0;     // QGEN goes up with every change made, so an answer asked for before it is not kept
 const qcKey = url => url + '|' + (PLACE || '');
 const qcCopy = d => (typeof structuredClone === 'function' ? structuredClone(d) : JSON.parse(JSON.stringify(d)));
 const QC_SKIP = /^\/api\/(wishlist\/check|shops\/check|weather\/job|lib\/.*job|audit\/recent|me\b|conflicts|backups\/job)|[?&]_=/;
@@ -108,11 +108,12 @@ async function api(method, url, body, form) {
       QUICK.stale.push(url); if (TIMING) TIMING.calls.push({ url, ms: 0, saved: true });
       return qcCopy(hit.data);
     }
-    if (PFLY.has(k)) { try { const d = await PFLY.get(k); if (d !== undefined) return qcCopy(d); } catch (e) { /* ask again below */ } }
+    if (PFLY.has(k)) { const gen = QGEN; try { const d = await PFLY.get(k); if (d !== undefined && gen === QGEN) return qcCopy(d); } catch (e) { /* ask again below */ } }
   }
-  const t0 = performance.now(), m = {}, d = await apiNet(method, url, body, form, m);
-  if (method === 'GET') { qcPut(url, d); if (TIMING) TIMING.calls.push({ url, ms: Math.round(performance.now() - t0), server: m.took }); }
-  else QC.clear();
+  if (method !== 'GET') { QGEN++; QC.clear(); PFLY.clear(); }
+  const t0 = performance.now(), m = {}, gen = QGEN, d = await apiNet(method, url, body, form, m);
+  if (method === 'GET') { if (gen === QGEN) qcPut(url, d); if (TIMING) TIMING.calls.push({ url, ms: Math.round(performance.now() - t0), server: m.took }); }
+  else { QGEN++; QC.clear(); PFLY.clear(); }
   return d;
 }
 async function apiNet(method, url, body, form, m) {     // m.took: how long the server said it took to make the answer (ms)
@@ -472,7 +473,8 @@ async function quickRecheck(my, urls) {
   const before = urls.map(u => { const x = QC.get(qcKey(u)); return x ? JSON.stringify(x.data) : ''; });
   let changed = false;
   for (let i = 0; i < urls.length; i++) {
-    try { const d = await apiNet('GET', urls[i]); if (JSON.stringify(d) !== before[i]) changed = true; qcPut(urls[i], d); } catch (e) { /* keep what is shown */ }
+    const gen = QGEN;
+    try { const d = await apiNet('GET', urls[i]); if (gen !== QGEN) return; if (JSON.stringify(d) !== before[i]) changed = true; qcPut(urls[i], d); } catch (e) { /* keep what is shown */ }
     if (my !== token) return;
   }
   if (!changed || my !== token) return;
@@ -503,7 +505,7 @@ function prefetch(href) {
   for (const u of pfUrls(href)) {
     const k = qcKey(u), hit = QC.get(k);
     if ((hit && Date.now() - hit.at < 60000) || PFLY.has(k)) continue;
-    const p = apiNet('GET', u).then(d => { qcPut(u, d); return d; }).catch(() => undefined).finally(() => PFLY.delete(k));
+    const gen = QGEN, p = apiNet('GET', u).then(d => { if (gen !== QGEN) return undefined; qcPut(u, d); return d; }).catch(() => undefined).finally(() => { if (PFLY.get(k) === p) PFLY.delete(k); });
     PFLY.set(k, p);
   }
 }
