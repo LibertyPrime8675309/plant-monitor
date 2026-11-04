@@ -6096,6 +6096,7 @@ let WL = [];
 // and logged too. Group pages get a "Health walk-through" section with the group's own number of days. The walk is kept in CK
 // while the app is open; the choices are remembered in localStorage plantdb.checkup.
 Object.assign(CARE_WORD, { looked: 'Looked over' });
+if (!SECTIONS[0][2].some(x => x[0] === 'checkup')) SECTIONS[0][2].push(['checkup', 'Health walk-through', '#/checkup']);   // a second page in the Today section of the top bar
 const CK = { data: null, list: null, i: 0, done: {}, focus: false };
 const CK_KEY = 'plantdb.checkup', CK_ORDER = { oldest: 'Longest since looked over first', worst: 'Worst health first', code: 'By plant code' };
 function ckOpts() {
@@ -6209,7 +6210,7 @@ function ckDoneHtml() {
     ${same.length ? html`<section class="blk"><h2>Look the same (${same.length})</h2><ul class="ck-list">${same.map(li)}</ul></section>` : ''}`;
 }
 async function viewCheckup(sub) {
-  const navToday = () => { document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === 'today') a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }); pagesMenu(false); };   // a part of Today
+  const navToday = () => { navMark('checkup'); pagesMenu(false); };          // a page of the Today section
   if (sub === 'walk' && CK.list) {
     const end = CK.stopped || CK.i >= CK.list.length;
     return { title: 'Health walk-through', html: end ? ckDoneHtml() : ckCardHtml(), after: () => {
