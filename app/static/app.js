@@ -139,8 +139,10 @@ function paintPlace() {
   if (!META || !META.place) return;
   if (PLACE && String(META.place.id) !== String(PLACE)) savePlace(null);   // the chosen place was removed: back to home
   const n = document.getElementById('place-name'); if (n) n.textContent = META.place.name;
+  const home = META.place.is_home || META.place.plants_here;                 // 1.29.0: "Home: Round Rock, TX"
+  const l = document.querySelector('#place-btn .pl-l'); if (l) l.textContent = home ? 'Home:' : 'Place:';
   const b = document.getElementById('place-btn');
-  if (b) b.setAttribute('aria-label', `Location: ${META.place.name}${META.place.is_home ? ' (home)' : ''}. Choose another place`);
+  if (b) b.setAttribute('aria-label', `${home ? 'Home' : 'Place'}: ${META.place.name}${META.place.is_home ? ' (main home)' : ''}. Choose another home or place`);
   topSoon();
 }
 function placeDialog() {
@@ -194,6 +196,23 @@ async function placeAdd(i) {
 }
 
 // ---------- you, and the people who can use the app (1.12.0) ----------
+// 1.29.0: Settings: one page for the things that are not about plants
+function viewSettings() {
+  const me = ME(), owner = me.role === 'owner';
+  const card = (title, text, btn) => html`<section class="blk set-card"><h2>${title}</h2><p>${text}</p><div class="row">${btn}</div></section>`;
+  return { title: 'Settings', html: html`<h1>Settings</h1>
+    <p class="muted">Plant record version <strong>${META.version}</strong>${META.runs_as ? `, running as ${META.runs_as}` : ''}. The version number is also always beside the name at the top of the page.</p>
+    <div class="set-grid">
+    ${card('You and the people who use the app', owner ? 'Your name in the audit log, and who can view, edit or own the app.' : 'Your name in the audit log, and what you are allowed to do.', html`<button class="btn" type="button" data-act="who">${owner ? 'Open people and names' : 'Open your name'}</button>`)}
+    ${card('Display', 'Text size, colours, page layout, reading aloud, photos, touch and keyboard. Also on the Display button at the bottom of every page.', html`<button class="btn" type="button" data-act="display">Open Display settings</button>`)}
+    ${card('Offline use', 'Keep a copy of the plants on a phone or tablet, and see changes waiting to be sent.', html`<a class="btn" href="#/offline">Open Offline use</a>`)}
+    ${card('Backups', 'Copies of the database and photos, made by hand or on a schedule.', html`<a class="btn" href="#/backups">Open Backups</a>`)}
+    ${card('Audit log', 'Every change anyone has made, with filters and a download.', html`<a class="btn" href="#/history">Open the Audit log</a>`)}
+    ${card('Homes and places', 'Where plants live, and the places whose weather is tracked.', html`<a class="btn" href="#/weather?sec=places">Open Homes and places</a>`)}
+    ${card('Shops and keys', 'The shops checked for your wishlist, the eBay and Etsy keys, and the Pl@ntNet and Claude keys for Identify.', html`<a class="btn" href="#/wishlist">Shops (Wishlist page)</a><a class="btn ghost" href="#/identify">Keys (Identify page)</a>`)}
+    ${card('Debug', 'A live view of the audit log at the bottom of the screen, and other tools for checking the app.', html`<button class="btn" type="button" id="debug-btn" data-act="debug" aria-haspopup="dialog">Open Debug</button>`)}
+    </div>` };
+}
 async function whoDialog() {
   const me = ME(), ts = viaTS(), owner = me.role === 'owner';
   let P = null;
@@ -286,7 +305,7 @@ async function route() {
   if (parts[0] !== 'new') NEWFILL = null;
   if (parts[0] !== 'fungi' || parts[1] !== 'new') MUFILL = null;
   const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' || parts[0] === 'species' || parts[0] === 'wishlist' || parts[0] === 'around' ? 'library' : parts[0] === 'fungi' ? 'fungi' : parts[0] === 'offline' || parts[0] === 'decisions' ? 'offline' : parts[0] === 'today' ? 'today' : 'plants';
-  document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  navMark(parts[0] === 'weather' && qs.get('sec') === 'places' ? 'places' : parts[0] === 'pots' ? 'pots' : parts[0] === 'settings' ? 'settings' : parts[0] === 'new' ? 'new' : parts[0] === 'wishlist' ? 'wishlist' : nav);
   pagesMenu(false);
   wlBadge();
   try {
@@ -298,7 +317,8 @@ async function route() {
     else if (parts[0] === 'new' && parts[1] === 'several') view = viewSeveral();
     else if (parts[0] === 'new') view = viewForm(null);
     else if (parts[0] === 'winter') view = await viewWinter();
-    else if (parts[0] === 'weather') view = await viewWeather();
+    else if (parts[0] === 'weather') view = await viewWeather(qs.get('sec'));
+    else if (parts[0] === 'settings') view = viewSettings();
     else if (parts[0] === 'today') view = await viewToday();
     else if (parts[0] === 'fertilizer') view = await viewFertilizer();
     else if (parts[0] === 'lights') view = await viewLights();
@@ -332,6 +352,7 @@ async function route() {
     if (ME().role === 'viewer') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice vw-note noprint" role="note"><strong>View only.</strong> You can look at everything here, but changes are turned off. Ask ${ME().owner_name} if you would like to edit.</p>`));
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
     if (view.after) view.after();
+    if (parts[0] === 'weather' && qs.get('sec') === 'places') setTimeout(() => { const t = document.getElementById('sec-places'); if (t) { scrollToSection(t); navFlash(t); } }, 300);   // 1.29.0: Homes and places
     buildSideNav(); navLayout(); addReadButtons(); setTimeout(() => { buildSideNav(); navLayout(); addReadButtons(); }, 1200);
     if (h !== lastPath) { window.scrollTo(0, 0); app.focus({ preventScroll: true }); NAVPIN = -1; navActive(); }
     lastPath = h;
@@ -348,6 +369,27 @@ let NAVSESSION = null;                // on narrow screens the menu starts folde
 function navOpen() { const P = window.PlantPrefs.get(), narrow = document.documentElement.dataset.narrow === '1'; return NAVSESSION != null ? NAVSESSION : (P.navopen === '1' && !narrow); }
 // 1.26.0: with large text on a computer, the page links fold behind the Pages button once they would take more than two rows (or
 // the top bar more than a fifth of the window), and a top bar still taller than a fifth of the window scrolls away with the page, as on phones, instead of staying pinned
+// 1.29.0: the top bar has six sections; the pages of the section you are in are on a second row (Ethan's choice, November 2026)
+const SECTIONS = [
+  ['today', 'Today', [['today', 'Today', '#/today']]],
+  ['plants', 'Plants', [['plants', 'All plants', '#/'], ['groups', 'Groups', '#/groups'], ['new', 'Add plants', '#/new'], ['fungi', 'Mushrooms', '#/fungi'], ['photos', 'Photos', '#/photos'], ['labels', 'Labels', '#/labels']]],
+  ['care', 'Care', [['winter', 'Winter plan', '#/winter'], ['fertilizer', 'Fertilizer', '#/fertilizer'], ['lights', 'Grow lights', '#/lights'], ['pots', 'Pots and trays', '#/pots']]],
+  ['weather', 'Weather', [['weather', 'Weather', '#/weather'], ['places', 'Homes and places', '#/weather?sec=places']]],
+  ['discover', 'Discover', [['identify', 'Identify', '#/identify'], ['library', 'Library', '#/library'], ['wishlist', 'Wishlist', '#/wishlist']]],
+  ['settings', 'Settings', [['settings', 'Settings', '#/settings'], ['offline', 'Offline use', '#/offline'], ['backups', 'Backups', '#/backups'], ['history', 'Audit log', '#/history']]],
+];
+const secOf = nav => (SECTIONS.find(x => x[2].some(p => p[0] === nav)) || SECTIONS[1]);
+function navMark(nav) {
+  const sec = secOf(nav);
+  document.querySelectorAll('#main-nav a[data-sec]').forEach(a => { if (a.dataset.sec === sec[0]) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  const sub = document.getElementById('sub-nav');
+  if (sub) {
+    sub.hidden = sec[2].length < 2;
+    sub.setAttribute('aria-label', `${sec[1]} pages`);
+    sub.innerHTML = rend(html`${sec[2].map(([k, label, href]) => html`<a href="${href}" data-nav="${k}" ${k === nav ? raw('aria-current="page"') : ''}>${label}</a>`)}`);
+  }
+  WLBADGE = 0;                                     // the wishlist count goes on the new links
+}
 function topFit() {
   const r = document.documentElement, nav = document.getElementById('main-nav'), top = document.querySelector('.top');
   if (!nav || !top) return;
@@ -2825,7 +2867,7 @@ function forecastBlock(W, plants) {
 }
 
 // ---------- weather page ----------
-async function viewWeather() {
+async function viewWeather(sec) {
   let W;
   try { W = await api('GET', '/api/weather?x=1' + locQS()); }
   catch (e) { if (e.status === 404) { savePlace(null); W = await api('GET', '/api/weather'); } else throw e; }
@@ -4136,7 +4178,7 @@ async function conPoll() {
 function pagesMenu(open) {
   const b = document.getElementById('pages-btn'), top = document.querySelector('header.top'); if (!b || !top) return;
   const cur = document.querySelector('#main-nav a[aria-current=page]'), c = document.getElementById('pages-cur');
-  if (c) c.textContent = cur ? cur.childNodes[0].textContent : 'Plants';     // without the wishlist alert count
+  if (c) c.textContent = cur ? cur.childNodes[0].textContent : 'Plants';     // the section (1.29.0), without the wishlist alert count
   b.setAttribute('aria-expanded', open ? 'true' : 'false'); top.classList.toggle('pages-open', !!open);
 }
 document.addEventListener('keydown', e => {      // Escape folds the list of pages again and goes back to its button
@@ -5847,7 +5889,9 @@ async function wlBadge() {           // 1.27.0: the number of wishlist alerts be
   if (Date.now() - WLBADGE < 60000) return;
   WLBADGE = Date.now();
   let n = 0; try { n = (await api('GET', '/api/wishlist/alerts')).alerts.length; } catch (e) { return; }
-  const a = document.querySelector('#main-nav a[data-nav=library]'); if (!a) return;
+  const a = document.querySelector('#main-nav a[data-sec=discover]'), w = document.querySelector('#sub-nav a[data-nav=wishlist]');
+  if (w) { let bw = w.querySelector('.nav-badge'); if (!n) { if (bw) bw.remove(); } else { if (!bw) { bw = document.createElement('span'); bw.className = 'nav-badge'; w.append(bw); } bw.innerHTML = rend(html` <span aria-hidden="true">(${n})</span><span class="sr">, ${n} wishlist alert${n === 1 ? '' : 's'}</span>`); } }
+  if (!a) return;
   let b = a.querySelector('.nav-badge');
   if (!n) { if (b) b.remove(); return; }
   if (!b) { b = document.createElement('span'); b.className = 'nav-badge'; a.append(b); }
