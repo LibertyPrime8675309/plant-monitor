@@ -78,7 +78,7 @@ document.addEventListener('change', e => {
   api('PUT', '/api/me/prefs', { ['push.' + el.dataset.kind]: el.checked ? '1' : '0' }).then(() => toast('Saved')).catch(err => toast(err.message, true));
 });
 
-// ---------- 1.33.0: search everywhere (the magnifier in the top bar, or the / key) ----------
+// ---------- 1.33.0: search everywhere (the magnifier in the top bar, or the / key away from the Plants page: see the shortcuts in ui.js) ----------
 const PAGES_LIST = [['Today', '#/today'], ['All plants', '#/'], ['Groups', '#/groups'], ['Add plants', '#/new'], ['Mushrooms', '#/fungi'], ['Rooms and spots', '#/where'], ['Photos', '#/photos'],
   ['Labels', '#/labels'], ['Winter plan', '#/winter'], ['Cold-night checklist', '#/frost'], ['Getting plants ready to come inside', '#/inside'], ['Back outside', '#/outside'], ['Fertilizer', '#/fertilizer'],
   ['Grow lights', '#/lights'], ['Pots and trays', '#/pots'], ['Weather', '#/weather'], ['Homes and places', '#/weather?sec=places'], ['Identify', '#/identify'], ['Library', '#/library'], ['Around home', '#/around'],
@@ -109,7 +109,6 @@ Object.assign(acts, {
 });
 document.addEventListener('keydown', e => {
   const t = e.target, typing = t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable);
-  if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey && !document.querySelector('dialog[open]')) { e.preventDefault(); searchDialog(); return; }
   const d = document.querySelector('dialog[open] form.srch-dlg'); if (!d) return;
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
     const links = [...d.querySelectorAll('.srch-list a')]; if (!links.length) return;

@@ -111,7 +111,7 @@ with sync_playwright() as p:
     pg.screenshot(path=os.path.join(OUT, 'reach-1-notify.png'))
     pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
     pg.keyboard.press('/'); pg.wait_for_timeout(500)
-    check(pg.locator('#srch-q').count() == 1 and pg.evaluate("document.activeElement.id") == 'srch-q', 'the / key opens Search with the box focused')
+    check(pg.locator('#srch-q').count() == 1 and pg.evaluate("document.activeElement.id") == 'srch-q', 'away from the Plants page, the / key opens Search with the box focused')
     pg.keyboard.type('bluebon'); pg.wait_for_timeout(1200)
     check('Shopping and wishlist' in pg.locator('#srch-res').inner_text(), 'results are grouped')
     pg.keyboard.press('ArrowDown'); pg.wait_for_timeout(200)

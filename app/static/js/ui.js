@@ -213,7 +213,7 @@ function shortcutsDialog() {
     <table class="tbl"><tbody>
       ${k('R', 'Read this page aloud (press again, or Escape, to stop)')}${k('Escape', 'Stop reading')}
       ${k('[', 'Previous plant (on a plant page)')}${k(']', 'Next plant (on a plant page)')}
-      ${k('E', 'Edit this plant (on a plant page)')}${k('/', 'Search plants')}
+      ${k('E', 'Edit this plant (on a plant page)')}${k('/', 'Search: the plant filter on the Plants page, everything else elsewhere')}
       ${k('H', 'Go to the Plants page')}${k('M', 'Open or fold the section menu')}${k('L', 'Choose the location for the weather')}${k('U', 'Undo the care you just logged, while its message is showing')}${k('?', 'Show this list')}
     </tbody></table>
     <div class="row"><button class="btn" value="ok" autofocus>Close</button></div></form>`);
@@ -233,10 +233,10 @@ document.addEventListener('keydown', e => {
     case 'm': case 'M': click('[data-act=navtoggle]:not([aria-hidden])'); break;
     case 'l': case 'L': e.preventDefault(); placeDialog(); break;          // 1.11.0: choose the location
     case '?': e.preventDefault(); shortcutsDialog(); break;
-    case '/': {
+    case '/': {                               // the Plants page's own search box when it is on screen; Search everywhere elsewhere (1.33.0)
       e.preventDefault();
       const d = document.getElementById('pn-filters'); if (d) d.open = true;
-      const q = document.querySelector('input[data-f=q]'); if (q) { q.focus(); q.select(); } else go('#/');
+      const q = document.querySelector('input[data-f=q]'); if (q) { q.focus(); q.select(); } else searchDialog();
       break;
     }
   }
