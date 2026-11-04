@@ -666,7 +666,7 @@ def owner_name(c):
     return r[0] if r else 'the owner'
 
 OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people')        # any request (the people list shows everyone's login)
-OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/areas', '/api/shops', '/api/problems', '/api/backups/restore')   # changes only
+OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/areas', '/api/shops', '/api/problems', '/api/backups/restore', '/api/jobs')   # changes only
 VIEWER_POSTS = ('/api/identify', '/api/me/prefs')   # 1.18.0: asks this computer what a picture shows; 1.29.0: your own settings. Neither changes the plants
 
 def role_refusal(u):

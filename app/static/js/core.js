@@ -369,6 +369,30 @@ document.addEventListener('keydown', e => {
 document.addEventListener('change', e => { const el = e.target; if (el.dataset && el.dataset.ed) edSave(el); }, true);
 
 // 1.29.0: Settings: one page for the things that are not about plants
+let JOBST = 0;
+async function jobsDialog() {               // 1.32.0: the background jobs, in one window, kept up to date while it is open
+  const d = await api('GET', '/api/jobs?_=' + Date.now());
+  const owner = ME().role === 'owner', ago = t => (t ? when(t) : 'never');
+  const box = html`<h2>Jobs</h2>
+    <h3>Running now (${d.running.length})</h3>
+    ${d.running.length ? html`<ul class="job-list">${d.running.map(j => html`<li><strong>${j.word}</strong>${j.label ? `: ${j.label}` : ''}
+      ${j.total ? html` <span class="muted">(${j.done} of ${j.total})</span>` : ''}<br><small class="muted">Started ${when(j.started)}</small></li>`)}</ul>` : html`<p class="muted">Nothing is running.</p>`}
+    <h3>On a schedule</h3>
+    <ul class="job-list">${d.schedule.map(s => html`<li><strong>${s.word}</strong>: ${s.every}.${s.next ? ` Next ${/^\d{4}-/.test(s.next) ? when(s.next) : s.next}.` : ''} Last ${ago(s.last)}.
+      ${owner && ['weather', 'shops', 'backup'].includes(s.kind) ? html` <button class="btn ghost small" type="button" data-act="jobrun" data-kind="${s.kind}">Run now</button>` : ''}</li>`)}</ul>
+    <h3>Finished (${d.done.length})</h3>
+    ${d.done.length ? html`<ul class="job-list">${d.done.map(j => html`<li><span aria-hidden="true">${j.ok ? '✓' : '✗'}</span> <strong>${j.word}</strong>${j.label ? `: ${j.label}` : ''}, ${j.ok ? 'done' : 'failed'}${j.text ? `: ${j.text}` : ''}
+      <br><small class="muted">${when(j.finished)}, ${j.seconds != null ? `${j.seconds} s` : ''}</small></li>`)}</ul>` : html`<p class="muted">Nothing has finished since the app started.</p>`}
+    ${d.problems ? html`<p><a href="#" data-act="problems">${d.problems} problem${d.problems === 1 ? '' : 's'} on the Problems list</a></p>` : ''}
+    <div class="row"><button class="btn" value="ok" autofocus>Done</button></div><p id="job-msg" role="status" aria-live="polite"></p>`;
+  const open = document.querySelector('dialog[open] form.jobs-dlg');
+  if (open) { const f = document.activeElement; open.innerHTML = rend(box); if (f && f.dataset && f.dataset.kind) { const n = open.querySelector(`[data-kind="${f.dataset.kind}"]`); if (n) n.focus(); } return; }
+  clearTimeout(JOBST);
+  const tick = () => { JOBST = setTimeout(async () => { if (document.querySelector('dialog[open] form.jobs-dlg')) { try { await jobsDialog(); } catch (e) { /* next time */ } tick(); } }, 3000); };
+  tick();
+  await modal(html`<form method="dialog" class="jobs-dlg">${box}</form>`);
+  clearTimeout(JOBST);
+}
 async function problemsDialog() {           // 1.31.0
   const d = await api('GET', '/api/problems?' + (PROBALL ? 'all=1' : ''));
   const owner = ME().role === 'owner';
@@ -397,6 +421,7 @@ function viewSettings() {
     ${card('Audit log', 'Every change anyone has made, with filters and a download.', html`<a class="btn" href="#/history">Open the Audit log</a>`)}
     ${card('Homes and places', 'Where plants live, and the places whose weather is tracked.', html`<a class="btn" href="#/weather?sec=places">Open Homes and places</a>`)}
     ${card('Stores and keys', 'The stores Shopping checks, the eBay and Etsy keys, and the Pl@ntNet and Claude keys for Identify.', html`<a class="btn" href="#/shopping/stores">Stores</a><a class="btn ghost" href="#/identify">Keys (Identify page)</a>`)}
+    ${card('Jobs', 'What the app is doing in the background: weather updates, store checks, backups and library downloads, with when each is next due.', html`<button class="btn" type="button" data-act="jobs" aria-haspopup="dialog">Open the Jobs list</button>`)}
     ${card('Problems', 'Anything that went wrong in the background: a weather update, a backup, a store check. Copy the list to Claude when something looks off.', html`<button class="btn" type="button" data-act="problems" aria-haspopup="dialog">Open the Problems list<span id="prob-n"></span></button>`)}
     ${card('Debug', 'A live view of the audit log at the bottom of the screen, and other tools for checking the app.', html`<button class="btn" type="button" id="debug-btn" data-act="debug" aria-haspopup="dialog">Open Debug</button>`)}
     </div>` };

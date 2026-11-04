@@ -940,6 +940,10 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
 
+## Jobs (from 1.32.0)
+
+**Settings, Jobs** shows what the app is doing in the background: what is running now (with how far it has got), what runs on a schedule (the hourly weather update, the store check, the automatic backup) with when each is next due and when it last ran, and what has finished since the app started, with how long each took. The owner has a **Run now** button for the weather update, the store check and a backup. The window keeps itself up to date while it is open.
+
 ## High Contrast, Problems, Restore, and a home per person (from 1.31.0)
 
 - **Windows High Contrast mode** is supported: turn it on in Windows (Settings, Accessibility, Contrast themes) and the app follows it, with an outline on the page you are on, the chosen filter and keyboard focus.

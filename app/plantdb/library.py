@@ -304,10 +304,12 @@ def lib_fetch_photo(name):
     return meta
 
 def lib_worker():
+    jid = job_start('library', 'photos and descriptions'); n = 0
     while True:
         with LIBQ['lock']:
-            if not LIBQ['queue']: LIBQ['thread'] = None; return
-            name = LIBQ['queue'].pop(0)
+            if not LIBQ['queue']: LIBQ['thread'] = None; job_end(jid, True, f'{n} species fetched'); return
+            name = LIBQ['queue'].pop(0); left = len(LIBQ['queue'])
+        n += 1; job_progress(jid, n, n + left, name)
         try:                                                          # turned off since it was queued: stop
             c2 = sqlite3.connect(DB_PATH, timeout=10)
             try: online = lib_online(c2)
@@ -315,7 +317,7 @@ def lib_worker():
         except Exception: online = True
         if not online:
             with LIBQ['lock']: LIBQ['queue'].clear(); LIBQ['set'].clear(); LIBQ['thread'] = None
-            return
+            job_end(jid, True, 'stopped: library lookups were turned off'); return
         try: lib_fetch_photo(name)
         except Exception as e:
             problem('library', f'{name}: its photos could not be fetched', f'{type(e).__name__}: {e}')
@@ -658,10 +660,12 @@ def pets_for(name):
     return {'dogs': e.get('dogs'), 'cats': e.get('cats'), 'horses': e.get('horses'), 'listed_as': e['name'], 'common': e['common'], 'genus': e['genus']}
 
 def know_worker():
+    jid = job_start('know', 'near home, pets and areas'); n = 0
     while True:
         with KNOW['lock']:
-            if not KNOW['queue']: KNOW['thread'] = None; KNOW['now'] = None; return
-            name, params = KNOW['queue'].pop(0)
+            if not KNOW['queue']: KNOW['thread'] = None; KNOW['now'] = None; job_end(jid, True, f'{n} looked up'); return
+            name, params = KNOW['queue'].pop(0); left = len(KNOW['queue'])
+        n += 1; job_progress(jid, n, n + left, name.replace('area-', 'area '))
         try:
             c2 = sqlite3.connect(DB_PATH, timeout=10)
             try: online = lib_online(c2)
@@ -669,7 +673,7 @@ def know_worker():
         except Exception: online = True
         if not online:
             with KNOW['lock']: KNOW['queue'].clear(); KNOW['thread'] = None; KNOW['now'] = None
-            return
+            job_end(jid, True, 'stopped: library lookups were turned off'); return
         KNOW['now'] = (name, 0, 0)
         try:
             if name == 'aspca': aspca_fetch()

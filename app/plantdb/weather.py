@@ -398,13 +398,16 @@ def start_job(trigger, backfill_start=None, places=None):
                                   start=backfill_start, hourly_saved=0, daily_saved=0, skipped=0, phase='history' if backfill_start else 'recent',
                                   place=places[0][1], place_id=places[0][0], places_total=len(places), place_no=1)
     def work():
-        def prog(i, n, label, **kw): WX_JOB.update(done=i, total=n, label=label, beat=time.time(), **kw)
+        jid = job_start('weather', 'the weather history' if backfill_start else 'now', len(places))
+        def prog(i, n, label, **kw): WX_JOB.update(done=i, total=n, label=label, beat=time.time(), **kw); job_progress(jid, label=f"{WX_JOB.get('place', '')}: {label}")
         errs = []
         for k, (pid, pname) in enumerate(places):
             WX_JOB.update(place=pname, place_id=pid, place_no=k + 1, done=0, total=0, hourly_saved=0, daily_saved=0, skipped=0)
+            job_progress(jid, k, len(places), pname)
             st = run_weather(trigger, backfill_start, prog, loc_id=pid)
             if not st['ok']: errs.append((pname + ': ' if len(places) > 1 else '') + st['error'])
         WX_JOB.update(running=False, finished=now(), ok=not errs, error=' | '.join(errs)[:600])
+        job_end(jid, not errs, ' | '.join(errs)[:300] if errs else f'{len(places)} place{"s" if len(places) != 1 else ""} updated')
     threading.Thread(target=work, daemon=True).start()
     return True
 
@@ -415,9 +418,15 @@ def weather_loop():
             c = sqlite3.connect(DB_PATH, timeout=30)
             try:
                 c.row_factory = sqlite3.Row
-                for r in c.execute('SELECT id FROM locations WHERE enabled=1 ORDER BY is_home DESC, id').fetchall():
-                    if WX_JOB.get('running'): break        # a manual update or history load is busy; the next hour catches up
-                    run_weather('auto', conn=c, loc_id=r['id'])
+                rows = c.execute('SELECT id, name FROM locations WHERE enabled=1 ORDER BY is_home DESC, id').fetchall()
+                jid = job_start('weather', 'hourly', len(rows)); bad = []
+                for i, r in enumerate(rows):
+                    if WX_JOB.get('running'): job_end(jid, True, 'skipped: an update was running'); jid = None; break   # a manual update or history load is busy; the next hour catches up
+                    job_progress(jid, i, len(rows), r['name'])
+                    st = run_weather('auto', conn=c, loc_id=r['id'])
+                    if not st.get('ok'): bad.append(r['name'])
+                if jid: job_end(jid, not bad, ('could not update ' + ', '.join(bad)) if bad else f'{len(rows)} place{"s" if len(rows) != 1 else ""} updated')
+                set_setting(c, 'weather_last_auto', now()); c.commit()
             finally: c.close()
         except Exception as e: problem_exc('weather', e, 'The hourly weather update failed')
         time.sleep(3600)

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.32.0 (2026-11-04)
+- **Jobs** (Settings): one list of what the app is doing in the background (weather updates, store checks, backups, library downloads, store map positions), when each scheduled one is next due and last ran, and what finished, with how long it took. The owner can start the weather update, the store check or a backup from there.
+- **Under the hood:** the server's code is now in modules, one per feature, and the page's code in twelve files instead of one, so changes are smaller and safer. Nothing you see has changed.
+- **Tests:** unit tests that run in a second, a runner for the browser checks, and GitHub runs both on every pull request.
+
 ## 1.31.0 (2026-11-04)
 - **Windows High Contrast mode.** When Windows is set to a high-contrast theme, the chosen filter, the page you are on, keyboard focus, tags and alerts are all drawn with the theme's own colours and an outline, so nothing disappears.
 - **Problems** (Settings): anything that went wrong in the background (a weather update, a backup, a store check, a library download) is listed in plain words, with the details folded away and a **Copy the list for Claude** button. The owner can clear them.

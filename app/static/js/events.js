@@ -165,7 +165,13 @@ const acts = {
     if (!label) return;
     await guard(async () => { await api('PATCH', '/api/to-photograph/' + t.id, { label, note }); toast('Saved'); route(); });
   },
-  problems() { problemsDialog(); },
+  jobs() { jobsDialog(); },
+  async jobrun(el) {
+    const m = document.getElementById('job-msg'); el.disabled = true;
+    try { await api('POST', '/api/jobs/run', { kind: el.dataset.kind }); if (m) m.textContent = 'Started.'; await jobsDialog(); }
+    catch (e) { if (m) m.textContent = e.message; el.disabled = false; }
+  },
+  problems() { const d = document.querySelector('dialog[open]'); if (d) d.close(); problemsDialog(); },
   proball() { PROBALL = !PROBALL; const d = document.querySelector('dialog[open]'); if (d) d.close(); problemsDialog(); },
   async probclear(el) { await guard(async () => { await api('POST', '/api/problems', el.dataset.id === 'all' ? { all: true } : { id: +el.dataset.id }); const d = document.querySelector('dialog[open]'); if (d) d.close(); problemsDialog(); }); },
   async probcopy() {

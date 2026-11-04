@@ -18,7 +18,7 @@ ORDER = [('frost', '40'), ('care', 'fresh'), ('read', 'share'), ('timeline', 'sh
          ('card', 'fresh'), ('photos', 'fresh'), ('water', 'fresh'), ('library', 'fresh'), ('filters', 'fresh'), ('fungi', 'fresh'), ('wishlist', 'fresh'),
          ('know', 'fresh'), ('facts', 'fresh'), ('shops', 'fresh'), ('layout', 'fresh'), ('dialog', 'fresh'), ('offline', 'fresh'), ('sectionmenu', 'fresh'),
          ('homes', 'fresh'), ('places', 'fresh'), ('several', 'fresh'), ('where', 'fresh'), ('pots', 'fresh'), ('prefs', 'fresh'), ('shopping', 'fresh'),
-         ('quickwins', 'fresh'), ('smoke', 'fresh')]
+         ('quickwins', 'fresh'), ('jobs', 'fresh'), ('smoke', 'fresh')]
 TIMEOUT = {'smoke': 600, 'shopping': 600, 'quickwins': 600}
 SERVER = None
 

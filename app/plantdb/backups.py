@@ -68,6 +68,7 @@ def prune_backups(keep):
 def run_backup_job(kind, photos, note, by):
     if BK_JOB.get('running'): return False
     BK_JOB.clear(); BK_JOB.update(running=True, kind=kind, started=now(), photos=photos)
+    jid = job_start('backup', ('with photos' if photos else 'database only') + (', automatic' if kind == 'auto' else ''))
     def work():
         try:
             name = make_backup(kind, photos, note, by)
@@ -79,8 +80,10 @@ def run_backup_job(kind, photos, note, by):
                 c.commit()
             finally: c.close()
             BK_JOB.update(running=False, ok=True, file=name, finished=now())
+            job_end(jid, True, name)
         except Exception as e:
             BK_JOB.update(running=False, ok=False, error=f'{type(e).__name__}: {e}'[:300], finished=now())
+            job_end(jid, False, f'{type(e).__name__}: {e}')
             problem_exc('backup', e, 'The backup failed')
     threading.Thread(target=work, daemon=True).start()
     return True
@@ -218,9 +221,11 @@ def backup_restore():
     name = str(b.get('file') or '')
     if not BACKUP_RE.match(name) or not os.path.exists(os.path.join(BACKUP_DIR, name)): abort(404, 'No such backup')
     if BK_JOB.get('running'): abort(409, 'A backup is being made. Try again in a moment.')
-    try: r = restore_backup(name, editor())
-    except (ValueError, zipfile.BadZipFile) as e: abort(400, str(e))
+    jid = job_start('restore', name)
+    try: r = restore_backup(name, editor()); job_end(jid, True, f'{r["plants"]} plants')
+    except (ValueError, zipfile.BadZipFile) as e: job_end(jid, False, str(e)); abort(400, str(e))
     except Exception as e:
+        job_end(jid, False, f'{type(e).__name__}: {e}')
         problem_exc('backup', e, f'Restoring {name} failed')
         abort(500, f'The restore failed part way: {type(e).__name__}: {e}. The database from before was backed up first; see the Problems list on Settings.')
     return jsonify(r)

@@ -1552,3 +1552,5 @@ a[href^="tel:"]{white-space:nowrap}
 .prob-list{list-style:none;padding:0;display:grid;gap:.8rem}
 .prob-list li{border:var(--bw) solid var(--line);padding:.6rem .8rem}
 .prob-detail{white-space:pre-wrap;font-size:.85em;max-height:12rem;overflow:auto;background:var(--sheet);padding:.5rem;border:1px solid var(--line)}
+.job-list{list-style:none;padding:0;display:grid;gap:.5rem}
+.job-list li{border-bottom:1px solid var(--line);padding:.3rem 0}

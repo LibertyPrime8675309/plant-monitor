@@ -164,17 +164,20 @@ def shops_worker():
             wants = [dict(r) for r in c.execute("SELECT * FROM wishlist WHERE status='want'")]
             todo = c.execute('SELECT * FROM shops WHERE enabled=1 ORDER BY sort, name').fetchall()
             SHOPQ['total'], SHOPQ['done'] = len(todo), 0
+            jid = job_start('shops', f'{len(wants)} to look for', len(todo)); bad = []
             for s in todo:
-                SHOPQ['now'] = s['name']
+                SHOPQ['now'] = s['name']; job_progress(jid, SHOPQ['done'], len(todo), s['name'])
                 if not wants: break
                 try: st, msg, kind = shop_check_one(c, s, wants); err = None
-                except SH.ShopError as e: st, msg, kind, err = 'error', str(e), None, str(e)
-                except Exception as e: st, msg, kind, err = 'error', 'Could not read it: ' + str(e)[:120], None, str(e)[:300]
+                except SH.ShopError as e: st, msg, kind, err = 'error', str(e), None, str(e); bad.append(s['name'])
+                except Exception as e: st, msg, kind, err = 'error', 'Could not read it: ' + str(e)[:120], None, str(e)[:300]; bad.append(s['name'])
                 c.execute('UPDATE shops SET status=?, error=?, checked_at=?, platform=COALESCE(?, platform) WHERE key=?', (msg, err, now(), kind, s['key']))
                 c.commit(); SHOPQ['done'] += 1
             wish_alerts_make(c)
             set_setting(c, 'shops_checked_at', now()); c.commit()
+            job_end(jid, not bad, (f'{len(todo) - len(bad)} of {len(todo)} stores read; could not read ' + ', '.join(bad[:5])) if bad else f'{len(todo)} stores read')
         except Exception as e:
+            job_end(jid, False, str(e)[:200])
             problem_exc('shops', e, 'The store check stopped part way')
         finally: c.close()
 
@@ -307,13 +310,18 @@ def shops_geo():
     try:
         c = sqlite3.connect(DB_PATH, timeout=30); c.row_factory = sqlite3.Row
         try:
-            for s in c.execute("SELECT * FROM shops WHERE local=1 AND address<>'' AND lat IS NULL AND geo_at IS NULL").fetchall():
+            rows = c.execute("SELECT * FROM shops WHERE local=1 AND address<>'' AND lat IS NULL AND geo_at IS NULL").fetchall()
+            if not rows: return
+            jid = job_start('geo', f'{len(rows)} stores', len(rows))
+            for i, s in enumerate(rows):
+                job_progress(jid, i, len(rows), s['name'])
                 res = osm_search({'q': s['address']})
                 if res:
                     try: c.execute('UPDATE shops SET lat=?, lon=?, geo_at=? WHERE key=?', (round(float(res[0]['lat']), 5), round(float(res[0]['lon']), 5), now(), s['key']))
                     except (KeyError, TypeError, ValueError): c.execute('UPDATE shops SET geo_at=? WHERE key=?', (now(), s['key']))
                 else: c.execute('UPDATE shops SET geo_at=? WHERE key=?', (now(), s['key']))
                 c.commit()
+            job_end(jid, True, f'{len(rows)} looked up')
         finally: c.close()
     except Exception as e:
         problem_exc('stores', e, 'Map positions for the stores could not be found')
