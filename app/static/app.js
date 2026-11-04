@@ -4008,7 +4008,7 @@ function shortcutsDialog() {
     <table class="tbl"><tbody>
       ${k('R', 'Read this page aloud (press again, or Escape, to stop)')}${k('Escape', 'Stop reading')}
       ${k('[', 'Previous plant (on a plant page)')}${k(']', 'Next plant (on a plant page)')}
-      ${k('E', 'Edit this plant (on a plant page)')}${k('/', 'Search plants')}
+      ${k('E', 'Edit this plant (on a plant page)')}${k('/', 'Search plants')}${vsCtor() ? k('V', 'Search by voice (speak into the microphone)') : ''}
       ${k('H', 'Go to the Plants page')}${k('M', 'Open or fold the section menu')}${k('L', 'Choose the location for the weather')}${k('U', 'Undo the care you just logged, while its message is showing')}${k('?', 'Show this list')}
     </tbody></table>
     <div class="row"><button class="btn" value="ok" autofocus>Close</button></div></form>`);
@@ -4037,6 +4037,110 @@ document.addEventListener('keydown', e => {
   }
 });
 window.addEventListener('hashchange', () => stopReading(true));
+
+// ---------- search by voice (prototype proto/voice-search) ----------
+// A "Search by voice" button beside every search box, filled in by a MutationObserver, so no page needs changing.
+// It uses the browser's own speech recognition (Chrome, Edge and Safari; Firefox has none, so no button appears there).
+// Chrome and Edge send the sound to Google or Microsoft to turn it into words; nothing is sent by the app itself.
+// Spoken plant codes are tidied up ("p 36", "pea zero three six" -> "P-036"), and "open ..." opens the one plant that matches.
+const VS = { rec: null, box: null, btn: null };
+const vsCtor = () => window.SpeechRecognition || window.webkitSpeechRecognition || null;
+const VS_DIGITS = { zero: '0', oh: '0', o: '0', one: '1', two: '2', to: '2', too: '2', three: '3', four: '4', for: '4', five: '5', six: '6', seven: '7', eight: '8', nine: '9' };
+function vsClean(said) {
+  let t = String(said || '').toLowerCase().replace(/[.,!?;:"“”]+/g, ' ').replace(/\s+/g, ' ').trim();
+  let open = false;
+  const m = t.match(/^(?:please )?(?:open|go to|show me|show|find|search for|look for|look up)(?: the| my)? (.+)$/);
+  if (m) { open = /^(?:please )?(?:open|go to)\b/.test(t); t = m[1]; }
+  t = t.replace(/^(?:the|my|a) /, '').replace(/ (?:plants?|please)$/, '').trim();
+  // a plant or mushroom code: a letter (P or F, as heard) then up to three digits, spoken one by one or as a number
+  const w = t.split(' ');
+  const head = { p: 'P', pee: 'P', pea: 'P', plant: 'P', f: 'F', ef: 'F', eff: 'F', find: 'F' }[w[0]];
+  if (head && w.length > 1) {
+    const rest = w.slice(1).filter(x => x !== 'dash' && x !== '-' && x !== 'number').map(x => VS_DIGITS[x] != null ? VS_DIGITS[x] : x).join('').replace(/^-/, '');
+    if (/^\d{1,3}$/.test(rest)) t = head + '-' + rest.padStart(3, '0');
+  }
+  const one = t.match(/^([pf])-?\s?(\d{1,3})$/);
+  if (one) t = one[1].toUpperCase() + '-' + one[2].padStart(3, '0');
+  return { q: t, open };
+}
+function vsAdd() {
+  if (!vsCtor()) return;
+  document.querySelectorAll('input[type=search]:not([data-vs])').forEach(inp => {
+    inp.dataset.vs = '1';
+    const lab = inp.closest('label') || inp;
+    const name = (lab.firstChild && lab.firstChild.nodeType === 3 ? lab.firstChild.textContent : 'Search').trim().toLowerCase() || 'search';
+    const w = document.createElement('div');
+    w.className = 'vs-wrap noprint';
+    w.innerHTML = rend(html`<button class="btn ghost vs-btn" type="button" data-act="vsearch" aria-pressed="false"><svg class="vs-mic" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4M8.5 21h7"/></svg><span class="vs-word">Search by voice</span></button><p class="vs-msg" role="status" aria-live="polite"></p>`);
+    w.querySelector('button').setAttribute('aria-label', 'Search by voice: say what to put in the ' + name + ' box');
+    lab.after(w);
+  });
+}
+function vsSay(msg, bad) { const p = VS.btn && VS.btn.parentNode.querySelector('.vs-msg'); if (p) { p.textContent = msg; p.classList.toggle('bad-text', !!bad); } }
+function vsStop() { if (VS.rec) { try { VS.rec.abort(); } catch (e) { /* already stopped */ } } vsIdle(); }
+function vsIdle() {
+  if (VS.btn) { VS.btn.setAttribute('aria-pressed', 'false'); VS.btn.classList.remove('vs-on'); VS.btn.querySelector('.vs-word').textContent = 'Search by voice'; }
+  VS.rec = null;
+}
+function vsFinish(said) {
+  const { q, open } = vsClean(said), box = VS.box;
+  if (!box || !q) { vsSay('I did not catch any words. Press the button and try again.', true); return; }
+  box.value = q;
+  box.dispatchEvent(new Event('input', { bubbles: true }));
+  let msg = 'Heard "' + said.trim() + '". Searching for ' + q + '.';
+  if (box.dataset.f === 'q' && ALL.length) {
+    const n = filteredPlants().length;
+    msg = 'Heard "' + said.trim() + '". ' + (n === 0 ? 'No plants match ' + q + '.' : n === 1 ? 'One plant matches.' : n + ' plants match.');
+    if (open) {
+      const hits = ALL.filter(p => !isArch(p) && (p.code === q || [p.code, p.common_name, p.scientific_name, p.aliases].join(' ').toLowerCase().includes(q.toLowerCase())));
+      if (hits.length === 1) { go('#/plant/' + enc(hits[0].code)); return; }
+      if (hits.length > 1) msg += ' Say one of their codes to open it.';
+    }
+  }
+  vsSay(msg, false);
+}
+function vsStart(btn) {
+  if (VS.rec) { const same = VS.btn === btn; vsStop(); if (same) { vsSay('Stopped listening.'); return; } }
+  const C = vsCtor(); if (!C) return;
+  stopReading(true);
+  VS.btn = btn;
+  const wrap = btn.closest('.vs-wrap'), lab = wrap.previousElementSibling;
+  VS.box = (lab && (lab.matches('input') ? lab : lab.querySelector('input[type=search]'))) || null;
+  const r = new C(); VS.rec = r;
+  r.lang = navigator.language || 'en-US'; r.interimResults = true; r.maxAlternatives = 1; r.continuous = false;
+  let said = '', done = false;
+  r.onresult = e => {
+    said = Array.from(e.results).map(x => x[0].transcript).join(' ');
+    const fin = e.results[e.results.length - 1].isFinal;
+    if (fin && !done) { done = true; vsIdle(); vsFinish(said); } else vsSay('Hearing: ' + said);
+  };
+  r.onerror = e => {
+    done = true; vsIdle();
+    vsSay({ 'not-allowed': 'The browser is not allowed to use the microphone. Allow it in the site settings (the icon at the left of the address bar), then try again.',
+      'service-not-allowed': 'The browser is not allowed to use the microphone. Allow it in the site settings (the icon at the left of the address bar), then try again.',
+      'no-speech': 'I did not hear anything. Press the button and try again.',
+      'audio-capture': 'No microphone was found. Check that one is plugged in and turned on.',
+      network: 'Voice search could not reach the speech service. In Chrome and Edge it needs the internet.',
+      aborted: 'Stopped listening.' }[e.error] || 'Voice search stopped: ' + e.error + '.', e.error !== 'aborted');
+  };
+  r.onend = () => { if (!done) { done = true; vsIdle(); if (said) vsFinish(said); else vsSay('I did not hear anything. Press the button and try again.', true); } };
+  btn.setAttribute('aria-pressed', 'true'); btn.classList.add('vs-on'); btn.querySelector('.vs-word').textContent = 'Listening. Press to stop';
+  vsSay('Listening. Say a plant name or code.');
+  try { r.start(); } catch (e) { done = true; vsIdle(); vsSay('Voice search could not start: ' + e.message, true); }
+}
+queueMicrotask(() => Object.assign(acts, { vsearch(el) { vsStart(el); } }));   // acts is declared further down
+window.PlantVoice = { clean: vsClean };            // for dev/test/voice_check.py
+new MutationObserver(vsAdd).observe(document.getElementById('app'), { childList: true, subtree: true });
+new MutationObserver(vsAdd).observe(dlg, { childList: true, subtree: true });
+window.addEventListener('hashchange', () => { if (VS.rec) vsStop(); });
+document.addEventListener('keydown', e => {          // V: search by voice (the same rules as the other shortcuts)
+  if (e.key !== 'v' && e.key !== 'V') return;
+  if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || window.PlantPrefs.get().keys !== '1' || !vsCtor()) return;
+  const t = e.target; if (t.closest && t.closest('input,textarea,select,[contenteditable="true"],dialog[open]')) return;
+  const d = document.getElementById('pn-filters'); if (d) d.open = true;
+  const b = document.querySelector('#app .vs-btn');
+  if (b) { e.preventDefault(); b.focus(); vsStart(b); }
+});
 async function condDialog() {
   const c = COND || await loadCond() || { mode: 'manual' };
   const W = await api('GET', '/api/weather').catch(() => null);

@@ -744,7 +744,7 @@ def headers(resp):
     resp = offline_remember(resp)
     if via_tailscale():                              # always HTTPS (Tailscale Serve), so browsers can be told to stay on HTTPS
         resp.headers['Strict-Transport-Security'] = 'max-age=31536000'
-    resp.headers['Permissions-Policy'] = 'geolocation=(self), microphone=(), payment=(), usb=(), camera=(self)'   # 1.22.0: location for mushroom finds
+    resp.headers['Permissions-Policy'] = 'geolocation=(self), microphone=(self), payment=(), usb=(), camera=(self)'   # 1.22.0: location for mushroom finds; microphone for search by voice
     resp.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
     resp.headers['X-Content-Type-Options'] = 'nosniff'
     resp.headers['X-Frame-Options'] = 'DENY'
