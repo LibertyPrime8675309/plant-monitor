@@ -74,4 +74,10 @@ if os.environ.get('MOCK_VISION', 'fake') == 'fake':
     else:
         _vs = make_server('127.0.0.1', _port, _mv.app, threaded=True)
         threading.Thread(target=_vs.serve_forever, daemon=True).start()
+@S.app.route('/mock/problem', methods=['POST'])
+def mock_problem():                      # 1.31.0: lets a test record a background problem
+    b = S.request.get_json(silent=True) or {}
+    S.problem(b.get('area', 'weather'), b.get('text', 'Test problem'), b.get('detail', ''))
+    return S.jsonify(ok=True)
+
 S.app.run(host='127.0.0.1', port=int(os.environ.get('PORT', '8080')), threaded=True)

@@ -144,6 +144,8 @@ def close_db(_):
 SQLTYPE = {'int': 'INTEGER', 'num': 'REAL', 'home': 'INTEGER', 'area': 'INTEGER', 'spot': 'INTEGER', 'pot': 'INTEGER', 'tray': 'INTEGER'}
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE IF NOT EXISTS problems(id INTEGER PRIMARY KEY AUTOINCREMENT, area TEXT NOT NULL, text TEXT NOT NULL, detail TEXT NOT NULL DEFAULT '',
+  at TEXT NOT NULL, times INTEGER NOT NULL DEFAULT 1, cleared_at TEXT);
 CREATE TABLE IF NOT EXISTS plants(
   id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT UNIQUE NOT NULL,
   %s,
@@ -167,6 +169,8 @@ CREATE TABLE IF NOT EXISTS readings(
 CREATE UNIQUE INDEX IF NOT EXISTS readings_uq ON readings(source, device, ts);
 CREATE INDEX IF NOT EXISTS readings_ts ON readings(ts);
 CREATE INDEX IF NOT EXISTS readings_src_ts ON readings(source, ts);
+CREATE INDEX IF NOT EXISTS readings_src_dev_ts ON readings(source, device, ts);   -- 1.31.0: the weather history is asked for one place at a time
+CREATE INDEX IF NOT EXISTS photos_plant ON photos(plant_id, is_primary);
 CREATE TABLE IF NOT EXISTS user_prefs(login TEXT NOT NULL, key TEXT NOT NULL, value TEXT, updated_at TEXT, PRIMARY KEY(login, key));
 CREATE TABLE IF NOT EXISTS areas(
   id INTEGER PRIMARY KEY AUTOINCREMENT, home_id INTEGER, side TEXT NOT NULL, name TEXT NOT NULL, sheltered INTEGER NOT NULL DEFAULT 0,
@@ -241,11 +245,21 @@ CREATE TABLE IF NOT EXISTS bulk_changes(
   done_by TEXT NOT NULL, done_at TEXT NOT NULL, undone_by TEXT, undone_at TEXT);
 """ % ',\n  '.join(f"{n} {SQLTYPE.get(k, 'TEXT')}" for n, k, _ in FIELDS)
 
+NEWER_DB = {}        # 1.31.0: set when the database was last opened by a newer version than this one; the app then only says so
 def init_db():
     c = sqlite3.connect(DB_PATH, timeout=30)
     c.row_factory = sqlite3.Row
     # WAL can misbehave on Windows bind mounts; the default rollback journal is safe everywhere for a single-process home app.
     c.execute('PRAGMA journal_mode=' + os.environ.get('PLANTDB_JOURNAL', 'DELETE'))
+    # 1.31.0: never let an older version change a database a newer one has already upgraded (its tables and columns would be
+    # half understood, and its batches could run again). The app starts, but only to say which version to install.
+    try:
+        r = c.execute("SELECT value FROM settings WHERE key='db_version'").fetchone()
+        last = r[0] if r else None
+    except sqlite3.OperationalError: last = None
+    if last and version_tuple(last) > version_tuple(APP_VERSION) and os.environ.get('PLANTDB_ALLOW_OLDER') != '1':
+        NEWER_DB.update(last=last, this=APP_VERSION); print(f'[start] the database was last opened by version {last}, newer than this {APP_VERSION}: refusing to change it', flush=True)
+        c.close(); return
     c.executescript(SCHEMA)
     c.executescript(FUNGI_SCHEMA)                 # 1.22.0: mushroom finds, library notes and the wishlist
     c.executescript(SYNC_SCHEMA)                  # 1.24.0: changes sent later from devices, and clashes to decide
@@ -256,6 +270,7 @@ def init_db():
         if col not in wl: c.execute(f'ALTER TABLE wishlist ADD COLUMN {col} {typ}')
     for col, typ in (('kind', "TEXT NOT NULL DEFAULT 'plant'"), ('price_per', "TEXT NOT NULL DEFAULT ''"), ('source', "TEXT NOT NULL DEFAULT ''")):   # 1.30.0: Shopping
         if col not in wl: c.execute(f'ALTER TABLE wishlist ADD COLUMN {col} {typ}')
+    if 'home_id' not in {r[1] for r in c.execute('PRAGMA table_info(people)')}: c.execute('ALTER TABLE people ADD COLUMN home_id INTEGER')   # 1.31.0
     shc = {r[1] for r in c.execute('PRAGMA table_info(shops)')}
     for col, typ in SHOP_DETAIL_COLS:                # 1.30.0: where each store is, how to reach it, what it carries
         if col not in shc: c.execute(f'ALTER TABLE shops ADD COLUMN {col} {typ}')
@@ -320,6 +335,7 @@ def init_db():
     c.execute("UPDATE plants SET site='Outdoors' WHERE site IS NULL OR site=''")   # 1.7.0: every existing plant starts out as Outdoors
     c.commit()
     repair_seed_photos(c)
+    c.execute("INSERT OR REPLACE INTO settings(key,value) VALUES('db_version',?)", (APP_VERSION,)); c.commit()
     c.close()
 
 def find_plant(c, u):
@@ -648,7 +664,7 @@ def owner_name(c):
     return r[0] if r else 'the owner'
 
 OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people')        # any request (the people list shows everyone's login)
-OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/areas', '/api/shops')   # changes only
+OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/areas', '/api/shops', '/api/problems', '/api/backups/restore')   # changes only
 VIEWER_POSTS = ('/api/identify', '/api/me/prefs')   # 1.18.0: asks this computer what a picture shows; 1.29.0: your own settings. Neither changes the plants
 
 def role_refusal(u):
@@ -688,7 +704,15 @@ def me_prefs():
             if len(v) > 20000: abort(400, 'That setting is too long')
             c.execute('INSERT OR REPLACE INTO user_prefs(login,key,value,updated_at) VALUES(?,?,?,?)', (login, k, v, now()))
         c.commit()
-    return jsonify(prefs={k: v for k, v in c.execute('SELECT key, value FROM user_prefs WHERE login=?', (login,))}, login=login)
+    prefs = {k: v for k, v in c.execute('SELECT key, value FROM user_prefs WHERE login=?', (login,))}
+    if 'place' not in prefs and 'place_given' not in prefs:   # 1.31.0: a person with a home of their own starts there, once; their later choices stand
+        p = c.execute('SELECT home_id FROM people WHERE login=?', (login,)).fetchone()
+        if p and p['home_id'] and c.execute('SELECT 1 FROM locations WHERE id=? AND enabled=1', (p['home_id'],)).fetchone():
+            prefs['place'] = str(p['home_id'])
+            for k, v in (('place', prefs['place']), ('place_given', '1')):
+                c.execute('INSERT OR REPLACE INTO user_prefs(login,key,value,updated_at) VALUES(?,?,?,?)', (login, k, v, now()))
+            c.commit()
+    return jsonify(prefs=prefs, login=login)
 
 @app.route('/api/me', methods=['GET', 'PUT'])
 def me():
@@ -720,13 +744,26 @@ def people():
         name = clean_person_name(b.get('name')) or (r['name'] if r else clean_person_name(login.split('@')[0]) or 'Someone')
         if r and r['role'] == 'owner' and role != 'owner' and c.execute("SELECT COUNT(*) FROM people WHERE role='owner'").fetchone()[0] < 2:
             abort(409, 'There must be at least one owner. Make someone else an owner first.')
+        hid = r['home_id'] if r else None                  # 1.31.0: the home each person starts on (empty: the main home)
+        if 'home_id' in b:
+            hid = b['home_id']
+            if hid in ('', None): hid = None
+            else:
+                try: hid = int(hid)
+                except (TypeError, ValueError): abort(400, 'Choose one of your homes')
+                if hid not in {h['id'] for h in homes(c)}: abort(400, 'Choose one of your homes')
+                if hid == home_place(c)['id']: hid = None
         if r:
-            c.execute('UPDATE people SET name=?, role=? WHERE login=?', (name, role, login))
+            c.execute('UPDATE people SET name=?, role=?, home_id=? WHERE login=?', (name, role, hid, login))
             if (r['name'], r['role']) != (name, role):
                 audit_only(c, 'setting', 'person', f"{r['name']}: {r['role']}", f"{name}: {role}", editor(), f"{name} ({login}) is now: {ROLE_WORD[role]}")
+            if r['home_id'] != hid:
+                H = {h['id']: h['name'] for h in homes(c)}
+                audit_only(c, 'setting', 'person', H.get(r['home_id']), H.get(hid), editor(), f"{name} starts on {H.get(hid) or 'the main home'}")
+                c.execute("DELETE FROM user_prefs WHERE login=? AND key IN ('place', 'place_given')", (login,))   # so the new home is used on their next visit
         else:
             t = now()
-            c.execute('INSERT INTO people(login,name,role,first_seen,last_seen) VALUES(?,?,?,?,?)', (login, name, role, t, t))
+            c.execute('INSERT INTO people(login,name,role,home_id,first_seen,last_seen) VALUES(?,?,?,?,?,?)', (login, name, role, hid, t, t))
             audit_only(c, 'setting', 'person', None, f"{name}: {role}", editor(), f"{name} ({login}) added: {ROLE_WORD[role]}")
         c.commit()
     elif request.method == 'DELETE':
@@ -739,7 +776,7 @@ def people():
         audit_only(c, 'setting', 'person', f"{r['name']}: {r['role']}", None, editor(), f"{r['name']} ({login}) removed from the list of people")
         c.commit()
     rows = [dict(r) | {'role_word': ROLE_WORD.get(r['role'], r['role'])} for r in c.execute("SELECT * FROM people ORDER BY CASE role WHEN 'owner' THEN 0 WHEN 'editor' THEN 1 ELSE 2 END, name")]
-    return jsonify(people=rows, roles=[{'key': k, 'label': ROLE_WORD[k]} for k in ROLES], me=me_dict(c))
+    return jsonify(people=rows, roles=[{'key': k, 'label': ROLE_WORD[k]} for k in ROLES], me=me_dict(c), homes=[{'id': h['id'], 'name': h['name']} for h in homes(c)], main_home=home_place(c)['id'])
 
 # ---------------------------------------------------------------- security
 @app.before_request
@@ -748,6 +785,14 @@ def took_start():                   # 1.30.0: how long each answer takes to make
 
 @app.before_request
 def guard():
+    if NEWER_DB:                     # 1.31.0: an older version on a newer database: every page says what to do, and nothing is changed
+        msg = (f"This plant record was last opened by version {NEWER_DB['last']}, and this is the older version {NEWER_DB['this']}. "
+               f"To keep your data safe it will not run. Install version {NEWER_DB['last']} or newer with the updater (Update Plant Database.cmd), "
+               "or restore a backup made by this version.")
+        if request.path.startswith('/api/'): return jsonify(error=msg, newer_db=NEWER_DB['last']), 503
+        return Response(f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Plant record: newer database</title>'
+                        '<style>body{font:1.25rem/1.5 system-ui,sans-serif;max-width:40rem;margin:3rem auto;padding:0 1rem;color:#0e2233;background:#f5f7f6}</style></head>'
+                        f'<body><h1>Plant record will not run on this database</h1><p>{html_mod.escape(msg)}</p></body></html>', status=503, mimetype='text/html')
     if request.path == '/healthz': return None
     if has_request_context() and str(request.environ.get('SERVER_PORT', '')) == SENSOR_PORT and not (request.path == '/api/readings' and request.method == 'POST'):
         abort(404, 'This port only takes sensor readings (POST /api/readings).')
@@ -823,7 +868,7 @@ def gzip_answer(resp):
         resp.headers['Content-Encoding'] = 'gzip'; resp.headers['Content-Length'] = str(len(body))
         resp.vary.add('Accept-Encoding')
     except Exception as e:
-        print('[gzip] sent as it is:', e, flush=True)
+        problem('gzip', 'A page could not be squeezed and was sent as it is', f'{request.path}: {type(e).__name__}: {e}', db() if has_app_context() else None)
     return resp
 
 @app.errorhandler(400)
@@ -845,6 +890,9 @@ def read_version():
         except OSError: pass
     return os.environ.get('PLANTDB_VERSION', 'unknown')
 APP_VERSION = read_version()
+def version_tuple(v):
+    try: return tuple(int(x) for x in str(v).split('.')[:3])
+    except ValueError: return (0, 0, 0)
 
 @app.route('/healthz')
 def healthz(): return 'ok ' + APP_VERSION
@@ -1486,6 +1534,8 @@ CREATE TABLE IF NOT EXISTS offers(id INTEGER PRIMARY KEY AUTOINCREMENT, wish TEX
   price REAL, currency TEXT, available INTEGER, detail TEXT, first_seen TEXT NOT NULL, last_seen TEXT NOT NULL, avail_since TEXT,
   gone INTEGER NOT NULL DEFAULT 0, UNIQUE(wish, shop, url, title));
 CREATE TABLE IF NOT EXISTS offer_history(offer_id INTEGER NOT NULL, price REAL, available INTEGER, at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS offers_wish ON offers(wish, shop, gone);
+CREATE INDEX IF NOT EXISTS offer_hist ON offer_history(offer_id, at);
 CREATE TABLE IF NOT EXISTS wish_alert_marks(offer_id INTEGER NOT NULL, kind TEXT NOT NULL, price REAL, at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS wish_alerts(id INTEGER PRIMARY KEY AUTOINCREMENT, wish TEXT NOT NULL, offer_id INTEGER, kind TEXT NOT NULL, text TEXT NOT NULL,
   price REAL, url TEXT, shop TEXT, created_at TEXT NOT NULL, dismissed_by TEXT, dismissed_at TEXT);
@@ -1649,7 +1699,7 @@ def shops_worker():
             wish_alerts_make(c)
             set_setting(c, 'shops_checked_at', now()); c.commit()
         except Exception as e:
-            print('[shops] check failed:', e, flush=True)
+            problem_exc('shops', e, 'The store check stopped part way')
         finally: c.close()
 
 def shops_check_soon():
@@ -1670,7 +1720,7 @@ def shops_loop():
                 due = hours > 0 and (not last or (datetime.now(timezone.utc) - datetime.fromisoformat(last.replace('Z', '+00:00'))).total_seconds() >= hours * 3600)
                 if due and c.execute("SELECT 1 FROM wishlist WHERE status='want'").fetchone(): shops_check_soon()
             finally: c.close()
-        except Exception: pass
+        except Exception as e: problem_exc('shops', e, 'The store check could not be started')
         time.sleep(600)
 
 def shop_row(r):
@@ -1790,7 +1840,7 @@ def shops_geo():
                 c.commit()
         finally: c.close()
     except Exception as e:
-        print('[stores] map positions not found:', e, flush=True)
+        problem_exc('stores', e, 'Map positions for the stores could not be found')
 
 @app.route('/api/shops/<key>')
 def shop_page(key):
@@ -1847,7 +1897,7 @@ def shops_geo_one(key):
             else: c.execute('UPDATE shops SET geo_at=? WHERE key=?', (now(), key))
             c.commit()
         finally: c.close()
-    except Exception as e: print('[stores] map position not found:', e, flush=True)
+    except Exception as e: problem_exc('stores', e, 'The store\'s map position could not be found')
 
 @app.route('/api/stores/<key>/lookup', methods=['POST'])
 def shop_lookup_api(key):
@@ -2089,7 +2139,7 @@ def lib_worker():
             return
         try: lib_fetch_photo(name)
         except Exception as e:
-            print(f'[library] {name}: {e}', flush=True)
+            problem('library', f'{name}: its photos could not be fetched', f'{type(e).__name__}: {e}')
             lib_save(name, (lib_meta(name) or {}) | {'name': name, 'checked': date.today().isoformat(), 'photo': None, 'error': str(e)[:200]})
         finally:
             with LIBQ['lock']: LIBQ['set'].discard(name)
@@ -4248,6 +4298,46 @@ def setting(c, key, default=None):
 def set_setting(c, key, value):
     c.execute('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)', (key, value))
 
+PROBLEM_AREA = {'weather': 'Weather update', 'backup': 'Backup', 'shops': 'Shopping check', 'stores': 'Store look-up', 'library': 'Library download',
+                'know': 'Library lookups', 'offline': 'Offline changes', 'vision': 'Picture checker', 'gzip': 'Sending a page', 'start': 'Starting the app', 'push': 'Notifications'}
+def problem(area, text, detail='', conn=None):
+    """1.31.0: a problem in a background job, kept for the Problems list on Settings (the last 200). The same problem again
+    within a day counts up instead of adding a line. Never raises: it is called from places that are already failing."""
+    text = str(text)[:300]; detail = str(detail)[:2000]
+    print(f'[{area}] {text}' + (f' ({detail[:200]})' if detail else ''), flush=True)
+    try:
+        c = conn or sqlite3.connect(DB_PATH, timeout=10)
+        try:
+            r = c.execute("SELECT id FROM problems WHERE area=? AND text=? AND cleared_at IS NULL AND at>=? ORDER BY id DESC LIMIT 1",
+                          (area, text, (datetime.now(timezone.utc) - timedelta(days=1)).strftime('%Y-%m-%dT%H:%M:%SZ'))).fetchone()
+            if r: c.execute('UPDATE problems SET times=times+1, at=?, detail=? WHERE id=?', (now(), detail, r[0]))
+            else:
+                c.execute('INSERT INTO problems(area,text,detail,at) VALUES(?,?,?,?)', (area, text, detail, now()))
+                c.execute('DELETE FROM problems WHERE id NOT IN (SELECT id FROM problems ORDER BY id DESC LIMIT 200)')
+            if conn is None: c.commit()
+        finally:
+            if conn is None: c.close()
+    except Exception as e:
+        print('[problems] could not be kept:', e, flush=True)
+
+def problem_exc(area, e, what=''):
+    """Records an exception in plain words: what was being done, then the error's own words as the detail."""
+    import traceback
+    problem(area, (what + ': ' if what else '') + (getattr(e, 'description', None) or f'{type(e).__name__}: {e}'), ''.join(traceback.format_exception(e))[-2000:])
+
+@app.route('/api/problems', methods=['GET', 'POST'])
+def problems_api():
+    """GET: problems not cleared, newest first. POST {id} or {all: true}: clear (owner)."""
+    c = db()
+    if request.method == 'POST':
+        b = request.get_json(silent=True) or {}
+        if b.get('all'): c.execute('UPDATE problems SET cleared_at=? WHERE cleared_at IS NULL', (now(),))
+        else: c.execute('UPDATE problems SET cleared_at=? WHERE id=? AND cleared_at IS NULL', (now(), int(b.get('id') or 0)))
+        c.commit()
+    rows = [dict(r) | {'area_word': PROBLEM_AREA.get(r['area'], r['area'])} for r in c.execute('SELECT * FROM problems WHERE cleared_at IS NULL ORDER BY at DESC, id DESC LIMIT 50')]
+    if request.args.get('all') == '1': rows = [dict(r) | {'area_word': PROBLEM_AREA.get(r['area'], r['area'])} for r in c.execute('SELECT * FROM problems ORDER BY at DESC, id DESC LIMIT 200')]
+    return jsonify(problems=rows, open=c.execute('SELECT COUNT(*) FROM problems WHERE cleared_at IS NULL').fetchone()[0])
+
 def migrate_places(c):
     """Version 1.5: weather can be tracked for several places. The place used until now becomes the home place
     (the one your plants are at) and keeps all its readings: its rows are tagged device 'open-meteo', as before."""
@@ -4807,6 +4897,7 @@ def run_weather(trigger, backfill_start=None, progress=None, conn=None, loc_id=N
         if not logged['history']:
             try: log_run(c, trigger, 'recent', 'forecast', None, None, 0, 0, 0, 0, 0, [], False, status['error'], 0, loc_id=lid)
             except Exception: pass
+        problem('weather', f"The weather for {loc['name']} could not be updated", status['error'], c)
     status['place'] = loc['name']
     set_setting(c, 'weather_status', json.dumps(status))
     loc_set(c, lid, status=json.dumps(status))
@@ -4844,7 +4935,7 @@ def weather_loop():
                     if WX_JOB.get('running'): break        # a manual update or history load is busy; the next hour catches up
                     run_weather('auto', conn=c, loc_id=r['id'])
             finally: c.close()
-        except Exception: pass
+        except Exception as e: problem_exc('weather', e, 'The hourly weather update failed')
         time.sleep(3600)
 
 
@@ -7068,7 +7159,7 @@ def offline_remember(resp):
                   (resp.status_code, body[:200_000], editor(), request.headers.get('X-Offline-Device', '')[:60], request.headers.get('X-Offline-Made', '')[:40], op))
         c.commit()
     except Exception as e:
-        print(f'[offline] could not keep the answer to {op}: {e}', flush=True)
+        problem_exc('offline', e, 'The answer to a change sent from a phone could not be kept')
     return resp
 
 def same_value(a, b):
@@ -7615,6 +7706,7 @@ def run_backup_job(kind, photos, note, by):
             BK_JOB.update(running=False, ok=True, file=name, finished=now())
         except Exception as e:
             BK_JOB.update(running=False, ok=False, error=f'{type(e).__name__}: {e}'[:300], finished=now())
+            problem_exc('backup', e, 'The backup failed')
     threading.Thread(target=work, daemon=True).start()
     return True
 
@@ -7642,7 +7734,7 @@ def backup_loop():
                 if backup_due(c) and not BK_JOB.get('running'):
                     run_backup_job('auto', bk_settings(c)['photos'], 'Automatic backup', 'Automatic backup')
             finally: c.close()
-        except Exception: pass
+        except Exception as e: problem_exc('backup', e, 'The automatic backup could not be started')
         time.sleep(300)
 
 @app.route('/api/backups', methods=['GET', 'POST'])
@@ -7700,6 +7792,63 @@ def backup_file(name):
         c = db(); audit_only(c, 'backup', 'backup', name, None, editor(), 'Backup deleted'); c.commit()
         return jsonify(ok=True)
     return send_from_directory(BACKUP_DIR, name, as_attachment=True, mimetype='application/zip')
+
+def restore_backup(name, by):
+    """1.31.0: puts the database from a backup zip in place of the one in use, after making a backup of that one first. Photos in
+    the zip that the photos folder lacks are added; no photo is ever removed. The copy is made with SQLite's own backup, which is
+    safe while the app runs, and then init_db() brings an older database up to this version. Returns what was done."""
+    path = os.path.join(BACKUP_DIR, name)
+    with zipfile.ZipFile(path) as z:
+        names = z.namelist()
+        if 'plants.db' not in names: raise ValueError('That zip has no plants.db in it.')
+        meta = json.loads(z.read('backup.json')) if 'backup.json' in names else {}
+        if version_tuple(meta.get('version', '0')) > version_tuple(APP_VERSION):
+            raise ValueError(f'That backup was made by version {meta.get("version")}, which is newer than this one ({APP_VERSION}). Install that version (or a newer one) first, then restore.')
+        tmpdb = os.path.join(BACKUP_DIR, f'.restore-{datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")}.db')
+        try:
+            with z.open('plants.db') as src, open(tmpdb, 'wb') as dst: shutil.copyfileobj(src, dst)
+            t = sqlite3.connect(tmpdb)
+            try:
+                if t.execute('PRAGMA integrity_check').fetchone()[0] != 'ok': raise ValueError('The database in that backup is damaged and cannot be restored.')
+                if not t.execute("SELECT 1 FROM sqlite_master WHERE name='plants'").fetchone(): raise ValueError('That is not a plant record database.')
+                plants = t.execute('SELECT COUNT(*) FROM plants').fetchone()[0]
+            finally: t.close()
+            before = make_backup('manual', False, f'Before restoring {name}', by)
+            with BK_LOCK:
+                src = sqlite3.connect(tmpdb); dst = sqlite3.connect(DB_PATH, timeout=60)
+                try:
+                    with dst: src.backup(dst)
+                finally: src.close(); dst.close()
+            added = 0
+            for n in names:
+                if n.startswith('photos/') and not n.endswith('/'):
+                    f = os.path.basename(n); fp = os.path.join(PHOTO_DIR, f)
+                    if f and not os.path.exists(fp):
+                        with z.open(n) as src, open(fp, 'wb') as out: shutil.copyfileobj(src, out)
+                        added += 1
+        finally:
+            try: os.remove(tmpdb)
+            except OSError: pass
+    init_db()                                      # an older backup gets this version's columns, tables and batches
+    c = sqlite3.connect(DB_PATH, timeout=30); c.row_factory = sqlite3.Row
+    try:
+        audit_only(c, 'backup', 'restore', None, name, by, f'Restored from {name} ({plants} plants, made {meta.get("created_at", "")[:10]} by version {meta.get("version", "?")}). The database from before is in {before}.')
+        c.commit()
+    finally: c.close()
+    return {'ok': True, 'before': before, 'plants': plants, 'photos_added': added, 'version': meta.get('version')}
+
+@app.route('/api/backups/restore', methods=['POST'])
+def backup_restore():
+    b = request.get_json(silent=True) or {}
+    name = str(b.get('file') or '')
+    if not BACKUP_RE.match(name) or not os.path.exists(os.path.join(BACKUP_DIR, name)): abort(404, 'No such backup')
+    if BK_JOB.get('running'): abort(409, 'A backup is being made. Try again in a moment.')
+    try: r = restore_backup(name, editor())
+    except (ValueError, zipfile.BadZipFile) as e: abort(400, str(e))
+    except Exception as e:
+        problem_exc('backup', e, f'Restoring {name} failed')
+        abort(500, f'The restore failed part way: {type(e).__name__}: {e}. The database from before was backed up first; see the Problems list on Settings.')
+    return jsonify(r)
 
 init_db()
 threading.Thread(target=backup_loop, daemon=True).start()

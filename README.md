@@ -940,6 +940,14 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
 
+## High Contrast, Problems, Restore, and a home per person (from 1.31.0)
+
+- **Windows High Contrast mode** is supported: turn it on in Windows (Settings, Accessibility, Contrast themes) and the app follows it, with an outline on the page you are on, the chosen filter and keyboard focus.
+- **Settings, Problems** lists anything that went wrong in the background, newest first, with how many times it happened. Open **Details** for the error's own words, or press **Copy the list for Claude** and paste it into the chat. The owner can clear problems one at a time or all at once; **Show cleared ones too** brings them back.
+- **Backups, Restore** on any backup puts its database back. Before it does, a backup named "Before restoring…" is made, so the restore itself can be undone. Photos are never deleted. A backup from an older version is upgraded on the way in; one from a newer version is refused until that version is installed.
+- **People, Starts on:** the owner picks the home each person starts on. It applies the first time they open the app after it is set; whatever home they choose with the Home button after that is kept.
+- If an older release is ever installed over a newer one, every page says "Plant record will not run on this database" and which version to install. Nothing is changed. (`PLANTDB_ALLOW_OLDER=1` in `.env` overrides this, for emergencies only.)
+
 ## Shopping, stores, and quicker pages (from 1.30.0)
 
 **Shopping** (under Discover) is where the stores are checked: for the plants on your wishlist, and for garden supplies.
