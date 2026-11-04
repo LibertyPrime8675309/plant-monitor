@@ -12,7 +12,7 @@ def meta():
                            'photos': c.execute('SELECT COUNT(*) FROM photos').fetchone()[0]},
                    password_protected=bool(PASSWORD), int_ranges=INT_RANGES, num_ranges=NUM_RANGES, version=APP_VERSION,
                    home_tz=L['tz'],              # the browser uses this for "today", so dates match the server's
-                   place=place_brief(L), climate=place_climate(c, L), zone=place_zone(c, L), me=me_dict(c), runs_as=runs_as(),
+                   place=place_brief(L), climate=place_climate(c, L), zone=place_zone(c, L), heat=heat_brief(c, L), me=me_dict(c), runs_as=runs_as(),
                    places=[place_brief(loc_dict(r)) for r in c.execute('SELECT * FROM locations ORDER BY is_home DESC, name')],
                    homes=[place_brief(h) for h in homes(c)], region=place_region(c, L),
                    where=where_list(c),                                                      # 1.29.0: rooms and spots

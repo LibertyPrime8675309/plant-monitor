@@ -39,3 +39,34 @@ def test_norm_ranges():
 def test_osm_address():
     assert S.osm_address({'house_number': '615', 'road': 'Maltman Drive', 'city': 'Grass Valley', 'state': 'California', 'postcode': '95945'}) == '615 Maltman Drive, Grass Valley, CA 95945'
     assert S.osm_address({}) == ''
+
+# ---- 1.34.0: summer heat (AHS heat zones)
+def test_ahs_heat_zone_bands():
+    assert S.ahs_heat_zone(0) == 1 and S.ahs_heat_zone(0.9) == 1
+    assert S.ahs_heat_zone(1) == 2 and S.ahs_heat_zone(7) == 2 and S.ahs_heat_zone(8) == 3
+    assert S.ahs_heat_zone(116) == 8 and S.ahs_heat_zone(120) == 8 and S.ahs_heat_zone(121) == 9
+    assert S.ahs_heat_zone(300) == 12 and S.ahs_heat_zone(None) is None
+
+def test_place_heat_needs_three_whole_years():
+    import json, math
+    from datetime import date, timedelta
+    c = S.sqlite3.connect(S.DB_PATH, timeout=30); c.row_factory = S.sqlite3.Row
+    L = S.home_place(c); lid = L['id']
+    c.execute('DELETE FROM weather_daily WHERE loc_id=?', (lid,))
+    S.PLACE_HEAT.clear()
+    this_year = S.local_today(c).year
+    def fill(y):
+        d = date(y, 1, 1)
+        while d.year == y:
+            doy = d.timetuple().tm_yday
+            hi = 70 + 30 * math.sin((doy - 110) / 365 * 2 * math.pi)
+            c.execute("INSERT OR REPLACE INTO weather_daily(loc_id,date,data,kind,updated_at) VALUES(?,?,?,?,?)", (lid, d.isoformat(), json.dumps({'temperature_2m_max': hi, 'temperature_2m_min': hi - 20}), 'observed', S.now()))
+            d += timedelta(days=1)
+    fill(this_year - 1); fill(this_year - 2); c.commit()
+    h = S.place_heat(c, L)
+    assert h['zone'] is None and h['years'] == 2 and h['over86'] is None          # two whole years: not enough yet
+    S.PLACE_HEAT.clear(); fill(this_year - 3); c.commit()
+    h = S.place_heat(c, L)
+    assert h['years'] == 3 and h['over86'] > 100 and h['zone'] == S.ahs_heat_zone(h['over86']) and h['hottest'] == 100
+    assert [m['month'] for m in h['months']][0] in ('May', 'Jun') and all(y['over86'] == h['over86'] for y in h['per_year'] if not y['partial'])
+    c.execute('DELETE FROM weather_daily WHERE loc_id=?', (lid,)); c.commit(); S.PLACE_HEAT.clear()
