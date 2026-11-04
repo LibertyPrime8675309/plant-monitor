@@ -1368,6 +1368,9 @@ html:is([data-narrow="1"],[data-pagesfold="1"]) .top:not(.pages-open) #main-nav{
 html:is([data-narrow="1"],[data-pagesfold="1"]) .top #main-nav{display:flex;flex-wrap:wrap;gap:0 .4rem;flex:1 1 100%;order:3;min-width:0}
 html[data-pagesfold="1"] .top-acts{flex-direction:row;flex-wrap:wrap;margin-left:auto}
 html[data-toptall="1"] .top{position:static}
+/* 1.33.0: a tall top bar scrolls with the page, so the open sections menu would cover its left end; keep the bar's contents clear of the menu */
+html[data-toptall="1"][data-navopen="1"][data-narrow="0"][data-navside=left] :is(.top-in,.sub-in){padding-left:calc(var(--nav-w) + 1rem)}
+html[data-toptall="1"][data-navopen="1"][data-narrow="0"][data-navside=right] :is(.top-in,.sub-in){padding-right:calc(var(--nav-w) + 1rem)}
 html[data-narrow="1"] .top-in,html[data-narrow="1"] main{padding-left:min(1.25rem,4vw);padding-right:min(1.25rem,4vw)}
 html[data-narrow="1"] .top-in{padding-top:.4rem;padding-bottom:.4rem;gap:.4rem}
 html[data-narrow="1"] .brand{font-size:1.2rem}
