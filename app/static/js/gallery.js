@@ -7,8 +7,11 @@ const G = { q: '', plan: '', health: '', low: false, needs: false, sort: 'code',
   light: '', pets: '', hardy: '', care: '', grow: '', leaf: '', pot: '', photo: '' };                                      // 1.17.0: more filters
 const MORE_KEYS = ['light', 'pets', 'hardy', 'care', 'grow', 'leaf', 'pot', 'photo'];     // the More filters (defined further down)
 // the Plants page filters are remembered in this browser and also decide where Previous / Next plant go on plant pages
-try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort', 'group', 'status', 'site', 'home', ...MORE_KEYS]) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ }
-function gSave() { try { localStorage.setItem('plantdb.filters', JSON.stringify({ q: G.q, plan: G.plan, health: G.health, low: G.low, needs: G.needs, sort: G.sort, group: G.group, status: G.status, site: G.site, home: G.home, ...Object.fromEntries(MORE_KEYS.map(k => [k, G[k]])) })); } catch (e) { /* not saved */ } }
+function gLoad() { try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort', 'group', 'status', 'site', 'home', ...MORE_KEYS]) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ } }
+gLoad();
+// 1.32.0: when the settings saved for your sign-in arrive from the server, take them, so a draw already under way does not save the old ones back
+document.addEventListener('plantsync', e => { if (e.detail && e.detail.includes('plantdb.filters')) gLoad(); });
+function gSave() { if (window.PlantSync && window.PlantSync.applying()) return; try { localStorage.setItem('plantdb.filters', JSON.stringify({ q: G.q, plan: G.plan, health: G.health, low: G.low, needs: G.needs, sort: G.sort, group: G.group, status: G.status, site: G.site, home: G.home, ...Object.fromEntries(MORE_KEYS.map(k => [k, G[k]])) })); } catch (e) { /* not saved */ } }
 const gActive = () => !!(G.q.trim() || G.plan || G.health || G.low || G.needs || (G.group && groupById(G.group)) || G.status !== 'active' || G.site || (G.home && homeById(G.home)) || moreOn());
 const STATUS_WORD = { active: 'Active only', all: 'Active and archived', archived: 'Archived only' };
 const isArch = p => p.status === 'archived';
