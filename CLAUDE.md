@@ -36,7 +36,7 @@ This is Ethan's home plant database: a Flask + SQLite web app ("Plant record") t
   - Batch files apply in **filename order**, once each. Name new ones so they sort last: `batch9d.json`, then `batchA1.json`. `batch10.json` would sort before `batch2.json`.
 - **Access (from 1.12.0).** People reach the app through its own Tailscale container: port 8081, with identity headers, roles owner/editor/viewer. This computer uses port 8080 (localhost only), and sensors use 8082 (readings only).
   - Any new route that changes data is refused for viewers automatically.
-  - The one exception is `VIEWER_POSTS` (`/api/identify`), a POST that changes nothing.
+  - The exceptions are `VIEWER_POSTS` (`/api/identify`, `/api/me/prefs`) and `VIEWER_PREFIXES` (`/api/push/`): requests that change nothing of the plants, or only the person's own settings and devices.
   - Owner-only areas must be added to `OWNER_ONLY_PATHS` or `OWNER_ONLY_CHANGES` in `app/plantdb/core.py`.
   - Buttons that make changes must also be added to the viewer CSS block in `style.css`.
   - Never publish 8081, and never trust `Tailscale-User-*` headers on any other port.

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.35.0 (2026-11-04)
+- **Your sensors** (Weather → Sensors): one card per sensor with its newest values in large type (soil moisture, air and root-zone temperature, humidity, light, soil pH, pot weight), a small line of the last 24 hours for each, and the day's lowest and highest. Name a sensor, say where it sits (a room or spot) and which plant's pot it is in: its values are then compared with that plant's ranges, in words with a mark (✓ In range, ↓ Dry, ! Too cold…), on the Sensors page and under Water and soil on the plant's page. A sensor that stops sending says Quiet.
+- **Today** lists the sensors that need a look or have gone quiet.
+- **Watering from the sensor:** a jump in soil moisture logs a watering for the plant (once a day; turn it off per sensor).
+- **Sensor alerts** as notifications: a dry pot, dangerous cold, a sensor gone quiet, once a day each.
+- **Pot weight:** readings can carry `weight_g` from a weighing cell under the pot.
+- **ESPHome:** `docs/sensors/esphome-plant-sensor.yaml`, a ready file for an ESP32 node with a soil probe, air sensor, light sensor, soil thermometer and weighing cell; the README says how to flash it.
+
 ## 1.34.0 (2026-11-04)
 - **Today is the page the app opens on.** One line says what needs you, with a button to jump to each part; the cold-night warning is a section of the page; "Quiet today" says what is not due (pest rounds, the last store check and backup, problems). All plants is one click away (its address is now `#/plants`).
 - **Shopping list for a store visit** (Shopping → Shopping list): choose a store; what it carries comes first with what you are watching for, the rest under "Not carried here". Add extra lines, tick what you bought, and "Done shopping" marks them as got it. Large print and Print.
