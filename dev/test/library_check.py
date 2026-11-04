@@ -37,7 +37,7 @@ with sync_playwright() as p:
     pg.goto(LOCAL + '/#/library'); pg.wait_for_timeout(3000)
     cards = lambda: pg.locator('#lib-res .lib-card').count()
     check(cards() == 48 and 'Showing 48 of 64' in pg.inner_text('#lib-count'), 'the page lists the plants straight away, without a search')
-    for lab in ('Search', 'Look in', 'Kind of plant', 'Family', 'Grows wild in', 'Show', 'Sort by', 'Show as', 'Texas and home', 'Only plants with a common name'):
+    for lab in ('Search', 'Look in', 'Kind of plant', 'Family', 'Grows wild in', 'Show', 'Sort by', 'Show as', 'Your area', 'Only plants with a common name'):
         if pg.locator('.lib-filters label', has_text=lab).count() < 1: check(False, f'filter "{lab}" has a label')
     check(pg.locator('.lib-filters label').count() == 10, 'ten filters, each with a real label')
     pg.click('#lib-more'); pg.wait_for_timeout(1500)
@@ -71,13 +71,13 @@ with sync_playwright() as p:
     # a species page
     pg.fill('input[data-f=libq]', 'monstera'); pg.wait_for_timeout(1200)
     pg.locator('#lib-res .sheet-link').first.click(); pg.wait_for_timeout(5000)
-    check(pg.evaluate('location.hash') == '#/species/Monstera%20deliciosa' and pg.locator('nav[aria-label=Main] a[href="#/library"][aria-current=page]').count() == 1, 'a card opens the species page')
+    check(pg.evaluate('location.hash') == '#/species/Monstera%20deliciosa' and pg.locator('#sub-nav a[href="#/library"][aria-current=page]').count() == 1, 'a card opens the species page')
     t = pg.inner_text('main')
     check('Swiss cheese plant' in pg.locator('h1').inner_text() or 'Swiss cheese plant' in t, 'it shows the common name from iNaturalist')
     check('A test plant & its relatives' in t and 'From Wikipedia' in t, 'the short description, credited to Wikipedia')
-    check(pg.locator('#sp-gallery figure img').count() == 1 and 'Your plant P-049' in pg.inner_text('#sp-gallery') and '1 of 5' in pg.inner_text('#sp-gallery'),
-          'a photo gallery: your own photos first (P-049 and P-084), then iNaturalist photos')
-    pg.click('[data-act=spph][data-d="1"]'); pg.wait_for_timeout(300); pg.click('[data-act=spph][data-d="1"]'); pg.wait_for_timeout(300)
+    check(pg.locator('#sp-gallery figure img').count() == 1 and 'Your plant P-049' in pg.inner_text('#sp-gallery') and '1 of 6' in pg.inner_text('#sp-gallery'),
+          'a photo gallery: your own photos first (P-049, P-084 and P-088), then iNaturalist photos')
+    for _ in range(3): pg.click('[data-act=spph][data-d="1"]'); pg.wait_for_timeout(300)
     check('Test Person 0' in pg.inner_text('#sp-gallery') and 'CC BY-NC' in pg.inner_text('#sp-gallery') and 'CC-BY-NC' not in pg.inner_text('#sp-gallery'), 'each iNaturalist photo names its photographer and licence')
     for h in ('Names', 'Classification', 'Where it grows wild in the US', 'Looks like', 'More about it elsewhere'):
         check(pg.locator('h2', has_text=h).count() == 1, f'section "{h}"')

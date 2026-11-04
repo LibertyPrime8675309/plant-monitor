@@ -201,7 +201,9 @@ def confidence(score, margin):
 def status():
     return jsonify(S | {'photos': len(PHOTOS['files']), 'species': int(NAMES['masks']['world'].sum()) if NAMES else 0,
                         'fungi': int(NAMES['masks']['fungi'].sum()) if NAMES else 0,
-                        'scopes': {k: {'label': v, 'count': int(NAMES['masks'][k].sum()) if NAMES else 0} for k, v in SCOPES.items()}})
+                        'scopes': {k: {'label': v, 'count': int(NAMES['masks'][k].sum()) if NAMES else 0} for k, v in SCOPES.items()}
+                                  | ({request.args['state']: {'label': request.args['state'][6:], 'count': int(mask_for(request.args['state']).sum()) if NAMES else 0}}
+                                     if NAMES and str(request.args.get('state', '')).startswith('state:') else {})})
 
 @app.post('/identify')
 def identify():
@@ -230,7 +232,7 @@ def identify():
                                    'confidence': round(float(confidence(sc, sc - nxt)), 2) if j == 0 else None})
         if out['matches']: out['likely_new'] = out['matches'][0]['score'] < NOVEL.get(MODEL, 0.65)
     scope = request.args.get('scope', 'common')
-    mask = NAMES['masks'].get(scope, NAMES['masks']['common'])
+    mask = mask_for(scope, 'common')
     idx = np.where(mask)[0]
     logits = dot_rows(idx, v) * M['scale']
     top = np.argsort(-logits)[:50]
@@ -315,7 +317,7 @@ def build_browse():
 
 def browse_mask(a):
     scope = a.get('scope', 'world')
-    m = NAMES['masks'].get(scope, NAMES['masks']['world']).copy()
+    m = mask_for(scope).copy()
     if a.get('kind'):
         k = next((i for i, x in enumerate(KINDS) if x[0] == a['kind']), None)
         if k is not None: m &= B['kind'] == k
@@ -358,11 +360,26 @@ def browse_mask(a):
         m[[i for i in idx if q in hay[i]]] = True
     return m
 
+def mask_for(scope, default='world'):
+    """1.28.0: the mask for a list: world, us, common, fungi, or any US state as 'state:California' (USDA spelling without
+    spaces also works, such as 'state:NewYork'). 'texas' still means Texas, for settings saved before 1.28.0."""
+    M = NAMES['masks']
+    if scope == 'texas': scope = 'state:Texas'
+    if isinstance(scope, str) and scope.startswith('state:'):
+        if scope not in M:
+            want = scope[6:].replace(' ', '').lower()
+            st = next((x for x in STATES if x.lower() == want), None)
+            if st is None: return M.get(default, M['world'])
+            usda = NAMES['usda']
+            M[scope] = np.array([s in usda and st in usda[s] for s in NAMES['sp']]) & M['us']
+        return M[scope]
+    return M.get(scope, M.get(default, M['world']))
+
 @app.get('/scope_names')
 def scope_names():
     """1.22.0: every scientific name in a list, for downloading the library photos of a whole list."""
     if not B: return jsonify(error='The picture checker is still setting up: ' + S['step']), 503
-    m = NAMES['masks'].get(request.args.get('scope', 'texas'), NAMES['masks']['texas'])
+    m = mask_for(request.args.get('scope', 'world'))
     return jsonify(names=[NAMES['sp'][int(i)] for i in np.where(m)[0]])
 
 def req_args():
@@ -389,11 +406,11 @@ def facets():
     if not B: return jsonify(error='Still setting up', status=S), 503
     scope = request.args.get('scope', 'world')
     if scope not in B['facets']:
-        m = NAMES['masks'].get(scope, NAMES['masks']['world'])
+        m = mask_for(scope)
         kc = np.bincount(B['kind'][m], minlength=len(KINDS)); fc = np.bincount(B['fam'][m][B['fam'][m] >= 0], minlength=len(B['fams']))
         B['facets'][scope] = {'total': int(m.sum()), 'kinds': [{'key': k[0], 'label': k[1], 'count': int(kc[i])} for i, k in enumerate(KINDS) if kc[i]],
                               'families': [{'name': f, 'count': int(fc[i])} for i, f in enumerate(B['fams']) if fc[i]],
-                              'states': [x for x in STATES if x != 'Texas']}
+                              'states': list(STATES)}
     return jsonify(B['facets'][scope])
 
 @app.get('/taxon')
@@ -435,7 +452,7 @@ def names():
     q = (request.args.get('q') or '').strip().lower()
     scope = request.args.get('scope', 'world'); lim = min(100, int(request.args.get('limit', 40)))
     if len(q) < 2: return jsonify(results=[], total=0)
-    mask = NAMES['masks'].get(scope, NAMES['masks']['world'])
+    mask = mask_for(scope)
     res = []
     for i in np.where(mask)[0]:
         if q in NAMES['hay'][i]:

@@ -139,8 +139,10 @@ function paintPlace() {
   if (!META || !META.place) return;
   if (PLACE && String(META.place.id) !== String(PLACE)) savePlace(null);   // the chosen place was removed: back to home
   const n = document.getElementById('place-name'); if (n) n.textContent = META.place.name;
+  const home = META.place.is_home || META.place.plants_here;                 // 1.29.0: "Home: Round Rock, TX"
+  const l = document.querySelector('#place-btn .pl-l'); if (l) l.textContent = home ? 'Home:' : 'Place:';
   const b = document.getElementById('place-btn');
-  if (b) b.setAttribute('aria-label', `Location: ${META.place.name}${META.place.is_home ? ' (home)' : ''}. Choose another place`);
+  if (b) b.setAttribute('aria-label', `${home ? 'Home' : 'Place'}: ${META.place.name}${META.place.is_home ? ' (main home)' : ''}. Choose another home or place`);
   topSoon();
 }
 function placeDialog() {
@@ -194,6 +196,161 @@ async function placeAdd(i) {
 }
 
 // ---------- you, and the people who can use the app (1.12.0) ----------
+// 1.29.0: Rooms and spots: each home's areas outside and rooms inside, and the spots in them, all editable on the page
+async function viewWhere() {
+  const d = await api('GET', '/api/where'); let S = { items: [] }; try { S = await api('GET', '/api/where/sort'); } catch (e) { /* none */ }
+  if (META) META.where = d.homes;
+  const can = canChange(), multi = d.homes.length > 1;
+  const areaHtml = a => html`<li class="wh-area" data-aid="${a.id}">
+    <div class="wh-row"><label class="f wh-name">${a.side === 'out' ? 'Area' : 'Room'}<input type="text" maxlength="60" value="${a.name}" data-ed="area" data-id="${a.id}" data-k="name" ${can ? '' : raw('readonly')}></label>
+      <label class="chk"><input type="checkbox" data-ed="area" data-id="${a.id}" data-k="sheltered" ${a.sheltered ? raw('checked') : ''} ${can ? '' : raw('disabled')}>${a.side === 'out' ? 'Roof overhead (like a covered porch)' : 'Heated (not a garage or shed)'}</label>
+      <span class="muted">${a.plants} plant${a.plants === 1 ? '' : 's'}${a.lights ? `, ${a.lights} light spot${a.lights === 1 ? '' : 's'}` : ''}. Counts as: ${a.site}.</span>
+      ${can ? html`<button class="btn small ghost wh-del" type="button" data-act="whareadel" data-id="${a.id}" data-name="${a.name}">Remove ${a.name}</button>` : ''}</div>
+    <ul class="wh-spots">${a.spots.map(sp => html`<li><label class="f">Spot<input type="text" maxlength="60" value="${sp.name}" data-ed="spot" data-id="${sp.id}" data-k="name" ${can ? '' : raw('readonly')}></label>
+      <span class="muted">${sp.plants} plant${sp.plants === 1 ? '' : 's'}</span>${can ? html`<button class="btn small ghost" type="button" data-act="whspotdel" data-id="${sp.id}" data-name="${sp.name}">Remove</button>` : ''}</li>`)}
+      ${can ? html`<li><form class="row wh-add" data-form="whspotadd" data-aid="${a.id}"><label class="f">New spot in ${a.name}<input type="text" name="name" maxlength="60" placeholder="${a.side === 'out' ? 'Pallet shelf' : 'Brown hutch'}"></label><button class="btn small" type="submit">Add spot</button></form></li>` : ''}</ul></li>`;
+  const sideHtml = (h, side) => html`<section class="blk wh-side"><h3>${side === 'out' ? 'Outside' : 'Inside'}</h3><ul class="wh-areas">${h.areas.filter(a => a.side === side).map(areaHtml)}</ul>
+    ${can ? html`<form class="row wh-add" data-form="whareaadd" data-home="${h.home.is_home ? '' : h.home.id}" data-side="${side}"><label class="f">New ${side === 'out' ? 'area outside' : 'room inside'}<input type="text" name="name" maxlength="60" placeholder="${side === 'out' ? 'Patio' : 'Dining room'}"></label>
+      <label class="chk"><input type="checkbox" name="sheltered" ${side === 'in' ? raw('checked') : ''}>${side === 'out' ? 'Roof overhead' : 'Heated'}</label><button class="btn small" type="submit">Add ${side === 'out' ? 'area' : 'room'}</button></form>` : ''}</section>`;
+  return { title: 'Rooms and spots', html: html`<h1>Rooms and spots</h1>
+    <p>Where plants go at each home: outside or inside, then the area or room, then the spot in it. Choose them on each plant's page. Rename anything here by typing over it; it saves when you leave the box. A room or shelf for grow lights is chosen from the same list.</p>
+    <p class="hint">"Roof overhead" and "Heated" decide how frost warnings and watering treat the plants there: outside with a roof counts as a covered porch, and inside without heat counts as a garage or shed.</p>
+    ${S.items.length && can ? html`<section class="blk" id="wh-sort"><h2>Spots to sort out (${S.items.length})</h2>
+      <p>These plants have a "Spot (where exactly)" written on them but no spot from the list yet. Check each suggested spot name and area, change any you like, then press <strong>Make these spots</strong>. The words written on the plant stay as they are.</p>
+      <div class="tbl-wrap"><table class="tbl"><caption class="sr">Spots to sort out</caption><thead><tr><th scope="col">Written on the plant</th><th scope="col">Plants</th><th scope="col">Spot name</th><th scope="col">Area or room</th></tr></thead><tbody>
+      ${S.items.map((it, i) => html`<tr><th scope="row">${it.text}</th><td>${it.plants.map((x, k) => html`${k ? ', ' : ''}<a href="#/plant/${enc(x.code)}">${x.code}</a>`)}</td>
+        <td><label class="sr" for="whs-n${i}">Spot name for "${it.text}"</label><input type="text" id="whs-n${i}" maxlength="60" value="${it.name}" data-whs="${i}" data-k="name"></td>
+        <td><label class="sr" for="whs-a${i}">Area for "${it.text}"</label><select id="whs-a${i}" data-whs="${i}" data-k="area">${d.homes.map(h => html`<optgroup label="${h.home.name}">${h.areas.map(a => html`<option value="${a.id}" ${a.id === it.area_id ? raw('selected') : ''}>${a.side === 'out' ? 'Outside' : 'Inside'}: ${a.name}</option>`)}</optgroup>`)}</select></td></tr>`)}</tbody></table></div>
+      <p class="row"><button class="btn" type="button" data-act="whsort">Make these spots</button></p></section>` : ''}
+    ${d.homes.map(h => html`<section class="blk wh-home"><h2>${multi ? h.home.name : 'Your home'}${h.home.is_home && multi ? ' (main home)' : ''}</h2><div class="wh-sides">${sideHtml(h, 'out')}${sideHtml(h, 'in')}</div></section>`)}`,
+    after: () => { WHSORT = S.items; } };
+}
+let WHSORT = [];
+
+// 1.29.0: Pots and trays: each kind you have, how many, and which plants use them
+const CT_MAT = ['Terracotta', 'Thin plastic', 'Thick plastic'];
+async function viewPots() {
+  const d = await api('GET', '/api/containers'); CT = d;
+  const pots = d.items.filter(x => x.kind === 'pot'), trays = d.items.filter(x => x.kind === 'tray');
+  return { title: 'Pots and trays', html: html`<h1>Pots and trays</h1>
+    <p>Your pots and catch trays, how many of each you have, and which plants use them. Type over any value to change it; it saves when you leave the box. Sizes are in inches. The square feet are worked out for you (a round one counts as the square around it), and the Grow lights page uses them: a plant takes up the floor of its catch tray, or of its pot when it has no tray.</p>
+    <section class="blk" id="ct-pots"><h2>Pots (${pots.length})</h2><div class="ct-list">${pots.map(ctCard)}</div>
+      ${canChange() ? html`<p class="row"><button class="btn" type="button" data-act="ctadd" data-kind="pot">Add a pot</button></p>` : ''}</section>
+    <section class="blk" id="ct-trays"><h2>Catch trays (${trays.length})</h2><div class="ct-list">${trays.map(ctCard)}</div>
+      ${canChange() ? html`<p class="row"><button class="btn" type="button" data-act="ctadd" data-kind="tray">Add a catch tray</button></p>` : ''}</section>` };
+}
+let CT = null;
+function ctCard(x) {
+  const can = canChange(), ro = can ? '' : raw('readonly'), dis = can ? '' : raw('disabled'), ed = k => raw(`data-ed="cont" data-id="${x.id}" data-k="${k}"`);
+  const num = (k, label) => html`<label class="f ct-num">${label}<input type="number" inputmode="decimal" min="0" max="240" step="any" value="${x[k] == null ? '' : x[k]}" ${ed(k)} ${ro}></label>`;
+  const other = x.material && !CT_MAT.includes(x.material);
+  const over = x.in_use > x.qty;
+  return html`<article class="ct-card" id="ct-${x.id}" data-cid="${x.id}">
+    <div class="ct-photos">${x.photos.length ? x.photos.map((ph, i) => html`<figure><img src="${thumbUrl(ph.file)}" alt="${x.name}, photo ${i + 1}" loading="lazy">${can ? html`<button class="btn small ghost" type="button" data-act="ctphotodel" data-id="${ph.id}" aria-label="Remove photo ${i + 1} of ${x.name}">Remove</button>` : ''}</figure>`) : html`<p class="muted">No photo yet.</p>`}
+      ${can ? html`<label class="btn ghost small ct-file">Add a photo<input type="file" accept="image/*" multiple data-act="ctphoto" data-id="${x.id}"></label>` : ''}</div>
+    <div class="ct-body">
+      <label class="f ct-name">Name<input type="text" maxlength="80" value="${x.name}" ${ed('name')} ${ro}></label>
+      <div class="ct-qty"><label class="f ct-num">How many you have<input type="number" inputmode="numeric" min="0" max="9999" step="1" value="${x.qty}" ${ed('qty')} ${ro}></label>
+        <p class="ct-use ${over ? 'bad-text' : ''}" aria-live="polite"><strong>${x.in_use} / ${x.qty} in use</strong>, ${Math.max(0, x.free)} free${over ? ` (${x.in_use - x.qty} more in use than you have)` : ''}</p></div>
+      <div class="field-grid ct-grid">
+        <label class="f">Shape<select ${ed('shape')} ${dis}>${[['circle', 'Circle'], ['square', 'Square'], ['rectangle', 'Rectangle']].map(([k, l]) => html`<option value="${k}" ${x.shape === k ? raw('selected') : ''}>${l}</option>`)}</select></label>
+        ${x.shape === 'circle' ? num('dia_in', 'Across (in)') : x.shape === 'square' ? num('len_in', 'Side (in)') : html`${num('len_in', 'Length (in)')}${num('wid_in', 'Width (in)')}`}
+        ${x.kind === 'pot' ? num('height_in', 'Height (in)') : num('height_in', 'Depth (in)')}
+        <p class="f ct-sq"><span class="ct-l">Floor it covers</span> <strong>${x.sqft == null ? 'Add the sizes' : `${x.sqft} sq ft`}</strong></p>
+        ${x.kind === 'pot' ? html`<label class="f">Drainage holes<select ${ed('drainage')} ${dis}><option value="" ${x.drainage == null ? raw('selected') : ''}>Not noted</option><option value="1" ${x.drainage === true ? raw('selected') : ''}>Yes</option><option value="0" ${x.drainage === false ? raw('selected') : ''}>No</option></select></label>` : ''}
+        <label class="f">Material<select data-f="ctmat" data-id="${x.id}" ${dis}>${CT_MAT.map(m => html`<option ${m === x.material ? raw('selected') : ''}>${m}</option>`)}<option value="" ${!x.material ? raw('selected') : ''}>Not noted</option><option value="__other" ${other ? raw('selected') : ''}>Other (type it)</option></select></label>
+        <label class="f" ${other ? '' : raw('hidden')} data-other="${x.id}">Other material<input type="text" maxlength="60" value="${other ? x.material : ''}" ${ed('material')} ${ro}></label>
+      </div>
+      ${x.kind === 'pot' && x.drainage === false ? html`<p class="notice" role="note">No drainage holes: water collects at the bottom. Water less, or drill holes.</p>` : ''}
+      <p><strong>Used by:</strong> ${x.plants.length ? x.plants.map((pl, i) => html`${i ? ', ' : ''}<a href="#/plant/${enc(pl.code)}">${pl.code} ${pl.name}</a>`) : html`<span class="muted">no plants yet. Choose it on a plant's page (Names and place, ${x.kind === 'pot' ? 'Pot' : 'Catch tray'}).</span>`}</p>
+      ${edLong('cont', x.id, 'notes', 'Notes', x.notes, can)}
+      ${can ? html`<p class="row"><button class="btn small danger" type="button" data-act="ctdel" data-id="${x.id}" data-name="${x.name}">Remove ${x.name}</button></p>` : ''}
+    </div></article>`;
+}
+function ctRedraw(x) {
+  const old = document.getElementById('ct-' + x.id); if (!old) return;
+  const f = document.activeElement && old.contains(document.activeElement) ? document.activeElement.dataset.k : null;
+  const i = CT.items.findIndex(y => y.id === x.id); if (i >= 0) CT.items[i] = x;
+  const tmp = document.createElement('div'); tmp.innerHTML = rend(ctCard(x)); old.replaceWith(tmp.firstElementChild);
+  if (f) { const n = document.querySelector(`#ct-${x.id} [data-k="${f}"]`); if (n) n.focus(); }
+}
+
+// 1.29.0: edit in place. Fields marked data-ed save when you leave them (or press Enter); Escape puts back what was there; the
+// message that follows has Undo. Long text shows as text with an Edit button (edLong), so reading never changes anything.
+function edLong(kind, id, k, label, v, can) {
+  return html`<div class="ed-long" data-ed-long="${kind}:${id}:${k}"><p><strong>${label}:</strong> <span class="ed-text">${v || html`<span class="muted">none</span>`}</span>
+    ${can ? html` <button class="btn small ghost" type="button" data-act="edlong" aria-label="Edit ${label.toLowerCase()}">Edit</button>` : ''}</p>
+    <label class="f wide" hidden>${label}<textarea rows="3" maxlength="2000" data-ed="${kind}" data-id="${id}" data-k="${k}">${v || ''}</textarea><small>Saves when you leave the box. Escape puts back what was there.</small></label></div>`;
+}
+const edVal = el => el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value;
+const edLabel = el => { const l = el.closest('label'); return ((l && l.childNodes[0] && l.childNodes[0].textContent) || el.getAttribute('aria-label') || el.dataset.k).trim().replace(/\s*\(in\)$/, ''); };
+function edPut(el, v) { if (el.type === 'checkbox') el.checked = v === '1'; else el.value = v; }
+async function edSend(el, v) {
+  const kind = el.dataset.ed, id = el.dataset.id, k = el.dataset.k;
+  const val = el.type === 'checkbox' ? v === '1' : (el.type === 'number' && v !== '' ? +v : v);
+  if (kind === 'light') { await api('PUT', '/api/lights/' + id, { [k]: val }); return null; }
+  if (kind === 'cont') { const x = await api('PUT', '/api/containers/' + id, { [k]: val }); META = await api('GET', '/api/meta'); return () => ctRedraw(x); }
+  if (kind === 'area') { const r = await api('PUT', '/api/where/areas/' + id, { [k]: val }); if (META) META.where = r.homes; return null; }
+  if (kind === 'spot') { const r = await api('PUT', '/api/where/spots/' + id, { [k]: val }); if (META) META.where = r.homes; return null; }
+  if (kind === 'plant') {
+    const box = el.closest('[data-pver]'), was = el.dataset.was;
+    const r = await api('PUT', '/api/plants/' + enc(id), { base_version: +box.dataset.pver, base_values: { [k]: was }, fields: { [k]: v } });
+    box.dataset.pver = r.version; if (CUR && CUR.p && CUR.p.code === id) CUR.p = r;
+    if (r.conflicts) toast('Someone else changed this plant too. Their other changes are kept.');
+    if (['home_id', 'area_id', 'spot_id', 'pot_id', 'tray_id', 'winter_plan', 'health_rating', 'common_name', 'scientific_name', 'id_confidence'].includes(k)) {
+      META = await api('GET', '/api/meta');
+      return async () => { KEEP = PIDX; await route(); const n = document.querySelector(`[data-ed=plant][data-k="${k}"]`); if (n) n.focus({ preventScroll: true }); };
+    }
+    return null;
+  }
+  return null;
+}
+const edOrig = el => el.type === 'checkbox' ? (el.defaultChecked ? '1' : '0') : el.tagName === 'SELECT' ? ((([...el.options].find(o => o.defaultSelected) || el.options[0]) || {}).value || '') : el.defaultValue;
+async function edSave(el) {
+  if (el.dataset.busy) return;
+  if (el.dataset.was === undefined) el.dataset.was = edOrig(el);     // changed without being focused first (a pointer on a list)
+  const v = edVal(el), was = el.dataset.was;
+  if (was === undefined || v === was) return;
+  if (!(await needName())) { edPut(el, was); return; }
+  el.dataset.busy = '1';
+  try {
+    const after = await edSend(el, v);
+    el.dataset.was = v;
+    const label = edLabel(el), kind = el.dataset.ed, id = el.dataset.id, k = el.dataset.k;
+    careUndoToast(`Saved: ${label}`, async () => {
+      const cur = document.querySelector(`[data-ed="${kind}"][data-id="${CSS.escape(id)}"][data-k="${k}"]`) || el;
+      edPut(cur, was); cur.dataset.was = v; await edSave(cur);
+    });
+    const lg = el.closest('.ed-long'); if (lg) { lg.querySelector('.ed-text').textContent = v || 'none'; lg.querySelector('label').hidden = true; const b = lg.querySelector('[data-act=edlong]'); if (b) b.focus(); }
+    if (after) after();
+  } catch (e) { toast(e.message, true); edPut(el, was); }
+  finally { delete el.dataset.busy; }
+}
+document.addEventListener('focusin', e => { const el = e.target; if (el.dataset && el.dataset.ed && el.dataset.was === undefined) el.dataset.was = edVal(el); }, true);
+document.addEventListener('keydown', e => {
+  const el = e.target; if (!el.dataset || !el.dataset.ed) return;
+  if (e.key === 'Escape' && el.dataset.was !== undefined) { e.preventDefault(); e.stopPropagation(); edPut(el, el.dataset.was); toast('Put back as it was'); }
+  else if (e.key === 'Enter' && el.tagName !== 'TEXTAREA' && el.type !== 'checkbox') { e.preventDefault(); edSave(el); }
+}, true);
+document.addEventListener('change', e => { const el = e.target; if (el.dataset && el.dataset.ed) edSave(el); }, true);
+
+// 1.29.0: Settings: one page for the things that are not about plants
+function viewSettings() {
+  const me = ME(), owner = me.role === 'owner';
+  const card = (title, text, btn) => html`<section class="blk set-card"><h2>${title}</h2><p>${text}</p><div class="row">${btn}</div></section>`;
+  return { title: 'Settings', html: html`<h1>Settings</h1>
+    <p class="muted">Plant record version <strong>${META.version}</strong>${META.runs_as ? `, running as ${META.runs_as}` : ''}. The version number is also always beside the name at the top of the page.</p>
+    <div class="set-grid">
+    ${card('You and the people who use the app', owner ? 'Your name in the audit log, and who can view, edit or own the app.' : 'Your name in the audit log, and what you are allowed to do.', html`<button class="btn" type="button" data-act="who">${owner ? 'Open people and names' : 'Open your name'}</button>`)}
+    ${card('Display', 'Text size, colours, page layout, reading aloud, photos, touch and keyboard. Also on the Display button at the bottom of every page.', html`<button class="btn" type="button" data-act="display">Open Display settings</button>`)}
+    ${card('Offline use', 'Keep a copy of the plants on a phone or tablet, and see changes waiting to be sent.', html`<a class="btn" href="#/offline">Open Offline use</a>`)}
+    ${card('Backups', 'Copies of the database and photos, made by hand or on a schedule.', html`<a class="btn" href="#/backups">Open Backups</a>`)}
+    ${card('Audit log', 'Every change anyone has made, with filters and a download.', html`<a class="btn" href="#/history">Open the Audit log</a>`)}
+    ${card('Homes and places', 'Where plants live, and the places whose weather is tracked.', html`<a class="btn" href="#/weather?sec=places">Open Homes and places</a>`)}
+    ${card('Shops and keys', 'The shops checked for your wishlist, the eBay and Etsy keys, and the Pl@ntNet and Claude keys for Identify.', html`<a class="btn" href="#/wishlist">Shops (Wishlist page)</a><a class="btn ghost" href="#/identify">Keys (Identify page)</a>`)}
+    ${card('Debug', 'A live view of the audit log at the bottom of the screen, and other tools for checking the app.', html`<button class="btn" type="button" id="debug-btn" data-act="debug" aria-haspopup="dialog">Open Debug</button>`)}
+    </div>` };
+}
 async function whoDialog() {
   const me = ME(), ts = viaTS(), owner = me.role === 'owner';
   let P = null;
@@ -286,7 +443,7 @@ async function route() {
   if (parts[0] !== 'new') NEWFILL = null;
   if (parts[0] !== 'fungi' || parts[1] !== 'new') MUFILL = null;
   const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' || parts[0] === 'species' || parts[0] === 'wishlist' || parts[0] === 'around' ? 'library' : parts[0] === 'fungi' ? 'fungi' : parts[0] === 'offline' || parts[0] === 'decisions' ? 'offline' : parts[0] === 'today' ? 'today' : 'plants';
-  document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  navMark(parts[0] === 'weather' && qs.get('sec') === 'places' ? 'places' : parts[0] === 'pots' ? 'pots' : parts[0] === 'where' ? 'where' : parts[0] === 'settings' ? 'settings' : parts[0] === 'new' ? 'new' : parts[0] === 'wishlist' ? 'wishlist' : nav);
   pagesMenu(false);
   wlBadge();
   try {
@@ -295,9 +452,13 @@ async function route() {
     if (!META) { META = await api('GET', '/api/meta'); const v = document.getElementById('app-ver'); if (v && META.version) v.textContent = 'v' + META.version; paintPlace(); paintWho(); }
     if (parts[0] === 'plant' && parts[1] && parts[2] === 'edit') view = await viewEdit(decodeURIComponent(parts[1]));
     else if (parts[0] === 'plant' && parts[1]) view = await viewPlant(decodeURIComponent(parts[1]));
+    else if (parts[0] === 'new' && parts[1] === 'several') view = viewSeveral();
     else if (parts[0] === 'new') view = viewForm(null);
     else if (parts[0] === 'winter') view = await viewWinter();
-    else if (parts[0] === 'weather') view = await viewWeather();
+    else if (parts[0] === 'weather') view = await viewWeather(qs.get('sec'));
+    else if (parts[0] === 'settings') view = viewSettings();
+    else if (parts[0] === 'where') view = await viewWhere();
+    else if (parts[0] === 'pots') view = await viewPots();
     else if (parts[0] === 'today') view = await viewToday();
     else if (parts[0] === 'fertilizer') view = await viewFertilizer();
     else if (parts[0] === 'lights') view = await viewLights();
@@ -331,6 +492,7 @@ async function route() {
     if (ME().role === 'viewer') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice vw-note noprint" role="note"><strong>View only.</strong> You can look at everything here, but changes are turned off. Ask ${ME().owner_name} if you would like to edit.</p>`));
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
     if (view.after) view.after();
+    if (parts[0] === 'weather' && qs.get('sec') === 'places') setTimeout(() => { const t = document.getElementById('sec-places'); if (t) { scrollToSection(t); navFlash(t); } }, 300);   // 1.29.0: Homes and places
     buildSideNav(); navLayout(); addReadButtons(); setTimeout(() => { buildSideNav(); navLayout(); addReadButtons(); }, 1200);
     if (h !== lastPath) { window.scrollTo(0, 0); app.focus({ preventScroll: true }); NAVPIN = -1; navActive(); }
     lastPath = h;
@@ -347,6 +509,27 @@ let NAVSESSION = null;                // on narrow screens the menu starts folde
 function navOpen() { const P = window.PlantPrefs.get(), narrow = document.documentElement.dataset.narrow === '1'; return NAVSESSION != null ? NAVSESSION : (P.navopen === '1' && !narrow); }
 // 1.26.0: with large text on a computer, the page links fold behind the Pages button once they would take more than two rows (or
 // the top bar more than a fifth of the window), and a top bar still taller than a fifth of the window scrolls away with the page, as on phones, instead of staying pinned
+// 1.29.0: the top bar has six sections; the pages of the section you are in are on a second row (Ethan's choice, November 2026)
+const SECTIONS = [
+  ['today', 'Today', [['today', 'Today', '#/today']]],
+  ['plants', 'Plants', [['plants', 'All plants', '#/'], ['groups', 'Groups', '#/groups'], ['new', 'Add plants', '#/new'], ['fungi', 'Mushrooms', '#/fungi'], ['where', 'Rooms and spots', '#/where'], ['photos', 'Photos', '#/photos'], ['labels', 'Labels', '#/labels']]],
+  ['care', 'Care', [['winter', 'Winter plan', '#/winter'], ['fertilizer', 'Fertilizer', '#/fertilizer'], ['lights', 'Grow lights', '#/lights'], ['pots', 'Pots and trays', '#/pots']]],
+  ['weather', 'Weather', [['weather', 'Weather', '#/weather'], ['places', 'Homes and places', '#/weather?sec=places']]],
+  ['discover', 'Discover', [['identify', 'Identify', '#/identify'], ['library', 'Library', '#/library'], ['wishlist', 'Wishlist', '#/wishlist']]],
+  ['settings', 'Settings', [['settings', 'Settings', '#/settings'], ['offline', 'Offline use', '#/offline'], ['backups', 'Backups', '#/backups'], ['history', 'Audit log', '#/history']]],
+];
+const secOf = nav => (SECTIONS.find(x => x[2].some(p => p[0] === nav)) || SECTIONS[1]);
+function navMark(nav) {
+  const sec = secOf(nav);
+  document.querySelectorAll('#main-nav a[data-sec]').forEach(a => { if (a.dataset.sec === sec[0]) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  const sub = document.getElementById('sub-nav');
+  if (sub) {
+    sub.hidden = sec[2].length < 2;
+    sub.setAttribute('aria-label', `${sec[1]} pages`);
+    sub.innerHTML = rend(html`${sec[2].map(([k, label, href]) => html`<a href="${href}" data-nav="${k}" ${k === nav ? raw('aria-current="page"') : ''}>${label}</a>`)}`);
+  }
+  WLBADGE = 0;                                     // the wishlist count goes on the new links
+}
 function topFit() {
   const r = document.documentElement, nav = document.getElementById('main-nav'), top = document.querySelector('.top');
   if (!nav || !top) return;
@@ -468,13 +651,13 @@ window.addEventListener('keydown', e => { if (['PageUp', 'PageDown', 'Home', 'En
 window.addEventListener('scroll', navActive, { capture: true, passive: true });
 
 // ---------- gallery ----------
-const G = { q: '', plan: '', health: '', low: false, needs: false, sort: 'code', group: '', status: 'active', site: '',   // 1.16.2: status and site
+const G = { q: '', plan: '', health: '', low: false, needs: false, sort: 'code', group: '', status: 'active', site: '', home: '',   // 1.28.0: home   // 1.16.2: status and site
   light: '', pets: '', hardy: '', care: '', grow: '', leaf: '', pot: '', photo: '' };                                      // 1.17.0: more filters
 const MORE_KEYS = ['light', 'pets', 'hardy', 'care', 'grow', 'leaf', 'pot', 'photo'];     // the More filters (defined further down)
 // the Plants page filters are remembered in this browser and also decide where Previous / Next plant go on plant pages
-try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort', 'group', 'status', 'site', ...MORE_KEYS]) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ }
-function gSave() { try { localStorage.setItem('plantdb.filters', JSON.stringify({ q: G.q, plan: G.plan, health: G.health, low: G.low, needs: G.needs, sort: G.sort, group: G.group, status: G.status, site: G.site, ...Object.fromEntries(MORE_KEYS.map(k => [k, G[k]])) })); } catch (e) { /* not saved */ } }
-const gActive = () => !!(G.q.trim() || G.plan || G.health || G.low || G.needs || (G.group && groupById(G.group)) || G.status !== 'active' || G.site || moreOn());
+try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort', 'group', 'status', 'site', 'home', ...MORE_KEYS]) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ }
+function gSave() { try { localStorage.setItem('plantdb.filters', JSON.stringify({ q: G.q, plan: G.plan, health: G.health, low: G.low, needs: G.needs, sort: G.sort, group: G.group, status: G.status, site: G.site, home: G.home, ...Object.fromEntries(MORE_KEYS.map(k => [k, G[k]])) })); } catch (e) { /* not saved */ } }
+const gActive = () => !!(G.q.trim() || G.plan || G.health || G.low || G.needs || (G.group && groupById(G.group)) || G.status !== 'active' || G.site || (G.home && homeById(G.home)) || moreOn());
 const STATUS_WORD = { active: 'Active only', all: 'Active and archived', archived: 'Archived only' };
 const isArch = p => p.status === 'archived';
 const statusOk = p => G.status === 'all' || (G.status === 'archived' ? isArch(p) : !isArch(p));
@@ -485,7 +668,7 @@ const SORTS = { code: 'Code', health: 'Health, worst first', conf: 'ID confidenc
 function filteredPlants(list) {
   const q = G.q.trim().toLowerCase();
   let r = (list || ALL).filter(p =>
-    statusOk(p) && (!G.site || (p.site || 'Outdoors') === G.site) && moreOk(p) &&
+    statusOk(p) && (!G.site || (p.site || 'Outdoors') === G.site) && homeOk(p) && moreOk(p) &&
     (!G.plan || p.winter_plan === G.plan) && (!G.health || p.health_rating === G.health) &&
     (!G.low || (p.id_confidence != null && p.id_confidence < 70)) && (!G.needs || needsYou(p)) && inGroupFilter(p.code) &&
     (!q || [p.code, p.common_name, p.scientific_name, p.aliases, p.plant_type, p.location].join(' ').toLowerCase().includes(q)));
@@ -519,7 +702,7 @@ function sheet(p) {
     <div class="mat">${sheetMat(p)}</div>
     <h3 class="name"><a class="sheet-link" href="#/plant/${enc(p.code)}">${p.common_name}</a></h3>
     <p class="sci latin">${p.scientific_name || 'Scientific name not set'}</p>
-    <div class="tags">${isArch(p) ? html`<span class="tag tag-arch">Archived</span>` : ''}${planTag(p.winter_plan)}${healthTag(p.health_rating)}</div>
+    <div class="tags">${isArch(p) ? html`<span class="tag tag-arch">Archived</span>` : ''}${HOMES().length > 1 ? html`<span class="tag tag-homeat">⌂ ${plantHome(p).name}</span>` : ''}${planTag(p.winter_plan)}${healthTag(p.health_rating)}</div>
     ${needsYou(p) ? html`<p class="needs-badge">Needs from you: ${[p.requests_open ? `${p.requests_open} request${p.requests_open === 1 ? '' : 's'}` : '', p.id_confidence != null && p.id_confidence < 70 ? 'ID info' : ''].filter(Boolean).join(', ')}</p>` : ''}
     <div class="meter"><span>ID ${p.id_confidence == null ? 'not rated' : p.id_confidence + '%'}</span><i style="--v:${p.id_confidence || 0}%;--mc:${confColor(p.id_confidence)}"></i></div>
   </article>`;
@@ -561,6 +744,7 @@ document.addEventListener('touchend', e => {
 document.addEventListener('click', e => { if (Date.now() - GSW.used < 500 && e.target.closest && e.target.closest('#grid .sheet')) { e.preventDefault(); e.stopPropagation(); } }, true);
 function drawGrid() {
   gSave();
+  if (document.getElementById('idph-tbl')) { drawIdPhotos(); return; }      // 1.28.0: the photo table on the Identify page
   if (!document.getElementById('grid')) { drawPnav(); return; }
   const r = filteredPlants();
   const pool = ALL.filter(statusOk).length;
@@ -598,7 +782,7 @@ async function viewGallery() {
     <div class="filters">
       <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
       <label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
-      ${siteFilter()}${groupFilter()}${statusFilter()}
+      ${homeFilter()}${siteFilter()}${groupFilter()}${statusFilter()}
       <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
       <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70% (${lowN})</label>
     </div>
@@ -678,6 +862,16 @@ function moreFilters() {
 }
 function statusFilter() {
   return html`<label>Show<select data-f="status">${Object.entries(STATUS_WORD).map(([k, v]) => html`<option value="${k}" ${G.status === k ? raw('selected') : ''}>${v}</option>`)}</select></label>`;
+}
+// 1.28.0: homes. A plant's home_id is empty for the main home; other homes are places marked "Plants live here".
+const HOMES = () => (META && META.homes) || [];
+const homeById = id => HOMES().find(h => String(h.id) === String(id)) || null;
+const mainHome = () => HOMES().find(h => h.is_home) || HOMES()[0] || { id: '', name: 'Home' };
+const plantHome = p => (p && p.home_id && homeById(p.home_id)) || mainHome();
+const homeOk = p => !G.home || !homeById(G.home) || String(plantHome(p).id) === String(G.home);
+function homeFilter() {
+  if (HOMES().length < 2) return '';
+  return html`<label>Home<select data-f="home"><option value="">All homes</option>${HOMES().map(h => html`<option value="${h.id}" ${String(G.home) === String(h.id) ? raw('selected') : ''}>${h.name}</option>`)}</select></label>`;
 }
 function siteFilter() {
   return html`<label>Location<select data-f="site"><option value="">Any</option>${(META.sites || []).map(s => html`<option ${G.site === s ? raw('selected') : ''}>${s}</option>`)}</select></label>`;
@@ -1377,13 +1571,36 @@ function slips(h) {
     </article>`;
   });
 }
+// 1.29.0: the plant's main details, edited right on its page (the rest is under "Edit this page")
+function plantEdHtml(p) {
+  const ed = k => raw(`data-ed="plant" data-id="${esc(p.code)}" data-k="${k}"`);
+  const txt = (k, label, max) => html`<label class="f">${label}<input type="text" maxlength="${max || 200}" value="${p[k] || ''}" ${ed(k)}></label>`;
+  const all = WHERE().flatMap(h => h.areas), a = all.find(x => String(x.id) === String(p.area_id));
+  const hs = HOMES(), conts = k => ((META && META.containers) || []).filter(x => x.kind === k);
+  const sel = (k, label, opts, cur) => html`<label class="f">${label}<select ${ed(k)}>${opts.map(([v, l]) => html`<option value="${v}" ${String(v) === String(cur == null ? '' : cur) ? raw('selected') : ''}>${l}</option>`)}</select></label>`;
+  const areas = WHERE().map(h => [h, h.areas]).filter(([h]) => HOMES().length < 2 || String(plantHome(p).id) === String(h.home.id)).flatMap(([h, as]) => as.map(x => [x.id, `${x.side === 'out' ? 'Outside' : 'Inside'}: ${x.name}`]));
+  return html`<div class="field-grid pl-ed noprint" data-pver="${p.version}" data-section-skip>
+    ${txt('common_name', 'Common name', 120)}${txt('scientific_name', 'Scientific name', 200)}${txt('aliases', 'Other names / cultivar')}${txt('plant_type', 'Plant type', 120)}
+    ${hs.length > 1 ? sel('home_id', 'Home', hs.map(h => [h.is_home ? '' : h.id, h.name]), p.home_id || '') : ''}
+    ${sel('area_id', 'Area or room', areas, p.area_id)}
+    ${sel('spot_id', 'Spot', [['', 'No particular spot']].concat((a ? a.spots : []).map(x => [x.id, x.name])), p.spot_id || '')}
+    ${txt('location', 'More about where', 200)}${txt('container', 'Container', 200)}
+    ${sel('pot_id', 'Pot', [['', 'None chosen']].concat(conts('pot').map(x => [x.id, `${x.name} (${x.free} of ${x.qty} free)`])), p.pot_id || '')}
+    ${sel('tray_id', 'Catch tray', [['', 'None chosen']].concat(conts('tray').map(x => [x.id, `${x.name} (${x.free} of ${x.qty} free)`])), p.tray_id || '')}
+    <label class="f">ID confidence (%)<input type="number" inputmode="numeric" min="0" max="100" step="1" value="${p.id_confidence == null ? '' : p.id_confidence}" ${ed('id_confidence')}></label>
+    ${sel('winter_plan', 'Winter plan', (META.winter_plans || []).map(x => [x, x]), p.winter_plan)}
+    ${sel('health_rating', 'Health', (META.health || []).map(x => [x, x]), p.health_rating)}
+    <p class="hint wide">Change any of these by typing or choosing; each saves when you leave it. Everything else is under "Edit this page".</p></div>`;
+}
 async function viewPlant(code) {
   const [p, h, cur, st] = await Promise.all([api('GET', '/api/plants/' + enc(code)), api('GET', '/api/plants/' + enc(code) + '/history'), loadCond(), api('GET', '/api/settings').catch(() => ({}))]);
   CUR = { p, h, base: st.base_url || location.origin };
   PIDX = KEEP != null ? KEEP : Math.max(0, p.photos.findIndex(x => x.is_primary));
   KEEP = null;
   const archived = p.status === 'archived';
-  const dl = [['Also known as', p.aliases], ['Plant type', p.plant_type], ['Spot', p.location], ['Container', p.container]].filter(x => x[1]);
+  const pot = contById(p.pot_id), tray = contById(p.tray_id);
+  const dl = [['Also known as', p.aliases], ['Plant type', p.plant_type], ['Home', HOMES().length > 1 ? plantHome(p).name : ''], ['Where', whereWords(p)], ['More about where', p.location], ['Container', p.container],
+    ['Pot', pot ? html`<a href="#/pots">${pot.name}</a> (${pot.size})` : ''], ['Catch tray', tray ? html`<a href="#/pots">${tray.name}</a> (${tray.size})` : '']].filter(x => x[1]);
   const single = document.documentElement.dataset.layout === 'single';
   return {
     title: p.common_name,
@@ -1397,9 +1614,10 @@ async function viewPlant(code) {
         <div class="label" id="details" data-section="Name and details">
           <div class="l-top"><b>${p.code}</b><span>Page version ${p.version}</span><span>Updated ${timeEl(p.updated_at)} by ${p.updated_by}</span></div>
           <div class="l-body"><h1>${p.common_name}</h1><p class="sci latin">${p.scientific_name || 'Scientific name not set'}</p>
+            ${canChange() ? plantEdHtml(p) : ''}
             <dl><dt id="site-lbl">Location</dt><dd>${sitePicker(p)}</dd>
-              ${dl.map(x => html`<dt>${x[0]}</dt><dd>${x[1]}</dd>`)}
-              <dt>ID confidence</dt><dd>${p.id_confidence == null ? 'Not rated' : p.id_confidence + '%'}</dd>
+              ${canChange() ? '' : html`${dl.map(x => html`<dt>${x[0]}</dt><dd>${x[1]}</dd>`)}
+              <dt>ID confidence</dt><dd>${p.id_confidence == null ? 'Not rated' : p.id_confidence + '%'}</dd>`}
               <dt>Winter plan</dt><dd>${planTag(p.winter_plan)}</dd><dt>Health</dt><dd>${healthTag(p.health_rating)}</dd>
               <dt>Groups</dt><dd id="pl-groups">${groupsOf(p.code).length ? groupsOf(p.code).map((g, i) => html`${i ? ', ' : ''}<a href="#/group/${g.id}">${g.name}</a>`) : 'None yet'}
                 <button class="btn small ghost noprint" type="button" data-act="plgroups">Change groups</button></dd></dl>
@@ -1519,6 +1737,7 @@ function filterWords() {
   if (G.low) w.push('ID under 70%'); if (G.q.trim()) w.push('"' + G.q.trim() + '"');
   if (G.group && groupById(G.group)) w.push('group ' + groupById(G.group).name);
   if (G.site) w.push(G.site.toLowerCase());
+  if (G.home && homeById(G.home)) w.push('at ' + homeById(G.home).name);
   if (G.status !== 'active') w.push(G.status === 'all' ? 'archived included' : 'archived only');
   for (const d of MORE) if (G[d.key]) { const o = moreOpts(d).find(x => x[0] === G[d.key]); if (o) w.push(o[1].toLowerCase()); }
   return (w.length ? w.join(', ') : 'all plants') + '; sorted by ' + (SORTS[G.sort] || 'code').toLowerCase();
@@ -1532,7 +1751,7 @@ function pnavBlock(code) {
         <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
         <label>Winter plan<select data-f="pnplan"><option value="">Any</option>${META.winter_plans.map(pl => html`<option ${G.plan === pl ? raw('selected') : ''}>${pl}</option>`)}</select></label>
         <label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
-        ${siteFilter()}${groupFilter()}${statusFilter()}${moreSelects()}
+        ${homeFilter()}${siteFilter()}${groupFilter()}${statusFilter()}${moreSelects()}
         <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
         <label class="chk"><input type="checkbox" data-f="pnneeds" ${G.needs ? raw('checked') : ''}>Needs something from you</label>
         <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70%</label>
@@ -1658,15 +1877,16 @@ function careUndoClose() {
 }
 function careUndoToast(msg, ids, code) {
   careUndoClose();
-  if (!Array.isArray(ids) || !ids.length) { toast(msg); return; }
-  const n = ids.length, el = document.createElement('div');
+  const fn = typeof ids === 'function' ? ids : null;            // 1.29.0: an edit in place: Undo calls fn
+  if (!fn && (!Array.isArray(ids) || !ids.length)) { toast(msg); return; }
+  const n = fn ? 1 : ids.length, el = document.createElement('div');
   el.className = 'toast undo-toast'; el.setAttribute('role', 'group'); el.setAttribute('aria-label', 'Care saved');
   el.innerHTML = rend(html`<span class="undo-msg" id="undo-msg">${msg}.</span>
     <span class="undo-acts"><button class="btn small" type="button" data-undo="undo" aria-describedby="undo-msg">Undo</button>
     <button class="btn small ghost" type="button" data-undo="close" aria-label="Close this message">Close</button></span>
     <span class="undo-left" aria-hidden="true"></span>`);
   document.getElementById('toasts').appendChild(el);
-  UNDO = { el, ids: ids.slice(), code, left: UNDO_SECS, paused: 0, timer: 0 };
+  UNDO = { el, ids: fn ? [] : ids.slice(), fn, code, left: UNDO_SECS, paused: 0, timer: 0 };
   const left = el.querySelector('.undo-left'), keys = window.PlantPrefs.get().keys === '1' && matchMedia('(any-pointer: fine)').matches;     // no key hint on a phone
   const paint = () => { left.textContent = (n > 1 ? `Undo removes all ${n} entries. ` : '') + `Closes in ${UNDO.left} s${keys ? ' (U undoes it)' : ''}.`; };
   paint();
@@ -1681,6 +1901,7 @@ function careUndoToast(msg, ids, code) {
 }
 async function careUndo() {
   if (!UNDO) return;
+  if (UNDO.fn) { const f = UNDO.fn; careUndoClose(); await f(); return; }
   const { ids, code } = UNDO, btn = UNDO.el.querySelector('[data-undo=undo]');
   if (btn) btn.disabled = true;
   if (!(await needName())) { if (btn) btn.disabled = false; return; }
@@ -2444,7 +2665,7 @@ const HMAP_RANGE = { temp: ['temp_ideal_low', 'temp_ideal_high'], humidity: ['hu
 
 // ---------- edit and create ----------
 const GROUPS = [
-  ['Names and place', ['common_name', 'scientific_name', 'aliases', 'plant_type', 'site', 'location', 'container']],
+  ['Names and place', ['common_name', 'scientific_name', 'aliases', 'plant_type', 'home_id', 'area_id', 'spot_id', 'location', 'container', 'pot_id', 'tray_id']],
   ['Identification', ['id_confidence', 'id_basis', 'id_alternatives', 'id_improve']],
   ['About this plant', ['growth_habit', 'kingdom', 'taxon_order', 'family', 'genus', 'height_ground', 'width_ground', 'height_pot', 'width_pot', 'growth_rate', 'lifespan',
     'zone_low', 'zone_high', 'zone_notes', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'pet_safety', 'propagation', 'sources']],
@@ -2471,6 +2692,7 @@ const HINTS = {
   npk_ratio: 'Three numbers for nitrogen, phosphate and potash, such as 3-1-2. The Fertilizer page finds your closest fertilizer.',
   fert_strength: 'How strong to mix it. The Fertilizer page works out the amount per gallon from this.',
   pet_safety: 'Used by the Pets filter on the Plants page. "Safe for pets" only where the ASPCA lists the plant as non-toxic.',
+  home_id: 'Where the plant lives. Weather, frost warnings and watering for a home only list its own plants.',
   zone_low: 'USDA zone, such as 9b or 10. The page compares it with the zone where you are.', zone_high: 'USDA zone, such as 11.',
   height_ground: 'For example 6 to 10 ft.', height_pot: 'For example 3 to 5 ft.', propagation: 'One method per line.',
   sources: 'One per line: a title, a | and the web address, for example "NC State Extension: Aloe vera | https://...".',
@@ -2485,6 +2707,17 @@ function fieldInput(f, val) {
   if (f.kind === 'long' || f.kind === 'list') inp = html`<textarea name="${f.name}" rows="${f.kind === 'list' ? 5 : 4}">${v}</textarea>`;
   else if (f.kind === 'int') { const mm = rangeOf(f.name); inp = html`<input type="number" inputmode="numeric" step="1" min="${mm[0]}" max="${mm[1]}" name="${f.name}" value="${v}">`; }
   else if (f.kind === 'num') { const mm = rangeOf(f.name); inp = html`<input type="number" inputmode="decimal" step="any" min="${mm[0]}" max="${mm[1]}" name="${f.name}" value="${v}">`; }
+  else if (f.kind === 'area') return whereInputs(v, FORMP);          // 1.29.0: inside or outside, area or room, spot (all three)
+  else if (f.kind === 'spot') return '';
+  else if (f.kind === 'pot' || f.kind === 'tray') {                   // 1.29.0: one of your pots or trays
+    const items = ((META && META.containers) || []).filter(x => x.kind === f.kind);
+    inp = html`<select name="${f.name}"><option value="">None chosen</option>${items.map(x => html`<option value="${x.id}" ${String(v) === String(x.id) ? raw('selected') : ''}>${x.name} (${x.size}; ${x.free} of ${x.qty} free)</option>`)}</select>`;
+    return html`<label class="f">${f.label}<small>${items.length ? 'From Pots and trays (Care).' : html`Add yours on <a href="#/pots">Pots and trays</a> first.`}</small>${inp}</label>`;
+  }
+  else if (f.kind === 'home') {       // 1.28.0
+    const hs = HOMES(); if (hs.length < 2 && !v) return '';
+    inp = html`<select name="${f.name}" data-f="wherehome">${hs.map(h => html`<option value="${h.is_home ? '' : h.id}" ${(h.is_home ? !v : String(v) === String(h.id)) ? raw('selected') : ''}>${h.name}${h.is_home ? ' (main home)' : ''}</option>`)}</select>`;
+  }
   else if (f.kind === 'enum') {
     const opts = (META.enums && META.enums[f.name]) || (f.name === 'winter_plan' ? META.winter_plans : f.name === 'site' ? (META.sites || ['Outdoors', 'Indoors']) : META.health);
     const optional = (META.optional_enums || []).includes(f.name);
@@ -2494,13 +2727,46 @@ function fieldInput(f, val) {
   else inp = html`<input type="text" name="${f.name}" value="${v}" ${f.name === 'common_name' ? raw('required') : ''}>`;
   return html`<label class="f ${wide}">${f.label}${hint ? html`<small>${hint}</small>` : ''}${inp}</label>`;
 }
+let FORMP = null;                    // the plant the form is for (null: a new one), for whereInputs()
+const WHERE = () => (META && META.where) || [];
+const whereHome = hid => WHERE().find(h => hid ? String(h.home.id) === String(hid) && !h.home.is_home : h.home.is_home) || WHERE()[0] || { areas: [] };
+function whereAreaOpts(hid, side, cur) {
+  const A = whereHome(hid).areas.filter(a => a.side === side);
+  return html`${A.map(a => html`<option value="${a.id}" ${String(a.id) === String(cur) ? raw('selected') : ''}>${a.name}${a.sheltered ? (side === 'out' ? ' (roof overhead)' : '') : (side === 'in' ? ' (not heated)' : '')}</option>`)}`;
+}
+function whereSpotOpts(aid, cur) {
+  const a = WHERE().flatMap(h => h.areas).find(x => String(x.id) === String(aid));
+  return html`<option value="">No particular spot</option>${(a ? a.spots : []).map(sp => html`<option value="${sp.id}" ${String(sp.id) === String(cur) ? raw('selected') : ''}>${sp.name}</option>`)}`;
+}
+function whereInputs(aid, p) {
+  const all = WHERE().flatMap(h => h.areas), a = all.find(x => String(x.id) === String(aid)) || null;
+  const hid = p ? p.home_id : (NEWFILL && NEWFILL.home_id) || '', side = a ? a.side : ((p && ['Indoors', 'Garage or shed'].includes(p.site)) ? 'in' : 'out');
+  return html`<fieldset class="f wide where-f"><legend>Where it is</legend>
+    <div class="opts" role="radiogroup" aria-label="Inside or outside">${[['out', 'Outside'], ['in', 'Inside']].map(([k, l]) => html`<label class="chk"><input type="radio" name="__side" value="${k}" data-f="whereside" ${k === side ? raw('checked') : ''}>${l}</label>`)}</div>
+    <label class="f">Area or room<small>Change the list on <a href="#/where">Rooms and spots</a>.</small><select name="area_id" data-f="wherearea">${whereAreaOpts(hid, side, aid)}</select></label>
+    <label class="f">Spot<select name="spot_id">${whereSpotOpts(a ? a.id : (whereHome(hid).areas.find(x => x.side === side) || {}).id, p ? p.spot_id : '')}</select></label></fieldset>`;
+}
+function whereRefresh(form, what) {
+  const hid = form.elements.home_id ? form.elements.home_id.value : '', side = (form.querySelector('[name=__side]:checked') || {}).value || 'out';
+  const as = form.elements.area_id, ss = form.elements.spot_id; if (!as) return;
+  if (what !== 'area') as.innerHTML = rend(whereAreaOpts(hid, side, as.value));
+  if (ss) ss.innerHTML = rend(whereSpotOpts(as.value, ss.value));
+}
+function whereWords(p) {               // "Outside, Yard, Black bench"
+  const a = WHERE().flatMap(h => h.areas).find(x => String(x.id) === String(p.area_id)); if (!a) return '';
+  const sp = a.spots.find(x => String(x.id) === String(p.spot_id));
+  return `${a.side === 'out' ? 'Outside' : 'Inside'}, ${a.name}${sp ? ', ' + sp.name : ''}`;
+}
+const contById = id => ((META && META.containers) || []).find(x => String(x.id) === String(id));
 function viewForm(p) {
+  FORMP = p;
   const F = Object.fromEntries(META.fields.map(f => [f.name, f]));
   const isNew = !p;
   return {
     title: isNew ? 'Add a plant' : 'Edit ' + p.common_name,
     html: html`<p class="crumb"><a href="${isNew ? '#/' : '#/plant/' + enc(p.code)}">${isNew ? 'All plants' : 'Back to ' + p.common_name}</a></p>
     <h1>${isNew ? 'Add a plant' : 'Edit ' + p.code}</h1>
+    ${isNew ? addModeRow('one') : ''}
     <p class="muted">${isNew ? 'Only the common name is required. You can add photos after saving.' : 'Saving makes version ' + (p.version + 1) + '. The old text stays in the page history.'}</p>
     <form data-form="${isNew ? 'new' : 'edit'}" ${p ? raw('data-code="' + esc(p.code) + '" data-ver="' + p.version + '"') : ''} autocomplete="off">
       ${isNew && NEWFILL ? html`<p class="notice ok" role="note">${NEWFILL.__from}: the names are filled in${NEWFILL.__pic ? ', and the picture is added when you save' : ''}. Check them before saving.</p>` : ''}
@@ -2512,11 +2778,129 @@ function viewForm(p) {
     </form>`,
   };
 }
+// 1.28.0: add several plants at once from photos: each photo is checked, photos of one plant are grouped, the fields are filled
+// in from the likeliest species, and nothing is added until you have checked them on the review screen.
+function addModeRow(cur) {
+  return html`<nav class="row add-mode" aria-label="How many plants">
+    <a class="btn ${cur === 'one' ? '' : 'ghost'}" href="#/new" ${cur === 'one' ? raw('aria-current="page"') : ''}>One plant</a>
+    <a class="btn ${cur === 'several' ? '' : 'ghost'}" href="#/new/several" ${cur === 'several' ? raw('aria-current="page"') : ''}>Several plants from photos</a></nav>`;
+}
+const SEV = { step: 'pick', photos: [], plants: [], gap: 3, home: '', site: 'Outdoors', busy: false, done: null };
+const SEV_FIELDS = [['common_name', 'Common name', 'text'], ['scientific_name', 'Scientific name', 'text'], ['plant_type', 'Plant type', 'text'],
+  ['family', 'Family', 'text'], ['genus', 'Genus', 'text'], ['pet_safety', 'Safety for pets', 'pets'], ['id_confidence', 'ID confidence (%)', 'int'],
+  ['location', 'Spot (where exactly)', 'text'], ['notes', 'Notes', 'long']];
+function sevDefaultHome() { const cur = META.place, h = HOMES().find(x => String(x.id) === String(cur && cur.id)); return h && !h.is_home ? String(h.id) : ''; }
+function viewSeveral() {
+  if (SEV.step === 'pick' && !SEV.photos.length) { SEV.home = sevDefaultHome(); }
+  return { title: 'Add several plants', html: html`<p class="crumb"><a href="#/">All plants</a></p><h1>Add a plant</h1>${addModeRow('several')}
+    <div id="sev">${sevHtml()}</div>` };
+}
+function sevHtml() {
+  if (SEV.done) return html`<div class="notice ok" role="status"><strong>${SEV.done.length} plant${SEV.done.length === 1 ? '' : 's'} added:</strong>
+    <ul>${SEV.done.map(c => html`<li><a href="#/plant/${enc(c)}">${c} ${(ALL.find(p => p.code === c) || {}).common_name || ''}</a></li>`)}</ul>
+    <p>Each one has a page of its own now. The care details (temperature, water, light and so on) are still empty: fill them in on each page, or ask Claude with "Copy my answers for Claude".</p></div>
+    <p class="row"><button class="btn" type="button" data-act="sevreset">Add more plants</button><a class="btn ghost" href="#/">Go to the Plants page</a></p>`;
+  const homes = HOMES();
+  const homeSel = homes.length > 1 ? html`<label class="f">Home<small>Where these plants live.</small><select data-f="sevset" data-k="home">${homes.map(h => html`<option value="${h.is_home ? '' : h.id}" ${(h.is_home ? !SEV.home : String(SEV.home) === String(h.id)) ? raw('selected') : ''}>${h.name}</option>`)}</select></label>` : '';
+  const siteSel = html`<label class="f">Location<select data-f="sevset" data-k="site">${(META.sites || ['Outdoors', 'Indoors']).map(x => html`<option ${x === SEV.site ? raw('selected') : ''}>${x}</option>`)}</select></label>`;
+  if (SEV.step !== 'review') return html`<p>Choose photos of several plants at once, from this device or your phone. Each photo is checked by the picture checker on this computer. Photos of the same plant are put together, and each plant's names and details are filled in from what it looks like. You check everything before anything is added.</p>
+    <form data-form="sevgo" class="sev-pick">
+      <div class="field-grid">${homeSel}${siteSel}
+        <label class="f">Photos taken this close together belong to one plant<small>Minutes. Photos of one plant are usually taken one after another. You can move any photo to another plant on the next screen.</small>
+          <input type="number" min="0" max="60" step="1" name="gap" value="${SEV.gap}" inputmode="numeric"></label>
+        <label class="f wide">Photos<small>Choose as many as you like (JPG or PNG). A photo of the plant's label or tag helps.</small><input type="file" name="files" accept="image/*" multiple required></label></div>
+      <div class="row"><button class="btn" type="submit" ${SEV.busy ? raw('disabled') : ''}>Check these photos</button></div>
+      <p id="sev-prog" role="status" aria-live="polite" class="muted"></p></form>`;
+  const N = SEV.plants.length, keep = SEV.plants.filter(p => p.add).length;
+  return html`<p>${SEV.photos.length} photo${SEV.photos.length === 1 ? '' : 's'}, put together as ${N} plant${N === 1 ? '' : 's'}. Check each one: pick the right name, fix anything that is wrong, and move any photo that is in the wrong plant. Plants are only added when you press <strong>Add ${keep} plant${keep === 1 ? '' : 's'}</strong>.</p>
+    <div class="field-grid sev-all">${homeSel}${siteSel}</div>
+    ${SEV.plants.map((P, gi) => sevPlantHtml(P, gi, N))}
+    <div class="sticky-save"><button class="btn" type="button" data-act="sevsave" ${keep && !SEV.busy ? '' : raw('disabled')}>Add ${keep} plant${keep === 1 ? '' : 's'}</button>
+      <button class="btn ghost" type="button" data-act="sevreset">Start again</button><span id="sev-err" role="alert"></span></div>`;
+}
+function sevPlantHtml(P, gi, N) {
+  const pics = SEV.photos.map((ph, i) => [ph, i]).filter(([ph]) => ph.group === gi);
+  const f = P.fields, sp = P.species || [];
+  const moveOpts = i => html`${Array.from({ length: N }, (_, k) => html`<option value="${k}" ${k === gi ? raw('selected') : ''}>Plant ${k + 1}</option>`)}<option value="new">A new plant of its own</option><option value="out">Leave this photo out</option>`;
+  return html`<fieldset class="sev-plant ${P.add ? '' : 'sev-off'}" id="sev-p${gi}" data-section="Plant ${gi + 1}${f.common_name ? ': ' + f.common_name : ''}"><legend>Plant ${gi + 1} of ${N}${f.common_name ? `: ${f.common_name}` : ''}</legend>
+    <label class="chk"><input type="checkbox" data-f="sevadd" data-g="${gi}" ${P.add ? raw('checked') : ''}>Add this plant</label>
+    ${(P.matches || []).length ? html`<p class="notice" role="note"><strong>This may be a plant you already have:</strong> ${P.matches.map((m, k) => html`${k ? ', ' : ''}<a href="#/plant/${enc(m.code)}" target="_blank" rel="noopener">${m.code} ${m.common_name}</a> (${Math.round(m.confidence * 100)}% sure)`)}. If it is, untick "Add this plant" and add the photos on that plant's page instead.</p>` : ''}
+    <ul class="sev-pics">${pics.map(([ph, i]) => html`<li><img src="${ph.url}" alt="Photo ${i + 1}${ph.name ? ', ' + ph.name : ''}">
+      <span class="hint">${ph.taken ? new Date(ph.taken).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'No date in the photo'}${ph.error ? html`<br><span class="bad-text">${ph.error}</span>` : ''}</span>
+      <label class="f">Belongs to<select data-f="sevmove" data-p="${i}">${moveOpts(i)}</select></label></li>`)}</ul>
+    ${sp.length ? html`<fieldset class="sev-names"><legend>What the picture checker thinks it is</legend>${sp.map((x, k) => html`<label class="chk"><input type="radio" name="sevsp${gi}" data-f="sevpick" data-g="${gi}" value="${k}" ${P.pick === k ? raw('checked') : ''}>
+        <span><strong>${x.common_name || x.scientific_name}</strong> <i>${x.common_name ? x.scientific_name : ''}</i>: ${Math.round((x.probability || 0) * 100)}% likely</span></label>`)}
+      <label class="chk"><input type="radio" name="sevsp${gi}" data-f="sevpick" data-g="${gi}" value="-1" ${P.pick === -1 ? raw('checked') : ''}><span>None of these: I will type the names</span></label></fieldset>`
+      : html`<p class="muted">The picture checker had no suggestion for this plant. Type its names below.</p>`}
+    <div class="field-grid">${SEV_FIELDS.map(([k, label, kind]) => {
+      const v = f[k] == null ? '' : f[k], at = raw(`data-f="sevfield" data-g="${gi}" data-k="${k}"`);
+      if (kind === 'pets') return html`<label class="f">${label}<select ${at}><option value="">Not set</option>${(META.enums.pet_safety || []).map(o => html`<option ${o === v ? raw('selected') : ''}>${o}</option>`)}</select></label>`;
+      if (kind === 'long') return html`<label class="f wide">${label}<textarea rows="2" ${at}>${v}</textarea></label>`;
+      return html`<label class="f">${label}${k === 'common_name' ? html`<small>Required.</small>` : ''}<input type="${kind === 'int' ? 'number' : 'text'}" ${kind === 'int' ? raw('min="0" max="100" inputmode="numeric"') : ''} value="${v}" ${at}></label>`; })}</div>
+  </fieldset>`;
+}
+function sevFill(P) {          // the fields from the chosen species; anything you typed yourself stays
+  const x = P.pick >= 0 ? (P.species || [])[P.pick] : null, f = P.fields, mine = P.typed;
+  const want = x ? { common_name: x.common_name || x.scientific_name, scientific_name: x.scientific_name, family: x.family || '', genus: x.genus || '',
+    plant_type: LIB_KIND_SHORT[x.kind] || '', pet_safety: x.pets || '', id_confidence: Math.round((x.probability || 0) * 100) } : { id_confidence: '' };
+  for (const [k, v] of Object.entries(want)) if (!mine.has(k)) f[k] = v;
+}
+function sevGroup() {          // photos taken close together, and that look like the same species, are one plant
+  const order = SEV.photos.map((p, i) => i).filter(i => SEV.photos[i].group !== 'out').sort((a, b) => (SEV.photos[a].taken || '').localeCompare(SEV.photos[b].taken || '') || a - b);
+  let g = -1, prev = null;
+  for (const i of order) {
+    const p = SEV.photos[i], top = (p.species || [])[0];
+    const gap = prev && p.taken && prev.taken ? (new Date(p.taken) - new Date(prev.taken)) / 60000 : Infinity;
+    const ptop = prev && (prev.species || [])[0];
+    const differ = top && ptop && top.probability >= .5 && ptop.probability >= .5 && top.scientific_name !== ptop.scientific_name;
+    if (!prev || !(gap <= SEV.gap) || differ) g++;
+    p.group = g; prev = p;
+  }
+  sevPlants(g + 1);
+}
+function sevPlants(n) {        // one entry per group, with the species of its photos added together
+  const old = SEV.plants; SEV.plants = [];
+  for (let gi = 0; gi < n; gi++) {
+    const pics = SEV.photos.filter(p => p.group === gi), tot = {};
+    pics.forEach(p => (p.species || []).forEach(x => { const t = tot[x.scientific_name] || (tot[x.scientific_name] = { ...x, probability: 0 }); t.probability += (x.probability || 0) / pics.length; }));
+    const species = Object.values(tot).sort((a, b) => b.probability - a.probability).slice(0, 3);
+    const matches = []; pics.forEach(p => (p.matches || []).forEach(m => { if (!matches.some(x => x.code === m.code)) matches.push(m); }));
+    const was = old[gi] && old[gi].key === pics.map(p => p.file).join('|') ? old[gi] : null;
+    const P = was || { add: true, pick: species.length ? 0 : -1, fields: {}, typed: new Set() };
+    P.key = pics.map(p => p.file).join('|'); P.species = species; P.matches = matches;
+    if (!was) { if (matches.length && matches[0].confidence >= .8) P.add = false; sevFill(P); }
+    SEV.plants.push(P);
+  }
+  SEV.plants = SEV.plants.filter((P, gi) => SEV.photos.some(p => p.group === gi) || true);
+}
+function sevDraw(focusSel) {
+  const box = document.getElementById('sev'); if (!box) return;
+  box.innerHTML = rend(sevHtml()); buildSideNav();
+  if (focusSel) { const el = box.querySelector(focusSel); if (el) el.focus(); }
+}
+async function sevGo(form) {
+  if (!(await needName())) return;
+  const files = [...form.elements.files.files]; if (!files.length) { toast('Choose some photos first.', true); return; }
+  SEV.gap = Math.max(0, Math.min(60, +form.elements.gap.value || 0)); SEV.busy = true; SEV.photos = [];
+  form.querySelector('button[type=submit]').disabled = true;
+  const prog = document.getElementById('sev-prog');
+  for (let i = 0; i < files.length; i++) {
+    if (prog) prog.textContent = `Checking photo ${i + 1} of ${files.length}…`;
+    const fd = new FormData(); fd.append('image', files[i], files[i].name);
+    try { const r = await api('POST', '/api/plants/several/photo?scope=' + enc(idScope()), null, fd); SEV.photos.push({ ...r, url: URL.createObjectURL(files[i]) }); }
+    catch (e) { toast(`${files[i].name}: ${e.message}`, true); }
+  }
+  SEV.busy = false;
+  if (!SEV.photos.length) { sevDraw(); return; }
+  sevGroup(); SEV.step = 'review'; sevDraw('#sev-p0 legend') ;
+  const lg = document.querySelector('#sev-p0'); if (lg) lg.scrollIntoView({ block: 'start' });
+  toast(`${SEV.photos.length} photos checked: ${SEV.plants.length} plant${SEV.plants.length === 1 ? '' : 's'}. Check them before adding.`);
+}
 async function viewEdit(code) { return viewForm(await api('GET', '/api/plants/' + enc(code))); }
 async function submitForm(form) {
   if (!(await needName())) return;
   const fd = new FormData(form), fields = {};
-  META.fields.forEach(f => { fields[f.name] = fd.get(f.name); });
+  META.fields.forEach(f => { const v = fd.get(f.name); if (v !== null) fields[f.name] = v; });   // 1.29.0: a field not on the form (Location now follows the area) is left out
   const err = document.getElementById('form-err'); err.innerHTML = '';
   const btn = form.querySelector('[type=submit]'); btn.disabled = true;
   try {
@@ -2688,7 +3072,7 @@ function forecastBlock(W, plants) {
 }
 
 // ---------- weather page ----------
-async function viewWeather() {
+async function viewWeather(sec) {
   let W;
   try { W = await api('GET', '/api/weather?x=1' + locQS()); }
   catch (e) { if (e.status === 404) { savePlace(null); W = await api('GET', '/api/weather'); } else throw e; }
@@ -2965,15 +3349,17 @@ async function loadWxCharts() {
 function placesBlock(W) {
   const P = W.places || [];
   return html`<p>Track the weather for as many places as you like. Each place keeps its own hourly readings, daily summaries, forecast and update log. The <strong>Location</strong> button at the top of every page chooses the place this browser uses for weather, frost warnings, watering and the Winter plan. The home place is the one a browser starts with, and the one hourly updates and backups use.</p>
-    <div class="tbl-wrap"><table class="tbl"><caption class="sr">Places with tracked weather</caption><thead><tr><th scope="col">Place</th><th scope="col">Where</th><th scope="col">Stored</th><th scope="col">Last update</th><th scope="col">Hourly updates</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
-    ${P.map(p => html`<tr><th scope="row">${p.name}${p.is_home ? html`<div><strong class="tag-home">Home</strong></div>` : ''}${String(p.id) === String(W.location.id) ? html`<div class="hint">In use in this browser</div>` : ''}</th>
+    <div class="tbl-wrap"><table class="tbl"><caption class="sr">Places with tracked weather</caption><thead><tr><th scope="col">Place</th><th scope="col">Where</th><th scope="col">Stored</th><th scope="col">Last update</th><th scope="col">Hourly updates</th><th scope="col">Plants</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
+    ${P.map(p => html`<tr><th scope="row">${p.name}${p.is_home ? html`<div><strong class="tag-home">Main home</strong></div>` : p.plants_here ? html`<div><strong class="tag-home">Home</strong></div>` : ''}${String(p.id) === String(W.location.id) ? html`<div class="hint">In use in this browser</div>` : ''}</th>
       <td>${p.lat}, ${p.lon}<div class="hint">${p.tz}</div></td>
       <td>${p.count ? `${num(p.count)} hourly readings from ${dayLong((p.first || '').slice(0, 10))}` : 'Nothing yet'}${p.daily_count ? html`<div class="hint">${num(p.daily_count)} daily summaries</div>` : ''}</td>
       <td>${p.last_update ? html`${when(p.last_update)}${p.last_ok === false ? html`<div class="bad-text"><strong>Failed:</strong> ${p.last_error}</div>` : ''}` : 'Not yet'}</td>
       <td>${p.enabled ? 'On' : 'Off'}</td>
+      <td>${p.plants_here ? `Plants live here: ${num(p.plant_count || 0)}` : 'No plants (weather only)'}</td>
       <td><div class="row" style="gap:.4rem">
         ${String(p.id) === String(W.location.id) ? '' : html`<button class="btn small" type="button" data-act="placeshow" data-id="${p.id}">Use this place</button>`}
-        ${p.is_home ? '' : html`<button class="btn small ghost" type="button" data-act="placehome" data-id="${p.id}">Make home</button>`}
+        ${p.is_home ? '' : html`<button class="btn small ghost" type="button" data-act="placehome" data-id="${p.id}">Make main home</button>`}
+        ${p.is_home ? '' : html`<button class="btn small ghost" type="button" data-act="placeplants" data-id="${p.id}" data-on="${p.plants_here ? '0' : '1'}">${p.plants_here ? 'No plants live here' : 'Plants live here'}</button>`}
         <button class="btn small ghost" type="button" data-act="placeonoff" data-id="${p.id}" data-on="${p.enabled ? '0' : '1'}">${p.enabled ? 'Stop hourly updates' : 'Start hourly updates'}</button>
         ${p.is_home ? '' : html`<button class="btn small danger" type="button" data-act="placedel" data-id="${p.id}">Remove</button>`}</div></td></tr>`)}</tbody></table></div>
     <h3>Add a place</h3>
@@ -3433,12 +3819,15 @@ function displayDialog() {
   G.photofit = group('photofit', 'Photos on the Plants page', [['auto', 'Show wide photos whole, fill the card with tall ones'], ['fill', 'Fill the card (wide photos lose their sides)'], ['whole', 'Always show the whole photo']], 'A wide photo cut down to fit a tall card loses its sides. Shown whole, it has a plain band above and below.');
   G.swipe = group('swipe', 'Swipe between plants', [['1', 'On'], ['0', 'Off']], 'On a phone or tablet, swipe left on a plant page for the next plant, or right for the previous one. Start away from the edges of the screen, which your phone uses for Back.');
   G.keys = group('keys', 'Keyboard shortcuts', [['1', 'On'], ['0', 'Off']], 'R reads the page aloud, [ and ] go to the previous and next plant, ? lists them all.');
-  const SECS = [['Text and colours', html`${G.size}${G.space}${G.contrast}${G.theme}`], ['Page layout', html`${G.width}${G.lines}${G.layout}${G.navside}${G.navopen}`],
-    ['Reading aloud', speak], ['Photos and touch', html`${G.photofit}${G.swipe}`], ['Keyboard', G.keys]];
+  const SH = window.PlantSync ? window.PlantSync.shared() : {};
+  const share = part => html`<fieldset class="opt-group dv-share"><legend>Where these apply</legend><label class="chk"><input type="checkbox" data-dvshare="${part}" ${SH[part] ? raw('checked') : ''}>Use these on every device I sign in on</label>
+    <p class="hint">Off (the usual): only this device. On: any phone, tablet or computer where you sign in and tick this too gets them.</p></fieldset>`;
+  const SECS = [['Text and colours', html`${G.size}${G.space}${G.contrast}${G.theme}${share('text')}`], ['Page layout', html`${G.width}${G.lines}${G.layout}${G.navside}${G.navopen}${share('layout')}`],
+    ['Reading aloud', html`${speak}${share('read')}`], ['Photos and touch', html`${G.photofit}${G.swipe}${share('photos')}`], ['Keyboard', html`${G.keys}${share('keys')}`]];
   const keep = DVSCROLL; DVSCROLL = 0;
   modal(html`<form method="dialog" class="dv-form">
     <div class="dv-head"><div class="dv-title"><h2 id="dv-title">Display settings</h2>
-        <p class="muted dv-intro">Changes apply right away and are remembered in this browser. Each computer or phone keeps its own.</p>
+        <p class="muted dv-intro">Changes apply right away. Each part is kept on this device unless you tick "Use these on every device I sign in on" in it.</p>
         <p class="dv-ver"><strong>App version:</strong> ${META && META.version ? META.version : 'unknown'}</p></div>
       <div class="row dv-acts"><button class="btn" value="ok" autofocus>Done</button><button class="btn ghost" type="button" data-act="prefreset">Reset to defaults</button></div></div>
     <div class="dv-main"><nav class="dv-tabs" aria-label="Parts of the display settings">${SECS.map(([n], i) => html`<button type="button" class="dv-tab" data-act="dvjump" data-to="dv-s${i}" ${i ? '' : raw('aria-current="true"')}>${n}</button>`)}</nav>
@@ -3997,7 +4386,8 @@ async function conPoll() {
 function pagesMenu(open) {
   const b = document.getElementById('pages-btn'), top = document.querySelector('header.top'); if (!b || !top) return;
   const cur = document.querySelector('#main-nav a[aria-current=page]'), c = document.getElementById('pages-cur');
-  if (c) c.textContent = cur ? cur.childNodes[0].textContent : 'Plants';     // without the wishlist alert count
+  const sub = document.querySelector('#sub-nav:not([hidden]) a[aria-current=page]'), word = a => a.childNodes[0].textContent.trim();
+  if (c) c.textContent = (cur ? word(cur) : 'Plants') + (sub && cur && word(sub) !== word(cur) ? ', ' + word(sub) : '');   // 1.29.0: the section and its page, without the wishlist alert count
   b.setAttribute('aria-expanded', open ? 'true' : 'false'); top.classList.toggle('pages-open', !!open);
 }
 document.addEventListener('keydown', e => {      // Escape folds the list of pages again and goes back to its button
@@ -4129,7 +4519,7 @@ async function roomDialog(pl) {
   }
 }
 function ltSocketNote(L) {
-  return L && L.specs.needs_socket && !L.fixture ? html`<p class="notice"><strong>Needs a socket.</strong> This bulb screws into a lamp or clamp light. Note which one under "Where it is" on the light (Your lights, below).</p>` : '';
+  return L && L.specs.needs_socket && !L.fixture ? html`<p class="notice"><strong>Needs a socket.</strong> This bulb screws into a lamp or clamp light. Note which one under "Where it is" on the light (Your lights, at the top of the page).</p>` : '';
 }
 function ltSteps(steps) {
   if (!steps || !steps.length) return '';
@@ -4158,26 +4548,31 @@ function ltLightCard(L) {
   return html`<article class="lt-light" aria-labelledby="ltl-${L.id}">
     ${L.photo ? html`<img class="lt-photo" src="${L.photo}" alt="${S.photo_alt || ''}" loading="lazy">` : ''}
     <div class="lt-body"><h3 id="ltl-${L.id}">${L.name}</h3>
-    <p><strong>You have ${L.count}.</strong> ${L.in_use ? `${L.in_use} in use in your spots.` : 'None in a spot yet.'}</p>
+    ${(() => { const can = canChange(), ed = k => raw(`data-ed="light" data-id="${L.id}" data-k="${k}" ${can ? '' : 'readonly'}`); return html`<div class="field-grid lt-ed">
+      <label class="f">Name<input type="text" maxlength="80" value="${L.name}" ${ed('name')}></label>
+      <label class="f lt-n">How many you have<input type="number" inputmode="numeric" min="0" max="100" step="1" value="${L.count}" ${ed('count')}><small>${L.in_use ? `${L.in_use} in use in your spots.` : 'None in a spot yet.'}</small></label>
+      <label class="f">Manufacturer model<input type="text" maxlength="80" value="${S.model || ''}" ${ed('model')}></label>
+      <label class="f">Where it is<input type="text" maxlength="600" value="${L.fixture || ''}" ${ed('fixture')}><small>For a bulb, the lamp or socket it screws into.</small></label></div>`; })()}
     <dl class="dl">
       ${S.kind ? html`<dt>Type</dt><dd>${S.kind}</dd>` : ''}
-      <dt>Manufacturer model</dt><dd>${S.model || html`<span class="muted">Not noted yet</span>`}</dd>
       ${bits.length ? html`<dt>Light</dt><dd>${bits.join(', ')}</dd>` : ''}
       ${sp ? html`<dt>Colour mix</dt><dd>Blue ${sp.blue}%, green ${sp.green}%, red ${sp.red}%, far red ${sp.far_red}%</dd>` : ''}
       ${S.power ? html`<dt>Power</dt><dd>${S.power}</dd>` : ''}
       ${S.timer ? html`<dt>Timer</dt><dd>${S.timer}</dd>` : ''}
       <dt>Brightness</dt><dd>${S.dimming && S.dimming.length > 1 ? S.dimming.map(x => x + '%').join(', ') : 'Full only'}</dd>
       ${S.size ? html`<dt>Size</dt><dd>${S.size}</dd>` : ''}
-      <dt>Where it is</dt><dd>${L.fixture || html`<span class="muted">Not noted yet</span>`}</dd>
-      ${L.notes ? html`<dt>Notes</dt><dd>${L.notes}</dd>` : ''}</dl>
+    </dl>${edLong('light', L.id, 'notes', 'Notes', L.notes, canChange())}
     ${L.points.length ? html`<div class="tbl-wrap"><table class="tbl lt-ppfd"><caption>${S.estimated ? "Claude's estimates" : "Maker's figures"}: light under its centre</caption>
       <thead><tr><th scope="col">Distance</th><th scope="col" class="num">PAR (µmol/m²/s)</th><th scope="col" class="num">12 hours a day gives</th><th scope="col" class="num">Lights about</th></tr></thead>
       <tbody>${L.points.map(p => html`<tr><th scope="row">${fmt(p.distance_in, 1)} in</th><td class="num">${fmt(p.ppfd, 1)}</td><td class="num">${fmt(p.ppfd * 12 * 0.0036, 1)} mol/m²</td><td class="num">${p.area_sqft ? fmt(p.area_sqft, 1) + ' sq ft' + (S.area_estimated && !S.estimated ? ' (estimate)' : '') : ''}</td></tr>`)}</tbody></table></div>` : ''}
     ${S.ppfd_note ? html`<p class="hint">${S.ppfd_note}</p>` : ''}
     ${L.chart ? html`<p class="hint"><a href="${L.chart}" target="_blank" rel="noopener">Open the maker's chart</a> (picture). ${S.chart_alt || ''}</p>` : ''}
     ${S.url ? html`<p class="hint"><a href="${S.url}" target="_blank" rel="noopener noreferrer">Product page</a></p>` : ''}
-    <div class="row noprint"><button class="btn ghost small" type="button" data-act="lightedit" data-id="${L.id}">Change this light</button></div></div></article>`;
+    <div class="row noprint"><button class="btn ghost small" type="button" data-act="lightedit" data-id="${L.id}">Change the light figures, timer and brightness</button></div></div></article>`;
 }
+// 1.28.1: Your lights is at the top and folds; this browser remembers whether you left it open (open the first time)
+function ltLightsOpen() { try { return localStorage.getItem('plantdb.ltlights') !== '0'; } catch (e) { return true; } }
+document.addEventListener('toggle', e => { const d = e.target; if (d && d.dataset && d.dataset.remember === 'ltlights') { try { localStorage.setItem('plantdb.ltlights', d.open ? '1' : '0'); } catch (x) { /* this visit only */ } } }, true);
 async function viewLights() {
   LT = await api('GET', '/api/lights');
   const n = LT.candidates.length, inSpots = Object.keys(LT.assigned).length, sug = LT.plan.reduce((a, s) => a + s.codes.length, 0);
@@ -4185,6 +4580,8 @@ async function viewLights() {
     title: 'Grow lights',
     html: html`<h1>Grow lights</h1>
     <p class="muted">Your grow lights, the spots they light, and how much light each plant gets there. A plant's daily light (DLI, in mol/m² a day) is the light at its leaves while the light is on (PAR) times the hours it is on. Each plant page has the range it wants.</p>
+    <details class="blk lt-lights-box" id="lt-lights" data-remember="ltlights" ${ltLightsOpen() ? raw('open') : ''}><summary><h2>Your lights (${LT.lights.length})</h2><span class="hint">Show or hide</span></summary>
+      <div class="lt-lights">${LT.lights.map(ltLightCard)}</div></details>
     <div class="verdict-box" role="status"><h2 style="margin:0 0 .4rem">This winter</h2>
       <p>${n} plant${n === 1 ? ' lives' : 's live'} inside or ${n === 1 ? 'is' : 'are'} coming in. ${inSpots} ${inSpots === 1 ? 'is' : 'are'} in a light spot you set up.${LT.plan.length ? ` The suggested layout below places ${sug} more under your lights.` : ''}${LT.unplaced.length ? ` ${LT.unplaced.length} ${LT.unplaced.length === 1 ? 'has' : 'have'} no light left in it.` : ''}</p>
       ${has(LT.outdoor_dli) ? html`<p>Outdoors in the open, the last 7 days averaged about <strong>${LT.outdoor_dli} mol/m² a day</strong>. Under the porch roof it is much less.</p>` : ''}
@@ -4198,7 +4595,6 @@ async function viewLights() {
       ${LT.plan.length ? html`<div class="lt-grid">${LT.plan.map((s, i) => ltSpotCard(s, i, true))}</div>` : html`<p class="muted">Every plant that needs a light is in a spot.</p>`}
       ${LT.unplaced.length ? html`<h3>No light left for these</h3><ul class="lt-plants">${LT.unplaced.map(u => html`<li>${u.photo ? html`<img src="${thumbUrl(u.photo)}" alt="" loading="lazy">` : html`<span></span>`}
         <span><a class="nm" href="#/plant/${enc(u.code)}">${u.name}</a><br><span class="muted">${u.code}. Needs ${fmt(u.lo, 1)} to ${fmt(u.hi, 1)} mol/m² a day.</span> ${u.why}</span><span></span></li>`)}</ul>` : ''}</section>
-    <section class="blk" id="lt-lights"><h2>Your lights</h2><div class="lt-lights">${LT.lights.map(ltLightCard)}</div></section>
     <section class="blk"><h2>How the numbers work</h2>
       <p>Makers measure light straight under the centre of the light at a few distances. The app draws a smooth line through those figures to get the light at any distance, then multiplies by the hours a day: 100 PAR for 12 hours is about 4.3 mol/m².</p>
       <p>The edges of a light's circle get less, and a window adds some. Plants that stretch or go pale want more; bleached or crisp leaves want less. Several of the same light side by side light a bigger area at about the same strength.</p></section>`,
@@ -4272,7 +4668,7 @@ async function lightDialog(L) {
       <div class="field-grid three"><label class="f">How many you have<input type="number" name="count" min="0" max="100" step="1" value="${x.count}" required></label>
         <label class="f">Watts (each)<input type="number" name="watts" min="0" max="2000" step="any" value="${x.watts}"></label>
         <label class="f">Type<input type="text" name="kind" maxlength="40" value="${x.kind}"><small>For example bulb, strip or clamp light.</small></label></div>
-      <label class="f">Where it is<input type="text" name="fixture" maxlength="120" value="${x.fixture}"><small>The room, shelf or lamp it is in, or the socket a bulb screws into.</small></label>
+      <label class="f">Where it is<input type="text" name="fixture" maxlength="600" value="${x.fixture}"><small>The room, shelf or lamp it is in, or the socket a bulb screws into.</small></label>
       <label class="f">Light at distances (PPFD)<textarea name="points" rows="2" maxlength="400">${x.points}</textarea><small>From the box or listing: distance in inches and PAR, separated by commas, for example "12 in 719, 24 in 234". Add the area it lights in brackets if the maker gives it.</small></label>
       <div class="field-grid"><label class="f">Timer<input type="text" name="timer" maxlength="120" value="${x.timer}"></label>
         <label class="f">Brightness steps (%)<input type="text" name="dimming" maxlength="40" value="${x.dimming}"><small>For example "25, 50, 75, 100", or "100" if it only has full.</small></label></div>
@@ -4472,6 +4868,38 @@ const acts = {
     await guard(async () => { await api('DELETE', '/api/backups/' + enc(el.dataset.file)); toast('Backup deleted'); route(); });
   },
   needs() { G.needs = !G.needs; gSave(); route(); },
+  edlong(el) { const w = el.closest('.ed-long'), l = w.querySelector('label'); l.hidden = false; const t = l.querySelector('textarea'); t.dataset.was = t.value; t.focus(); },
+  async whareadel(el) { if (!(await needName())) return; if (!(await confirmBox(`Remove ${el.dataset.name}?`, 'Its spots are removed too. Plants must be moved out of it first.', 'Remove', true))) return;
+    await guard(async () => { await api('DELETE', '/api/where/areas/' + el.dataset.id); META = await api('GET', '/api/meta'); toast('Removed'); route(); }); },
+  async whspotdel(el) { if (!(await needName())) return; if (!(await confirmBox(`Remove the spot ${el.dataset.name}?`, 'Plants there keep their area or room; they just have no spot.', 'Remove', true))) return;
+    await guard(async () => { await api('DELETE', '/api/where/spots/' + el.dataset.id); META = await api('GET', '/api/meta'); toast('Spot removed'); route(); }); },
+  async whsort() {
+    if (!(await needName())) return;
+    const items = WHSORT.map((it, i) => ({ text: it.text, name: (document.querySelector(`[data-whs="${i}"][data-k=name]`) || {}).value || '', area_id: +(document.querySelector(`[data-whs="${i}"][data-k=area]`) || {}).value }));
+    await guard(async () => { const r = await api('POST', '/api/where/sort', { items }); META = await api('GET', '/api/meta'); toast(`${r.moved} plant${r.moved === 1 ? '' : 's'} put in their spots`); route(); });
+  },
+  async ctadd(el) { if (!(await needName())) return;
+    await guard(async () => { const x = await api('POST', '/api/containers', { kind: el.dataset.kind, name: el.dataset.kind === 'pot' ? 'New pot' : 'New catch tray', shape: 'circle', qty: 1 });
+      META = await api('GET', '/api/meta'); await route(); const n = document.querySelector(`#ct-${x.id} [data-k=name]`); if (n) { n.focus(); n.select(); } toast('Added. Type its name and sizes.'); }); },
+  async ctdel(el) { if (!(await needName())) return; if (!(await confirmBox(`Remove ${el.dataset.name}?`, 'Its photos are removed too.', 'Remove', true))) return;
+    await guard(async () => { await api('DELETE', '/api/containers/' + el.dataset.id); META = await api('GET', '/api/meta'); toast('Removed'); route(); }); },
+  async ctphotodel(el) { if (!(await needName())) return; await guard(async () => { await api('DELETE', '/api/containers/photos/' + el.dataset.id); toast('Photo removed'); route(); }); },
+  sevreset() { SEV.photos.forEach(p => { try { URL.revokeObjectURL(p.url); } catch (e) { /* gone */ } }); Object.assign(SEV, { step: 'pick', photos: [], plants: [], done: null, busy: false }); SEV.home = sevDefaultHome(); sevDraw('input[type=file]'); },
+  async sevsave() {
+    if (!(await needName())) return;
+    const err = document.getElementById('sev-err');
+    const list = SEV.plants.map((P, gi) => [P, gi]).filter(([P]) => P.add);
+    const bad = list.find(([P]) => !String(P.fields.common_name || '').trim());
+    if (bad) { if (err) err.textContent = `Plant ${bad[1] + 1} needs a common name.`; const i = document.querySelector(`[data-f=sevfield][data-g="${bad[1]}"][data-k=common_name]`); if (i) i.focus(); return; }
+    const plants = list.map(([P, gi]) => { const n = SEV.photos.filter(p => p.group === gi).length;
+      const fields = { ...P.fields, site: SEV.site, home_id: SEV.home || '',
+        id_basis: P.pick >= 0 ? `Suggested by the picture checker on this computer from ${n} photo${n === 1 ? '' : 's'} (${P.fields.id_confidence || 0}% likely). Check it.` : '' };
+      return { fields, photos: SEV.photos.filter(p => p.group === gi).map(p => p.file) }; });
+    SEV.busy = true; const b = document.querySelector('[data-act=sevsave]'); if (b) b.disabled = true;
+    try { const r = await api('POST', '/api/plants/several', { plants }); ALL = await api('GET', '/api/plants?status=all'); META = await api('GET', '/api/meta'); SEV.done = r.codes; SEV.busy = false; sevDraw('.notice.ok'); toast(`${r.codes.length} plants added`); }
+    catch (e) { SEV.busy = false; if (b) b.disabled = false; if (err) err.textContent = e.message; }
+  },
+  idphmore() { IDPH.shown += IDPH_PAGE; drawIdPhotos(); const rows = document.querySelectorAll('#idph-tbl tbody tr'); const a = rows[IDPH.shown - IDPH_PAGE] && rows[IDPH.shown - IDPH_PAGE].querySelector('a'); if (a) a.focus(); },
   layout() { const P = window.PlantPrefs.get(); window.PlantPrefs.set('layout', P.layout === 'single' ? 'split' : 'single'); route(); },
   navgo(el, e) {
     if (e) e.preventDefault();
@@ -4559,6 +4987,12 @@ const acts = {
     if (!(await confirmBox(`Make ${p.name} home?`, `Every computer or phone that has not chosen its own location will use the weather for ${p.name} instead of ${WX.home.name}, and so will the hourly updates and backups.`, 'Make home'))) return;
     await guard(async () => { await api('PUT', '/api/places/' + p.id, { is_home: true }); if (String(PLACE) === String(p.id)) savePlace(null); META = null; COND = null; FROST = null; FROST_AT = 0; toast(`${p.name} is now home`); route(); });
   },
+  async placeplants(el) {             // 1.28.0: a home of its own
+    if (!(await needName())) return;
+    const on = el.dataset.on === '1';
+    await guard(async () => { await api('PUT', '/api/places/' + el.dataset.id, { plants_here: on }); META = null; COND = null; FROST = null; FROST_AT = 0;
+      toast(on ? 'Plants can now be given this home' : 'No plants live there now'); route(); });
+  },
   async placeonoff(el) {
     if (!(await needName())) return;
     await guard(async () => { await api('PUT', '/api/places/' + el.dataset.id, { enabled: el.dataset.on === '1' }); toast(el.dataset.on === '1' ? 'Hourly updates on' : 'Hourly updates stopped; its stored weather is kept'); route(); });
@@ -4622,7 +5056,7 @@ const acts = {
   },
   grprulerm(el) { const row = el.closest('.rule-row'); const box = row.parentElement; row.remove();
     box.querySelectorAll('.rule-row').forEach((r, i) => { r.dataset.row = i; r.querySelector('legend').textContent = 'Part ' + (i + 1); }); rulePreview(); box.querySelector('select').focus(); },
-  clearfilters() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '', status: 'active', site: '' }, Object.fromEntries(MORE_KEYS.map(k => [k, '']))); MOREOPEN = false; gSave(); route(); },
+  clearfilters() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '', status: 'active', site: '', home: '' }, Object.fromEntries(MORE_KEYS.map(k => [k, '']))); MOREOPEN = false; gSave(); route(); },
   plan(el) { G.plan = G.plan === el.dataset.plan ? '' : el.dataset.plan; document.querySelectorAll('.ledger button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.plan === G.plan))); drawGrid(); },
   pick(el) { PIDX = +el.dataset.i; repaintPhotos(); },
   zoom() { const c = curPhoto(); if (c) modal(html`<form method="dialog"><img src="${photoUrl(c.file)}" alt="${c.caption || CUR.p.common_name}"><p class="cap">${c.caption}</p><button class="btn" value="ok" autofocus>Close</button></form>`, 'photo'); },
@@ -4752,7 +5186,14 @@ const acts = {
   },
   async tododel(el) { if (!(await needName())) return; await guard(async () => { await api('DELETE', '/api/to-photograph/' + el.dataset.id); route(); }); },
 };
+document.addEventListener('change', e => { const el = e.target; if (el.dataset && el.dataset.dvshare && window.PlantSync) { window.PlantSync.share(el.dataset.dvshare, el.checked);
+  toast(el.checked ? 'These settings now follow you to other devices' : 'These settings now stay on this device'); } }, true);
 const changeActs = {
+  async ctphoto(el) {                 // 1.29.0: photos of a pot or tray
+    if (!el.files.length || !(await needName())) return;
+    const fd = new FormData(); [...el.files].forEach(f => fd.append('files', f));
+    await guard(async () => { const x = await api('POST', '/api/containers/' + el.dataset.id + '/photos', null, fd); toast('Photo added'); ctRedraw(x); });
+  },
   grprulefield(el) {      // a different thing to look at: redraw this part with the right comparisons and value suggestions
     const row = el.closest('.rule-row'), i = +row.dataset.row;
     row.outerHTML = rend(ruleRow({ field: el.value, value: '' }, i));
@@ -4825,6 +5266,21 @@ const formActs = {
     el.innerHTML = rend(PLACE_RESULTS.length ? html`<p>${PLACE_RESULTS.length} found. Choose the right one:</p><ul class="place-res">${PLACE_RESULTS.map((r, i) => html`<li><span><strong>${r.label}</strong><br><span class="hint">${r.lat}, ${r.lon}, ${r.tz}${r.elevation_m != null ? `, ${Math.round(r.elevation_m * 3.281)} ft up` : ''}${r.population ? `, ${num(r.population)} people` : ''}</span></span><button class="btn small" type="button" data-act="placepick" data-i="${i}">Add ${r.name}</button></li>`)}</ul>`
       : html`<p class="notice">Nothing found for "${q}". Check the spelling, try the nearest larger town, or type the place in yourself below.</p>`);
   },
+  async libareafind(form) {
+    const q = form.elements.q.value.trim(), el = document.getElementById('libarea-res');
+    if (q.length < 2) { toast('Type at least 2 letters of the place.', true); return; }
+    el.innerHTML = rend(html`<p class="loading" role="status">Searching</p>`);
+    let R; try { R = await api('GET', '/api/library/areas/search?q=' + enc(q)); } catch (e) { el.innerHTML = rend(html`<p class="notice bad">${e.message}</p>`); return; }
+    el.innerHTML = rend(R.length ? html`<p>${R.length} found. Choose the right one:</p><ul class="place-res">${R.map(r => html`<li><span><strong>${r.name}</strong><br><span class="hint">${r.kind}</span></span>
+      <button class="btn small" type="button" data-act="libareaadd" data-pid="${r.place_id}" data-name="${r.name}">Add and download</button></li>`)}</ul>`
+      : html`<p class="notice">Nothing found for "${q}". Check the spelling or try a larger area.</p>`);
+  },
+  sevgo(form) { return sevGo(form); },
+  async whareaadd(form) { if (!(await needName())) return;
+    await guard(async () => { await api('POST', '/api/where/areas', { home_id: form.dataset.home || null, side: form.dataset.side, name: form.elements.name.value, sheltered: form.elements.sheltered.checked });
+      META = await api('GET', '/api/meta'); toast('Added'); route(); }); },
+  async whspotadd(form) { if (!(await needName())) return;
+    await guard(async () => { await api('POST', '/api/where/spots', { area_id: +form.dataset.aid, name: form.elements.name.value }); META = await api('GET', '/api/meta'); toast('Spot added'); route(); }); },
   placeadd(form) { const f = form.elements; return addPlace({ name: f.name.value, lat: f.lat.value, lon: f.lon.value, tz: f.tz.value }); },
   wtgo(form) {
     const max = +form.elements.page.dataset.max, n = Math.round(+form.elements.page.value);
@@ -4860,9 +5316,16 @@ const formActs = {
 // ---------- 1.18.0: identify a plant with the camera, and the plant library ----------
 // The pictures go to this computer's picture checker (the "plant-vision" container) through the app. Pl@ntNet and Claude are only
 // asked when someone presses their buttons. Nothing is saved unless someone presses "Add this picture to its photos" or adds a plant.
-const ID_SCOPES = [['common', 'Plants with a common name, and all US plants'], ['texas', 'Texas plants'], ['us', 'US plants'], ['world', 'All plants worldwide'], ['fungi', 'Fungi worldwide: mushrooms, lichens and moulds']];
+// 1.28.0: the place in use's state or country (META.region), instead of Texas everywhere
+const REGION = () => (META && META.region) || null;
+const regionName = () => (REGION() && REGION().name) || 'your state or country';
+const regionState = () => (REGION() && REGION().usda) || '';
+const inRegion = s => !!(regionState() && ((s.us_states || []).some(Boolean) ? s.us_states.includes(regionState()) : s.in_texas));   // offline rows carry only a yes or no
+const ID_SCOPES_ALL = [['common', 'Plants with a common name, and all US plants'], ['state', 'Plants of your state'], ['us', 'US plants'], ['world', 'All plants worldwide'], ['fungi', 'Fungi worldwide: mushrooms, lichens and moulds']];
 const ID = { stream: null, timer: null, busy: false, last: null, streak: 0, shot: null, paused: false, said: '', qr: null, mode: 'live', st: null, keys: null };
-function idScope() { try { const s = localStorage.getItem('plantdb.idscope'); if (ID_SCOPES.some(x => x[0] === s)) return s; } catch (e) { /* default */ } return 'common'; }
+function idScopes() { return ID_SCOPES_ALL.filter(x => x[0] !== 'state' || regionState()).map(x => x[0] === 'state' ? ['state', `${LIB_STATE_WORD(regionState())} plants`] : x); }
+let ID_SCOPES = ID_SCOPES_ALL;            // filled in by idScopes() once the place is known
+function idScope() { ID_SCOPES = idScopes(); try { let s = localStorage.getItem('plantdb.idscope'); if (s === 'texas') s = 'state'; if (ID_SCOPES.some(x => x[0] === s)) return s; } catch (e) { /* default */ } return 'common'; }
 const pct = p => Math.round((p || 0) * 100) + '%';
 const sureWord = c => c >= 0.9 ? 'Very likely' : c >= 0.75 ? 'Likely' : c >= 0.5 ? 'Possibly' : 'Unsure';
 const canChange = () => ME().role !== 'viewer';
@@ -4885,9 +5348,12 @@ async function viewIdentify() {
   try { keys = await api('GET', '/api/identify/settings'); } catch (e) { /* shown as not set up */ }
   ID.keys = keys;
   const sc = idScope(), owner = ME().role === 'owner';
+  try { ALL = await api('GET', '/api/plants?status=all'); } catch (e) { /* the table says so */ }
+  await loadGroups();
+  IDPH.shown = IDPH_PAGE;
   return {
     title: 'Identify a plant',
-    after: () => { idLoadStatus(); },
+    after: () => { idLoadStatus(); drawIdPhotos(); },
     html: html`<h1>Identify a plant</h1>
     <p>Point your camera at a plant. This computer compares the picture with your plant photos and says which plant it thinks it is, and how sure it is. If it is not one of yours, it suggests what the plant could be. Nothing is saved unless you choose to save it.</p>
     <p id="id-st" class="notice" role="status">Checking the picture checker…</p>
@@ -4923,8 +5389,46 @@ async function viewIdentify() {
             ${keys && keys.claude ? html`<button class="btn ghost" type="button" data-act="idkeydel" data-k="claude_key">Remove the Claude key</button>` : ''}</div>
         </form></details>` : html`<p class="muted">${ME().owner_name || 'The owner'} can set these up.</p>`}
     </section>
+    <section class="id-sec" aria-labelledby="h-idph"><h2 id="h-idph">Your plant photos</h2>
+      <p>These are the photos Identify compares your pictures with, one row per plant. Choose a plant or a photo to open its page. The search and filters are the same as on the Plants page; changing them here changes them there too.</p>
+      <div class="filters">
+        <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
+        <label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
+        ${homeFilter()}${siteFilter()}${groupFilter()}${statusFilter()}
+        <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
+        <label class="chk"><input type="checkbox" data-f="idphnone" ${IDPH.none ? raw('checked') : ''}>Only plants with no photos</label>
+        <button class="btn ghost small" type="button" data-act="clearfilters">Clear filters</button>
+      </div>
+      ${moreSelects()}
+      <p id="idph-count" class="muted" role="status" aria-live="polite"></p>
+      <div id="idph-tbl"></div>
+      <p class="row"><button class="btn" type="button" data-act="idphmore" id="idph-more" hidden>Show more</button></p>
+    </section>
     <p><a href="#/library">Search the plant library</a></p>`,
   };
+}
+// 1.28.0: the photo table (one row per plant, its photos in a strip), using the Plants page filters
+const IDPH_PAGE = 30, IDPH = { shown: 30, none: false };
+function drawIdPhotos() {
+  const box = document.getElementById('idph-tbl'); if (!box) return;
+  gSave();
+  const r = filteredPlants().filter(p => !IDPH.none || !(p.photos || []).length);
+  const nPh = r.reduce((n, p) => n + (p.photos || []).length, 0), show = r.slice(0, IDPH.shown);
+  const mf = document.querySelector('#more-f > summary'); if (mf) { const n = moreOn(); mf.textContent = 'More filters' + (n ? ` (${n} on)` : ''); }
+  document.getElementById('idph-count').textContent = `Showing ${show.length} of ${r.length} plants, with ${num(nPh)} photo${nPh === 1 ? '' : 's'} between them.`;
+  const day = t => t ? new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  const multi = HOMES().length > 1;
+  box.innerHTML = rend(r.length ? html`<div class="tbl-wrap"><table class="tbl idph"><caption class="sr">Your plants and their photos</caption><thead><tr>
+    <th scope="col">Plant</th><th scope="col">Photos</th><th scope="col">${multi ? 'Home and spot' : 'Where'}</th><th scope="col">Newest photo</th></tr></thead><tbody>
+    ${show.map(p => { const ph = p.photos || [];
+      return html`<tr><th scope="row"><a href="#/plant/${enc(p.code)}"><strong>${p.code}</strong> ${p.common_name}</a><div class="latin muted">${p.scientific_name || ''}</div><div>${ph.length} photo${ph.length === 1 ? '' : 's'}</div></th>
+      <td>${ph.length ? html`<div class="idph-strip">${ph.slice(0, 8).map((f, i) => html`<a href="#/plant/${enc(p.code)}"><img src="${thumbUrl(f)}" alt="${p.common_name}, photo ${i + 1} of ${ph.length}${i === 0 ? ' (main photo)' : ''}" loading="lazy"></a>`)}
+        ${ph.length > 8 ? html`<a class="btn ghost small" href="#/plant/${enc(p.code)}">${ph.length - 8} more</a>` : ''}</div>` : html`<span class="muted">No photos yet. Identify cannot recognise it until it has one.</span>`}</td>
+      <td>${multi ? html`<div>${plantHome(p).name}</div>` : ''}<div class="${multi ? 'muted' : ''}">${p.location || p.site || ''}</div></td>
+      <td>${day(p.photo_at)}</td></tr>`; })}</tbody></table></div>`
+    : html`<p class="notice">No plants match these filters. <button class="btn ghost small" type="button" data-act="clearfilters">Clear filters</button></p>`);
+  const more = document.getElementById('idph-more'); if (more) { more.hidden = r.length <= IDPH.shown; more.textContent = `Show ${Math.min(IDPH_PAGE, r.length - IDPH.shown)} more`; }
+  if (typeof fitTables === 'function') fitTables();
 }
 function idStop() {
   clearTimeout(ID.timer); ID.timer = null;
@@ -5065,7 +5569,7 @@ function spLinks(s) {
 }
 function spCard(s, i, src, withAdd) {
   const tags = [];
-  if (s.in_texas) tags.push(html`<span class="tag">Grows wild in Texas</span>`);
+  if (inRegion(s)) tags.push(html`<span class="tag">Grows wild in ${LIB_STATE_WORD(regionState())}</span>`);
   else if (s.us_states && s.us_states.length) tags.push(html`<span class="tag">In ${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}</span>`);
   if (s.yours && s.yours.length) tags.push(html`<span class="tag tag-yours">You have this: ${s.yours.join(', ')}</span>`);
   else if (s.yours_genus && s.yours_genus.length) tags.push(html`<span class="tag">Same genus as ${s.yours_genus.slice(0, 4).join(', ')}</span>`);
@@ -5170,8 +5674,12 @@ function idNewPlant(s, withPic) {
 // The list comes from the picture checker (offline). Photos come from iNaturalist through the app, which keeps them in
 // data/library; the cards ask for the photos of the plants on screen and fill them in as they arrive.
 const LIB_DEF = { q: '', scope: 'common', kind: '', family: '', state: '', common: false, mine: '', know: '', sort: 'known', view: 'cards' };
-const KNOW_WORD = { native: 'Native to Texas', introduced: 'Introduced to Texas', invasive: 'On the Texas invasive list', near: 'Grows wild near home', bloom: 'Flowering near home this month',
-  fruiting: 'Fungi found near home this month', hardy: 'Likely to survive outside here', petsafe: 'Safe for dogs and cats (ASPCA)', pettoxic: 'Toxic to dogs or cats (ASPCA)' };
+function knowWord() {         // 1.28.0: named for the place in use; the invasive list is only built in for Texas
+  const w = { native: `Native to ${regionName()}`, introduced: `Introduced to ${regionName()}`, invasive: 'On the Texas invasive list', near: 'Grows wild near here', bloom: 'Flowering near here this month',
+    fruiting: 'Fungi found near here this month', hardy: 'Likely to survive outside here', petsafe: 'Safe for dogs and cats (ASPCA)', pettoxic: 'Toxic to dogs or cats (ASPCA)' };
+  if (!(REGION() && REGION().id === 18)) delete w.invasive;
+  return w;
+}
 const LIB = Object.assign({ res: [], total: 0, facets: null, facetsFor: '', photos: {}, t: 0, poll: 0, my: 0 }, LIB_DEF);
 try { const s = JSON.parse(localStorage.getItem('plantdb.library') || '{}'); Object.keys(LIB_DEF).forEach(k => { if (s[k] != null && typeof s[k] === typeof LIB_DEF[k]) LIB[k] = s[k]; }); } catch (e) { /* defaults */ }
 const libSave = () => { try { localStorage.setItem('plantdb.library', JSON.stringify(Object.fromEntries(Object.keys(LIB_DEF).map(k => [k, LIB[k]])))); } catch (e) { /* not remembered */ } };
@@ -5181,31 +5689,46 @@ const LIB_STATE_WORD = s => s.replace(/([a-z])([A-Z])/g, '$1 $2');
 const LIB_KIND_SHORT = { dicot: 'Flowering plant', monocot: 'Flowering plant (monocot)', fern: 'Fern', lycophyte: 'Clubmoss', conifer: 'Conifer', cycad: 'Cycad', ginkgo: 'Ginkgo', gnetophyte: 'Gnetophyte', moss: 'Moss', liverwort: 'Liverwort', hornwort: 'Hornwort', alga: 'Alga', other: '',
   mushroom: 'Mushroom', cupfungus: 'Cup fungus', lichen: 'Lichen', rust: 'Rust or smut', mould: 'Mould or mildew', otherfungus: 'Fungus' };
 const spHref = s => '#/species/' + enc(s);
-function libPreHtml(p) {
-  const btn = p.running ? html`<button class="btn ghost" type="button" data-act="libprestop">Stop the download</button>`
-    : html`<button class="btn" type="button" data-act="libpre" ${p.online ? '' : raw('disabled')}>Download photos for the Texas list</button>`;
-  const msg = p.running ? `Downloading: ${p.done.toLocaleString()} of ${p.total.toLocaleString()} done, about ${Math.max(1, Math.round(p.left * 1.1 / 60))} minutes left. You can leave this page; it carries on.`
-    : p.total ? `Finished: ${p.done.toLocaleString()} species fetched${p.all ? ` (the other ${(p.all - p.total).toLocaleString()} were already kept)` : ''}.`
-    : p.online ? '' : 'Turn on the iNaturalist photos above first.';
-  return html`<p class="pre-msg">${msg}</p><p class="row">${btn}</p>`;
+// 1.28.0: library photos for offline use, by area (any place iNaturalist knows), in a table
+function libAreasHtml(d) {
+  const owner = ME().role === 'owner', A = d.areas || [];
+  const day = t => t ? new Date(t).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) : 'Not yet';
+  const stateWords = a => a.error ? html`<div class="bad-text"><strong>Last try failed:</strong> ${a.error}</div>`
+    : a.state === 'list' ? html`<div class="hint">Getting the list of plants recorded there…</div>`
+    : a.state === 'photos' ? html`<div class="hint">Downloading: ${num(a.left)} left, about ${Math.max(1, Math.round(a.left * 1.1 / 60))} minutes</div>` : '';
+  return html`${A.length ? html`<div class="tbl-wrap"><table class="tbl lib-areas"><caption class="sr">Download areas</caption><thead><tr><th scope="col">Area</th><th scope="col">Photos downloaded</th><th scope="col">Percent</th><th scope="col">Last updated</th>${owner ? html`<th scope="col"><span class="sr">Actions</span></th>` : ''}</tr></thead><tbody>
+    ${A.map(a => html`<tr><th scope="row">${a.name}${stateWords(a)}</th>
+      <td>${a.total ? `${num(a.kept)} of ${num(a.total)}` : a.state === 'list' ? 'Counting…' : 'Not counted yet'}${a.no_photo ? html`<div class="hint">${num(a.no_photo)} ${a.no_photo === 1 ? 'has' : 'have'} no photo on iNaturalist</div>` : ''}</td>
+      <td><span class="pct-num">${a.total ? `${a.percent}%` : '—'}</span>${a.total ? html`<span class="pct-bar" aria-hidden="true"><i style="width:${Math.min(100, a.percent)}%"></i></span>` : ''}</td>
+      <td>${day(a.checked_at)}</td>
+      ${owner ? html`<td><div class="row" style="gap:.4rem"><button class="btn small" type="button" data-act="libareaupd" data-id="${a.id}" ${a.state !== 'idle' || !d.online ? raw('disabled') : ''}>Check for updates</button>
+        <button class="btn small ghost" type="button" data-act="libareadel" data-id="${a.id}" data-name="${a.name}">Remove</button></div></td>` : ''}</tr>`)}</tbody></table></div>`
+    : html`<p class="muted">No areas yet.${owner ? ' Add one below.' : ' The owner can add them.'}</p>`}
+  ${owner && d.running ? html`<p class="row"><button class="btn ghost" type="button" data-act="libareastop">Stop all downloads</button></p>` : ''}
+  ${owner ? html`<h3>Add an area</h3>${d.online ? html`<form class="todo-add" data-form="libareafind"><label style="flex:1 1 18rem;font-weight:700">Country, state, county, city or park<input type="text" name="q" placeholder="California" autocomplete="off"></label><button class="btn" type="submit" style="align-self:end">Search</button></form>
+    <div id="libarea-res" aria-live="polite"></div>` : html`<p class="muted">Turn on the iNaturalist photos above first.</p>`}` : ''}`;
 }
-async function libPrePoll() {
+async function libAreasPoll() {
   clearTimeout(LIB.prePoll);
   const box = document.getElementById('lib-pre'); if (!box) return;
-  let p; try { p = await api('GET', '/api/library/prefetch'); } catch (e) { return; }
+  let d; try { d = await api('GET', '/api/library/areas'); } catch (e) { return; }
   if (!document.getElementById('lib-pre')) return;
-  const tmp = document.createElement('div'); tmp.innerHTML = rend(libPreHtml(p));
-  const ob = box.querySelector('button'), nb = tmp.querySelector('button'), om = box.querySelector('.pre-msg');
-  if (ob && nb && om && ob.dataset.act === nb.dataset.act && ob.disabled === nb.disabled) om.textContent = tmp.querySelector('.pre-msg').textContent;   // keep the button, so a press is never lost
-  else { const had = box.contains(document.activeElement); box.innerHTML = tmp.innerHTML; if (had) { const b = box.querySelector('button'); if (b) b.focus(); } }
-  if (p.running) LIB.prePoll = setTimeout(libPrePoll, 5000);
+  const tbl = box.querySelector('.lib-areas-wrap'), had = tbl && tbl.contains(document.activeElement) ? document.activeElement.dataset : null;
+  const keepRes = document.getElementById('libarea-res'), resHtml = keepRes ? keepRes.innerHTML : '', q = box.querySelector('[name=q]'), qv = q ? q.value : '';
+  const focusedQ = q && document.activeElement === q;
+  box.innerHTML = rend(html`<div class="lib-areas-wrap">${libAreasHtml(d)}</div>`);
+  const nr = document.getElementById('libarea-res'); if (nr) nr.innerHTML = resHtml;
+  const nq = box.querySelector('[name=q]'); if (nq) { nq.value = qv; if (focusedQ) nq.focus(); }
+  if (had && had.act) { const b = box.querySelector(`[data-act="${had.act}"][data-id="${had.id}"]`); if (b && !b.disabled) b.focus(); }
+  if (d.running) LIB.prePoll = setTimeout(libAreasPoll, 5000);
 }
 function libListsHtml(d) {
   const day = t => t ? new Date(t).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) : '';
   return html`<ul class="lib-lists">${d.lists.map(l => html`<li><strong>${l.label}:</strong> ${l.fetched ? `${l.count.toLocaleString()} species, fetched ${day(l.fetched)}.` : d.queued.includes(l.name) || (d.now && d.now[0] === l.name) ? 'Being fetched…' : 'Not fetched yet.'}
       ${l.error ? html` <span class="bad-text">Last try failed: ${l.error}</span>` : ''}</li>`)}</ul>
     ${d.now ? html`<p>Fetching now: ${(d.lists.find(l => l.name === d.now[0]) || { label: d.now[0] }).label}${d.now[2] ? `, ${d.now[1].toLocaleString()} of ${d.now[2].toLocaleString()}` : ''}.</p>` : ''}
-    <p class="hint">From iNaturalist (what people have recorded, and whether it is native or introduced in Texas), the ASPCA's lists, and the Texas Department of Agriculture's noxious and invasive plant list (<a href="${d.noxious_law}" target="_blank" rel="noopener noreferrer">about the list</a>). Your hardiness zone, from your own weather history: ${d.zone}.</p>
+    <p class="hint">These are for ${d.place}, the place chosen with the Location button. From iNaturalist (what people have recorded, and whether it is native or introduced in ${d.region ? d.region.name : 'its state or country'}) and the ASPCA's lists${d.noxious ? html`, and the Texas Department of Agriculture's noxious and invasive plant list (<a href="${d.noxious_law}" target="_blank" rel="noopener noreferrer">about the list</a>)` : ''}. Hardiness zone, from the place's own weather history: ${d.zone}.</p>
+    ${d.noxious ? '' : html`<p class="hint">The app has no built-in list of plants that are illegal to grow or sell here. Ask your state or country's agriculture department, or look for the place on EDDMapS.</p>`}
     ${d.online ? (canChange() ? html`<p class="row"><button class="btn ghost" type="button" data-act="liblists" ${d.now || d.queued.length ? raw('disabled') : ''}>Fetch the lists again now</button></p>` : '') : html`<p class="muted">Library lookups are turned off, so these are not fetched.</p>`}`;
 }
 async function libListsPoll() {
@@ -5221,19 +5744,22 @@ async function libListsPoll() {
 function libFiltersOn() { return ['kind', 'family', 'state', 'mine', 'know'].filter(k => LIB[k]).length + (LIB.common ? 1 : 0); }
 async function viewLibrary(qs) {
   for (const k of ['q', 'scope', 'kind', 'family', 'state', 'mine', 'know', 'sort']) if (qs.get(k) != null) LIB[k] = qs.get(k);
+  ID_SCOPES = idScopes(); if (LIB.scope === 'texas') LIB.scope = 'state';
+  if (!ID_SCOPES.some(x => x[0] === LIB.scope)) LIB.scope = 'common';
+  if (LIB.know && !knowWord()[LIB.know]) LIB.know = '';
   let st = null;
   try { st = await api('GET', '/api/identify/status'); } catch (e) { /* shown below */ }
   const ready = st && st.state === 'ready';
   let fac = null;
   if (ready) { try { fac = await api('GET', '/api/library/facets?scope=' + enc(LIB.scope)); LIB.facets = fac; LIB.facetsFor = LIB.scope; } catch (e) { /* filters without counts */ } }
-  let lset = null, pre = null; if (ME().role === 'owner') { try { [lset, pre] = await Promise.all([api('GET', '/api/library/settings'), api('GET', '/api/library/prefetch')]); } catch (e) { /* hidden */ } }
+  let lset = null; if (ME().role === 'owner') { try { lset = await api('GET', '/api/library/settings'); } catch (e) { /* hidden */ } }
   let mine = { tags: [] }, wl = { wishlist: [] };
   try { [mine, wl] = await Promise.all([api('GET', '/api/library/notes'), api('GET', '/api/wishlist')]); } catch (e) { /* no extras */ }
   const sel = (f, opts) => html`<select data-f="${f}">${opts.map(([v, l]) => html`<option value="${v}" ${String(LIB[f.slice(3)]) === v ? raw('selected') : ''}>${l}</option>`)}</select>`;
   const fungi = LIB.scope === 'fungi';
   return {
     title: 'Library',
-    after: () => { if (ready) libLoad(); if (pre && pre.running) libPrePoll(); libListsPoll(); },
+    after: () => { if (ready) libLoad(); libAreasPoll(); libListsPoll(); },
     html: html`<h1>Library</h1>
     <p>Every plant species this computer knows, ${st && st.species ? Number(st.species).toLocaleString() : 'about 349,000'} in all${st && st.fungi ? html`, and ${Number(st.fungi).toLocaleString()} fungi (choose "Fungi worldwide" under Look in)` : ''}. Search, filter, and open any of them for its photos, description, classification, where it grows in the US, and the species it is most often mistaken for.</p>
     ${ready ? '' : html`<p class="notice bad" role="status">${idStatusText(st)}</p>`}
@@ -5244,10 +5770,10 @@ async function viewLibrary(qs) {
       <label>${fungi ? 'Kind of fungus' : 'Kind of plant'}${sel('libkind', [['', 'Any kind'], ...((fac && fac.kinds) || []).map(k => [k.key, `${k.label} (${k.count.toLocaleString()})`])])}</label>
       <label>Family<input type="text" data-f="libfamily" list="lib-fams" value="${LIB.family}" placeholder="Any family" autocomplete="off">
         <datalist id="lib-fams">${((fac && fac.families) || []).map(f => html`<option value="${f.name}">${f.name} (${f.count})</option>`)}</datalist></label>
-      <label>Grows wild in${sel('libstate', [['', 'Anywhere'], ['us', 'The United States'], ['Texas', 'Texas'], ...((fac && fac.states) || []).map(x => [x, LIB_STATE_WORD(x)])])}${fungi ? html`<small>Lichens only: the USDA lists have no other fungi</small>` : ''}</label>
+      <label>Grows wild in${sel('libstate', [['', 'Anywhere'], ['us', 'The United States'], ...(regionState() ? [[regionState(), LIB_STATE_WORD(regionState())]] : []), ...((fac && fac.states) || []).filter(x => x !== regionState()).map(x => [x, LIB_STATE_WORD(x)])])}${fungi ? html`<small>Lichens only: the USDA lists have no other fungi</small>` : ''}</label>
       <label>Show${sel('libmine', [['', 'All of them'], ['species', 'Only ones I have'], ['genus', 'Ones I have, or of the same genus'], ['wish', 'On my wishlist'], ['notes', 'Ones with notes or tags'],
         ...mine.tags.map(t => ['tag:' + t, `Tagged "${t}"`])])}</label>
-      <label>Texas and home${sel('libknow', [['', 'Any'], ...Object.entries(KNOW_WORD).filter(([k]) => fungi ? ['near', 'fruiting', 'hardy'].includes(k) : k !== 'fruiting')])}</label>
+      <label>Your area${sel('libknow', [['', 'Any'], ...Object.entries(knowWord()).filter(([k]) => fungi ? ['near', 'fruiting', 'hardy'].includes(k) : k !== 'fruiting')])}</label>
       <label>Sort by${sel('libsort', LIB_SORTS)}</label>
       <label>Show as${sel('libview', [['cards', 'Cards with photos'], ['table', 'A table']])}</label>
       <label class="chk"><input type="checkbox" data-f="libcommon" ${LIB.common ? raw('checked') : ''}>Only ${fungi ? 'fungi' : 'plants'} with a common name</label>
@@ -5263,11 +5789,11 @@ async function viewLibrary(qs) {
       ${lset ? html`<label class="chk"><input type="checkbox" data-f="libonline" ${lset.online ? raw('checked') : ''}>Look up photos and descriptions on iNaturalist (turn off to keep the library fully offline)</label>` : ''}
     </section>
     <section class="id-sec" aria-labelledby="h-liblists"><h2 id="h-liblists">Lists about your area</h2>
-      <p>The "Texas and home" filter, the tags on the cards and each species' page use these lists. They are fetched in the background and kept on this computer, and fetched again when they get old.</p>
+      <p>The "Your area" filter, the tags on the cards and each species' page use these lists. They are fetched in the background and kept on this computer, and fetched again when they get old.</p>
       <div id="lib-lists" aria-live="polite"><p class="muted">Loading…</p></div></section>
-    ${pre ? html`<section class="id-sec" aria-labelledby="h-libpre"><h2 id="h-libpre">Photos for offline use</h2>
-      <p>Download the photo and short facts for every Texas plant now (about ${st && st.scopes && st.scopes.texas ? Number(st.scopes.texas.count).toLocaleString() : '4,700'} species), so the library shows them even without the internet. It runs in the background at about one species a second (roughly an hour and a half), after anything someone is looking at, and takes about 300 MB in data\\library. Ones already kept are skipped.</p>
-      <div id="lib-pre" aria-live="polite">${libPreHtml(pre)}</div></section>` : ''}`,
+    <section class="id-sec" aria-labelledby="h-libpre"><h2 id="h-libpre">Photos for offline use</h2>
+      <p>Download the photo and short facts of every plant species recorded in an area, so the library shows them even without the internet. An area can be any country, state, county, city or park that iNaturalist knows. Downloads run in the background at about one species a second, after anything someone is looking at, and the photos are kept in data\\library (about 70 KB each). <strong>Check for updates</strong> gets the area's list again and downloads only what is new. Removing an area keeps its photos.</p>
+      <div id="lib-pre" aria-live="polite"><p class="muted">Loading…</p></div></section>`,
   };
 }
 function libQuery(offset) {
@@ -5295,7 +5821,7 @@ function offKnowOk(k, f) {
     : f === 'fruiting' ? !!k.fruiting : f === 'hardy' ? ['wild-near', 'zone-yes'].includes(k.hardy) : f === 'petsafe' ? !!k.pets && k.pets.dogs === 'non-toxic' && k.pets.cats === 'non-toxic'
     : f === 'pettoxic' ? !!k.pets && (k.pets.dogs === 'toxic' || k.pets.cats === 'toxic') : true;
 }
-async function offLibBrowse(off) {             // the library without a connection: the Texas list saved on this device
+async function offLibBrowse(off) {             // the library without a connection: the download areas' list saved on this device
   const idx = await offSavedJson('/api/library/offline-index'); if (!idx) return null;
   const q = LIB.q.toLowerCase(), fam = LIB.family.toLowerCase(), m = LIB.mine;
   let r = idx.species.filter(x => (!q || (x.n + ' ' + x.c).toLowerCase().includes(q)) && (!LIB.kind || x.k === LIB.kind) && (!fam || x.f.toLowerCase() === fam) && (!LIB.common || x.c)
@@ -5313,14 +5839,14 @@ function libTags(s) {
   else if (s.yours_genus && s.yours_genus.length) t.push(html`<span class="tag">Same genus as ${s.yours_genus.slice(0, 3).join(', ')}</span>`);
   const k = s.know || {};
   if (k.invasive) t.push(html`<span class="tag tag-warn">⚠ Texas invasive list</span>`);
-  if (k.tx === 'native') t.push(html`<span class="tag">Native to Texas</span>`); else if (k.tx === 'introduced') t.push(html`<span class="tag">Introduced to Texas</span>`);
+  if (k.tx === 'native') t.push(html`<span class="tag">Native to ${regionName()}</span>`); else if (k.tx === 'introduced') t.push(html`<span class="tag">Introduced to ${regionName()}</span>`);
   if (k.bloom) t.push(html`<span class="tag">Flowering near home now</span>`);
   if (k.fruiting) t.push(html`<span class="tag">Found near home this month</span>`);
   else if (k.near) t.push(html`<span class="tag">Wild near home</span>`);
   if (k.pets) { const tox = ['dogs', 'cats'].filter(a => k.pets[a] === 'toxic'); t.push(tox.length ? html`<span class="tag tag-warn">⚠ Toxic to ${tox.join(' and ')}</span>` : k.pets.dogs === 'non-toxic' && k.pets.cats === 'non-toxic' ? html`<span class="tag">Safe for dogs and cats</span>` : ''); }
   if (s.wish) t.push(html`<span class="tag tag-wish">${s.wish === 'got' ? 'Wishlist: got it' : 'On your wishlist'}</span>`);
   (s.tags || []).forEach(x => t.push(html`<span class="tag tag-own">Tag: ${x}</span>`));
-  if (s.in_texas) t.push(html`<span class="tag">Wild in Texas</span>`);
+  if (inRegion(s)) t.push(html`<span class="tag">Wild in ${LIB_STATE_WORD(regionState())}</span>`);
   else if (s.us_states && s.us_states.length) t.push(html`<span class="tag">Wild in ${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}</span>`);
   return t;
 }
@@ -5343,7 +5869,7 @@ function libRow(s) {
   return html`<tr data-sp="${s.scientific_name}"><td class="lib-th">${libPhotoHtml(s, 'lib-thumb')}</td>
     <td><a href="${spHref(s.scientific_name)}">${s.common_name || s.scientific_name}</a></td><td class="latin">${s.scientific_name}</td>
     <td>${s.family}</td><td>${LIB_KIND_SHORT[s.kind] || ''}</td>
-    <td>${s.in_texas ? 'Texas' + (s.us_states.length > 1 ? ` and ${s.us_states.length - 1} more states` : '') : s.us_states && s.us_states.length ? `${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}` : ''}</td>
+    <td>${inRegion(s) ? LIB_STATE_WORD(regionState()) + (s.us_states.length > 1 ? ` and ${s.us_states.length - 1} more states` : '') : s.us_states && s.us_states.length ? `${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}` : ''}</td>
     <td>${s.yours && s.yours.length ? s.yours.join(', ') : s.yours_genus && s.yours_genus.length ? 'Same genus: ' + s.yours_genus.slice(0, 3).join(', ') : ''}</td></tr>`;
 }
 function libDraw(added) {
@@ -5351,7 +5877,7 @@ function libDraw(added) {
   const n = LIB.res.length, cnt = document.getElementById('lib-count'), more = document.getElementById('lib-more'), clr = document.getElementById('lib-clear');
   const sc = ID_SCOPES.find(x => x[0] === LIB.scope);
   if (cnt && LIB.offline) cnt.dataset.off = '1'; else if (cnt) delete cnt.dataset.off;
-  if (cnt) cnt.textContent = (LIB.offline ? 'Offline: searching the Texas list saved on this device. ' : '') + (LIB.total ? `Showing ${n.toLocaleString()} of ${LIB.total.toLocaleString()} in ${sc ? sc[1][0].toLowerCase() + sc[1].slice(1) : 'the list'}${LIB.q ? ` matching "${LIB.q}"` : ''}.` : `Nothing found${LIB.q ? ` for "${LIB.q}"` : ''} with these filters.`);
+  if (cnt) cnt.textContent = (LIB.offline ? 'Offline: searching the plants of your download areas saved on this device. ' : '') + (LIB.total ? `Showing ${n.toLocaleString()} of ${LIB.total.toLocaleString()} in ${sc ? sc[1][0].toLowerCase() + sc[1].slice(1) : 'the list'}${LIB.q ? ` matching "${LIB.q}"` : ''}.` : `Nothing found${LIB.q ? ` for "${LIB.q}"` : ''} with these filters.`);
   if (more) { more.hidden = n >= LIB.total; more.textContent = `Show ${Math.min(LIB_PAGE, LIB.total - n)} more`; }
   if (clr) clr.hidden = !(libFiltersOn() || LIB.q);
   if (!LIB.total) {
@@ -5504,7 +6030,7 @@ function spHomeHtml(d, fungus) {
   const k = d.know || {}, mi = MILES(d.near_km || 50), care = d.care && d.care.sheet;
   const lines = [];
   if (k.invasive) lines.push(html`<div class="notice bad" role="note"><strong>⚠ On the Texas noxious and invasive plant list</strong> (as ${k.invasive}). Texas law says it may not be sold, distributed or brought into Texas. If it is growing wild on your land, removing it helps. <a href="${d.noxious_law}" target="_blank" rel="noopener noreferrer">About the list</a>.</div>`);
-  if (!fungus) lines.push(html`<p><strong>In Texas:</strong> ${k.tx === 'native' ? 'native.' : k.tx === 'introduced' ? 'introduced (not native), growing wild here.' : 'not on the iNaturalist lists of Texas plants (or the lists are not fetched yet).'}</p>`);
+  if (!fungus) lines.push(html`<p><strong>In ${regionName()}:</strong> ${k.tx === 'native' ? 'native.' : k.tx === 'introduced' ? 'introduced (not native), growing wild here.' : `not on the iNaturalist lists of ${regionName()} plants (or the lists are not fetched yet).`}</p>`);
   lines.push(html`<p><strong>Near ${d.home}:</strong> ${k.near ? `recorded growing wild ${k.near.toLocaleString()} time${k.near === 1 ? '' : 's'} within ${mi} miles` : `not recorded wild within ${mi} miles`}${k.bloom ? ', and seen flowering there this month' : ''}${k.fruiting ? ', and found there this month' : ''}.</p>`);
   if (!fungus) {
     const zz = care ? `zones ${care.zone_low || '?'} to ${care.zone_high || '?'}` : '';
@@ -5602,7 +6128,9 @@ async function wlBadge() {           // 1.27.0: the number of wishlist alerts be
   if (Date.now() - WLBADGE < 60000) return;
   WLBADGE = Date.now();
   let n = 0; try { n = (await api('GET', '/api/wishlist/alerts')).alerts.length; } catch (e) { return; }
-  const a = document.querySelector('#main-nav a[data-nav=library]'); if (!a) return;
+  const a = document.querySelector('#main-nav a[data-sec=discover]'), w = document.querySelector('#sub-nav a[data-nav=wishlist]');
+  if (w) { let bw = w.querySelector('.nav-badge'); if (!n) { if (bw) bw.remove(); } else { if (!bw) { bw = document.createElement('span'); bw.className = 'nav-badge'; w.append(bw); } bw.innerHTML = rend(html` <span aria-hidden="true">(${n})</span><span class="sr">, ${n} wishlist alert${n === 1 ? '' : 's'}</span>`); } }
+  if (!a) return;
   let b = a.querySelector('.nav-badge');
   if (!n) { if (b) b.remove(); return; }
   if (!b) { b = document.createElement('span'); b.className = 'nav-badge'; a.append(b); }
@@ -5761,11 +6289,17 @@ Object.assign(acts, {
     if (!SPCUR || !(await needName())) return;
     await guard(async () => { await api('PUT', '/api/wishlist', { name: SPCUR.scientific_name, common_name: SPCUR.common_name || '' }); toast('Added to your wishlist'); await route(); });
   },
-  async libpre() {
-    await guard(async () => { const p = await api('POST', '/api/library/prefetch', { scope: 'texas' }); toast(p.total ? `Downloading ${p.total.toLocaleString()} species in the background` : 'They are all kept already'); await libPrePoll(); });
+  async libareaadd(el) {
+    if (!(await needName())) return;
+    await guard(async () => { await api('POST', '/api/library/areas', { place_id: +el.dataset.pid, name: el.dataset.name }); toast(`${el.dataset.name} added. Its download has started.`);
+      const r = document.getElementById('libarea-res'); if (r) r.innerHTML = ''; await libAreasPoll(); });
   },
-  async liblists() { await guard(async () => { await api('POST', '/api/library/local'); toast('Fetching the lists again in the background'); await libListsPoll(); }); },
-  async libprestop() { await guard(async () => { await api('DELETE', '/api/library/prefetch'); toast('Download stopped'); await libPrePoll(); }); },
+  async libareaupd(el) { if (!(await needName())) return; await guard(async () => { await api('POST', '/api/library/areas/' + el.dataset.id); toast('Checking for updates in the background'); await libAreasPoll(); }); },
+  async libareadel(el) {
+    if (!(await confirmBox(`Remove ${el.dataset.name}?`, 'It leaves the table and any download for it stops. Its photos stay on this computer.', 'Remove area', true))) return;
+    await guard(async () => { await api('DELETE', '/api/library/areas/' + el.dataset.id); toast('Area removed'); await libAreasPoll(); });
+  },
+  async libareastop() { await guard(async () => { await api('POST', '/api/library/areas/stop'); toast('Downloads stopped'); await libAreasPoll(); }); },
   spnew: () => { if (SPCUR) idNewPlant(Object.assign({}, SPCUR, { src: 'the plant library' }), false); },
 });
 function spFrom(src, i) {
@@ -5867,7 +6401,7 @@ function viewFungiSafety() {
     <ul><li>Photograph the cap from above, the underside (gills or pores), the whole stem, and the very base. Dig gently around the base first: a cup or sac there (a volva) is a warning sign of <i>Amanita</i>.</li>
       <li>Note what it grew on, and which trees are near: many mushrooms grow only with certain trees.</li>
       <li>A spore print helps an expert most: put the cap gills-down on half white, half dark paper under a bowl for a few hours, and note the colour.</li>
-      <li>Ask for help on iNaturalist or a local mycological society, such as the Texas Mycological Society.</li></ul>` };
+      <li>Ask for help on iNaturalist or a local mycological society (most states and many cities have one; the North American Mycological Association lists them).</li></ul>` };
 }
 function muField(meta, f, v, plants) {
   const id = 'mu-' + f.name;
@@ -6299,7 +6833,7 @@ async function viewOffline() {
     ${OFF.conflicts ? html`<p class="notice bad" role="status"><strong>${OFF.conflicts} change${OFF.conflicts === 1 ? '' : 's'} need${OFF.conflicts === 1 ? 's' : ''} your decision:</strong> the same thing was changed on two devices. <a href="#/decisions">Choose which to keep</a>.</p>` : ''}
     <section aria-labelledby="off-copy-h"><h2 id="off-copy-h">Keep a copy on this device</h2>
       <div class="off-opts"><label class="chk"><input type="checkbox" data-f="offkeep" ${keep ? raw('checked') : ''}>Keep a copy of every plant, mushroom find, care log and photo (full size) on this device, so it works without a connection</label>
-      <label class="chk"><input type="checkbox" data-f="offkeeplib" ${keeplib ? raw('checked') : ''}>Also keep the library's Texas plant list with its photos (about 300 MB, once the owner has downloaded those photos)</label></div>
+      <label class="chk"><input type="checkbox" data-f="offkeeplib" ${keeplib ? raw('checked') : ''}>Also keep the library's download areas (their plant lists and photos, from the Library page) on this device</label></div>
       <p>${dl ? `Last saved ${when(dl)}.` : 'Not saved on this device yet.'} ${keep ? 'It is saved again by itself when it is a few hours old and the device is online.' : ''}</p>
       <p id="off-dl" role="status" aria-live="polite"></p>
       ${keep ? html`<p class="row"><button class="btn" type="button" data-act="offdl" ${navigator.onLine ? '' : raw('disabled')}>Save it again now</button></p>` : ''}
@@ -6485,6 +7019,25 @@ document.addEventListener('change', e => {
   else if (f === 'low') { G.low = el.checked; drawGrid(); }
   else if (f === 'status') { G.status = el.value; drawGrid(); }
   else if (f === 'site') { G.site = el.value; drawGrid(); }
+  else if (f === 'home') { G.home = el.value; drawGrid(); }
+  else if (f === 'ctmat') { const o = document.querySelector(`[data-other="${el.dataset.id}"]`), t = o && o.querySelector('input');
+    if (el.value === '__other') { o.hidden = false; t.dataset.was = t.value; t.focus(); }
+    else { if (o) o.hidden = true; if (t) { t.dataset.was = t.value; t.value = el.value; edSave(t); } } }
+  else if (f === 'wherehome' || f === 'whereside') { const fm = el.closest('form'); if (fm) whereRefresh(fm); }
+  else if (f === 'wherearea') { const fm = el.closest('form'); if (fm) whereRefresh(fm, 'area'); }
+  else if (f === 'sevset') { SEV[el.dataset.k] = el.value; }
+  else if (f === 'sevadd') { const P = SEV.plants[+el.dataset.g]; P.add = el.checked; el.closest('fieldset').classList.toggle('sev-off', !el.checked); const b = document.querySelector('[data-act=sevsave]'), k = SEV.plants.filter(p => p.add).length; if (b) { b.textContent = `Add ${k} plant${k === 1 ? '' : 's'}`; b.disabled = !k; } }
+  else if (f === 'sevpick') { const P = SEV.plants[+el.dataset.g]; P.pick = +el.value; P.typed = new Set(); sevFill(P); sevDraw(`[data-f=sevpick][data-g="${el.dataset.g}"][value="${el.value}"]`); }
+  else if (f === 'sevmove') { const ph = SEV.photos[+el.dataset.p], n = SEV.plants.length;
+    ph.group = el.value === 'out' ? 'out' : el.value === 'new' ? n : +el.value;
+    const used = [...new Set(SEV.photos.map(p => p.group).filter(g => g !== 'out'))].sort((a, b) => a - b), map = Object.fromEntries(used.map((g, k) => [g, k]));
+    const keepP = used.map(g => SEV.plants[g]).map(P => P && { ...P, key: '' });
+    SEV.photos.forEach(p => { if (p.group !== 'out') p.group = map[p.group]; });
+    const typed = keepP.map(P => P && { add: P.add, pick: P.pick, fields: P.fields, typed: P.typed });
+    sevPlants(used.length);
+    SEV.plants.forEach((P, k) => { if (typed[k] && typed[k].typed.size) Object.assign(P, typed[k]); });
+    toast(el.value === 'out' ? 'Photo left out' : 'Photo moved'); sevDraw(); }
+  else if (f === 'idphnone') { IDPH.none = el.checked; drawIdPhotos(); }
   else if (f === 'more') { G[el.dataset.key] = el.value; if (el.dataset.key === 'care' && el.value && !CAREDUE) loadCareDue().then(drawGrid); drawGrid(); }
 });
 document.addEventListener('toggle', e => { const d = e.target; if (d.classList && d.classList.contains('histbox') && d.open) histOpen(d.dataset.hist); }, true);
@@ -6497,6 +7050,8 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); const [Y, M] = b.dataset.date.split('-').map(Number); calGo(id, ymd(new Date(Y, e.key === 'Home' ? M - 1 : M, e.key === 'Home' ? 1 : 0, 12)), true); }
 });
 document.addEventListener('input', e => {
+  if (e.target.dataset && e.target.dataset.f === 'sevfield') { const P = SEV.plants[+e.target.dataset.g]; P.fields[e.target.dataset.k] = e.target.value; P.typed.add(e.target.dataset.k);
+    if (e.target.dataset.k === 'common_name') { const lg = e.target.closest('fieldset.sev-plant').querySelector('legend'); lg.textContent = lg.textContent.replace(/(: .*)?$/, e.target.value ? ': ' + e.target.value : ''); } }
   if (e.target.closest && e.target.closest('form[data-spot]')) spotPreview();
   if (e.target.closest && e.target.closest('form[data-fert]')) {
     if (e.target.name === 'product') { const x = FERT.products.find(q => q.product.toLowerCase() === e.target.value.trim().toLowerCase()); const f = e.target.form; if (x && !f.elements.n.value && !f.elements.amount.value) { ['form', 'n', 'p', 'k', 'amount', 'amount_unit', 'water_amount', 'water_unit', 'method'].forEach(k => { if (x[k] != null && f.elements[k]) f.elements[k].value = x[k]; }); } }
@@ -6732,4 +7287,9 @@ Object.assign(changeActs, {
 route();
 offStart();
 wxPoll();                      // shows the progress box on every page while a history load runs
+// 1.29.0: settings that follow you. If another device changed them, this tab starts again once with them (at most once a visit)
+if (window.PlantSync && navigator.onLine) window.PlantSync.load().then(changed => {
+  let again = false; try { again = sessionStorage.getItem('plantdb.synced') === '1'; sessionStorage.setItem('plantdb.synced', '1'); } catch (e) { again = true; }
+  if (changed && !again && !document.querySelector('main form[data-form] input:focus, dialog[open]')) location.reload();
+});
 })();
