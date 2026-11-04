@@ -5,9 +5,9 @@ from .core import *   # noqa: F401,F403
 DEFAULT_LOC = {'name': 'Round Rock, TX', 'lat': 30.5083, 'lon': -97.6789, 'tz': 'America/Chicago'}
 LUX_PER_PAR = 54.0          # sunlight: about 54 lux per umol/m2/s. A rough conversion; grow lights differ.
 PAR_PER_WM2 = 2.1           # sunlight: global radiation (W/m2) to PAR (umol/m2/s), about 2.1
-METRICS = ('temp_f', 'humidity', 'par', 'lux', 'soil_moisture', 'soil_temp_f', 'soil_ph')
+METRICS = ('temp_f', 'humidity', 'par', 'lux', 'soil_moisture', 'soil_temp_f', 'soil_ph', 'weight_g')     # 1.35.0: weight_g
 LIMITS = {'temp_f': (-60, 160), 'humidity': (0, 100), 'par': (0, 4000), 'lux': (0, 200000),
-          'soil_moisture': (0, 100), 'soil_temp_f': (-40, 160), 'soil_ph': (0, 14)}
+          'soil_moisture': (0, 100), 'soil_temp_f': (-40, 160), 'soil_ph': (0, 14), 'weight_g': (0, 200000)}
 
 def setting(c, key, default=None):
     r = c.execute('SELECT value FROM settings WHERE key=?', (key,)).fetchone()
@@ -17,7 +17,7 @@ def set_setting(c, key, value):
     c.execute('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)', (key, value))
 
 PROBLEM_AREA = {'weather': 'Weather update', 'backup': 'Backup', 'shops': 'Shopping check', 'stores': 'Store look-up', 'library': 'Library download',
-                'know': 'Library lookups', 'offline': 'Offline changes', 'vision': 'Picture checker', 'gzip': 'Sending a page', 'start': 'Starting the app', 'push': 'Notifications'}
+                'know': 'Library lookups', 'offline': 'Offline changes', 'vision': 'Picture checker', 'gzip': 'Sending a page', 'start': 'Starting the app', 'push': 'Notifications', 'sensors': 'Sensors'}
 def problem(area, text, detail='', conn=None):
     """1.31.0: a problem in a background job, kept for the Problems list on Settings (the last 200). The same problem again
     within a day counts up instead of adding a line. Never raises: it is called from places that are already failing."""
@@ -462,8 +462,8 @@ def clean_reading(d, device_default='sensor'):
     return out
 
 def insert_reading(c, source, r):
-    c.execute('INSERT OR REPLACE INTO readings(ts,source,device,temp_f,humidity,par,lux,soil_moisture,soil_temp_f,soil_ph,note) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
-              (r['ts'], source, r['device'], r['temp_f'], r['humidity'], r['par'], r['lux'], r['soil_moisture'], r['soil_temp_f'], r['soil_ph'], r.get('note')))
+    c.execute('INSERT OR REPLACE INTO readings(ts,source,device,temp_f,humidity,par,lux,soil_moisture,soil_temp_f,soil_ph,weight_g,note) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+              (r['ts'], source, r['device'], r['temp_f'], r['humidity'], r['par'], r['lux'], r['soil_moisture'], r['soil_temp_f'], r['soil_ph'], r.get('weight_g'), r.get('note')))
 
 @app.route('/api/readings', methods=['POST'])
 def post_readings():
@@ -475,6 +475,8 @@ def post_readings():
     if len(items) > 500: abort(400, 'at most 500 readings per request')
     rows = [clean_reading(d) for d in items]
     for r in rows: insert_reading(c, 'sensor', r)
+    try: sensor_after_readings(c, rows)          # 1.35.0: a jump in soil moisture logs a watering
+    except Exception as e: problem_exc('sensors', e, 'The sensor watering check failed')
     c.commit()
     return jsonify(stored=len(rows)), 201
 
