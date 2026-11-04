@@ -4966,7 +4966,7 @@ const acts = {
       const h = document.getElementById('plc-home'); if (h) h.innerHTML = rend(plcHomeRow());
     } catch (e) { if (m) m.textContent = e.message; }
   },
-  conclose() { DBG.console = '0'; dbgSave(); conApply(); toast('Audit log console off. Turn it back on with the Debug button.'); const d = document.getElementById('debug-btn'); if (d) d.focus(); },
+  conclose() { DBG.console = '0'; dbgSave(); conApply(); toast('Audit log console off. Turn it back on with the Debug button.'); const d = document.getElementById('debug-btn') || document.querySelector('#app h1'); if (d) { if (d.tagName === 'H1') d.setAttribute('tabindex', '-1'); d.focus(); } },
   conpause(el) { CON.paused = !CON.paused; el.setAttribute('aria-pressed', String(CON.paused)); el.textContent = CON.paused ? 'Resume' : 'Pause'; conState(CON.paused ? 'Paused' : 'Live'); if (!CON.paused) conPoll(); },
   connew() { const b = document.getElementById('con-body'); if (b) { b.scrollTop = b.scrollHeight; b.focus(); } CON.unseen = 0; CON.stick = true; const n = document.getElementById('con-new'); if (n) n.hidden = true; },
   audclear() { Object.assign(AUD.f, { q: '', plant: '', who: '', kind: '', field: '', from: '', to: '', order: 'desc' }); AUD.offset = 0; audSave(); route(); },
