@@ -57,6 +57,8 @@ FIELDS = [
     ('aliases', 'text', 'Other names / cultivar'), ('plant_type', 'text', 'Plant type'),
     ('location', 'text', 'Spot (where exactly)'), ('container', 'text', 'Container'),
     ('home_id', 'home', 'Home'),                                                    # 1.28.0: which home it is at (empty: the main home)
+    ('area_id', 'area', 'Area or room'), ('spot_id', 'spot', 'Spot'),                # 1.29.0: inside or outside, the area or room, the spot
+    ('pot_id', 'pot', 'Pot'), ('tray_id', 'tray', 'Catch tray'),                    # 1.29.0: pots and trays you keep as items
     ('id_confidence', 'int', 'ID confidence (%)'), ('id_basis', 'long', 'Why Claude thinks so'),
     ('id_alternatives', 'list', 'Other possibilities'), ('id_improve', 'list', 'What would raise confidence'),
     ('temp_ideal_low', 'int', 'Ideal temp low (F)'), ('temp_ideal_high', 'int', 'Ideal temp high (F)'),
@@ -139,7 +141,7 @@ def close_db(_):
     c = g.pop('db', None)
     if c: c.close()
 
-SQLTYPE = {'int': 'INTEGER', 'num': 'REAL', 'home': 'INTEGER'}
+SQLTYPE = {'int': 'INTEGER', 'num': 'REAL', 'home': 'INTEGER', 'area': 'INTEGER', 'spot': 'INTEGER', 'pot': 'INTEGER', 'tray': 'INTEGER'}
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS plants(
@@ -165,6 +167,20 @@ CREATE TABLE IF NOT EXISTS readings(
 CREATE UNIQUE INDEX IF NOT EXISTS readings_uq ON readings(source, device, ts);
 CREATE INDEX IF NOT EXISTS readings_ts ON readings(ts);
 CREATE INDEX IF NOT EXISTS readings_src_ts ON readings(source, ts);
+CREATE TABLE IF NOT EXISTS user_prefs(login TEXT NOT NULL, key TEXT NOT NULL, value TEXT, updated_at TEXT, PRIMARY KEY(login, key));
+CREATE TABLE IF NOT EXISTS areas(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, home_id INTEGER, side TEXT NOT NULL, name TEXT NOT NULL, sheltered INTEGER NOT NULL DEFAULT 0,
+  sort INTEGER NOT NULL DEFAULT 0, created_by TEXT, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS spots(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, area_id INTEGER NOT NULL REFERENCES areas(id), name TEXT NOT NULL, sort INTEGER NOT NULL DEFAULT 0,
+  created_by TEXT, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS containers(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, name TEXT NOT NULL, shape TEXT NOT NULL DEFAULT 'circle',
+  dia_in REAL, len_in REAL, wid_in REAL, height_in REAL, drainage INTEGER, material TEXT NOT NULL DEFAULT '', qty INTEGER NOT NULL DEFAULT 1,
+  notes TEXT NOT NULL DEFAULT '', created_by TEXT, created_at TEXT NOT NULL, updated_by TEXT, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS container_photos(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, container_id INTEGER NOT NULL REFERENCES containers(id) ON DELETE CASCADE, file TEXT NOT NULL,
+  is_primary INTEGER NOT NULL DEFAULT 0, added_by TEXT, added_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS lib_areas(
   id INTEGER PRIMARY KEY AUTOINCREMENT, place_id INTEGER UNIQUE NOT NULL, name TEXT NOT NULL, total INTEGER NOT NULL DEFAULT 0,
   checked_at TEXT, added_by TEXT, added_at TEXT NOT NULL);
@@ -247,6 +263,7 @@ def init_db():
     if 'plants_here' not in {r[1] for r in c.execute('PRAGMA table_info(locations)')}: c.execute('ALTER TABLE locations ADD COLUMN plants_here INTEGER NOT NULL DEFAULT 0')   # 1.28.0: homes
     if 'place_id' not in {r[1] for r in c.execute('PRAGMA table_info(light_spots)')}: c.execute('ALTER TABLE light_spots ADD COLUMN place_id INTEGER')   # 1.13.1
     migrate_places(c)
+    where_seed(c)                                       # 1.29.0: areas and spots for every home
     if not c.execute('SELECT 1 FROM weather_runs LIMIT 1').fetchone():       # readings gathered before runs were logged (version 1.2)
         w = c.execute("SELECT MIN(ts),MAX(ts),COUNT(*) FROM readings WHERE source='weather'").fetchone()
         if w[2]:
@@ -291,6 +308,7 @@ def init_db():
     c.execute("UPDATE plants SET site='Outdoors' WHERE site IS NULL OR site=''")   # before the batches too, so a batch can expect 'Outdoors'
     c.commit()
     apply_batches(c)
+    where_seed(c)                                       # 1.29.0: homes and plants that batches just added get their areas too
     c.execute("UPDATE plants SET site='Outdoors' WHERE site IS NULL OR site=''")   # 1.7.0: every existing plant starts out as Outdoors
     c.commit()
     repair_seed_photos(c)
@@ -415,9 +433,9 @@ def apply_batches(c):
                 if not L: continue
                 d, cols, done = light_specs(L), {}, []
                 for f, (old, new) in u['set'].items():
-                    cur = L[f] if f in ('fixture', 'notes', 'count') else d.get(f)
+                    cur = L[f] if f in ('fixture', 'notes', 'count', 'name') else d.get(f)
                     if str(cur if cur is not None else '') != str(old if old is not None else ''): continue
-                    if f in ('fixture', 'notes', 'count'): cols[f] = new
+                    if f in ('fixture', 'notes', 'count', 'name'): cols[f] = new
                     else: d[f] = new
                     done.append(f)
                 if done:
@@ -496,6 +514,14 @@ def norm(name, v):
         lo, hi = NUM_RANGES[name]
         if not lo <= x <= hi: abort(400, f'{FIELD_LABEL[name]} must be between {lo} and {hi}')
         return x
+    if kind in ('area', 'spot', 'pot', 'tray'):                # 1.29.0: an id in its own list, or empty
+        if v in (None, '', 0, '0'): return None
+        try: i = int(v)
+        except (TypeError, ValueError): abort(400, f'{FIELD_LABEL[name]} must be chosen from the list')
+        if has_app_context():
+            tbl, extra = {'area': ('areas', ''), 'spot': ('spots', ''), 'pot': ('containers', " AND kind='pot'"), 'tray': ('containers', " AND kind='tray'")}[kind]
+            if not db().execute(f'SELECT 1 FROM {tbl} WHERE id=?{extra}', (i,)).fetchone(): abort(400, f'That {FIELD_LABEL[name].lower()} is not in the list any more')
+        return i
     if kind == 'home':                                      # 1.28.0: a home's id; empty means the main home
         if v in (None, '', 0, '0'): return None
         try: i = int(v)
@@ -535,6 +561,7 @@ def audit_only(c, action, field, old, new, who, note, pid=None, code=None):
 
 def apply_changes(c, r, new_fields, who, action, note):
     ch = []
+    new_fields = place_sync(c, r, dict(new_fields))          # 1.29.0
     for n, v in new_fields.items():
         if n not in FIELD_KIND: continue
         nv = norm(n, v)
@@ -587,7 +614,7 @@ def owner_name(c):
 
 OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people')        # any request (the people list shows everyone's login)
 OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/areas', '/api/shops')   # changes only
-VIEWER_POSTS = ('/api/identify',)            # 1.18.0: asks this computer what a picture shows; changes nothing, so viewers may use it
+VIEWER_POSTS = ('/api/identify', '/api/me/prefs')   # 1.18.0: asks this computer what a picture shows; 1.29.0: your own settings. Neither changes the plants
 
 def role_refusal(u):
     """Why this person may not make this request, or None. The server decides; the page only hides what would be refused."""
@@ -604,6 +631,29 @@ def me_dict(c):
     u = getattr(g, 'user', None) or {'via': 'local', 'login': None, 'name': '', 'role': 'owner'}
     return {'via': u['via'], 'login': u['login'], 'name': u['name'] if u['via'] == 'tailscale' else '', 'role': u['role'],
             'role_word': ROLE_WORD[u['role']], 'owner_name': owner_name(c)}
+
+# 1.29.0: settings that follow you: the Plants filters, the Library's choices, folded sections, the Location button, and the parts of
+# Display you choose to share between devices. Kept per Tailscale login; on this computer (localhost) they are the owner's.
+def prefs_login(c):
+    u = getattr(g, 'user', None) or {'via': 'local', 'login': None}
+    if u.get('via') == 'tailscale' and u.get('login'): return u['login']
+    r = c.execute("SELECT login FROM people WHERE role='owner' ORDER BY first_seen LIMIT 1").fetchone()
+    return r[0] if r else 'local-owner'
+
+@app.route('/api/me/prefs', methods=['GET', 'PUT'])
+def me_prefs():
+    c = db(); login = prefs_login(c)
+    if request.method == 'PUT':
+        b = request.get_json(silent=True) or {}
+        if not isinstance(b, dict) or len(b) > 60: abort(400, 'Send up to 60 settings')
+        for k, v in b.items():
+            if not re.match(r'^[a-z][a-z0-9._-]{0,40}$', str(k)): abort(400, 'That setting name is not allowed')
+            if v is None: c.execute('DELETE FROM user_prefs WHERE login=? AND key=?', (login, k)); continue
+            v = str(v)
+            if len(v) > 20000: abort(400, 'That setting is too long')
+            c.execute('INSERT OR REPLACE INTO user_prefs(login,key,value,updated_at) VALUES(?,?,?,?)', (login, k, v, now()))
+        c.commit()
+    return jsonify(prefs={k: v for k, v in c.execute('SELECT key, value FROM user_prefs WHERE login=?', (login,))}, login=login)
 
 @app.route('/api/me', methods=['GET', 'PUT'])
 def me():
@@ -878,7 +928,9 @@ def meta():
                    home_tz=L['tz'],              # the browser uses this for "today", so dates match the server's
                    place=place_brief(L), climate=place_climate(c, L), zone=place_zone(c, L), me=me_dict(c), runs_as=runs_as(),
                    places=[place_brief(loc_dict(r)) for r in c.execute('SELECT * FROM locations ORDER BY is_home DESC, name')],
-                   homes=[place_brief(h) for h in homes(c)], region=place_region(c, L))
+                   homes=[place_brief(h) for h in homes(c)], region=place_region(c, L),
+                   where=where_list(c),                                                      # 1.29.0: rooms and spots
+                   containers=[{k: d[k] for k in ('id', 'kind', 'name', 'size', 'sqft', 'qty', 'free')} for d in (cont_dict(c, x) for x in c.execute('SELECT * FROM containers ORDER BY kind, name'))])
 
 REF_PLACE = (30.5083, -97.6789)       # the written winter reference (climate table and notes) is for Round Rock, TX
 
@@ -2844,6 +2896,7 @@ def create_plant():
     f['winter_plan'] = f.get('winter_plan') or 'Move indoors'
     f['health_rating'] = f.get('health_rating') or 'Fair'
     f['site'] = f.get('site') or 'Outdoors'
+    f = place_sync(c, None, f)                                 # 1.29.0: the area and spot go with the Location
     vals = {k: norm(k, f.get(k)) for k in FIELD_NAMES}
     cols = ['code'] + FIELD_NAMES + ['version', 'status', 'created_at', 'created_by', 'updated_at', 'updated_by']
     cur = c.execute(f"INSERT INTO plants({','.join(cols)}) VALUES({','.join('?' * len(cols))})",
@@ -2930,6 +2983,7 @@ def several_create():
         f['health_rating'] = f.get('health_rating') or 'Fair'
         f['site'] = f.get('site') or 'Outdoors'
         if not f.get('pet_safety'): f['pet_safety'] = pets_word(f.get('scientific_name'))
+        f = place_sync(c, None, f)
         items[i] = (it, {k: norm(k, f.get(k)) for k in FIELD_NAMES})        # every plant is checked before any is added
     cols = ['code'] + FIELD_NAMES + ['version', 'status', 'created_at', 'created_by', 'updated_at', 'updated_by']
     for it, vals in items:
@@ -3885,6 +3939,97 @@ def req_loc(c, key='loc'):
     L = loc_get(c, v)
     if L is None: abort(404, 'That place does not exist (it may have been removed)')
     return L
+
+# ---------------------------------------------------------------- 1.29.0: where a plant is: inside or outside, the area or room, the spot
+# Each home has areas: outside (Yard, Covered porch...) and inside (Living room, Garage...). An outside area can be sheltered (a roof
+# over it); an inside one can be heated. Those two decide the old Location field (Outdoors, Covered porch, Indoors, Garage or shed),
+# which frost warnings, watering and the Winter plan still use, so it is always set from the area. Spots are inside an area.
+SIDE_WORD = {'out': 'Outside', 'in': 'Inside'}
+WHERE_DEFAULTS = [('out', 'Yard', 0), ('out', 'Covered porch', 1), ('in', 'Living room', 1)]
+
+def site_of(side, sheltered):
+    return ('Covered porch' if sheltered else 'Outdoors') if side == 'out' else ('Indoors' if sheltered else 'Garage or shed')
+
+def side_of_site(site):
+    return ('out', 1) if site == 'Covered porch' else ('in', 1) if site == 'Indoors' else ('in', 0) if site == 'Garage or shed' else ('out', 0)
+
+def area_home(c, hid):
+    """A plant's home id as areas store it: None for the main home."""
+    if not hid: return None
+    r = c.execute('SELECT is_home FROM locations WHERE id=?', (hid,)).fetchone()
+    return None if (r is None or r[0]) else int(hid)
+
+def area_for_site(c, hid, site, make=True):
+    """The first area at a home that matches an old Location value; one is added if there is none."""
+    side, sh = side_of_site(site or 'Outdoors')
+    q = 'SELECT id FROM areas WHERE side=? AND sheltered=? AND ' + ('home_id IS NULL' if hid is None else 'home_id=?') + ' ORDER BY sort, id'
+    r = c.execute(q, (side, sh) + (() if hid is None else (hid,))).fetchone()
+    if r or not make: return r[0] if r else None
+    name = {('out', 0): 'Yard', ('out', 1): 'Covered porch', ('in', 1): 'Living room', ('in', 0): 'Garage'}[(side, sh)]
+    n = c.execute('SELECT COALESCE(MAX(sort),0)+1 FROM areas').fetchone()[0]
+    return c.execute('INSERT INTO areas(home_id,side,name,sheltered,sort,created_by,created_at) VALUES(?,?,?,?,?,?,?)', (hid, side, name, sh, n, 'Plant record', now())).lastrowid
+
+def where_seed(c):
+    """Every home gets areas the first time; Rooms and shelves from the Grow lights page (and any a batch adds) become inside rooms
+    and spots at the main home, and light spots follow them; every plant without an area gets the one matching its Location.
+    Safe to run on every start."""
+    ts = now(); changed = False
+    if 'moved' not in {r[1] for r in c.execute('PRAGMA table_info(indoor_places)')}: c.execute('ALTER TABLE indoor_places ADD COLUMN moved INTEGER NOT NULL DEFAULT 0')
+    for h in homes(c):
+        hid = None if h['is_home'] else h['id']
+        if c.execute('SELECT 1 FROM areas WHERE ' + ('home_id IS NULL' if hid is None else 'home_id=?'), (() if hid is None else (hid,))).fetchone(): continue
+        has_rooms = hid is None and c.execute('SELECT 1 FROM indoor_places WHERE moved=0').fetchone()
+        for k, (side, name, sh) in enumerate(x for x in WHERE_DEFAULTS if not (has_rooms and x[0] == 'in')):
+            c.execute('INSERT INTO areas(home_id,side,name,sheltered,sort,created_by,created_at) VALUES(?,?,?,?,?,?,?)', (hid, side, name, sh, k + 1, 'Plant record', ts))
+        changed = True
+    rooms = c.execute('SELECT * FROM indoor_places WHERE moved=0 ORDER BY sort, id').fetchall()
+    if rooms:
+        first = not setting(c, 'where_lights_1290')
+        lone = c.execute("SELECT id FROM areas WHERE home_id IS NULL AND side='in'").fetchall()
+        if len(lone) == 1 and not c.execute('SELECT 1 FROM plants WHERE area_id=?', (lone[0][0],)).fetchone() and \
+                c.execute("SELECT created_by FROM areas WHERE id=?", (lone[0][0],)).fetchone()[0] == 'Plant record' and \
+                not c.execute('SELECT 1 FROM spots WHERE area_id=?', (lone[0][0],)).fetchone():
+            c.execute('DELETE FROM areas WHERE id=?', (lone[0][0],))          # the stand-in "Living room": the real rooms replace it
+        remap = {}
+        for r in rooms:
+            a = c.execute("SELECT id FROM areas WHERE home_id IS NULL AND side='in' AND name=?", (r['room'],)).fetchone()
+            aid = a[0] if a else c.execute('INSERT INTO areas(home_id,side,name,sheltered,sort,created_by,created_at) VALUES(NULL,?,?,?,(SELECT COALESCE(MAX(sort),0)+1 FROM areas),?,?)',
+                                           ('in', r['room'], 0 if re.search(r'garage|shed|barn', r['room'], re.I) else 1, 'Plant record', ts)).lastrowid
+            if r['name']:
+                sp = c.execute('SELECT id FROM spots WHERE area_id=? AND name=?', (aid, r['name'])).fetchone()
+                remap[r['id']] = sp[0] if sp else c.execute('INSERT INTO spots(area_id,name,sort,created_by,created_at) VALUES(?,?,?,?,?)', (aid, r['name'], r['sort'], 'Plant record', ts)).lastrowid
+            else: remap[r['id']] = -aid
+            c.execute('UPDATE indoor_places SET moved=1 WHERE id=?', (r['id'],))
+        if first:                                         # light spots set up before 1.29.0 named the old rows
+            for sid, pid in c.execute('SELECT id, place_id FROM light_spots WHERE place_id IS NOT NULL').fetchall():
+                c.execute('UPDATE light_spots SET place_id=? WHERE id=?', (remap.get(pid), sid))
+        changed = True
+    if not setting(c, 'where_lights_1290'): set_setting(c, 'where_lights_1290', ts); changed = True
+    for r in c.execute('SELECT id, home_id, site FROM plants WHERE area_id IS NULL').fetchall():
+        c.execute('UPDATE plants SET area_id=? WHERE id=?', (area_for_site(c, area_home(c, r['home_id']), r['site'] or 'Outdoors'), r['id'])); changed = True
+    if changed: c.commit()
+
+def place_sync(c, r, f):
+    """Keeps a plant's home, area, spot and old Location in step, whichever of them a change names. f is the change (a dict)."""
+    get = lambda k: f[k] if k in f else (r[k] if r is not None else None)
+    hid = area_home(c, get('home_id') or None)
+    def area_row(a):
+        try: return c.execute('SELECT * FROM areas WHERE id=?', (int(a),)).fetchone() if a not in (None, '', 0, '0') else None
+        except (TypeError, ValueError): return None
+    if f.get('spot_id') not in (None, '', 0, '0') and 'area_id' not in f:
+        try: sp = c.execute('SELECT area_id FROM spots WHERE id=?', (int(f['spot_id']),)).fetchone()
+        except (TypeError, ValueError): sp = None
+        if sp: f['area_id'] = sp[0]
+    A = area_row(get('area_id'))
+    if 'area_id' in f and A is not None:
+        f['site'] = site_of(A['side'], A['sheltered'])
+    elif ('site' in f or 'home_id' in f) and (A is None or A['home_id'] != hid or site_of(A['side'], A['sheltered']) != (get('site') or 'Outdoors')):
+        f['area_id'] = area_for_site(c, hid, get('site') or 'Outdoors'); A = area_row(f['area_id'])
+    if A is not None and get('spot_id') not in (None, '', 0, '0'):
+        try: ok = c.execute('SELECT 1 FROM spots WHERE id=? AND area_id=?', (int(get('spot_id')), A['id'])).fetchone()
+        except (TypeError, ValueError): ok = None
+        if not ok: f['spot_id'] = None
+    return f
 
 def homes(c):
     """1.28.0: the places where plants live: the main home first, then any place marked "Plants live here"."""
@@ -5563,6 +5708,17 @@ def bulk_undo(bid):
 # they light (table light_spots: one kind of light, how many of it, how far above or beside the plants, hours a day and
 # brightness) and which plants sit in which spot (table light_assign). From the maker's PPFD-at-distance figures the
 # app works out the daily light (DLI) at the leaves and compares it with each plant's dli_low..dli_high.
+def plant_foot(c, r):
+    """1.29.0: the floor a plant takes under a light, in square feet: its catch tray if it has one, else its pot (both from Pots and
+    trays, a circle counted as the square around it), else a guess from its Pot size."""
+    for k in ('tray_id', 'pot_id'):
+        cid = r[k] if k in r.keys() else None
+        if cid:
+            x = c.execute('SELECT * FROM containers WHERE id=?', (cid,)).fetchone()
+            f = cont_sqft(x) if x else None
+            if f: return f
+    return LIGHT_FOOTPRINT.get((r['pot_size'] or '').split(':')[0], 1.0)
+
 LIGHT_FOOTPRINT = {'Small': 0.75, 'Medium': 1.5, 'Large': 3.0}       # square feet of light a pot takes, by pot size (prep traits)
 LIGHT_HOURS = (12, 14, 16, 10, 8)                                     # hours a day to try, in this order
 LIGHT_VERDICT = {'too_dim': 'Too dim', 'dim': 'A bit dim', 'good': 'Good', 'bright': 'A bit bright', 'too_bright': 'Too bright', 'unknown': 'Needs not set'}
@@ -5683,7 +5839,7 @@ def spot_eval(c, s, L, plants):
     rows, need = [], 0.0
     for r in plants:
         n = plant_need(r)
-        need += LIGHT_FOOTPRINT.get((r['pot_size'] or '').split(':')[0], 1.0)
+        need += plant_foot(c, r)
         v = light_verdict(dl, n and n['lo'], n and n['hi'])
         rows.append({'code': r['code'], 'name': r['common_name'], 'lo': n and n['lo'], 'hi': n and n['hi'], 'verdict': v, 'verdict_word': LIGHT_VERDICT[v],
                      'photo': plant_photo(c, r['id'])})
@@ -5712,7 +5868,7 @@ def light_plan(c, lights, spots_used, assigned):
     specs = {L['id']: light_specs(L) for L in lights}
     todo = [r for r in light_candidates(c) if r['code'] not in assigned and plant_need(r)]
     todo.sort(key=lambda r: (-plant_need(r)['target'], r['code']))
-    foot = lambda r: LIGHT_FOOTPRINT.get((r['pot_size'] or '').split(':')[0], 1.0)
+    foot = lambda r: plant_foot(c, r)
     slots, unplaced = [], []
 
     def fit(L, lo, hi, used, units, maxu=None):
@@ -5842,9 +5998,7 @@ def lights_state(c):
         p['steps'] = step_down(byid[p['light_id']], p, [c.execute('SELECT * FROM plants WHERE code=?', (x,)).fetchone() for x in p['codes']], outdoor)
     cands = [{'code': r['code'], 'name': r['common_name'], 'site': r['site'], 'winter_plan': r['winter_plan'], 'need': plant_need(r),
               'pot_size': r['pot_size']} for r in light_candidates(c)]
-    places = [{'id': r['id'], 'room': r['room'], 'name': r['name'], 'label': r['room'] + (', ' + r['name'] if r['name'] else ''),
-               'spots': [s['id'] for s in out_spots if s['place_id'] == r['id']]}
-              for r in c.execute('SELECT * FROM indoor_places ORDER BY sort, id')]
+    places = [p | {'spots': [s['id'] for s in out_spots if s['place_id'] == p['id']]} for p in light_places(c)]
     return {'lights': [light_dict(L, used.get(L['id'], 0)) for L in lights], 'spots': out_spots, 'plan': plan, 'unplaced': unplaced, 'places': places,
             'candidates': cands, 'assigned': {code: sid for sid, codes in assign.items() for code in codes}, 'outdoor_dli': outdoor,
             'verdicts': LIGHT_VERDICT}
@@ -5893,12 +6047,27 @@ def spot_text(s, light_name, c=None):
     return '%s%s: %s%s, %g in from the leaves, %g hours a day%s' % (s['name'], ' (%s)' % where if where else '', '%d x ' % s['units'] if s['units'] > 1 else '', light_name,
                                                                     s['distance_in'], s['hours'], '' if s['dim_pct'] == 100 else ', %d%% brightness' % s['dim_pct'])
 
+def light_places(c):
+    """1.29.0: where a light spot can be: an inside room (its id negative) or a spot in one (its id), from Rooms and spots."""
+    out = []
+    for a in c.execute("SELECT * FROM areas WHERE side='in' ORDER BY home_id IS NOT NULL, home_id, sort, id").fetchall():
+        hn = ''
+        if a['home_id']: r = c.execute('SELECT name FROM locations WHERE id=?', (a['home_id'],)).fetchone(); hn = f' ({r[0]})' if r else ''
+        room = a['name'] + hn
+        out.append({'id': -a['id'], 'room': room, 'name': '', 'label': room})
+        out += [{'id': sp['id'], 'room': room, 'name': sp['name'], 'label': room + ', ' + sp['name']}
+                for sp in c.execute('SELECT * FROM spots WHERE area_id=? ORDER BY sort, id', (a['id'],))]
+    return out
+
 def place_label(c, pid):
-    r = c.execute('SELECT room, name FROM indoor_places WHERE id=?', (pid,)).fetchone() if pid else None
-    return (r['room'] + (', ' + r['name'] if r['name'] else '')) if r else None
+    if not pid: return None
+    if pid < 0:
+        r = c.execute('SELECT name FROM areas WHERE id=?', (-pid,)).fetchone(); return r[0] if r else None
+    r = c.execute('SELECT a.name, s.name FROM spots s JOIN areas a ON a.id=s.area_id WHERE s.id=?', (pid,)).fetchone()
+    return (r[0] + ', ' + r[1]) if r else None
 
 def check_place(c, pid):
-    if pid is not None and not c.execute('SELECT 1 FROM indoor_places WHERE id=?', (pid,)).fetchone(): abort(400, 'That room or shelf is not in the list any more')
+    if pid is not None and not place_label(c, pid): abort(400, 'That room or shelf is not in the list any more')
 
 def set_spot_plants(c, sid, spot_name, codes, who):
     old = {x for (x,) in c.execute('SELECT plant_code FROM light_assign WHERE spot_id=?', (sid,))}
@@ -5964,36 +6133,285 @@ def place_fields(b):
 
 @app.route('/api/lights/places', methods=['POST'])
 def light_place_add():
-    """A room, or a shelf or table in a room, where light spots can go: {room, name}. Leave name empty for the room itself."""
+    """A room, or a shelf or table in a room (1.29.0: an inside area or a spot in it, at the main home): {room, name}."""
     c = db()
     room, name = place_fields(request.get_json(silent=True) or {})
-    if c.execute('SELECT 1 FROM indoor_places WHERE room=? AND name=?', (room, name)).fetchone(): abort(409, f'"{room}{", " + name if name else ""}" is already in the list')
     who = editor()
-    n = c.execute('SELECT COALESCE(MAX(sort),0)+1 FROM indoor_places').fetchone()[0]
-    pid = c.execute('INSERT INTO indoor_places(room,name,sort,created_by,created_at) VALUES(?,?,?,?,?)', (room, name, n, who, now())).lastrowid
+    a = c.execute("SELECT id FROM areas WHERE side='in' AND home_id IS NULL AND name=?", (room,)).fetchone()
+    if a and not name: abort(409, f'"{room}" is already in the list')
+    aid = a[0] if a else c.execute("INSERT INTO areas(home_id,side,name,sheltered,sort,created_by,created_at) VALUES(NULL,'in',?,1,(SELECT COALESCE(MAX(sort),0)+1 FROM areas),?,?)", (room, who, now())).lastrowid
+    pid = -aid
+    if name:
+        if c.execute('SELECT 1 FROM spots WHERE area_id=? AND name=?', (aid, name)).fetchone(): abort(409, f'"{room}, {name}" is already in the list')
+        pid = c.execute('INSERT INTO spots(area_id,name,sort,created_by,created_at) VALUES(?,?,(SELECT COALESCE(MAX(sort),0)+1 FROM spots),?,?)', (aid, name, who, now())).lastrowid
     audit_only(c, 'light', 'indoor_place', None, place_label(c, pid), who, 'Room or shelf added: ' + place_label(c, pid))
     c.commit()
     return jsonify(id=pid), 201
 
 @app.route('/api/lights/places/<int:i>', methods=['PUT', 'DELETE'])
 def light_place_one(i):
+    """i is a spot's id, or minus an area's id (the room itself). Changes go to Rooms and spots."""
     c = db()
     old = place_label(c, i)
     if not old: abort(404, 'That room or shelf is not in the list')
     who = editor()
     if request.method == 'DELETE':
-        n = c.execute('SELECT COUNT(*) FROM light_spots WHERE place_id=?', (i,)).fetchone()[0]
-        c.execute('UPDATE light_spots SET place_id=NULL WHERE place_id=?', (i,))
-        c.execute('DELETE FROM indoor_places WHERE id=?', (i,))
-        audit_only(c, 'light', 'indoor_place', old, None, who, 'Room or shelf removed: %s%s' % (old, ' (%d spot%s there now say "Not chosen yet")' % (n, 's' if n != 1 else '') if n else ''))
-        c.commit()
-        return jsonify(ok=True)
+        if i < 0: return where_area_delete(c, -i, who)
+        return where_spot_delete(c, i, who)
     room, name = place_fields(request.get_json(silent=True) or {})
-    if c.execute('SELECT 1 FROM indoor_places WHERE room=? AND name=? AND id<>?', (room, name, i)).fetchone(): abort(409, f'"{room}{", " + name if name else ""}" is already in the list')
-    c.execute('UPDATE indoor_places SET room=?, name=? WHERE id=?', (room, name, i))
+    if i < 0: c.execute('UPDATE areas SET name=? WHERE id=?', (room, -i))
+    else:
+        aid = c.execute('SELECT area_id FROM spots WHERE id=?', (i,)).fetchone()[0]
+        c.execute('UPDATE areas SET name=? WHERE id=?', (room, aid)); c.execute('UPDATE spots SET name=? WHERE id=?', (name or old.split(', ', 1)[-1], i))
     audit_only(c, 'light', 'indoor_place', old, place_label(c, i), who, 'Room or shelf renamed: ' + place_label(c, i))
     c.commit()
     return jsonify(ok=True)
+
+# ---------------------------------------------------------------- 1.29.0: pots and catch trays, kept as items
+CONT_KIND = {'pot': 'Pot', 'tray': 'Catch tray'}
+CONT_SHAPES = {'circle': 'Circle', 'square': 'Square', 'rectangle': 'Rectangle'}
+CONT_MATERIALS = ['Terracotta', 'Thin plastic', 'Thick plastic']
+
+def cont_sqft(x):
+    """Square feet it covers, a circle counted as the square around it (Ethan's choice), or None when the sizes are missing."""
+    sh = x['shape']
+    a = (x['dia_in'] ** 2 if x['dia_in'] else None) if sh == 'circle' else (x['len_in'] ** 2 if x['len_in'] else None) if sh == 'square' else \
+        (x['len_in'] * x['wid_in'] if x['len_in'] and x['wid_in'] else None)
+    return round(a / 144, 2) if a else None
+
+def cont_size_words(x):
+    sh = x['shape']; f = lambda v: ('%g' % v) if v is not None else '?'
+    s = f'{f(x["dia_in"])} in across' if sh == 'circle' else f'{f(x["len_in"])} in square' if sh == 'square' else f'{f(x["len_in"])} by {f(x["wid_in"])} in'
+    return s + (f', {f(x["height_in"])} in tall' if x['height_in'] else '')
+
+def cont_dict(c, x):
+    col = 'pot_id' if x['kind'] == 'pot' else 'tray_id'
+    users = [{'code': r[0], 'name': r[1]} for r in c.execute(f"SELECT code, common_name FROM plants WHERE status='active' AND {col}=? ORDER BY code", (x['id'],))]
+    d = {k: x[k] for k in ('id', 'kind', 'name', 'shape', 'dia_in', 'len_in', 'wid_in', 'height_in', 'material', 'qty', 'notes', 'updated_at', 'updated_by')}
+    d.update(drainage=None if x['drainage'] is None else bool(x['drainage']), sqft=cont_sqft(x), size=cont_size_words(x), in_use=len(users), free=x['qty'] - len(users), plants=users,
+             photos=[{'id': p['id'], 'file': p['file'], 'is_primary': bool(p['is_primary'])} for p in c.execute('SELECT * FROM container_photos WHERE container_id=? ORDER BY is_primary DESC, id', (x['id'],))])
+    return d
+
+def cont_fields(b, old=None):
+    o = dict(old or {}); out = {}
+    def num(k, label):
+        if k not in b: return o.get(k)
+        v = b[k]
+        if v in (None, ''): return None
+        try: x = round(float(v), 2)
+        except (TypeError, ValueError): abort(400, f'{label} must be a number of inches')
+        if not 0 < x <= 240: abort(400, f'{label} must be between 0 and 240 inches')
+        return x
+    out['name'] = re.sub(r'\s+', ' ', str(b.get('name', o.get('name') or ''))).strip()[:80]
+    if not out['name']: abort(400, 'Give it a name, for example "8 in black nursery pot"')
+    out['shape'] = b.get('shape', o.get('shape') or 'circle')
+    if out['shape'] not in CONT_SHAPES: abort(400, 'Shape must be circle, square or rectangle')
+    out['dia_in'] = num('dia_in', 'Across'); out['len_in'] = num('len_in', 'Length'); out['wid_in'] = num('wid_in', 'Width'); out['height_in'] = num('height_in', 'Height')
+    out['material'] = re.sub(r'\s+', ' ', str(b.get('material', o.get('material') or ''))).strip()[:60]
+    q = b.get('qty', o.get('qty', 1))
+    try: out['qty'] = int(q)
+    except (TypeError, ValueError): abort(400, 'How many you have must be a whole number')
+    if not 0 <= out['qty'] <= 9999: abort(400, 'How many you have must be between 0 and 9999')
+    if 'drainage' in b: out['drainage'] = None if b['drainage'] in (None, '') else (1 if b['drainage'] in (True, 1, '1', 'yes', 'true') else 0)
+    else: out['drainage'] = o.get('drainage')
+    out['notes'] = str(b.get('notes', o.get('notes') or '')).strip()[:1000]
+    return out
+
+@app.route('/api/containers', methods=['GET', 'POST'])
+def containers():
+    c = db()
+    if request.method == 'GET':
+        return jsonify(items=[cont_dict(c, x) for x in c.execute('SELECT * FROM containers ORDER BY kind, name')], kinds=CONT_KIND, shapes=CONT_SHAPES, materials=CONT_MATERIALS)
+    b = request.get_json(silent=True) or {}
+    kind = b.get('kind')
+    if kind not in CONT_KIND: abort(400, 'Choose a pot or a catch tray')
+    f = cont_fields(b); who = editor()
+    if kind == 'tray': f['drainage'] = None
+    cid = c.execute('INSERT INTO containers(kind,name,shape,dia_in,len_in,wid_in,height_in,drainage,material,qty,notes,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                    (kind, f['name'], f['shape'], f['dia_in'], f['len_in'], f['wid_in'], f['height_in'], f['drainage'], f['material'], f['qty'], f['notes'], who, now(), who, now())).lastrowid
+    audit_only(c, 'container', kind, None, f['name'], who, f'{CONT_KIND[kind]} added: {f["name"]} ({f["qty"]})'); c.commit()
+    return jsonify(cont_dict(c, c.execute('SELECT * FROM containers WHERE id=?', (cid,)).fetchone())), 201
+
+@app.route('/api/containers/<int:cid>', methods=['PUT', 'DELETE'])
+def container_one(cid):
+    c = db(); who = editor()
+    x = c.execute('SELECT * FROM containers WHERE id=?', (cid,)).fetchone()
+    if not x: abort(404, 'That item is not in the list any more')
+    if request.method == 'DELETE':
+        col = 'pot_id' if x['kind'] == 'pot' else 'tray_id'
+        n = c.execute(f"SELECT COUNT(*) FROM plants WHERE {col}=? AND status='active'", (cid,)).fetchone()[0]
+        if n: abort(409, f'{n} plant{"s use" if n != 1 else " uses"} it. Give {"them" if n != 1 else "it"} another one first.')
+        c.execute(f'UPDATE plants SET {col}=NULL WHERE {col}=?', (cid,))
+        for p in c.execute('SELECT file FROM container_photos WHERE container_id=?', (cid,)).fetchall():
+            try: os.remove(os.path.join(PHOTO_DIR, p[0]))
+            except OSError: pass
+        c.execute('DELETE FROM container_photos WHERE container_id=?', (cid,)); c.execute('DELETE FROM containers WHERE id=?', (cid,))
+        audit_only(c, 'container', x['kind'], x['name'], None, who, f'{CONT_KIND[x["kind"]]} removed: {x["name"]}'); c.commit()
+        return jsonify(ok=True)
+    b = request.get_json(silent=True) or {}
+    f = cont_fields(b, dict(x))
+    if x['kind'] == 'tray': f['drainage'] = None
+    ch = [k for k in f if (x[k] if x[k] is not None else '') != (f[k] if f[k] is not None else '')]
+    if ch:
+        c.execute('UPDATE containers SET ' + ','.join(f'{k}=?' for k in ch) + ',updated_by=?,updated_at=? WHERE id=?', [f[k] for k in ch] + [who, now(), cid])
+        audit_only(c, 'container', x['kind'], ', '.join(f'{k} {x[k]}' for k in ch), ', '.join(f'{k} {f[k]}' for k in ch), who, f'{CONT_KIND[x["kind"]]} changed: {f["name"]}')
+        c.commit()
+    return jsonify(cont_dict(c, c.execute('SELECT * FROM containers WHERE id=?', (cid,)).fetchone()))
+
+@app.route('/api/containers/<int:cid>/photos', methods=['POST'])
+def container_photos(cid):
+    c = db(); who = editor()
+    x = c.execute('SELECT * FROM containers WHERE id=?', (cid,)).fetchone()
+    if not x: abort(404, 'That item is not in the list any more')
+    files = request.files.getlist('files')
+    if not files: abort(400, 'Choose a photo')
+    has = c.execute('SELECT 1 FROM container_photos WHERE container_id=? AND is_primary=1', (cid,)).fetchone()
+    for i, f in enumerate(files):
+        name = save_image(f)
+        c.execute('INSERT INTO container_photos(container_id,file,is_primary,added_by,added_at) VALUES(?,?,?,?,?)', (cid, name, 0 if has or i else 1, who, now()))
+    audit_only(c, 'container', x['kind'], None, f'{len(files)} photo(s)', who, f'Photo added to {x["name"]}'); c.commit()
+    return jsonify(cont_dict(c, x)), 201
+
+@app.route('/api/containers/photos/<int:pid>', methods=['DELETE'])
+def container_photo_del(pid):
+    c = db(); who = editor()
+    p = c.execute('SELECT * FROM container_photos WHERE id=?', (pid,)).fetchone()
+    if not p: abort(404, 'That photo is not there any more')
+    c.execute('DELETE FROM container_photos WHERE id=?', (pid,))
+    try: os.remove(os.path.join(PHOTO_DIR, p['file']))
+    except OSError: pass
+    if p['is_primary']: c.execute('UPDATE container_photos SET is_primary=1 WHERE id=(SELECT MIN(id) FROM container_photos WHERE container_id=?)', (p['container_id'],))
+    audit_only(c, 'container', 'photo', p['file'], None, who, 'Photo removed from a pot or tray'); c.commit()
+    return jsonify(ok=True)
+
+# ---------------------------------------------------------------- 1.29.0: Rooms and spots (the lists behind a plant's place)
+def where_list(c):
+    H = home_place(c)
+    cnt_a = {k: n for k, n in c.execute("SELECT area_id, COUNT(*) FROM plants WHERE status='active' GROUP BY area_id")}
+    cnt_s = {k: n for k, n in c.execute("SELECT spot_id, COUNT(*) FROM plants WHERE status='active' AND spot_id IS NOT NULL GROUP BY spot_id")}
+    lights_at = {k: n for k, n in c.execute('SELECT place_id, COUNT(*) FROM light_spots WHERE place_id IS NOT NULL GROUP BY place_id')}
+    out = []
+    for h in homes(c):
+        hid = None if h['is_home'] else h['id']
+        areas = c.execute('SELECT * FROM areas WHERE ' + ('home_id IS NULL' if hid is None else 'home_id=?') + ' ORDER BY side DESC, sort, id', (() if hid is None else (hid,))).fetchall()
+        out.append({'home': place_brief(h), 'areas': [{'id': a['id'], 'side': a['side'], 'name': a['name'], 'sheltered': bool(a['sheltered']), 'site': site_of(a['side'], a['sheltered']),
+                    'plants': cnt_a.get(a['id'], 0), 'lights': lights_at.get(-a['id'], 0),
+                    'spots': [{'id': sp['id'], 'name': sp['name'], 'plants': cnt_s.get(sp['id'], 0), 'lights': lights_at.get(sp['id'], 0)}
+                              for sp in c.execute('SELECT * FROM spots WHERE area_id=? ORDER BY sort, id', (a['id'],))]} for a in areas]})
+    return out
+
+def where_area_delete(c, aid, who):
+    a = c.execute('SELECT * FROM areas WHERE id=?', (aid,)).fetchone()
+    if not a: abort(404, 'That area is not in the list')
+    n = c.execute('SELECT COUNT(*) FROM plants WHERE area_id=?', (aid,)).fetchone()[0]
+    if n: abort(409, f'{n} plant{"s are" if n != 1 else " is"} in {a["name"]}. Move {"them" if n != 1 else "it"} somewhere else first.')
+    ids = [r[0] for r in c.execute('SELECT id FROM spots WHERE area_id=?', (aid,))]
+    for sid in ids: c.execute('UPDATE light_spots SET place_id=NULL WHERE place_id=?', (sid,))
+    c.execute('UPDATE light_spots SET place_id=NULL WHERE place_id=?', (-aid,))
+    c.execute('DELETE FROM spots WHERE area_id=?', (aid,)); c.execute('DELETE FROM areas WHERE id=?', (aid,))
+    audit_only(c, 'where', 'area', a['name'], None, who, f'Area or room removed: {a["name"]}'); c.commit()
+    return jsonify(ok=True)
+
+def where_spot_delete(c, sid, who):
+    sp = c.execute('SELECT s.*, a.name AS area FROM spots s JOIN areas a ON a.id=s.area_id WHERE s.id=?', (sid,)).fetchone()
+    if not sp: abort(404, 'That spot is not in the list')
+    n = c.execute('SELECT COUNT(*) FROM plants WHERE spot_id=?', (sid,)).fetchone()[0]
+    c.execute('UPDATE plants SET spot_id=NULL WHERE spot_id=?', (sid,)); c.execute('UPDATE light_spots SET place_id=? WHERE place_id=?', (-sp['area_id'], sid))
+    c.execute('DELETE FROM spots WHERE id=?', (sid,))
+    audit_only(c, 'where', 'spot', f'{sp["area"]}, {sp["name"]}', None, who, f'Spot removed: {sp["area"]}, {sp["name"]}' + (f' ({n} plant{"s" if n != 1 else ""} there now just say {sp["area"]})' if n else ''))
+    c.commit()
+    return jsonify(ok=True, plants=n)
+
+def where_name(b, what):
+    n = re.sub(r'\s+', ' ', str(b.get('name', ''))).strip()[:60]
+    if not n: abort(400, f'Give the {what} a name')
+    return n
+
+@app.route('/api/where')
+def where_get():
+    return jsonify(homes=where_list(db()), sides=SIDE_WORD)
+
+@app.route('/api/where/areas', methods=['POST'])
+def where_area_add():
+    """{home_id, side: 'in'|'out', name, sheltered}: sheltered is a roof overhead outside, or heated inside."""
+    c = db(); b = request.get_json(silent=True) or {}; who = editor()
+    side = b.get('side'); name = where_name(b, 'area or room')
+    if side not in SIDE_WORD: abort(400, 'Choose inside or outside')
+    hid = area_home(c, b.get('home_id') or None)
+    if c.execute('SELECT 1 FROM areas WHERE side=? AND name=? AND ' + ('home_id IS NULL' if hid is None else 'home_id=?'), (side, name) + (() if hid is None else (hid,))).fetchone():
+        abort(409, f'"{name}" is already there')
+    aid = c.execute('INSERT INTO areas(home_id,side,name,sheltered,sort,created_by,created_at) VALUES(?,?,?,?,(SELECT COALESCE(MAX(sort),0)+1 FROM areas),?,?)',
+                    (hid, side, name, 1 if b.get('sheltered') else 0, who, now())).lastrowid
+    audit_only(c, 'where', 'area', None, name, who, f'Area or room added: {name} ({SIDE_WORD[side].lower()})'); c.commit()
+    return jsonify(id=aid, homes=where_list(c)), 201
+
+@app.route('/api/where/areas/<int:aid>', methods=['PUT', 'DELETE'])
+def where_area_one(aid):
+    c = db(); who = editor()
+    if request.method == 'DELETE': return where_area_delete(c, aid, who)
+    a = c.execute('SELECT * FROM areas WHERE id=?', (aid,)).fetchone()
+    if not a: abort(404, 'That area is not in the list')
+    b = request.get_json(silent=True) or {}
+    name = where_name(b, 'area or room') if 'name' in b else a['name']
+    sh = (1 if b['sheltered'] else 0) if 'sheltered' in b else a['sheltered']
+    c.execute('UPDATE areas SET name=?, sheltered=? WHERE id=?', (name, sh, aid))
+    if sh != a['sheltered']:                         # the plants there now count as sheltered (or not) for frost and watering
+        for r in c.execute('SELECT * FROM plants WHERE area_id=?', (aid,)).fetchall():
+            apply_changes(c, r, {'site': site_of(a['side'], sh), 'area_id': aid}, who, 'update', f'{name} is now {"sheltered" if sh else "open"}')
+    audit_only(c, 'where', 'area', a['name'], name, who, f'Area or room changed: {name}'); c.commit()
+    return jsonify(homes=where_list(c))
+
+@app.route('/api/where/spots', methods=['POST'])
+def where_spot_add():
+    c = db(); b = request.get_json(silent=True) or {}; who = editor()
+    name = where_name(b, 'spot')
+    a = c.execute('SELECT * FROM areas WHERE id=?', (int(b.get('area_id') or 0),)).fetchone()
+    if not a: abort(400, 'Choose the area or room it is in')
+    if c.execute('SELECT 1 FROM spots WHERE area_id=? AND name=?', (a['id'], name)).fetchone(): abort(409, f'"{name}" is already in {a["name"]}')
+    sid = c.execute('INSERT INTO spots(area_id,name,sort,created_by,created_at) VALUES(?,?,(SELECT COALESCE(MAX(sort),0)+1 FROM spots),?,?)', (a['id'], name, who, now())).lastrowid
+    audit_only(c, 'where', 'spot', None, f'{a["name"]}, {name}', who, f'Spot added: {a["name"]}, {name}'); c.commit()
+    return jsonify(id=sid, homes=where_list(c)), 201
+
+@app.route('/api/where/spots/<int:sid>', methods=['PUT', 'DELETE'])
+def where_spot_one(sid):
+    c = db(); who = editor()
+    if request.method == 'DELETE': return where_spot_delete(c, sid, who)
+    sp = c.execute('SELECT s.*, a.name AS area FROM spots s JOIN areas a ON a.id=s.area_id WHERE s.id=?', (sid,)).fetchone()
+    if not sp: abort(404, 'That spot is not in the list')
+    name = where_name(request.get_json(silent=True) or {}, 'spot')
+    c.execute('UPDATE spots SET name=? WHERE id=?', (name, sid))
+    audit_only(c, 'where', 'spot', f'{sp["area"]}, {sp["name"]}', f'{sp["area"]}, {name}', who, f'Spot renamed: {sp["area"]}, {name}'); c.commit()
+    return jsonify(homes=where_list(c))
+
+def spot_guess(text):
+    """'Black bench, yard' -> 'Black bench'; 'On the pallet shelf by the door' -> 'Pallet shelf by the door'."""
+    t = re.split(r'[,;(]| - ', str(text or ''))[0].strip()
+    t = re.sub(r'^(on|in|under|beside|by|at)\s+(the\s+)?', '', t, flags=re.I).strip()
+    return (t[:1].upper() + t[1:])[:60] if t else ''
+
+@app.route('/api/where/sort', methods=['GET', 'POST'])
+def where_sort():
+    """GET: each "Spot (where exactly)" text of plants with no spot yet, with a suggested spot name. POST {items: [{text, area_id, name}]}
+    makes the spots (or uses ones already there) and puts those plants in them. The text itself is kept."""
+    c = db()
+    if request.method == 'GET':
+        out = {}
+        for r in c.execute("SELECT code, common_name, location, area_id FROM plants WHERE status='active' AND spot_id IS NULL AND TRIM(COALESCE(location,''))<>'' ORDER BY location"):
+            k = (r['location'].strip(), r['area_id'])
+            out.setdefault(k, {'text': k[0], 'area_id': k[1], 'name': spot_guess(k[0]), 'plants': []})['plants'].append({'code': r['code'], 'name': r['common_name']})
+        return jsonify(items=list(out.values()))
+    b = request.get_json(silent=True) or {}; who = editor(); n = 0
+    for it in b.get('items') or []:
+        name = re.sub(r'\s+', ' ', str(it.get('name') or '')).strip()[:60]
+        if not name: continue
+        a = c.execute('SELECT * FROM areas WHERE id=?', (int(it.get('area_id') or 0),)).fetchone()
+        if not a: continue
+        sp = c.execute('SELECT id FROM spots WHERE area_id=? AND name=?', (a['id'], name)).fetchone()
+        sid = sp[0] if sp else c.execute('INSERT INTO spots(area_id,name,sort,created_by,created_at) VALUES(?,?,(SELECT COALESCE(MAX(sort),0)+1 FROM spots),?,?)', (a['id'], name, who, now())).lastrowid
+        for r in c.execute("SELECT * FROM plants WHERE status='active' AND spot_id IS NULL AND TRIM(location)=? AND area_id IS ?", (str(it.get('text') or '').strip(), a['id'])).fetchall():
+            apply_changes(c, r, {'spot_id': sid, 'area_id': a['id']}, who, 'update', f'Put in the spot {a["name"]}, {name}'); n += 1
+    c.commit()
+    return jsonify(moved=n, homes=where_list(c))
 
 def light_fields(b, old=None):
     d = dict(old or {})
@@ -6013,7 +6431,7 @@ def light_fields(b, old=None):
     if 'model' in b: d['model'] = str(b.get('model') or '').strip()[:80]       # 1.13.1: the maker's model number
     if 'timer' in b: d['timer'] = str(b.get('timer') or '').strip()[:120]
     if 'dimming' in b: d['dimming'] = sorted({int(x) for x in re.findall(r'\d+', str(b.get('dimming') or '')) if 0 < int(x) <= 100}) or [100]
-    return name, count, str(b.get('fixture', '')).strip()[:120], str(b.get('notes', '')).strip()[:600], d
+    return name, count, str(b.get('fixture', '')).strip()[:600], str(b.get('notes', '')).strip()[:2000], d      # 1.29.0: longer, so batch text is never cut
 
 def light_text(name, count, fixture):
     return '%s (%d)%s' % (name, count, ', ' + fixture if fixture else '')
@@ -6044,7 +6462,8 @@ def light_one(i):
         audit_only(c, 'light', 'light', light_text(old['name'], old['count'], old['fixture']), None, who, 'Grow light removed: ' + old['name'])
         c.commit()
         return jsonify(ok=True)
-    name, count, fixture, notes, d = light_fields(request.get_json(silent=True) or {}, light_specs(old))
+    b = {'name': old['name'], 'count': old['count'], 'fixture': old['fixture'] or '', 'notes': old['notes'] or '', **(request.get_json(silent=True) or {})}   # 1.29.0: one field at a time
+    name, count, fixture, notes, d = light_fields(b, light_specs(old))
     if c.execute('SELECT 1 FROM lights WHERE name=? AND id<>?', (name, i)).fetchone(): abort(409, f'"{name}" is already in your lights')
     c.execute('UPDATE lights SET name=?,count=?,fixture=?,notes=?,data=?,updated_by=?,updated_at=? WHERE id=?', (name, count, fixture, notes, json.dumps(d), who, now(), i))
     a, z = light_text(old['name'], old['count'], old['fixture']), light_text(name, count, fixture)

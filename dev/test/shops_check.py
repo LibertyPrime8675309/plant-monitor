@@ -100,7 +100,7 @@ with sync_playwright() as p:
     pg.add_init_script("localStorage.setItem('plantdb.editor','Shops Test');localStorage.setItem('plantdb.display',JSON.stringify({navopen:'0'}))")
     pg.goto(LOCAL + '/#/today'); pg.wait_for_timeout(2500)
     check(pg.locator('#today-wish').count() == 1 and 'Texas bluebonnet' in pg.locator('#today-wish').inner_text(), 'Today shows the wishlist alerts')
-    nb = pg.locator('#main-nav a[data-nav=library] .nav-badge')
+    nb = pg.locator('#main-nav a[data-sec=discover] .nav-badge')
     check(nb.count() == 1 and f'{len(al3)} wishlist alert' in nb.inner_text(), 'and the top bar says how many, beside Library')
     pg.goto(LOCAL + '/#/wishlist'); pg.wait_for_timeout(2500)
     t = pg.locator('main').inner_text()

@@ -139,8 +139,10 @@ function paintPlace() {
   if (!META || !META.place) return;
   if (PLACE && String(META.place.id) !== String(PLACE)) savePlace(null);   // the chosen place was removed: back to home
   const n = document.getElementById('place-name'); if (n) n.textContent = META.place.name;
+  const home = META.place.is_home || META.place.plants_here;                 // 1.29.0: "Home: Round Rock, TX"
+  const l = document.querySelector('#place-btn .pl-l'); if (l) l.textContent = home ? 'Home:' : 'Place:';
   const b = document.getElementById('place-btn');
-  if (b) b.setAttribute('aria-label', `Location: ${META.place.name}${META.place.is_home ? ' (home)' : ''}. Choose another place`);
+  if (b) b.setAttribute('aria-label', `${home ? 'Home' : 'Place'}: ${META.place.name}${META.place.is_home ? ' (main home)' : ''}. Choose another home or place`);
   topSoon();
 }
 function placeDialog() {
@@ -194,6 +196,161 @@ async function placeAdd(i) {
 }
 
 // ---------- you, and the people who can use the app (1.12.0) ----------
+// 1.29.0: Rooms and spots: each home's areas outside and rooms inside, and the spots in them, all editable on the page
+async function viewWhere() {
+  const d = await api('GET', '/api/where'); let S = { items: [] }; try { S = await api('GET', '/api/where/sort'); } catch (e) { /* none */ }
+  if (META) META.where = d.homes;
+  const can = canChange(), multi = d.homes.length > 1;
+  const areaHtml = a => html`<li class="wh-area" data-aid="${a.id}">
+    <div class="wh-row"><label class="f wh-name">${a.side === 'out' ? 'Area' : 'Room'}<input type="text" maxlength="60" value="${a.name}" data-ed="area" data-id="${a.id}" data-k="name" ${can ? '' : raw('readonly')}></label>
+      <label class="chk"><input type="checkbox" data-ed="area" data-id="${a.id}" data-k="sheltered" ${a.sheltered ? raw('checked') : ''} ${can ? '' : raw('disabled')}>${a.side === 'out' ? 'Roof overhead (like a covered porch)' : 'Heated (not a garage or shed)'}</label>
+      <span class="muted">${a.plants} plant${a.plants === 1 ? '' : 's'}${a.lights ? `, ${a.lights} light spot${a.lights === 1 ? '' : 's'}` : ''}. Counts as: ${a.site}.</span>
+      ${can ? html`<button class="btn small ghost wh-del" type="button" data-act="whareadel" data-id="${a.id}" data-name="${a.name}">Remove ${a.name}</button>` : ''}</div>
+    <ul class="wh-spots">${a.spots.map(sp => html`<li><label class="f">Spot<input type="text" maxlength="60" value="${sp.name}" data-ed="spot" data-id="${sp.id}" data-k="name" ${can ? '' : raw('readonly')}></label>
+      <span class="muted">${sp.plants} plant${sp.plants === 1 ? '' : 's'}</span>${can ? html`<button class="btn small ghost" type="button" data-act="whspotdel" data-id="${sp.id}" data-name="${sp.name}">Remove</button>` : ''}</li>`)}
+      ${can ? html`<li><form class="row wh-add" data-form="whspotadd" data-aid="${a.id}"><label class="f">New spot in ${a.name}<input type="text" name="name" maxlength="60" placeholder="${a.side === 'out' ? 'Pallet shelf' : 'Brown hutch'}"></label><button class="btn small" type="submit">Add spot</button></form></li>` : ''}</ul></li>`;
+  const sideHtml = (h, side) => html`<section class="blk wh-side"><h3>${side === 'out' ? 'Outside' : 'Inside'}</h3><ul class="wh-areas">${h.areas.filter(a => a.side === side).map(areaHtml)}</ul>
+    ${can ? html`<form class="row wh-add" data-form="whareaadd" data-home="${h.home.is_home ? '' : h.home.id}" data-side="${side}"><label class="f">New ${side === 'out' ? 'area outside' : 'room inside'}<input type="text" name="name" maxlength="60" placeholder="${side === 'out' ? 'Patio' : 'Dining room'}"></label>
+      <label class="chk"><input type="checkbox" name="sheltered" ${side === 'in' ? raw('checked') : ''}>${side === 'out' ? 'Roof overhead' : 'Heated'}</label><button class="btn small" type="submit">Add ${side === 'out' ? 'area' : 'room'}</button></form>` : ''}</section>`;
+  return { title: 'Rooms and spots', html: html`<h1>Rooms and spots</h1>
+    <p>Where plants go at each home: outside or inside, then the area or room, then the spot in it. Choose them on each plant's page. Rename anything here by typing over it; it saves when you leave the box. A room or shelf for grow lights is chosen from the same list.</p>
+    <p class="hint">"Roof overhead" and "Heated" decide how frost warnings and watering treat the plants there: outside with a roof counts as a covered porch, and inside without heat counts as a garage or shed.</p>
+    ${S.items.length && can ? html`<section class="blk" id="wh-sort"><h2>Spots to sort out (${S.items.length})</h2>
+      <p>These plants have a "Spot (where exactly)" written on them but no spot from the list yet. Check each suggested spot name and area, change any you like, then press <strong>Make these spots</strong>. The words written on the plant stay as they are.</p>
+      <div class="tbl-wrap"><table class="tbl"><caption class="sr">Spots to sort out</caption><thead><tr><th scope="col">Written on the plant</th><th scope="col">Plants</th><th scope="col">Spot name</th><th scope="col">Area or room</th></tr></thead><tbody>
+      ${S.items.map((it, i) => html`<tr><th scope="row">${it.text}</th><td>${it.plants.map((x, k) => html`${k ? ', ' : ''}<a href="#/plant/${enc(x.code)}">${x.code}</a>`)}</td>
+        <td><label class="sr" for="whs-n${i}">Spot name for "${it.text}"</label><input type="text" id="whs-n${i}" maxlength="60" value="${it.name}" data-whs="${i}" data-k="name"></td>
+        <td><label class="sr" for="whs-a${i}">Area for "${it.text}"</label><select id="whs-a${i}" data-whs="${i}" data-k="area">${d.homes.map(h => html`<optgroup label="${h.home.name}">${h.areas.map(a => html`<option value="${a.id}" ${a.id === it.area_id ? raw('selected') : ''}>${a.side === 'out' ? 'Outside' : 'Inside'}: ${a.name}</option>`)}</optgroup>`)}</select></td></tr>`)}</tbody></table></div>
+      <p class="row"><button class="btn" type="button" data-act="whsort">Make these spots</button></p></section>` : ''}
+    ${d.homes.map(h => html`<section class="blk wh-home"><h2>${multi ? h.home.name : 'Your home'}${h.home.is_home && multi ? ' (main home)' : ''}</h2><div class="wh-sides">${sideHtml(h, 'out')}${sideHtml(h, 'in')}</div></section>`)}`,
+    after: () => { WHSORT = S.items; } };
+}
+let WHSORT = [];
+
+// 1.29.0: Pots and trays: each kind you have, how many, and which plants use them
+const CT_MAT = ['Terracotta', 'Thin plastic', 'Thick plastic'];
+async function viewPots() {
+  const d = await api('GET', '/api/containers'); CT = d;
+  const pots = d.items.filter(x => x.kind === 'pot'), trays = d.items.filter(x => x.kind === 'tray');
+  return { title: 'Pots and trays', html: html`<h1>Pots and trays</h1>
+    <p>Your pots and catch trays, how many of each you have, and which plants use them. Type over any value to change it; it saves when you leave the box. Sizes are in inches. The square feet are worked out for you (a round one counts as the square around it), and the Grow lights page uses them: a plant takes up the floor of its catch tray, or of its pot when it has no tray.</p>
+    <section class="blk" id="ct-pots"><h2>Pots (${pots.length})</h2><div class="ct-list">${pots.map(ctCard)}</div>
+      ${canChange() ? html`<p class="row"><button class="btn" type="button" data-act="ctadd" data-kind="pot">Add a pot</button></p>` : ''}</section>
+    <section class="blk" id="ct-trays"><h2>Catch trays (${trays.length})</h2><div class="ct-list">${trays.map(ctCard)}</div>
+      ${canChange() ? html`<p class="row"><button class="btn" type="button" data-act="ctadd" data-kind="tray">Add a catch tray</button></p>` : ''}</section>` };
+}
+let CT = null;
+function ctCard(x) {
+  const can = canChange(), ro = can ? '' : raw('readonly'), dis = can ? '' : raw('disabled'), ed = k => raw(`data-ed="cont" data-id="${x.id}" data-k="${k}"`);
+  const num = (k, label) => html`<label class="f ct-num">${label}<input type="number" inputmode="decimal" min="0" max="240" step="any" value="${x[k] == null ? '' : x[k]}" ${ed(k)} ${ro}></label>`;
+  const other = x.material && !CT_MAT.includes(x.material);
+  const over = x.in_use > x.qty;
+  return html`<article class="ct-card" id="ct-${x.id}" data-cid="${x.id}">
+    <div class="ct-photos">${x.photos.length ? x.photos.map((ph, i) => html`<figure><img src="${thumbUrl(ph.file)}" alt="${x.name}, photo ${i + 1}" loading="lazy">${can ? html`<button class="btn small ghost" type="button" data-act="ctphotodel" data-id="${ph.id}" aria-label="Remove photo ${i + 1} of ${x.name}">Remove</button>` : ''}</figure>`) : html`<p class="muted">No photo yet.</p>`}
+      ${can ? html`<label class="btn ghost small ct-file">Add a photo<input type="file" accept="image/*" multiple data-act="ctphoto" data-id="${x.id}"></label>` : ''}</div>
+    <div class="ct-body">
+      <label class="f ct-name">Name<input type="text" maxlength="80" value="${x.name}" ${ed('name')} ${ro}></label>
+      <div class="ct-qty"><label class="f ct-num">How many you have<input type="number" inputmode="numeric" min="0" max="9999" step="1" value="${x.qty}" ${ed('qty')} ${ro}></label>
+        <p class="ct-use ${over ? 'bad-text' : ''}" aria-live="polite"><strong>${x.in_use} / ${x.qty} in use</strong>, ${Math.max(0, x.free)} free${over ? ` (${x.in_use - x.qty} more in use than you have)` : ''}</p></div>
+      <div class="field-grid ct-grid">
+        <label class="f">Shape<select ${ed('shape')} ${dis}>${[['circle', 'Circle'], ['square', 'Square'], ['rectangle', 'Rectangle']].map(([k, l]) => html`<option value="${k}" ${x.shape === k ? raw('selected') : ''}>${l}</option>`)}</select></label>
+        ${x.shape === 'circle' ? num('dia_in', 'Across (in)') : x.shape === 'square' ? num('len_in', 'Side (in)') : html`${num('len_in', 'Length (in)')}${num('wid_in', 'Width (in)')}`}
+        ${x.kind === 'pot' ? num('height_in', 'Height (in)') : num('height_in', 'Depth (in)')}
+        <p class="f ct-sq"><span class="ct-l">Floor it covers</span> <strong>${x.sqft == null ? 'Add the sizes' : `${x.sqft} sq ft`}</strong></p>
+        ${x.kind === 'pot' ? html`<label class="f">Drainage holes<select ${ed('drainage')} ${dis}><option value="" ${x.drainage == null ? raw('selected') : ''}>Not noted</option><option value="1" ${x.drainage === true ? raw('selected') : ''}>Yes</option><option value="0" ${x.drainage === false ? raw('selected') : ''}>No</option></select></label>` : ''}
+        <label class="f">Material<select data-f="ctmat" data-id="${x.id}" ${dis}>${CT_MAT.map(m => html`<option ${m === x.material ? raw('selected') : ''}>${m}</option>`)}<option value="" ${!x.material ? raw('selected') : ''}>Not noted</option><option value="__other" ${other ? raw('selected') : ''}>Other (type it)</option></select></label>
+        <label class="f" ${other ? '' : raw('hidden')} data-other="${x.id}">Other material<input type="text" maxlength="60" value="${other ? x.material : ''}" ${ed('material')} ${ro}></label>
+      </div>
+      ${x.kind === 'pot' && x.drainage === false ? html`<p class="notice" role="note">No drainage holes: water collects at the bottom. Water less, or drill holes.</p>` : ''}
+      <p><strong>Used by:</strong> ${x.plants.length ? x.plants.map((pl, i) => html`${i ? ', ' : ''}<a href="#/plant/${enc(pl.code)}">${pl.code} ${pl.name}</a>`) : html`<span class="muted">no plants yet. Choose it on a plant's page (Names and place, ${x.kind === 'pot' ? 'Pot' : 'Catch tray'}).</span>`}</p>
+      ${edLong('cont', x.id, 'notes', 'Notes', x.notes, can)}
+      ${can ? html`<p class="row"><button class="btn small danger" type="button" data-act="ctdel" data-id="${x.id}" data-name="${x.name}">Remove ${x.name}</button></p>` : ''}
+    </div></article>`;
+}
+function ctRedraw(x) {
+  const old = document.getElementById('ct-' + x.id); if (!old) return;
+  const f = document.activeElement && old.contains(document.activeElement) ? document.activeElement.dataset.k : null;
+  const i = CT.items.findIndex(y => y.id === x.id); if (i >= 0) CT.items[i] = x;
+  const tmp = document.createElement('div'); tmp.innerHTML = rend(ctCard(x)); old.replaceWith(tmp.firstElementChild);
+  if (f) { const n = document.querySelector(`#ct-${x.id} [data-k="${f}"]`); if (n) n.focus(); }
+}
+
+// 1.29.0: edit in place. Fields marked data-ed save when you leave them (or press Enter); Escape puts back what was there; the
+// message that follows has Undo. Long text shows as text with an Edit button (edLong), so reading never changes anything.
+function edLong(kind, id, k, label, v, can) {
+  return html`<div class="ed-long" data-ed-long="${kind}:${id}:${k}"><p><strong>${label}:</strong> <span class="ed-text">${v || html`<span class="muted">none</span>`}</span>
+    ${can ? html` <button class="btn small ghost" type="button" data-act="edlong" aria-label="Edit ${label.toLowerCase()}">Edit</button>` : ''}</p>
+    <label class="f wide" hidden>${label}<textarea rows="3" maxlength="2000" data-ed="${kind}" data-id="${id}" data-k="${k}">${v || ''}</textarea><small>Saves when you leave the box. Escape puts back what was there.</small></label></div>`;
+}
+const edVal = el => el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value;
+const edLabel = el => { const l = el.closest('label'); return ((l && l.childNodes[0] && l.childNodes[0].textContent) || el.getAttribute('aria-label') || el.dataset.k).trim().replace(/\s*\(in\)$/, ''); };
+function edPut(el, v) { if (el.type === 'checkbox') el.checked = v === '1'; else el.value = v; }
+async function edSend(el, v) {
+  const kind = el.dataset.ed, id = el.dataset.id, k = el.dataset.k;
+  const val = el.type === 'checkbox' ? v === '1' : (el.type === 'number' && v !== '' ? +v : v);
+  if (kind === 'light') { await api('PUT', '/api/lights/' + id, { [k]: val }); return null; }
+  if (kind === 'cont') { const x = await api('PUT', '/api/containers/' + id, { [k]: val }); META = await api('GET', '/api/meta'); return () => ctRedraw(x); }
+  if (kind === 'area') { const r = await api('PUT', '/api/where/areas/' + id, { [k]: val }); if (META) META.where = r.homes; return null; }
+  if (kind === 'spot') { const r = await api('PUT', '/api/where/spots/' + id, { [k]: val }); if (META) META.where = r.homes; return null; }
+  if (kind === 'plant') {
+    const box = el.closest('[data-pver]'), was = el.dataset.was;
+    const r = await api('PUT', '/api/plants/' + enc(id), { base_version: +box.dataset.pver, base_values: { [k]: was }, fields: { [k]: v } });
+    box.dataset.pver = r.version; if (CUR && CUR.p && CUR.p.code === id) CUR.p = r;
+    if (r.conflicts) toast('Someone else changed this plant too. Their other changes are kept.');
+    if (['home_id', 'area_id', 'spot_id', 'pot_id', 'tray_id', 'winter_plan', 'health_rating', 'common_name', 'scientific_name', 'id_confidence'].includes(k)) {
+      META = await api('GET', '/api/meta');
+      return async () => { KEEP = PIDX; await route(); const n = document.querySelector(`[data-ed=plant][data-k="${k}"]`); if (n) n.focus({ preventScroll: true }); };
+    }
+    return null;
+  }
+  return null;
+}
+const edOrig = el => el.type === 'checkbox' ? (el.defaultChecked ? '1' : '0') : el.tagName === 'SELECT' ? ((([...el.options].find(o => o.defaultSelected) || el.options[0]) || {}).value || '') : el.defaultValue;
+async function edSave(el) {
+  if (el.dataset.busy) return;
+  if (el.dataset.was === undefined) el.dataset.was = edOrig(el);     // changed without being focused first (a pointer on a list)
+  const v = edVal(el), was = el.dataset.was;
+  if (was === undefined || v === was) return;
+  if (!(await needName())) { edPut(el, was); return; }
+  el.dataset.busy = '1';
+  try {
+    const after = await edSend(el, v);
+    el.dataset.was = v;
+    const label = edLabel(el), kind = el.dataset.ed, id = el.dataset.id, k = el.dataset.k;
+    careUndoToast(`Saved: ${label}`, async () => {
+      const cur = document.querySelector(`[data-ed="${kind}"][data-id="${CSS.escape(id)}"][data-k="${k}"]`) || el;
+      edPut(cur, was); cur.dataset.was = v; await edSave(cur);
+    });
+    const lg = el.closest('.ed-long'); if (lg) { lg.querySelector('.ed-text').textContent = v || 'none'; lg.querySelector('label').hidden = true; const b = lg.querySelector('[data-act=edlong]'); if (b) b.focus(); }
+    if (after) after();
+  } catch (e) { toast(e.message, true); edPut(el, was); }
+  finally { delete el.dataset.busy; }
+}
+document.addEventListener('focusin', e => { const el = e.target; if (el.dataset && el.dataset.ed && el.dataset.was === undefined) el.dataset.was = edVal(el); }, true);
+document.addEventListener('keydown', e => {
+  const el = e.target; if (!el.dataset || !el.dataset.ed) return;
+  if (e.key === 'Escape' && el.dataset.was !== undefined) { e.preventDefault(); e.stopPropagation(); edPut(el, el.dataset.was); toast('Put back as it was'); }
+  else if (e.key === 'Enter' && el.tagName !== 'TEXTAREA' && el.type !== 'checkbox') { e.preventDefault(); edSave(el); }
+}, true);
+document.addEventListener('change', e => { const el = e.target; if (el.dataset && el.dataset.ed) edSave(el); }, true);
+
+// 1.29.0: Settings: one page for the things that are not about plants
+function viewSettings() {
+  const me = ME(), owner = me.role === 'owner';
+  const card = (title, text, btn) => html`<section class="blk set-card"><h2>${title}</h2><p>${text}</p><div class="row">${btn}</div></section>`;
+  return { title: 'Settings', html: html`<h1>Settings</h1>
+    <p class="muted">Plant record version <strong>${META.version}</strong>${META.runs_as ? `, running as ${META.runs_as}` : ''}. The version number is also always beside the name at the top of the page.</p>
+    <div class="set-grid">
+    ${card('You and the people who use the app', owner ? 'Your name in the audit log, and who can view, edit or own the app.' : 'Your name in the audit log, and what you are allowed to do.', html`<button class="btn" type="button" data-act="who">${owner ? 'Open people and names' : 'Open your name'}</button>`)}
+    ${card('Display', 'Text size, colours, page layout, reading aloud, photos, touch and keyboard. Also on the Display button at the bottom of every page.', html`<button class="btn" type="button" data-act="display">Open Display settings</button>`)}
+    ${card('Offline use', 'Keep a copy of the plants on a phone or tablet, and see changes waiting to be sent.', html`<a class="btn" href="#/offline">Open Offline use</a>`)}
+    ${card('Backups', 'Copies of the database and photos, made by hand or on a schedule.', html`<a class="btn" href="#/backups">Open Backups</a>`)}
+    ${card('Audit log', 'Every change anyone has made, with filters and a download.', html`<a class="btn" href="#/history">Open the Audit log</a>`)}
+    ${card('Homes and places', 'Where plants live, and the places whose weather is tracked.', html`<a class="btn" href="#/weather?sec=places">Open Homes and places</a>`)}
+    ${card('Shops and keys', 'The shops checked for your wishlist, the eBay and Etsy keys, and the Pl@ntNet and Claude keys for Identify.', html`<a class="btn" href="#/wishlist">Shops (Wishlist page)</a><a class="btn ghost" href="#/identify">Keys (Identify page)</a>`)}
+    ${card('Debug', 'A live view of the audit log at the bottom of the screen, and other tools for checking the app.', html`<button class="btn" type="button" id="debug-btn" data-act="debug" aria-haspopup="dialog">Open Debug</button>`)}
+    </div>` };
+}
 async function whoDialog() {
   const me = ME(), ts = viaTS(), owner = me.role === 'owner';
   let P = null;
@@ -286,7 +443,7 @@ async function route() {
   if (parts[0] !== 'new') NEWFILL = null;
   if (parts[0] !== 'fungi' || parts[1] !== 'new') MUFILL = null;
   const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' || parts[0] === 'species' || parts[0] === 'wishlist' || parts[0] === 'around' ? 'library' : parts[0] === 'fungi' ? 'fungi' : parts[0] === 'offline' || parts[0] === 'decisions' ? 'offline' : parts[0] === 'today' ? 'today' : 'plants';
-  document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === nav) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  navMark(parts[0] === 'weather' && qs.get('sec') === 'places' ? 'places' : parts[0] === 'pots' ? 'pots' : parts[0] === 'where' ? 'where' : parts[0] === 'settings' ? 'settings' : parts[0] === 'new' ? 'new' : parts[0] === 'wishlist' ? 'wishlist' : nav);
   pagesMenu(false);
   wlBadge();
   try {
@@ -298,7 +455,10 @@ async function route() {
     else if (parts[0] === 'new' && parts[1] === 'several') view = viewSeveral();
     else if (parts[0] === 'new') view = viewForm(null);
     else if (parts[0] === 'winter') view = await viewWinter();
-    else if (parts[0] === 'weather') view = await viewWeather();
+    else if (parts[0] === 'weather') view = await viewWeather(qs.get('sec'));
+    else if (parts[0] === 'settings') view = viewSettings();
+    else if (parts[0] === 'where') view = await viewWhere();
+    else if (parts[0] === 'pots') view = await viewPots();
     else if (parts[0] === 'today') view = await viewToday();
     else if (parts[0] === 'fertilizer') view = await viewFertilizer();
     else if (parts[0] === 'lights') view = await viewLights();
@@ -332,6 +492,7 @@ async function route() {
     if (ME().role === 'viewer') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice vw-note noprint" role="note"><strong>View only.</strong> You can look at everything here, but changes are turned off. Ask ${ME().owner_name} if you would like to edit.</p>`));
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
     if (view.after) view.after();
+    if (parts[0] === 'weather' && qs.get('sec') === 'places') setTimeout(() => { const t = document.getElementById('sec-places'); if (t) { scrollToSection(t); navFlash(t); } }, 300);   // 1.29.0: Homes and places
     buildSideNav(); navLayout(); addReadButtons(); setTimeout(() => { buildSideNav(); navLayout(); addReadButtons(); }, 1200);
     if (h !== lastPath) { window.scrollTo(0, 0); app.focus({ preventScroll: true }); NAVPIN = -1; navActive(); }
     lastPath = h;
@@ -348,6 +509,27 @@ let NAVSESSION = null;                // on narrow screens the menu starts folde
 function navOpen() { const P = window.PlantPrefs.get(), narrow = document.documentElement.dataset.narrow === '1'; return NAVSESSION != null ? NAVSESSION : (P.navopen === '1' && !narrow); }
 // 1.26.0: with large text on a computer, the page links fold behind the Pages button once they would take more than two rows (or
 // the top bar more than a fifth of the window), and a top bar still taller than a fifth of the window scrolls away with the page, as on phones, instead of staying pinned
+// 1.29.0: the top bar has six sections; the pages of the section you are in are on a second row (Ethan's choice, November 2026)
+const SECTIONS = [
+  ['today', 'Today', [['today', 'Today', '#/today']]],
+  ['plants', 'Plants', [['plants', 'All plants', '#/'], ['groups', 'Groups', '#/groups'], ['new', 'Add plants', '#/new'], ['fungi', 'Mushrooms', '#/fungi'], ['where', 'Rooms and spots', '#/where'], ['photos', 'Photos', '#/photos'], ['labels', 'Labels', '#/labels']]],
+  ['care', 'Care', [['winter', 'Winter plan', '#/winter'], ['fertilizer', 'Fertilizer', '#/fertilizer'], ['lights', 'Grow lights', '#/lights'], ['pots', 'Pots and trays', '#/pots']]],
+  ['weather', 'Weather', [['weather', 'Weather', '#/weather'], ['places', 'Homes and places', '#/weather?sec=places']]],
+  ['discover', 'Discover', [['identify', 'Identify', '#/identify'], ['library', 'Library', '#/library'], ['wishlist', 'Wishlist', '#/wishlist']]],
+  ['settings', 'Settings', [['settings', 'Settings', '#/settings'], ['offline', 'Offline use', '#/offline'], ['backups', 'Backups', '#/backups'], ['history', 'Audit log', '#/history']]],
+];
+const secOf = nav => (SECTIONS.find(x => x[2].some(p => p[0] === nav)) || SECTIONS[1]);
+function navMark(nav) {
+  const sec = secOf(nav);
+  document.querySelectorAll('#main-nav a[data-sec]').forEach(a => { if (a.dataset.sec === sec[0]) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  const sub = document.getElementById('sub-nav');
+  if (sub) {
+    sub.hidden = sec[2].length < 2;
+    sub.setAttribute('aria-label', `${sec[1]} pages`);
+    sub.innerHTML = rend(html`${sec[2].map(([k, label, href]) => html`<a href="${href}" data-nav="${k}" ${k === nav ? raw('aria-current="page"') : ''}>${label}</a>`)}`);
+  }
+  WLBADGE = 0;                                     // the wishlist count goes on the new links
+}
 function topFit() {
   const r = document.documentElement, nav = document.getElementById('main-nav'), top = document.querySelector('.top');
   if (!nav || !top) return;
@@ -1389,13 +1571,36 @@ function slips(h) {
     </article>`;
   });
 }
+// 1.29.0: the plant's main details, edited right on its page (the rest is under "Edit this page")
+function plantEdHtml(p) {
+  const ed = k => raw(`data-ed="plant" data-id="${esc(p.code)}" data-k="${k}"`);
+  const txt = (k, label, max) => html`<label class="f">${label}<input type="text" maxlength="${max || 200}" value="${p[k] || ''}" ${ed(k)}></label>`;
+  const all = WHERE().flatMap(h => h.areas), a = all.find(x => String(x.id) === String(p.area_id));
+  const hs = HOMES(), conts = k => ((META && META.containers) || []).filter(x => x.kind === k);
+  const sel = (k, label, opts, cur) => html`<label class="f">${label}<select ${ed(k)}>${opts.map(([v, l]) => html`<option value="${v}" ${String(v) === String(cur == null ? '' : cur) ? raw('selected') : ''}>${l}</option>`)}</select></label>`;
+  const areas = WHERE().map(h => [h, h.areas]).filter(([h]) => HOMES().length < 2 || String(plantHome(p).id) === String(h.home.id)).flatMap(([h, as]) => as.map(x => [x.id, `${x.side === 'out' ? 'Outside' : 'Inside'}: ${x.name}`]));
+  return html`<div class="field-grid pl-ed noprint" data-pver="${p.version}" data-section-skip>
+    ${txt('common_name', 'Common name', 120)}${txt('scientific_name', 'Scientific name', 200)}${txt('aliases', 'Other names / cultivar')}${txt('plant_type', 'Plant type', 120)}
+    ${hs.length > 1 ? sel('home_id', 'Home', hs.map(h => [h.is_home ? '' : h.id, h.name]), p.home_id || '') : ''}
+    ${sel('area_id', 'Area or room', areas, p.area_id)}
+    ${sel('spot_id', 'Spot', [['', 'No particular spot']].concat((a ? a.spots : []).map(x => [x.id, x.name])), p.spot_id || '')}
+    ${txt('location', 'More about where', 200)}${txt('container', 'Container', 200)}
+    ${sel('pot_id', 'Pot', [['', 'None chosen']].concat(conts('pot').map(x => [x.id, `${x.name} (${x.free} of ${x.qty} free)`])), p.pot_id || '')}
+    ${sel('tray_id', 'Catch tray', [['', 'None chosen']].concat(conts('tray').map(x => [x.id, `${x.name} (${x.free} of ${x.qty} free)`])), p.tray_id || '')}
+    <label class="f">ID confidence (%)<input type="number" inputmode="numeric" min="0" max="100" step="1" value="${p.id_confidence == null ? '' : p.id_confidence}" ${ed('id_confidence')}></label>
+    ${sel('winter_plan', 'Winter plan', (META.winter_plans || []).map(x => [x, x]), p.winter_plan)}
+    ${sel('health_rating', 'Health', (META.health || []).map(x => [x, x]), p.health_rating)}
+    <p class="hint wide">Change any of these by typing or choosing; each saves when you leave it. Everything else is under "Edit this page".</p></div>`;
+}
 async function viewPlant(code) {
   const [p, h, cur, st] = await Promise.all([api('GET', '/api/plants/' + enc(code)), api('GET', '/api/plants/' + enc(code) + '/history'), loadCond(), api('GET', '/api/settings').catch(() => ({}))]);
   CUR = { p, h, base: st.base_url || location.origin };
   PIDX = KEEP != null ? KEEP : Math.max(0, p.photos.findIndex(x => x.is_primary));
   KEEP = null;
   const archived = p.status === 'archived';
-  const dl = [['Also known as', p.aliases], ['Plant type', p.plant_type], ['Home', HOMES().length > 1 ? plantHome(p).name : ''], ['Spot', p.location], ['Container', p.container]].filter(x => x[1]);
+  const pot = contById(p.pot_id), tray = contById(p.tray_id);
+  const dl = [['Also known as', p.aliases], ['Plant type', p.plant_type], ['Home', HOMES().length > 1 ? plantHome(p).name : ''], ['Where', whereWords(p)], ['More about where', p.location], ['Container', p.container],
+    ['Pot', pot ? html`<a href="#/pots">${pot.name}</a> (${pot.size})` : ''], ['Catch tray', tray ? html`<a href="#/pots">${tray.name}</a> (${tray.size})` : '']].filter(x => x[1]);
   const single = document.documentElement.dataset.layout === 'single';
   return {
     title: p.common_name,
@@ -1409,9 +1614,10 @@ async function viewPlant(code) {
         <div class="label" id="details" data-section="Name and details">
           <div class="l-top"><b>${p.code}</b><span>Page version ${p.version}</span><span>Updated ${timeEl(p.updated_at)} by ${p.updated_by}</span></div>
           <div class="l-body"><h1>${p.common_name}</h1><p class="sci latin">${p.scientific_name || 'Scientific name not set'}</p>
+            ${canChange() ? plantEdHtml(p) : ''}
             <dl><dt id="site-lbl">Location</dt><dd>${sitePicker(p)}</dd>
-              ${dl.map(x => html`<dt>${x[0]}</dt><dd>${x[1]}</dd>`)}
-              <dt>ID confidence</dt><dd>${p.id_confidence == null ? 'Not rated' : p.id_confidence + '%'}</dd>
+              ${canChange() ? '' : html`${dl.map(x => html`<dt>${x[0]}</dt><dd>${x[1]}</dd>`)}
+              <dt>ID confidence</dt><dd>${p.id_confidence == null ? 'Not rated' : p.id_confidence + '%'}</dd>`}
               <dt>Winter plan</dt><dd>${planTag(p.winter_plan)}</dd><dt>Health</dt><dd>${healthTag(p.health_rating)}</dd>
               <dt>Groups</dt><dd id="pl-groups">${groupsOf(p.code).length ? groupsOf(p.code).map((g, i) => html`${i ? ', ' : ''}<a href="#/group/${g.id}">${g.name}</a>`) : 'None yet'}
                 <button class="btn small ghost noprint" type="button" data-act="plgroups">Change groups</button></dd></dl>
@@ -1671,15 +1877,16 @@ function careUndoClose() {
 }
 function careUndoToast(msg, ids, code) {
   careUndoClose();
-  if (!Array.isArray(ids) || !ids.length) { toast(msg); return; }
-  const n = ids.length, el = document.createElement('div');
+  const fn = typeof ids === 'function' ? ids : null;            // 1.29.0: an edit in place: Undo calls fn
+  if (!fn && (!Array.isArray(ids) || !ids.length)) { toast(msg); return; }
+  const n = fn ? 1 : ids.length, el = document.createElement('div');
   el.className = 'toast undo-toast'; el.setAttribute('role', 'group'); el.setAttribute('aria-label', 'Care saved');
   el.innerHTML = rend(html`<span class="undo-msg" id="undo-msg">${msg}.</span>
     <span class="undo-acts"><button class="btn small" type="button" data-undo="undo" aria-describedby="undo-msg">Undo</button>
     <button class="btn small ghost" type="button" data-undo="close" aria-label="Close this message">Close</button></span>
     <span class="undo-left" aria-hidden="true"></span>`);
   document.getElementById('toasts').appendChild(el);
-  UNDO = { el, ids: ids.slice(), code, left: UNDO_SECS, paused: 0, timer: 0 };
+  UNDO = { el, ids: fn ? [] : ids.slice(), fn, code, left: UNDO_SECS, paused: 0, timer: 0 };
   const left = el.querySelector('.undo-left'), keys = window.PlantPrefs.get().keys === '1' && matchMedia('(any-pointer: fine)').matches;     // no key hint on a phone
   const paint = () => { left.textContent = (n > 1 ? `Undo removes all ${n} entries. ` : '') + `Closes in ${UNDO.left} s${keys ? ' (U undoes it)' : ''}.`; };
   paint();
@@ -1694,6 +1901,7 @@ function careUndoToast(msg, ids, code) {
 }
 async function careUndo() {
   if (!UNDO) return;
+  if (UNDO.fn) { const f = UNDO.fn; careUndoClose(); await f(); return; }
   const { ids, code } = UNDO, btn = UNDO.el.querySelector('[data-undo=undo]');
   if (btn) btn.disabled = true;
   if (!(await needName())) { if (btn) btn.disabled = false; return; }
@@ -2457,7 +2665,7 @@ const HMAP_RANGE = { temp: ['temp_ideal_low', 'temp_ideal_high'], humidity: ['hu
 
 // ---------- edit and create ----------
 const GROUPS = [
-  ['Names and place', ['common_name', 'scientific_name', 'aliases', 'plant_type', 'home_id', 'site', 'location', 'container']],
+  ['Names and place', ['common_name', 'scientific_name', 'aliases', 'plant_type', 'home_id', 'area_id', 'spot_id', 'location', 'container', 'pot_id', 'tray_id']],
   ['Identification', ['id_confidence', 'id_basis', 'id_alternatives', 'id_improve']],
   ['About this plant', ['growth_habit', 'kingdom', 'taxon_order', 'family', 'genus', 'height_ground', 'width_ground', 'height_pot', 'width_pot', 'growth_rate', 'lifespan',
     'zone_low', 'zone_high', 'zone_notes', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'pet_safety', 'propagation', 'sources']],
@@ -2499,9 +2707,16 @@ function fieldInput(f, val) {
   if (f.kind === 'long' || f.kind === 'list') inp = html`<textarea name="${f.name}" rows="${f.kind === 'list' ? 5 : 4}">${v}</textarea>`;
   else if (f.kind === 'int') { const mm = rangeOf(f.name); inp = html`<input type="number" inputmode="numeric" step="1" min="${mm[0]}" max="${mm[1]}" name="${f.name}" value="${v}">`; }
   else if (f.kind === 'num') { const mm = rangeOf(f.name); inp = html`<input type="number" inputmode="decimal" step="any" min="${mm[0]}" max="${mm[1]}" name="${f.name}" value="${v}">`; }
+  else if (f.kind === 'area') return whereInputs(v, FORMP);          // 1.29.0: inside or outside, area or room, spot (all three)
+  else if (f.kind === 'spot') return '';
+  else if (f.kind === 'pot' || f.kind === 'tray') {                   // 1.29.0: one of your pots or trays
+    const items = ((META && META.containers) || []).filter(x => x.kind === f.kind);
+    inp = html`<select name="${f.name}"><option value="">None chosen</option>${items.map(x => html`<option value="${x.id}" ${String(v) === String(x.id) ? raw('selected') : ''}>${x.name} (${x.size}; ${x.free} of ${x.qty} free)</option>`)}</select>`;
+    return html`<label class="f">${f.label}<small>${items.length ? 'From Pots and trays (Care).' : html`Add yours on <a href="#/pots">Pots and trays</a> first.`}</small>${inp}</label>`;
+  }
   else if (f.kind === 'home') {       // 1.28.0
     const hs = HOMES(); if (hs.length < 2 && !v) return '';
-    inp = html`<select name="${f.name}">${hs.map(h => html`<option value="${h.is_home ? '' : h.id}" ${(h.is_home ? !v : String(v) === String(h.id)) ? raw('selected') : ''}>${h.name}${h.is_home ? ' (main home)' : ''}</option>`)}</select>`;
+    inp = html`<select name="${f.name}" data-f="wherehome">${hs.map(h => html`<option value="${h.is_home ? '' : h.id}" ${(h.is_home ? !v : String(v) === String(h.id)) ? raw('selected') : ''}>${h.name}${h.is_home ? ' (main home)' : ''}</option>`)}</select>`;
   }
   else if (f.kind === 'enum') {
     const opts = (META.enums && META.enums[f.name]) || (f.name === 'winter_plan' ? META.winter_plans : f.name === 'site' ? (META.sites || ['Outdoors', 'Indoors']) : META.health);
@@ -2512,7 +2727,39 @@ function fieldInput(f, val) {
   else inp = html`<input type="text" name="${f.name}" value="${v}" ${f.name === 'common_name' ? raw('required') : ''}>`;
   return html`<label class="f ${wide}">${f.label}${hint ? html`<small>${hint}</small>` : ''}${inp}</label>`;
 }
+let FORMP = null;                    // the plant the form is for (null: a new one), for whereInputs()
+const WHERE = () => (META && META.where) || [];
+const whereHome = hid => WHERE().find(h => hid ? String(h.home.id) === String(hid) && !h.home.is_home : h.home.is_home) || WHERE()[0] || { areas: [] };
+function whereAreaOpts(hid, side, cur) {
+  const A = whereHome(hid).areas.filter(a => a.side === side);
+  return html`${A.map(a => html`<option value="${a.id}" ${String(a.id) === String(cur) ? raw('selected') : ''}>${a.name}${a.sheltered ? (side === 'out' ? ' (roof overhead)' : '') : (side === 'in' ? ' (not heated)' : '')}</option>`)}`;
+}
+function whereSpotOpts(aid, cur) {
+  const a = WHERE().flatMap(h => h.areas).find(x => String(x.id) === String(aid));
+  return html`<option value="">No particular spot</option>${(a ? a.spots : []).map(sp => html`<option value="${sp.id}" ${String(sp.id) === String(cur) ? raw('selected') : ''}>${sp.name}</option>`)}`;
+}
+function whereInputs(aid, p) {
+  const all = WHERE().flatMap(h => h.areas), a = all.find(x => String(x.id) === String(aid)) || null;
+  const hid = p ? p.home_id : (NEWFILL && NEWFILL.home_id) || '', side = a ? a.side : ((p && ['Indoors', 'Garage or shed'].includes(p.site)) ? 'in' : 'out');
+  return html`<fieldset class="f wide where-f"><legend>Where it is</legend>
+    <div class="opts" role="radiogroup" aria-label="Inside or outside">${[['out', 'Outside'], ['in', 'Inside']].map(([k, l]) => html`<label class="chk"><input type="radio" name="__side" value="${k}" data-f="whereside" ${k === side ? raw('checked') : ''}>${l}</label>`)}</div>
+    <label class="f">Area or room<small>Change the list on <a href="#/where">Rooms and spots</a>.</small><select name="area_id" data-f="wherearea">${whereAreaOpts(hid, side, aid)}</select></label>
+    <label class="f">Spot<select name="spot_id">${whereSpotOpts(a ? a.id : (whereHome(hid).areas.find(x => x.side === side) || {}).id, p ? p.spot_id : '')}</select></label></fieldset>`;
+}
+function whereRefresh(form, what) {
+  const hid = form.elements.home_id ? form.elements.home_id.value : '', side = (form.querySelector('[name=__side]:checked') || {}).value || 'out';
+  const as = form.elements.area_id, ss = form.elements.spot_id; if (!as) return;
+  if (what !== 'area') as.innerHTML = rend(whereAreaOpts(hid, side, as.value));
+  if (ss) ss.innerHTML = rend(whereSpotOpts(as.value, ss.value));
+}
+function whereWords(p) {               // "Outside, Yard, Black bench"
+  const a = WHERE().flatMap(h => h.areas).find(x => String(x.id) === String(p.area_id)); if (!a) return '';
+  const sp = a.spots.find(x => String(x.id) === String(p.spot_id));
+  return `${a.side === 'out' ? 'Outside' : 'Inside'}, ${a.name}${sp ? ', ' + sp.name : ''}`;
+}
+const contById = id => ((META && META.containers) || []).find(x => String(x.id) === String(id));
 function viewForm(p) {
+  FORMP = p;
   const F = Object.fromEntries(META.fields.map(f => [f.name, f]));
   const isNew = !p;
   return {
@@ -2653,7 +2900,7 @@ async function viewEdit(code) { return viewForm(await api('GET', '/api/plants/' 
 async function submitForm(form) {
   if (!(await needName())) return;
   const fd = new FormData(form), fields = {};
-  META.fields.forEach(f => { fields[f.name] = fd.get(f.name); });
+  META.fields.forEach(f => { const v = fd.get(f.name); if (v !== null) fields[f.name] = v; });   // 1.29.0: a field not on the form (Location now follows the area) is left out
   const err = document.getElementById('form-err'); err.innerHTML = '';
   const btn = form.querySelector('[type=submit]'); btn.disabled = true;
   try {
@@ -2825,7 +3072,7 @@ function forecastBlock(W, plants) {
 }
 
 // ---------- weather page ----------
-async function viewWeather() {
+async function viewWeather(sec) {
   let W;
   try { W = await api('GET', '/api/weather?x=1' + locQS()); }
   catch (e) { if (e.status === 404) { savePlace(null); W = await api('GET', '/api/weather'); } else throw e; }
@@ -3572,12 +3819,15 @@ function displayDialog() {
   G.photofit = group('photofit', 'Photos on the Plants page', [['auto', 'Show wide photos whole, fill the card with tall ones'], ['fill', 'Fill the card (wide photos lose their sides)'], ['whole', 'Always show the whole photo']], 'A wide photo cut down to fit a tall card loses its sides. Shown whole, it has a plain band above and below.');
   G.swipe = group('swipe', 'Swipe between plants', [['1', 'On'], ['0', 'Off']], 'On a phone or tablet, swipe left on a plant page for the next plant, or right for the previous one. Start away from the edges of the screen, which your phone uses for Back.');
   G.keys = group('keys', 'Keyboard shortcuts', [['1', 'On'], ['0', 'Off']], 'R reads the page aloud, [ and ] go to the previous and next plant, ? lists them all.');
-  const SECS = [['Text and colours', html`${G.size}${G.space}${G.contrast}${G.theme}`], ['Page layout', html`${G.width}${G.lines}${G.layout}${G.navside}${G.navopen}`],
-    ['Reading aloud', speak], ['Photos and touch', html`${G.photofit}${G.swipe}`], ['Keyboard', G.keys]];
+  const SH = window.PlantSync ? window.PlantSync.shared() : {};
+  const share = part => html`<fieldset class="opt-group dv-share"><legend>Where these apply</legend><label class="chk"><input type="checkbox" data-dvshare="${part}" ${SH[part] ? raw('checked') : ''}>Use these on every device I sign in on</label>
+    <p class="hint">Off (the usual): only this device. On: any phone, tablet or computer where you sign in and tick this too gets them.</p></fieldset>`;
+  const SECS = [['Text and colours', html`${G.size}${G.space}${G.contrast}${G.theme}${share('text')}`], ['Page layout', html`${G.width}${G.lines}${G.layout}${G.navside}${G.navopen}${share('layout')}`],
+    ['Reading aloud', html`${speak}${share('read')}`], ['Photos and touch', html`${G.photofit}${G.swipe}${share('photos')}`], ['Keyboard', html`${G.keys}${share('keys')}`]];
   const keep = DVSCROLL; DVSCROLL = 0;
   modal(html`<form method="dialog" class="dv-form">
     <div class="dv-head"><div class="dv-title"><h2 id="dv-title">Display settings</h2>
-        <p class="muted dv-intro">Changes apply right away and are remembered in this browser. Each computer or phone keeps its own.</p>
+        <p class="muted dv-intro">Changes apply right away. Each part is kept on this device unless you tick "Use these on every device I sign in on" in it.</p>
         <p class="dv-ver"><strong>App version:</strong> ${META && META.version ? META.version : 'unknown'}</p></div>
       <div class="row dv-acts"><button class="btn" value="ok" autofocus>Done</button><button class="btn ghost" type="button" data-act="prefreset">Reset to defaults</button></div></div>
     <div class="dv-main"><nav class="dv-tabs" aria-label="Parts of the display settings">${SECS.map(([n], i) => html`<button type="button" class="dv-tab" data-act="dvjump" data-to="dv-s${i}" ${i ? '' : raw('aria-current="true"')}>${n}</button>`)}</nav>
@@ -4136,7 +4386,8 @@ async function conPoll() {
 function pagesMenu(open) {
   const b = document.getElementById('pages-btn'), top = document.querySelector('header.top'); if (!b || !top) return;
   const cur = document.querySelector('#main-nav a[aria-current=page]'), c = document.getElementById('pages-cur');
-  if (c) c.textContent = cur ? cur.childNodes[0].textContent : 'Plants';     // without the wishlist alert count
+  const sub = document.querySelector('#sub-nav:not([hidden]) a[aria-current=page]'), word = a => a.childNodes[0].textContent.trim();
+  if (c) c.textContent = (cur ? word(cur) : 'Plants') + (sub && cur && word(sub) !== word(cur) ? ', ' + word(sub) : '');   // 1.29.0: the section and its page, without the wishlist alert count
   b.setAttribute('aria-expanded', open ? 'true' : 'false'); top.classList.toggle('pages-open', !!open);
 }
 document.addEventListener('keydown', e => {      // Escape folds the list of pages again and goes back to its button
@@ -4268,7 +4519,7 @@ async function roomDialog(pl) {
   }
 }
 function ltSocketNote(L) {
-  return L && L.specs.needs_socket && !L.fixture ? html`<p class="notice"><strong>Needs a socket.</strong> This bulb screws into a lamp or clamp light. Note which one under "Where it is" on the light (Your lights, below).</p>` : '';
+  return L && L.specs.needs_socket && !L.fixture ? html`<p class="notice"><strong>Needs a socket.</strong> This bulb screws into a lamp or clamp light. Note which one under "Where it is" on the light (Your lights, at the top of the page).</p>` : '';
 }
 function ltSteps(steps) {
   if (!steps || !steps.length) return '';
@@ -4297,26 +4548,31 @@ function ltLightCard(L) {
   return html`<article class="lt-light" aria-labelledby="ltl-${L.id}">
     ${L.photo ? html`<img class="lt-photo" src="${L.photo}" alt="${S.photo_alt || ''}" loading="lazy">` : ''}
     <div class="lt-body"><h3 id="ltl-${L.id}">${L.name}</h3>
-    <p><strong>You have ${L.count}.</strong> ${L.in_use ? `${L.in_use} in use in your spots.` : 'None in a spot yet.'}</p>
+    ${(() => { const can = canChange(), ed = k => raw(`data-ed="light" data-id="${L.id}" data-k="${k}" ${can ? '' : 'readonly'}`); return html`<div class="field-grid lt-ed">
+      <label class="f">Name<input type="text" maxlength="80" value="${L.name}" ${ed('name')}></label>
+      <label class="f lt-n">How many you have<input type="number" inputmode="numeric" min="0" max="100" step="1" value="${L.count}" ${ed('count')}><small>${L.in_use ? `${L.in_use} in use in your spots.` : 'None in a spot yet.'}</small></label>
+      <label class="f">Manufacturer model<input type="text" maxlength="80" value="${S.model || ''}" ${ed('model')}></label>
+      <label class="f">Where it is<input type="text" maxlength="600" value="${L.fixture || ''}" ${ed('fixture')}><small>For a bulb, the lamp or socket it screws into.</small></label></div>`; })()}
     <dl class="dl">
       ${S.kind ? html`<dt>Type</dt><dd>${S.kind}</dd>` : ''}
-      <dt>Manufacturer model</dt><dd>${S.model || html`<span class="muted">Not noted yet</span>`}</dd>
       ${bits.length ? html`<dt>Light</dt><dd>${bits.join(', ')}</dd>` : ''}
       ${sp ? html`<dt>Colour mix</dt><dd>Blue ${sp.blue}%, green ${sp.green}%, red ${sp.red}%, far red ${sp.far_red}%</dd>` : ''}
       ${S.power ? html`<dt>Power</dt><dd>${S.power}</dd>` : ''}
       ${S.timer ? html`<dt>Timer</dt><dd>${S.timer}</dd>` : ''}
       <dt>Brightness</dt><dd>${S.dimming && S.dimming.length > 1 ? S.dimming.map(x => x + '%').join(', ') : 'Full only'}</dd>
       ${S.size ? html`<dt>Size</dt><dd>${S.size}</dd>` : ''}
-      <dt>Where it is</dt><dd>${L.fixture || html`<span class="muted">Not noted yet</span>`}</dd>
-      ${L.notes ? html`<dt>Notes</dt><dd>${L.notes}</dd>` : ''}</dl>
+    </dl>${edLong('light', L.id, 'notes', 'Notes', L.notes, canChange())}
     ${L.points.length ? html`<div class="tbl-wrap"><table class="tbl lt-ppfd"><caption>${S.estimated ? "Claude's estimates" : "Maker's figures"}: light under its centre</caption>
       <thead><tr><th scope="col">Distance</th><th scope="col" class="num">PAR (µmol/m²/s)</th><th scope="col" class="num">12 hours a day gives</th><th scope="col" class="num">Lights about</th></tr></thead>
       <tbody>${L.points.map(p => html`<tr><th scope="row">${fmt(p.distance_in, 1)} in</th><td class="num">${fmt(p.ppfd, 1)}</td><td class="num">${fmt(p.ppfd * 12 * 0.0036, 1)} mol/m²</td><td class="num">${p.area_sqft ? fmt(p.area_sqft, 1) + ' sq ft' + (S.area_estimated && !S.estimated ? ' (estimate)' : '') : ''}</td></tr>`)}</tbody></table></div>` : ''}
     ${S.ppfd_note ? html`<p class="hint">${S.ppfd_note}</p>` : ''}
     ${L.chart ? html`<p class="hint"><a href="${L.chart}" target="_blank" rel="noopener">Open the maker's chart</a> (picture). ${S.chart_alt || ''}</p>` : ''}
     ${S.url ? html`<p class="hint"><a href="${S.url}" target="_blank" rel="noopener noreferrer">Product page</a></p>` : ''}
-    <div class="row noprint"><button class="btn ghost small" type="button" data-act="lightedit" data-id="${L.id}">Change this light</button></div></div></article>`;
+    <div class="row noprint"><button class="btn ghost small" type="button" data-act="lightedit" data-id="${L.id}">Change the light figures, timer and brightness</button></div></div></article>`;
 }
+// 1.28.1: Your lights is at the top and folds; this browser remembers whether you left it open (open the first time)
+function ltLightsOpen() { try { return localStorage.getItem('plantdb.ltlights') !== '0'; } catch (e) { return true; } }
+document.addEventListener('toggle', e => { const d = e.target; if (d && d.dataset && d.dataset.remember === 'ltlights') { try { localStorage.setItem('plantdb.ltlights', d.open ? '1' : '0'); } catch (x) { /* this visit only */ } } }, true);
 async function viewLights() {
   LT = await api('GET', '/api/lights');
   const n = LT.candidates.length, inSpots = Object.keys(LT.assigned).length, sug = LT.plan.reduce((a, s) => a + s.codes.length, 0);
@@ -4324,6 +4580,8 @@ async function viewLights() {
     title: 'Grow lights',
     html: html`<h1>Grow lights</h1>
     <p class="muted">Your grow lights, the spots they light, and how much light each plant gets there. A plant's daily light (DLI, in mol/m² a day) is the light at its leaves while the light is on (PAR) times the hours it is on. Each plant page has the range it wants.</p>
+    <details class="blk lt-lights-box" id="lt-lights" data-remember="ltlights" ${ltLightsOpen() ? raw('open') : ''}><summary><h2>Your lights (${LT.lights.length})</h2><span class="hint">Show or hide</span></summary>
+      <div class="lt-lights">${LT.lights.map(ltLightCard)}</div></details>
     <div class="verdict-box" role="status"><h2 style="margin:0 0 .4rem">This winter</h2>
       <p>${n} plant${n === 1 ? ' lives' : 's live'} inside or ${n === 1 ? 'is' : 'are'} coming in. ${inSpots} ${inSpots === 1 ? 'is' : 'are'} in a light spot you set up.${LT.plan.length ? ` The suggested layout below places ${sug} more under your lights.` : ''}${LT.unplaced.length ? ` ${LT.unplaced.length} ${LT.unplaced.length === 1 ? 'has' : 'have'} no light left in it.` : ''}</p>
       ${has(LT.outdoor_dli) ? html`<p>Outdoors in the open, the last 7 days averaged about <strong>${LT.outdoor_dli} mol/m² a day</strong>. Under the porch roof it is much less.</p>` : ''}
@@ -4337,7 +4595,6 @@ async function viewLights() {
       ${LT.plan.length ? html`<div class="lt-grid">${LT.plan.map((s, i) => ltSpotCard(s, i, true))}</div>` : html`<p class="muted">Every plant that needs a light is in a spot.</p>`}
       ${LT.unplaced.length ? html`<h3>No light left for these</h3><ul class="lt-plants">${LT.unplaced.map(u => html`<li>${u.photo ? html`<img src="${thumbUrl(u.photo)}" alt="" loading="lazy">` : html`<span></span>`}
         <span><a class="nm" href="#/plant/${enc(u.code)}">${u.name}</a><br><span class="muted">${u.code}. Needs ${fmt(u.lo, 1)} to ${fmt(u.hi, 1)} mol/m² a day.</span> ${u.why}</span><span></span></li>`)}</ul>` : ''}</section>
-    <section class="blk" id="lt-lights"><h2>Your lights</h2><div class="lt-lights">${LT.lights.map(ltLightCard)}</div></section>
     <section class="blk"><h2>How the numbers work</h2>
       <p>Makers measure light straight under the centre of the light at a few distances. The app draws a smooth line through those figures to get the light at any distance, then multiplies by the hours a day: 100 PAR for 12 hours is about 4.3 mol/m².</p>
       <p>The edges of a light's circle get less, and a window adds some. Plants that stretch or go pale want more; bleached or crisp leaves want less. Several of the same light side by side light a bigger area at about the same strength.</p></section>`,
@@ -4411,7 +4668,7 @@ async function lightDialog(L) {
       <div class="field-grid three"><label class="f">How many you have<input type="number" name="count" min="0" max="100" step="1" value="${x.count}" required></label>
         <label class="f">Watts (each)<input type="number" name="watts" min="0" max="2000" step="any" value="${x.watts}"></label>
         <label class="f">Type<input type="text" name="kind" maxlength="40" value="${x.kind}"><small>For example bulb, strip or clamp light.</small></label></div>
-      <label class="f">Where it is<input type="text" name="fixture" maxlength="120" value="${x.fixture}"><small>The room, shelf or lamp it is in, or the socket a bulb screws into.</small></label>
+      <label class="f">Where it is<input type="text" name="fixture" maxlength="600" value="${x.fixture}"><small>The room, shelf or lamp it is in, or the socket a bulb screws into.</small></label>
       <label class="f">Light at distances (PPFD)<textarea name="points" rows="2" maxlength="400">${x.points}</textarea><small>From the box or listing: distance in inches and PAR, separated by commas, for example "12 in 719, 24 in 234". Add the area it lights in brackets if the maker gives it.</small></label>
       <div class="field-grid"><label class="f">Timer<input type="text" name="timer" maxlength="120" value="${x.timer}"></label>
         <label class="f">Brightness steps (%)<input type="text" name="dimming" maxlength="40" value="${x.dimming}"><small>For example "25, 50, 75, 100", or "100" if it only has full.</small></label></div>
@@ -4611,6 +4868,22 @@ const acts = {
     await guard(async () => { await api('DELETE', '/api/backups/' + enc(el.dataset.file)); toast('Backup deleted'); route(); });
   },
   needs() { G.needs = !G.needs; gSave(); route(); },
+  edlong(el) { const w = el.closest('.ed-long'), l = w.querySelector('label'); l.hidden = false; const t = l.querySelector('textarea'); t.dataset.was = t.value; t.focus(); },
+  async whareadel(el) { if (!(await needName())) return; if (!(await confirmBox(`Remove ${el.dataset.name}?`, 'Its spots are removed too. Plants must be moved out of it first.', 'Remove', true))) return;
+    await guard(async () => { await api('DELETE', '/api/where/areas/' + el.dataset.id); META = await api('GET', '/api/meta'); toast('Removed'); route(); }); },
+  async whspotdel(el) { if (!(await needName())) return; if (!(await confirmBox(`Remove the spot ${el.dataset.name}?`, 'Plants there keep their area or room; they just have no spot.', 'Remove', true))) return;
+    await guard(async () => { await api('DELETE', '/api/where/spots/' + el.dataset.id); META = await api('GET', '/api/meta'); toast('Spot removed'); route(); }); },
+  async whsort() {
+    if (!(await needName())) return;
+    const items = WHSORT.map((it, i) => ({ text: it.text, name: (document.querySelector(`[data-whs="${i}"][data-k=name]`) || {}).value || '', area_id: +(document.querySelector(`[data-whs="${i}"][data-k=area]`) || {}).value }));
+    await guard(async () => { const r = await api('POST', '/api/where/sort', { items }); META = await api('GET', '/api/meta'); toast(`${r.moved} plant${r.moved === 1 ? '' : 's'} put in their spots`); route(); });
+  },
+  async ctadd(el) { if (!(await needName())) return;
+    await guard(async () => { const x = await api('POST', '/api/containers', { kind: el.dataset.kind, name: el.dataset.kind === 'pot' ? 'New pot' : 'New catch tray', shape: 'circle', qty: 1 });
+      META = await api('GET', '/api/meta'); await route(); const n = document.querySelector(`#ct-${x.id} [data-k=name]`); if (n) { n.focus(); n.select(); } toast('Added. Type its name and sizes.'); }); },
+  async ctdel(el) { if (!(await needName())) return; if (!(await confirmBox(`Remove ${el.dataset.name}?`, 'Its photos are removed too.', 'Remove', true))) return;
+    await guard(async () => { await api('DELETE', '/api/containers/' + el.dataset.id); META = await api('GET', '/api/meta'); toast('Removed'); route(); }); },
+  async ctphotodel(el) { if (!(await needName())) return; await guard(async () => { await api('DELETE', '/api/containers/photos/' + el.dataset.id); toast('Photo removed'); route(); }); },
   sevreset() { SEV.photos.forEach(p => { try { URL.revokeObjectURL(p.url); } catch (e) { /* gone */ } }); Object.assign(SEV, { step: 'pick', photos: [], plants: [], done: null, busy: false }); SEV.home = sevDefaultHome(); sevDraw('input[type=file]'); },
   async sevsave() {
     if (!(await needName())) return;
@@ -4913,7 +5186,14 @@ const acts = {
   },
   async tododel(el) { if (!(await needName())) return; await guard(async () => { await api('DELETE', '/api/to-photograph/' + el.dataset.id); route(); }); },
 };
+document.addEventListener('change', e => { const el = e.target; if (el.dataset && el.dataset.dvshare && window.PlantSync) { window.PlantSync.share(el.dataset.dvshare, el.checked);
+  toast(el.checked ? 'These settings now follow you to other devices' : 'These settings now stay on this device'); } }, true);
 const changeActs = {
+  async ctphoto(el) {                 // 1.29.0: photos of a pot or tray
+    if (!el.files.length || !(await needName())) return;
+    const fd = new FormData(); [...el.files].forEach(f => fd.append('files', f));
+    await guard(async () => { const x = await api('POST', '/api/containers/' + el.dataset.id + '/photos', null, fd); toast('Photo added'); ctRedraw(x); });
+  },
   grprulefield(el) {      // a different thing to look at: redraw this part with the right comparisons and value suggestions
     const row = el.closest('.rule-row'), i = +row.dataset.row;
     row.outerHTML = rend(ruleRow({ field: el.value, value: '' }, i));
@@ -4996,6 +5276,11 @@ const formActs = {
       : html`<p class="notice">Nothing found for "${q}". Check the spelling or try a larger area.</p>`);
   },
   sevgo(form) { return sevGo(form); },
+  async whareaadd(form) { if (!(await needName())) return;
+    await guard(async () => { await api('POST', '/api/where/areas', { home_id: form.dataset.home || null, side: form.dataset.side, name: form.elements.name.value, sheltered: form.elements.sheltered.checked });
+      META = await api('GET', '/api/meta'); toast('Added'); route(); }); },
+  async whspotadd(form) { if (!(await needName())) return;
+    await guard(async () => { await api('POST', '/api/where/spots', { area_id: +form.dataset.aid, name: form.elements.name.value }); META = await api('GET', '/api/meta'); toast('Spot added'); route(); }); },
   placeadd(form) { const f = form.elements; return addPlace({ name: f.name.value, lat: f.lat.value, lon: f.lon.value, tz: f.tz.value }); },
   wtgo(form) {
     const max = +form.elements.page.dataset.max, n = Math.round(+form.elements.page.value);
@@ -5843,7 +6128,9 @@ async function wlBadge() {           // 1.27.0: the number of wishlist alerts be
   if (Date.now() - WLBADGE < 60000) return;
   WLBADGE = Date.now();
   let n = 0; try { n = (await api('GET', '/api/wishlist/alerts')).alerts.length; } catch (e) { return; }
-  const a = document.querySelector('#main-nav a[data-nav=library]'); if (!a) return;
+  const a = document.querySelector('#main-nav a[data-sec=discover]'), w = document.querySelector('#sub-nav a[data-nav=wishlist]');
+  if (w) { let bw = w.querySelector('.nav-badge'); if (!n) { if (bw) bw.remove(); } else { if (!bw) { bw = document.createElement('span'); bw.className = 'nav-badge'; w.append(bw); } bw.innerHTML = rend(html` <span aria-hidden="true">(${n})</span><span class="sr">, ${n} wishlist alert${n === 1 ? '' : 's'}</span>`); } }
+  if (!a) return;
   let b = a.querySelector('.nav-badge');
   if (!n) { if (b) b.remove(); return; }
   if (!b) { b = document.createElement('span'); b.className = 'nav-badge'; a.append(b); }
@@ -6733,6 +7020,11 @@ document.addEventListener('change', e => {
   else if (f === 'status') { G.status = el.value; drawGrid(); }
   else if (f === 'site') { G.site = el.value; drawGrid(); }
   else if (f === 'home') { G.home = el.value; drawGrid(); }
+  else if (f === 'ctmat') { const o = document.querySelector(`[data-other="${el.dataset.id}"]`), t = o && o.querySelector('input');
+    if (el.value === '__other') { o.hidden = false; t.dataset.was = t.value; t.focus(); }
+    else { if (o) o.hidden = true; if (t) { t.dataset.was = t.value; t.value = el.value; edSave(t); } } }
+  else if (f === 'wherehome' || f === 'whereside') { const fm = el.closest('form'); if (fm) whereRefresh(fm); }
+  else if (f === 'wherearea') { const fm = el.closest('form'); if (fm) whereRefresh(fm, 'area'); }
   else if (f === 'sevset') { SEV[el.dataset.k] = el.value; }
   else if (f === 'sevadd') { const P = SEV.plants[+el.dataset.g]; P.add = el.checked; el.closest('fieldset').classList.toggle('sev-off', !el.checked); const b = document.querySelector('[data-act=sevsave]'), k = SEV.plants.filter(p => p.add).length; if (b) { b.textContent = `Add ${k} plant${k === 1 ? '' : 's'}`; b.disabled = !k; } }
   else if (f === 'sevpick') { const P = SEV.plants[+el.dataset.g]; P.pick = +el.value; P.typed = new Set(); sevFill(P); sevDraw(`[data-f=sevpick][data-g="${el.dataset.g}"][value="${el.value}"]`); }
@@ -6995,4 +7287,9 @@ Object.assign(changeActs, {
 route();
 offStart();
 wxPoll();                      // shows the progress box on every page while a history load runs
+// 1.29.0: settings that follow you. If another device changed them, this tab starts again once with them (at most once a visit)
+if (window.PlantSync && navigator.onLine) window.PlantSync.load().then(changed => {
+  let again = false; try { again = sessionStorage.getItem('plantdb.synced') === '1'; sessionStorage.setItem('plantdb.synced', '1'); } catch (e) { again = true; }
+  if (changed && !again && !document.querySelector('main form[data-form] input:focus, dialog[open]')) location.reload();
+});
 })();
