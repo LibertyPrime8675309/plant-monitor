@@ -5,7 +5,7 @@
 - **Second copy of backups** (Backups page): each new backup is also copied to a folder on another drive (`PLANTDB_COPY_DIR` in `.env`; until then a `backups-copy` folder next to the data), and to another computer over Tailscale that runs the small **receiver** included in the release (`receiver` folder, with its own README). **Copy the newest backup now** tries it.
 - **Search everywhere**: the Search button in the top bar, or the `/` key. Finds plants, pages, groups, rooms and spots, stores, mushroom finds, Shopping items and species in the library, grouped, with the arrow keys to move and Enter to open.
 - The image build installs one more Python package (cryptography) for the notifications; the Dockerfile itself is unchanged.
-- Fix: when the top bar is tall enough to scroll with the page (a window around 1280 pixels wide with large text), the open "On this page" menu no longer covers the left end of the top bar and the page links.
+- Top bar: when Search, Online, Location and Editing no longer fit beside the name, the Search button keeps only its magnifier and the Location button only its pin and place name (their full names stay for screen readers) before the bar grows another row. And when the bar is tall enough to scroll with the page, the open "On this page" menu no longer covers its left end.
 
 ## 1.32.0 (2026-11-04)
 - **Jobs** (Settings): one list of what the app is doing in the background (weather updates, store checks, backups, library downloads, store map positions), when each scheduled one is next due and last ran, and what finished, with how long it took. The owner can start the weather update, the store check or a backup from there.

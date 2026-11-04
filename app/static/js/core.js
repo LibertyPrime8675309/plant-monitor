@@ -705,15 +705,21 @@ function topFit() {
   if (!nav || !top) return;
   if (r.dataset.narrow === '1') { r.dataset.pagesfold = '0'; r.dataset.toptall = '0'; r.dataset.topmode = ''; r.dataset.navrow = '0'; return; }
   const was = top.classList.contains('pages-open'); top.classList.remove('pages-open');
-  r.dataset.pagesfold = '0';
   // 1.26.1: the bar spans the window. Everything on one line if it fits; otherwise the name and the buttons on the first line and
   // the page links on a line of their own, spread across the whole width
   const rows = () => new Set([...nav.querySelectorAll('a')].map(x => Math.round(x.getBoundingClientRect().top))).size;
-  r.dataset.topmode = 'one'; r.dataset.navrow = '0';
-  if (rows() > 1) r.dataset.topmode = 'tier';
-  r.dataset.navrow = rows() === 1 ? '1' : '0';
-  const a = nav.querySelector('a');
-  if (a && (nav.offsetHeight > a.offsetHeight * 2.5 || top.offsetHeight > innerHeight * 0.2)) { r.dataset.pagesfold = '1'; r.dataset.topmode = ''; r.dataset.navrow = '0'; }
+  const fit = () => {
+    r.dataset.pagesfold = '0'; r.dataset.topmode = 'one'; r.dataset.navrow = '0';
+    if (rows() > 1) r.dataset.topmode = 'tier';
+    r.dataset.navrow = rows() === 1 ? '1' : '0';
+    const a = nav.querySelector('a');
+    if (a && (nav.offsetHeight > a.offsetHeight * 2.5 || top.offsetHeight > innerHeight * 0.2)) { r.dataset.pagesfold = '1'; r.dataset.topmode = ''; r.dataset.navrow = '0'; }
+  };
+  r.dataset.topcompact = '0'; r.dataset.toptall = '0'; fit();
+  // 1.33.0: when Online, Location and Editing no longer fit beside the name, the Search button keeps only its icon and the Location
+  // button only its pin and place (their full names stay for screen readers) before the bar grows another row
+  const brand = top.querySelector('.brand'), acts = top.querySelector('.top-acts');
+  if (brand && acts && Math.abs(brand.getBoundingClientRect().top - acts.getBoundingClientRect().top) > 8) { r.dataset.topcompact = '1'; fit(); }
   if (was) top.classList.add('pages-open');
   r.dataset.toptall = top.offsetHeight > innerHeight * 0.2 ? '1' : '0';
 }

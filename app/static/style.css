@@ -1563,4 +1563,4 @@ a[href^="tel:"]{white-space:nowrap}
 .srch-h{margin:.8rem 0 .2rem;font-size:1.05em}
 .srch-dlg #srch-res{max-height:55vh;overflow:auto}
 .srch-btn .srch-l{margin-left:.3rem}
-html[data-narrow="1"] .srch-btn .srch-l{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+html:is([data-narrow="1"],[data-topcompact="1"]) :is(.srch-btn .srch-l,.place-btn .pl-l){position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
