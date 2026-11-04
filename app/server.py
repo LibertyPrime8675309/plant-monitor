@@ -8,7 +8,7 @@ import csv, hmac, html as html_mod, io, json, math, os, re, secrets, shutil, sql
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import urlparse
 
-from flask import Flask, Response, abort, g, has_request_context, jsonify, request, send_from_directory
+from flask import Flask, Response, abort, g, has_app_context, has_request_context, jsonify, request, send_from_directory
 from PIL import Image, ImageOps
 import segno
 import writable                 # 1.12.1: the start-up write check, shared with start.py
@@ -56,6 +56,9 @@ FIELDS = [
     ('common_name', 'text', 'Common name'), ('scientific_name', 'text', 'Scientific name'),
     ('aliases', 'text', 'Other names / cultivar'), ('plant_type', 'text', 'Plant type'),
     ('location', 'text', 'Spot (where exactly)'), ('container', 'text', 'Container'),
+    ('home_id', 'home', 'Home'),                                                    # 1.28.0: which home it is at (empty: the main home)
+    ('area_id', 'area', 'Area or room'), ('spot_id', 'spot', 'Spot'),                # 1.29.0: inside or outside, the area or room, the spot
+    ('pot_id', 'pot', 'Pot'), ('tray_id', 'tray', 'Catch tray'),                    # 1.29.0: pots and trays you keep as items
     ('id_confidence', 'int', 'ID confidence (%)'), ('id_basis', 'long', 'Why Claude thinks so'),
     ('id_alternatives', 'list', 'Other possibilities'), ('id_improve', 'list', 'What would raise confidence'),
     ('temp_ideal_low', 'int', 'Ideal temp low (F)'), ('temp_ideal_high', 'int', 'Ideal temp high (F)'),
@@ -138,7 +141,7 @@ def close_db(_):
     c = g.pop('db', None)
     if c: c.close()
 
-SQLTYPE = {'int': 'INTEGER', 'num': 'REAL'}
+SQLTYPE = {'int': 'INTEGER', 'num': 'REAL', 'home': 'INTEGER', 'area': 'INTEGER', 'spot': 'INTEGER', 'pot': 'INTEGER', 'tray': 'INTEGER'}
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS plants(
@@ -164,6 +167,23 @@ CREATE TABLE IF NOT EXISTS readings(
 CREATE UNIQUE INDEX IF NOT EXISTS readings_uq ON readings(source, device, ts);
 CREATE INDEX IF NOT EXISTS readings_ts ON readings(ts);
 CREATE INDEX IF NOT EXISTS readings_src_ts ON readings(source, ts);
+CREATE TABLE IF NOT EXISTS user_prefs(login TEXT NOT NULL, key TEXT NOT NULL, value TEXT, updated_at TEXT, PRIMARY KEY(login, key));
+CREATE TABLE IF NOT EXISTS areas(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, home_id INTEGER, side TEXT NOT NULL, name TEXT NOT NULL, sheltered INTEGER NOT NULL DEFAULT 0,
+  sort INTEGER NOT NULL DEFAULT 0, created_by TEXT, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS spots(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, area_id INTEGER NOT NULL REFERENCES areas(id), name TEXT NOT NULL, sort INTEGER NOT NULL DEFAULT 0,
+  created_by TEXT, created_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS containers(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, name TEXT NOT NULL, shape TEXT NOT NULL DEFAULT 'circle',
+  dia_in REAL, len_in REAL, wid_in REAL, height_in REAL, drainage INTEGER, material TEXT NOT NULL DEFAULT '', qty INTEGER NOT NULL DEFAULT 1,
+  notes TEXT NOT NULL DEFAULT '', created_by TEXT, created_at TEXT NOT NULL, updated_by TEXT, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS container_photos(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, container_id INTEGER NOT NULL REFERENCES containers(id) ON DELETE CASCADE, file TEXT NOT NULL,
+  is_primary INTEGER NOT NULL DEFAULT 0, added_by TEXT, added_at TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS lib_areas(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, place_id INTEGER UNIQUE NOT NULL, name TEXT NOT NULL, total INTEGER NOT NULL DEFAULT 0,
+  checked_at TEXT, added_by TEXT, added_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS locations(
   id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, lat REAL NOT NULL, lon REAL NOT NULL, tz TEXT NOT NULL,
   enabled INTEGER NOT NULL DEFAULT 1, is_home INTEGER NOT NULL DEFAULT 0, device TEXT UNIQUE, forecast TEXT, status TEXT,
@@ -240,8 +260,10 @@ def init_db():
     for n, k, _ in FIELDS:                      # upgrade an older database: add any column this version needs
         if n not in have: c.execute(f"ALTER TABLE plants ADD COLUMN {n} {SQLTYPE.get(k, 'TEXT')}")
     if 'extra' not in {r[1] for r in c.execute('PRAGMA table_info(readings)')}: c.execute('ALTER TABLE readings ADD COLUMN extra TEXT')
+    if 'plants_here' not in {r[1] for r in c.execute('PRAGMA table_info(locations)')}: c.execute('ALTER TABLE locations ADD COLUMN plants_here INTEGER NOT NULL DEFAULT 0')   # 1.28.0: homes
     if 'place_id' not in {r[1] for r in c.execute('PRAGMA table_info(light_spots)')}: c.execute('ALTER TABLE light_spots ADD COLUMN place_id INTEGER')   # 1.13.1
     migrate_places(c)
+    where_seed(c)                                       # 1.29.0: areas and spots for every home
     if not c.execute('SELECT 1 FROM weather_runs LIMIT 1').fetchone():       # readings gathered before runs were logged (version 1.2)
         w = c.execute("SELECT MIN(ts),MAX(ts),COUNT(*) FROM readings WHERE source='weather'").fetchone()
         if w[2]:
@@ -286,6 +308,7 @@ def init_db():
     c.execute("UPDATE plants SET site='Outdoors' WHERE site IS NULL OR site=''")   # before the batches too, so a batch can expect 'Outdoors'
     c.commit()
     apply_batches(c)
+    where_seed(c)                                       # 1.29.0: homes and plants that batches just added get their areas too
     c.execute("UPDATE plants SET site='Outdoors' WHERE site IS NULL OR site=''")   # 1.7.0: every existing plant starts out as Outdoors
     c.commit()
     repair_seed_photos(c)
@@ -322,6 +345,13 @@ def apply_batches(c):
         label = b['id']
         try:
             c.execute('BEGIN')
+            for h in b.get('homes_add', []):                 # 1.28.0: another home where plants live (skipped if a place is already there)
+                r = c.execute('SELECT id FROM locations WHERE ABS(lat-?)<0.05 AND ABS(lon-?)<0.05', (h['lat'], h['lon'])).fetchone()
+                if r: c.execute('UPDATE locations SET plants_here=1 WHERE id=?', (r[0],)); continue
+                hid = c.execute('INSERT INTO locations(name,lat,lon,tz,enabled,is_home,plants_here,created_at) VALUES(?,?,?,?,1,0,1,?)',
+                                (h['name'], h['lat'], h['lon'], h['tz'], ts)).lastrowid
+                c.execute('UPDATE locations SET device=? WHERE id=?', (f'place-{hid}', hid))
+                audit_only(c, 'setting', 'weather_place', None, json.dumps(h), who, f'Home added ({label}): {h["name"]}')
             for p in b.get('plants', []):
                 n = c.execute("SELECT COALESCE(MAX(CAST(SUBSTR(code,3) AS INTEGER)),0)+1 FROM plants").fetchone()[0]
                 code = f'P-{n:03d}'
@@ -403,9 +433,9 @@ def apply_batches(c):
                 if not L: continue
                 d, cols, done = light_specs(L), {}, []
                 for f, (old, new) in u['set'].items():
-                    cur = L[f] if f in ('fixture', 'notes', 'count') else d.get(f)
+                    cur = L[f] if f in ('fixture', 'notes', 'count', 'name') else d.get(f)
                     if str(cur if cur is not None else '') != str(old if old is not None else ''): continue
-                    if f in ('fixture', 'notes', 'count'): cols[f] = new
+                    if f in ('fixture', 'notes', 'count', 'name'): cols[f] = new
                     else: d[f] = new
                     done.append(f)
                 if done:
@@ -484,6 +514,23 @@ def norm(name, v):
         lo, hi = NUM_RANGES[name]
         if not lo <= x <= hi: abort(400, f'{FIELD_LABEL[name]} must be between {lo} and {hi}')
         return x
+    if kind in ('area', 'spot', 'pot', 'tray'):                # 1.29.0: an id in its own list, or empty
+        if v in (None, '', 0, '0'): return None
+        try: i = int(v)
+        except (TypeError, ValueError): abort(400, f'{FIELD_LABEL[name]} must be chosen from the list')
+        if has_app_context():
+            tbl, extra = {'area': ('areas', ''), 'spot': ('spots', ''), 'pot': ('containers', " AND kind='pot'"), 'tray': ('containers', " AND kind='tray'")}[kind]
+            if not db().execute(f'SELECT 1 FROM {tbl} WHERE id=?{extra}', (i,)).fetchone(): abort(400, f'That {FIELD_LABEL[name].lower()} is not in the list any more')
+        return i
+    if kind == 'home':                                      # 1.28.0: a home's id; empty means the main home
+        if v in (None, '', 0, '0'): return None
+        try: i = int(v)
+        except (TypeError, ValueError): abort(400, 'Home must be one of your homes')
+        if has_app_context():
+            r = db().execute('SELECT is_home, plants_here FROM locations WHERE id=?', (i,)).fetchone()
+            if r is None or not (r[0] or r[1]): abort(400, 'Home must be one of your homes (a place where plants live)')
+            if r[0]: return None                     # the main home is stored as empty, so plants follow if another place becomes the main home
+        return i
     s = '' if v is None else str(v).replace('\r\n', '\n').strip()
     if len(s) > 8000: abort(400, f'{FIELD_LABEL[name]} is too long')
     if kind == 'enum':
@@ -514,6 +561,7 @@ def audit_only(c, action, field, old, new, who, note, pid=None, code=None):
 
 def apply_changes(c, r, new_fields, who, action, note):
     ch = []
+    new_fields = place_sync(c, r, dict(new_fields))          # 1.29.0
     for n, v in new_fields.items():
         if n not in FIELD_KIND: continue
         nv = norm(n, v)
@@ -565,8 +613,8 @@ def owner_name(c):
     return r[0] if r else 'the owner'
 
 OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people')        # any request (the people list shows everyone's login)
-OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/prefetch', '/api/shops')   # changes only
-VIEWER_POSTS = ('/api/identify',)            # 1.18.0: asks this computer what a picture shows; changes nothing, so viewers may use it
+OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/areas', '/api/shops')   # changes only
+VIEWER_POSTS = ('/api/identify', '/api/me/prefs')   # 1.18.0: asks this computer what a picture shows; 1.29.0: your own settings. Neither changes the plants
 
 def role_refusal(u):
     """Why this person may not make this request, or None. The server decides; the page only hides what would be refused."""
@@ -583,6 +631,29 @@ def me_dict(c):
     u = getattr(g, 'user', None) or {'via': 'local', 'login': None, 'name': '', 'role': 'owner'}
     return {'via': u['via'], 'login': u['login'], 'name': u['name'] if u['via'] == 'tailscale' else '', 'role': u['role'],
             'role_word': ROLE_WORD[u['role']], 'owner_name': owner_name(c)}
+
+# 1.29.0: settings that follow you: the Plants filters, the Library's choices, folded sections, the Location button, and the parts of
+# Display you choose to share between devices. Kept per Tailscale login; on this computer (localhost) they are the owner's.
+def prefs_login(c):
+    u = getattr(g, 'user', None) or {'via': 'local', 'login': None}
+    if u.get('via') == 'tailscale' and u.get('login'): return u['login']
+    r = c.execute("SELECT login FROM people WHERE role='owner' ORDER BY first_seen LIMIT 1").fetchone()
+    return r[0] if r else 'local-owner'
+
+@app.route('/api/me/prefs', methods=['GET', 'PUT'])
+def me_prefs():
+    c = db(); login = prefs_login(c)
+    if request.method == 'PUT':
+        b = request.get_json(silent=True) or {}
+        if not isinstance(b, dict) or len(b) > 60: abort(400, 'Send up to 60 settings')
+        for k, v in b.items():
+            if not re.match(r'^[a-z][a-z0-9._-]{0,40}$', str(k)): abort(400, 'That setting name is not allowed')
+            if v is None: c.execute('DELETE FROM user_prefs WHERE login=? AND key=?', (login, k)); continue
+            v = str(v)
+            if len(v) > 20000: abort(400, 'That setting is too long')
+            c.execute('INSERT OR REPLACE INTO user_prefs(login,key,value,updated_at) VALUES(?,?,?,?)', (login, k, v, now()))
+        c.commit()
+    return jsonify(prefs={k: v for k, v in c.execute('SELECT key, value FROM user_prefs WHERE login=?', (login,))}, login=login)
 
 @app.route('/api/me', methods=['GET', 'PUT'])
 def me():
@@ -748,8 +819,9 @@ def water_factor(avg_high, inside):
 def water_report(c, codes=None):
     today = local_today(c)
     avg_high, rain = water_weather(c, today)
-    q = "SELECT * FROM plants WHERE status='active'" + (' AND code IN (%s)' % ','.join('?' * len(codes)) if codes else '') + ' ORDER BY code'
-    plants = c.execute(q, codes or []).fetchall()
+    at, at_args = plants_at(c, location(c)) if not codes else ('', [])     # 1.28.0: the plants at the place in use
+    q = "SELECT * FROM plants WHERE status='active'" + at + (' AND code IN (%s)' % ','.join('?' * len(codes)) if codes else '') + ' ORDER BY code'
+    plants = c.execute(q, at_args + list(codes or [])).fetchall()
     last = {}
     for code, kind, d in c.execute("SELECT plant_code, CASE WHEN kind IN ('prep_soak','prep_repot') THEN 'water' ELSE kind END AS k, MAX(done_on) "
                                    "FROM care_log WHERE kind IN ('water','check','prep_soak','prep_repot') GROUP BY plant_code, k"):     # a soak or a repot waters the plant
@@ -855,7 +927,10 @@ def meta():
                    password_protected=bool(PASSWORD), int_ranges=INT_RANGES, num_ranges=NUM_RANGES, version=APP_VERSION,
                    home_tz=L['tz'],              # the browser uses this for "today", so dates match the server's
                    place=place_brief(L), climate=place_climate(c, L), zone=place_zone(c, L), me=me_dict(c), runs_as=runs_as(),
-                   places=[place_brief(loc_dict(r)) for r in c.execute('SELECT * FROM locations ORDER BY is_home DESC, name')])
+                   places=[place_brief(loc_dict(r)) for r in c.execute('SELECT * FROM locations ORDER BY is_home DESC, name')],
+                   homes=[place_brief(h) for h in homes(c)], region=place_region(c, L),
+                   where=where_list(c),                                                      # 1.29.0: rooms and spots
+                   containers=[{k: d[k] for k in ('id', 'kind', 'name', 'size', 'sqft', 'qty', 'free')} for d in (cont_dict(c, x) for x in c.execute('SELECT * FROM containers ORDER BY kind, name'))])
 
 REF_PLACE = (30.5083, -97.6789)       # the written winter reference (climate table and notes) is for Round Rock, TX
 
@@ -912,7 +987,17 @@ VISION_URL = os.environ.get('PLANTDB_VISION_URL', 'http://vision:8090').rstrip('
 PLANTNET_URL = os.environ.get('PLANTDB_PLANTNET_URL', 'https://my-api.plantnet.org/v2/identify/all')
 CLAUDE_URL = os.environ.get('PLANTDB_CLAUDE_URL', 'https://api.anthropic.com/v1/messages')
 CLAUDE_MODEL = 'claude-sonnet-5-5'
-ID_SCOPES = ('common', 'texas', 'us', 'world', 'fungi')
+ID_SCOPES = ('common', 'state', 'us', 'world', 'fungi')   # 1.28.0: 'state' is the US state of the place in use ('texas' before)
+
+def vscope(c, scope, default='common'):
+    """1.28.0: a list name for the picture checker. 'state' (or the old 'texas') becomes the US state of the place in use,
+    such as 'state:California'; outside the US it becomes 'us' is not right either, so the worldwide list is used."""
+    if scope == 'texas': scope = 'state'
+    if scope not in ID_SCOPES: scope = default
+    if scope == 'state':
+        R = place_region(c, location(c))
+        return f'state:{R["usda"]}' if R and R.get('usda') else 'world'
+    return scope
 
 def vision_call(path, data=None, ctype=None, timeout=60):
     req = urllib.request.Request(VISION_URL + path, data=data, headers={'Content-Type': ctype} if ctype else {}, method='POST' if data is not None else 'GET')
@@ -982,8 +1067,7 @@ def mark_owned(c, items, key='scientific_name'):
 @app.route('/api/identify', methods=['POST'])
 def identify():
     """A picture (field 'image') in; the closest plants in the record and the likeliest species out (from this computer)."""
-    scope = request.args.get('scope', 'common')
-    if scope not in ID_SCOPES: scope = 'common'
+    scope = vscope(db(), request.args.get('scope', 'common'))
     body, ct = multipart({}, [('image', 'picture.jpg', picture_bytes(1024), 'image/jpeg')])
     out = vision_call('/identify?scope=' + scope, body, ct, timeout=90)
     c = db()
@@ -997,10 +1081,14 @@ def identify():
 
 @app.route('/api/identify/status')
 def identify_status():
-    try: st = vision_call('/status', timeout=5)
+    c = db(); vs = vscope(c, 'state')
+    try: st = vision_call('/status' + ('?' + urllib.parse.urlencode({'state': vs}) if vs.startswith('state:') else ''), timeout=5)
     except Exception as e:
         st = {'state': 'off', 'step': getattr(e, 'description', 'The picture checker is not running.')}
-    c = db()
+    if isinstance(st.get('scopes'), dict):            # 1.28.0: 'state' is the place's own state
+        st['scopes']['state'] = st['scopes'].get(vs) or ({'label': '', 'count': 0})
+        st['scopes'].pop('texas', None); st['scopes'].pop(vs, None)
+    st['region'] = place_region(c, location(c))
     st['plantnet'] = bool(setting(c, 'plantnet_key')); st['claude'] = bool(setting(c, 'claude_key'))
     return jsonify(st)
 
@@ -1008,7 +1096,7 @@ def identify_status():
 def library():
     """Search the species list (?q=, &scope=texas|us|common|world)."""
     q, scope = request.args.get('q', '').strip()[:80], request.args.get('scope', 'world')
-    if scope not in ID_SCOPES: scope = 'world'
+    scope = vscope(db(), scope, 'world')
     if len(q) < 2: return jsonify(results=[], total=0)
     out = vision_call('/names?' + urllib.parse.urlencode({'q': q, 'scope': scope, 'limit': 60}), timeout=30)
     mark_owned(db(), out.get('results', []))
@@ -1654,34 +1742,118 @@ def lib_enqueue(names, front=True):
         if LIBQ['queue'] and not LIBQ['thread']:
             LIBQ['thread'] = threading.Thread(target=lib_worker, daemon=True); LIBQ['thread'].start()
 
-PREFETCH = {'scope': None, 'names': set(), 'total': 0, 'started': None, 'by': None}
+# ---------------------------------------------------------------- 1.28.0: library photos for offline use, by area
+# An area is any place iNaturalist knows (a country, state, county, park or city). Its list is every plant species recorded
+# there (research-grade and needs-ID observations, wild or planted), fetched with the area lists' one-a-second limit. Then the
+# photo and short facts of each species are downloaded like any library photo. "Check for updates" fetches the list again and
+# downloads what is new. Photos stay when an area is removed (another area or a page may use them).
+AREA_JOB = {}            # place_id: {'names': set(), 'total': n, 'started': ts}
 
-@app.route('/api/library/prefetch', methods=['GET', 'POST', 'DELETE'])
-def library_prefetch():
-    """1.22.0: download the photo and facts for every species in a list (Texas plants), so the library works offline.
-    Owner only (OWNER_ONLY_CHANGES). It goes about one species a second, after anything someone is looking at."""
+def area_names(pid):
+    j = local_get(f'area-{pid}')
+    return [x[0] for x in (j or {}).get('species', [])]
+
+def lib_kept_files():
+    try: return {f[:-4] for f in os.listdir(LIB_DIR) if f.endswith('.jpg')}
+    except OSError: return set()
+
+def lib_checked_files():
+    try: return {f[:-5] for f in os.listdir(LIB_DIR) if f.endswith('.json')}
+    except OSError: return set()
+
+def area_after(pid):
+    """After an area's list is fetched: note when, and queue the photos it does not have yet."""
+    names, kept = area_names(pid), lib_kept_files()
+    todo = [n for n in names if lib_slug(n) not in kept]
+    fresh = lib_checked_files()
+    todo = [n for n in todo if lib_slug(n) not in fresh or not (lib_meta(n) or {}).get('checked')
+            or (date.today() - date.fromisoformat(lib_meta(n)['checked'])).days >= LIB_RECHECK_DAYS]     # no photo there, looked recently: skip
+    AREA_JOB[pid] = {'names': set(todo), 'total': len(todo), 'started': now()}
+    c2 = sqlite3.connect(DB_PATH, timeout=10)
+    try:
+        c2.execute('UPDATE lib_areas SET total=?, checked_at=? WHERE place_id=?', (len(names), now(), pid)); c2.commit()
+    finally: c2.close()
+    lib_enqueue(todo, front=False)
+
+def area_queue(pid):
+    params = {'place_id': pid, 'iconic_taxa': 'Plantae', 'verifiable': 'true'}
+    with KNOW['lock']:
+        if not any(n == f'area-{pid}' for n, _ in KNOW['queue']) and not (KNOW['now'] and KNOW['now'][0] == f'area-{pid}'):
+            KNOW['queue'].append((f'area-{pid}', params))
+        if not KNOW['thread']:
+            KNOW['thread'] = threading.Thread(target=know_worker, daemon=True); KNOW['thread'].start()
+
+def areas_list(c):
+    kept, checked = lib_kept_files(), lib_checked_files()
+    with LIBQ['lock']: queued = set(LIBQ['set'])
+    with KNOW['lock']: lists_q = {n for n, _ in KNOW['queue']} | ({KNOW['now'][0]} if KNOW['now'] else set())
+    out = []
+    for r in c.execute('SELECT * FROM lib_areas ORDER BY name'):
+        names = area_names(r['place_id']); slugs = [lib_slug(n) for n in names]
+        have = sum(1 for x in slugs if x in kept)
+        none = sum(1 for x in slugs if x not in kept and x in checked)            # looked up: iNaturalist has no photo
+        job = AREA_JOB.get(r['place_id']) or {}
+        left = len(job.get('names', set()) & queued)
+        fetching = f'area-{r["place_id"]}' in lists_q
+        out.append({'id': r['id'], 'place_id': r['place_id'], 'name': r['name'], 'total': len(names) or r['total'] or 0, 'kept': have, 'no_photo': none,
+                    'percent': round(100 * have / len(names), 1) if names else 0, 'checked_at': r['checked_at'], 'added_at': r['added_at'], 'added_by': r['added_by'],
+                    'state': 'list' if fetching else 'photos' if left else 'idle', 'left': left, 'error': KNOW['error'].get(f'area-{r["place_id"]}', {}).get('error')})
+    return out
+
+@app.route('/api/library/areas', methods=['GET', 'POST'])
+def library_areas():
+    """Owner only for changes (OWNER_ONLY_CHANGES). POST {place_id, name} adds an area and starts its download."""
     c = db()
     if request.method == 'POST':
         if not lib_online(c): abort(409, 'Library photos are turned off. Turn them on first.')
-        scope = (request.get_json(silent=True) or {}).get('scope', 'texas')
-        if scope not in ('texas',): abort(400, 'Only the Texas list can be downloaded')
-        names = vision_call('/scope_names?scope=' + scope, timeout=60).get('names', [])
-        todo = []
-        for n in names:
-            m = lib_meta(n)
-            if not (m and m.get('checked') and (m.get('photo') or (date.today() - date.fromisoformat(m['checked'])).days < LIB_RECHECK_DAYS)): todo.append(n)
-        PREFETCH.update(scope=scope, names=set(todo), total=len(todo), started=now(), by=editor(), all=len(names))
-        lib_enqueue(todo, front=False)
-        audit_only(c, 'library', 'prefetch', None, f'{len(todo)} of {len(names)}', editor(), f'Download of the photos for the {scope.title()} list started ({len(todo)} to fetch)')
-        c.commit()
-    elif request.method == 'DELETE':
-        with LIBQ['lock']:
-            LIBQ['queue'] = [n for n in LIBQ['queue'] if n not in PREFETCH['names']]
-            LIBQ['set'] -= PREFETCH['names']
-        PREFETCH.update(names=set(), total=0)
-    with LIBQ['lock']: left = len(PREFETCH['names'] & LIBQ['set'])
-    return jsonify(scope=PREFETCH['scope'], total=PREFETCH['total'], left=left, done=PREFETCH['total'] - left, started=PREFETCH['started'],
-                   by=PREFETCH['by'], all=PREFETCH.get('all'), running=left > 0, online=lib_online(c))
+        b = request.get_json(silent=True) or {}
+        try: pid = int(b.get('place_id'))
+        except (TypeError, ValueError): abort(400, 'Choose a place from the search')
+        name = str(b.get('name') or '').strip()[:120] or f'Place {pid}'
+        if c.execute('SELECT 1 FROM lib_areas WHERE place_id=?', (pid,)).fetchone(): abort(409, f'{name} is already in the table')
+        c.execute('INSERT INTO lib_areas(place_id,name,total,added_by,added_at) VALUES(?,?,0,?,?)', (pid, name, editor(), now()))
+        audit_only(c, 'library', 'area', None, name, editor(), f'Library photos: area added and download started: {name}'); c.commit()
+        area_queue(pid)
+    return jsonify(areas=areas_list(c), online=lib_online(c), running=any(a['state'] != 'idle' for a in areas_list(c)))
+
+@app.route('/api/library/areas/search')
+def library_areas_search():
+    q = (request.args.get('q') or '').strip()
+    if len(q) < 2: abort(400, 'Type at least 2 letters')
+    try: j = inat_get('/places/autocomplete?' + urllib.parse.urlencode({'q': q, 'per_page': 12}))
+    except Exception as e: abort(502, f'iNaturalist could not be reached ({type(e).__name__}). Try again later.')
+    kinds = {0: 'Country', 10: 'State or province', 20: 'County or district', 30: 'Town or city', 100: 'Park or reserve'}
+    return jsonify([{'place_id': p['id'], 'name': p.get('display_name') or p.get('name'), 'kind': kinds.get(p.get('admin_level'), 'Area')}
+                    for p in (j.get('results') or []) if p.get('id')])
+
+@app.route('/api/library/areas/<int:aid>', methods=['POST', 'DELETE'])
+def library_area_one(aid):
+    """POST: check for updates (fetch the list again and download what is new). DELETE: remove from the table (photos stay)."""
+    c = db()
+    r = c.execute('SELECT * FROM lib_areas WHERE id=?', (aid,)).fetchone()
+    if not r: abort(404, 'That area is not in the table')
+    if request.method == 'DELETE':
+        job = AREA_JOB.pop(r['place_id'], None)
+        if job:
+            with LIBQ['lock']:
+                LIBQ['queue'] = [n for n in LIBQ['queue'] if n not in job['names']]; LIBQ['set'] -= job['names']
+        c.execute('DELETE FROM lib_areas WHERE id=?', (aid,))
+        audit_only(c, 'library', 'area', r['name'], None, editor(), f'Library photos: area removed (its photos are kept): {r["name"]}'); c.commit()
+    else:
+        if not lib_online(c): abort(409, 'Library photos are turned off. Turn them on first.')
+        audit_only(c, 'library', 'area', None, r['name'], editor(), f'Library photos: checked for updates: {r["name"]}'); c.commit()
+        area_queue(r['place_id'])
+    return jsonify(areas=areas_list(c))
+
+@app.route('/api/library/areas/stop', methods=['POST'])
+def library_areas_stop():
+    c = db()
+    with LIBQ['lock']:
+        for job in AREA_JOB.values():
+            LIBQ['queue'] = [n for n in LIBQ['queue'] if n not in job['names']]; LIBQ['set'] -= job['names']
+    with KNOW['lock']: KNOW['queue'] = [q for q in KNOW['queue'] if not q[0].startswith('area-')]
+    audit_only(c, 'library', 'area', None, None, editor(), 'Library photos: downloads stopped'); c.commit()
+    return jsonify(areas=areas_list(c))
 
 # ---------------------------------------------------------------- 1.23.0: the library part 2 (status in Texas, near home, pets, care sheets)
 # Lists about the area come from iNaturalist's species counts, fetched in the background (about one request a second, shared with
@@ -1722,17 +1894,73 @@ def tx_noxious(name):
         if (k.endswith(' ') and b.split(' ')[0] == k.strip().lower()) or b == k.lower(): return v
     return None
 
-def local_lists(c):
+# 1.28.0: the lists follow the place in use (the Location button), not Texas. Each place has a "region" on iNaturalist: its US state,
+# Canadian province or similar (admin level 10), or else its country (level 0). It is looked up once and kept in settings.
+TX_REGION = {'id': 18, 'name': 'Texas', 'level': 10, 'country': 'United States', 'usda': 'Texas'}
+USDA_STATES = {'Alabama', 'Alaska', 'Arizona', 'Arkansas', 'California', 'Colorado', 'Connecticut', 'Delaware', 'Florida', 'Georgia', 'Hawaii', 'Idaho',
+               'Illinois', 'Indiana', 'Iowa', 'Kansas', 'Kentucky', 'Louisiana', 'Maine', 'Maryland', 'Massachusetts', 'Michigan', 'Minnesota',
+               'Mississippi', 'Missouri', 'Montana', 'Nebraska', 'Nevada', 'NewHampshire', 'NewJersey', 'NewMexico', 'NewYork', 'NorthCarolina',
+               'NorthDakota', 'Ohio', 'Oklahoma', 'Oregon', 'Pennsylvania', 'PuertoRico', 'RhodeIsland', 'SouthCarolina', 'SouthDakota', 'Tennessee',
+               'Texas', 'Utah', 'Vermont', 'VirginIslands', 'Virginia', 'Washington', 'WestVirginia', 'Wisconsin', 'Wyoming'}
+
+def place_region(c, L):
+    """The iNaturalist region of a place, or None until it has been looked up (see region_fetch)."""
+    v = setting(c, f'inat_region:{L["id"]}')
+    if v:
+        try: return json.loads(v)
+        except ValueError: pass
+    if L.get('lat') is not None and abs(L['lat'] - REF_PLACE[0]) < 1.5 and abs(L['lon'] - REF_PLACE[1]) < 1.5: return dict(TX_REGION)
+    return None
+
+def region_fetch(loc_id):
+    """Looks up a place's state (or country) on iNaturalist and keeps it."""
+    c2 = sqlite3.connect(DB_PATH, timeout=10); c2.row_factory = sqlite3.Row
+    try:
+        L = loc_get(c2, loc_id)
+        d = 0.01
+        j = inat_get('/places/nearby?' + urllib.parse.urlencode({'nelat': L['lat'] + d, 'nelng': L['lon'] + d, 'swlat': L['lat'] - d, 'swlng': L['lon'] - d, 'per_page': 50}))
+        std = (j.get('results') or {}).get('standard') or []
+        country = next((p for p in std if p.get('admin_level') == 0), None)
+        state = next((p for p in std if p.get('admin_level') == 10), None)
+        pick = state or country
+        if not pick: raise ValueError('iNaturalist knows no state or country for this place')
+        cn = (country or {}).get('name') or ''
+        usda = pick['name'].replace(' ', '') if state and cn in ('United States', 'United States of America') else None
+        R = {'id': pick['id'], 'name': pick.get('name'), 'level': pick.get('admin_level'), 'country': cn, 'usda': usda if usda in USDA_STATES else None}
+        c2.execute('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)', (f'inat_region:{loc_id}', json.dumps(R))); c2.commit()
+    finally: c2.close()
+
+def lib_place(c):
+    """The place the library's lists are about: the place in use (Location button)."""
+    return location(c)
+
+def local_migrate(c):
+    """Lists kept before 1.28.0 had Texas and the home place in their names: give them their new names once."""
+    if not os.path.isdir(LOCAL_DIR) or setting(c, 'lists_renamed_1280'): return
+    hid = home_place(c)['id']
+    pairs = [('tx_native', 'native-18'), ('tx_introduced', 'introduced-18'), ('near', f'near-{hid}')]
+    pairs += [(f'{k}-{m:02d}', f'{k}-{hid}-{m:02d}') for k in ('bloom', 'fungi') for m in range(1, 13)]
+    for a, b in pairs:
+        if os.path.exists(local_path(a)) and not os.path.exists(local_path(b)):
+            try: os.replace(local_path(a), local_path(b))
+            except OSError: pass
+    set_setting(c, 'lists_renamed_1280', now()); c.commit()
+
+def local_lists(c, L=None):
     """The lists about the area: their names, what they ask iNaturalist, and how long they stay fresh (days)."""
-    L = home_place(c); month = local_today(c).month
+    local_migrate(c)
+    L = L or lib_place(c); month = local_today(c).month; R = place_region(c, L)
     near = {'lat': round(L['lat'], 4), 'lng': round(L['lon'], 4), 'radius': NEAR_KM, 'captive': 'false', 'verifiable': 'true'}
-    return {
-        'tx_native': ({'place_id': 18, 'native': 'true', 'iconic_taxa': 'Plantae', 'verifiable': 'true'}, 90, 'Plants native to Texas'),
-        'tx_introduced': ({'place_id': 18, 'introduced': 'true', 'iconic_taxa': 'Plantae', 'verifiable': 'true'}, 90, 'Plants introduced to Texas'),
-        'near': (near | {'iconic_taxa': 'Plantae,Fungi'}, 30, f'Wild plants and fungi recorded within {NEAR_KM} km ({round(NEAR_KM * 0.621)} miles) of {L["name"]}'),
-        f'bloom-{month:02d}': (near | {'iconic_taxa': 'Plantae', 'term_id': 12, 'term_value_id': 13, 'month': month}, 14, f'Plants seen flowering near {L["name"]} in {date(2000, month, 1):%B}'),
-        f'fungi-{month:02d}': (near | {'iconic_taxa': 'Fungi', 'month': month}, 14, f'Fungi recorded near {L["name"]} in {date(2000, month, 1):%B}'),
-    }
+    out = {}
+    if R:
+        out[f'native-{R["id"]}'] = ({'place_id': R['id'], 'native': 'true', 'iconic_taxa': 'Plantae', 'verifiable': 'true'}, 90, f'Plants native to {R["name"]}')
+        out[f'introduced-{R["id"]}'] = ({'place_id': R['id'], 'introduced': 'true', 'iconic_taxa': 'Plantae', 'verifiable': 'true'}, 90, f'Plants introduced to {R["name"]}')
+    else:
+        out[f'region-{L["id"]}'] = (None, 3650, f'The state or country {L["name"]} is in')
+    out[f'near-{L["id"]}'] = (near | {'iconic_taxa': 'Plantae,Fungi'}, 30, f'Wild plants and fungi recorded within {NEAR_KM} km ({round(NEAR_KM * 0.621)} miles) of {L["name"]}')
+    out[f'bloom-{L["id"]}-{month:02d}'] = (near | {'iconic_taxa': 'Plantae', 'term_id': 12, 'term_value_id': 13, 'month': month}, 14, f'Plants seen flowering near {L["name"]} in {date(2000, month, 1):%B}')
+    out[f'fungi-{L["id"]}-{month:02d}'] = (near | {'iconic_taxa': 'Fungi', 'month': month}, 14, f'Fungi recorded near {L["name"]} in {date(2000, month, 1):%B}')
+    return out
 
 KNOW = {'lock': threading.Lock(), 'queue': [], 'thread': None, 'now': None, 'error': {}, 'cache': {}}
 
@@ -1848,7 +2076,11 @@ def know_worker():
             return
         KNOW['now'] = (name, 0, 0)
         try:
-            aspca_fetch() if name == 'aspca' else local_fetch(name, params)
+            if name == 'aspca': aspca_fetch()
+            elif name.startswith('region-'): region_fetch(int(name[7:]))
+            else:
+                local_fetch(name, params)
+                if name.startswith('area-'): area_after(int(name[5:]))
             KNOW['error'].pop(name, None)
         except Exception as e:
             if str(e) == 'library lookups were turned off':
@@ -1863,6 +2095,7 @@ def know_refresh(c, force=False):
     todo = []
     for name, (params, days, _) in list(local_lists(c).items()) + [('aspca', (None, 90, ''))]:
         j = local_get(name)
+        if name.startswith('region-'): j = None
         old = not j or force or (datetime.now(timezone.utc) - datetime.fromisoformat(j['fetched'].replace('Z', '+00:00'))).days >= days
         err = KNOW['error'].get(name)
         if err and not force and (datetime.now(timezone.utc) - datetime.fromisoformat(err['at'].replace('Z', '+00:00'))).total_seconds() < 6 * 3600: old = False
@@ -1892,10 +2125,11 @@ def care_get(name):
 def know_of(c, name, month=None, zone=None):
     """What the lists say about one species."""
     b = binomial(name); month = month or local_today(c).month
-    tn, ti, nr = local_get('tx_native'), local_get('tx_introduced'), local_get('near')
-    bl, fu = local_get(f'bloom-{month:02d}'), local_get(f'fungi-{month:02d}')
-    k = {'tx': 'native' if tn and b in tn['by'] else 'introduced' if ti and b in ti['by'] else None,
-         'invasive': tx_noxious(name), 'near': nr['by'][b][2] if nr and b in nr['by'] else 0,
+    L = lib_place(c); R = place_region(c, L)
+    tn, ti = (local_get(f'native-{R["id"]}'), local_get(f'introduced-{R["id"]}')) if R else (None, None)
+    nr, bl, fu = local_get(f'near-{L["id"]}'), local_get(f'bloom-{L["id"]}-{month:02d}'), local_get(f'fungi-{L["id"]}-{month:02d}')
+    k = {'tx': 'native' if tn and b in tn['by'] else 'introduced' if ti and b in ti['by'] else None,      # 'tx': the region (the name is from 1.23.0)
+         'invasive': tx_noxious(name) if R and R['id'] == 18 else None, 'near': nr['by'][b][2] if nr and b in nr['by'] else 0,
          'bloom': bool(bl and b in bl['by']), 'fruiting': bool(fu and b in fu['by']), 'pets': pets_for(name)}
     cs = care_get(name)
     z = zone_num(zone) if zone else None
@@ -1909,22 +2143,27 @@ def know_mark(c, items, key='scientific_name'):
     for x in items: x['know'] = know_of(c, x.get(key) or '', month, zone)
     return items
 
-KNOW_FILTERS = {'native': 'Native to Texas', 'introduced': 'Introduced to Texas', 'invasive': 'On the Texas invasive list', 'near': 'Grows wild near home',
-                'bloom': 'Flowering near home this month', 'fruiting': 'Fungi found near home this month', 'hardy': 'Likely to survive outside here',
-                'petsafe': 'Safe for dogs and cats (ASPCA)', 'pettoxic': 'Toxic to dogs or cats (ASPCA)'}
+def know_filters(c):
+    """The library's "Your area" filters, named for the place in use (1.28.0). The invasive list is only built in for Texas."""
+    R = place_region(c, lib_place(c)); rn = R['name'] if R else 'your state or country'
+    f = {'native': f'Native to {rn}', 'introduced': f'Introduced to {rn}', 'invasive': 'On the Texas invasive list', 'near': 'Grows wild near here',
+         'bloom': 'Flowering near here this month', 'fruiting': 'Fungi found near here this month', 'hardy': 'Likely to survive outside here',
+         'petsafe': 'Safe for dogs and cats (ASPCA)', 'pettoxic': 'Toxic to dogs or cats (ASPCA)'}
+    if not (R and R['id'] == 18): f.pop('invasive')
+    return f
 
 def know_names(c, f):
     """(names, genera) for a library filter."""
-    month = local_today(c).month
+    month = local_today(c).month; L = lib_place(c); R = place_region(c, L) or {'id': 0}
     names = lambda n: [s[0] for s in (local_get(n) or {}).get('species', [])]
-    if f == 'native': return names('tx_native'), []
-    if f == 'introduced': return names('tx_introduced'), []
-    if f == 'invasive': return [k for k in TX_NOXIOUS if not k.endswith(' ')], [k.strip() for k in TX_NOXIOUS if k.endswith(' ')]
-    if f == 'near': return names('near'), []
-    if f == 'bloom': return names(f'bloom-{month:02d}'), []
-    if f == 'fruiting': return names(f'fungi-{month:02d}'), []
+    if f == 'native': return names(f'native-{R["id"]}'), []
+    if f == 'introduced': return names(f'introduced-{R["id"]}'), []
+    if f == 'invasive': return ([k for k in TX_NOXIOUS if not k.endswith(' ')], [k.strip() for k in TX_NOXIOUS if k.endswith(' ')]) if R['id'] == 18 else ([], [])
+    if f == 'near': return names(f'near-{L["id"]}'), []
+    if f == 'bloom': return names(f'bloom-{L["id"]}-{month:02d}'), []
+    if f == 'fruiting': return names(f'fungi-{L["id"]}-{month:02d}'), []
     if f == 'hardy':
-        z, out = zone_num(home_zone(c)), names('near')
+        z, out = zone_num(home_zone(c)), names(f'near-{L["id"]}')
         if os.path.isdir(CARE_DIR):
             for fn in os.listdir(CARE_DIR):
                 try:
@@ -1954,21 +2193,23 @@ def library_local():
     out = []
     for name, (params, days, label) in list(local_lists(c).items()) + [('aspca', (None, 90, 'Plants toxic and non-toxic to dogs, cats and horses (ASPCA)'))]:
         j = local_get(name)
+        if name.startswith('region-'): j = None
         out.append({'name': name, 'label': label, 'fetched': j['fetched'] if j else None,
                     'count': (len(j.get('plants', {})) if name == 'aspca' else len(j.get('species', []))) if j else 0, 'error': KNOW['error'].get(name, {}).get('error')})
     with KNOW['lock']: queued = [n for n, _ in KNOW['queue']]
-    return jsonify(lists=out, now=KNOW['now'], queued=queued, online=lib_online(c), filters=KNOW_FILTERS, zone=home_zone(c), near_km=NEAR_KM,
-                   noxious_source=TX_NOXIOUS_SRC, noxious_law=TX_NOXIOUS_LAW)
+    R = place_region(c, lib_place(c))
+    return jsonify(lists=out, now=KNOW['now'], queued=queued, online=lib_online(c), filters=know_filters(c), zone=home_zone(c), near_km=NEAR_KM,
+                   noxious_source=TX_NOXIOUS_SRC, noxious_law=TX_NOXIOUS_LAW, region=R, place=lib_place(c)['name'], noxious=bool(R and R['id'] == 18))
 
 @app.route('/api/library/around')
 def library_around():
     """The Around home page: what flowers and fruits near home this month, and what is recorded wild nearby most often."""
     c = db(); know_refresh(c)
-    month = local_today(c).month; L = home_place(c)
+    month = local_today(c).month; L = lib_place(c)
     secs = []
-    for key, name, title in (('bloom', f'bloom-{month:02d}', f'Flowering near {L["name"]} in {date(2000, month, 1):%B}'),
-                             ('fruiting', f'fungi-{month:02d}', f'Mushrooms and other fungi found near {L["name"]} in {date(2000, month, 1):%B}'),
-                             ('near', 'near', f'Recorded wild most often within {round(NEAR_KM * 0.621)} miles')):
+    for key, name, title in (('bloom', f'bloom-{L["id"]}-{month:02d}', f'Flowering near {L["name"]} in {date(2000, month, 1):%B}'),
+                             ('fruiting', f'fungi-{L["id"]}-{month:02d}', f'Mushrooms and other fungi found near {L["name"]} in {date(2000, month, 1):%B}'),
+                             ('near', f'near-{L["id"]}', f'Recorded wild most often within {round(NEAR_KM * 0.621)} miles of {L["name"]}')):
         j = local_get(name)
         top = (j or {}).get('species', [])[:48]
         res = []
@@ -2215,7 +2456,7 @@ def library_browse():
     c, a = db(), request.args
     own, owngenus = owned_lists(c)
     q = {k: a.get(k, '')[:80] for k in ('scope', 'q', 'kind', 'family', 'genus', 'order', 'state', 'common', 'mine', 'sort', 'offset', 'limit')}
-    if q['scope'] not in ID_SCOPES: q['scope'] = 'common'
+    q['scope'] = vscope(db(), q['scope'])
     if q['mine'] == 'wish':                        # 1.22.0: your wishlist, your notes and tags (names sent as the "own" list)
         q.update(mine='species', own='|'.join(r[0] for r in c.execute('SELECT name FROM wishlist')), owngenus='')
     elif q['mine'] == 'notes':
@@ -2226,7 +2467,7 @@ def library_browse():
     elif q['mine']: q.update(own=own, owngenus=owngenus)
     if q['mine'] == 'species' and not q.get('own'): q['own'] = '-'           # an empty list matches nothing
     kf = a.get('know', '')[:20]
-    if kf in KNOW_FILTERS:                         # 1.23.0: the lists about the area, sent in the body (they can be long)
+    if kf in know_filters(c):                      # 1.23.0: the lists about the area, sent in the body (they can be long)
         only, genera = know_names(c, kf)
         body = {k: v for k, v in q.items() if v} | {'only': only or [], 'only_genera': genera or []}
         out = vision_call('/browse', json.dumps(body).encode(), 'application/json', timeout=30)
@@ -2240,7 +2481,7 @@ def library_browse():
 @app.route('/api/library/facets')
 def library_facets():
     scope = request.args.get('scope', 'common')
-    return jsonify(vision_call('/facets?' + urllib.parse.urlencode({'scope': scope if scope in ID_SCOPES else 'common'}), timeout=30))
+    return jsonify(vision_call('/facets?' + urllib.parse.urlencode({'scope': vscope(db(), scope)}), timeout=30))
 
 @app.route('/api/library/photos')
 def library_photos():
@@ -2373,11 +2614,20 @@ def identify_plantnet():
     mark_owned(c, out)
     return jsonify(species=out, remaining=j.get('remainingIdentificationRequests'), source='Pl@ntNet')
 
-CLAUDE_ASK = ('Identify the plant in this photo. It is one of the potted or garden plants of a home grower in Round Rock, Texas '
-              '(USDA zone 8b/9a). Reply with JSON only, no other text: {"plant": true or false (is there a plant in the photo), '
+CLAUDE_ASK = ('Identify the plant in this photo. It is one of the potted or garden plants of a home grower in {place} '
+              '({zone}). Reply with JSON only, no other text: {"plant": true or false (is there a plant in the photo), '
               '"guesses": [up to 3 of {"scientific_name": "Genus species", "common_name": "...", "family": "...", '
               '"probability": 0 to 1, "why": "one short sentence on the features you used"}], '
               '"photo_tip": "one short sentence on what photo would make you surer, or empty"}')
+
+def claude_ask(c):
+    """1.28.0: the question names the place in use and its zone, not always Round Rock."""
+    L = location(c)
+    try: z = place_zone(c, L).get('zone')
+    except Exception: z = None
+    R = place_region(c, L)
+    where = L['name'] + (f' ({R["name"]})' if R and R['name'] not in L['name'] else '')
+    return CLAUDE_ASK.replace('{place}', where).replace('{zone}', f'USDA zone {z}' if z else 'climate zone not known')
 
 @app.route('/api/identify/claude', methods=['POST'])
 def identify_claude():
@@ -2388,7 +2638,7 @@ def identify_claude():
     if not key: abort(400, 'Claude is not set up. The owner can save an Anthropic API key on the Identify page, under "Second opinions".')
     pic = base64.b64encode(picture_bytes(1280)).decode()
     body = json.dumps({'model': CLAUDE_MODEL, 'max_tokens': 800, 'messages': [{'role': 'user', 'content': [
-        {'type': 'image', 'source': {'type': 'base64', 'media_type': 'image/jpeg', 'data': pic}}, {'type': 'text', 'text': CLAUDE_ASK}]}]}).encode()
+        {'type': 'image', 'source': {'type': 'base64', 'media_type': 'image/jpeg', 'data': pic}}, {'type': 'text', 'text': claude_ask(c)}]}]}).encode()
     st, j = outside_call(CLAUDE_URL, body, {'Content-Type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01'}, timeout=90)
     if st in (401, 403): abort(502, 'Anthropic refused the key. Check it at console.anthropic.com and save it again.')
     if st == 429 or st == 529: abort(502, 'Claude is busy or the key has reached its limit. Try again in a minute.')
@@ -2429,7 +2679,7 @@ def list_plants():
                     # 1.17.0: for the filters on the Plants page
                     'dli_low': r['dli_low'], 'dli_high': r['dli_high'], 'zone_low': r['zone_low'], 'pet_safety': r['pet_safety'] or '',
                     'leaf_type': r['leaf_type'] or '', 'pot_size': r['pot_size'] or '', 'photo_count': pn, 'photo_at': pat,
-                    'light_spot': spots.get(r['code']),
+                    'light_spot': spots.get(r['code']), 'home_id': r['home_id'],
                     'photos': files})                      # 1.20.0: every photo, main photo first, to browse on the Plants page
     return jsonify(out)
 
@@ -2646,6 +2896,7 @@ def create_plant():
     f['winter_plan'] = f.get('winter_plan') or 'Move indoors'
     f['health_rating'] = f.get('health_rating') or 'Fair'
     f['site'] = f.get('site') or 'Outdoors'
+    f = place_sync(c, None, f)                                 # 1.29.0: the area and spot go with the Location
     vals = {k: norm(k, f.get(k)) for k in FIELD_NAMES}
     cols = ['code'] + FIELD_NAMES + ['version', 'status', 'created_at', 'created_by', 'updated_at', 'updated_by']
     cur = c.execute(f"INSERT INTO plants({','.join(cols)}) VALUES({','.join('?' * len(cols))})",
@@ -2657,6 +2908,100 @@ def create_plant():
     c.execute('UPDATE audit_log SET version=1 WHERE plant_id=? AND action=?', (pid, 'create'))
     c.commit()
     return jsonify(plant_dict(c, plant_row(c, code))), 201
+
+# ---------------------------------------------------------------- 1.28.0: add several plants at once, from photos
+# Each photo is sent on its own: it is kept in photos/pending (not yet in the record), checked by the picture checker, and its
+# date taken (from the photo) comes back so the page can group photos of one plant. Nothing is added until the review is saved;
+# pending photos left behind are deleted after two days.
+PENDING_DIR = os.path.join(PHOTO_DIR, 'pending')
+
+def pending_tidy():
+    try:
+        for f in os.listdir(PENDING_DIR):
+            p = os.path.join(PENDING_DIR, f)
+            if time.time() - os.path.getmtime(p) > 2 * 86400: os.remove(p)
+    except OSError: pass
+
+def photo_taken(im):
+    try:
+        ex = im.getexif(); v = ex.get_ifd(0x8769).get(36867) or ex.get(306)        # DateTimeOriginal, else DateTime
+        return datetime.strptime(str(v).strip()[:19], '%Y:%m:%d %H:%M:%S').isoformat() if v else None
+    except Exception: return None
+
+def pets_word(name):
+    """ASPCA's answer for a species as the Safety for pets field (1.17.0's words), or '' when they do not list it."""
+    p = pets_for(name or '')
+    if not p: return ''
+    if 'toxic' in (p.get('dogs'), p.get('cats')): return PET_SAFETY[0]
+    if p.get('dogs') == 'non-toxic' and p.get('cats') == 'non-toxic': return PET_SAFETY[3]
+    return ''
+
+@app.route('/api/plants/several/photo', methods=['POST'])
+def several_photo():
+    c = db()
+    f = request.files.get('image')
+    if not f: abort(400, 'Send a picture')
+    raw = f.read(30_000_000)
+    try:
+        im0 = Image.open(io.BytesIO(raw)); taken = photo_taken(im0)
+        im = ImageOps.exif_transpose(im0).convert('RGB')
+    except Exception: abort(400, f'{f.filename or "That file"} is not a picture this can read (use JPG or PNG)')
+    os.makedirs(PENDING_DIR, exist_ok=True); pending_tidy()
+    keep = im.copy(); keep.thumbnail((1600, 1600))
+    name = f'up_{uuid.uuid4().hex[:16]}.jpg'
+    keep.save(os.path.join(PENDING_DIR, name), 'JPEG', quality=84, optimize=True)
+    small = im.copy(); small.thumbnail((1024, 1024)); b = io.BytesIO(); small.save(b, 'JPEG', quality=88)
+    out = {'file': name, 'taken': taken, 'name': (f.filename or '')[:120], 'species': [], 'matches': [], 'error': None}
+    try:
+        body, ct = multipart({}, [('image', 'picture.jpg', b.getvalue(), 'image/jpeg')])
+        r = vision_call('/identify?scope=' + vscope(c, request.args.get('scope', 'common')), body, ct, timeout=90)
+        out['species'] = [{k: x.get(k) for k in ('scientific_name', 'common_name', 'family', 'genus', 'kind', 'probability')} | {'pets': pets_word(x.get('scientific_name'))}
+                          for x in (r.get('species') or [])[:3]]
+        out['matches'] = [plant_brief(c, m['code']) | {'confidence': m.get('confidence')} for m in (r.get('matches') or [])[:3]
+                          if m.get('confidence') and m['confidence'] >= 0.6 and plant_brief(c, m['code'])]
+        out['likely_new'] = r.get('likely_new')
+    except Exception as e:
+        out['error'] = getattr(e, 'description', None) or 'The picture checker could not look at it.'
+    return jsonify(out)
+
+@app.route('/api/plants/several', methods=['POST'])
+def several_create():
+    """{plants: [{fields: {...}, photos: [pending file names, main photo first]}]} -> the new plants, all added together."""
+    c = db()
+    b = request.get_json(silent=True) or {}
+    items = b.get('plants') or []
+    if not items: abort(400, 'There are no plants to add')
+    if len(items) > 200: abort(400, 'Add at most 200 plants at a time')
+    who, ts, made = editor(), now(), []
+    for i, it in enumerate(items):
+        f = dict(it.get('fields') or {})
+        if not str(f.get('common_name', '')).strip(): abort(400, f'Plant {i + 1} needs a common name')
+        for ph in it.get('photos') or []:
+            if not re.match(r'^up_[0-9a-f]{16}\.jpg$', str(ph)) or not os.path.exists(os.path.join(PENDING_DIR, ph)):
+                abort(400, f'A photo for plant {i + 1} is no longer waiting here (they are kept for two days). Add the photos again.')
+        f['winter_plan'] = f.get('winter_plan') or 'Move indoors'
+        f['health_rating'] = f.get('health_rating') or 'Fair'
+        f['site'] = f.get('site') or 'Outdoors'
+        if not f.get('pet_safety'): f['pet_safety'] = pets_word(f.get('scientific_name'))
+        f = place_sync(c, None, f)
+        items[i] = (it, {k: norm(k, f.get(k)) for k in FIELD_NAMES})        # every plant is checked before any is added
+    cols = ['code'] + FIELD_NAMES + ['version', 'status', 'created_at', 'created_by', 'updated_at', 'updated_by']
+    for it, vals in items:
+        n = c.execute("SELECT COALESCE(MAX(CAST(SUBSTR(code,3) AS INTEGER)),0)+1 FROM plants").fetchone()[0]
+        code = f'P-{n:03d}'
+        pid = c.execute(f"INSERT INTO plants({','.join(cols)}) VALUES({','.join('?' * len(cols))})",
+                        [code] + [vals[k] for k in FIELD_NAMES] + [1, 'active', ts, who, ts, who]).lastrowid
+        for j, ph in enumerate(it.get('photos') or []):
+            os.replace(os.path.join(PENDING_DIR, ph), os.path.join(PHOTO_DIR, ph))
+            c.execute('INSERT INTO photos(plant_id,file,caption,kind,is_primary,source_name,added_by,added_at) VALUES(?,?,?,?,?,?,?,?)',
+                      (pid, ph, '', 'plant', 1 if j == 0 else 0, ph, who, ts))
+        c.execute('INSERT INTO plant_versions(plant_id,version,snapshot,changed_by,changed_at,summary) VALUES(?,?,?,?,?,?)',
+                  (pid, 1, json.dumps(snapshot(c, pid)), who, ts, 'Record created (added with several others from photos)'))
+        audit_only(c, 'create', None, None, None, who, 'Record created (added with several others from photos)', pid, code)
+        c.execute('UPDATE audit_log SET version=1 WHERE plant_id=? AND action=?', (pid, 'create'))
+        made.append(code)
+    c.commit()
+    return jsonify(codes=made), 201
 
 @app.route('/api/plants/<code>', methods=['PUT'])
 def update_plant(code):
@@ -2782,7 +3127,8 @@ def outside_report(c):
     lows = bo_daily_lows(c, L)
     usual_at = {}
     photo = lambda pid: (c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC,id LIMIT 1', (pid,)).fetchone() or [None])[0]
-    rows = c.execute("SELECT * FROM plants WHERE status='active' ORDER BY code").fetchall()
+    at, at_args = plants_at(c, L)                  # 1.28.0: only the plants at this home
+    rows = c.execute("SELECT * FROM plants WHERE status='active'" + at + " ORDER BY code", at_args).fetchall()
     out = []
     for r in rows:
         if (r['site'] or 'Outdoors') not in INSIDE_SITES: continue
@@ -2849,7 +3195,7 @@ PREP_METHODS = [
         'Use your phone camera\'s zoom or a lighted magnifier, or send Claude close-up photos of the leaf undersides.',
         'Tick what you found under "Pests you found" on the plant\'s page. If you found nothing, tick nothing: the other methods still work as a precaution.']},
     {'key': 'potclean', 'title': 'Clean the pot and saucer', 'steps': [
-        'Wear gloves: in Central Texas, bark scorpions hide under pots.',
+        'Wear gloves: scorpions, spiders and other biters hide under pots.',
         'Lift the pot, look underneath, and knock off anything clinging to the bottom.',
         'Scrub the outside of the pot, the bottom and the drainage holes with soapy water and a brush.',
         'Empty and wash the saucer, and check under the rim of the pot.']},
@@ -3651,10 +3997,10 @@ def migrate_places(c):
                    st('forecast'), st('weather_status'), st('wx_detail_since'), now()))
     c.commit()
 
-LOC_COLS = ('id', 'name', 'lat', 'lon', 'tz', 'enabled', 'is_home', 'device', 'detail_since', 'note', 'created_at')
+LOC_COLS = ('id', 'name', 'lat', 'lon', 'tz', 'enabled', 'is_home', 'device', 'detail_since', 'note', 'created_at', 'plants_here')
 def loc_dict(r):
-    d = {k: r[k] for k in LOC_COLS}
-    d['enabled'], d['is_home'] = bool(d['enabled']), bool(d['is_home'])
+    d = {k: (r[k] if k in r.keys() else 0) for k in LOC_COLS}
+    d['enabled'], d['is_home'], d['plants_here'] = bool(d['enabled']), bool(d['is_home']), bool(d['plants_here']) or bool(d['is_home'])
     return d
 
 def loc_get(c, loc_id=None):
@@ -3667,7 +4013,7 @@ def loc_get(c, loc_id=None):
     else:
         cur = c.execute('SELECT * FROM locations ORDER BY is_home DESC, id LIMIT 1'); r = cur.fetchone()
     if r is not None and not isinstance(r, sqlite3.Row): r = dict(zip([d[0] for d in cur.description], r))   # works with plain connections too
-    if r is None: return {**DEFAULT_LOC, 'id': 1, 'device': 'open-meteo', 'enabled': True, 'is_home': True, 'detail_since': None, 'note': '', 'created_at': None}
+    if r is None: return {**DEFAULT_LOC, 'id': 1, 'device': 'open-meteo', 'enabled': True, 'is_home': True, 'plants_here': True, 'detail_since': None, 'note': '', 'created_at': None}
     return loc_dict(r)
 
 def loc_json(c, loc_id, col):
@@ -3687,6 +4033,108 @@ def req_loc(c, key='loc'):
     L = loc_get(c, v)
     if L is None: abort(404, 'That place does not exist (it may have been removed)')
     return L
+
+# ---------------------------------------------------------------- 1.29.0: where a plant is: inside or outside, the area or room, the spot
+# Each home has areas: outside (Yard, Covered porch...) and inside (Living room, Garage...). An outside area can be sheltered (a roof
+# over it); an inside one can be heated. Those two decide the old Location field (Outdoors, Covered porch, Indoors, Garage or shed),
+# which frost warnings, watering and the Winter plan still use, so it is always set from the area. Spots are inside an area.
+SIDE_WORD = {'out': 'Outside', 'in': 'Inside'}
+WHERE_DEFAULTS = [('out', 'Yard', 0), ('out', 'Covered porch', 1), ('in', 'Living room', 1)]
+
+def site_of(side, sheltered):
+    return ('Covered porch' if sheltered else 'Outdoors') if side == 'out' else ('Indoors' if sheltered else 'Garage or shed')
+
+def side_of_site(site):
+    return ('out', 1) if site == 'Covered porch' else ('in', 1) if site == 'Indoors' else ('in', 0) if site == 'Garage or shed' else ('out', 0)
+
+def area_home(c, hid):
+    """A plant's home id as areas store it: None for the main home."""
+    if not hid: return None
+    r = c.execute('SELECT is_home FROM locations WHERE id=?', (hid,)).fetchone()
+    return None if (r is None or r[0]) else int(hid)
+
+def area_for_site(c, hid, site, make=True):
+    """The first area at a home that matches an old Location value; one is added if there is none."""
+    side, sh = side_of_site(site or 'Outdoors')
+    q = 'SELECT id FROM areas WHERE side=? AND sheltered=? AND ' + ('home_id IS NULL' if hid is None else 'home_id=?') + ' ORDER BY sort, id'
+    r = c.execute(q, (side, sh) + (() if hid is None else (hid,))).fetchone()
+    if r or not make: return r[0] if r else None
+    name = {('out', 0): 'Yard', ('out', 1): 'Covered porch', ('in', 1): 'Living room', ('in', 0): 'Garage'}[(side, sh)]
+    n = c.execute('SELECT COALESCE(MAX(sort),0)+1 FROM areas').fetchone()[0]
+    return c.execute('INSERT INTO areas(home_id,side,name,sheltered,sort,created_by,created_at) VALUES(?,?,?,?,?,?,?)', (hid, side, name, sh, n, 'Plant record', now())).lastrowid
+
+def where_seed(c):
+    """Every home gets areas the first time; Rooms and shelves from the Grow lights page (and any a batch adds) become inside rooms
+    and spots at the main home, and light spots follow them; every plant without an area gets the one matching its Location.
+    Safe to run on every start."""
+    ts = now(); changed = False
+    if 'moved' not in {r[1] for r in c.execute('PRAGMA table_info(indoor_places)')}: c.execute('ALTER TABLE indoor_places ADD COLUMN moved INTEGER NOT NULL DEFAULT 0')
+    for h in homes(c):
+        hid = None if h['is_home'] else h['id']
+        if c.execute('SELECT 1 FROM areas WHERE ' + ('home_id IS NULL' if hid is None else 'home_id=?'), (() if hid is None else (hid,))).fetchone(): continue
+        has_rooms = hid is None and c.execute('SELECT 1 FROM indoor_places WHERE moved=0').fetchone()
+        for k, (side, name, sh) in enumerate(x for x in WHERE_DEFAULTS if not (has_rooms and x[0] == 'in')):
+            c.execute('INSERT INTO areas(home_id,side,name,sheltered,sort,created_by,created_at) VALUES(?,?,?,?,?,?,?)', (hid, side, name, sh, k + 1, 'Plant record', ts))
+        changed = True
+    rooms = c.execute('SELECT * FROM indoor_places WHERE moved=0 ORDER BY sort, id').fetchall()
+    if rooms:
+        first = not setting(c, 'where_lights_1290')
+        lone = c.execute("SELECT id FROM areas WHERE home_id IS NULL AND side='in'").fetchall()
+        if len(lone) == 1 and not c.execute('SELECT 1 FROM plants WHERE area_id=?', (lone[0][0],)).fetchone() and \
+                c.execute("SELECT created_by FROM areas WHERE id=?", (lone[0][0],)).fetchone()[0] == 'Plant record' and \
+                not c.execute('SELECT 1 FROM spots WHERE area_id=?', (lone[0][0],)).fetchone():
+            c.execute('DELETE FROM areas WHERE id=?', (lone[0][0],))          # the stand-in "Living room": the real rooms replace it
+        remap = {}
+        for r in rooms:
+            a = c.execute("SELECT id FROM areas WHERE home_id IS NULL AND side='in' AND name=?", (r['room'],)).fetchone()
+            aid = a[0] if a else c.execute('INSERT INTO areas(home_id,side,name,sheltered,sort,created_by,created_at) VALUES(NULL,?,?,?,(SELECT COALESCE(MAX(sort),0)+1 FROM areas),?,?)',
+                                           ('in', r['room'], 0 if re.search(r'garage|shed|barn', r['room'], re.I) else 1, 'Plant record', ts)).lastrowid
+            if r['name']:
+                sp = c.execute('SELECT id FROM spots WHERE area_id=? AND name=?', (aid, r['name'])).fetchone()
+                remap[r['id']] = sp[0] if sp else c.execute('INSERT INTO spots(area_id,name,sort,created_by,created_at) VALUES(?,?,?,?,?)', (aid, r['name'], r['sort'], 'Plant record', ts)).lastrowid
+            else: remap[r['id']] = -aid
+            c.execute('UPDATE indoor_places SET moved=1 WHERE id=?', (r['id'],))
+        if first:                                         # light spots set up before 1.29.0 named the old rows
+            for sid, pid in c.execute('SELECT id, place_id FROM light_spots WHERE place_id IS NOT NULL').fetchall():
+                c.execute('UPDATE light_spots SET place_id=? WHERE id=?', (remap.get(pid), sid))
+        changed = True
+    if not setting(c, 'where_lights_1290'): set_setting(c, 'where_lights_1290', ts); changed = True
+    for r in c.execute('SELECT id, home_id, site FROM plants WHERE area_id IS NULL').fetchall():
+        c.execute('UPDATE plants SET area_id=? WHERE id=?', (area_for_site(c, area_home(c, r['home_id']), r['site'] or 'Outdoors'), r['id'])); changed = True
+    if changed: c.commit()
+
+def place_sync(c, r, f):
+    """Keeps a plant's home, area, spot and old Location in step, whichever of them a change names. f is the change (a dict)."""
+    get = lambda k: f[k] if k in f else (r[k] if r is not None else None)
+    hid = area_home(c, get('home_id') or None)
+    def area_row(a):
+        try: return c.execute('SELECT * FROM areas WHERE id=?', (int(a),)).fetchone() if a not in (None, '', 0, '0') else None
+        except (TypeError, ValueError): return None
+    if f.get('spot_id') not in (None, '', 0, '0') and 'area_id' not in f:
+        try: sp = c.execute('SELECT area_id FROM spots WHERE id=?', (int(f['spot_id']),)).fetchone()
+        except (TypeError, ValueError): sp = None
+        if sp: f['area_id'] = sp[0]
+    A = area_row(get('area_id'))
+    if 'area_id' in f and A is not None:
+        f['site'] = site_of(A['side'], A['sheltered'])
+    elif ('site' in f or 'home_id' in f) and (A is None or A['home_id'] != hid or site_of(A['side'], A['sheltered']) != (get('site') or 'Outdoors')):
+        f['area_id'] = area_for_site(c, hid, get('site') or 'Outdoors'); A = area_row(f['area_id'])
+    if A is not None and get('spot_id') not in (None, '', 0, '0'):
+        try: ok = c.execute('SELECT 1 FROM spots WHERE id=? AND area_id=?', (int(get('spot_id')), A['id'])).fetchone()
+        except (TypeError, ValueError): ok = None
+        if not ok: f['spot_id'] = None
+    return f
+
+def homes(c):
+    """1.28.0: the places where plants live: the main home first, then any place marked "Plants live here"."""
+    return [loc_dict(r) for r in c.execute('SELECT * FROM locations WHERE is_home=1 OR plants_here=1 ORDER BY is_home DESC, name')]
+
+def plants_at(c, L):
+    """1.28.0: SQL (and its argument) that keeps the plants at the place in use. A place where no plants live (a weather place
+    you are only watching) shows the main home's plants, as before homes existed."""
+    H = home_place(c)
+    if not (L.get('is_home') or L.get('plants_here')): L = H
+    return ' AND COALESCE(home_id, ?)=?', [H['id'], L['id']]
 
 def home_place(c):
     """The home place: the one every browser starts with, and the one background work (hourly updates, backups) uses."""
@@ -3760,7 +4208,7 @@ def place_climate(c, L):
     return out
 
 def place_brief(L):
-    return {k: L[k] for k in ('id', 'name', 'tz', 'is_home', 'enabled')}
+    return {k: L.get(k) for k in ('id', 'name', 'tz', 'is_home', 'enabled', 'plants_here')}
 
 def tzinfo(name):
     try:
@@ -4413,6 +4861,8 @@ def places_list(c):
         try: st = json.loads(r['status'] or '{}')
         except ValueError: st = {}
         d.update(first=first[0], last=first[1], count=first[2], daily_first=dd[0], daily_count=dd[2], last_update=st.get('at'), last_ok=st.get('ok'), last_error=st.get('error'))
+        H = home_place(c)                                # 1.28.0: how many plants live here
+        d['plant_count'] = c.execute("SELECT COUNT(*) FROM plants WHERE status='active' AND COALESCE(home_id, ?)=?", (H['id'], d['id'])).fetchone()[0]
         out.append(d)
     return out
 
@@ -4427,6 +4877,7 @@ def places():
     cur = c.execute('INSERT INTO locations(name,lat,lon,tz,enabled,is_home,created_at) VALUES(?,?,?,?,1,0,?)', (P['name'], P['lat'], P['lon'], P['tz'], now()))
     pid = cur.lastrowid
     c.execute('UPDATE locations SET device=? WHERE id=?', (f'place-{pid}', pid))
+    if b.get('plants_here'): c.execute('UPDATE locations SET plants_here=1 WHERE id=?', (pid,))
     audit_only(c, 'setting', 'weather_place', None, json.dumps(P), editor(), f'Weather place added: {P["name"]}')
     c.commit()
     started = start_job('auto-first', None, [(pid, P['name'])])          # fetch its last 3 months and forecast straight away
@@ -4439,6 +4890,7 @@ def place_one(pid):
     if L is None: abort(404, 'That place does not exist')
     if request.method == 'DELETE':
         if L['is_home']: abort(400, 'This is the home place your plants use. Make another place home first.')
+        if c.execute('SELECT COUNT(*) FROM plants WHERE home_id=?', (pid,)).fetchone()[0]: abort(409, 'Some plants are at this home. Move them to another home first.')
         if WX_JOB.get('running') and WX_JOB.get('place_id') == pid: abort(409, 'This place is being updated right now. Try again when it finishes.')
         n = c.execute("DELETE FROM readings WHERE source='weather' AND device=?", (L['device'],)).rowcount
         c.execute('DELETE FROM weather_daily WHERE loc_id=?', (pid,))
@@ -4454,6 +4906,10 @@ def place_one(pid):
     if 'enabled' in b: c.execute('UPDATE locations SET enabled=? WHERE id=?', (1 if b['enabled'] else 0, pid))
     if b.get('is_home'):
         c.execute('UPDATE locations SET is_home=CASE WHEN id=? THEN 1 ELSE 0 END', (pid,))
+    if 'plants_here' in b:                                  # 1.28.0: a home of its own (its plants follow its weather)
+        if not b['plants_here'] and c.execute("SELECT COUNT(*) FROM plants WHERE home_id=? AND status='active'", (pid,)).fetchone()[0]:
+            abort(409, 'Some plants are at this home. Move them to another home first.')
+        c.execute('UPDATE locations SET plants_here=? WHERE id=?', (1 if b['plants_here'] else 0, pid))
     if 'detail_years' in b and b['detail_years'] not in (None, ''):
         try: dy = int(b['detail_years'])
         except (TypeError, ValueError): abort(400, 'Years of detail must be a whole number')
@@ -5346,6 +5802,17 @@ def bulk_undo(bid):
 # they light (table light_spots: one kind of light, how many of it, how far above or beside the plants, hours a day and
 # brightness) and which plants sit in which spot (table light_assign). From the maker's PPFD-at-distance figures the
 # app works out the daily light (DLI) at the leaves and compares it with each plant's dli_low..dli_high.
+def plant_foot(c, r):
+    """1.29.0: the floor a plant takes under a light, in square feet: its catch tray if it has one, else its pot (both from Pots and
+    trays, a circle counted as the square around it), else a guess from its Pot size."""
+    for k in ('tray_id', 'pot_id'):
+        cid = r[k] if k in r.keys() else None
+        if cid:
+            x = c.execute('SELECT * FROM containers WHERE id=?', (cid,)).fetchone()
+            f = cont_sqft(x) if x else None
+            if f: return f
+    return LIGHT_FOOTPRINT.get((r['pot_size'] or '').split(':')[0], 1.0)
+
 LIGHT_FOOTPRINT = {'Small': 0.75, 'Medium': 1.5, 'Large': 3.0}       # square feet of light a pot takes, by pot size (prep traits)
 LIGHT_HOURS = (12, 14, 16, 10, 8)                                     # hours a day to try, in this order
 LIGHT_VERDICT = {'too_dim': 'Too dim', 'dim': 'A bit dim', 'good': 'Good', 'bright': 'A bit bright', 'too_bright': 'Too bright', 'unknown': 'Needs not set'}
@@ -5466,7 +5933,7 @@ def spot_eval(c, s, L, plants):
     rows, need = [], 0.0
     for r in plants:
         n = plant_need(r)
-        need += LIGHT_FOOTPRINT.get((r['pot_size'] or '').split(':')[0], 1.0)
+        need += plant_foot(c, r)
         v = light_verdict(dl, n and n['lo'], n and n['hi'])
         rows.append({'code': r['code'], 'name': r['common_name'], 'lo': n and n['lo'], 'hi': n and n['hi'], 'verdict': v, 'verdict_word': LIGHT_VERDICT[v],
                      'photo': plant_photo(c, r['id'])})
@@ -5495,7 +5962,7 @@ def light_plan(c, lights, spots_used, assigned):
     specs = {L['id']: light_specs(L) for L in lights}
     todo = [r for r in light_candidates(c) if r['code'] not in assigned and plant_need(r)]
     todo.sort(key=lambda r: (-plant_need(r)['target'], r['code']))
-    foot = lambda r: LIGHT_FOOTPRINT.get((r['pot_size'] or '').split(':')[0], 1.0)
+    foot = lambda r: plant_foot(c, r)
     slots, unplaced = [], []
 
     def fit(L, lo, hi, used, units, maxu=None):
@@ -5625,9 +6092,7 @@ def lights_state(c):
         p['steps'] = step_down(byid[p['light_id']], p, [c.execute('SELECT * FROM plants WHERE code=?', (x,)).fetchone() for x in p['codes']], outdoor)
     cands = [{'code': r['code'], 'name': r['common_name'], 'site': r['site'], 'winter_plan': r['winter_plan'], 'need': plant_need(r),
               'pot_size': r['pot_size']} for r in light_candidates(c)]
-    places = [{'id': r['id'], 'room': r['room'], 'name': r['name'], 'label': r['room'] + (', ' + r['name'] if r['name'] else ''),
-               'spots': [s['id'] for s in out_spots if s['place_id'] == r['id']]}
-              for r in c.execute('SELECT * FROM indoor_places ORDER BY sort, id')]
+    places = [p | {'spots': [s['id'] for s in out_spots if s['place_id'] == p['id']]} for p in light_places(c)]
     return {'lights': [light_dict(L, used.get(L['id'], 0)) for L in lights], 'spots': out_spots, 'plan': plan, 'unplaced': unplaced, 'places': places,
             'candidates': cands, 'assigned': {code: sid for sid, codes in assign.items() for code in codes}, 'outdoor_dli': outdoor,
             'verdicts': LIGHT_VERDICT}
@@ -5676,12 +6141,27 @@ def spot_text(s, light_name, c=None):
     return '%s%s: %s%s, %g in from the leaves, %g hours a day%s' % (s['name'], ' (%s)' % where if where else '', '%d x ' % s['units'] if s['units'] > 1 else '', light_name,
                                                                     s['distance_in'], s['hours'], '' if s['dim_pct'] == 100 else ', %d%% brightness' % s['dim_pct'])
 
+def light_places(c):
+    """1.29.0: where a light spot can be: an inside room (its id negative) or a spot in one (its id), from Rooms and spots."""
+    out = []
+    for a in c.execute("SELECT * FROM areas WHERE side='in' ORDER BY home_id IS NOT NULL, home_id, sort, id").fetchall():
+        hn = ''
+        if a['home_id']: r = c.execute('SELECT name FROM locations WHERE id=?', (a['home_id'],)).fetchone(); hn = f' ({r[0]})' if r else ''
+        room = a['name'] + hn
+        out.append({'id': -a['id'], 'room': room, 'name': '', 'label': room})
+        out += [{'id': sp['id'], 'room': room, 'name': sp['name'], 'label': room + ', ' + sp['name']}
+                for sp in c.execute('SELECT * FROM spots WHERE area_id=? ORDER BY sort, id', (a['id'],))]
+    return out
+
 def place_label(c, pid):
-    r = c.execute('SELECT room, name FROM indoor_places WHERE id=?', (pid,)).fetchone() if pid else None
-    return (r['room'] + (', ' + r['name'] if r['name'] else '')) if r else None
+    if not pid: return None
+    if pid < 0:
+        r = c.execute('SELECT name FROM areas WHERE id=?', (-pid,)).fetchone(); return r[0] if r else None
+    r = c.execute('SELECT a.name, s.name FROM spots s JOIN areas a ON a.id=s.area_id WHERE s.id=?', (pid,)).fetchone()
+    return (r[0] + ', ' + r[1]) if r else None
 
 def check_place(c, pid):
-    if pid is not None and not c.execute('SELECT 1 FROM indoor_places WHERE id=?', (pid,)).fetchone(): abort(400, 'That room or shelf is not in the list any more')
+    if pid is not None and not place_label(c, pid): abort(400, 'That room or shelf is not in the list any more')
 
 def set_spot_plants(c, sid, spot_name, codes, who):
     old = {x for (x,) in c.execute('SELECT plant_code FROM light_assign WHERE spot_id=?', (sid,))}
@@ -5747,36 +6227,285 @@ def place_fields(b):
 
 @app.route('/api/lights/places', methods=['POST'])
 def light_place_add():
-    """A room, or a shelf or table in a room, where light spots can go: {room, name}. Leave name empty for the room itself."""
+    """A room, or a shelf or table in a room (1.29.0: an inside area or a spot in it, at the main home): {room, name}."""
     c = db()
     room, name = place_fields(request.get_json(silent=True) or {})
-    if c.execute('SELECT 1 FROM indoor_places WHERE room=? AND name=?', (room, name)).fetchone(): abort(409, f'"{room}{", " + name if name else ""}" is already in the list')
     who = editor()
-    n = c.execute('SELECT COALESCE(MAX(sort),0)+1 FROM indoor_places').fetchone()[0]
-    pid = c.execute('INSERT INTO indoor_places(room,name,sort,created_by,created_at) VALUES(?,?,?,?,?)', (room, name, n, who, now())).lastrowid
+    a = c.execute("SELECT id FROM areas WHERE side='in' AND home_id IS NULL AND name=?", (room,)).fetchone()
+    if a and not name: abort(409, f'"{room}" is already in the list')
+    aid = a[0] if a else c.execute("INSERT INTO areas(home_id,side,name,sheltered,sort,created_by,created_at) VALUES(NULL,'in',?,1,(SELECT COALESCE(MAX(sort),0)+1 FROM areas),?,?)", (room, who, now())).lastrowid
+    pid = -aid
+    if name:
+        if c.execute('SELECT 1 FROM spots WHERE area_id=? AND name=?', (aid, name)).fetchone(): abort(409, f'"{room}, {name}" is already in the list')
+        pid = c.execute('INSERT INTO spots(area_id,name,sort,created_by,created_at) VALUES(?,?,(SELECT COALESCE(MAX(sort),0)+1 FROM spots),?,?)', (aid, name, who, now())).lastrowid
     audit_only(c, 'light', 'indoor_place', None, place_label(c, pid), who, 'Room or shelf added: ' + place_label(c, pid))
     c.commit()
     return jsonify(id=pid), 201
 
 @app.route('/api/lights/places/<int:i>', methods=['PUT', 'DELETE'])
 def light_place_one(i):
+    """i is a spot's id, or minus an area's id (the room itself). Changes go to Rooms and spots."""
     c = db()
     old = place_label(c, i)
     if not old: abort(404, 'That room or shelf is not in the list')
     who = editor()
     if request.method == 'DELETE':
-        n = c.execute('SELECT COUNT(*) FROM light_spots WHERE place_id=?', (i,)).fetchone()[0]
-        c.execute('UPDATE light_spots SET place_id=NULL WHERE place_id=?', (i,))
-        c.execute('DELETE FROM indoor_places WHERE id=?', (i,))
-        audit_only(c, 'light', 'indoor_place', old, None, who, 'Room or shelf removed: %s%s' % (old, ' (%d spot%s there now say "Not chosen yet")' % (n, 's' if n != 1 else '') if n else ''))
-        c.commit()
-        return jsonify(ok=True)
+        if i < 0: return where_area_delete(c, -i, who)
+        return where_spot_delete(c, i, who)
     room, name = place_fields(request.get_json(silent=True) or {})
-    if c.execute('SELECT 1 FROM indoor_places WHERE room=? AND name=? AND id<>?', (room, name, i)).fetchone(): abort(409, f'"{room}{", " + name if name else ""}" is already in the list')
-    c.execute('UPDATE indoor_places SET room=?, name=? WHERE id=?', (room, name, i))
+    if i < 0: c.execute('UPDATE areas SET name=? WHERE id=?', (room, -i))
+    else:
+        aid = c.execute('SELECT area_id FROM spots WHERE id=?', (i,)).fetchone()[0]
+        c.execute('UPDATE areas SET name=? WHERE id=?', (room, aid)); c.execute('UPDATE spots SET name=? WHERE id=?', (name or old.split(', ', 1)[-1], i))
     audit_only(c, 'light', 'indoor_place', old, place_label(c, i), who, 'Room or shelf renamed: ' + place_label(c, i))
     c.commit()
     return jsonify(ok=True)
+
+# ---------------------------------------------------------------- 1.29.0: pots and catch trays, kept as items
+CONT_KIND = {'pot': 'Pot', 'tray': 'Catch tray'}
+CONT_SHAPES = {'circle': 'Circle', 'square': 'Square', 'rectangle': 'Rectangle'}
+CONT_MATERIALS = ['Terracotta', 'Thin plastic', 'Thick plastic']
+
+def cont_sqft(x):
+    """Square feet it covers, a circle counted as the square around it (Ethan's choice), or None when the sizes are missing."""
+    sh = x['shape']
+    a = (x['dia_in'] ** 2 if x['dia_in'] else None) if sh == 'circle' else (x['len_in'] ** 2 if x['len_in'] else None) if sh == 'square' else \
+        (x['len_in'] * x['wid_in'] if x['len_in'] and x['wid_in'] else None)
+    return round(a / 144, 2) if a else None
+
+def cont_size_words(x):
+    sh = x['shape']; f = lambda v: ('%g' % v) if v is not None else '?'
+    s = f'{f(x["dia_in"])} in across' if sh == 'circle' else f'{f(x["len_in"])} in square' if sh == 'square' else f'{f(x["len_in"])} by {f(x["wid_in"])} in'
+    return s + (f', {f(x["height_in"])} in tall' if x['height_in'] else '')
+
+def cont_dict(c, x):
+    col = 'pot_id' if x['kind'] == 'pot' else 'tray_id'
+    users = [{'code': r[0], 'name': r[1]} for r in c.execute(f"SELECT code, common_name FROM plants WHERE status='active' AND {col}=? ORDER BY code", (x['id'],))]
+    d = {k: x[k] for k in ('id', 'kind', 'name', 'shape', 'dia_in', 'len_in', 'wid_in', 'height_in', 'material', 'qty', 'notes', 'updated_at', 'updated_by')}
+    d.update(drainage=None if x['drainage'] is None else bool(x['drainage']), sqft=cont_sqft(x), size=cont_size_words(x), in_use=len(users), free=x['qty'] - len(users), plants=users,
+             photos=[{'id': p['id'], 'file': p['file'], 'is_primary': bool(p['is_primary'])} for p in c.execute('SELECT * FROM container_photos WHERE container_id=? ORDER BY is_primary DESC, id', (x['id'],))])
+    return d
+
+def cont_fields(b, old=None):
+    o = dict(old or {}); out = {}
+    def num(k, label):
+        if k not in b: return o.get(k)
+        v = b[k]
+        if v in (None, ''): return None
+        try: x = round(float(v), 2)
+        except (TypeError, ValueError): abort(400, f'{label} must be a number of inches')
+        if not 0 < x <= 240: abort(400, f'{label} must be between 0 and 240 inches')
+        return x
+    out['name'] = re.sub(r'\s+', ' ', str(b.get('name', o.get('name') or ''))).strip()[:80]
+    if not out['name']: abort(400, 'Give it a name, for example "8 in black nursery pot"')
+    out['shape'] = b.get('shape', o.get('shape') or 'circle')
+    if out['shape'] not in CONT_SHAPES: abort(400, 'Shape must be circle, square or rectangle')
+    out['dia_in'] = num('dia_in', 'Across'); out['len_in'] = num('len_in', 'Length'); out['wid_in'] = num('wid_in', 'Width'); out['height_in'] = num('height_in', 'Height')
+    out['material'] = re.sub(r'\s+', ' ', str(b.get('material', o.get('material') or ''))).strip()[:60]
+    q = b.get('qty', o.get('qty', 1))
+    try: out['qty'] = int(q)
+    except (TypeError, ValueError): abort(400, 'How many you have must be a whole number')
+    if not 0 <= out['qty'] <= 9999: abort(400, 'How many you have must be between 0 and 9999')
+    if 'drainage' in b: out['drainage'] = None if b['drainage'] in (None, '') else (1 if b['drainage'] in (True, 1, '1', 'yes', 'true') else 0)
+    else: out['drainage'] = o.get('drainage')
+    out['notes'] = str(b.get('notes', o.get('notes') or '')).strip()[:1000]
+    return out
+
+@app.route('/api/containers', methods=['GET', 'POST'])
+def containers():
+    c = db()
+    if request.method == 'GET':
+        return jsonify(items=[cont_dict(c, x) for x in c.execute('SELECT * FROM containers ORDER BY kind, name')], kinds=CONT_KIND, shapes=CONT_SHAPES, materials=CONT_MATERIALS)
+    b = request.get_json(silent=True) or {}
+    kind = b.get('kind')
+    if kind not in CONT_KIND: abort(400, 'Choose a pot or a catch tray')
+    f = cont_fields(b); who = editor()
+    if kind == 'tray': f['drainage'] = None
+    cid = c.execute('INSERT INTO containers(kind,name,shape,dia_in,len_in,wid_in,height_in,drainage,material,qty,notes,created_by,created_at,updated_by,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                    (kind, f['name'], f['shape'], f['dia_in'], f['len_in'], f['wid_in'], f['height_in'], f['drainage'], f['material'], f['qty'], f['notes'], who, now(), who, now())).lastrowid
+    audit_only(c, 'container', kind, None, f['name'], who, f'{CONT_KIND[kind]} added: {f["name"]} ({f["qty"]})'); c.commit()
+    return jsonify(cont_dict(c, c.execute('SELECT * FROM containers WHERE id=?', (cid,)).fetchone())), 201
+
+@app.route('/api/containers/<int:cid>', methods=['PUT', 'DELETE'])
+def container_one(cid):
+    c = db(); who = editor()
+    x = c.execute('SELECT * FROM containers WHERE id=?', (cid,)).fetchone()
+    if not x: abort(404, 'That item is not in the list any more')
+    if request.method == 'DELETE':
+        col = 'pot_id' if x['kind'] == 'pot' else 'tray_id'
+        n = c.execute(f"SELECT COUNT(*) FROM plants WHERE {col}=? AND status='active'", (cid,)).fetchone()[0]
+        if n: abort(409, f'{n} plant{"s use" if n != 1 else " uses"} it. Give {"them" if n != 1 else "it"} another one first.')
+        c.execute(f'UPDATE plants SET {col}=NULL WHERE {col}=?', (cid,))
+        for p in c.execute('SELECT file FROM container_photos WHERE container_id=?', (cid,)).fetchall():
+            try: os.remove(os.path.join(PHOTO_DIR, p[0]))
+            except OSError: pass
+        c.execute('DELETE FROM container_photos WHERE container_id=?', (cid,)); c.execute('DELETE FROM containers WHERE id=?', (cid,))
+        audit_only(c, 'container', x['kind'], x['name'], None, who, f'{CONT_KIND[x["kind"]]} removed: {x["name"]}'); c.commit()
+        return jsonify(ok=True)
+    b = request.get_json(silent=True) or {}
+    f = cont_fields(b, dict(x))
+    if x['kind'] == 'tray': f['drainage'] = None
+    ch = [k for k in f if (x[k] if x[k] is not None else '') != (f[k] if f[k] is not None else '')]
+    if ch:
+        c.execute('UPDATE containers SET ' + ','.join(f'{k}=?' for k in ch) + ',updated_by=?,updated_at=? WHERE id=?', [f[k] for k in ch] + [who, now(), cid])
+        audit_only(c, 'container', x['kind'], ', '.join(f'{k} {x[k]}' for k in ch), ', '.join(f'{k} {f[k]}' for k in ch), who, f'{CONT_KIND[x["kind"]]} changed: {f["name"]}')
+        c.commit()
+    return jsonify(cont_dict(c, c.execute('SELECT * FROM containers WHERE id=?', (cid,)).fetchone()))
+
+@app.route('/api/containers/<int:cid>/photos', methods=['POST'])
+def container_photos(cid):
+    c = db(); who = editor()
+    x = c.execute('SELECT * FROM containers WHERE id=?', (cid,)).fetchone()
+    if not x: abort(404, 'That item is not in the list any more')
+    files = request.files.getlist('files')
+    if not files: abort(400, 'Choose a photo')
+    has = c.execute('SELECT 1 FROM container_photos WHERE container_id=? AND is_primary=1', (cid,)).fetchone()
+    for i, f in enumerate(files):
+        name = save_image(f)
+        c.execute('INSERT INTO container_photos(container_id,file,is_primary,added_by,added_at) VALUES(?,?,?,?,?)', (cid, name, 0 if has or i else 1, who, now()))
+    audit_only(c, 'container', x['kind'], None, f'{len(files)} photo(s)', who, f'Photo added to {x["name"]}'); c.commit()
+    return jsonify(cont_dict(c, x)), 201
+
+@app.route('/api/containers/photos/<int:pid>', methods=['DELETE'])
+def container_photo_del(pid):
+    c = db(); who = editor()
+    p = c.execute('SELECT * FROM container_photos WHERE id=?', (pid,)).fetchone()
+    if not p: abort(404, 'That photo is not there any more')
+    c.execute('DELETE FROM container_photos WHERE id=?', (pid,))
+    try: os.remove(os.path.join(PHOTO_DIR, p['file']))
+    except OSError: pass
+    if p['is_primary']: c.execute('UPDATE container_photos SET is_primary=1 WHERE id=(SELECT MIN(id) FROM container_photos WHERE container_id=?)', (p['container_id'],))
+    audit_only(c, 'container', 'photo', p['file'], None, who, 'Photo removed from a pot or tray'); c.commit()
+    return jsonify(ok=True)
+
+# ---------------------------------------------------------------- 1.29.0: Rooms and spots (the lists behind a plant's place)
+def where_list(c):
+    H = home_place(c)
+    cnt_a = {k: n for k, n in c.execute("SELECT area_id, COUNT(*) FROM plants WHERE status='active' GROUP BY area_id")}
+    cnt_s = {k: n for k, n in c.execute("SELECT spot_id, COUNT(*) FROM plants WHERE status='active' AND spot_id IS NOT NULL GROUP BY spot_id")}
+    lights_at = {k: n for k, n in c.execute('SELECT place_id, COUNT(*) FROM light_spots WHERE place_id IS NOT NULL GROUP BY place_id')}
+    out = []
+    for h in homes(c):
+        hid = None if h['is_home'] else h['id']
+        areas = c.execute('SELECT * FROM areas WHERE ' + ('home_id IS NULL' if hid is None else 'home_id=?') + ' ORDER BY side DESC, sort, id', (() if hid is None else (hid,))).fetchall()
+        out.append({'home': place_brief(h), 'areas': [{'id': a['id'], 'side': a['side'], 'name': a['name'], 'sheltered': bool(a['sheltered']), 'site': site_of(a['side'], a['sheltered']),
+                    'plants': cnt_a.get(a['id'], 0), 'lights': lights_at.get(-a['id'], 0),
+                    'spots': [{'id': sp['id'], 'name': sp['name'], 'plants': cnt_s.get(sp['id'], 0), 'lights': lights_at.get(sp['id'], 0)}
+                              for sp in c.execute('SELECT * FROM spots WHERE area_id=? ORDER BY sort, id', (a['id'],))]} for a in areas]})
+    return out
+
+def where_area_delete(c, aid, who):
+    a = c.execute('SELECT * FROM areas WHERE id=?', (aid,)).fetchone()
+    if not a: abort(404, 'That area is not in the list')
+    n = c.execute('SELECT COUNT(*) FROM plants WHERE area_id=?', (aid,)).fetchone()[0]
+    if n: abort(409, f'{n} plant{"s are" if n != 1 else " is"} in {a["name"]}. Move {"them" if n != 1 else "it"} somewhere else first.')
+    ids = [r[0] for r in c.execute('SELECT id FROM spots WHERE area_id=?', (aid,))]
+    for sid in ids: c.execute('UPDATE light_spots SET place_id=NULL WHERE place_id=?', (sid,))
+    c.execute('UPDATE light_spots SET place_id=NULL WHERE place_id=?', (-aid,))
+    c.execute('DELETE FROM spots WHERE area_id=?', (aid,)); c.execute('DELETE FROM areas WHERE id=?', (aid,))
+    audit_only(c, 'where', 'area', a['name'], None, who, f'Area or room removed: {a["name"]}'); c.commit()
+    return jsonify(ok=True)
+
+def where_spot_delete(c, sid, who):
+    sp = c.execute('SELECT s.*, a.name AS area FROM spots s JOIN areas a ON a.id=s.area_id WHERE s.id=?', (sid,)).fetchone()
+    if not sp: abort(404, 'That spot is not in the list')
+    n = c.execute('SELECT COUNT(*) FROM plants WHERE spot_id=?', (sid,)).fetchone()[0]
+    c.execute('UPDATE plants SET spot_id=NULL WHERE spot_id=?', (sid,)); c.execute('UPDATE light_spots SET place_id=? WHERE place_id=?', (-sp['area_id'], sid))
+    c.execute('DELETE FROM spots WHERE id=?', (sid,))
+    audit_only(c, 'where', 'spot', f'{sp["area"]}, {sp["name"]}', None, who, f'Spot removed: {sp["area"]}, {sp["name"]}' + (f' ({n} plant{"s" if n != 1 else ""} there now just say {sp["area"]})' if n else ''))
+    c.commit()
+    return jsonify(ok=True, plants=n)
+
+def where_name(b, what):
+    n = re.sub(r'\s+', ' ', str(b.get('name', ''))).strip()[:60]
+    if not n: abort(400, f'Give the {what} a name')
+    return n
+
+@app.route('/api/where')
+def where_get():
+    return jsonify(homes=where_list(db()), sides=SIDE_WORD)
+
+@app.route('/api/where/areas', methods=['POST'])
+def where_area_add():
+    """{home_id, side: 'in'|'out', name, sheltered}: sheltered is a roof overhead outside, or heated inside."""
+    c = db(); b = request.get_json(silent=True) or {}; who = editor()
+    side = b.get('side'); name = where_name(b, 'area or room')
+    if side not in SIDE_WORD: abort(400, 'Choose inside or outside')
+    hid = area_home(c, b.get('home_id') or None)
+    if c.execute('SELECT 1 FROM areas WHERE side=? AND name=? AND ' + ('home_id IS NULL' if hid is None else 'home_id=?'), (side, name) + (() if hid is None else (hid,))).fetchone():
+        abort(409, f'"{name}" is already there')
+    aid = c.execute('INSERT INTO areas(home_id,side,name,sheltered,sort,created_by,created_at) VALUES(?,?,?,?,(SELECT COALESCE(MAX(sort),0)+1 FROM areas),?,?)',
+                    (hid, side, name, 1 if b.get('sheltered') else 0, who, now())).lastrowid
+    audit_only(c, 'where', 'area', None, name, who, f'Area or room added: {name} ({SIDE_WORD[side].lower()})'); c.commit()
+    return jsonify(id=aid, homes=where_list(c)), 201
+
+@app.route('/api/where/areas/<int:aid>', methods=['PUT', 'DELETE'])
+def where_area_one(aid):
+    c = db(); who = editor()
+    if request.method == 'DELETE': return where_area_delete(c, aid, who)
+    a = c.execute('SELECT * FROM areas WHERE id=?', (aid,)).fetchone()
+    if not a: abort(404, 'That area is not in the list')
+    b = request.get_json(silent=True) or {}
+    name = where_name(b, 'area or room') if 'name' in b else a['name']
+    sh = (1 if b['sheltered'] else 0) if 'sheltered' in b else a['sheltered']
+    c.execute('UPDATE areas SET name=?, sheltered=? WHERE id=?', (name, sh, aid))
+    if sh != a['sheltered']:                         # the plants there now count as sheltered (or not) for frost and watering
+        for r in c.execute('SELECT * FROM plants WHERE area_id=?', (aid,)).fetchall():
+            apply_changes(c, r, {'site': site_of(a['side'], sh), 'area_id': aid}, who, 'update', f'{name} is now {"sheltered" if sh else "open"}')
+    audit_only(c, 'where', 'area', a['name'], name, who, f'Area or room changed: {name}'); c.commit()
+    return jsonify(homes=where_list(c))
+
+@app.route('/api/where/spots', methods=['POST'])
+def where_spot_add():
+    c = db(); b = request.get_json(silent=True) or {}; who = editor()
+    name = where_name(b, 'spot')
+    a = c.execute('SELECT * FROM areas WHERE id=?', (int(b.get('area_id') or 0),)).fetchone()
+    if not a: abort(400, 'Choose the area or room it is in')
+    if c.execute('SELECT 1 FROM spots WHERE area_id=? AND name=?', (a['id'], name)).fetchone(): abort(409, f'"{name}" is already in {a["name"]}')
+    sid = c.execute('INSERT INTO spots(area_id,name,sort,created_by,created_at) VALUES(?,?,(SELECT COALESCE(MAX(sort),0)+1 FROM spots),?,?)', (a['id'], name, who, now())).lastrowid
+    audit_only(c, 'where', 'spot', None, f'{a["name"]}, {name}', who, f'Spot added: {a["name"]}, {name}'); c.commit()
+    return jsonify(id=sid, homes=where_list(c)), 201
+
+@app.route('/api/where/spots/<int:sid>', methods=['PUT', 'DELETE'])
+def where_spot_one(sid):
+    c = db(); who = editor()
+    if request.method == 'DELETE': return where_spot_delete(c, sid, who)
+    sp = c.execute('SELECT s.*, a.name AS area FROM spots s JOIN areas a ON a.id=s.area_id WHERE s.id=?', (sid,)).fetchone()
+    if not sp: abort(404, 'That spot is not in the list')
+    name = where_name(request.get_json(silent=True) or {}, 'spot')
+    c.execute('UPDATE spots SET name=? WHERE id=?', (name, sid))
+    audit_only(c, 'where', 'spot', f'{sp["area"]}, {sp["name"]}', f'{sp["area"]}, {name}', who, f'Spot renamed: {sp["area"]}, {name}'); c.commit()
+    return jsonify(homes=where_list(c))
+
+def spot_guess(text):
+    """'Black bench, yard' -> 'Black bench'; 'On the pallet shelf by the door' -> 'Pallet shelf by the door'."""
+    t = re.split(r'[,;(]| - ', str(text or ''))[0].strip()
+    t = re.sub(r'^(on|in|under|beside|by|at)\s+(the\s+)?', '', t, flags=re.I).strip()
+    return (t[:1].upper() + t[1:])[:60] if t else ''
+
+@app.route('/api/where/sort', methods=['GET', 'POST'])
+def where_sort():
+    """GET: each "Spot (where exactly)" text of plants with no spot yet, with a suggested spot name. POST {items: [{text, area_id, name}]}
+    makes the spots (or uses ones already there) and puts those plants in them. The text itself is kept."""
+    c = db()
+    if request.method == 'GET':
+        out = {}
+        for r in c.execute("SELECT code, common_name, location, area_id FROM plants WHERE status='active' AND spot_id IS NULL AND TRIM(COALESCE(location,''))<>'' ORDER BY location"):
+            k = (r['location'].strip(), r['area_id'])
+            out.setdefault(k, {'text': k[0], 'area_id': k[1], 'name': spot_guess(k[0]), 'plants': []})['plants'].append({'code': r['code'], 'name': r['common_name']})
+        return jsonify(items=list(out.values()))
+    b = request.get_json(silent=True) or {}; who = editor(); n = 0
+    for it in b.get('items') or []:
+        name = re.sub(r'\s+', ' ', str(it.get('name') or '')).strip()[:60]
+        if not name: continue
+        a = c.execute('SELECT * FROM areas WHERE id=?', (int(it.get('area_id') or 0),)).fetchone()
+        if not a: continue
+        sp = c.execute('SELECT id FROM spots WHERE area_id=? AND name=?', (a['id'], name)).fetchone()
+        sid = sp[0] if sp else c.execute('INSERT INTO spots(area_id,name,sort,created_by,created_at) VALUES(?,?,(SELECT COALESCE(MAX(sort),0)+1 FROM spots),?,?)', (a['id'], name, who, now())).lastrowid
+        for r in c.execute("SELECT * FROM plants WHERE status='active' AND spot_id IS NULL AND TRIM(location)=? AND area_id IS ?", (str(it.get('text') or '').strip(), a['id'])).fetchall():
+            apply_changes(c, r, {'spot_id': sid, 'area_id': a['id']}, who, 'update', f'Put in the spot {a["name"]}, {name}'); n += 1
+    c.commit()
+    return jsonify(moved=n, homes=where_list(c))
 
 def light_fields(b, old=None):
     d = dict(old or {})
@@ -5796,7 +6525,7 @@ def light_fields(b, old=None):
     if 'model' in b: d['model'] = str(b.get('model') or '').strip()[:80]       # 1.13.1: the maker's model number
     if 'timer' in b: d['timer'] = str(b.get('timer') or '').strip()[:120]
     if 'dimming' in b: d['dimming'] = sorted({int(x) for x in re.findall(r'\d+', str(b.get('dimming') or '')) if 0 < int(x) <= 100}) or [100]
-    return name, count, str(b.get('fixture', '')).strip()[:120], str(b.get('notes', '')).strip()[:600], d
+    return name, count, str(b.get('fixture', '')).strip()[:600], str(b.get('notes', '')).strip()[:2000], d      # 1.29.0: longer, so batch text is never cut
 
 def light_text(name, count, fixture):
     return '%s (%d)%s' % (name, count, ', ' + fixture if fixture else '')
@@ -5827,7 +6556,8 @@ def light_one(i):
         audit_only(c, 'light', 'light', light_text(old['name'], old['count'], old['fixture']), None, who, 'Grow light removed: ' + old['name'])
         c.commit()
         return jsonify(ok=True)
-    name, count, fixture, notes, d = light_fields(request.get_json(silent=True) or {}, light_specs(old))
+    b = {'name': old['name'], 'count': old['count'], 'fixture': old['fixture'] or '', 'notes': old['notes'] or '', **(request.get_json(silent=True) or {})}   # 1.29.0: one field at a time
+    name, count, fixture, notes, d = light_fields(b, light_specs(old))
     if c.execute('SELECT 1 FROM lights WHERE name=? AND id<>?', (name, i)).fetchone(): abort(409, f'"{name}" is already in your lights')
     c.execute('UPDATE lights SET name=?,count=?,fixture=?,notes=?,data=?,updated_by=?,updated_at=? WHERE id=?', (name, count, fixture, notes, json.dumps(d), who, now(), i))
     a, z = light_text(old['name'], old['count'], old['fixture']), light_text(name, count, fixture)
@@ -6164,24 +6894,26 @@ def offline_manifest():
 
 @app.route('/api/library/offline-index')
 def library_offline_index():
-    """Every species in the Texas list in short (name, common name, family, kind, tags) and its kept photo, so the library can be
-    searched and browsed on a device without a connection."""
+    """Every species in the library's download areas (1.28.0; the Texas list before) in short (name, common name, family, kind,
+    tags) and its kept photo, so the library can be searched and browsed on a device without a connection."""
     c = db()
-    scope = 'texas'
-    rows, off = [], 0
-    while True:
-        r = vision_call('/browse?' + urllib.parse.urlencode({'scope': scope, 'sort': 'known', 'offset': off, 'limit': 120}), timeout=60)
-        rows += r.get('results', [])
-        off += 120
-        if off >= r.get('total', 0) or not r.get('results'): break
-    mark_owned(c, rows)
+    names = list(dict.fromkeys(n for r in c.execute('SELECT place_id FROM lib_areas') for n in area_names(r[0])))
+    rows = []
+    for i in range(0, len(names), 400):
+        part = names[i:i + 400]; off = 0
+        while True:
+            r = vision_call('/browse', json.dumps({'scope': 'world', 'only': part, 'sort': 'known', 'offset': off, 'limit': 120}).encode(), 'application/json', timeout=60)
+            rows += r.get('results', []); off += 120
+            if off >= r.get('total', 0) or not r.get('results'): break
+    mark_owned(c, rows); know_mark(c, rows)
+    R = place_region(c, lib_place(c)) or {}
     out = []
     for x in rows:
         ph = lib_photo_state(x['scientific_name'])
         out.append({'n': x['scientific_name'], 'c': x.get('common_name') or '', 'f': x.get('family') or '', 'k': x.get('kind') or '', 'g': x.get('genus') or '',
-                    'st': len(x.get('us_states') or []), 'tx': x.get('in_texas'), 'y': x.get('yours') or [], 'w': x.get('wish'), 't': x.get('tags') or [],
+                    'st': len(x.get('us_states') or []), 'tx': bool(R.get('usda') and R['usda'] in (x.get('us_states') or [])), 'y': x.get('yours') or [], 'w': x.get('wish'), 't': x.get('tags') or [],
                     'kn': x.get('know') or {}, 'p': ph['url'] if isinstance(ph, dict) else None})
-    return jsonify(scope=scope, species=out, made=now())
+    return jsonify(scope='areas', species=out, made=now(), areas=[r[0] for r in c.execute('SELECT name FROM lib_areas ORDER BY name')])
 
 @app.route('/sw.js')
 def service_worker():
@@ -6208,7 +6940,8 @@ def frost_report(c):
     today = local_today(c).isoformat()
     days = [d for d in (fc.get('days') or []) if d.get('date', '') >= today and d.get('low') is not None][:7]
     done = frost_done(c)
-    plants = c.execute("SELECT * FROM plants WHERE status='active' AND temp_damage_below IS NOT NULL ORDER BY code").fetchall()
+    at, at_args = plants_at(c, L)                  # 1.28.0: only the plants at this home
+    plants = c.execute("SELECT * FROM plants WHERE status='active' AND temp_damage_below IS NOT NULL" + at + " ORDER BY code", at_args).fetchall()
     outdoor = [r for r in plants if (r['site'] or 'Outdoors') not in INSIDE_SITES]
     photo = lambda pid: (c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC,id LIMIT 1', (pid,)).fetchone() or [None])[0]
     nights, worst = [], None

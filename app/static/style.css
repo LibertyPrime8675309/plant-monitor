@@ -497,6 +497,8 @@ html[data-navopen="1"] #nav-tab{display:none}
 #sn-list{list-style:none;margin:0;padding:0;display:grid;gap:.15rem}
 #sn-list a{display:block;padding:.55rem .7rem;border-left:4px solid transparent;color:inherit;text-decoration:none;line-height:1.3;border-radius:0 .3rem .3rem 0}
 #sn-list a:hover{background:var(--paper);text-decoration:underline}
+/* 1.27.3: the section you jumped to gets an outline for a moment */
+.sn-flash{outline:4px solid var(--ink);outline-offset:6px;border-radius:2px}
 #sn-list a[aria-current=true]{border-left-color:var(--ink);font-weight:700;background:var(--paper)}
 #sn-list .sn-sub a{padding-left:1.6rem;font-size:.92em}
 #nav-tab{position:fixed;top:calc(var(--top-h) + .8rem);left:0;z-index:18;background:var(--ink);color:var(--sheet);border:0;border-radius:0 .5rem .5rem 0;padding:.75rem 1rem;font:inherit;font-weight:700;cursor:pointer;min-height:2.75rem}
@@ -783,9 +785,9 @@ fieldset.pr-pests>legend{font:inherit;font-weight:700;padding:0;margin-bottom:.2
 /* The Debug and Display buttons share one fixed corner: side by side on wide screens, Debug above Display on narrow ones */
 #corner{position:fixed;right:1rem;bottom:1rem;z-index:40;display:flex;gap:.6rem;align-items:flex-end}
 #corner #display-btn{position:static}
-#debug-btn{font:inherit;font-weight:700;background:var(--sheet);color:var(--cyan);border:3px solid var(--cyan);box-shadow:0 0 0 2px var(--sheet);padding:.6rem 1.1rem;min-height:3rem;cursor:pointer;display:inline-flex;gap:.55rem;align-items:center}
-#debug-btn:hover{background:var(--cyan-soft)}
-html[data-console="1"] #debug-btn{background:var(--cyan-soft)}
+#corner #debug-btn{font:inherit;font-weight:700;background:var(--sheet);color:var(--cyan);border:3px solid var(--cyan);box-shadow:0 0 0 2px var(--sheet);padding:.6rem 1.1rem;min-height:3rem;cursor:pointer;display:inline-flex;gap:.55rem;align-items:center}
+#corner #debug-btn:hover{background:var(--cyan-soft)}
+html[data-console="1"] #corner #debug-btn{background:var(--cyan-soft)}
 html[data-navopen="1"][data-navside=right][data-narrow="0"] #corner{right:calc(var(--nav-w) + 1rem)}
 html[data-navopen="1"][data-navside=right][data-narrow="0"] #corner #display-btn{right:auto}
 html[data-narrow="1"] #corner{flex-direction:column;align-items:stretch;gap:.5rem}
@@ -936,11 +938,11 @@ html[data-role=viewer] :is(a[href="#/new"], a[href$="/edit"], .quick-btns, label
   [data-act=frostin], [data-act=frostcover], [data-act=frostallin], [data-act=frostallcover], [data-act=frostundo],
   [data-act=fzadd], [data-act=fzedit], [data-act=fzdel], [data-act=fertedit], [data-act=fertdel], [data-act=tododone], [data-act=tododel], [data-act=todoedit],
   [data-act=mainphoto], [data-act=movephoto], [data-act=rmphoto], [data-act=capedit], [data-act=assign], [data-act=rmloose], [data-act=setcond], [data-act=wxrefresh],
-  [data-act=placehome], [data-act=placedel], [data-act=placeonoff], [data-act=plchome], [data-act=plcsearch], [data-act=plcadd], .plc-search, [data-act=tokregen], [data-act=forclaude],
-  [data-act=spotnew], [data-act=spotedit], [data-act=spotdel], [data-act=lightedit], [data-act=lightnew],
+  [data-act=placehome], [data-act=placedel], [data-act=placeonoff], [data-act=placeplants], [data-act=plchome], [data-act=plcsearch], [data-act=plcadd], .plc-search, [data-act=tokregen], [data-act=forclaude],
+  [data-act=spotnew], [data-act=spotedit], [data-act=spotdel], [data-act=lightedit], [data-act=lightnew], [data-act=sevsave], form[data-form=sevgo], .add-mode, [data-act=libareaadd],
   [data-act=roomnew], [data-act=roomedit], [data-act=roomdel]){display:none!important}
 /* only the owner changes the label address, places' settings and who is home */
-html:not([data-role=owner]) :is(form[data-form=base], form[data-form=wxloc], [data-act=placehome], [data-act=placedel], [data-act=placeonoff], [data-act=plchome]){display:none!important}
+html:not([data-role=owner]) :is(form[data-form=base], form[data-form=wxloc], [data-act=placehome], [data-act=placedel], [data-act=placeonoff], [data-act=placeplants], [data-act=plchome]){display:none!important}
 .who-name{align-items:end;gap:.6rem;flex-wrap:wrap}
 .who-name .f{flex:1 1 14rem;margin:0}
 ul.people{list-style:none;padding:0;margin:0;display:grid;gap:.6rem}
@@ -1460,3 +1462,83 @@ html[data-role=viewer] [data-act=factswrite]{display:none!important}
 .wl-shops td .chk{display:inline-flex;gap:.4rem;align-items:center;margin-right:.6rem}
 html[data-role=viewer] :is([data-act=wlcheck], [data-act=wldismiss]){display:none!important}
 .nav-badge{font-weight:700}
+
+/* 1.28.0: library download areas, and the home tag on plant cards */
+.lib-areas td{vertical-align:top}
+.pct-num{font-weight:700;display:block}
+.pct-bar{display:block;width:8rem;max-width:100%;height:.7rem;border:2px solid var(--ink);border-radius:4px;margin-top:.3rem;overflow:hidden;background:var(--paper)}
+.pct-bar i{display:block;height:100%;background:var(--ink)}
+.tag-homeat{border-style:dashed}
+/* 1.28.0: the photo table on the Identify page */
+.idph th[scope=row]{font-weight:400;min-width:13rem}
+.idph-strip{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+.idph-strip img{width:5.5rem;height:5.5rem;object-fit:cover;border-radius:6px;display:block}
+.idph-strip a:focus-visible img{outline:3px solid var(--ink);outline-offset:2px}
+/* 1.28.0: add several plants from photos */
+.add-mode{margin:.5rem 0 1rem;gap:.5rem}
+.add-mode a[aria-current=page]{outline:3px solid var(--ink);outline-offset:2px}
+.sev-plant{margin:1.2rem 0;padding:1rem;border:2px solid var(--line, #8a9a96);border-radius:8px}
+.sev-plant legend{font-weight:700;font-size:1.15em;padding:0 .4rem}
+.sev-plant.sev-off{opacity:.65;border-style:dashed}
+.sev-pics{list-style:none;padding:0;margin:.6rem 0;display:flex;flex-wrap:wrap;gap:.8rem}
+.sev-pics li{display:flex;flex-direction:column;gap:.3rem;width:11rem;max-width:100%}
+.sev-pics img{width:11rem;max-width:100%;height:11rem;object-fit:cover;border-radius:6px}
+.sev-names{border:0;padding:0;margin:.6rem 0}
+.sev-names legend{font-weight:700;padding:0}
+.sev-names .chk{display:flex;gap:.5rem;align-items:flex-start;margin:.3rem 0}
+#sev-err{font-weight:700;margin-left:.5rem}
+/* 1.28.1: Your lights folds */
+.lt-lights-box > summary{cursor:pointer;display:flex;align-items:baseline;gap:1rem;flex-wrap:wrap;list-style-position:outside}
+.lt-lights-box > summary h2{display:inline;margin:0}
+.lt-lights-box > summary:focus-visible{outline:3px solid var(--ink);outline-offset:4px}
+.lt-lights-box[open] > summary{margin-bottom:1rem}
+
+/* 1.29.0: the section's pages, on their own row under the top bar */
+.sub-in{display:flex;flex-wrap:wrap;gap:.2rem .3rem;padding:.15rem clamp(1rem,1.5vw,2rem) .35rem;border-top:1px solid color-mix(in srgb,var(--top-ink) 30%,transparent);
+  background:color-mix(in srgb,var(--top-bg) 88%,var(--top-ink))}
+.sub-in[hidden]{display:none}
+.sub-in a{color:var(--top-ink);text-decoration:none;padding:.4rem .75rem;border-bottom:4px solid transparent;min-height:2.6rem;display:inline-flex;align-items:center}
+.sub-in a:hover{border-color:color-mix(in srgb,var(--top-ink) 55%,transparent)}
+.sub-in a[aria-current=page]{border-color:var(--top-ink);font-weight:700}
+.sub-in a:focus-visible{outline:3px solid var(--top-ink);outline-offset:-3px}
+html[data-narrow="1"] .sub-in{padding:.1rem min(1.25rem,4vw) .3rem}
+html[data-narrow="1"] .sub-in a{padding:.35rem .55rem;min-height:2.4rem}
+
+/* 1.29.0: Settings */
+.set-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,24rem),1fr));gap:1rem}
+.set-card{margin:0}
+.set-card h2{margin-top:0}
+.set-card .row{gap:.5rem;flex-wrap:wrap}
+/* 1.29.0: Rooms and spots */
+.wh-sides{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,28rem),1fr));gap:1rem}
+.wh-side h3{margin-top:0}
+.wh-areas,.wh-spots{list-style:none;padding:0;margin:0}
+.wh-area{border:2px solid var(--line, #8a9a96);border-radius:8px;padding:.7rem .9rem;margin:.6rem 0}
+.wh-row{display:flex;flex-wrap:wrap;gap:.4rem 1rem;align-items:end}
+.wh-name{flex:1 1 14rem}
+.wh-spots{margin:.5rem 0 0 1.2rem}
+.wh-spots li{display:flex;flex-wrap:wrap;gap:.4rem 1rem;align-items:end;margin:.35rem 0}
+.wh-add{gap:.5rem;align-items:end;flex-wrap:wrap;margin-top:.5rem}
+.where-f{border:0;padding:0;margin:0}
+.where-f legend{font-weight:700;padding:0}
+.where-f .opts{display:flex;gap:1.5rem;margin:.3rem 0 .5rem}
+/* 1.29.0: Pots and trays */
+.ct-list{display:grid;gap:1rem}
+.ct-card{display:grid;grid-template-columns:minmax(0,14rem) minmax(0,1fr);gap:1rem;border:2px solid var(--line, #8a9a96);border-radius:8px;padding:1rem;background:var(--sheet)}
+html[data-narrow="1"] .ct-card{grid-template-columns:minmax(0,1fr)}
+.ct-photos{display:flex;flex-direction:column;gap:.5rem}
+.ct-photos figure{margin:0;display:flex;flex-direction:column;gap:.3rem}
+.ct-photos img{width:100%;max-width:14rem;aspect-ratio:1;object-fit:cover;border-radius:6px}
+.ct-file input{position:absolute;opacity:0;width:1px;height:1px}
+.ct-file:focus-within{outline:3px solid var(--ink);outline-offset:2px}
+.ct-qty{display:flex;flex-wrap:wrap;gap:.5rem 1.2rem;align-items:end}
+.ct-use{margin:0 0 .4rem;font-size:1.1em}
+.ct-num input{max-width:9rem}
+.ct-sq{display:flex;flex-direction:column;justify-content:end;margin:0}
+.ct-l{font-weight:700}
+.ed-long label[hidden]{display:none}
+/* 1.29.0: details edited on the plant's own page */
+.pl-ed{margin:.6rem 0 1rem}
+.pl-ed .hint{grid-column:1/-1;margin:0}
+.lt-ed{margin:.4rem 0 .8rem}
+#wh-sort input[type=text]{min-width:min(100%,18rem);width:100%}

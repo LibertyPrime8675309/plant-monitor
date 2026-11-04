@@ -75,7 +75,7 @@ with sync_playwright() as p:
     pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
     check(pg.locator('#main-nav').is_hidden() and pg.evaluate("document.activeElement.id") == 'pages-btn', 'Escape folds the list and goes back to the button')
     btn.click(); pg.wait_for_timeout(300); pg.screenshot(path=os.path.join(OUT, 'layout-2-phone-pages.png'))
-    pg.click('#main-nav a[data-nav=today]'); pg.wait_for_timeout(2500)
+    pg.click('#main-nav a[data-sec=today]'); pg.wait_for_timeout(2500)
     check(pg.locator('#main-nav').is_hidden() and 'Today' in btn.inner_text(), 'choosing a page opens it and folds the list')
     bar = pg.evaluate("""() => { const c = document.getElementById('corner'), r = c.getBoundingClientRect(), ks = [...c.children].filter(x => x.getClientRects().length);
         return { inbar: !!c.querySelector('#nav-tab'), bottom: Math.round(r.bottom), h: Math.round(r.height), rows: new Set(ks.map(x => Math.round(x.getBoundingClientRect().top))).size,

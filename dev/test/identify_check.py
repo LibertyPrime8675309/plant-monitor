@@ -42,7 +42,7 @@ check(st == 200 and s['state'] == 'ready' and s['plantnet'] is False and s['clau
 st, r = call('POST', '/api/identify?scope=texas', image=pic('red'))
 check(st == 200 and r['matches'][0]['code'] == 'P-020' and r['matches'][0]['confidence'] == 0.93 and r['matches'][0]['common_name'] and r['matches'][0]['photo'],
       'a picture comes back with the closest plant, its name, photo and confidence')
-check(r['scope'] == 'texas' and r['species'][0]['scientific_name'] and 'yours' in r['species'][0], 'and species guesses from the chosen list, marked when you have them')
+check(r['scope'] == 'state:Texas' and r['species'][0]['scientific_name'] and 'yours' in r['species'][0], 'and species guesses from the chosen list, marked when you have them')
 mon = [x for x in r['species'] if x['scientific_name'] == 'Monstera deliciosa']
 check(mon and mon[0]['yours'], f"Monstera deliciosa is marked as one you have ({mon[0]['yours'] if mon else ''})")
 st, r = call('POST', '/api/identify', image=b'not a picture')
@@ -96,7 +96,7 @@ with sync_playwright() as p:
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and '503' not in m.text and '502' not in m.text and '404' not in m.text else None)
     pg.add_init_script("localStorage.setItem('plantdb.editor','Identify Test')")
     pg.goto(LOCAL + '/#/identify'); pg.wait_for_timeout(2500)
-    check(pg.locator('nav[aria-label=Main] a[href="#/identify"][aria-current=page]').count() == 1 and pg.locator('nav[aria-label=Main] a[href="#/library"]').count() == 1, 'Identify and Library are in the top menu')
+    check(pg.locator('#sub-nav a[href="#/identify"][aria-current=page]').count() == 1 and pg.locator('#sub-nav a[href="#/library"]').count() == 1, 'Identify and Library are in the top menu')
     check('setting up' in pg.inner_text('#id-st'), 'the page says the checker is still setting up')
     urllib.request.urlopen(urllib.request.Request(VIS + '/mock/state', data=b'{"state":"ready"}', headers={'Content-Type': 'application/json'}))
     pg.wait_for_timeout(6000)
@@ -155,7 +155,7 @@ with sync_playwright() as p:
     check(code(pg) == '#/plant/P-050', 'choosing one opens its page')
     # the library (1.21.0: browsed and filtered; library_check.py covers it in full)
     pg.goto(LOCAL + '/#/library?q=monstera'); pg.wait_for_timeout(2500)
-    check(pg.locator('nav[aria-label=Main] a[href="#/library"][aria-current=page]').count() == 1 and pg.locator('label:has(input[data-f=libq])').count() == 1, 'the library page has a labelled search box')
+    check(pg.locator('#sub-nav a[href="#/library"][aria-current=page]').count() == 1 and pg.locator('label:has(input[data-f=libq])').count() == 1, 'the library page has a labelled search box')
     t = pg.inner_text('#lib-res')
     check('Monstera deliciosa' in t and 'You have it' in t, 'a search in the address finds the plant and says you have it')
     pg.screenshot(path=os.path.join(OUT, 'identify-4-library.png'), full_page=True)

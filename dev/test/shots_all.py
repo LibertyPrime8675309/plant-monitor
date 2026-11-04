@@ -30,8 +30,8 @@ PAGES = [('plants', 'Plants', '#/'), ('plant', 'A plant page', '#/plant/P-012'),
          ('identify', 'Identify', '#/identify'), ('library', 'Library', '#/library'), ('species', 'A species page', '#/species/Monstera%20deliciosa'),
          ('around', 'Around home', '#/around'), ('wishlist', 'Wishlist', '#/wishlist'), ('fungi', 'Mushrooms', '#/fungi'), ('find', 'A mushroom find', '#/fungi/F-001'),
          ('findnew', 'Adding a find', '#/fungi/new'), ('photos', 'Photos', '#/photos'), ('labels', 'Labels', '#/labels'), ('history', 'Audit log', '#/history'),
-         ('backups', 'Backups', '#/backups'), ('offline', 'Offline use', '#/offline'), ('display', 'Display settings window', '#/?display')]
-MAX_SCREENS = 4          # long pages are cut after this many screens
+         ('backups', 'Backups', '#/backups'), ('offline', 'Offline use', '#/offline'), ('settings', 'Settings', '#/settings'), ('display', 'Display settings window', '#/?display')]
+MAX_SCREENS = int(os.environ.get('SHOTS_SCREENS', '4'))          # long pages are cut after this many screens
 def call(method, u, body=None):
     req = urllib.request.Request(L + u, data=None if body is None else json.dumps(body).encode(), method=method, headers={'Content-Type': 'application/json', 'X-Editor': 'Shots'})
     try:
