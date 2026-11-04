@@ -125,7 +125,7 @@ async function apiNet(method, url, body, form, m) {     // m.took: how long the 
   const opts = { method, headers: {} };
   if (PLACE) opts.headers['X-Place'] = PLACE;
   if (method !== 'GET') opts.headers['X-Editor'] = cleanName(viaTS() ? ME().name : getName()) || 'Unknown';
-  if (method !== 'GET' && ME().role === 'viewer' && url !== '/api/me' && !url.startsWith('/api/identify?')) {      // the server refuses these too; this just says so sooner
+  if (method !== 'GET' && ME().role === 'viewer' && url !== '/api/me' && url !== '/api/me/prefs' && !url.startsWith('/api/identify?') && !url.startsWith('/api/push/')) {      // the server refuses these too; this just says so sooner
     const e = new Error(`You can look at everything, but changes are turned off for you. Ask ${ME().owner_name || 'the owner'} if you would like to edit.`); e.status = 403; throw e;
   }
   if (form) opts.body = form;
@@ -421,6 +421,7 @@ function viewSettings() {
     ${card('Audit log', 'Every change anyone has made, with filters and a download.', html`<a class="btn" href="#/history">Open the Audit log</a>`)}
     ${card('Homes and places', 'Where plants live, and the places whose weather is tracked.', html`<a class="btn" href="#/weather?sec=places">Open Homes and places</a>`)}
     ${card('Stores and keys', 'The stores Shopping checks, the eBay and Etsy keys, and the Pl@ntNet and Claude keys for Identify.', html`<a class="btn" href="#/shopping/stores">Stores</a><a class="btn ghost" href="#/identify">Keys (Identify page)</a>`)}
+    ${card('Notifications', 'Messages on your phone or computer, even when the app is closed: cold nights, Shopping alerts, what is due today, and requests from Claude. Chosen for your own sign-in.', html`<button class="btn" type="button" data-act="notify" aria-haspopup="dialog">Open Notifications</button>`)}
     ${card('Jobs', 'What the app is doing in the background: weather updates, store checks, backups and library downloads, with when each is next due.', html`<button class="btn" type="button" data-act="jobs" aria-haspopup="dialog">Open the Jobs list</button>`)}
     ${card('Problems', 'Anything that went wrong in the background: a weather update, a backup, a store check. Copy the list to Claude when something looks off.', html`<button class="btn" type="button" data-act="problems" aria-haspopup="dialog">Open the Problems list<span id="prob-n"></span></button>`)}
     ${card('Debug', 'A live view of the audit log at the bottom of the screen, and other tools for checking the app.', html`<button class="btn" type="button" id="debug-btn" data-act="debug" aria-haspopup="dialog">Open Debug</button>`)}

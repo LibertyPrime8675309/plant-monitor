@@ -267,6 +267,7 @@ def init_db():
     c.executescript(SYNC_SCHEMA)                  # 1.24.0: changes sent later from devices, and clashes to decide
     c.executescript(FACTS_SCHEMA)                 # 1.27.0: uses, partners, deterrents, propagation and breeding for each species
     c.executescript(SHOPS_SCHEMA)                 # 1.27.0: shops, what they have from the wishlist, and price alerts
+    c.executescript(PUSH_SCHEMA)                  # 1.33.0: devices that get notifications
     wl = {r[1] for r in c.execute('PRAGMA table_info(wishlist)')}
     for col, typ in (('max_price', 'REAL'), ('alert_stock', 'INTEGER NOT NULL DEFAULT 0'), ('search_words', "TEXT NOT NULL DEFAULT ''")):
         if col not in wl: c.execute(f'ALTER TABLE wishlist ADD COLUMN {col} {typ}')
@@ -368,7 +369,7 @@ def apply_batches(c):
         key = 'batch_applied:' + b['id']
         if c.execute('SELECT 1 FROM settings WHERE key=?', (key,)).fetchone(): continue
         who, ts = b.get('author', 'Claude (batch)'), now()
-        label = b['id']
+        label = b['id']; new_requests = []
         try:
             c.execute('BEGIN')
             for h in b.get('homes_add', []):                 # 1.28.0: another home where plants live (skipped if a place is already there)
@@ -434,8 +435,8 @@ def apply_batches(c):
                         audit_only(c, 'note', None, None, None, who, 'Batch %s could not find %s for a request, so it was skipped' % (label, q['code']))
                         continue
                     code = r['code']
-                c.execute('INSERT OR IGNORE INTO requests(rkey,plant_code,kind,text,created_by,created_at) VALUES(?,?,?,?,?,?)',
-                          (q['key'], code, q.get('kind', 'question'), q['text'], who, ts))
+                if c.execute('INSERT OR IGNORE INTO requests(rkey,plant_code,kind,text,created_by,created_at) VALUES(?,?,?,?,?,?)',
+                             (q['key'], code, q.get('kind', 'question'), q['text'], who, ts)).rowcount: new_requests.append({'plant_code': code, 'text': q['text']})
             # records found to be duplicates of another page: archived (hidden, nothing deleted; Move back to the main list undoes it)
             for a in b.get('archive', []):
                 r = find_plant(c, a)
@@ -511,6 +512,9 @@ def apply_batches(c):
         except Exception:
             c.rollback()
             raise
+        if new_requests:                                   # 1.33.0: a notification for requests Claude just added
+            try: push_requests(c, new_requests)
+            except Exception as e: problem_exc('push', e, 'Requests could not be sent as notifications')
 
 def repair_seed_photos(c):
     """From 1.8.0 plant photos can arrive in separate photo-pack zips, possibly after the batch that uses them was
@@ -668,6 +672,7 @@ def owner_name(c):
 OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people')        # any request (the people list shows everyone's login)
 OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/areas', '/api/shops', '/api/problems', '/api/backups/restore', '/api/jobs')   # changes only
 VIEWER_POSTS = ('/api/identify', '/api/me/prefs')   # 1.18.0: asks this computer what a picture shows; 1.29.0: your own settings. Neither changes the plants
+VIEWER_PREFIXES = ('/api/push/',)                   # 1.33.0: your own devices and notification choices
 
 def role_refusal(u):
     """Why this person may not make this request, or None. The server decides; the page only hides what would be refused."""
@@ -676,7 +681,7 @@ def role_refusal(u):
     if path == '/api/me': return None                                    # your own name
     if path.startswith(OWNER_ONLY_PATHS) or (change and path.startswith(OWNER_ONLY_CHANGES)) or (change and re.match(r'^/api/places/\d+$', path)):
         return f'Only {owner_name(db())} can do this.'
-    if role == 'viewer' and change and path not in VIEWER_POSTS:
+    if role == 'viewer' and change and path not in VIEWER_POSTS and not path.startswith(VIEWER_PREFIXES):
         return f'You can look at everything, but changes are turned off for you. Ask {owner_name(db())} if you would like to edit.'
     return None
 

@@ -173,8 +173,11 @@ def shops_worker():
                 except Exception as e: st, msg, kind, err = 'error', 'Could not read it: ' + str(e)[:120], None, str(e)[:300]; bad.append(s['name'])
                 c.execute('UPDATE shops SET status=?, error=?, checked_at=?, platform=COALESCE(?, platform) WHERE key=?', (msg, err, now(), kind, s['key']))
                 c.commit(); SHOPQ['done'] += 1
+            top = c.execute('SELECT COALESCE(MAX(id),0) FROM wish_alerts').fetchone()[0]
             wish_alerts_make(c)
             set_setting(c, 'shops_checked_at', now()); c.commit()
+            try: push_shopping(c, [dict(r) for r in c.execute('SELECT * FROM wish_alerts WHERE id>? ORDER BY id', (top,))])   # 1.33.0
+            except Exception as e: problem_exc('push', e, 'Shopping alerts could not be sent as notifications')
             job_end(jid, not bad, (f'{len(todo) - len(bad)} of {len(todo)} stores read; could not read ' + ', '.join(bad[:5])) if bad else f'{len(todo)} stores read')
         except Exception as e:
             job_end(jid, False, str(e)[:200])

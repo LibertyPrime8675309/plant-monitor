@@ -107,10 +107,22 @@ def home_place(c):
     """The home place: the one every browser starts with, and the one background work (hourly updates, backups) uses."""
     return loc_get(c)
 
+FORCED_PLACE = threading.local()
+class place_for:
+    """1.33.0: `with place_for(home_id):` makes location() answer that place in this thread, so background work (notifications)
+    can use the same reports the pages use, home by home."""
+    def __init__(self, loc_id): self.id = loc_id
+    def __enter__(self): self.was = getattr(FORCED_PLACE, 'id', None); FORCED_PLACE.id = self.id
+    def __exit__(self, *a): FORCED_PLACE.id = self.was
+
 def location(c):
     """The place in use (1.11.0): the one chosen with the Location button in this browser, which the page sends as the
     X-Place header on every request; the home place when none is chosen, or the chosen one has been removed.
     Weather, frost warnings, watering, the Winter plan and "today" all follow it."""
+    forced = getattr(FORCED_PLACE, 'id', None)
+    if forced is not None:
+        L = loc_get(c, forced)
+        if L is not None: return L
     if has_request_context():
         v = request.headers.get('X-Place', '').strip()
         if v.isdigit():

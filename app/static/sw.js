@@ -6,7 +6,7 @@
    Changes made while offline are not handled here: the page keeps them in its outbox and sends them when it is back online. */
 const VERSION = '__VERSION__';
 const SHELL = 'plantdb-shell-' + VERSION, API = 'plantdb-api', PICS = 'plantdb-photos', LIBPICS = 'plantdb-library-photos';
-const SHELL_FILES = ['/', '/js/core.js', '/js/gallery.js', '/js/plant.js', '/js/care.js', '/js/edit.js', '/js/weather.js', '/js/ui.js', '/js/lights.js', '/js/events.js', '/js/discover.js', '/js/offline.js', '/js/main.js', '/style.css', '/prefs.js', '/card.html', '/card.js', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
+const SHELL_FILES = ['/', '/js/core.js', '/js/gallery.js', '/js/plant.js', '/js/care.js', '/js/edit.js', '/js/weather.js', '/js/ui.js', '/js/lights.js', '/js/events.js', '/js/discover.js', '/js/offline.js', '/js/notify.js', '/js/main.js', '/style.css', '/prefs.js', '/card.html', '/card.js', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
 const NO_SAVE = /^\/api\/(people|backups|ingest|weather\/job|backups\/job|audit|library\/prefetch|library\/local|offline\/|identify\/settings|calendar\/settings|me$)/;
 const WAIT_MS = 5000;
 let downUntil = 0;                           // after the server fails to answer, use saved copies at once for a while (weak signal)
@@ -73,4 +73,19 @@ self.addEventListener('fetch', e => {
 });
 self.addEventListener('message', e => {
   if (e.data === 'forget') e.waitUntil(Promise.all([API, PICS, LIBPICS].map(n => caches.delete(n))));
+});
+
+// 1.33.0: notifications pushed by the plant record (cold nights, Shopping alerts, what is due, requests from Claude)
+self.addEventListener('push', e => {
+  let d = {}; try { d = e.data ? e.data.json() : {}; } catch (err) { d = { title: 'Plant record', body: e.data ? e.data.text() : '' }; }
+  e.waitUntil(self.registration.showNotification(d.title || 'Plant record', { body: d.body || '', tag: d.tag || 'plantdb', renotify: !!d.tag, icon: '/icon-192.png', badge: '/icon-192.png', data: { url: d.url || '#/' } }));
+});
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = new URL(((e.notification.data || {}).url || '#/'), self.location.origin).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(cs => {
+    const c = cs.find(x => x.url.startsWith(self.location.origin));
+    if (c) return c.focus().then(w => (w && 'navigate' in w ? w.navigate(url) : null));
+    return self.clients.openWindow(url);
+  }));
 });

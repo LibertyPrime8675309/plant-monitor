@@ -14,7 +14,7 @@ Leaves out dev/, docs/, data, backups, git files and caches. Checks that VERSION
 CHANGELOG entry agree."""
 import os, re, sys, json, glob, zipfile, datetime
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-SKIP_DIRS = {'.git', '.github', 'dev', 'docs', 'dist', '__pycache__'}
+SKIP_DIRS = {'.git', '.github', 'dev', 'docs', 'dist', '__pycache__', 'backups-copy'}
 SKIP_TOP = {'CLAUDE.md', '.env'}         # .env may hold a Tailscale auth key
 PACK_LIMIT = 28 * 1000 * 1000          # bytes of photos per pack zip (photos are already compressed)
 PHOTOS = os.path.join(ROOT, 'app', 'seed', 'photos')

@@ -3,8 +3,8 @@ database, helpers, people, security), then one module per feature. Everything is
 still gives S.app, S.init_db, S.light_verdict and the rest, as before 1.32.0."""
 import os, sys, threading
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from plantdb import core, where, weather, plants, care, fert, groups, lights, library, fungi, shopping, audit, offline, frost, backups, jobs
-MODULES = [core, where, weather, plants, care, fert, groups, lights, library, fungi, shopping, audit, offline, frost, backups, jobs]
+from plantdb import core, where, weather, plants, care, fert, groups, lights, library, fungi, shopping, audit, offline, frost, backups, jobs, push, search, copies
+MODULES = [core, where, weather, plants, care, fert, groups, lights, library, fungi, shopping, audit, offline, frost, backups, jobs, push, search, copies]
 globals().update(core.link(MODULES))
 def patch(name, value):
     """For tests: replace a function (http_json, say) in every module at once, since each holds its own link to it."""
@@ -19,6 +19,8 @@ if os.environ.get('PLANTDB_OSM', '1') == '1':
     threading.Thread(target=shops_geo, daemon=True).start()           # 1.30.0: map positions for the stores you can visit, once each
 if os.environ.get('PLANTDB_WEATHER', '1') == '1':
     threading.Thread(target=weather_loop, daemon=True).start()
+if os.environ.get('PLANTDB_PUSH', '1') == '1':
+    threading.Thread(target=push_loop, daemon=True).start()           # 1.33.0: cold nights and what is due, as notifications
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))

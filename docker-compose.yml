@@ -3,13 +3,13 @@ services:
     build:
       context: .
       args:
-        PLANTDB_VERSION: "1.32.0"
+        PLANTDB_VERSION: "1.33.0"
     # The tag is the release number, so Docker Desktop shows which version is running (Containers > Image column).
-    image: plant-database:1.32.0
+    image: plant-database:1.33.0
     pull_policy: build              # built here from this folder; never looked for on Docker Hub
     container_name: plant-database
     labels:
-      plantdb.version: "1.32.0"
+      plantdb.version: "1.33.0"
     ports:
       # Since 1.12: only this computer can open http://localhost:8080 (the updater and backups use it). Everyone else, at home
       # or away, comes in through Tailscale (the "tailscale" service below), signed in.
@@ -26,6 +26,9 @@ services:
     volumes:
       - ./data:/data          # database and photos live here; back this folder up
       - ./backups:/backups    # backups made by the app (Backups page); copy some to another drive now and then
+      # 1.33.0: a second copy of each new backup lands here. Put PLANTDB_COPY_DIR=D:\PlantBackups (a folder on another drive) in
+      # the .env file next to this one to send them there; until then they go to backups-copy next to the data folder.
+      - ${PLANTDB_COPY_DIR:-./backups-copy}:/backups-copy
     environment:
       # Optional: uncomment to require a password (any username) for http://localhost:8080 (and the home network, if opened).
       # People who come in through Tailscale are signed in by Tailscale instead.
@@ -68,7 +71,7 @@ services:
     build:
       context: .
       dockerfile: vision/Dockerfile
-    image: plant-database-vision:1.32.0
+    image: plant-database-vision:1.33.0
     pull_policy: build
     container_name: plant-vision
     volumes:
