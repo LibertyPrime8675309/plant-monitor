@@ -383,6 +383,10 @@ def several_create():
     items = b.get('plants') or []
     if not items: abort(400, 'There are no plants to add')
     if len(items) > 200: abort(400, 'Add at most 200 plants at a time')
+    shared = [str(x) for x in (b.get('shared') or [])][:20]           # 1.38.0: wide shots of several plants together: a copy goes on every plant
+    for ph in shared:
+        if not re.match(r'^up_[0-9a-f]{16}\.jpg$', ph) or not os.path.exists(os.path.join(PENDING_DIR, ph)):
+            abort(400, 'A photo marked "Shows all of them" is no longer waiting here (they are kept for two days). Add the photos again.')
     who, ts, made = editor(), now(), []
     for i, it in enumerate(items):
         f = dict(it.get('fields') or {})
@@ -402,15 +406,24 @@ def several_create():
         code = f'P-{n:03d}'
         pid = c.execute(f"INSERT INTO plants({','.join(cols)}) VALUES({','.join('?' * len(cols))})",
                         [code] + [vals[k] for k in FIELD_NAMES] + [1, 'active', ts, who, ts, who]).lastrowid
-        for j, ph in enumerate(it.get('photos') or []):
+        own = list(it.get('photos') or [])
+        for j, ph in enumerate(own):
             os.replace(os.path.join(PENDING_DIR, ph), os.path.join(PHOTO_DIR, ph))
             c.execute('INSERT INTO photos(plant_id,file,caption,kind,is_primary,source_name,added_by,added_at) VALUES(?,?,?,?,?,?,?,?)',
                       (pid, ph, '', 'plant', 1 if j == 0 else 0, ph, who, ts))
+        for j, ph in enumerate(shared):
+            name = f'up_{uuid.uuid4().hex[:16]}.jpg'
+            shutil.copyfile(os.path.join(PENDING_DIR, ph), os.path.join(PHOTO_DIR, name))
+            c.execute('INSERT INTO photos(plant_id,file,caption,kind,is_primary,source_name,added_by,added_at) VALUES(?,?,?,?,?,?,?,?)',
+                      (pid, name, 'Several plants together', 'plant', 1 if not own and j == 0 else 0, ph, who, ts))
         c.execute('INSERT INTO plant_versions(plant_id,version,snapshot,changed_by,changed_at,summary) VALUES(?,?,?,?,?,?)',
                   (pid, 1, json.dumps(snapshot(c, pid)), who, ts, 'Record created (added with several others from photos)'))
         audit_only(c, 'create', None, None, None, who, 'Record created (added with several others from photos)', pid, code)
         c.execute('UPDATE audit_log SET version=1 WHERE plant_id=? AND action=?', (pid, 'create'))
         made.append(code)
+    for ph in shared:
+        try: os.remove(os.path.join(PENDING_DIR, ph))
+        except OSError: pass
     c.commit()
     return jsonify(codes=made), 201
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.38.0 (2026-11-05)
+- **Watering offline:** on Today, Watered and Still moist take the plant off the list at once without a connection; the care log shows the entry as "not sent yet" until it is sent.
+- **Reconnecting:** the app notices when the plant server can be reached again (every 30 seconds, when the app comes to the front, when the network returns), sends what was waiting and redraws the page; **Try to connect now** on the offline note and the Offline use page. "Offline" now also means "the plant server cannot be reached" (Tailscale off, computer asleep), not only "no network".
+- **Back returns to where you were** on a page; photo boxes have their size before the photo loads, so pages do not jump.
+- **Photos on the Add a plant form**, with **Fill in the names from the first photo**. Identify's "Choose a photo" and the plant page's "Add photos" let the phone offer its photos instead of forcing the camera.
+- **Adding a plant without a connection:** it is kept on the device (stand-in name allowed when there is a photo), sent later, and its first photo is then checked, with the names offered on the Offline use page.
+- **Several plants from photos:** small previews made on the phone (no more white patches); under each photo you say "Same plant as the photo above", "A different plant", "Shows all of them" (a wide shot copied to every plant) or "Leave this photo out". The "minutes apart" grouping is gone.
+- **The other changes made from a phone now wait offline too, and show at once:** "Log other care" and Remove on a care entry, Moved indoors and Covered on the cold-night list, Fed (a feeding), answers and "done" on requests from Claude, the Still-to-photograph ticks, photo captions, main photo and photo removal, the porch reminder, wishlist and species notes. Edits to a plant now show on the Plants page cards too, and photos added offline show as thumbnails in the "Not sent yet" line.
+- On a phone the Save bar of a form sits above the bottom bar instead of under it.
+
 ## 1.37.1 (2026-11-05)
 - Grow lights, from the labels Ethan photographed (batch B7): the SANSI tripod is model C23ZW016-H0045A27 (45 W, 120 V, 0.7 A, 4000 K, rated for wet locations); the Barrina T5 strips are model NC05 (5 W a strip, 100 to 277 V, up to 16 linked); the 4-head gooseneck has no model label, only "Max: 4 x 10 W" on its clamp, and its four bulbs are SANSI C21GL-GE26-10W, the same as the six spare 10 W bulbs. The request for the disk light's model stays open on its own.
 

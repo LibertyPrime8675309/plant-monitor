@@ -53,7 +53,7 @@ async function viewIdentify() {
       <div class="row id-btns">
         <button class="btn" type="button" data-act="idcam" id="id-cam-btn">Start camera</button>
         <button class="btn ghost" type="button" data-act="idsnap" id="id-snap" disabled>Check this picture</button>
-        <label class="btn ghost id-file">Use a photo instead<input type="file" accept="image/*" capture="environment" data-act="idfile"></label>
+        <label class="btn ghost id-file">Choose a photo<input type="file" accept="image/*" data-act="idfile"></label>
       </div>
       <p class="hint">While the camera is on it checks about once a second, and also reads plant label QR codes. "Check this picture" holds the picture still and shows everything it found.</p>
       <label class="f id-scope">When it is not one of your plants, suggest names from
@@ -1428,8 +1428,8 @@ async function viewFindForm(code) {
     <h1>${code ? 'Edit ' + code : 'Add a mushroom find'}</h1>
     ${code ? '' : html`<p class="muted">Only the photos and where you found it really matter now; fill in the rest any time.</p>`}
     <form data-form="musave" ${code ? raw(`data-code="${esc(code)}" data-ver="${meta.version}"`) : ''} autocomplete="off">
-      ${code ? '' : html`<fieldset><legend>Photos</legend><label class="f">Photos of the cap, the underside, the stem and the base<small>On a phone this can open the camera. If the photos carry their location, it is offered for the find.</small>
-        <input type="file" name="photos" accept="image/*" multiple capture="environment"></label></fieldset>`}
+      ${code ? '' : html`<fieldset><legend>Photos</legend><label class="f">Photos of the cap, the underside, the stem and the base<small>On a phone you can take them or choose them from your photos. If the photos carry their location, it is offered for the find.</small>
+        <input type="file" name="photos" accept="image/*" multiple></label></fieldset>`}
       ${MU_GROUPS.map(([t, names]) => html`<fieldset><legend>${t}</legend><div class="field-grid">${names.map(n => muField(meta, F[n], v[n], plants))}</div>
         ${t === 'Where and when' ? html`<div class="mu-loc"><input type="hidden" name="lat" value="${v.lat == null ? '' : v.lat}"><input type="hidden" name="lon" value="${v.lon == null ? '' : v.lon}">
           <p id="mu-loc-txt" aria-live="polite">${v.lat != null ? html`Location saved: ${(+v.lat).toFixed(5)}, ${(+v.lon).toFixed(5)}.` : 'No map location saved.'}</p>
@@ -1461,7 +1461,7 @@ async function viewFind(code) {
     ${fungiSafety(true)}
     <div class="sp-grid">
       <section aria-labelledby="mu-ph-h"><h2 id="mu-ph-h">Photos</h2><div id="mu-gallery"></div>
-        <label class="f noprint mu-add">Add photos<small>On a phone this can open the camera.</small><input type="file" accept="image/*" multiple capture="environment" data-act="muaddphotos"></label></section>
+        <label class="f noprint mu-add">Add photos<small>On a phone you can take them or choose them from your photos.</small><input type="file" accept="image/*" multiple data-act="muaddphotos"></label></section>
       <section aria-labelledby="mu-id-h"><h2 id="mu-id-h">What could it be?</h2>
         <p>Identify compares a photo with about 49,000 fungi, on this computer. Treat its answer as a lead to check, never as proof.</p>
         <div class="row"><button class="btn" type="button" data-act="muident" ${ph.length ? '' : raw('disabled')}>Identify the photo shown</button></div>

@@ -526,8 +526,19 @@ async function guard(fn) {
 }
 
 // ---------- router ----------
-function go(h) { if (location.hash === h) route(); else location.hash = h; }
+function go(h) { NAVCLICK = Date.now(); if (location.hash === h) route(); else location.hash = h; }
 window.addEventListener('hashchange', route);
+// 1.38.0: where you were on each page. Going back (the browser's Back button, or a "Back to" link pressed after a page you came from)
+// returns to the same place on the page; a link to a new page starts at the top. The position is noted when you leave the page.
+const SCROLLS = {};
+let NAVCLICK = 0;
+document.addEventListener('click', e => { const a = e.target.closest('a[href^="#/"]'); if (a) NAVCLICK = Date.now(); }, true);
+function scrollBack(h) {
+  const y = SCROLLS[h]; if (!y) return false;
+  const put = () => { if (location.hash.replace(/^#/, '') === h && !document.querySelector('#dlg[open]')) window.scrollTo(0, y); };
+  put(); setTimeout(put, 250); setTimeout(put, 900);
+  return true;
+}
 let ROUTE_FRESH = false;             // set to draw the page again from fresh answers, keeping the scroll position
 async function quickRecheck(my, urls) {
   // the page was drawn from saved answers: ask again, and redraw if any changed, unless you have started typing or choosing on it
@@ -594,6 +605,8 @@ async function route() {
   const my = ++token;
   OFF.saved = null;
   const h = location.hash.replace(/^#/, '') || '/';
+  if (lastPath && lastPath !== h) SCROLLS[lastPath] = window.scrollY;
+  const wentBack = Date.now() - NAVCLICK > 1000;      // not from a link just pressed: Back, Forward, or typed
   const [hp, hq] = h.split('?');                     // 1.18.0: #/library?q=... keeps the search in the address
   const parts = hp.split('/').filter(Boolean), qs = new URLSearchParams(hq || '');
   if (parts[0] !== 'identify') idStop();
@@ -673,8 +686,9 @@ async function route() {
     myTiming.drawn = true; app.removeAttribute('aria-busy');
     app.innerHTML = rend(view.html);
     if (parts[0] !== 'frost' && parts[0] !== 'plant' && parts[0] !== 'today' && parts.length) app.insertAdjacentHTML('afterbegin', rend(frostBanner()));   // plant pages have their own note; Today has its own section
-    if (OFF.saved && OFF.saved !== 'none') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice off-note noprint" role="note"><strong>Offline.</strong> This is what this device saved${OFF.saved ? ' on ' + when(OFF.saved) : ''}. Changes you make are kept here and sent when you are back online. <a href="#/offline">Offline page</a></p>`));
-    offNotice(parts);
+    if (((OFF.saved && OFF.saved !== 'none') || !navigator.onLine || OFF.reach === 'no') && parts[0] !== 'offline') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice off-note noprint" role="note"><strong>Offline.</strong> This is what this device saved${OFF.saved && OFF.saved !== 'none' ? ' on ' + when(OFF.saved) : ''}. Changes you make are kept here and sent when the plant server can be reached. <button class="btn small ghost" type="button" data-act="offtry">Try to connect now</button> <a href="#/offline">Offline page</a></p>`));
+    await offNotice(parts);
+    if (my !== token) return;
     if (META && META.mirror && META.mirror.on) app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice vw-note mirror-note noprint" role="note"><strong>This is the mirror:</strong> a read-only copy${META.mirror.made ? ` of the backup made ${when(META.mirror.made)}` : META.mirror.at ? ` taken ${when(META.mirror.at)}` : ', waiting for its first backup'}${META.mirror.error ? ` (${META.mirror.error})` : ''}. Changes are turned off here; ${META.mirror.main ? html`make them in <a href="${META.mirror.main}">the main app</a>` : 'make them in the main app'}.</p>`));   // 1.37.0
     else if (ME().role === 'viewer') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice vw-note noprint" role="note"><strong>View only.</strong> You can look at everything here, but changes are turned off. Ask ${ME().owner_name} if you would like to edit.</p>`));
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
@@ -682,7 +696,7 @@ async function route() {
     if (parts[0] === 'weather' && qs.get('sec') === 'places') setTimeout(() => { const t = document.getElementById('sec-places'); if (t) { scrollToSection(t); navFlash(t); } }, 300);   // 1.29.0: Homes and places
     else if (qs.get('sec')) { const go2 = () => { const t = document.getElementById(qs.get('sec')); if (t) { scrollToSection(t); navFlash(t); } }; setTimeout(go2, 300); setTimeout(go2, 1500); }   // 1.36.0: #/plant/P-001?sec=inside opens the page at that section
     buildSideNav(); navLayout(); addReadButtons(); setTimeout(() => { buildSideNav(); navLayout(); addReadButtons(); }, 1200);
-    if (h !== lastPath) { window.scrollTo(0, 0); app.focus({ preventScroll: true }); NAVPIN = -1; navActive(); }
+    if (h !== lastPath) { if (!(wentBack && !qs.get('sec') && scrollBack(h))) window.scrollTo(0, 0); app.focus({ preventScroll: true }); NAVPIN = -1; navActive(); }
     else if (fresh && keepY) window.scrollTo(0, keepY);
     lastPath = h;
     timingKeep(myTiming, t0, tData, performance.now());
@@ -693,6 +707,7 @@ async function route() {
     if (QUICK === myQuick) QUICK = null;
     app.removeAttribute('aria-busy');
     if (my !== token) return;
+    myTiming.drawn = true;                       // 1.38.0: so the "Loading" stand-in does not replace the message when the page failed within 150 ms
     app.innerHTML = rend(html`<div class="notice bad" role="alert"><strong>${e.status === 404 ? 'Not found' : 'Something went wrong'}</strong><p>${e.message}</p>
       <a class="btn ghost" href="#/plants">Back to all plants</a></div>`);
   }

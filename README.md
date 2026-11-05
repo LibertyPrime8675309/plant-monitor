@@ -941,6 +941,34 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
 
+## On the phone and offline (from 1.38.0)
+
+### Watering offline
+
+On the Today page without a connection, **Watered** and **Still moist** now take the plant off the list at once, and the plant's care log shows the entry as "not sent yet". The plant server gets it when it can be reached again (the entry then loses its "not sent yet" and gains its Remove button).
+
+The same goes for the other everyday changes: "Log other care" and Remove on a care entry, Moved indoors and Covered on the cold-night list, Fed, answers to Claude's requests, the Still-to-photograph ticks, photo captions, main photo and photo removal, the porch reminder, the wishlist and species notes. Each shows on its page at once and goes to the server later; a photo added offline shows as a thumbnail in the "Not sent yet" line on the plant's page. Settings, rooms and spots, lights, groups, stores, backups and sensors still need a connection (they are things you do at the PC).
+
+### When Tailscale comes back
+
+The app now tells apart "this phone has no network" from "the plant server cannot be reached" (Tailscale off, or the computer asleep): both show as **Offline** at the top. While the server is out of reach the app tries again every 30 seconds, whenever you bring it to the front, and when the network comes back; the offline note on every page and the Offline use page have a **Try to connect now** button as well. When the server answers, the waiting changes are sent and the page is drawn again from the server (unless you are in the middle of a form). No relaunch needed.
+
+### Back goes back to where you were
+
+Going back to a page (the phone's Back button, or a "Back to…" link) returns to the same place on it. A link to a new page starts at the top. Photo boxes have their size before the photo arrives, so pages no longer jump as photos load.
+
+### Photos on the Add a plant form
+
+**Add a plant** (one plant) has a **Photos** field: take them now or choose them from the phone's photos. The first becomes the main photo. **Fill in the names from the first photo** asks the picture checker and fills in the empty name fields. On Identify and on the plant page, "Choose a photo" / "Add photos" no longer forces the camera open: the phone offers its photos too.
+
+### Adding a plant without a connection
+
+Without a connection, saving the Add a plant form keeps the plant on this device (with a NEW- code) and sends it when the server can be reached. With a photo, the common name may stay empty: a stand-in name ("New plant, date") is used. Once the plant is sent, its first photo is checked by the picture checker and the Offline use page shows what it looks like, with a button to **put the first name on** the plant. The Plants page says how many new plants are waiting.
+
+### Several plants from photos, on a phone
+
+The review screen makes small previews of the photos on the phone itself (about 800 px), so it no longer shows white patches while scrolling. See "Add several plants at once" below for the new per-photo questions and the wide shot that goes on every plant.
+
 ## Photos from your phone, the year in review, and the mirror (from 1.37.0)
 
 ### Share a photo from your phone
@@ -1205,8 +1233,7 @@ Plants can live at more than one home: Round Rock, and Nevada City in California
 2. Choose all the photos at once. A photo of a plant's label or tag helps.
 3. Press **Check these photos**. Each photo is checked by the picture checker on this computer, one at a time ("Checking photo 3 of 12").
 4. **The review screen** shows one box per plant:
-   - Photos taken within 3 minutes of each other (you can change this) that look like the same plant are put together.
-   - **Belongs to** under each photo moves it to another plant, to a new plant of its own, or leaves it out.
+   - From 1.38.0, under each photo you say what it shows: **Same plant as the photo above**, **A different plant**, **Shows all of them** (a wide shot that goes on every plant) or **Leave this photo out**. The photos are in the order they were taken; the first guess is "same plant" when the picture checker sees the same species in both, and the plant boxes follow your answers. (The old "taken within 3 minutes" grouping is gone.)
    - **What the picture checker thinks it is**: the 3 likeliest species, with how likely each is. The names, family, genus, plant type, safety for pets and ID confidence are filled in from the one chosen. Choose another, or **None of these** to type them yourself. Anything you type is kept.
    - **This may be a plant you already have** appears when a plant looks like one in the record. It starts unticked, so it isn't added twice.
 5. Press **Add N plants**. Nothing is added until then. Each plant gets its photos (the first is the main photo), and its page says where its name came from.

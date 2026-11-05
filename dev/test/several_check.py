@@ -38,18 +38,21 @@ with sync_playwright() as p:
     pg.locator('form[data-form=sevgo] input[type=file]').set_input_files(files)
     pg.locator('form[data-form=sevgo] button[type=submit]').click()
     pg.locator('fieldset.sev-plant').first.wait_for(timeout=30000)
-    n = pg.locator('fieldset.sev-plant').count()
-    check(n == 2, f'4 photos become 2 plants: two taken a minute apart, and two taken half an hour later ({n})')
+    plants = lambda: pg.locator('fieldset.sev-plant:not(.sev-shared):not(#sev-out)')
+    n = plants().count()
+    check(n == 2, f'4 photos become 2 plants to start with: the three the picture checker sees as one species, and the blue one ({n})')
+    check(pg.locator('input[name=gap]').count() == 0 and pg.locator('.sev-rel').count() == 4, '1.38.0: no "minutes apart" setting; each photo asks what it shows instead')
     p1 = pg.locator('#sev-p0')
-    check(p1.locator('.sev-pics li').count() == 2, 'the first plant has its 2 photos')
+    check(p1.locator('.sev-pics li').count() == 3 and 'same species as the photo above' in p1.inner_text(), 'the first plant has its 3 photos, and says why they were put together')
+    check(pg.locator('[data-f=sevrel][data-p="0"]').count() == 3 and pg.locator('[data-f=sevrel][data-p="1"]').count() == 4, 'the first photo in the order cannot be "the same as the one above"; the others can')
     check('may be a plant you already have' in p1.inner_text() and not p1.locator('[data-f=sevadd]').is_checked(),
           'a plant that looks like one you have is flagged, and not ticked to be added')
     check(p1.locator('[data-f=sevfield][data-k=common_name]').input_value() != '' and p1.locator('[data-f=sevpick]').count() >= 2,
           'its names are filled in from the likeliest species, with the others to choose from')
     pg.screenshot(path=os.path.join(OUT, 'several-1-review.png'), full_page=True)
-    # move the blue photo to a plant of its own, then pick another name for it and type a spot
-    pg.locator('#sev-p1 [data-f=sevmove]').nth(1).select_option('new'); pg.wait_for_timeout(600)
-    check(pg.locator('fieldset.sev-plant').count() == 3, 'a photo can be moved to a new plant of its own')
+    # the green photo is a different plant after all; the blue one gets another name and a spot
+    pg.locator('[data-f=sevrel][data-p="2"][value=new]').check(); pg.wait_for_timeout(600)
+    check(plants().count() == 3 and pg.locator('#sev-p1 .sev-pics li').count() == 1, '"A different plant" splits a photo off into a plant of its own, in order')
     p3 = pg.locator('#sev-p2')
     p3.locator('[data-f=sevpick]').nth(1).check(); pg.wait_for_timeout(400)
     p3 = pg.locator('#sev-p2')
@@ -63,15 +66,18 @@ with sync_playwright() as p:
     check('needs a common name' in pg.locator('#sev-err').inner_text() and len(get('/api/plants?status=all')) == before,
           'a plant with no common name stops the save, and nothing is added')
     pg.locator('#sev-p0 [data-f=sevfield][data-k=common_name]').fill('Red test plant')
-    pg.locator('#sev-p0 [data-f=sevmove]').first.select_option('out'); pg.wait_for_timeout(600)
+    pg.locator('[data-f=sevrel][data-p="1"][value=all]').check(); pg.wait_for_timeout(600)
+    check(pg.locator('#sev-shared .sev-pics li').count() == 1 and plants().count() == 3 and pg.locator('#sev-p0 [data-f=sevfield][data-k=common_name]').input_value() == 'Red test plant',
+          '"Shows all of them" moves a photo to the wide shots, and what you typed stays')
+    check(pg.evaluate("[...document.querySelectorAll('.sev-pics img')].every(i => i.naturalWidth <= 800 && i.getAttribute('width') && i.getAttribute('height'))"), 'the previews are made small on this device and have their size before they load')
     btn = pg.locator('[data-act=sevsave]'); btn.click()
     pg.locator('#sev .notice.ok').wait_for(timeout=15000)
     allp = get('/api/plants?status=all')
-    new = [x for x in allp if x['code'] not in {y['code'] for y in allp[:before]}]
     check(len(allp) == before + 3, f'3 plants are added ({len(allp) - before})')
     codes = sorted(x['code'] for x in allp)[-3:]
     got = [get('/api/plants/' + c) for c in codes]
-    check([len(g['photos']) for g in got] == [1, 1, 1], 'each gets its own photos (the photo left out is not added)')
+    check([len(g['photos']) for g in got] == [2, 2, 2] and all(any(x['caption'] == 'Several plants together' and not x['is_primary'] for x in g['photos']) for g in got) and len({x['file'] for g in got for x in g['photos']}) == 6,
+          'each gets its own photo first, plus its own copy of the wide shot with the caption "Several plants together"')
     check(all(g['home_id'] == nc for g in got), 'they are all at the home chosen (Nevada City)')
     check(got[0]['common_name'] == 'Red test plant', 'a name you typed is kept')
     check(any(g['scientific_name'] == name3 and g['location'] == 'Front porch, blue pot' for g in got), 'the name you picked and the spot you typed are saved')

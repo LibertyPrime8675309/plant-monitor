@@ -226,7 +226,24 @@ const acts = {
   async ctdel(el) { if (!(await needName())) return; if (!(await confirmBox(`Remove ${el.dataset.name}?`, 'Its photos are removed too.', 'Remove', true))) return;
     await guard(async () => { await api('DELETE', '/api/containers/' + el.dataset.id); META = await api('GET', '/api/meta'); toast('Removed'); route(); }); },
   async ctphotodel(el) { if (!(await needName())) return; await guard(async () => { await api('DELETE', '/api/containers/photos/' + el.dataset.id); toast('Photo removed'); route(); }); },
-  sevreset() { SEV.photos.forEach(p => { try { URL.revokeObjectURL(p.url); } catch (e) { /* gone */ } }); Object.assign(SEV, { step: 'pick', photos: [], plants: [], done: null, busy: false }); SEV.home = sevDefaultHome(); sevDraw('input[type=file]'); },
+  sevreset() { SEV.photos.forEach(p => { try { URL.revokeObjectURL(p.url); } catch (e) { /* gone */ } }); Object.assign(SEV, { step: 'pick', photos: [], order: [], plants: [], done: null, busy: false }); SEV.home = sevDefaultHome(); sevDraw('input[type=file]'); },
+  async newfill(el) {                   // 1.38.0: Add a plant: the names from the first photo on the form
+    const form = el.closest('form'), inp = form && form.elements.__photos, st = document.getElementById('newfill-st');
+    const f = inp && inp.files[0]; if (!f) return;
+    el.disabled = true; if (st) st.textContent = 'Checking the photo…';
+    try {
+      if (!navigator.onLine || !(await offProbe())) { if (st) st.textContent = 'This needs a connection to the plant server. Save the plant now and the photo is checked when it can be reached; the names are then offered on the Offline page.'; return; }
+      const r = await idAsk(f), sp = (r.species || []).filter(x => x.scientific_name);
+      const m = (r.matches || [])[0];
+      if (!sp.length) { if (st) st.textContent = 'The picture checker had no suggestion for this photo. Type the names yourself.'; return; }
+      const s0 = sp[0], put = (k, v) => { const i = form.elements[k]; if (i && !i.value.trim()) i.value = v == null ? '' : v; };
+      put('common_name', (s0.common_name || '').split(',')[0].trim() || s0.scientific_name); put('scientific_name', s0.scientific_name); put('genus', (s0.scientific_name || '').split(' ')[0]); put('family', s0.family || '');
+      put('id_confidence', Math.round((s0.probability || 0) * 100)); put('id_basis', 'Suggested by the picture checker on this computer from the first photo. Check it.');
+      if (st) st.textContent = `Filled in: ${s0.common_name || s0.scientific_name} (${Math.round((s0.probability || 0) * 100)}% likely)${sp.length > 1 ? '. Other guesses: ' + sp.slice(1, 3).map(x => x.common_name || x.scientific_name).join(', ') : ''}${m && m.confidence >= .6 ? `. It may be a plant you already have: ${m.code} ${m.common_name || ''}` : ''}. Empty fields were filled; anything you had typed was left alone.`;
+      const cn = form.elements.common_name; if (cn) cn.focus();
+    } catch (e) { if (st) st.textContent = e.message; }
+    finally { el.disabled = false; }
+  },
   async sevsave() {
     if (!(await needName())) return;
     const err = document.getElementById('sev-err');
@@ -237,8 +254,9 @@ const acts = {
       const fields = { ...P.fields, site: SEV.site, home_id: SEV.home || '',
         id_basis: P.pick >= 0 ? `Suggested by the picture checker on this computer from ${n} photo${n === 1 ? '' : 's'} (${P.fields.id_confidence || 0}% likely). Check it.` : '' };
       return { fields, photos: SEV.photos.filter(p => p.group === gi).map(p => p.file) }; });
+    const shared = SEV.photos.filter(p => p.rel === 'all').map(p => p.file);      // 1.38.0: wide shots go on every plant
     SEV.busy = true; const b = document.querySelector('[data-act=sevsave]'); if (b) b.disabled = true;
-    try { const r = await api('POST', '/api/plants/several', { plants }); ALL = await api('GET', '/api/plants?status=all'); META = await api('GET', '/api/meta'); SEV.done = r.codes; SEV.busy = false; sevDraw('.notice.ok'); toast(`${r.codes.length} plants added`); }
+    try { const r = await api('POST', '/api/plants/several', { plants, shared }); ALL = await api('GET', '/api/plants?status=all'); META = await api('GET', '/api/meta'); SEV.done = r.codes; SEV.busy = false; sevDraw('.notice.ok'); toast(`${r.codes.length} plants added`); }
     catch (e) { SEV.busy = false; if (b) b.disabled = false; if (err) err.textContent = e.message; }
   },
   idphmore() { IDPH.shown += IDPH_PAGE; drawIdPhotos(); const rows = document.querySelectorAll('#idph-tbl tbody tr'); const a = rows[IDPH.shown - IDPH_PAGE] && rows[IDPH.shown - IDPH_PAGE].querySelector('a'); if (a) a.focus(); },
@@ -462,13 +480,13 @@ const acts = {
   async care(el) {
     if (!(await needName())) return;
     const k = el.dataset.kind, code = el.dataset.code;
-    await guard(async () => { const r = await api('POST', '/api/care', { plant: code, kind: k }); careUndoToast((k === 'water' ? 'Watered: ' : 'Checked, still moist: ') + el.dataset.name, r && r.ids, code); await careRefresh(code); });
+    await guard(async () => { const r = await api('POST', '/api/care', { plant: code, kind: k }); careUndoToast((k === 'water' ? 'Watered: ' : 'Checked, still moist: ') + el.dataset.name + offWhen(r), r && r.ids, code); await careRefresh(code); });
   },
   async careall(el) {
     const codes = el.dataset.codes.split(',').filter(Boolean); if (!codes.length) return;
     if (!(await needName())) return;
     if (!(await confirmBox(`Mark ${codes.length} plants as watered today?`, 'Each one gets a "Watered" entry for today in its care log. You can remove any of them on the plant\'s page.', 'Mark as watered'))) return;
-    await guard(async () => { const r = await api('POST', '/api/care', { plants: codes, kind: el.dataset.kind }); careUndoToast(codes.length + ' plants marked as watered', r && r.ids); await careRefresh(); });
+    await guard(async () => { const r = await api('POST', '/api/care', { plants: codes, kind: el.dataset.kind }); careUndoToast(codes.length + ' plants marked as watered' + offWhen(r), r && r.ids); await careRefresh(); });
   },
   async waterall() {                    // 1.21.0: Plants page, every plant the filters show
     const shown = filteredPlants().filter(p => !isArch(p)); if (!shown.length) return;
@@ -480,7 +498,8 @@ const acts = {
       if (!(await confirmBox(`Mark ${todo.length} plant${todo.length === 1 ? '' : 's'} as watered today?`,
         `These are the plants shown with your filters.${skip ? ` ${skip} of them ${skip === 1 ? 'was' : 'were'} already watered today and ${skip === 1 ? 'is' : 'are'} skipped.` : ''} Each gets a "Watered" entry for today in its care log.`, 'Mark as watered'))) return;
       const r = await api('POST', '/api/care', { plants: todo.map(p => p.code), kind: 'water' });
-      careUndoToast(`${r.ids.length} plant${r.ids.length === 1 ? '' : 's'} marked as watered${skip ? ` (${skip} already watered today were skipped)` : ''}`, r.ids);
+      const nn = r.offline ? todo.length : r.ids.length;
+      careUndoToast(`${nn} plant${nn === 1 ? '' : 's'} marked as watered${skip ? ` (${skip} already watered today were skipped)` : ''}${offWhen(r)}`, r.ids);
     });
   },
   careother(el) { return careDialog(el.dataset.code, el.dataset.name); },
