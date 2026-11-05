@@ -941,6 +941,69 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
 
+## Finding your way, summer heat for each plant, probe calibration and the health of the app (from 1.36.0)
+
+### Every page in its section's row
+
+The pages of each section are listed in the row under the top bar, and the Pages menu and the search window list the same pages. From 1.36.0 that includes the ones that used to hide behind a button: in **Care**, the **Cold-night checklist**, **Coming inside** (getting plants ready to come inside) and **Back outside** sit next to Winter plan, Fertilizer, Grow lights and Pots; **Discover** has **Around home**; **Settings** has **Offline decisions**. The features are also reachable from where you would think of them: a plant's page has an **Every plant coming inside** button in its "Getting ready to come inside" section, a plant card on the Plants page links to that plant's pest check when its winter plan is to move indoors, and Today's "Getting ready to come inside" section opens the Coming inside page. A page can open at one of its sections with `?sec=` after its address (`#/plant/P-001?sec=inside`).
+
+Where everything lives, one line per page:
+
+| Section | Page | What it is for | Also reached from |
+|---|---|---|---|
+| Today | Today (`#/`) | What needs you today: cold nights, sensors, water, feed, Shopping alerts, requests | The app opens here |
+| Plants | All plants (`#/plants`) | Every plant, with filters; the cards | `H` key, labels, the Weather page's summer counts |
+| Plants | Groups | Smart and hand-picked groups | Plant pages, the Group filter |
+| Plants | Add plants | One plant, or several from photos | The Plants page's Add a plant |
+| Plants | Mushrooms | Finds and their safety notes | |
+| Plants | Rooms and spots | Rooms, areas and spots; their labels | Plant pages (Where), labels |
+| Plants | Photos | Unassigned photos and the list to photograph | Plant cards, Today |
+| Plants | Labels | QR labels for plants, rooms and spots | Plant pages (Label) |
+| Care | Winter plan | The plan for the season, plant by plant | |
+| Care | Cold-night checklist | Which plants to bring in or cover tonight | The cold-night banner, Today, notifications |
+| Care | Coming inside | Pest checks before plants come in, with each plant's status | Plant pages, plant cards, Today |
+| Care | Back outside | Which plants can go back out in spring | The Winter plan |
+| Care | Fertilizer | Your fertilizers, the calendar and the log | Plant pages (Nutrients), Today |
+| Care | Grow lights | Lights, spots and the layout | Plant pages (Sunlight) |
+| Care | Pots and trays | Your containers | Plant pages |
+| Weather | Weather | Forecast, history, charts, your climate | Plant pages (Current conditions) |
+| Weather | Sensors | Your sensors, calibration, set-up | Plant pages (Water and soil), Today |
+| Weather | Homes and places | The places whose weather is tracked | Settings, the Location button |
+| Discover | Identify | Name a plant from a photo | Plant pages (Plant identification) |
+| Discover | Library | Species, facts and photos | Plant pages, Identify |
+| Discover | Around home | What is flowering, fruiting or found near home this month | The Library |
+| Discover | Wishlist | Plants you want | Library species pages |
+| Discover | Shopping | Supplies and plants you are watching, stores, the shopping list | Today's alerts, Pots and Fertilizer ("watch for it") |
+| Settings | Settings | People, display, notifications, health of the app, debug | The Display button |
+| Settings | Offline use | The copy on this device, changes waiting, saved pages | The Offline banner |
+| Settings | Offline decisions | Changes that clashed while offline | The Offline page |
+| Settings | Backups | Backups, restore, the second copy | Health of the app |
+| Settings | Audit log | Every change | Plant pages (History) |
+
+### Summer heat for each plant
+
+Under **About this plant**, after the hardiness zones: how many days a usual year reach the plant's "Heat damage above" temperature and in which months, with a verdict in words and a mark: **✓ Summer heat is fine for it here**, **▲ A few days a summer are too hot for it**, or **■ Summer heat is hard on it here**; and, when the plant has a published AHS heat zone range (batch B6 adds ranges with sources for 20 of your plants; add others with Edit, under About this plant), whether your place is **within**, **hotter than** or **cooler than** its range. The Plants page gets a **Summer here** filter under More filters, and the Weather page's "Your climate" section counts your plants by verdict, each count a link to the filtered list.
+
+### Calibrating a soil probe
+
+If a sensor sends its probe's raw volts (`soil_raw`; the ESPHome file does), its card has **Calibrate the soil probe**: hold the probe in dry air and press **This is dry air**, then put it in a glass of water and press **This is water**. From then on the app works out the percentage itself from the volts, so the numbers in the ESPHome file no longer matter. **Start over** clears both.
+
+### Soil moisture on the plant's page
+
+With a sensor in its pot, a plant's **Timeline** starts with the soil moisture over the last 60 days, the waterings marked (pressed, or seen by the sensor) and the plant's range shaded; its fertilizer calendar shows each day's average ("Soil 43%") and the waterings.
+
+### Health of the app
+
+The first card on **Settings**: the version, counts, the last backup and its second copy, the last weather update and store check, open problems, and the data folder's size with the free space on its disk, each line with a ✓ or a !. The Jobs and Problems windows open from the same card.
+
+### Clear the saved pages
+
+Pages you have opened show straight away from what was saved last time and are checked again just after. If something looks stale, the Offline page's **Clear the saved pages** empties that store.
+
+### Buttons that say what they do
+
+Every Remove, Change, Delete and Download button in a list now names the thing it acts on for screen readers ("Remove the device iPhone"), and the smoke test refuses bare names from now on.
+
 ## Your sensors (from 1.35.0)
 
 **Weather → Sensors** (`#/sensors`) shows every sensor that sends readings, one card each, the ones that need a look first: its newest values in large type (soil moisture, air temperature, humidity, light now, root-zone temperature, soil pH, pot weight), a small line of the last 24 hours for each, the lowest and highest of the day, and how much the soil moisture and weight changed since a day before. Daily light is worked out once a day of light readings is in.
