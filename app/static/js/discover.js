@@ -183,6 +183,9 @@ async function idNot(el) {
     P.ex = P.ex || { species: [], genera: [] }; (genus ? P.ex.genera : P.ex.species).push(name);
     if (canChange()) api('POST', '/api/identify/reject', { name, genus }).catch(() => null);
     await sevIdentify(+el.dataset.g, true);
+  } else if (ctx === 'plant') {                // the plant's page: the rejection sticks to the plant
+    const code = el.dataset.g; if (!code) return;
+    await guard(async () => { await api('POST', '/api/identify/reject', { name, genus, plant: code }); await plantIdentify(code); });
   } else if (ctx === 'new') {
     NEWID.ex = NEWID.ex || { species: [], genera: [] }; (genus ? NEWID.ex.genera : NEWID.ex.species).push(name);
     if (canChange()) api('POST', '/api/identify/reject', { name, genus }).catch(() => null);
@@ -199,6 +202,19 @@ async function idAddShot(blob, url) {
     idPaint(ID.shot.result, ID.shot.url);
     await idPopup(ID.shot.result);
   } catch (e) { toast(e.message, true); }
+}
+// 1.40.0: a plant's page: its own photos through the one identifier, with its own "Not this" list; "Use this name" renames the plant
+let PLANTID = null;
+async function plantIdentify(code, plantnet) {
+  const box = document.getElementById('plant-id'); if (!box) return;
+  box.innerHTML = rend(html`<p class="muted" role="status">Checking its photos${ID.keys && ID.keys.plantnet ? ' with this computer and Pl@ntNet' : ''}…</p>`);
+  try {
+    if (!ID.keys) { try { ID.keys = await api('GET', '/api/identify/settings'); } catch (e) { /* fine */ } }
+    const r = await api('POST', '/api/plants/' + enc(code) + '/identify', { plantnet: plantnet || 'auto' }); PLANTID = { code, r };
+    box.innerHTML = rend(html`<h3>What its photos say it could be</h3>${idNamesPanel(r, { src: 'plant', id: 'plant-splist', use: 'plantuse', reject: 'plant', code })}
+      ${ID.keys && ID.keys.plantnet && !r.plantnet ? html`<p class="row"><button class="btn small ghost" type="button" data-act="plantask" data-code="${code}">Ask Pl@ntNet as well</button></p>` : ''}`);
+    const h = box.querySelector('h3'); if (h) { h.setAttribute('tabindex', '-1'); h.focus(); }
+  } catch (e) { box.innerHTML = rend(html`<div class="notice bad" role="alert">${e.message}</div>`); }
 }
 async function idMoreFile(input) {
   const f = input.files && input.files[0]; input.value = '';
@@ -334,8 +350,8 @@ function spCard(s, i, src, withAdd, o) {
     <div class="id-acts">${spLinks(s)}${withAdd ? s.kingdom === 'Fungi' ? html`<button class="btn small" type="button" data-act="idfind" data-src="${src}" data-i="${i}">Record a mushroom find</button>`
       : html`<button class="btn small" type="button" data-act="idnew" data-src="${src}" data-i="${i}">Add as a new plant</button>` : ''}
       ${o.use ? html`<button class="btn small" type="button" data-act="${o.use}" data-i="${i}">Use this name</button>` : ''}
-      ${o.reject ? html`<button class="btn small ghost" type="button" data-act="idnot" data-ctx="${o.reject}" data-g="${o.pick == null ? '' : o.pick}" data-name="${s.scientific_name}" aria-label="Not this: ${s.scientific_name}">Not this</button>
-      <button class="btn small ghost" type="button" data-act="idnot" data-ctx="${o.reject}" data-g="${o.pick == null ? '' : o.pick}" data-name="${s.genus || (s.scientific_name || '').split(' ')[0]}" data-genus="1" aria-label="Not this genus: ${s.genus || (s.scientific_name || '').split(' ')[0]}">Not this genus</button>` : ''}</div></li>`;
+      ${o.reject ? html`<button class="btn small ghost" type="button" data-act="idnot" data-ctx="${o.reject}" data-g="${o.pick == null ? (o.code || '') : o.pick}" data-name="${s.scientific_name}" aria-label="Not this: ${s.scientific_name}">Not this</button>
+      <button class="btn small ghost" type="button" data-act="idnot" data-ctx="${o.reject}" data-g="${o.pick == null ? (o.code || '') : o.pick}" data-name="${s.genus || (s.scientific_name || '').split(' ')[0]}" data-genus="1" aria-label="Not this genus: ${s.genus || (s.scientific_name || '').split(' ')[0]}">Not this genus</button>` : ''}</div></li>`;
 }
 function idPaint(r, picUrl, live) {
   const res = document.getElementById('id-res'); if (!res) return;
@@ -1382,6 +1398,21 @@ Object.assign(acts, {
   idsnap: () => idSnap(),
   idsnapmore: () => idSnapMore(),
   idnot: el => idNot(el),
+  plantid: el => plantIdentify(el.dataset.code),
+  plantask: el => plantIdentify(el.dataset.code, 'yes'),
+  async plantuse(el) {                  // rename the plant to the chosen name (the page's own fields; the old name stays in the history)
+    const s0 = PLANTID && (PLANTID.r.species || [])[+el.dataset.i]; if (!s0) return;
+    if (!(await needName())) return;
+    const name = (s0.common_name || '').split(',')[0].trim() || s0.scientific_name;
+    if (!(await confirmBox(`Name it ${name}?`, `${s0.scientific_name}${s0.family ? ', ' + s0.family : ''}. The common and scientific names, genus, family and ID confidence change; the old ones stay in the page history.`, 'Use this name'))) return;
+    await guard(async () => {
+      const p = await api('GET', '/api/plants/' + enc(PLANTID.code));
+      const fields = { common_name: name, scientific_name: s0.scientific_name, genus: (s0.scientific_name || '').split(' ')[0], family: s0.family || p.family, id_confidence: Math.round((s0.probability || 0) * 100),
+        id_basis: `Suggested by ${(s0.sources || ['the picture checker on this computer']).map(w => w === 'this computer' ? 'the picture checker on this computer' : w).join(' and ')} from the plant's photos. Check it.` };
+      await api('PUT', '/api/plants/' + enc(PLANTID.code), { base_version: p.version, fields, note: 'Named from its photos' });
+      toast(`${PLANTID.code} is now ${name}`); await reloadPlant();
+    });
+  },
   idmoresp(el) { const l = document.getElementById(el.dataset.list || 'id-splist'); if (!l) return; const open = l.classList.toggle('id-fold'); el.setAttribute('aria-expanded', String(!open)); el.textContent = open ? `Show ${l.children.length - 5} more names` : 'Show fewer names'; if (!open) { const sixth = l.children[5]; if (sixth) { sixth.setAttribute('tabindex', '-1'); sixth.focus(); } } },
   idopen: el => { idStop(); go('#/plant/' + enc(el.dataset.code)); },
   idask: el => idAskOutside(el.dataset.who),

@@ -446,6 +446,24 @@ def several_create():
     c.commit()
     return jsonify(codes=made), 201
 
+@app.route('/api/plants/<code>/identify', methods=['POST'])
+def plant_identify(code):
+    """1.40.0: the names for a plant from its own photos (newest six, main photo first), with the plant's own "Not this" list applied.
+    {plantnet: 'auto'|'yes'|'no'}"""
+    c = db()
+    r = plant_row(c, code)
+    b = request.get_json(silent=True) or {}
+    files = [x[0] for x in c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC, id DESC LIMIT 6', (r['id'],))]
+    pics = []
+    for f in files:
+        path = os.path.join(PHOTO_DIR, f)
+        if os.path.exists(path):
+            with open(path, 'rb') as fh: pics.append(fh.read())
+    if not pics: abort(400, 'This plant has no photos to check')
+    out = identify_pictures(c, pics, vscope(c, request.args.get('scope', 'common')), plant_code=code, plantnet=b.get('plantnet') or 'auto', n=10)
+    out['matches'] = [m for m in out['matches'] if m['code'] != code]          # its own photos are not a find
+    return jsonify(out)
+
 @app.route('/api/plants/<code>', methods=['PUT'])
 def update_plant(code):
     c = db()
