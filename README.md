@@ -950,7 +950,7 @@ Identify, **Add a plant** and **Several plants from photos** now share one ident
 3. The likeliest **genus** and **family** are worked out over the whole list. When no species fits, those are the safer answers (Pl@ntNet named Ethan's split rocks *Pleiospilos nelii* at 96% where the computer alone had six wrong names; this is why the key matters).
 4. **Not this** / **Not this genus** on every name: the name (or the whole genus) leaves the list, the photos are checked again without it, and the choice is logged in the audit log.
 
-On **Several plants from photos**, each plant's photos are checked together as soon as you have sorted them (and again whenever you change the sorting); each plant has **Check the photos again** and **Ask Pl@ntNet about this plant**. On **Add a plant**, "Fill in the names from the first photo" uses all the photos on the form and shows the list with **Use this name** on each.
+On a plant's page, **Check the name from its photos** (under Plant identification) runs all its photos through the same identifier; **Use this name** renames the plant and a "Not this" there sticks to that plant. On **Several plants from photos**, each plant's photos are checked together as soon as you have sorted them (and again whenever you change the sorting); each plant has **Check the photos again** and **Ask Pl@ntNet about this plant**. On **Add a plant**, "Fill in the names from the first photo" uses all the photos on the form and shows the list with **Use this name** on each.
 
 ## Room for the content (from 1.39.1)
 
