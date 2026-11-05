@@ -51,7 +51,7 @@ async function notifyDialog() {
       <p class="hint">These are your own choices, saved for your sign-in. Cold nights and what is due are for the home you start on.</p></fieldset>
     <fieldset class="opt-group"><legend>Your devices (${d.devices.length})</legend>
       ${d.devices.length ? html`<ul class="ntf-list">${d.devices.map(x => html`<li>${x.device || 'A device'} <small class="muted">since ${when(x.created_at)}${x.last_ok ? `, last message ${when(x.last_ok)}` : ''}${x.fails ? `, ${x.fails} failed` : ''}</small>
-        <button class="btn ghost small" type="button" data-act="pushrm" data-id="${x.id}">Remove</button></li>`)}</ul>` : html`<p class="muted">None yet.</p>`}</fieldset>
+        <button class="btn ghost small" type="button" data-act="pushrm" data-id="${x.id}" aria-label="Remove the device ${x.device}">Remove</button></li>`)}</ul>` : html`<p class="muted">None yet.</p>`}</fieldset>
     <div class="row"><button class="btn" value="ok" autofocus>Done</button></div></form>`;
   const open = document.querySelector('dialog[open] form.ntf-dlg');
   if (open) { open.outerHTML = rend(box); return; }

@@ -239,7 +239,7 @@ async function viewWhere() {
       <span class="muted">${a.plants} plant${a.plants === 1 ? '' : 's'}${a.lights ? `, ${a.lights} light spot${a.lights === 1 ? '' : 's'}` : ''}. Counts as: ${a.site}.</span>
       ${can ? html`<button class="btn small ghost wh-del" type="button" data-act="whareadel" data-id="${a.id}" data-name="${a.name}">Remove ${a.name}</button>` : ''}</div>
     <ul class="wh-spots">${a.spots.map(sp => html`<li><label class="f">Spot<input type="text" maxlength="60" value="${sp.name}" data-ed="spot" data-id="${sp.id}" data-k="name" ${can ? '' : raw('readonly')}></label>
-      <span class="muted">${sp.plants} plant${sp.plants === 1 ? '' : 's'}</span>${can ? html`<button class="btn small ghost" type="button" data-act="whspotdel" data-id="${sp.id}" data-name="${sp.name}">Remove</button>` : ''}</li>`)}
+      <span class="muted">${sp.plants} plant${sp.plants === 1 ? '' : 's'}</span>${can ? html`<button class="btn small ghost" type="button" data-act="whspotdel" data-id="${sp.id}" data-name="${sp.name}" aria-label="Remove the spot ${sp.name}">Remove</button>` : ''}</li>`)}
       ${can ? html`<li><form class="row wh-add" data-form="whspotadd" data-aid="${a.id}"><label class="f">New spot in ${a.name}<input type="text" name="name" maxlength="60" placeholder="${a.side === 'out' ? 'Pallet shelf' : 'Brown hutch'}"></label><button class="btn small" type="submit">Add spot</button></form></li>` : ''}</ul></li>`;
   const sideHtml = (h, side) => html`<section class="blk wh-side"><h3>${side === 'out' ? 'Outside' : 'Inside'}</h3><ul class="wh-areas">${h.areas.filter(a => a.side === side).map(areaHtml)}</ul>
     ${can ? html`<form class="row wh-add" data-form="whareaadd" data-home="${h.home.is_home ? '' : h.home.id}" data-side="${side}"><label class="f">New ${side === 'out' ? 'area outside' : 'room inside'}<input type="text" name="name" maxlength="60" placeholder="${side === 'out' ? 'Patio' : 'Dining room'}"></label>
@@ -449,7 +449,7 @@ function peopleRows(P) {
   return html`<ul class="people">${P.people.map(p => html`<li><span><strong>${p.name}</strong>${p.login === self ? ' (you)' : ''}<br><span class="hint">${p.login}. Last here ${when(p.last_seen)}.</span></span>
     <label class="f">What ${p.name} can do<select data-f="prole" data-login="${p.login}">${P.roles.map(r => html`<option value="${r.key}" ${r.key === p.role ? raw('selected') : ''}>${r.label}</option>`)}</select></label>
     ${P.homes && P.homes.length > 1 ? html`<label class="f">Starts on<select data-f="phome" data-login="${p.login}">${P.homes.map(h => html`<option value="${h.id}" ${(p.home_id || P.main_home) === h.id ? raw('selected') : ''}>${h.name}</option>`)}</select></label>` : ''}
-    ${p.login === self ? '' : html`<button class="btn small danger" type="button" data-act="pdel" data-login="${p.login}" data-name="${p.name}">Remove</button>`}</li>`)}</ul>`;
+    ${p.login === self ? '' : html`<button class="btn small danger" type="button" data-act="pdel" data-login="${p.login}" data-name="${p.name}" aria-label="Remove ${p.name} from the people list">Remove</button>`}</li>`)}</ul>`;
 }
 function peoplePaint(P) { const b = document.getElementById('people-box'); if (b) b.innerHTML = rend(peopleRows(P)); }
 

@@ -464,7 +464,7 @@ function placesBlock(W) {
         ${p.is_home ? '' : html`<button class="btn small ghost" type="button" data-act="placehome" data-id="${p.id}">Make main home</button>`}
         ${p.is_home ? '' : html`<button class="btn small ghost" type="button" data-act="placeplants" data-id="${p.id}" data-on="${p.plants_here ? '0' : '1'}">${p.plants_here ? 'No plants live here' : 'Plants live here'}</button>`}
         <button class="btn small ghost" type="button" data-act="placeonoff" data-id="${p.id}" data-on="${p.enabled ? '0' : '1'}">${p.enabled ? 'Stop hourly updates' : 'Start hourly updates'}</button>
-        ${p.is_home ? '' : html`<button class="btn small danger" type="button" data-act="placedel" data-id="${p.id}">Remove</button>`}</div></td></tr>`)}</tbody></table></div>
+        ${p.is_home ? '' : html`<button class="btn small danger" type="button" data-act="placedel" data-id="${p.id}" aria-label="Remove the place ${p.name}">Remove</button>`}</div></td></tr>`)}</tbody></table></div>
     <h3>Add a place</h3>
     <form class="todo-add" data-form="placesearch"><label style="flex:1 1 18rem;font-weight:700">Town or city<input type="text" name="q" placeholder="Baraboo" autocomplete="off"></label><button class="btn" type="submit" style="align-self:end">Search</button></form>
     <div id="place-results" aria-live="polite"></div>
@@ -640,7 +640,7 @@ function wtPager(T, where) {
     <button class="btn ghost small" type="button" data-act="wtpage" data-to="1" ${off(T.page <= 1)} title="Page 1, the ${newer}st rows">First page</button>
     <button class="btn ghost small" type="button" data-act="wtpage" data-d="-1" ${off(T.page <= 1)}>Previous page</button>
     <label class="pg-go">Page <input type="number" name="page" data-max="${T.pages}" value="${T.page}" inputmode="numeric" aria-label="Page number, 1 to ${T.pages}"> of ${num(T.pages)}</label>
-    <button class="btn small" type="submit">Go</button>
+    <button class="btn small" type="submit">Go to that page</button>
     <button class="btn ghost small" type="button" data-act="wtpage" data-d="1" ${off(T.page >= T.pages)}>Next page</button>
     <button class="btn ghost small" type="button" data-act="wtpage" data-to="${T.pages}" ${off(T.page >= T.pages)} title="Page ${T.pages}, the ${older}st rows">Last page</button></form>`;
 }
