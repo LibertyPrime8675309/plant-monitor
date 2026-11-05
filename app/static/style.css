@@ -164,7 +164,7 @@ html:not([data-layout=single]):not([data-narrow="1"]) .plant>.pane{height:100%;o
 .jump{display:flex;gap:.4rem;flex-wrap:wrap;margin:0 0 1.2rem}
 html:not([data-layout=single]):not([data-narrow="1"]) .jump{position:sticky;top:-.25rem;z-index:5;background:var(--paper);padding:.4rem 0 .6rem;margin-top:-.25rem;border-bottom:1px solid var(--line)}
 .main-photo{background:var(--sheet);border:1px solid var(--line);padding:.5rem;display:block;width:100%;cursor:zoom-in}
-.main-photo img{display:block;width:100%;max-height:62vh;object-fit:contain;background:var(--line-2)}
+.main-photo img{display:block;width:100%;aspect-ratio:4/3;max-height:62vh;object-fit:contain;background:var(--line-2)}   /* 1.38.0: the box has its size before the photo arrives, so the page does not jump */
 .thumbs{display:flex;gap:.6rem;flex-wrap:wrap;margin:.7rem 0}
 .thumbs button{padding:0;border:3px solid transparent;background:none;cursor:pointer;width:4.5rem;height:4.5rem}
 .thumbs button[aria-current=true]{border-color:var(--cyan)}
@@ -370,7 +370,7 @@ h1,h2,h3,.l-body,.label{overflow-wrap:anywhere}
 .tl-pick select{width:100%}
 .tl-cmp{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:.6rem 0 1.4rem}
 .tl-fig{margin:0;border:2px solid var(--line);border-radius:8px;overflow:hidden;background:var(--sheet)}
-.tl-fig img{display:block;width:100%;height:auto;max-height:60vh;object-fit:contain;background:var(--line-2,var(--line))}
+.tl-fig img{display:block;width:100%;aspect-ratio:4/3;max-height:60vh;object-fit:contain;background:var(--line-2,var(--line))}
 .tl-fig figcaption{padding:.5rem .7rem}
 .tl-filter{border:0;padding:0;margin:.2rem 0 .8rem;display:flex;flex-wrap:wrap;gap:.4rem 1.2rem}
 .tl-filter legend{font:inherit;font-weight:700;padding:0;margin-bottom:.3rem;width:100%}
@@ -1383,6 +1383,7 @@ html[data-narrow="1"] #corner{left:0;right:0;bottom:0;flex-direction:row;flex-wr
 html[data-narrow="1"] #corner>button{flex:1 1 auto;justify-content:center;min-height:44px;line-height:1.25;padding:.25em .45em;gap:.35em;position:static;box-shadow:none}   /* 44px: the size of a fingertip, whatever the text size */
 html[data-narrow="1"] #corner #nav-tab{border:3px solid var(--ink);border-radius:0;left:auto;right:auto;bottom:auto;top:auto}
 html[data-narrow="1"] main{padding-bottom:calc(var(--pin-h,4rem) + 1.5rem)}
+html[data-narrow="1"] .sticky-save{bottom:var(--pin-h,4rem)}   /* 1.38.0: the Save bar sits above the bottom bar, not under it */
 html[data-narrow="1"] #job-badge{max-width:calc(100vw - 2rem)}
 html[data-narrow="1"] .ver{font-size:.8em;padding:.1em .35em}
 /* 1.26.0: tables too wide for the screen (app.js fitTables) become one box per row. The row's name is its title; each value follows
@@ -1449,7 +1450,11 @@ html[data-role=viewer] :is([data-act=wlcheck], [data-act=wldismiss]){display:non
 .sev-plant.sev-off{opacity:.65;border-style:dashed}
 .sev-pics{list-style:none;padding:0;margin:.6rem 0;display:flex;flex-wrap:wrap;gap:.8rem}
 .sev-pics li{display:flex;flex-direction:column;gap:.3rem;width:11rem;max-width:100%}
-.sev-pics img{width:11rem;max-width:100%;height:11rem;object-fit:cover;border-radius:6px}
+.sev-pics img{width:11rem;max-width:100%;height:11rem;object-fit:cover;border-radius:6px;background:var(--line-2)}
+.sev-rel{border:0;padding:0;margin:0}
+.sev-rel .chk{display:flex;gap:.4rem;align-items:flex-start;margin:.15rem 0;font-size:.95em}
+.sev-pics li{width:16rem}
+.sev-shared{border-style:double}
 .sev-names{border:0;padding:0;margin:.6rem 0}
 .sev-names legend{font-weight:700;padding:0}
 .sev-names .chk{display:flex;gap:.5rem;align-items:flex-start;margin:.3rem 0}
@@ -1616,6 +1621,7 @@ html[data-role=viewer] :is([data-act=snsedit],[data-act=snsrm]){display:none!imp
 .cal-steps li{margin:.4rem 0}
 .cal-now{font-size:1.15em}
 html[data-role=viewer] :is([data-act=snscal],[data-act=calstep]){display:none!important}
+html[data-role=viewer] :is([data-act=offiduse],[data-act=newfill]){display:none!important}   /* 1.38.0 */
 /* 1.36.0: the soil moisture chart on a plant's timeline, and the calendar badges */
 .mchart{width:100%;max-width:44rem;height:auto;color:var(--ink);display:block;margin:.4rem 0}
 .mc-grid{stroke:var(--line);stroke-width:1}

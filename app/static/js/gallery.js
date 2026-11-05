@@ -129,9 +129,10 @@ async function viewGallery(qs) {
   let todoN = 0, fcN = 0;
   await Promise.all([api('GET', '/api/to-photograph').then(t => { todoN = t.filter(x => !x.done).length; }).catch(() => {}),
     api('GET', '/api/for-claude?range=last').then(d => { fcN = d.counts.answers; }).catch(() => {})]);
+  const pend = (await offOps()).filter(o => o.url === '/api/plants' && o.method === 'POST' && !o.failed);   // 1.38.0: plants added without a connection
   return {
     title: '',
-    html: html`<div class="hero"><div><h1 id="g-title">${G.status === 'archived' ? 'Archived plants' : 'Outdoor plants'}</h1>
+    html: html`${pend.length ? html`<p class="notice off-note noprint" role="note"><strong>${pend.length} new plant${pend.length === 1 ? '' : 's'} waiting to be sent:</strong> ${pend.map(o => (o.body.fields || {}).common_name || o.temp).join(', ')}. ${pend.length === 1 ? 'It gets' : 'They get'} a page here once the plant server can be reached. <a href="#/offline">Offline page</a></p>` : ''}<div class="hero"><div><h1 id="g-title">${G.status === 'archived' ? 'Archived plants' : 'Outdoor plants'}</h1>
       <p class="muted">${META.counts.plants} plants and ${META.counts.photos} photos. Weather for ${placeName()}. Each plant has its own page, version number and change log.</p></div>
       <a class="btn" href="#/new">Add a plant</a></div>
     <div class="needs-bar" role="group" aria-label="What Claude needs from you">

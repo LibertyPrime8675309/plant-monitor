@@ -6,9 +6,9 @@
 // sw.js keeps the app's files, the answers its pages asked for and the photos. This part keeps changes made without a connection
 // in an outbox (IndexedDB, on this device only) and sends them when the server can be reached again, each with its own id so that
 // it is made only once. Mushroom finds added offline get a temporary code (NEW-…) until the server gives them their F- code.
-const OFF = { online: navigator.onLine, sending: false, n: 0, failed: 0, conflicts: 0, saved: null, queuedAt: 0, k: 0, dl: null, idq: 0 };
+const OFF = { online: navigator.onLine, reach: null, probing: false, sending: false, n: 0, failed: 0, conflicts: 0, saved: null, queuedAt: 0, k: 0, dl: null, idq: 0 };
 const OFF_OK = [                              // the changes that can wait for a connection
-  ['POST', /^\/api\/care$/], ['DELETE', /^\/api\/care\/\d+$/],
+  ['POST', /^\/api\/care$/], ['DELETE', /^\/api\/care\/\d+$/], ['POST', /^\/api\/plants$/],
   ['PUT', /^\/api\/plants\/[^/]+$/], ['POST', /^\/api\/plants\/[^/]+\/(site|status|photos)$/],
   ['POST', /^\/api\/fungi$/], ['PUT', /^\/api\/fungi\/[^/]+$/], ['POST', /^\/api\/fungi\/[^/]+\/(status|photos)$/], ['PATCH', /^\/api\/fungi\/photos\/\d+$/], ['DELETE', /^\/api\/fungi\/photos\/\d+$/],
   ['PUT', /^\/api\/library\/notes$/], ['PUT', /^\/api\/wishlist$/], ['DELETE', /^\/api\/wishlist$/]];
@@ -47,6 +47,7 @@ function offWords(op) {                       // what a waiting change is, in wo
   if (/\/site$/.test(u)) return `${code}: moved to ${b.site}`;
   if (/\/status$/.test(u)) return `${code}: ${b.archived ? 'archived' : 'brought back'}`;
   if (/\/photos$/.test(u)) { const n = (op.form || []).filter(p => p.blob).length; return `${code}: ${n} photo${n === 1 ? '' : 's'} added`; }
+  if (u === '/api/plants') return `New plant ${op.temp}${b.fields && b.fields.common_name ? ': ' + b.fields.common_name : ''}`;
   if (/^\/api\/plants\//.test(u)) return `${code}: edited ${Object.keys(b.fields || {}).join(', ') || 'details'}`;
   if (u === '/api/fungi') return `New mushroom find ${op.temp}${b.fields && b.fields.name ? ': ' + b.fields.name : ''}`;
   if (/^\/api\/fungi\/photos\//.test(u)) return 'A mushroom photo changed';
@@ -65,6 +66,27 @@ async function offPatch(url, fn) {            // so the page shows a change made
     await c.put(url, new Response(JSON.stringify(j), { status: 200, headers: r.headers }));
   } catch (e) { /* only for show */ }
 }
+// 1.38.0: a watering or a "still moist" made offline changes the saved Today answer (/api/water) the way the server would, so the
+// plant leaves the Water list at once, and the plant's care log shows the entry as waiting. The server's own answer replaces it when sent.
+const offDayAdd = (d, n) => { const t = new Date(d + 'T12:00:00'); t.setDate(t.getDate() + n); return t.toISOString().slice(0, 10); };
+const offDayDiff = (a, b) => Math.round((new Date(a + 'T12:00:00') - new Date(b + 'T12:00:00')) / 86400000);
+async function offCareSeen(kind, codes, day, op) {
+  if (!['water', 'check'].includes(kind)) return;
+  await offPatch('/api/water', W => {
+    for (const st of W.plants || []) {
+      if (!codes.includes(st.code)) continue;
+      const every = Math.max(1, st.every || 1);
+      if (kind === 'water') { st.last_water = day; st.next = offDayAdd(day, every); }
+      else { st.last_check = day; const n2 = offDayAdd(day, Math.max(1, Math.round(every / 3))); st.next = st.next && st.next > n2 ? st.next : n2; }
+      const od = offDayDiff(W.today || todayStr(), st.next);
+      st.overdue = od; st.state = od >= 0 ? 'due' : od === -1 ? 'soon' : 'ok';
+    }
+  });
+  for (const code of codes) await offPatch('/api/care?n=12&plant=' + enc(code), log => {
+    if (Array.isArray(log)) log.unshift({ id: 'off-' + op.id, plant_code: code, kind, done_on: day, note: op.body.note || '', created_by: op.who, created_at: op.made, pending: true });
+  });
+}
+const offWhen = r => (r && r.offline ? ' (kept on this device; sent when the plant server can be reached)' : '');   // 1.38.0: said in the message after a change made offline
 async function offFormParts(form) { return [...form.entries()].map(([k, v]) => (v instanceof Blob ? { k, blob: v, name: v.name || 'photo.jpg' } : { k, v: String(v) })); }
 async function offQueue(method, url, body, form) {
   if (ME().role === 'viewer') { const e = new Error('You can only view, so nothing can be saved.'); e.status = 403; throw e; }
@@ -72,7 +94,12 @@ async function offQueue(method, url, body, form) {
     who: cleanName(viaTS() ? ME().name : getName()) || 'Unknown', made: new Date().toISOString(), device: offDevice(), place: PLACE || null };
   const path = url.split('?')[0];
   let shim = { offline: true };
-  if (path === '/api/care' && method === 'POST') { if (!op.body.done_on) op.body.done_on = todayStr(); shim = { ids: [], skipped: [], water: [], offline: true }; }
+  if (path === '/api/care' && method === 'POST') {
+    if (!op.body.done_on) op.body.done_on = todayStr();
+    const codes = op.body.plants || (op.body.plant ? [op.body.plant] : []);
+    shim = { ids: [], skipped: [], water: codes, offline: true };
+    await offCareSeen(op.body.kind, codes, op.body.done_on, op);   // 1.38.0: Today's rows follow at once, not only after it is sent
+  }
   const pend = path.match(/^\/api\/fungi\/(NEW-[a-z0-9-]+)(\/[a-z]+)?$/i);
   if (pend) {                                  // a find that has not been sent yet: change the waiting record itself
     const f = await idbGet('finds', pend[1]); if (!f) throw new Error('That find is not on this device any more.');
@@ -82,6 +109,10 @@ async function offQueue(method, url, body, form) {
     f.version++; await idbPut('finds', f);
     OFF.queuedAt = Date.now(); offPaint();
     return Object.assign(await offFindDict(f), { offline: true, added: [] });
+  }
+  if (path === '/api/plants' && method === 'POST') {            // 1.38.0: a plant added without a connection waits with a NEW- code
+    op.temp = 'NEW-' + offId().slice(-10);
+    shim = Object.assign({}, op.body.fields || {}, { code: op.temp, version: 1, offline: true });
   }
   if (path === '/api/fungi' && method === 'POST') {
     op.temp = 'NEW-' + offId().slice(-10);
@@ -119,15 +150,49 @@ async function offFindDict(f) {                // a waiting find, in the shape t
   return d;
 }
 async function offPendingFinds() { return Promise.all((await idbAll('finds')).map(offFindDict)); }
-async function offIdQueue(url, form) {
+async function offIdQueue(url, form, opt) {    // 1.38.0: opt {ref, kind: 'plant', quiet} for the first photo of a plant added offline
   const parts = await offFormParts(form), img = parts.find(p => p.blob);
   if (!img) throw new Error('No picture to keep.');
   const scope = new URLSearchParams(url.split('?')[1] || '').get('scope') || 'common';
-  await idbPut('idq', { id: offId(), made: new Date().toISOString(), scope, blob: img.blob, ref: MUCUR && location.hash.startsWith('#/fungi/') ? MUCUR.code : null, result: null });
+  const ref = opt && opt.ref ? opt.ref : MUCUR && location.hash.startsWith('#/fungi/') ? MUCUR.code : null;
+  await idbPut('idq', { id: offId(), made: new Date().toISOString(), scope, blob: img.blob, ref, kind: opt && opt.kind ? opt.kind : ref ? 'find' : null, result: null });
   OFF.idq++; offPaint();
+  if (opt && opt.quiet) return;
   const e = new Error('You are offline. The picture is kept on this device and will be checked when you are back online; the answer will be on the Offline page.'); e.queued = true; throw e;
 }
-function offSeen(h) { if (h && h !== 'none') OFF.saved = h; }          // route() clears it; any saved answer marks the page
+function offSeen(h) { if (h && h !== 'none') OFF.saved = h; if (h) offDown(); else offUp(); }          // route() clears it; any saved answer marks the page
+// 1.38.0: whether the plant server can be reached is remembered (OFF.reach), not only whether the phone has a network: with Tailscale
+// off, the phone is "online" but the server is out of reach. While it is out of reach the app checks again every 30 seconds, when the
+// network comes back, when the app is brought to the front, and when "Try to connect now" is pressed; then it sends the outbox and
+// reloads a page that was showing the saved copy.
+let OFF_TIMER = null;
+function offDown() {
+  const was = OFF.reach; OFF.reach = 'no';
+  if (was !== 'no') offPaint();
+  if (!OFF_TIMER) OFF_TIMER = setInterval(() => { if (!document.hidden) offProbe(); }, 30000);
+}
+function offUp() {
+  if (OFF_TIMER) { clearInterval(OFF_TIMER); OFF_TIMER = null; }
+  if (OFF.reach !== 'no') { OFF.reach = 'yes'; return; }
+  OFF.reach = 'yes'; offPaint();
+  toast('Connected to the plant server again.');
+  offSync();
+  if (!document.querySelector('main form[data-form]') || location.hash.startsWith('#/offline')) route();   // the page was showing what this device saved: show the real thing (not while you are filling in a form)
+  else document.querySelectorAll('.off-note').forEach(n => n.remove());
+}
+async function offProbe(say) {
+  if (OFF.probing) return false;
+  OFF.probing = true;
+  let ok = false;
+  try {
+    const ac = new AbortController(), t = setTimeout(() => ac.abort(), 8000);
+    const r = await fetch('/api/offline/status?nosave=1', { cache: 'no-store', headers: { 'X-Probe': '1' }, signal: ac.signal });
+    clearTimeout(t); ok = r.ok && !r.headers.get('X-Offline-Saved');
+  } catch (e) { ok = false; }
+  OFF.probing = false;
+  if (ok) offUp(); else { offDown(); if (say) toast(navigator.onLine ? 'The plant server still cannot be reached. Is Tailscale on, and the computer awake?' : 'This device has no network connection.', true); }
+  return ok;
+}
 async function offCount() {
   const ops = await offOps(); OFF.n = ops.filter(o => !o.failed).length; OFF.failed = ops.filter(o => o.failed).length;
   OFF.idq = (await idbAll('idq')).filter(x => !x.result).length;
@@ -135,7 +200,7 @@ async function offCount() {
 async function offPaint() {
   await offCount();
   const b = document.getElementById('net'); if (!b) return;
-  const on = navigator.onLine && !OFF.forced;
+  const on = navigator.onLine && OFF.reach !== 'no';
   const bits = [OFF.sending === true ? `Sending ${OFF.n}…` : on ? 'Online' : 'Offline'];
   if (OFF.sending !== true && OFF.n) bits.push(`${OFF.n} to send`);
   if (OFF.failed) bits.push(`${OFF.failed} not sent`);
@@ -158,7 +223,7 @@ async function offSync() {
   try {
     for (const op of ops) {
       const url = op.url.replace(/NEW-[a-z0-9-]+/gi, m => map[m] || m);
-      if (/NEW-/i.test(url)) { op.failed = true; op.error = 'The find it belongs to could not be sent.'; await idbPut('outbox', op); problems++; continue; }
+      if (/NEW-/i.test(url)) { op.failed = true; op.error = 'The plant or find it belongs to could not be sent.'; await idbPut('outbox', op); problems++; continue; }
       const h = { 'X-Editor': op.who, 'X-Offline-Op': op.id, 'X-Offline-Made': op.made, 'X-Offline-Device': op.device };
       if (op.place) h['X-Place'] = op.place;
       let body;
@@ -184,8 +249,11 @@ async function offSync() {
 }
 async function offIdRun() {                    // pictures taken for Identify while offline
   let n = 0;
+  const map = await offKv('idmap', {});
   for (const x of await idbAll('idq')) {
     if (x.result) continue;
+    if (x.ref && map[x.ref]) x.ref = map[x.ref];                 // 1.38.0: a plant added offline has its P- code now
+    if (x.ref && /^NEW-/i.test(x.ref)) continue;                 // its plant has not been sent yet: the names would have nowhere to go
     const fd = new FormData(); fd.append('image', x.blob, 'picture.jpg');
     let r; try { r = await fetch('/api/identify?scope=' + enc(x.scope), { method: 'POST', headers: { 'X-Editor': cleanName(viaTS() ? ME().name : getName()) || 'Unknown' }, body: fd }); } catch (e) { break; }
     if (!r.ok) { if (r.status >= 500) break; x.result = { error: ((await r.json().catch(() => ({}))).error) || 'Could not be checked.' }; }
@@ -232,10 +300,10 @@ function offDlPaint(fin) {
 function offNotice(parts) {                    // on a plant or find page: its changes that are still waiting
   const code = (parts[0] === 'plant' || parts[0] === 'fungi') && parts[1] ? decodeURIComponent(parts[1]) : null;
   if (!code) return;
-  offOps().then(ops => {
+  return offOps().then(ops => {
     const mine = ops.filter(o => o.url.includes('/' + code) || (o.body && (o.body.plant === code || (o.body.plants || []).includes(code))) || o.temp === code);
     if (!mine.length || !document.getElementById('app')) return;
-    document.getElementById('app').insertAdjacentHTML('afterbegin', rend(html`<div class="notice off-note noprint" role="note"><strong>Not sent yet:</strong> ${mine.map(offWords).join('; ')}. ${navigator.onLine ? 'Sending soon.' : 'They will be sent when this device is back online.'} <a href="#/offline">Offline page</a></div>`));
+    document.getElementById('app').insertAdjacentHTML('afterbegin', rend(html`<div class="notice off-note noprint" role="note"><strong>Not sent yet:</strong> ${mine.map(offWords).join('; ')}. ${navigator.onLine && OFF.reach !== 'no' ? 'Sending soon.' : 'They will be sent when this device is back online.'} <a href="#/offline">Offline page</a></div>`));
   });
 }
 // the Offline page
@@ -250,7 +318,8 @@ async function viewOffline() {
   return {
     title: 'Offline use', after: () => { offDlPaint(); },
     html: html`<h1>Offline use</h1>
-    <p>This device: <strong>${navigator.onLine ? 'online' : 'offline'}</strong>${OFF.saved && !navigator.onLine ? '' : ''}. Changes you make without a connection are kept on this device and sent to the plant record as soon as it can be reached again.</p>
+    <p>This device: <strong>${!navigator.onLine ? 'no network connection' : OFF.reach === 'no' ? 'online, but the plant server cannot be reached' : 'connected to the plant server'}</strong>. Changes you make without a connection are kept on this device and sent to the plant record as soon as it can be reached again.
+      ${navigator.onLine && OFF.reach === 'no' ? html`Is Tailscale on, and the computer awake? ` : ''}<button class="btn small ghost" type="button" data-act="offtry">Try to connect now</button></p>
     ${OFF.conflicts ? html`<p class="notice bad" role="status"><strong>${OFF.conflicts} change${OFF.conflicts === 1 ? '' : 's'} need${OFF.conflicts === 1 ? 's' : ''} your decision:</strong> the same thing was changed on two devices. <a href="#/decisions">Choose which to keep</a>.</p>` : ''}
     <section aria-labelledby="off-copy-h"><h2 id="off-copy-h">Keep a copy on this device</h2>
       <div class="off-opts"><label class="chk"><input type="checkbox" data-f="offkeep" ${keep ? raw('checked') : ''}>Keep a copy of every plant, mushroom find, care log and photo (full size) on this device, so it works without a connection</label>
@@ -270,9 +339,10 @@ async function viewOffline() {
         <span class="row"><button class="btn ghost small" type="button" data-act="offretry" data-id="${o.id}">Try again</button><button class="btn ghost small" type="button" data-act="offrm" data-id="${o.id}">Remove it</button></span></li>`)}</ol>` : ''}
     </section>
     <section aria-labelledby="off-id-h"><h2 id="off-id-h">Pictures to identify</h2>
-      ${idq.length ? html`<ul class="off-list">${idq.map(x => html`<li><img class="off-pic" src="${URL.createObjectURL(x.blob)}" alt="Picture taken ${when(x.made)}"> Taken ${when(x.made)}${x.ref ? html` for <a href="#/fungi/${enc(x.ref)}">${x.ref}</a>` : ''}.
+      ${idq.length ? html`<ul class="off-list">${idq.map(x => html`<li><img class="off-pic" src="${URL.createObjectURL(x.blob)}" alt="Picture taken ${when(x.made)}"> Taken ${when(x.made)}${x.ref ? html` for <a href="${/^NEW-/i.test(x.ref) ? '#/offline' : x.kind === 'plant' ? '#/plant/' + enc(x.ref) : '#/fungi/' + enc(x.ref)}">${x.ref}</a>` : ''}.
           ${!x.result ? html`<span>Waiting for a connection.</span>` : x.result.error ? html`<span>${x.result.error}</span>`
-            : html`<span>It looks most like: ${(x.result.species || []).slice(0, 3).map((s, i) => html`${i ? '; ' : ''}<a href="#/species/${enc(s.scientific_name)}"><i>${s.scientific_name}</i></a>${s.common_name ? ` (${s.common_name})` : ''} ${pct(s.probability)}`)}${(x.result.matches || [])[0] && (x.result.matches[0].confidence || 0) >= 0.5 ? html`. Your plant ${x.result.matches[0].code}?` : ''}</span>`}
+            : html`<span>It looks most like: ${(x.result.species || []).slice(0, 3).map((s, i) => html`${i ? '; ' : ''}<a href="#/species/${enc(s.scientific_name)}"><i>${s.scientific_name}</i></a>${s.common_name ? ` (${s.common_name})` : ''} ${pct(s.probability)}`)}${(x.result.matches || [])[0] && (x.result.matches[0].confidence || 0) >= 0.5 ? html`. Your plant ${x.result.matches[0].code}?` : ''}</span>
+            ${x.kind === 'plant' && /^P-/.test(x.ref || '') && (x.result.species || [])[0] ? html`<button class="btn small" type="button" data-act="offiduse" data-id="${x.id}">Put the first name on ${x.ref}</button>` : ''}`}
           <button class="btn ghost small" type="button" data-act="offidrm" data-id="${x.id}" aria-label="Remove this waiting picture">Remove</button></li>`)}</ul>` : html`<p class="muted">None. Pictures taken for Identify without a connection wait here and are checked when you're back online.</p>`}
     </section>
     <section aria-labelledby="off-fresh-h"><h2 id="off-fresh-h">Saved pages</h2><p>Pages you have opened show straight away from what was saved last time, and are checked again just after (${QC.size} saved right now, kept 15 minutes). If something looks stale, clear them: the next page you open comes fresh from the server.</p>
@@ -304,6 +374,7 @@ async function viewDecisions() {
 Object.assign(acts, {
   offdl: () => offDownload(false),
   offsend: async () => { await offSync(); route(); },
+  async offtry(el) { el.disabled = true; el.textContent = 'Trying…'; const ok = await offProbe(true); if (!ok) { el.disabled = false; el.textContent = 'Try to connect now'; } },
   async offrm(el) {
     if (!(await confirmBox('Don\'t send this change?', 'It is deleted from this device and never reaches the plant record.', 'Delete it', true))) return;
     const op = (await offOps()).find(o => o.id === el.dataset.id);
@@ -312,6 +383,17 @@ Object.assign(acts, {
   },
   async offretry(el) { const op = (await offOps()).find(o => o.id === el.dataset.id); if (op) { delete op.failed; delete op.error; await idbPut('outbox', op); } await offSync(); route(); },
   async offidrm(el) { await idbDel('idq', el.dataset.id); await offPaint(); route(); },
+  async offiduse(el) {                         // 1.38.0: the names from a plant's first photo, checked once it was sent
+    const x = await idbGet('idq', el.dataset.id); if (!x || !x.result || !(x.result.species || [])[0]) return;
+    const s0 = x.result.species[0], g = (s0.scientific_name || '').split(' ')[0];
+    await guard(async () => {
+      const p = await api('GET', '/api/plants/' + enc(x.ref));
+      const fields = { common_name: (s0.common_name || '').split(',')[0].trim() || s0.scientific_name, scientific_name: s0.scientific_name, genus: g, family: s0.family || '',
+        id_confidence: Math.round((s0.probability || 0) * 100), id_basis: 'Suggested by the picture checker on this computer from the first photo, taken when the plant was added offline. Check it.' };
+      await api('PUT', '/api/plants/' + enc(x.ref), { base_version: p.version, fields, note: 'Names from the picture checker' });
+      await idbDel('idq', x.id); await offPaint(); toast(`${x.ref} is now ${fields.common_name}`); go('#/plant/' + enc(x.ref));
+    });
+  },
   qcclear() { const n = QC.size; QC.clear(); QGEN++; toast(n ? `Cleared ${n} saved page${n === 1 ? '' : 's'}` : 'Nothing was saved'); route(); },   // 1.36.0
   async offforget() {
     if (!(await confirmBox('Delete the saved copy?', 'This device will need a connection to show the plant record until it is saved again. Changes waiting to be sent are kept.', 'Delete the saved copy', true))) return;
@@ -339,8 +421,10 @@ async function offStart() {
     try { await navigator.serviceWorker.register('/sw.js', { scope: '/' }); } catch (e) { console.warn('Offline use is not available here: ' + e.message); }
   }
   OFFDEV = await offKv('device', null);
-  window.addEventListener('online', () => { offPaint(); offSync(); });
+  window.addEventListener('online', () => { offPaint(); offProbe(); });
   window.addEventListener('offline', () => offPaint());
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && OFF.reach === 'no') offProbe(); });
+  window.addEventListener('focus', () => { if (OFF.reach === 'no') offProbe(); });
   setInterval(() => { offSync(); }, 60000);
   await offPaint();
   setTimeout(async () => {
@@ -456,17 +540,11 @@ document.addEventListener('change', e => {
   else if (f === 'wherehome' || f === 'whereside') { const fm = el.closest('form'); if (fm) whereRefresh(fm); }
   else if (f === 'wherearea') { const fm = el.closest('form'); if (fm) whereRefresh(fm, 'area'); }
   else if (f === 'sevset') { SEV[el.dataset.k] = el.value; }
+  else if (f === 'newphotos') { const b = document.getElementById('newfill-btn'), st = document.getElementById('newfill-st'), cn = el.form && el.form.elements.common_name; if (b) b.disabled = !el.files.length; if (cn) cn.required = !el.files.length; if (st) st.textContent = el.files.length ? `${el.files.length} photo${el.files.length === 1 ? '' : 's'} chosen. The first one is checked when you press the button.` : 'Choose a photo, then the picture checker on this computer can suggest the names.'; }
   else if (f === 'sevadd') { const P = SEV.plants[+el.dataset.g]; P.add = el.checked; el.closest('fieldset').classList.toggle('sev-off', !el.checked); const b = document.querySelector('[data-act=sevsave]'), k = SEV.plants.filter(p => p.add).length; if (b) { b.textContent = `Add ${k} plant${k === 1 ? '' : 's'}`; b.disabled = !k; } }
   else if (f === 'sevpick') { const P = SEV.plants[+el.dataset.g]; P.pick = +el.value; P.typed = new Set(); sevFill(P); sevDraw(`[data-f=sevpick][data-g="${el.dataset.g}"][value="${el.value}"]`); }
-  else if (f === 'sevmove') { const ph = SEV.photos[+el.dataset.p], n = SEV.plants.length;
-    ph.group = el.value === 'out' ? 'out' : el.value === 'new' ? n : +el.value;
-    const used = [...new Set(SEV.photos.map(p => p.group).filter(g => g !== 'out'))].sort((a, b) => a - b), map = Object.fromEntries(used.map((g, k) => [g, k]));
-    const keepP = used.map(g => SEV.plants[g]).map(P => P && { ...P, key: '' });
-    SEV.photos.forEach(p => { if (p.group !== 'out') p.group = map[p.group]; });
-    const typed = keepP.map(P => P && { add: P.add, pick: P.pick, fields: P.fields, typed: P.typed });
-    sevPlants(used.length);
-    SEV.plants.forEach((P, k) => { if (typed[k] && typed[k].typed.size) Object.assign(P, typed[k]); });
-    toast(el.value === 'out' ? 'Photo left out' : 'Photo moved'); sevDraw(); }
+  else if (f === 'sevrel') { const ph = SEV.photos[+el.dataset.p]; ph.rel = el.value; ph.why = ''; sevGroup();
+    toast(el.value === 'out' ? 'Photo left out' : el.value === 'all' ? 'This photo goes on every plant' : el.value === 'same' ? 'Joined with the plant above' : 'A plant of its own'); sevDraw(`[data-f=sevrel][data-p="${el.dataset.p}"][value="${el.value}"]`); }
   else if (f === 'idphnone') { IDPH.none = el.checked; drawIdPhotos(); }
   else if (f === 'more') { G[el.dataset.key] = el.value; if (el.dataset.key === 'care' && el.value && !CAREDUE) loadCareDue().then(drawGrid); drawGrid(); }
 });

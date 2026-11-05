@@ -28,7 +28,7 @@ function careQuick(p) {
       <button class="btn" type="button" data-act="care" data-kind="water" data-code="${p.code}" data-name="${p.common_name}">Watered today</button>
       <button class="btn ghost" type="button" data-act="care" data-kind="check" data-code="${p.code}" data-name="${p.common_name}">Checked: still moist</button>
       <button class="btn ghost" type="button" data-act="fertlog" data-code="${p.code}">Log feeding</button>
-      <label class="btn ghost quick-photo">Add a photo<input type="file" accept="image/*" capture="environment" data-act="addphotos" class="sr"></label>
+      <label class="btn ghost quick-photo">Add photos<input type="file" accept="image/*" multiple data-act="addphotos" class="sr"></label>
       <button class="btn ghost" type="button" data-act="careother" data-code="${p.code}" data-name="${p.common_name}">Log other care</button>
     </div>
     <p class="hint" id="water-done-note" hidden>Already watered today, so "Watered today" is off until tomorrow. To take it back, use Undo in the message, or Remove in the care log.</p></div>`;
@@ -50,7 +50,7 @@ async function loadCarePlant() {
   box.innerHTML = rend(html`<div class="verdict-box v-${w && w.state === 'due' ? 'due' : 'wait'}" role="status"><h3>Watering</h3><p>${w ? waterWords(w) : ''}</p>
       <p class="hint">Change the gap with "Check for water every (days)" in Edit this page. Rain of ${W.rain_counts_in} in or more counts as a watering for plants whose Location is Outdoors.</p></div>
     <h3>Care log</h3>${log.length ? html`<ul class="care-log">${log.map(e => html`<li><strong>${CARE_WORD[e.kind] || e.kind}</strong> ${relDay(e.done_on)}${e.note ? ': ' + e.note : ''} <span class="muted">(${e.created_by})</span>
-      <button class="btn small ghost noprint" type="button" data-act="caredel" data-id="${e.id}" data-what="${(CARE_WORD[e.kind] || e.kind) + ' ' + relDay(e.done_on)}" aria-label="Remove: ${(CARE_WORD[e.kind] || e.kind)} ${relDay(e.done_on)}">Remove</button></li>`)}</ul>`
+      ${e.pending ? html`<span class="muted">(not sent yet)</span>` : html`<button class="btn small ghost noprint" type="button" data-act="caredel" data-id="${e.id}" data-what="${(CARE_WORD[e.kind] || e.kind) + ' ' + relDay(e.done_on)}" aria-label="Remove: ${(CARE_WORD[e.kind] || e.kind)} ${relDay(e.done_on)}">Remove</button>`}</li>`)}</ul>`
       : html`<p class="muted">Nothing logged yet. Use the buttons near the top of the page.</p>`}`);
 }
 async function careDialog(code, name) {
