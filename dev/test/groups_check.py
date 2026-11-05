@@ -106,7 +106,7 @@ with sync_playwright() as p:
     pg = b.new_page(viewport={'width': 1280, 'height': 900})
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and '404' not in m.text else None)
-    pg.add_init_script("localStorage.setItem('plantdb.editor','Group Test')")
+    pg.add_init_script("localStorage.setItem('plantdb.editor','Group Test');localStorage.setItem('plantdb.morefilters','1')")
     pg.goto(LOCAL + '/#/groups'); pg.wait_for_timeout(2500)
     check(pg.locator('#sub-nav a[data-nav=groups][aria-current=page]').count() == 1, 'Groups is in the top menu')
     check(pg.locator('#grp-yours .grp-card').count() == 2 and pg.locator('#grp-suggest .grp-card').count() >= 10, 'the Groups page lists your groups and the suggestions')
@@ -148,7 +148,7 @@ with sync_playwright() as p:
     alpha = sorted(call('GET', '/api/groups')[1]['groups'], key=lambda g: g['name'].lower())[0]
     check(first in alpha['codes'], f"sorting by group puts plants of the first group A to Z ({alpha['name']}) first")
     ph2 = b.new_page(viewport={'width': 390, 'height': 844})
-    ph2.add_init_script("localStorage.setItem('plantdb.editor','Group Test');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
+    ph2.add_init_script("localStorage.setItem('plantdb.editor','Group Test');localStorage.setItem('plantdb.morefilters','1');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
     ph2.goto(LOCAL + f"/#/group/{ph['id']}"); ph2.wait_for_timeout(2500)
     wide = ph2.evaluate('document.documentElement.scrollWidth <= innerWidth + 1')
     ph2.click('[data-act=grpcare]'); ph2.wait_for_timeout(600)
