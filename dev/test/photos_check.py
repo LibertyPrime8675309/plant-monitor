@@ -23,7 +23,7 @@ with sync_playwright() as p:
     pg = b.new_page(viewport={'width': 1280, 'height': 900})
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.add_init_script("localStorage.setItem('plantdb.editor','Photo Test');localStorage.removeItem('plantdb.filters')")
-    pg.goto(LOCAL + '/'); pg.wait_for_timeout(2500)
+    pg.goto(LOCAL + '/#/plants'); pg.wait_for_timeout(2500)
     card = pg.locator(f'#grid .sheet[data-code="{code}"]')
     img = lambda: card.locator('.mat img').get_attribute('src')
     check(card.locator('.ph-n').inner_text() == f'1 of {n}' and card.locator('.ph-btn').count() == 2, f'a plant with {n} photos has Previous and Next photo buttons and says "1 of {n}"')
@@ -32,7 +32,7 @@ with sync_playwright() as p:
     first = img()
     card.locator('.ph-btn[data-d="1"]').click(); pg.wait_for_timeout(300)
     check(card.locator('.ph-n').inner_text() == f'2 of {n}' and img() != first and many['photos'][1] in img(), 'Next shows the second photo')
-    check(pg.evaluate('location.hash') in ('', '#/'), 'and stays on the Plants page')
+    check(pg.evaluate('location.hash') == '#/plants', 'and stays on the Plants page')
     card.locator('.ph-btn[data-d="-1"]').click(); card.locator('.ph-btn[data-d="-1"]').click(); pg.wait_for_timeout(300)
     check(card.locator('.ph-n').inner_text() == f'{n} of {n}', 'Previous from the first photo goes round to the last')
     pg.screenshot(path=os.path.join(OUT, 'photos-1-card.png'), clip=card.bounding_box())
@@ -46,7 +46,7 @@ with sync_playwright() as p:
         el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); }"""
     sel = f'#grid .sheet[data-code="{code}"] .sheet-link'
     pg.evaluate(swipe, [sel, -120]); pg.wait_for_timeout(400)
-    check(card.locator('.ph-n').inner_text() == f'2 of {n}' and pg.evaluate('location.hash') in ('', '#/'), 'swiping left on the photo shows the next one, and does not open the plant')
+    check(card.locator('.ph-n').inner_text() == f'2 of {n}' and pg.evaluate('location.hash') == '#/plants', 'swiping left on the photo shows the next one, and does not open the plant')
     pg.evaluate(swipe, [sel, 120]); pg.wait_for_timeout(400)
     check(card.locator('.ph-n').inner_text() == f'1 of {n}', 'swiping right goes back')
     pg.fill('input[data-f=q]', many['common_name'][:6]); pg.wait_for_timeout(400); card.locator('.ph-btn[data-d="1"]').click(); pg.fill('input[data-f=q]', ''); pg.wait_for_timeout(400)
@@ -69,7 +69,7 @@ with sync_playwright() as p:
     check(after['photo'] == chosen and after['photos'][0] == chosen, 'the Plants page now uses it')
     pg.goto(LOCAL + f'/card.html?plant={code}'); pg.wait_for_selector('.pc-card'); pg.wait_for_timeout(500)
     check(chosen in (pg.locator('.pc-photo').get_attribute('src') or ''), 'and so does the care card')
-    pg.goto(LOCAL + '/'); pg.wait_for_timeout(2000)
+    pg.goto(LOCAL + '/#/plants'); pg.wait_for_timeout(2000)
     check(chosen in pg.locator(f'#grid .sheet[data-code="{code}"] .mat img').get_attribute('src'), 'the Plants page card shows the new main photo first')
     # a viewer
     vw = b.new_page(viewport={'width': 1280, 'height': 900}, extra_http_headers=V)
@@ -77,10 +77,10 @@ with sync_playwright() as p:
     vw.goto(TS + f'/#/plant/{code}'); vw.wait_for_timeout(2000)
     vw.locator('.thumbs button[data-i="1"]').click(); vw.wait_for_timeout(400)
     check(not vw.locator('[data-act=mainphoto]').is_visible(), 'someone who can only view does not get "Make this the main photo"')
-    vw.goto(TS + '/'); vw.wait_for_timeout(2000)
+    vw.goto(TS + '/#/plants'); vw.wait_for_timeout(2000)
     check(vw.locator(f'#grid .sheet[data-code="{code}"] .ph-btn').first.is_visible(), 'but can browse the photos on the Plants page')
     # 1.21.0: wide photos on the cards, and sharper thumbnails
-    pg.goto(LOCAL + '/'); pg.wait_for_timeout(2500)
+    pg.goto(LOCAL + '/#/plants'); pg.wait_for_timeout(2500)
     pg.evaluate("window.scrollTo(0, document.body.scrollHeight)"); pg.wait_for_timeout(2500); pg.evaluate("window.scrollTo(0, 0)")
     wide = pg.locator('#grid .mat img.wide')
     fit = lambda: wide.first.evaluate("e => getComputedStyle(e).objectFit")
@@ -97,7 +97,7 @@ with sync_playwright() as p:
     # phone with the largest text
     ph = b.new_page(viewport={'width': 390, 'height': 844})
     ph.add_init_script("localStorage.setItem('plantdb.editor','Photo Test');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
-    ph.goto(LOCAL + '/'); ph.wait_for_timeout(2500)
+    ph.goto(LOCAL + '/#/plants'); ph.wait_for_timeout(2500)
     check(ph.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), 'on a phone with the largest text there is no sideways scrolling')
     c2 = ph.locator(f'#grid .sheet[data-code="{code}"]'); c2.scroll_into_view_if_needed()
     bb = c2.locator('.ph-btn').first.bounding_box()

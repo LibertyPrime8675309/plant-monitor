@@ -259,8 +259,8 @@ function todayPrep(PR, t) {
     ${!again.length && !free.length ? html`<p class="notice ok">No sprays due and nobody to move today.</p>` : ''}</section>`;
 }
 async function viewToday() {
-  const [W, reqs, , PR, WA] = await Promise.all([api('GET', '/api/water'), api('GET', '/api/requests?open=1'), loadFertData(true), api('GET', '/api/prep').catch(() => null),
-    api('GET', '/api/wishlist/alerts').catch(() => ({ alerts: [] }))]);
+  const [W, reqs, , PR, WA, J] = await Promise.all([api('GET', '/api/water'), api('GET', '/api/requests?open=1'), loadFertData(true), api('GET', '/api/prep').catch(() => null),
+    api('GET', '/api/wishlist/alerts').catch(() => ({ alerts: [] })), api('GET', '/api/jobs').catch(() => null)]);
   const by = Object.fromEntries(FERT.plants.map(p => [p.code, p])), t = todayStr();
   const ws = W.plants.filter(w => by[w.code]);
   const due = ws.filter(w => w.state === 'due').sort((a, b) => b.overdue - a.overdue), soon = ws.filter(w => w.state === 'soon'), unk = ws.filter(w => w.state === 'unknown');
@@ -269,12 +269,29 @@ async function viewToday() {
   const wbtn = w => html`<button class="btn small" type="button" data-act="care" data-kind="water" data-code="${w.code}" data-name="${by[w.code].common_name}">Watered</button>
     <button class="btn small ghost" type="button" data-act="care" data-kind="check" data-code="${w.code}" data-name="${by[w.code].common_name}">Still moist</button>`;
   const n = (k, one, many) => k + ' ' + (k === 1 ? one : many);
+  // 1.34.0: Today is the page the app opens on. One line says what needs you, with a button to jump to each part
+  const F = FROST, cold = F && F.first ? F.worst.counts.danger + F.worst.counts.damage + F.worst.counts.watch : 0;
+  const prepN = PR && PR.plants ? PR.plants.reduce((k, p) => k + p.methods.filter(m => m.next_due && m.next_due <= t).length + (p.status === 'apart' && p.keep_until && p.keep_until <= t ? 1 : 0), 0) : 0;
+  const jumps = [cold ? [`Cold night (${cold})`, 'today-cold'] : null, [`Water (${due.length})`, 'today-water'], [`Feed (${feed.length})`, 'today-feed'],
+    WA.alerts.length ? [`Shopping (${WA.alerts.length})`, 'today-wish'] : null, [`Needed from you (${needs.length})`, 'today-needs']].filter(Boolean);
+  const bits = [cold ? `a cold night ${fzDay(F.first.date, true)}` : '', n(due.length, 'plant to water', 'plants to water'), n(feed.length, 'to feed', 'to feed'),
+    WA.alerts.length ? n(WA.alerts.length, 'Shopping alert', 'Shopping alerts') : '', n(needs.length, 'thing Claude needs from you', 'things Claude needs from you')].filter(Boolean);
+  const line = bits.length > 1 ? bits.slice(0, -1).join(', ') + ', and ' + bits[bits.length - 1] : bits[0];
+  const quiet = [];
+  if (PR && PR.plants && !prepN) quiet.push('No pest rounds due.');
+  if (J) {
+    const sc = Object.fromEntries((J.schedule || []).map(x => [x.kind, x]));
+    if (sc.shops) quiet.push(sc.shops.last ? `Stores last checked ${when(sc.shops.last)}${/^\d{4}-/.test(sc.shops.next) ? '; next ' + when(sc.shops.next) : ''}.` : 'The stores have not been checked yet.');
+    if (sc.backup) quiet.push(sc.backup.last ? `Backup made ${when(sc.backup.last)}.` : sc.backup.every === 'turned off' ? 'Automatic backups are turned off.' : 'No automatic backup yet.');
+    quiet.push(J.problems ? html`<a href="#/settings">${J.problems} problem${J.problems === 1 ? '' : 's'} to look at</a>.` : 'No problems.');
+  }
   return {
     title: 'Today',
-    html: html`<h1>Today</h1><p class="muted">${longDay(t)}. Watering, feeding and anything Claude has asked you for, most urgent first.</p>
-    ${WA.alerts.length ? html`<section class="blk wl-alerts" id="today-wish"><h2>Shopping alerts (${WA.alerts.length})</h2>${wlAlertsHtml(WA.alerts.slice(0, 6), true)}</section>` : ''}
-    <div class="verdict-box" role="status"><p><strong>${n(due.length, 'plant to water', 'plants to water')}, ${n(feed.length, 'to feed', 'to feed')}, and ${n(needs.length, 'plant that needs something from you', 'plants that need something from you')}.</strong>
-      ${W.avg_high != null ? `Highs have been about ${W.avg_high}°F lately.` : ''} ${Object.keys(W.rain).length ? `Rain counted as watering for plants out in the open: ${Object.entries(W.rain).slice(-3).map(([d, i]) => relDay(d) + ', ' + i + ' in').join('; ')}.` : ''}</p></div>
+    html: html`<h1>Today</h1><p class="muted">${longDay(t)}. Everything that needs you, most urgent first. <a href="#/plants">All plants</a> is one click away.</p>
+    <div class="verdict-box" role="status"><p><strong>${line.charAt(0).toUpperCase() + line.slice(1)}.</strong>
+      ${W.avg_high != null ? `Highs have been about ${W.avg_high}°F lately.` : ''} ${Object.keys(W.rain).length ? `Rain counted as watering for plants out in the open: ${Object.entries(W.rain).slice(-3).map(([d, i]) => relDay(d) + ', ' + i + ' in').join('; ')}.` : ''}</p>
+      <p class="row td-jumps">${jumps.map(([l, id]) => html`<a class="btn small ghost" href="#${id}" data-act="jumpsec" data-sec="${id}">${l}</a>`)}</p></div>
+    ${cold ? html`<section class="blk" id="today-cold">${frostBanner(true)}</section>` : ''}
     <section class="blk" id="today-water"><h2>Water (${due.length})</h2>
       ${due.length ? html`${due.length > 1 ? html`<p><button class="btn small ghost" type="button" data-act="careall" data-kind="water" data-codes="${due.map(w => w.code).join(',')}">Watered all ${due.length}</button></p>` : ''}
         <ul class="jobs">${due.map(w => jobRow(by[w.code], waterWords(w), wbtn(w)))}</ul>` : html`<p class="notice ok">Nothing is due for water today.</p>`}
@@ -287,12 +304,14 @@ async function viewToday() {
       ${feed.length ? html`${feed.length > 1 ? html`<p><button class="btn small ghost" type="button" data-act="fertlog" data-group="due">Log feeding for all ${feed.length}</button></p>` : ''}
         <ul class="jobs">${feed.map(r => jobRow(r.p, fertWords(r.p, r.st, t), html`<button class="btn small" type="button" data-act="fertlog" data-code="${r.p.code}">Log feeding</button>`))}</ul>`
         : html`<p class="notice ok">No plant is due for fertilizer today. The Fertilizer page has the calendar.</p>`}</section>
+    ${WA.alerts.length ? html`<section class="blk wl-alerts" id="today-wish"><h2>Shopping alerts (${WA.alerts.length})</h2>${wlAlertsHtml(WA.alerts.slice(0, 6), true)}<p><a class="btn small ghost" href="#/shopping/list">Shopping list for a store visit</a></p></section>` : ''}
     ${PR && PR.plants.length ? todayPrep(PR, t) : ''}
     <section class="blk" id="today-needs"><h2>Needed from you (${needs.length})</h2>
       ${reqs.length ? html`<ul class="jobs">${reqs.slice(0, 8).map(q => { const p = by[q.plant_code] || { code: q.plant_code || '', common_name: q.plant_code || 'General' };
         return jobRow(p, linkify(q.text), p.code ? html`<a class="btn small ghost" href="#/plant/${enc(p.code)}">Answer on its page</a>` : ''); })}</ul>
         ${reqs.length > 8 ? html`<p class="hint">Showing 8 of ${reqs.length} open requests.</p>` : ''}` : ''}
-      <p><button class="btn small ghost" type="button" data-act="todayneeds">Show all plants that need something from you</button></p></section>`,
+      <p><button class="btn small ghost" type="button" data-act="todayneeds">Show all plants that need something from you</button></p></section>
+    ${quiet.length ? html`<section class="blk" id="today-quiet"><h2>Quiet today</h2><p class="muted">${quiet.map((q, i) => html`${i ? ' ' : ''}${q}`)}</p></section>` : ''}`,
     after: () => document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === 'today') a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }),
   };
 }

@@ -37,7 +37,7 @@ with sync_playwright() as p:
         try: pg.wait_for_function("getComputedStyle(document.querySelector('ul.jobs')).gridTemplateColumns.split(' ').length >= 2", timeout=8000)
         except Exception: pass            # the check below reports it
         check(cols(pg, 'ul.jobs') >= 2, 'Today shows its jobs in two columns on a wide screen')
-    pg.goto(LOCAL + '/#/'); pg.wait_for_timeout(2500)
+    pg.goto(LOCAL + '/#/plants'); pg.wait_for_timeout(2500)
     shape = pg.evaluate("""() => [...document.querySelectorAll('.sheet .mat img')].slice(0, 12).map(i => { const r = i.getBoundingClientRect(); return r.width ? r.height / r.width : 0; })""")
     check(shape and max(shape) < 1.6, f'card photos keep their shape (tallest is {max(shape or [0]):.2f} times its width)')
     check(pg.locator('#pages-btn').is_hidden() and pg.locator('#main-nav').is_visible(), 'on a computer the pages are listed in the top bar')

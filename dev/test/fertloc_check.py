@@ -158,7 +158,7 @@ with sync_playwright() as pw:
     # phones, largest text: the Location button fits and nothing scrolls sideways
     for w, size in ((390, '190'), (360, '160'), (390, '115')):
         p2 = page((w, 800), {'size': size, 'theme': 'dark'})
-        for u in ('#/', '#/fertilizer', '#/weather'):
+        for u in ('#/plants', '#/fertilizer', '#/weather'):
             p2.goto(f'{BASE}/{u}'); p2.wait_for_timeout(2200)
             over = p2.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth')
             bw = p2.evaluate("(() => { const b = document.getElementById('place-btn').getBoundingClientRect(); return b.right <= innerWidth + 1 && b.left >= -1; })()")

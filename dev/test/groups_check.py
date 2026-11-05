@@ -133,7 +133,7 @@ with sync_playwright() as p:
     check('plants fit now' in pg.inner_text('#rule-prev'), 'while making a smart group the window says which plants fit')
     pg.click('dialog button[value=ok]'); pg.wait_for_timeout(2000)
     check(pg.locator('h1').inner_text() == 'Porch plants' and pg.locator('#g-plants li.job').count() > 10, 'the new smart group opens with its plants')
-    pg.goto(LOCAL + '/'); pg.wait_for_timeout(2000)
+    pg.goto(LOCAL + '/#/plants'); pg.wait_for_timeout(2000)
     pg.select_option('select[data-f=group]', str(ph['id'])); pg.wait_for_timeout(800)
     check(pg.locator('#grid .sheet').count() == 11, 'the Plants page shows only the plants in the chosen group')
     pg.goto(LOCAL + '/#/plant/P-029'); pg.wait_for_timeout(2500)
@@ -143,7 +143,7 @@ with sync_playwright() as p:
     pg.click('[data-act=plgroups]'); pg.wait_for_timeout(500)
     pg.fill('dialog input[name=newg]', 'Pink ones'); pg.click('dialog button[value=ok]'); pg.wait_for_timeout(2000)
     check('Pink ones' in pg.inner_text('#pl-groups'), 'a new hand-picked group can be made from a plant page')
-    pg.goto(LOCAL + '/'); pg.wait_for_timeout(1500); pg.select_option('select[data-f=group]', ''); pg.select_option('select[data-f=sort]', 'group'); pg.wait_for_timeout(800)
+    pg.goto(LOCAL + '/#/plants'); pg.wait_for_timeout(1500); pg.select_option('select[data-f=group]', ''); pg.select_option('select[data-f=sort]', 'group'); pg.wait_for_timeout(800)
     first = pg.locator('#grid .sheet .acc').first.inner_text()
     alpha = sorted(call('GET', '/api/groups')[1]['groups'], key=lambda g: g['name'].lower())[0]
     check(first in alpha['codes'], f"sorting by group puts plants of the first group A to Z ({alpha['name']}) first")

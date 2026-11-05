@@ -41,7 +41,7 @@
    every device I sign in on" for a part of them in Display; the device name and the offline copy never leave the device. */
 (function () {
   var KEYS = ['plantdb.filters', 'plantdb.library', 'plantdb.fungi', 'plantdb.ltlights', 'plantdb.auditf', 'plantdb.calview', 'plantdb.wxchart',
-              'plantdb.wxhide', 'plantdb.wxper', 'plantdb.idscope', 'plantdb.place', 'plantdb.frosthide', 'plantdb.shopping'];   // 1.30.0: Shopping's home and kind
+              'plantdb.wxhide', 'plantdb.wxper', 'plantdb.idscope', 'plantdb.place', 'plantdb.frosthide', 'plantdb.shopping', 'plantdb.shoplist'];   // 1.30.0: Shopping's home and kind; 1.34.0: the shopping list's extras
   var PARTS = { text: ['size', 'space', 'contrast', 'theme'], layout: ['width', 'lines', 'layout', 'navside', 'navopen'], read: ['readbtns', 'rate', 'voice'],
                 photos: ['photofit', 'swipe'], keys: ['keys'] };
   var LS = window.localStorage, setI = Storage.prototype.setItem, remI = Storage.prototype.removeItem, queue = {}, timer = 0, applying = false;

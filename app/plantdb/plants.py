@@ -12,7 +12,7 @@ def meta():
                            'photos': c.execute('SELECT COUNT(*) FROM photos').fetchone()[0]},
                    password_protected=bool(PASSWORD), int_ranges=INT_RANGES, num_ranges=NUM_RANGES, version=APP_VERSION,
                    home_tz=L['tz'],              # the browser uses this for "today", so dates match the server's
-                   place=place_brief(L), climate=place_climate(c, L), zone=place_zone(c, L), me=me_dict(c), runs_as=runs_as(),
+                   place=place_brief(L), climate=place_climate(c, L), zone=place_zone(c, L), heat=heat_brief(c, L), me=me_dict(c), runs_as=runs_as(),
                    places=[place_brief(loc_dict(r)) for r in c.execute('SELECT * FROM locations ORDER BY is_home DESC, name')],
                    homes=[place_brief(h) for h in homes(c)], region=place_region(c, L),
                    where=where_list(c),                                                      # 1.29.0: rooms and spots
@@ -90,7 +90,7 @@ def list_plants():
                     # 1.17.0: for the filters on the Plants page
                     'dli_low': r['dli_low'], 'dli_high': r['dli_high'], 'zone_low': r['zone_low'], 'pet_safety': r['pet_safety'] or '',
                     'leaf_type': r['leaf_type'] or '', 'pot_size': r['pot_size'] or '', 'photo_count': pn, 'photo_at': pat,
-                    'light_spot': spots.get(r['code']), 'home_id': r['home_id'],
+                    'light_spot': spots.get(r['code']), 'home_id': r['home_id'], 'area_id': r['area_id'], 'spot_id': r['spot_id'],   # 1.34.0: room and shelf labels
                     'photos': files})                      # 1.20.0: every photo, main photo first, to browse on the Plants page
     return jsonify(out)
 

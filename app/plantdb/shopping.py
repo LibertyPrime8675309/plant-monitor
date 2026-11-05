@@ -434,7 +434,7 @@ def shopping_api():
     return jsonify(items=rows, kinds=[{'key': k, 'label': v, 'unit': SH.KIND_UNIT.get(k, '') if SH.KIND_UNIT.get(k) != 'each' else ''} for k, v in SHOP_KINDS],
                    alerts=wish_alerts_open(c), checked=setting(c, 'shops_checked_at', ''), hours=setting(c, 'shops_hours', '12'), busy=busy,
                    homes=[{'id': h['id'], 'name': h['name']} for h in homes(c)],
-                   visit=[{k: v[k] for k in ('key', 'name', 'phone', 'address', 'hours', 'carries', 'home_name', 'miles', 'website', 'url')} for v in visit],
+                   visit=[{k: v[k] for k in ('key', 'name', 'phone', 'address', 'hours', 'carries', 'home_name', 'home_id_eff', 'miles', 'website', 'url', 'maps')} for v in visit],
                    stores=c.execute('SELECT COUNT(*) FROM shops WHERE enabled=1').fetchone()[0])
 
 @app.route('/api/shops', methods=['GET', 'PUT', 'POST', 'DELETE'])

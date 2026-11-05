@@ -549,7 +549,7 @@ function icsSection() {
     <p><button class="btn" type="button" data-act="icsopen">Set up your calendar</button></p></section>`;
 }
 new MutationObserver(() => {
-  const page = (location.hash.replace(/^#\/?/, '').split('/')[0]) || '';
+  const page = (location.hash.replace(/^#\/?/, '').split('/')[0]) || 'today';
   if (!ICS_PAGES.includes(page) || document.getElementById('ics-box') || !app.querySelector('h1')) return;
   app.insertAdjacentHTML('beforeend', rend(icsSection()));
 }).observe(app, { childList: true });

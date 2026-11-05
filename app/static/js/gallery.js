@@ -4,15 +4,15 @@
 
 // ---------- gallery ----------
 const G = { q: '', plan: '', health: '', low: false, needs: false, sort: 'code', group: '', status: 'active', site: '', home: '',   // 1.28.0: home   // 1.16.2: status and site
-  light: '', pets: '', hardy: '', care: '', grow: '', leaf: '', pot: '', photo: '' };                                      // 1.17.0: more filters
+  light: '', pets: '', hardy: '', care: '', grow: '', leaf: '', pot: '', photo: '', area: '', spot: '' };                  // 1.17.0: more filters; 1.34.0: area and spot (from a room or shelf label)
 const MORE_KEYS = ['light', 'pets', 'hardy', 'care', 'grow', 'leaf', 'pot', 'photo'];     // the More filters (defined further down)
 // the Plants page filters are remembered in this browser and also decide where Previous / Next plant go on plant pages
-function gLoad() { try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort', 'group', 'status', 'site', 'home', ...MORE_KEYS]) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ } }
+function gLoad() { try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort', 'group', 'status', 'site', 'home', 'area', 'spot', ...MORE_KEYS]) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ } }
 gLoad();
 // 1.32.0: when the settings saved for your sign-in arrive from the server, take them, so a draw already under way does not save the old ones back
 document.addEventListener('plantsync', e => { if (e.detail && e.detail.includes('plantdb.filters')) gLoad(); });
-function gSave() { if (window.PlantSync && window.PlantSync.applying()) return; try { localStorage.setItem('plantdb.filters', JSON.stringify({ q: G.q, plan: G.plan, health: G.health, low: G.low, needs: G.needs, sort: G.sort, group: G.group, status: G.status, site: G.site, home: G.home, ...Object.fromEntries(MORE_KEYS.map(k => [k, G[k]])) })); } catch (e) { /* not saved */ } }
-const gActive = () => !!(G.q.trim() || G.plan || G.health || G.low || G.needs || (G.group && groupById(G.group)) || G.status !== 'active' || G.site || (G.home && homeById(G.home)) || moreOn());
+function gSave() { if (window.PlantSync && window.PlantSync.applying()) return; try { localStorage.setItem('plantdb.filters', JSON.stringify({ q: G.q, plan: G.plan, health: G.health, low: G.low, needs: G.needs, sort: G.sort, group: G.group, status: G.status, site: G.site, home: G.home, area: G.area, spot: G.spot, ...Object.fromEntries(MORE_KEYS.map(k => [k, G[k]])) })); } catch (e) { /* not saved */ } }
+const gActive = () => !!(G.q.trim() || G.plan || G.health || G.low || G.needs || (G.group && groupById(G.group)) || G.status !== 'active' || G.site || (G.home && homeById(G.home)) || G.area || G.spot || moreOn());
 const STATUS_WORD = { active: 'Active only', all: 'Active and archived', archived: 'Archived only' };
 const isArch = p => p.status === 'archived';
 const statusOk = p => G.status === 'all' || (G.status === 'archived' ? isArch(p) : !isArch(p));
@@ -23,7 +23,7 @@ const SORTS = { code: 'Code', health: 'Health, worst first', conf: 'ID confidenc
 function filteredPlants(list) {
   const q = G.q.trim().toLowerCase();
   let r = (list || ALL).filter(p =>
-    statusOk(p) && (!G.site || (p.site || 'Outdoors') === G.site) && homeOk(p) && moreOk(p) &&
+    statusOk(p) && (!G.site || (p.site || 'Outdoors') === G.site) && homeOk(p) && moreOk(p) && (!G.area || String(p.area_id) === G.area) && (!G.spot || String(p.spot_id) === G.spot) &&
     (!G.plan || p.winter_plan === G.plan) && (!G.health || p.health_rating === G.health) &&
     (!G.low || (p.id_confidence != null && p.id_confidence < 70)) && (!G.needs || needsYou(p)) && inGroupFilter(p.code) &&
     (!q || [p.code, p.common_name, p.scientific_name, p.aliases, p.plant_type, p.location].join(' ').toLowerCase().includes(q)));
@@ -116,7 +116,11 @@ function ledger() {
   const n = pl => ALL.filter(p => statusOk(p) && p.winter_plan === pl).length;
   return html`${META.winter_plans.map(pl => html`<button type="button" data-act="plan" data-plan="${pl}" style="--bar:${PLAN_COLOR[pl]}" aria-pressed="${String(G.plan === pl)}"><b>${n(pl)}</b>${pl}</button>`)}`;
 }
-async function viewGallery() {
+async function viewGallery(qs) {
+  if (qs && (qs.get('spot') || qs.get('area'))) {       // 1.34.0: from a room or shelf label: just that place, nothing else filtered
+    Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '', status: 'active', site: '', home: '', area: qs.get('area') || '', spot: qs.get('spot') || '' }, Object.fromEntries(MORE_KEYS.map(k => [k, ''])));
+    gSave(); history.replaceState(null, '', '#/plants');
+  }
   ALL = await api('GET', '/api/plants?status=all');
   const ACT = ALL.filter(p => !isArch(p)), archN = ALL.length - ACT.length;
   const lowN = ACT.filter(p => p.id_confidence != null && p.id_confidence < 70).length;
@@ -141,7 +145,7 @@ async function viewGallery() {
       <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
       <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70% (${lowN})</label>
     </div>
-    ${moreFilters()}
+    ${placeChip()}${moreFilters()}
     <p id="count" class="muted" aria-live="polite"></p>
     <div class="water-all noprint"><button class="btn ghost" type="button" data-act="waterall" id="wa-btn">Water all</button>
       <span class="hint">Marks every plant shown (with the filters above) as watered today. Plants already watered today are skipped.</span></div>
@@ -228,6 +232,18 @@ function homeFilter() {
   if (HOMES().length < 2) return '';
   return html`<label>Home<select data-f="home"><option value="">All homes</option>${HOMES().map(h => html`<option value="${h.id}" ${String(G.home) === String(h.id) ? raw('selected') : ''}>${h.name}</option>`)}</select></label>`;
 }
+// 1.34.0: a room or shelf label opens the Plants page with that place's plants; the chip says so and lets you clear it
+function placeName2(areaId, spotId) {
+  for (const h of (META.where || [])) for (const a of h.areas) {
+    if (spotId && a.spots) { const sp = a.spots.find(x => String(x.id) === String(spotId)); if (sp) return `${sp.name} (${a.name})`; }
+    if (!spotId && String(a.id) === String(areaId)) return a.name;
+  }
+  return spotId ? 'a spot that no longer exists' : 'a room or area that no longer exists';
+}
+function placeChip() {
+  if (!G.area && !G.spot) return '';
+  return html`<p class="place-chip" role="status"><strong>Showing the plants at ${placeName2(G.area, G.spot)}.</strong> <button class="btn small ghost" type="button" data-act="clearplace">Show every place</button></p>`;
+}
 function siteFilter() {
   return html`<label>Location<select data-f="site"><option value="">Any</option>${(META.sites || []).map(s => html`<option ${G.site === s ? raw('selected') : ''}>${s}</option>`)}</select></label>`;
 }
@@ -264,7 +280,7 @@ async function viewGroups() {
     <section class="blk" id="grp-how"><h2>How groups work</h2><ul>
       <li><strong>Smart groups</strong> have a rule, such as "Genus is Philodendron" or "Location is Indoors". Plants that fit join by themselves, and leave when they stop fitting.</li>
       <li><strong>Hand-picked groups</strong> hold the plants you choose. Add or take out plants on the group's page or on a plant's own page.</li>
-      <li>On the <a href="#/">Plants page</a>, choose a group under <strong>Group</strong> to see only those plants, or sort by group. Previous and Next Plant follow the same choice.</li>
+      <li>On the <a href="#/plants">Plants page</a>, choose a group under <strong>Group</strong> to see only those plants, or sort by group. Previous and Next Plant follow the same choice.</li>
       <li>A group's page shows the conditions that suit every plant in it, and lets you log care, move the plants, or change a setting for all of them. A change to a setting shows each plant first, and can be undone.</li>
       <li>Removing a group never changes the plants in it.</li></ul></section>`,
   };
@@ -294,7 +310,7 @@ async function viewGroup(id) {
     html: html`<p class="crumb"><a href="#/groups">All groups</a></p>
     <h1>${d.name}</h1><p>${groupKindWords(d)}</p>${paras(d.notes)}
     <div class="row noprint"><button class="btn ghost" type="button" data-act="grpedit">${picked ? 'Change the name, notes or plants' : 'Change the name, notes or rule'}</button>
-      <a class="btn ghost" href="#/" data-act="grpshow" data-id="${d.id}">Show them on the Plants page</a>
+      <a class="btn ghost" href="#/plants" data-act="grpshow" data-id="${d.id}">Show them on the Plants page</a>
       <button class="btn ghost danger" type="button" data-act="grpdel">Remove this group</button></div>
     <section class="blk" id="g-plants"><h2>Plants in this group (${d.members.length})</h2>
       ${d.members.length ? html`<ul class="jobs">${d.members.map(m => html`<li class="job" data-code="${m.code}">${m.photo ? html`<img src="${thumbUrl(m.photo)}" alt="" loading="lazy" width="64" height="64">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}

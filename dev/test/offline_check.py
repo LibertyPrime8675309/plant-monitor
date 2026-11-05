@@ -36,7 +36,7 @@ with sync_playwright() as p:
     pg = ctx.new_page()
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.add_init_script("localStorage.setItem('plantdb.editor','Ethan on the phone')")
-    pg.goto(LOCAL + '/#/'); pg.wait_for_timeout(3000)
+    pg.goto(LOCAL + '/#/plants'); pg.wait_for_timeout(3000)
     check(pg.evaluate("navigator.serviceWorker.controller !== null || navigator.serviceWorker.ready.then(() => true)") is not None, 'the service worker is registered')
     pg.reload(); pg.wait_for_timeout(2500)
     check(pg.evaluate('!!navigator.serviceWorker.controller'), 'and controls the page after a reload')
@@ -56,7 +56,7 @@ with sync_playwright() as p:
     pg.screenshot(path=os.path.join(OUT, 'offline-1-page.png'), full_page=True)
     # no connection
     ctx.set_offline(True); server(False)
-    pg.goto(LOCAL + '/#/'); pg.wait_for_timeout(14000)
+    pg.goto(LOCAL + '/#/plants'); pg.wait_for_timeout(14000)
     check(pg.locator('#grid .sheet').count() > 50 and pg.locator('#net').inner_text().startswith('Offline'), 'offline, the app still opens and lists the plants, and the header says "Offline"')
     check('This is what this device saved' in pg.inner_text('main'), 'with a note that this is the saved copy')
     pg.goto(LOCAL + f'/#/plant/{P}'); pg.wait_for_timeout(9000)

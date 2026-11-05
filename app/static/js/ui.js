@@ -229,7 +229,7 @@ document.addEventListener('keydown', e => {
     case ']': click('#pnav a.pn-next'); break;
     case 'r': case 'R': e.preventDefault(); { const b = document.querySelector('[data-act=readpage]'); readAloud(readTarget(), b, 'this page'); } break;
     case 'e': case 'E': if (CUR && location.hash.startsWith('#/plant/') && !location.hash.endsWith('/edit')) { e.preventDefault(); location.hash = '#/plant/' + enc(CUR.p.code) + '/edit'; } break;
-    case 'h': case 'H': e.preventDefault(); go('#/'); break;
+    case 'h': case 'H': e.preventDefault(); go('#/plants'); break;
     case 'm': case 'M': click('[data-act=navtoggle]:not([aria-hidden])'); break;
     case 'l': case 'L': e.preventDefault(); placeDialog(); break;          // 1.11.0: choose the location
     case '?': e.preventDefault(); shortcutsDialog(); break;
@@ -462,8 +462,21 @@ async function viewLabels() {
       <p class="row"><button class="btn" type="button" data-act="print">Print labels</button>
         <a class="btn ghost" href="/card.html?all=1">Print care cards for all plants</a></p>
       <p class="hint">Care cards: a 4 × 6 inch card (or a full page) for each plant, with its water, light, temperature, humidity, feeding and dangers in big type.</p></div>
-    <div class="lsheet">${list.map(p => labelCard(p, base, true))}</div>`,
+    <div class="lsheet">${list.map(p => labelCard(p, base, true))}</div>
+    <section class="blk" id="place-labels"><h2>Room, area and shelf labels</h2>
+      <p class="muted">One for each room or area and each spot under Rooms and spots. Stick it on the shelf or by the door: scanning it opens the Plants page showing just what lives there.</p>
+      ${placeLabels(base)}</section>`,
   };
+}
+// 1.34.0: labels for rooms, areas and spots
+function placeLabels(base) {
+  const homes = (META && META.where) || [], multi = homes.length > 1;
+  const card = (q, name, sub, href, aria) => html`<div class="lblwrap"><div class="lbl"><img src="/api/where/qr.svg?${q}&base=${enc(base)}" alt="QR code for ${name}" width="96" height="96" loading="lazy">
+      <div><b>${name}</b><span class="sci">${sub}</span></div></div>
+    <a class="btn small ghost noprint lbl-open" href="${href}" aria-label="${aria}">Show its plants</a></div>`;
+  const cards = homes.flatMap(h => h.areas.flatMap(a => [card('area=' + a.id, a.name, `${a.site}${multi ? ', ' + h.home.name : ''} · ${a.plants} plant${a.plants === 1 ? '' : 's'}`, `#/plants?area=${a.id}`, `Show the plants in ${a.name}`),
+    ...(a.spots || []).map(sp => card('spot=' + sp.id, sp.name, `${a.name}${multi ? ', ' + h.home.name : ''} · ${sp.plants} plant${sp.plants === 1 ? '' : 's'}`, `#/plants?spot=${sp.id}`, `Show the plants at ${sp.name}, ${a.name}`))]));
+  return cards.length ? html`<div class="lsheet">${cards}</div>` : html`<p class="muted">No rooms or spots yet. Add them under <a href="#/where">Rooms and spots</a>.</p>`;
 }
 
 // ---------- audit log page: every change to every record, with filters (1.10.0; was the Change log page) ----------

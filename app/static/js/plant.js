@@ -118,10 +118,12 @@ function zoneHere(p) {
   const Z = META && META.zone, lo = zoneNum(p.zone_low), here = !Z ? null : Z.zone ? zoneNum(Z.zone) : zoneNum(String(Z.map_zone || '').split(' ')[0]);   // no weather history yet: the colder end of the map zone
   const where = html`${Z && Z.zone ? html`<p>Where you are: the last ${Z.years} winters of weather at ${placeName()} averaged a coldest night of ${Z.winter_low}°F, which is <strong>zone ${Z.zone}</strong>.${Z.map_note ? ' ' + Z.map_note : ''} <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>`
     : Z && Z.map_zone ? html`<p>Where you are: zone ${Z.map_zone} on the 2023 USDA map. <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>` : ''}`;
-  if (lo == null || here == null) return where;
+  // 1.34.0: summer heat next to winter cold, from the same weather history
+  const H = META && META.heat, summer = H && H.zone ? html`<p>Summer here: a usual year has ${H.over86} days above ${H.line}°F, <strong>AHS heat zone ${H.zone}</strong> of 12, with the hottest day about ${H.hottest}°F. If this plant's tag gives a heat zone range, compare it with ${H.zone}; <a href="#/weather">the Weather page</a> has each year's count.</p>` : '';
+  if (lo == null || here == null) return html`${where}${summer}`;
   const ok = here >= lo, gap = Math.round((lo - here) * 2);
   return html`${where}<p class="nowstate ${ok ? 'v-ok' : 'v-cool'}"><strong>${ok ? '✓ Hardy here.' : '▼ Not hardy here.'}</strong> ${ok ? 'It can stay outside through a usual winter, though a rare hard freeze can still hurt it.'
-    : `A usual winter is about ${gap * 5}°F colder than it can take (${gap} half-zone${gap === 1 ? '' : 's'}), so it needs to come inside or be protected.`}</p>`;
+    : `A usual winter is about ${gap * 5}°F colder than it can take (${gap} half-zone${gap === 1 ? '' : 's'}), so it needs to come inside or be protected.`}</p>${summer}`;
 }
 function srcList(v) {
   return lines(v).map(x => { const i = x.lastIndexOf('|'), t = i > 0 ? x.slice(0, i).trim() : x.trim(), u = i > 0 ? x.slice(i + 1).trim() : '';
@@ -487,7 +489,7 @@ async function viewPlant(code) {
   const single = document.documentElement.dataset.layout === 'single';
   return {
     title: p.common_name,
-    html: html`${pnavBlock(p.code)}<p class="crumb"><a href="#/">All plants</a>
+    html: html`${pnavBlock(p.code)}<p class="crumb"><a href="#/plants">All plants</a>
       <button class="btn ghost small noprint" type="button" data-act="layout">${single ? 'Show photos and details side by side' : 'Switch to one column'}</button></p>
     ${archived ? html`<div class="notice">This record is archived. It is hidden from the main list.</div>` : ''}
     <div class="plant">

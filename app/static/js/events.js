@@ -323,6 +323,7 @@ const acts = {
     navLayout();
   },
   gotoplaces(el, e) { const t = document.getElementById('sec-places'); if (t) scrollToSection(t); },
+  jumpsec(el) { const t = document.getElementById(el.dataset.sec); if (t) { scrollToSection(t); navFlash(t); } },   // 1.34.0: Today's jump buttons (scrollToSection puts the focus on the heading)
   placeshow(el) { setPlace(el.dataset.id).then(() => window.scrollTo(0, 0)); },
   async placehome(el) {
     const p = WX.places.find(x => String(x.id) === el.dataset.id); if (!p || !(await needName())) return;
@@ -387,7 +388,7 @@ const acts = {
     if (!(await confirmBox('Undo this change?', 'Each plant goes back to what it had before, unless it has been changed again since.', 'Undo the change'))) return;
     await guard(async () => { const r = await api('POST', `/api/bulk/${el.dataset.id}/undo`); toast(`Undone for ${r.undone.length} plant${r.undone.length === 1 ? '' : 's'}` + (r.kept.length ? `. ${r.kept.length} left as they are: changed again since` : '')); await loadCodes(true); route(); });
   },
-  grpshow(el, e) { if (e) e.preventDefault(); G.group = String(el.dataset.id); gSave(); go('#/'); },
+  grpshow(el, e) { if (e) e.preventDefault(); G.group = String(el.dataset.id); gSave(); go('#/plants'); },
   plgroups() { plantGroupsDialog(); },
   tickall(el) { const fs = el.closest('fieldset'); fs.querySelectorAll('li:not([hidden]) input[name=code]').forEach(x => { x.checked = el.dataset.on === '1'; }); },
   grprulerow() {
@@ -398,7 +399,8 @@ const acts = {
   },
   grprulerm(el) { const row = el.closest('.rule-row'); const box = row.parentElement; row.remove();
     box.querySelectorAll('.rule-row').forEach((r, i) => { r.dataset.row = i; r.querySelector('legend').textContent = 'Part ' + (i + 1); }); rulePreview(); box.querySelector('select').focus(); },
-  clearfilters() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '', status: 'active', site: '', home: '' }, Object.fromEntries(MORE_KEYS.map(k => [k, '']))); MOREOPEN = false; gSave(); route(); },
+  clearfilters() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '', status: 'active', site: '', home: '', area: '', spot: '' }, Object.fromEntries(MORE_KEYS.map(k => [k, '']))); MOREOPEN = false; gSave(); route(); },
+  clearplace() { G.area = ''; G.spot = ''; gSave(); route(); },
   plan(el) { G.plan = G.plan === el.dataset.plan ? '' : el.dataset.plan; document.querySelectorAll('.ledger button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.plan === G.plan))); drawGrid(); },
   pick(el) { PIDX = +el.dataset.i; repaintPhotos(); },
   zoom() { const c = curPhoto(); if (c) modal(html`<form method="dialog"><img src="${photoUrl(c.file)}" alt="${c.caption || CUR.p.common_name}"><p class="cap">${c.caption}</p><button class="btn" value="ok" autofocus>Close</button></form>`, 'photo'); },
@@ -486,7 +488,7 @@ const acts = {
     if (!(await confirmBox('Remove this entry?', el.dataset.what + '. The change log keeps a record that it was removed.', 'Remove', true))) return;
     await guard(async () => { await api('DELETE', '/api/care/' + el.dataset.id); toast('Entry removed'); await loadCarePlant(); });
   },
-  todayneeds() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: true }); gSave(); go('#/'); },
+  todayneeds() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: true }); gSave(); go('#/plants'); },
   async archive(el) {
     if (!(await needName())) return;
     const to = el.dataset.to === '1';

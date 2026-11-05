@@ -119,6 +119,22 @@ function seasonExpected(ref) {     // the written reference where it applies (Ro
   if (ref.normals) return { rows: ref.normals.months, src: 'history', years: ref.normals.years, since: ref.normals.since };
   return { rows: [], src: 'none' };
 }
+// 1.34.0: the USDA hardiness zone (winter) and the AHS heat zone (summer) side by side, both from the place's own weather history
+function climateBlock(W, H) {
+  const Z = META && String(META.place.id) === String(W.location.id) ? META.zone : null;
+  const winter = Z && Z.zone ? html`<p>The last ${Z.years} winters averaged a coldest night of <strong>${Z.winter_low}°F</strong>, which is <strong>USDA hardiness zone ${Z.zone}</strong> (how cold a usual winter gets, the zone on plant tags).${Z.map_note ? ' ' + Z.map_note : ''} <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>`
+    : Z && Z.map_zone ? html`<p>Zone ${Z.map_zone} on the 2023 USDA map. The winter zone from your own weather history appears after 3 whole years of it.</p>`
+    : html`<p class="muted">The winter zone from this place's weather history appears after 3 whole years of it.</p>`;
+  if (!H) return html`${winter}<p class="muted">Summer heat could not be worked out.</p>`;
+  const summer = H.zone ? html`<p>A usual year here has <strong>${H.over86} days above ${H.line}°F</strong>, which is <strong>AHS heat zone ${H.zone}</strong> of 12 (1 = cool summers, 12 = very hot), and its hottest day reaches about <strong>${H.hottest}°F</strong>. ${H.months.length ? `Hot days come ${H.months.length === 1 ? 'in ' + H.months[0].month : 'from ' + H.months[0].month + ' to ' + H.months[H.months.length - 1].month} (about ${H.months.map(m => `${m.days} in ${m.month}`).join(', ')}).` : ''}
+      From ${H.years} whole years of weather (${H.since} on). Many plant tags give a heat zone range next to the hardiness zones; this is the number to compare it with.</p>`
+    : html`<p class="muted">The summer heat zone appears after 3 whole years of weather history here${H.years ? ` (${H.years} so far)` : ''}.</p>`;
+  const rows = (H.per_year || []).filter(y => !y.partial || y.over86);
+  return html`${winter}${summer}
+    ${rows.length ? html`<div class="tbl-wrap"><table class="tbl heat-tbl"><caption class="sr">Hot days each year in ${H.place}</caption>
+      <thead><tr><th scope="col">Year</th><th scope="col">Days above ${H.line}°F</th><th scope="col">Hottest day</th></tr></thead>
+      <tbody>${rows.map(y => html`<tr><th scope="row">${y.year}${y.partial ? ' (so far)' : ''}</th><td>${y.over86}</td><td>${y.hottest}°F</td></tr>`)}</tbody></table></div>` : ''}`;
+}
 function seasonTable(ref, monthly) {
   const obs = Object.fromEntries((monthly || []).map(x => [x.month, x]));
   const E = seasonExpected(ref), exp = Object.fromEntries(E.rows.map(c => [c.month, c]));
@@ -155,7 +171,7 @@ async function viewWeather(sec) {
   let W;
   try { W = await api('GET', '/api/weather?x=1' + locQS()); }
   catch (e) { if (e.status === 404) { savePlace(null); W = await api('GET', '/api/weather'); } else throw e; }
-  const [cond, plants, ing, monthly, ref, st] = await Promise.all([loadCond(), api('GET', '/api/plants'), (ME().role === 'owner' ? api('GET', '/api/ingest').catch(() => null) : null), api('GET', '/api/weather/monthly?x=1' + locQS()), api('GET', '/api/reference'), api('GET', '/api/settings')]);
+  const [cond, plants, ing, monthly, ref, st, heat] = await Promise.all([loadCond(), api('GET', '/api/plants'), (ME().role === 'owner' ? api('GET', '/api/ingest').catch(() => null) : null), api('GET', '/api/weather/monthly?x=1' + locQS()), api('GET', '/api/reference'), api('GET', '/api/settings'), api('GET', '/api/heat?x=1' + locQS()).catch(() => null)]);
   WX.places = W.places || []; WX.place = W.location; WX.home = W.home;
   WX.compare = WX.compare.filter(id => WX.places.some(p => String(p.id) === id && String(p.id) !== String(W.location.id)));
   const atHome = W.location.is_home;
@@ -184,6 +200,7 @@ async function viewWeather(sec) {
       ${wtControls()}<div id="wx-table"><p class="loading">Loading table</p></div></section>
     <section class="blk"><h2>Expected and tracked this season in ${W.location.name}</h2>${seasonTable(ref, monthly)}
       <p class="hint">${ref.applies !== false ? `Expected values are 30-year averages for ${W.location.name}. ` : ''}Tracked values come from the readings above: the average of each day's low and high, and how many nights fell to 32°F or below. Days with fewer than 12 readings are skipped.</p></section>
+    <section class="blk" id="wx-climate"><h2>Your climate: winter cold and summer heat in ${W.location.name}</h2>${climateBlock(W, heat)}</section>
     ${ing ? html`<section class="blk" id="sensor"><h2>Connect your sensor</h2>
       <p>A sensor on your network can send readings to this app. Each reading becomes part of the history above, and "My sensor" can drive the current conditions on every plant page.</p>
       <div class="notice">Sensors on your home network send to this computer's network address on port 8082${lanIp ? '' : ' (for example 192.168.1.20; the README shows how to find yours)'}. That port only takes readings with the token below; the rest of the app stays closed. It is shut until you open it: put the line <span class="code">PLANTDB_SENSOR_BIND=0.0.0.0</span> in a file named .env next to docker-compose.yml, then run docker compose up -d (README, "Connecting your own sensor").</div>
@@ -651,18 +668,20 @@ function fzActBy(d) {
   return new Date(addDays(d, -1) + 'T12:00:00').toLocaleDateString([], { weekday: 'long' }) + ' evening';
 }
 function fzSig() { const F = FROST; return F && F.first ? [F.first.date, F.first.low, F.worst.date, F.worst.low, F.worst.counts.danger, F.worst.counts.damage, F.worst.counts.watch].join('|') : ''; }
-function frostBanner() {
+function frostBanner(inPage) {
   const F = FROST; if (!F || !F.first) return '';
-  try { if (localStorage.getItem('plantdb.frosthide') === fzSig()) return ''; } catch (e) { /* show it */ }
+  try { if (!inPage && localStorage.getItem('plantdb.frosthide') === fzSig()) return ''; } catch (e) { /* show it */ }
   const W = F.worst, real = W.level !== 'watch', c = W.counts, sameNight = F.first.date === W.date;
   const parts = [c.danger ? `${c.danger} could die` : '', c.damage ? `${c.damage} would be damaged` : '', c.watch ? `${c.watch} ${c.watch === 1 ? 'is a close call' : 'are close calls'}` : ''].filter(Boolean);
   const list = parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0];
-  return html`<section class="fz-banner ${real ? 'bad' : ''} noprint" aria-labelledby="fz-h">
-    <p class="fz-title" id="fz-h">${!real ? 'Cold night ahead' : W.low <= 36 ? 'Frost warning' : 'Cold warning'} for ${placeShort()}: down to ${W.low}°F ${fzDay(W.date, true)}</p>
+  const title = `${!real ? 'Cold night ahead' : W.low <= 36 ? 'Frost warning' : 'Cold warning'} for ${placeShort()}: down to ${W.low}°F ${fzDay(W.date, true)}`;
+  // 1.34.0: on Today the warning is part of the page (a section with a heading, never hidden); elsewhere it is the banner above the page
+  return html`<${inPage ? 'div' : 'section'} class="fz-banner ${real ? 'bad' : ''} noprint" ${inPage ? '' : raw('aria-labelledby="fz-h"')}>
+    ${inPage ? html`<h2 class="fz-title">${title}</h2>` : html`<p class="fz-title" id="fz-h">${title}</p>`}
     <p>Of your ${F.outdoor} plants outside, ${list} that night.${sameNight ? '' : ` The first cold night is ${fzDay(F.first.date, true)}, at ${F.first.low}°F.`}
       Bring them in or cover them <strong>${fzActBy(F.first.date)}</strong>.</p>
     <p class="row"><a class="btn" href="#/frost">Open the cold-night checklist</a>
-      <button class="btn ghost" type="button" data-act="frosthide">Hide until the forecast changes</button></p></section>`;
+      ${inPage ? '' : html`<button class="btn ghost" type="button" data-act="frosthide">Hide until the forecast changes</button>`}</p></${inPage ? 'div' : 'section'}>`;
 }
 const FZ_DO = {
   'Move indoors': 'Bring it inside: a heated room, or the garage for a night or two.',

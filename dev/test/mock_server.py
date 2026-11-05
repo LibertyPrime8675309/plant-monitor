@@ -99,4 +99,26 @@ def mock_push_run():                     # the clock-driven sends, now, as if it
     finally: c.close()
     return S.jsonify(ok=True)
 
+@S.app.route('/mock/history', methods=['POST'])
+def mock_history():                      # 1.34.0: whole years of daily highs and lows, so the winter and summer zones can be worked out
+    b = S.request.get_json(silent=True) or {}
+    years, lid = int(b.get('years', 4)), int(b.get('loc', 1))
+    import math
+    c = S.sqlite3.connect(S.DB_PATH, timeout=30)
+    try:
+        this_year = S.datetime.now(S.timezone.utc).year
+        for y in range(this_year - years, this_year):
+            d = S.date(y, 1, 1)
+            while d.year == y:
+                doy = d.timetuple().tm_yday
+                hi = 71 + 27 * math.sin((doy - 110) / 365 * 2 * math.pi) + (3 if doy % 7 == 0 else 0)     # Round Rock-like: 44°F highs in January, 98 in July
+                lo = hi - 22 - (6 if doy % 11 == 0 else 0)
+                c.execute("INSERT INTO weather_daily(loc_id,date,data,kind,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(loc_id,date) DO UPDATE SET data=excluded.data",
+                          (lid, d.isoformat(), S.json.dumps({'temperature_2m_max': round(hi, 1), 'temperature_2m_min': round(lo, 1)}), 'observed', S.now()))
+                d += S.timedelta(days=1)
+        c.commit()
+    finally: c.close()
+    S.PLACE_HEAT.clear(); S.PLACE_CLIMATE.clear()
+    return S.jsonify(ok=True, years=years)
+
 S.app.run(host='127.0.0.1', port=int(os.environ.get('PORT', '8080')), threaded=True)
