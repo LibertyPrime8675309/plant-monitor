@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.30.0 (2026-11-04)
+- **Shopping** (under Discover): the stores are checked for your wishlist plants and for garden supplies.
+  - Watch for pots and trays, potting mixes, amendments, fertilizers, pest control, frost cloth and covers, grow lights and timers, and tools and labels, each with its own alerts.
+  - **Show** picks one kind (a dropdown on a phone), and **Stores near** picks Round Rock or Nevada City.
+  - **Cheapest now** gives the price per quart, pound or square foot when a listing says its size, and a price alert can be per unit.
+  - Each item lists the stores near you that carry that kind, with phone numbers you can tap.
+  - **Watch for more on Shopping** on each pot or tray, **Watch for it on Shopping** for each N-P-K ratio on the Fertilizer page, and **Watch the stores for frost cloth** on the cold-night checklist.
+  - The Wishlist page keeps your plants and points to Shopping for prices and alerts. The alert count is now beside Shopping.
+- **Stores**: every store, grouped near Round Rock, near Nevada City, and online. Each store has its own page with its address and a map link, how far it is, phone numbers, hours, email, website, what it carries, the listings it has for you with the price before, and **What they had** notes after you call or visit.
+  - **Edit details** and **Look them up on OpenStreetMap** fill in what is missing.
+  - Details for the five stores near Round Rock, and six new stores near Nevada City (including Peaceful Valley Farm & Garden Supply, which is also an online store), come from their websites (batch B5).
+  - The owner's store settings (on and off, how often, adding a store, the eBay and Etsy keys) moved to the Stores page.
+- **Quicker pages:**
+  - The page you choose shows at once, with its name and "Loading" if it takes a moment.
+  - A page you opened before shows straight away from what this device had, then checks for anything newer.
+  - Pointing at a link starts loading it, and the other pages of the section load in the background.
+  - The plant list, frost and groups no longer hold up every page.
+  - Answers are sent squeezed, about five times smaller, and the server handles more requests at once.
+  - **Settings, Debug, Page timings** shows how long each page took and why.
+- The third extra palm and "any plants not yet photographed" are ticked off the Still to photograph list (batch B5).
+- No new photo pack. The picture checker is unchanged.
+
 ## 1.29.0 (2026-11-04)
 - **A clearer top bar.** Six sections: **Today**, **Plants**, **Care**, **Weather**, **Discover** and **Settings**. The pages of the section you're in are on a second row:
   - Plants: All plants, Groups, Add plants, Mushrooms, Rooms and spots, Photos, Labels.

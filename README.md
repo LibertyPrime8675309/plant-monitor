@@ -843,7 +843,7 @@ In the library, **Show** can be set to **On my wishlist**, **Ones with notes or 
 
 #### Prices, stock and alerts (from 1.27.0)
 
-The plant record checks shops for everything on your wishlist that you still want: every 12 hours, or when you press **Check the shops now** on the Wishlist page.
+From 1.30.0 this is on the **Shopping** page, with the stores on the **Stores** page (see "Shopping, stores, and quicker pages"). The plant record checks the stores for everything you still want: every 12 hours, or when you press **Check the stores now**.
 - **On each wanted plant:** the cheapest listing now (with a link to it), how many shops have it, and **Every listing found, with past prices**.
 - **Edit, and set alerts** sets:
   - **Search the shops for**: one search per line, such as a variety ("Monstera Thai Constellation"). If it's left empty, the common and scientific names are used.
@@ -939,6 +939,37 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 - bash: `echo 'PLANTDB_VISION_MODEL=bioclip-2' >> .env && docker compose up -d`
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
+
+## Shopping, stores, and quicker pages (from 1.30.0)
+
+**Shopping** (under Discover) is where the stores are checked: for the plants on your wishlist, and for garden supplies.
+
+- **Show** picks one kind: Wishlist plants, Pots and trays, Potting mixes, Amendments, Fertilizers, Pest control, Frost cloth and covers, Grow lights and timers, Tools and labels. On a phone it is a dropdown.
+- **Stores near** picks a home: online stores count for every home, and stores you can visit count only for the home they are near.
+- **Add something to watch** adds a supply: what it is, its kind, what to search the stores for, and alerts.
+- **Cheapest now** shows the price per quart (potting mixes and amendments), per pound (fertilizers) or per square foot (frost cloth) when a listing says its size, so an 8 qt bag and a 2 cu ft bag can be compared. A price alert can be for the whole listing or per unit.
+- **Stores near you that carry it** lists the stores you can visit for that kind, with their phone numbers.
+- Buttons elsewhere start watching for you: **Watch for more on Shopping** on each pot or tray, **Watch for it on Shopping** for each N-P-K ratio on the Fertilizer page, and **Watch the stores for frost cloth** on the cold-night checklist.
+- The Wishlist page keeps the plants you want, and points to Shopping for the stores, prices and alerts.
+
+**Stores** (the button on Shopping, or Settings, Stores and keys) lists every store: near Round Rock, near Nevada City, and online. Choose one to open its page:
+
+- its address with a map link and the distance from home, its phone numbers (tap to call on a phone), its hours, email and website, and where those details came from;
+- what it carries, how it is checked, and its last check;
+- **What you are watching that it has**, with each price, the price before, and the price per unit;
+- **What they had**: notes after you call or visit, which everyone sees.
+
+**Edit details** changes the address, phone, hours, what it carries and the home it is near. **Look them up on OpenStreetMap** fills in what is still empty (hours, phone, website and its map position). The owner turns stores on and off, adds stores, chooses how often they are checked, and keeps the eBay and Etsy keys, all at the bottom of the Stores page.
+
+The details for the stores near Round Rock and six stores near Nevada City (Peaceful Valley, B&C Ace, Weiss Brothers, Prospector's, Nevada City Blooms and Double Dogwood) came from their own websites in November 2026. Hours change, so call before a long drive.
+
+**Quicker pages:**
+
+- The page you choose shows at once: its name and "Loading" if it takes more than a moment.
+- A page you have opened before shows what this device had from last time straight away, then quietly checks for anything newer and redraws if something changed (not while you are typing on it).
+- Pointing at a link, or moving to it with the keyboard, starts loading that page, and once a page is open the other pages in its section are fetched in the background.
+- Answers from the plant server are sent squeezed (about five times smaller).
+- **Settings, Debug, Page timings** shows how long each of the last pages took: waiting for the server, drawing the page, and the slowest answers. If pages are slow on your computer, these numbers show where the time goes.
 
 ## The top bar, rooms and spots, pots and trays, editing on the page, and settings that follow you (from 1.29.0)
 

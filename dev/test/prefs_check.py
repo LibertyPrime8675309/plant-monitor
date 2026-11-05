@@ -51,7 +51,10 @@ with sync_playwright() as p:
     pr = call('GET', '/api/me/prefs', h=E, base=TS)[1]['prefs']
     check('"size":"160"' in (pr.get('display.text') or ''), 'ticking "Use these on every device" shares that part')
     c2 = device(1280, 900)
-    c2.goto(TS + '/#/'); c2.wait_for_timeout(5000)
+    c2.goto(TS + '/#/'); c2.wait_for_timeout(3000)
+    for _ in range(20):                       # it starts again once with the synced settings: give that a moment
+        if c2.locator('select[data-f=health]').count() and c2.locator('select[data-f=health]').input_value() == 'Good': break
+        c2.wait_for_timeout(500)
     check(c2.locator('select[data-f=health]').input_value() == 'Good', 'another device opens with the same Plants filter')
     check(c2.evaluate("document.documentElement.dataset.size") != '160', 'but keeps its own text size, because it has not ticked the box')
     c2.evaluate("window.PlantSync.share('text', true)"); c2.wait_for_timeout(1500)

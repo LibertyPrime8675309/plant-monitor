@@ -4,7 +4,7 @@ Everything lives in DATA_DIR (default /data): plants.db, photos/, cache/.
 Edits are versioned: every save bumps the plant's page version, writes a full snapshot
 to plant_versions and one row per changed field to audit_log (what / before / after / who / when).
 """
-import csv, hmac, html as html_mod, io, json, math, os, re, secrets, shutil, sqlite3, threading, time, urllib.error, urllib.parse, urllib.request, uuid
+import csv, gzip, hmac, html as html_mod, io, json, math, os, re, secrets, shutil, sqlite3, threading, time, urllib.error, urllib.parse, urllib.request, uuid
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import urlparse
 
@@ -254,8 +254,16 @@ def init_db():
     wl = {r[1] for r in c.execute('PRAGMA table_info(wishlist)')}
     for col, typ in (('max_price', 'REAL'), ('alert_stock', 'INTEGER NOT NULL DEFAULT 0'), ('search_words', "TEXT NOT NULL DEFAULT ''")):
         if col not in wl: c.execute(f'ALTER TABLE wishlist ADD COLUMN {col} {typ}')
+    for col, typ in (('kind', "TEXT NOT NULL DEFAULT 'plant'"), ('price_per', "TEXT NOT NULL DEFAULT ''"), ('source', "TEXT NOT NULL DEFAULT ''")):   # 1.30.0: Shopping
+        if col not in wl: c.execute(f'ALTER TABLE wishlist ADD COLUMN {col} {typ}')
+    shc = {r[1] for r in c.execute('PRAGMA table_info(shops)')}
+    for col, typ in SHOP_DETAIL_COLS:                # 1.30.0: where each store is, how to reach it, what it carries
+        if col not in shc: c.execute(f'ALTER TABLE shops ADD COLUMN {col} {typ}')
+    if 'online' not in shc: c.execute("UPDATE shops SET online=CASE WHEN local=0 OR key='mindseye' THEN 1 ELSE 0 END")
+    if 'size' not in {r[1] for r in c.execute('PRAGMA table_info(offers)')}: c.execute("ALTER TABLE offers ADD COLUMN size TEXT NOT NULL DEFAULT ''")
     for i, (k, name, kind, url, pages, local) in enumerate(SH.DEFAULT_SHOPS):
-        c.execute('INSERT OR IGNORE INTO shops(key,name,kind,url,pages,local,sort) VALUES(?,?,?,?,?,?,?)', (k, name, kind, url, json.dumps(pages), int(local), i))
+        c.execute('INSERT OR IGNORE INTO shops(key,name,kind,url,pages,local,online,sort) VALUES(?,?,?,?,?,?,?,?)',
+                  (k, name, kind, url, json.dumps(pages), int(local), int(not local or k == 'mindseye'), i))
     have = {r[1] for r in c.execute('PRAGMA table_info(plants)')}
     for n, k, _ in FIELDS:                      # upgrade an older database: add any column this version needs
         if n not in have: c.execute(f"ALTER TABLE plants ADD COLUMN {n} {SQLTYPE.get(k, 'TEXT')}")
@@ -428,6 +436,33 @@ def apply_batches(c):
             for i, pl in enumerate(b.get('places_add', [])):    # 1.13.1: rooms and shelves inside, where light spots go
                 c.execute('INSERT OR IGNORE INTO indoor_places(room,name,sort,created_by,created_at) VALUES(?,?,?,?,?)',
                           (pl['room'], pl.get('name', ''), pl.get('sort', i), who, ts))
+            for sh in b.get('shops_add', []):                   # 1.30.0: a store, added once (skipped if its key is there already)
+                if c.execute('SELECT 1 FROM shops WHERE key=?', (sh['key'],)).fetchone(): continue
+                hid = None
+                if sh.get('home'):
+                    hr = c.execute('SELECT id, is_home FROM locations WHERE name=? AND (is_home=1 OR plants_here=1)', (sh['home'],)).fetchone()
+                    if not hr: continue                                  # that home is not set up here
+                    hid = None if hr['is_home'] else hr['id']
+                n = c.execute('SELECT COALESCE(MAX(sort),0)+1 FROM shops').fetchone()[0]
+                c.execute('INSERT INTO shops(key,name,kind,url,pages,local,online,home_id,address,phone,hours,email,website,carries,details_src,details_at,sort) '
+                          'VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                          (sh['key'], sh['name'], sh.get('kind', 'auto'), sh['url'], json.dumps(sh.get('pages', [])), int(sh.get('local', 1)), int(sh.get('online', 0)), hid,
+                           sh.get('address', ''), sh.get('phone', ''), sh.get('hours', ''), sh.get('email', ''), sh.get('website', ''),
+                           json.dumps(sh.get('carries', [])), sh.get('details_src', ''), sh.get('details_at'), n))
+                audit_only(c, 'setting', 'shops', None, sh['name'], who, f'Store added ({label}): {sh["name"]}')
+            for u in b.get('shops_update', []):                 # guarded: a detail is set only if it still holds the value expected
+                r = c.execute('SELECT * FROM shops WHERE key=?', (u['key'],)).fetchone()
+                if not r: continue
+                done = {}
+                for f, (old, new) in u['set'].items():
+                    if f not in ('address', 'phone', 'hours', 'email', 'website', 'carries', 'details_src', 'details_at', 'online', 'name', 'url'): continue
+                    cur = json.loads(r[f] or '[]') if f == 'carries' else r[f]
+                    emp = lambda v: None if v is None or v == '' or v == [] else v
+                    if emp(cur) != emp(old): continue
+                    done[f] = json.dumps(new) if f == 'carries' else new
+                if done:
+                    c.execute('UPDATE shops SET ' + ', '.join(f'{k}=?' for k in done) + ' WHERE key=?', (*done.values(), r['key']))
+                    audit_only(c, 'setting', 'shops', None, ', '.join(done), who, f'Store details added ({label}): {r["name"]}')
             for u in b.get('lights_update', []):                # guarded, like plant updates: only if the light still holds the old value
                 L = c.execute('SELECT * FROM lights WHERE lkey=?', (u['key'],)).fetchone()
                 if not L: continue
@@ -708,6 +743,10 @@ def people():
 
 # ---------------------------------------------------------------- security
 @app.before_request
+def took_start():                   # 1.30.0: how long each answer takes to make, sent back as X-Took-Ms for the Debug page timings
+    g.t0 = time.perf_counter()
+
+@app.before_request
 def guard():
     if request.path == '/healthz': return None
     if has_request_context() and str(request.environ.get('SERVER_PORT', '')) == SENSOR_PORT and not (request.path == '/api/readings' and request.method == 'POST'):
@@ -750,6 +789,41 @@ def headers(resp):
     resp.headers['X-Frame-Options'] = 'DENY'
     resp.headers['Referrer-Policy'] = 'no-referrer'
     resp.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'"
+    t0 = g.get('t0')
+    if t0 is not None:
+        ms = round((time.perf_counter() - t0) * 1000)
+        resp.headers['X-Took-Ms'] = str(ms); resp.headers['Server-Timing'] = f'app;dur={ms}'
+    return gzip_answer(resp)
+
+GZ_TYPES = ('application/json', 'text/html', 'text/css', 'application/javascript', 'text/javascript', 'image/svg+xml', 'text/plain', 'text/csv', 'text/calendar', 'application/manifest+json')
+GZ_STATIC = {}                       # the app's own files, squeezed once per version of each file: path -> (etag, bytes)
+def gzip_answer(resp):
+    """1.30.0: text answers over about 1 KB are sent squeezed (gzip) when the browser accepts it, which is about 5 times smaller."""
+    try:
+        if resp.status_code != 200 or resp.headers.get('Content-Encoding') or 'gzip' not in request.headers.get('Accept-Encoding', '').lower(): return resp
+        if resp.mimetype not in GZ_TYPES or request.method == 'HEAD' or resp.is_streamed and not resp.direct_passthrough: return resp
+        key, old = None, resp.response
+        if resp.direct_passthrough:                    # a file sent from disk (the app's own scripts and styles)
+            key = (request.path, resp.headers.get('ETag', ''))
+            got = GZ_STATIC.get(request.path)
+            if got and got[0] == key[1] and key[1]: body = got[1]
+            else:
+                resp.direct_passthrough = False
+                raw = resp.get_data()
+                if len(raw) < 1400: return resp
+                body = gzip.compress(raw, 6)
+                if key[1]: GZ_STATIC[request.path] = (key[1], body)
+            resp.direct_passthrough = False
+        else:
+            raw = resp.get_data()
+            if len(raw) < 1400: return resp
+            body = gzip.compress(raw, 5)
+        resp.set_data(body)
+        if old is not resp.response and hasattr(old, 'close'): old.close()
+        resp.headers['Content-Encoding'] = 'gzip'; resp.headers['Content-Length'] = str(len(body))
+        resp.vary.add('Accept-Encoding')
+    except Exception as e:
+        print('[gzip] sent as it is:', e, flush=True)
     return resp
 
 @app.errorhandler(400)
@@ -1328,9 +1402,17 @@ def wishlist_api():
         name = str(b.get('name') or request.args.get('name') or '').strip()[:120]
         if not name: abort(400, 'Which species?')
         old = c.execute('SELECT * FROM wishlist WHERE name=?', (name,)).fetchone()
+        if request.method == 'PUT' and old and str(b.get('rename') or '').strip() and str(b['rename']).strip()[:120] != name:   # 1.30.0: a supply's name can change
+            new_name = str(b['rename']).strip()[:120]
+            if old['kind'] == 'plant': abort(400, 'A wishlist plant keeps its species name. Change its common name instead.')
+            if c.execute('SELECT 1 FROM wishlist WHERE name=?', (new_name,)).fetchone(): abort(409, f'"{new_name}" is already on the list.')
+            c.execute('UPDATE wishlist SET name=? WHERE name=?', (new_name, name))
+            c.execute('UPDATE offers SET wish=? WHERE wish=?', (new_name, name)); c.execute('UPDATE wish_alerts SET wish=? WHERE wish=?', (new_name, name))
+            name = new_name; old = c.execute('SELECT * FROM wishlist WHERE name=?', (name,)).fetchone()
         if request.method == 'DELETE':
             c.execute('DELETE FROM wishlist WHERE name=?', (name,))
-            audit_only(c, 'library', 'wishlist', name, None, editor(), f'{name} taken off the wishlist')
+            c.execute('DELETE FROM offers WHERE wish=?', (name,))
+            audit_only(c, 'library', 'wishlist', name, None, editor(), f'{name} taken off ' + ('Shopping' if old and old['kind'] != 'plant' else 'the wishlist'))
         else:
             st = b.get('status', old['status'] if old else 'want')
             if st not in ('want', 'got'): abort(400, 'status must be want or got')
@@ -1344,23 +1426,56 @@ def wishlist_api():
                 if not 0 < mp < 100000: abort(400, 'The price to watch for must be more than $0')
             more = (mp, 1 if b.get('alert_stock', old['alert_stock'] if old else 0) else 0,
                     re.sub(r'[ \t]+', ' ', str(b.get('search_words', old['search_words'] if old else '') or '')).strip()[:300])
-            if old: c.execute('UPDATE wishlist SET common_name=?, notes=?, where_seen=?, status=?, max_price=?, alert_stock=?, search_words=?, updated_by=?, updated_at=? WHERE name=?',
+            kind = str(b.get('kind', old['kind'] if old else 'plant') or 'plant')
+            if kind not in SHOP_KIND_WORD: abort(400, 'Choose what kind of thing it is: ' + ', '.join(SHOP_KIND_WORD.values()))
+            per = str(b.get('price_per', old['price_per'] if old else '') or '')
+            if per not in ('', 'unit'): abort(400, 'price_per must be empty (the whole listing) or unit')
+            if per == 'unit' and SH.KIND_UNIT.get(kind, 'each') == 'each': per = ''
+            if old and old['kind'] == 'plant' and kind != 'plant': abort(400, 'A wishlist plant stays a plant.')
+            more += (kind, per, str(b.get('source', old['source'] if old else '') or '')[:60])
+            if old: c.execute('UPDATE wishlist SET common_name=?, notes=?, where_seen=?, status=?, max_price=?, alert_stock=?, search_words=?, kind=?, price_per=?, source=?, updated_by=?, updated_at=? WHERE name=?',
                               vals + more + (editor(), now(), name))
-            else: c.execute('INSERT INTO wishlist(name,common_name,notes,where_seen,status,max_price,alert_stock,search_words,added_by,added_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
+            else: c.execute('INSERT INTO wishlist(name,common_name,notes,where_seen,status,max_price,alert_stock,search_words,kind,price_per,source,added_by,added_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',
                             (name,) + vals + more + (editor(), now()))
             if old and (old['search_words'] or '') != more[2]: c.execute('DELETE FROM offers WHERE wish=?', (name,))   # new searches: start the list again
-            audit_only(c, 'library', 'wishlist', None, name, editor(), f'{name} ' + ('updated on the wishlist' if old else 'added to the wishlist'))
+            where = 'the wishlist' if kind == 'plant' else 'Shopping'
+            audit_only(c, 'library', 'wishlist', None, name, editor(), f'{name} ' + (f'updated on {where}' if old else f'added to {where}'))
         c.commit()
     rows = [dict(r) for r in c.execute("SELECT * FROM wishlist ORDER BY status='got', added_at DESC")]
     sp, _ = species_owned(c)
     for r in rows:
-        r['yours'] = sp.get(r['name'].lower(), [])
+        r['yours'] = sp.get(r['name'].lower(), []) if r['kind'] == 'plant' else []
         r['terms'] = SH.terms_for(r)
-        o = c.execute("SELECT COUNT(*) n, COUNT(DISTINCT shop) s, MAX(last_seen) seen FROM offers WHERE wish=? AND gone=0 AND available=1", (r['name'],)).fetchone()
-        best = c.execute("SELECT o.*, s.name shop_name FROM offers o JOIN shops s ON s.key=o.shop WHERE o.wish=? AND o.gone=0 AND o.available=1 AND o.price IS NOT NULL "
-                         "ORDER BY o.price LIMIT 1", (r['name'],)).fetchone()
-        r['offers'] = {'count': o['n'], 'shops': o['s'], 'best': dict(best) if best else None}
+        r['offers'] = offer_summary(c, r)
     return jsonify(wishlist=rows, alerts=wish_alerts_open(c), checked=setting(c, 'shops_checked_at', ''))
+
+def shop_near_sql(c, near):
+    """1.30.0: SQL (with its arguments) keeping the stores that count for a home: every online store, and the stores you can
+    visit near that home. near: 'all', or a home's id."""
+    if not near or near == 'all': return '', []
+    try: hid = int(near)
+    except (TypeError, ValueError): return '', []
+    main = home_place(c)['id']
+    return ' AND (s.online=1 OR s.local=0 OR COALESCE(s.home_id, ?)=?)', [main, hid]
+
+def offer_unit(o, kind):
+    return SH.unit_price(o['title'], o['price'], kind, o['size'] if 'size' in o.keys() else '')
+
+def offer_summary(c, w, near='all'):
+    """How many stores have it in stock, and the cheapest listing: by the price per quart, pound or square foot when the item is
+    sold that way and the listing says its size, else by its price."""
+    extra, args = shop_near_sql(c, near)
+    rows = c.execute('SELECT o.*, s.name shop_name, s.local, s.online FROM offers o JOIN shops s ON s.key=o.shop WHERE o.wish=? AND o.gone=0 AND o.available=1 AND s.enabled=1' + extra,
+                     [w['name']] + args).fetchall()
+    kind = w['kind'] if 'kind' in w.keys() else 'plant'
+    priced = []
+    for o in rows:
+        if o['price'] is None: continue
+        d = dict(o); d['unit'] = offer_unit(o, kind); priced.append(d)
+    want_unit = SH.KIND_UNIT.get(kind, 'each')
+    by_unit = [d for d in priced if d['unit'] and d['unit']['unit'] == want_unit and want_unit != 'each']
+    best = min(by_unit, key=lambda d: d['unit']['per']) if by_unit else (min(priced, key=lambda d: d['price']) if priced else None)
+    return {'count': len(rows), 'shops': len({o['shop'] for o in rows}), 'best': best, 'unit': want_unit if want_unit != 'each' else ''}
 
 # ---------------------------------------------------------------- 1.27.0: prices and stock for the wishlist (app/shops.py)
 SHOPS_SCHEMA = """
@@ -1374,7 +1489,19 @@ CREATE TABLE IF NOT EXISTS offer_history(offer_id INTEGER NOT NULL, price REAL, 
 CREATE TABLE IF NOT EXISTS wish_alert_marks(offer_id INTEGER NOT NULL, kind TEXT NOT NULL, price REAL, at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS wish_alerts(id INTEGER PRIMARY KEY AUTOINCREMENT, wish TEXT NOT NULL, offer_id INTEGER, kind TEXT NOT NULL, text TEXT NOT NULL,
   price REAL, url TEXT, shop TEXT, created_at TEXT NOT NULL, dismissed_by TEXT, dismissed_at TEXT);
+CREATE TABLE IF NOT EXISTS shop_notes(id INTEGER PRIMARY KEY AUTOINCREMENT, shop TEXT NOT NULL, text TEXT NOT NULL, created_by TEXT NOT NULL, created_at TEXT NOT NULL);
 """
+# 1.30.0: Shopping. Besides wishlist plants, the list holds garden supplies; each store can have its address, phone, hours and
+# what it carries. home_id: the home a store you can visit is near (empty: the main home). online: it sells online, so it counts
+# for every home.
+SHOP_DETAIL_COLS = (('home_id', 'INTEGER'), ('online', 'INTEGER NOT NULL DEFAULT 0'), ('address', "TEXT NOT NULL DEFAULT ''"), ('phone', "TEXT NOT NULL DEFAULT ''"),
+                    ('hours', "TEXT NOT NULL DEFAULT ''"), ('email', "TEXT NOT NULL DEFAULT ''"), ('website', "TEXT NOT NULL DEFAULT ''"),
+                    ('carries', "TEXT NOT NULL DEFAULT '[]'"), ('lat', 'REAL'), ('lon', 'REAL'), ('details_src', "TEXT NOT NULL DEFAULT ''"),
+                    ('details_at', 'TEXT'), ('geo_at', 'TEXT'))
+SHOP_KINDS = [('plant', 'Wishlist plants'), ('pots', 'Pots and trays'), ('mix', 'Potting mixes'), ('amend', 'Amendments'), ('fert', 'Fertilizers'),
+              ('pest', 'Pest control'), ('frost', 'Frost cloth and covers'), ('light', 'Grow lights and timers'), ('tools', 'Tools and labels')]
+SHOP_KIND_WORD = dict(SHOP_KINDS)
+SHOP_TEXT_MAX = {'address': 200, 'phone': 120, 'hours': 300, 'email': 120, 'website': 300, 'details_src': 200}
 EBAY_API = os.environ.get('PLANTDB_EBAY_API', SH.EBAY_API).rstrip('/')
 ETSY_API = os.environ.get('PLANTDB_ETSY_API', SH.ETSY_API).rstrip('/')
 SHOP_UA = 'PlantRecord/1.27 (a home plant record checking its owner\'s wishlist, a few requests a day)'
@@ -1422,14 +1549,14 @@ def offers_save(c, shop, wish, found):
         av = None if o['available'] is None else int(bool(o['available']))
         if r:
             back = (r['gone'] or not r['available']) and av
-            c.execute('UPDATE offers SET price=?, currency=?, available=?, detail=?, last_seen=?, gone=0, avail_since=? WHERE id=?',
-                      (o['price'], o['currency'], av, o['detail'], ts, ts if back else r['avail_since'], r['id']))
+            c.execute('UPDATE offers SET price=?, currency=?, available=?, detail=?, size=?, last_seen=?, gone=0, avail_since=? WHERE id=?',
+                      (o['price'], o['currency'], av, o['detail'], o.get('size') or '', ts, ts if back else r['avail_since'], r['id']))
             if r['price'] != o['price'] or (r['available'] or 0) != (av or 0) or r['gone']:
                 c.execute('INSERT INTO offer_history(offer_id,price,available,at) VALUES(?,?,?,?)', (r['id'], o['price'], av, ts))
             keep.add(r['id'])
         else:
-            i = c.execute('INSERT INTO offers(wish,shop,title,url,price,currency,available,detail,first_seen,last_seen,avail_since) VALUES(?,?,?,?,?,?,?,?,?,?,?)',
-                          (wish, shop, o['title'], o['url'], o['price'], o['currency'], av, o['detail'], ts, ts, ts if av else None)).lastrowid
+            i = c.execute('INSERT INTO offers(wish,shop,title,url,price,currency,available,detail,size,first_seen,last_seen,avail_since) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+                          (wish, shop, o['title'], o['url'], o['price'], o['currency'], av, o['detail'], o.get('size') or '', ts, ts, ts if av else None)).lastrowid
             c.execute('INSERT INTO offer_history(offer_id,price,available,at) VALUES(?,?,?,?)', (i, o['price'], av, ts))
             keep.add(i)
     for (i,) in c.execute('SELECT id FROM offers WHERE wish=? AND shop=? AND gone=0', (wish, shop)).fetchall():
@@ -1444,20 +1571,25 @@ def wish_alerts_make(c):
     money = lambda v: f'${v:,.2f}' if v is not None else 'price not shown'
     for w in c.execute("SELECT * FROM wishlist WHERE status='want' AND (alert_stock=1 OR max_price IS NOT NULL)").fetchall():
         nm, stock, cheap = w['common_name'] or w['name'], [], []
-        for o in c.execute("SELECT o.*, s.name shop_name FROM offers o JOIN shops s ON s.key=o.shop WHERE o.wish=? AND o.gone=0 AND o.available=1 "
+        for o in c.execute("SELECT o.*, s.name shop_name FROM offers o JOIN shops s ON s.key=o.shop WHERE o.wish=? AND o.gone=0 AND o.available=1 AND s.enabled=1 "
                            "ORDER BY o.price IS NULL, o.price", (w['name'],)).fetchall():
             if w['alert_stock'] and not c.execute("SELECT 1 FROM wish_alert_marks WHERE offer_id=? AND kind='stock' AND at>=?", (o['id'], o['avail_since'] or o['first_seen'])).fetchone():
                 stock.append(o); c.execute('INSERT INTO wish_alert_marks(offer_id,kind,price,at) VALUES(?,?,?,?)', (o['id'], 'stock', o['price'], ts))
-            if w['max_price'] is not None and o['price'] is not None and o['price'] <= w['max_price']:
+            # 1.30.0: a supply can be watched by its price per quart, pound or square foot
+            u = offer_unit(o, w['kind']) if w['price_per'] == 'unit' else None
+            val = (u['per'] if u and u['unit'] == SH.KIND_UNIT.get(w['kind']) else None) if w['price_per'] == 'unit' else o['price']
+            if w['max_price'] is not None and val is not None and val <= w['max_price']:
                 last = c.execute("SELECT MIN(price) FROM wish_alert_marks WHERE offer_id=? AND kind='price'", (o['id'],)).fetchone()[0]
-                if last is None or o['price'] < last:
-                    cheap.append(o); c.execute('INSERT INTO wish_alert_marks(offer_id,kind,price,at) VALUES(?,?,?,?)', (o['id'], 'price', o['price'], ts))
+                if last is None or val < last:
+                    cheap.append((o, val)); c.execute('INSERT INTO wish_alert_marks(offer_id,kind,price,at) VALUES(?,?,?,?)', (o['id'], 'price', val, ts))
         if not (stock or cheap): continue
-        parts, top = [], (cheap or stock)[0]
+        cheap.sort(key=lambda x: x[1])
+        per = f" a {SH.KIND_UNIT.get(w['kind'])}" if w['price_per'] == 'unit' else ''
+        parts, top = [], (cheap[0][0] if cheap else stock[0])
         if cheap:
-            parts.append(f"{money(cheap[0]['price'])} at {cheap[0]['shop_name']}, at or under your {money(w['max_price'])}" + (f" (and {len(cheap) - 1} more)" if len(cheap) > 1 else '') + '.')
+            parts.append(f"{money(cheap[0][1])}{per} at {cheap[0][0]['shop_name']}, at or under your {money(w['max_price'])}{per}" + (f" (and {len(cheap) - 1} more)" if len(cheap) > 1 else '') + '.')
         if stock:
-            parts.append(f"In stock at {len(stock)} shop{'s' if len(stock) > 1 else ''}: " + ', '.join(f"{o['shop_name']} {money(o['price'])}" for o in stock[:6]) + ('…' if len(stock) > 6 else '') + '.')
+            parts.append(f"In stock at {len(stock)} store{'s' if len(stock) > 1 else ''}: " + ', '.join(f"{o['shop_name']} {money(o['price'])}" for o in stock[:6]) + ('…' if len(stock) > 6 else '') + '.')
         c.execute('INSERT INTO wish_alerts(wish,offer_id,kind,text,price,url,shop,created_at) VALUES(?,?,?,?,?,?,?,?)',
                   (w['name'], top['id'], 'price' if cheap else 'stock', f"{nm}: " + ' '.join(parts), top['price'], top['url'], top['shop_name'], ts))
 
@@ -1542,7 +1674,231 @@ def shops_loop():
         time.sleep(600)
 
 def shop_row(r):
-    d = dict(r); d['pages'] = json.loads(d['pages'] or '[]'); return d
+    d = dict(r); d['pages'] = json.loads(d['pages'] or '[]')
+    try: d['carries'] = [k for k in json.loads(d.get('carries') or '[]') if k in SHOP_KIND_WORD]
+    except ValueError: d['carries'] = []
+    return d
+
+OSM_URL = os.environ.get('PLANTDB_OSM_URL', 'https://nominatim.openstreetmap.org').rstrip('/')
+OSM_UA = 'PlantRecord/1.30 (a home plant record finding its owner\'s local garden stores, a few requests a month)'
+OSMQ = {'last': 0.0, 'lock': threading.Lock()}
+def osm_search(params):
+    """One OpenStreetMap (Nominatim) search, at most one a second as it asks. Returns its list of places, or []."""
+    if os.environ.get('PLANTDB_OSM', '1') == '0': return []
+    with OSMQ['lock']:
+        wait = OSMQ['last'] + 1.1 - time.time()
+        if wait > 0: time.sleep(wait)
+        OSMQ['last'] = time.time()
+    q = urllib.parse.urlencode({**params, 'format': 'jsonv2', 'limit': 5, 'addressdetails': 1, 'extratags': 1, 'countrycodes': 'us'})
+    try:
+        with urllib.request.urlopen(urllib.request.Request(f'{OSM_URL}/search?{q}', headers={'User-Agent': OSM_UA, 'Accept': 'application/json'}), timeout=20) as r:
+            j = json.loads(r.read(2_000_000))
+        return j if isinstance(j, list) else []
+    except (urllib.error.URLError, OSError, ValueError, TimeoutError) as e:
+        print('[stores] OpenStreetMap search failed:', e, flush=True); return []
+
+def osm_address(a):
+    a = a or {}
+    street = ' '.join(x for x in (a.get('house_number'), a.get('road')) if x)
+    town = a.get('city') or a.get('town') or a.get('village') or a.get('hamlet') or ''
+    st = a.get('state', ''); st = US_STATE_ABBR.get(st, st)
+    return ', '.join(x for x in (street, town, ' '.join(y for y in (st, a.get('postcode', '')) if y)) if x)
+
+US_STATE_ABBR = {'Alabama': 'AL', 'Alaska': 'AK', 'Arizona': 'AZ', 'Arkansas': 'AR', 'California': 'CA', 'Colorado': 'CO', 'Connecticut': 'CT', 'Delaware': 'DE',
+    'Florida': 'FL', 'Georgia': 'GA', 'Hawaii': 'HI', 'Idaho': 'ID', 'Illinois': 'IL', 'Indiana': 'IN', 'Iowa': 'IA', 'Kansas': 'KS', 'Kentucky': 'KY',
+    'Louisiana': 'LA', 'Maine': 'ME', 'Maryland': 'MD', 'Massachusetts': 'MA', 'Michigan': 'MI', 'Minnesota': 'MN', 'Mississippi': 'MS', 'Missouri': 'MO',
+    'Montana': 'MT', 'Nebraska': 'NE', 'Nevada': 'NV', 'New Hampshire': 'NH', 'New Jersey': 'NJ', 'New Mexico': 'NM', 'New York': 'NY',
+    'North Carolina': 'NC', 'North Dakota': 'ND', 'Ohio': 'OH', 'Oklahoma': 'OK', 'Oregon': 'OR', 'Pennsylvania': 'PA', 'Rhode Island': 'RI',
+    'South Carolina': 'SC', 'South Dakota': 'SD', 'Tennessee': 'TN', 'Texas': 'TX', 'Utah': 'UT', 'Vermont': 'VT', 'Virginia': 'VA', 'Washington': 'WA',
+    'West Virginia': 'WV', 'Wisconsin': 'WI', 'Wyoming': 'WY'}
+
+def shop_home(c, s):
+    """The home a store you can visit is near (its home_id, else the main home)."""
+    H = {h['id']: h for h in homes(c)}
+    main = home_place(c)['id']
+    return H.get(s['home_id'] if s['home_id'] is not None else main) or H.get(main)
+
+def miles(lat1, lon1, lat2, lon2):
+    if None in (lat1, lon1, lat2, lon2): return None
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    a = math.sin((p2 - p1) / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
+    return round(3958.8 * 2 * math.asin(math.sqrt(a)), 1)
+
+def shop_full(c, r):
+    d = shop_row(r)
+    if d['local']:
+        h = shop_home(c, r)
+        d['home_name'] = h['name'] if h else ''; d['home_id_eff'] = h['id'] if h else None
+        d['miles'] = miles(d['lat'], d['lon'], h.get('lat'), h.get('lon')) if h else None
+    else: d['home_name'], d['home_id_eff'], d['miles'] = '', None, None
+    d['maps'] = ('https://www.openstreetmap.org/search?query=' + urllib.parse.quote(d['name'] + ', ' + d['address'])) if d['address'] else ''
+    d['notes_n'] = c.execute('SELECT COUNT(*) FROM shop_notes WHERE shop=?', (d['key'],)).fetchone()[0]
+    return d
+
+def shop_details_clean(b, r=None):
+    """The details someone typed for a store: plain text, each to its own length; carries is a list of the Shopping kinds."""
+    out = {}
+    for k, n in SHOP_TEXT_MAX.items():
+        if k in b: out[k] = re.sub(r'[ \t]+', ' ', str(b.get(k) or '')).strip()[:n]
+    if 'website' in out and out['website'] and not re.match(r'^https?://\S+$', out['website']): out['website'] = 'https://' + out['website'].lstrip('/')
+    if 'carries' in b:
+        cs = b['carries'] if isinstance(b['carries'], list) else str(b['carries']).split(',')
+        out['carries'] = json.dumps([k for k in SHOP_KIND_WORD if k in [str(x).strip() for x in cs]])
+    return out
+
+def shop_lookup(c, s, fill_all=False):
+    """Looks a store up on OpenStreetMap by its name near its home (or by its address). Fills in what is still empty: the
+    address, phone, hours, website and map position. Returns the names of what it filled."""
+    h = shop_home(c, s) if s['local'] else None
+    near = (h or {}).get('name', '')
+    tries = []
+    if s['address']: tries.append({'q': s['address']})
+    tries.append({'q': f"{s['name']}, {near}" if near else s['name']})
+    hit = None
+    for p in tries:
+        res = osm_search(p)
+        if h and h.get('lat') is not None:
+            res = [x for x in res if (miles(float(x.get('lat', 0)), float(x.get('lon', 0)), h['lat'], h['lon']) or 999) < 40]
+        if res: hit = res[0]; break
+    if not hit: return []
+    t, got = hit.get('extratags') or {}, {}
+    if not s['address'] or fill_all: got['address'] = osm_address(hit.get('address'))
+    if not s['phone'] or fill_all: got['phone'] = t.get('phone') or t.get('contact:phone') or ''
+    if not s['hours'] or fill_all: got['hours'] = (t.get('opening_hours') or '').replace(';', '; ')
+    if not s['website'] or fill_all: got['website'] = t.get('website') or t.get('contact:website') or ''
+    got = {k: v[:SHOP_TEXT_MAX[k]] for k, v in got.items() if v}
+    sets = dict(got)
+    try: sets['lat'], sets['lon'] = round(float(hit['lat']), 5), round(float(hit['lon']), 5)
+    except (KeyError, TypeError, ValueError): pass
+    sets['geo_at'] = now()
+    if got: sets['details_src'] = 'OpenStreetMap'; sets['details_at'] = now()
+    c.execute('UPDATE shops SET ' + ', '.join(f'{k}=?' for k in sets) + ' WHERE key=?', (*sets.values(), s['key']))
+    return list(got)
+
+def shops_geo():
+    """Once, for each store you can visit that has an address but no map position: find it on the map, so its distance shows."""
+    time.sleep(20)
+    try:
+        c = sqlite3.connect(DB_PATH, timeout=30); c.row_factory = sqlite3.Row
+        try:
+            for s in c.execute("SELECT * FROM shops WHERE local=1 AND address<>'' AND lat IS NULL AND geo_at IS NULL").fetchall():
+                res = osm_search({'q': s['address']})
+                if res:
+                    try: c.execute('UPDATE shops SET lat=?, lon=?, geo_at=? WHERE key=?', (round(float(res[0]['lat']), 5), round(float(res[0]['lon']), 5), now(), s['key']))
+                    except (KeyError, TypeError, ValueError): c.execute('UPDATE shops SET geo_at=? WHERE key=?', (now(), s['key']))
+                else: c.execute('UPDATE shops SET geo_at=? WHERE key=?', (now(), s['key']))
+                c.commit()
+        finally: c.close()
+    except Exception as e:
+        print('[stores] map positions not found:', e, flush=True)
+
+@app.route('/api/shops/<key>')
+def shop_page(key):
+    """1.30.0: one store: its details, what you are watching that it has (with the price before, and the price per unit), and notes."""
+    c = db()
+    r = c.execute('SELECT * FROM shops WHERE key=?', (key,)).fetchone()
+    if not r: abort(404, 'That store is not in the list')
+    d = shop_full(c, r)
+    items = []
+    for o in c.execute("SELECT o.*, w.kind, w.common_name FROM offers o JOIN wishlist w ON w.name=o.wish WHERE o.shop=? AND o.gone=0 AND w.status='want' "
+                       "ORDER BY o.available DESC, o.wish, o.price IS NULL, o.price", (key,)).fetchall():
+        x = dict(o); x['unit'] = offer_unit(o, o['kind'])
+        prev = c.execute('SELECT price, at FROM offer_history WHERE offer_id=? AND price IS NOT NULL AND (price<>? OR ? IS NULL) ORDER BY at DESC LIMIT 1',
+                         (o['id'], o['price'], o['price'])).fetchone()
+        x['before'] = dict(prev) if prev else None
+        items.append(x)
+    d['listings'] = items
+    d['notes'] = [dict(n) for n in c.execute('SELECT * FROM shop_notes WHERE shop=? ORDER BY created_at DESC LIMIT 100', (key,))]
+    return jsonify(d)
+
+@app.route('/api/stores/<key>/details', methods=['PUT'])
+def shop_details(key):
+    """1.30.0: change a store's address, phone, hours, email, website, what it carries, or the home it is near. Anyone who can edit."""
+    c = db()
+    r = c.execute('SELECT * FROM shops WHERE key=?', (key,)).fetchone()
+    if not r: abort(404, 'That store is not in the list')
+    b = request.get_json(silent=True) or {}
+    sets = shop_details_clean(b, r)
+    if 'home_id' in b:
+        hid = b['home_id']
+        if hid in ('', None): sets['home_id'] = None
+        else:
+            try: hid = int(hid)
+            except (TypeError, ValueError): abort(400, 'Choose one of your homes')
+            if hid not in {h['id'] for h in homes(c)}: abort(400, 'Choose one of your homes')
+            sets['home_id'] = None if hid == home_place(c)['id'] else hid
+    if 'address' in sets and sets['address'] != r['address']: sets['lat'] = sets['lon'] = sets['geo_at'] = None
+    if not sets: abort(400, 'Nothing to change')
+    if any(k in sets for k in SHOP_TEXT_MAX): sets.setdefault('details_src', 'Typed in by ' + editor()); sets['details_at'] = now()
+    c.execute('UPDATE shops SET ' + ', '.join(f'{k}=?' for k in sets) + ' WHERE key=?', (*sets.values(), key))
+    audit_only(c, 'setting', 'shops', None, ', '.join(k for k in sets if k not in ('details_at', 'details_src', 'lat', 'lon', 'geo_at')), editor(), f'Store details changed: {r["name"]}')
+    c.commit()
+    if 'address' in sets and sets['address'] and os.environ.get('PLANTDB_OSM', '1') != '0':
+        threading.Thread(target=shops_geo_one, args=(key,), daemon=True).start()
+    return jsonify(shop_full(c, c.execute('SELECT * FROM shops WHERE key=?', (key,)).fetchone()))
+
+def shops_geo_one(key):
+    try:
+        c = sqlite3.connect(DB_PATH, timeout=30); c.row_factory = sqlite3.Row
+        try:
+            s = c.execute('SELECT * FROM shops WHERE key=?', (key,)).fetchone()
+            res = osm_search({'q': s['address']}) if s and s['address'] else []
+            if res: c.execute('UPDATE shops SET lat=?, lon=?, geo_at=? WHERE key=?', (round(float(res[0]['lat']), 5), round(float(res[0]['lon']), 5), now(), key))
+            else: c.execute('UPDATE shops SET geo_at=? WHERE key=?', (now(), key))
+            c.commit()
+        finally: c.close()
+    except Exception as e: print('[stores] map position not found:', e, flush=True)
+
+@app.route('/api/stores/<key>/lookup', methods=['POST'])
+def shop_lookup_api(key):
+    c = db()
+    r = c.execute('SELECT * FROM shops WHERE key=?', (key,)).fetchone()
+    if not r: abort(404, 'That store is not in the list')
+    got = shop_lookup(c, r)
+    audit_only(c, 'setting', 'shops', None, ', '.join(got), editor(), f'Store looked up on OpenStreetMap: {r["name"]}' + (f' ({", ".join(got)} filled in)' if got else ' (nothing new)'))
+    c.commit()
+    return jsonify(shop_full(c, c.execute('SELECT * FROM shops WHERE key=?', (key,)).fetchone()) | {'filled': got})
+
+@app.route('/api/stores/<key>/notes', methods=['POST'])
+def shop_note_add(key):
+    c = db()
+    r = c.execute('SELECT * FROM shops WHERE key=?', (key,)).fetchone()
+    if not r: abort(404, 'That store is not in the list')
+    t = str((request.get_json(silent=True) or {}).get('text') or '').strip()[:1000]
+    if not t: abort(400, 'Type the note first')
+    i = c.execute('INSERT INTO shop_notes(shop,text,created_by,created_at) VALUES(?,?,?,?)', (key, t, editor(), now())).lastrowid
+    audit_only(c, 'setting', 'shop_note', None, t[:200], editor(), f'Note about {r["name"]}')
+    c.commit()
+    return jsonify(id=i), 201
+
+@app.route('/api/stores/notes/<int:i>', methods=['DELETE'])
+def shop_note_rm(i):
+    c = db()
+    n = c.execute('SELECT * FROM shop_notes WHERE id=?', (i,)).fetchone()
+    if not n: abort(404, 'That note is gone already')
+    if n['created_by'] != editor() and me()['role'] != 'owner': abort(403, 'Only the person who wrote a note, or the owner, can remove it')
+    c.execute('DELETE FROM shop_notes WHERE id=?', (i,))
+    audit_only(c, 'setting', 'shop_note', n['text'][:200], None, editor(), 'Note about a store removed')
+    c.commit()
+    return jsonify(ok=True)
+
+@app.route('/api/shopping')
+def shopping_api():
+    """1.30.0: everything on Shopping: wishlist plants and supplies, each with the cheapest listing at the stores that count for
+    the home chosen (near=all or a home's id), the alerts, the kinds, the homes, and the stores you can visit for each kind."""
+    c = db(); near = request.args.get('near', 'all')
+    rows = [dict(r) for r in c.execute("SELECT * FROM wishlist ORDER BY status='got', added_at DESC")]
+    for r in rows:
+        r['terms'] = SH.terms_for(r)
+        r['offers'] = offer_summary(c, r, near)
+    extra, args = shop_near_sql(c, near)
+    visit = [shop_full(c, s) for s in c.execute('SELECT s.* FROM shops s WHERE s.enabled=1 AND s.local=1' + extra + ' ORDER BY s.sort, s.name', args)]
+    with SHOPQ['lock']: busy = bool(SHOPQ['thread'])
+    return jsonify(items=rows, kinds=[{'key': k, 'label': v, 'unit': SH.KIND_UNIT.get(k, '') if SH.KIND_UNIT.get(k) != 'each' else ''} for k, v in SHOP_KINDS],
+                   alerts=wish_alerts_open(c), checked=setting(c, 'shops_checked_at', ''), hours=setting(c, 'shops_hours', '12'), busy=busy,
+                   homes=[{'id': h['id'], 'name': h['name']} for h in homes(c)],
+                   visit=[{k: v[k] for k in ('key', 'name', 'phone', 'address', 'hours', 'carries', 'home_name', 'miles', 'website', 'url')} for v in visit],
+                   stores=c.execute('SELECT COUNT(*) FROM shops WHERE enabled=1').fetchone()[0])
 
 @app.route('/api/shops', methods=['GET', 'PUT', 'POST', 'DELETE'])
 def shops_api():
@@ -1556,7 +1912,15 @@ def shops_api():
             if not name or not re.match(r'^https?://[^\s/]+(/\S*)?$', url): abort(400, 'Give the shop a name and its web address, starting with https://')
             key = 'custom-' + (re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')[:40] or 'shop')
             if c.execute('SELECT 1 FROM shops WHERE key=?', (key,)).fetchone(): abort(409, 'There is already a shop with that name.')
-            c.execute('INSERT INTO shops(key,name,kind,url,pages,local,custom,sort) VALUES(?,?,?,?,?,?,1,99)', (key, name, 'auto', url, '[]', 1 if b.get('local') else 0))
+            local = 1 if b.get('local') else 0
+            c.execute('INSERT INTO shops(key,name,kind,url,pages,local,online,custom,sort) VALUES(?,?,?,?,?,?,?,1,99)',
+                      (key, name, 'auto', url, '[]', local, 1 if (b.get('online') or not local) else 0))
+            sets = shop_details_clean(b)
+            if local and b.get('home_id') not in (None, ''):
+                try: hid = int(b['home_id'])
+                except (TypeError, ValueError): hid = None
+                if hid in {h['id'] for h in homes(c)} and hid != home_place(c)['id']: sets['home_id'] = hid
+            if sets: c.execute('UPDATE shops SET ' + ', '.join(f'{k}=?' for k in sets) + ', details_src=?, details_at=? WHERE key=?', (*sets.values(), 'Typed in by ' + editor(), now(), key))
             audit_only(c, 'setting', 'shops', None, f'{name} ({url})', editor(), f'Shop added to the wishlist checks: {name}')
         elif request.method == 'DELETE':
             key = request.args.get('key', '')
@@ -1582,9 +1946,10 @@ def shops_api():
                 if not en: c.execute('UPDATE offers SET gone=1 WHERE shop=?', (r['key'],))
                 audit_only(c, 'setting', 'shops', None, r['name'], editor(), f'Wishlist checks: {r["name"]} ' + ('changed' if en else 'turned off'))
         c.commit()
-    rows = [shop_row(r) for r in c.execute('SELECT * FROM shops ORDER BY sort, name')]
+    rows = [shop_full(c, r) for r in c.execute('SELECT * FROM shops ORDER BY sort, name')]
     with SHOPQ['lock']: busy = bool(SHOPQ['thread'])
-    return jsonify(shops=rows, hours=setting(c, 'shops_hours', '12'), checked=setting(c, 'shops_checked_at', ''), busy=busy, now=SHOPQ['now'],
+    return jsonify(shops=rows, kinds=[{'key': k, 'label': v} for k, v in SHOP_KINDS], homes=[{'id': h['id'], 'name': h['name']} for h in homes(c)],
+                   hours=setting(c, 'shops_hours', '12'), checked=setting(c, 'shops_checked_at', ''), busy=busy, now=SHOPQ['now'],
                    done=SHOPQ['done'], total=SHOPQ['total'], have_ebay=bool(setting(c, 'ebay_app_id', '') and setting(c, 'ebay_cert_id', '')),
                    have_etsy=bool(setting(c, 'etsy_key', '')))
 
@@ -1606,7 +1971,7 @@ def shops_check():
     """POST: check every shop now (in the background). GET: how far it has got."""
     if request.method == 'POST':
         c = db()
-        if not c.execute("SELECT 1 FROM wishlist WHERE status='want'").fetchone(): abort(400, 'Nothing is on the wishlist to look for.')
+        if not c.execute("SELECT 1 FROM wishlist WHERE status='want'").fetchone(): abort(400, 'Nothing is on Shopping to look for. Add something to watch first.')
         shops_check_soon()
         audit_only(c, 'library', 'shops', None, None, editor(), 'Wishlist: shops checked now'); c.commit()
     with SHOPQ['lock']: busy = bool(SHOPQ['thread'])
@@ -1618,8 +1983,10 @@ def wishlist_offers():
     c = db(); name = request.args.get('name', '')
     rows = [dict(r) for r in c.execute("SELECT o.*, s.name shop_name, s.local FROM offers o JOIN shops s ON s.key=o.shop WHERE o.wish=? "
                                        "ORDER BY o.gone, o.available DESC, o.price IS NULL, o.price", (name,))]
+    w = c.execute('SELECT kind FROM wishlist WHERE name=?', (name,)).fetchone()
     for r in rows:
         r['history'] = [dict(h) for h in c.execute('SELECT price, available, at FROM offer_history WHERE offer_id=? ORDER BY at', (r['id'],))]
+        r['unit'] = SH.unit_price(r['title'], r['price'], w['kind'] if w else 'plant', r.get('size') or '')   # 1.30.0
     return jsonify(offers=rows)
 
 @app.route('/api/wishlist/alerts', methods=['GET', 'POST'])
@@ -7338,6 +7705,8 @@ init_db()
 threading.Thread(target=backup_loop, daemon=True).start()
 if os.environ.get('PLANTDB_SHOPS', '1') == '1':
     threading.Thread(target=shops_loop, daemon=True).start()          # 1.27.0: the wishlist's shops, twice a day
+if os.environ.get('PLANTDB_OSM', '1') == '1':
+    threading.Thread(target=shops_geo, daemon=True).start()           # 1.30.0: map positions for the stores you can visit, once each
 if os.environ.get('PLANTDB_WEATHER', '1') == '1':
     threading.Thread(target=weather_loop, daemon=True).start()
 

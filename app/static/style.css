@@ -107,7 +107,7 @@ main{max-width:80rem;margin:0 auto;padding:1.6rem 1.25rem 6rem;outline:none}
 .row{display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
 label.f{display:block;margin:0 0 1.2rem;font-weight:700}
 label.f small{display:block;font-weight:400;color:var(--ink-2);margin-top:.15rem;font-size:1rem}
-input[type=text],input[type=number],input[type=search],input[type=date],select,textarea{width:100%;font:inherit;font-weight:400;color:var(--ink);background:var(--sheet);border:var(--bw) solid var(--ink-2);padding:.55rem .7rem;border-radius:0;margin-top:.35rem;min-height:2.75rem}
+input[type=text],input[type=number],input[type=search],input[type=date],input[type=url],input[type=tel],input[type=email],input[type=password],select,textarea{width:100%;font:inherit;font-weight:400;color:var(--ink);background:var(--sheet);border:var(--bw) solid var(--ink-2);padding:.55rem .7rem;border-radius:0;margin-top:.35rem;min-height:2.75rem}
 textarea{min-height:7em;resize:vertical;line-height:1.5}
 input:focus-visible,select:focus-visible,textarea:focus-visible{outline:var(--ring) solid var(--focus);outline-offset:1px}
 input[type=checkbox],input[type=radio]{width:1.4rem;height:1.4rem;margin:0;accent-color:var(--cyan)}
@@ -940,7 +940,9 @@ html[data-role=viewer] :is(a[href="#/new"], a[href$="/edit"], .quick-btns, label
   [data-act=mainphoto], [data-act=movephoto], [data-act=rmphoto], [data-act=capedit], [data-act=assign], [data-act=rmloose], [data-act=setcond], [data-act=wxrefresh],
   [data-act=placehome], [data-act=placedel], [data-act=placeonoff], [data-act=placeplants], [data-act=plchome], [data-act=plcsearch], [data-act=plcadd], .plc-search, [data-act=tokregen], [data-act=forclaude],
   [data-act=spotnew], [data-act=spotedit], [data-act=spotdel], [data-act=lightedit], [data-act=lightnew], [data-act=sevsave], form[data-form=sevgo], .add-mode, [data-act=libareaadd],
-  [data-act=roomnew], [data-act=roomedit], [data-act=roomdel]){display:none!important}
+  [data-act=roomnew], [data-act=roomedit], [data-act=roomdel],
+  [data-act=buynew], [data-act=buyedit], [data-act=buygot], [data-act=buyrm], [data-act=buywatch], [data-act=wlcheck], [data-act=storeedit], [data-act=storelookup],
+  [data-act=storenoterm], form[data-form=storenote]){display:none!important}
 /* only the owner changes the label address, places' settings and who is home */
 html:not([data-role=owner]) :is(form[data-form=base], form[data-form=wxloc], [data-act=placehome], [data-act=placedel], [data-act=placeonoff], [data-act=placeplants], [data-act=plchome]){display:none!important}
 .who-name{align-items:end;gap:.6rem;flex-wrap:wrap}
@@ -1504,3 +1506,20 @@ html[data-narrow="1"] .ct-card{grid-template-columns:minmax(0,1fr)}
 .pl-ed .hint{grid-column:1/-1;margin:0}
 .lt-ed{margin:.4rem 0 .8rem}
 #wh-sort input[type=text]{min-width:min(100%,18rem);width:100%}
+
+/* 1.30.0: Shopping */
+.buy-kinds-r{border:0;padding:0;margin:1rem 0}
+.buy-kinds-r legend{font-weight:700;margin-bottom:.4rem}
+.buy-kinds-s{margin:1rem 0}
+html:not([data-narrow="1"]) label.buy-kinds-s{display:none}
+html[data-narrow="1"] fieldset.buy-kinds-r{display:none}
+.buy-top{align-items:end}
+.buy-visit{margin:.4rem 0}
+.buy-visit ul{margin:.3rem 0 0;padding-left:1.2rem}
+.buy-visit li{margin:.2rem 0}
+summary .sum-h{display:inline;margin:0}
+.fn-shop{list-style:none;padding:0;display:grid;gap:.5rem}
+.fn-shop li{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center}
+.store-note textarea{width:100%}
+.dbg-times td,.dbg-times th{font-size:.9em}
+a[href^="tel:"]{white-space:nowrap}

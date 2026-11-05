@@ -36,8 +36,8 @@ call('PUT', '/api/wishlist', {'name': 'Monstera deliciosa', 'common_name': 'Swis
 check(call('PUT', '/api/wishlist', {'name': BB, 'max_price': 'cheap'})[0] == 400, 'a price to watch for must be a number')
 sh = call('GET', '/api/shops')[1]
 names = [s['name'] for s in sh['shops']]
-check(len(names) == 16 and {"Snooper's Nursery", 'Barry Hill Garden Center', 'Cantu Imports', "Mind's Eye Plants", 'Round Rock Garden Center', 'eBay', 'Etsy'} <= set(names),
-      f'16 shops to start with, including the local nurseries ({len(names)})')
+check(len(names) == 22 and {"Snooper's Nursery", 'Barry Hill Garden Center', 'Cantu Imports', "Mind's Eye Plants", 'Round Rock Garden Center', 'eBay', 'Etsy', 'Peaceful Valley Farm & Garden Supply'} <= set(names),
+      f'22 stores to start with, including the local nurseries near both homes (1.30.0: B5 adds 6 near Nevada City) ({len(names)})')
 check(sh['hours'] == '12', 'they are checked every 12 hours unless changed')
 check(call('PUT', '/api/shops', {'key': 'burpee', 'enabled': False}, V, TS)[0] == 403 and call('PUT', '/api/shops/keys', {'shop': 'etsy', 'etsy_key': 'x'}, V, TS)[0] == 403,
       'someone who can only view cannot change the shops or the keys')
@@ -73,9 +73,9 @@ bb = next(w for w in wl['wishlist'] if w['name'] == BB)
 check(bb['offers']['best']['price'] == 2.5 and bb['offers']['shops'] == 5, 'the wishlist shows the cheapest and how many shops have it')
 al = wl['alerts']
 bba = [a for a in al if a['wish'] == BB]
-check(len(bba) == 2 and bba[1]['kind'] == 'price' and '$2.50 at Snooper' in bba[1]['text'] and '(and 1 more)' in bba[1]['text'] and 'In stock at 3 shops' in bba[1]['text'],
+check(len(bba) == 2 and bba[1]['kind'] == 'price' and '$2.50 at Snooper' in bba[1]['text'] and '(and 1 more)' in bba[1]['text'] and 'In stock at 3 stores' in bba[1]['text'],
       'one alert per check: the cheapest at or under $5, and the 3 stores that had it on the first check')
-check(len(bba) == 2 and bba[0]['kind'] == 'stock' and 'In stock at 2 shops: Etsy $6.50, eBay $9.50' in bba[0]['text'], 'then one for eBay and Etsy, once their keys were saved')
+check(len(bba) == 2 and bba[0]['kind'] == 'stock' and 'In stock at 2 stores: Etsy $6.50, eBay $9.50' in bba[0]['text'], 'then one for eBay and Etsy, once their keys were saved')
 check(not [a for a in al if a['wish'] == 'Monstera deliciosa'], 'no alert for something out of stock')
 run_check()
 check(len(call('GET', '/api/wishlist/alerts')[1]['alerts']) == len(al), 'checking again does not repeat them')
@@ -101,29 +101,34 @@ with sync_playwright() as p:
     pg.goto(LOCAL + '/#/today'); pg.wait_for_timeout(2500)
     check(pg.locator('#today-wish').count() == 1 and 'Texas bluebonnet' in pg.locator('#today-wish').inner_text(), 'Today shows the wishlist alerts')
     nb = pg.locator('#main-nav a[data-sec=discover] .nav-badge')
-    check(nb.count() == 1 and f'{len(al3)} wishlist alert' in nb.inner_text(), 'and the top bar says how many, beside Library')
+    check(nb.count() == 1 and f'{len(al3)} shopping alert' in nb.inner_text(), 'and the top bar says how many, beside Discover')
     pg.goto(LOCAL + '/#/wishlist'); pg.wait_for_timeout(2500)
+    check('Cheapest now: $2.50' in pg.locator('main').inner_text() and pg.locator('main a[href="#/shopping"]').count() >= 1, 'the wishlist shows the cheapest listing, and points to Shopping (1.30.0)')
+    pg.goto(LOCAL + '/#/shopping/stores'); pg.wait_for_timeout(2500)
+    check(pg.locator('.wl-shops input[data-act=shopon]').count() >= 22, 'the owner sees every store with an On box (on the Stores page from 1.30.0)')
+    pg.goto(LOCAL + '/#/shopping'); pg.wait_for_timeout(2500)
     t = pg.locator('main').inner_text()
-    check('Cheapest now: $2.50' in t and 'Alerts (' in t, 'the wishlist shows the cheapest listing and the alerts')
-    check(pg.locator('.wl-shops input[data-act=shopon]').count() >= 16, 'the owner sees every shop with an On box')
+    check('Cheapest now: $2.50' in t and 'Alerts (' in t, 'Shopping shows the cheapest listing and the alerts')
     pg.locator('details.wl-offers').first.locator('summary').click(); pg.wait_for_timeout(1200)
     check('$3.99' in pg.locator('.wl-offers-box').first.inner_text(), 'opening "Every listing found" shows them with past prices')
     pg.screenshot(path=os.path.join(OUT, 'shops-1-wishlist.png'), full_page=True)
     pg.locator('[data-act=wldismiss][data-id=all]').first.click(); pg.wait_for_timeout(1500)
     check(not call('GET', '/api/wishlist/alerts')[1]['alerts'], 'Dismiss them all clears them')
-    pg.locator('[data-act=wledit]').first.click(); pg.wait_for_timeout(400)
+    pg.locator('[data-act=buyedit]').first.click(); pg.wait_for_timeout(400)
     check(pg.locator('#dlg [name=max_price]').count() == 1 and pg.locator('#dlg [name=search]').count() == 1, 'Edit has the search words and the alerts')
     pg.keyboard.press('Escape')
     b.close()
     ph = p.chromium.launch().new_context(viewport={'width': 384, 'height': 740}, is_mobile=True, has_touch=True, service_workers='block')
     ph.add_init_script("localStorage.setItem('plantdb.editor','Shops Test');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
     q = ph.new_page(); q.on('pageerror', lambda e: errs.append(str(e)))
-    q.goto(LOCAL + '/#/wishlist'); q.wait_for_timeout(3000)
+    q.goto(LOCAL + '/#/shopping'); q.wait_for_timeout(3000)
     check(not q.evaluate('document.documentElement.scrollWidth > innerWidth + 1'), 'on a phone with the largest text nothing scrolls sideways')
     q.screenshot(path=os.path.join(OUT, 'shops-2-phone.png'), full_page=True)
     v = p.chromium.launch().new_context(viewport={'width': 1280, 'height': 900}, extra_http_headers=V).new_page()
-    v.goto(TS + '/#/wishlist'); v.wait_for_timeout(3000)
-    check(not v.locator('[data-act=wlcheck]').is_visible() and v.locator('.wl-shops input[data-act=shopon]').count() == 0, 'someone who can only view sees the prices, but no buttons')
+    v.goto(TS + '/#/shopping/stores'); v.wait_for_timeout(3000)
+    check(v.locator('.wl-shops input[data-act=shopon]').count() == 0, 'someone who can only view sees the stores, but no On boxes')
+    v.goto(TS + '/#/shopping'); v.wait_for_timeout(3000)
+    check(v.locator('[data-act=wlcheck]').count() == 0 and v.locator('[data-act=buyedit]').count() == 0 and 'Cheapest now' in v.locator('main').inner_text(), 'and sees the prices on Shopping, but no buttons')
 
 # search words start the listings again
 call('PUT', '/api/wishlist', {'name': 'Monstera deliciosa', 'search_words': 'Pothos Golden'})
