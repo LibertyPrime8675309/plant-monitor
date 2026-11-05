@@ -64,10 +64,10 @@ def backup_copies_api():
     c = db()
     if request.method == 'PUT':
         b = request.get_json(silent=True) or {}
-        url = str(b.get('url') or '').strip()[:300]
+        url = str(b.get('url') or '').strip()[:300] if 'url' in b else setting(c, 'backup_copy_url', '')
         if url and not re.match(r'^https?://[^\s/]+(:\d+)?(/\S*)?$', url): abort(400, 'The address must look like http://100.1.2.3:8089')
-        set_setting(c, 'backup_copy_url', url)
-        if 'token' in b: set_setting(c, 'backup_copy_token', str(b.get('token') or '').strip()[:200])
+        if 'url' in b: set_setting(c, 'backup_copy_url', url)
+        if b.get('token'): set_setting(c, 'backup_copy_token', str(b['token']).strip()[:200])
         audit_only(c, 'backup', 'copies', None, url or '(off)', editor(), 'Backup copies: the other computer ' + ('set' if url else 'turned off')); c.commit()
     if request.method == 'POST':
         b = request.get_json(silent=True) or {}

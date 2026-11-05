@@ -857,9 +857,9 @@ html[data-narrow="1"] .aud-tbl td:empty{display:none}
 @media print{#corner,#console{display:none!important}.aud-tbl td.old,.aud-tbl td.new{max-width:none}}
 
 /* ---- 1.11.0: Location button and window; what each plant needs and your fertilizers ---- */
-.place-btn{display:inline-flex;align-items:center;gap:.45rem;background:transparent;color:inherit;border:2px solid color-mix(in srgb,var(--top-ink) 60%,transparent);
+.place-btn,.srch-btn{display:inline-flex;align-items:center;gap:.45rem;background:transparent;color:inherit;border:2px solid color-mix(in srgb,var(--top-ink) 60%,transparent);
   padding:.5rem .9rem;font:inherit;font-size:1rem;cursor:pointer;min-height:2.75rem;max-width:100%;text-align:left}
-.place-btn:hover{background:color-mix(in srgb,var(--top-ink) 14%,transparent)}
+.place-btn:hover,.srch-btn:hover{background:color-mix(in srgb,var(--top-ink) 14%,transparent)}
 .place-btn{flex-wrap:wrap;column-gap:.45rem;row-gap:.1rem}
 .place-btn #place-name{font-weight:700;overflow-wrap:break-word;min-width:0}
 .place-btn svg{flex:none}
@@ -1368,6 +1368,9 @@ html:is([data-narrow="1"],[data-pagesfold="1"]) .top:not(.pages-open) #main-nav{
 html:is([data-narrow="1"],[data-pagesfold="1"]) .top #main-nav{display:flex;flex-wrap:wrap;gap:0 .4rem;flex:1 1 100%;order:3;min-width:0}
 html[data-pagesfold="1"] .top-acts{flex-direction:row;flex-wrap:wrap;margin-left:auto}
 html[data-toptall="1"] .top{position:static}
+/* 1.33.0: a tall top bar scrolls with the page, so the open sections menu would cover its left end; keep the bar's contents clear of the menu */
+html[data-toptall="1"][data-navopen="1"][data-narrow="0"][data-navside=left] :is(.top-in,.sub-in){padding-left:calc(var(--nav-w) + 1rem)}
+html[data-toptall="1"][data-navopen="1"][data-narrow="0"][data-navside=right] :is(.top-in,.sub-in){padding-right:calc(var(--nav-w) + 1rem)}
 html[data-narrow="1"] .top-in,html[data-narrow="1"] main{padding-left:min(1.25rem,4vw);padding-right:min(1.25rem,4vw)}
 html[data-narrow="1"] .top-in{padding-top:.4rem;padding-bottom:.4rem;gap:.4rem}
 html[data-narrow="1"] .brand{font-size:1.2rem}
@@ -1554,3 +1557,10 @@ a[href^="tel:"]{white-space:nowrap}
 .prob-detail{white-space:pre-wrap;font-size:.85em;max-height:12rem;overflow:auto;background:var(--sheet);padding:.5rem;border:1px solid var(--line)}
 .job-list{list-style:none;padding:0;display:grid;gap:.5rem}
 .job-list li{border-bottom:1px solid var(--line);padding:.3rem 0}
+
+/* 1.33.0: notifications and search */
+.ntf-list,.srch-list{list-style:none;padding:0;margin:.2rem 0 .8rem;display:grid;gap:.4rem}
+.srch-h{margin:.8rem 0 .2rem;font-size:1.05em}
+.srch-dlg #srch-res{max-height:55vh;overflow:auto}
+.srch-btn .srch-l{margin-left:.3rem}
+html:is([data-narrow="1"],[data-topcompact="1"]) :is(.srch-btn .srch-l,.place-btn .pl-l){position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}

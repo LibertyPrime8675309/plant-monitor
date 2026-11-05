@@ -10,15 +10,21 @@ function pushDeviceName() {
   return `${os}, ${br}`;
 }
 function b64ToBytes(s) { const b = atob(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - s.length % 4) % 4)); return Uint8Array.from(b, c => c.charCodeAt(0)); }
+async function swReady(ms) {         // the service worker, or null if none is registered here within a moment (ready would wait for ever)
+  const reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) return null;
+  return Promise.race([navigator.serviceWorker.ready, new Promise(r => setTimeout(() => r(null), ms))]);
+}
 async function pushCurrent() {
   if (!pushSupported()) return null;
-  try { const reg = await navigator.serviceWorker.ready; return await reg.pushManager.getSubscription(); } catch (e) { return null; }
+  try { const reg = await swReady(2000); return reg ? await reg.pushManager.getSubscription() : null; } catch (e) { return null; }
 }
 async function pushTurnOn(key) {
   if (!pushSupported()) throw new Error('This browser cannot show notifications from a web page. On an iPhone or iPad, add the app to the Home Screen first (Share, then Add to Home Screen), then open it from there.');
   const perm = await Notification.requestPermission();
   if (perm !== 'granted') throw new Error(perm === 'denied' ? 'Notifications are blocked for this site in the browser\'s settings. Allow them there, then try again.' : 'Notifications were not allowed.');
-  const reg = await navigator.serviceWorker.ready;
+  const reg = await swReady(5000);
+  if (!reg) throw new Error('The app\'s service worker is not running in this browser (it is what receives the messages). Reload the page and try again.');
   const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(key) });
   const j = sub.toJSON();
   await api('POST', '/api/push/subscribe', { endpoint: j.endpoint, keys: j.keys, device: pushDeviceName() });
@@ -72,7 +78,7 @@ document.addEventListener('change', e => {
   api('PUT', '/api/me/prefs', { ['push.' + el.dataset.kind]: el.checked ? '1' : '0' }).then(() => toast('Saved')).catch(err => toast(err.message, true));
 });
 
-// ---------- 1.33.0: search everywhere (the magnifier in the top bar, or the / key) ----------
+// ---------- 1.33.0: search everywhere (the magnifier in the top bar, or the / key away from the Plants page: see the shortcuts in ui.js) ----------
 const PAGES_LIST = [['Today', '#/today'], ['All plants', '#/'], ['Groups', '#/groups'], ['Add plants', '#/new'], ['Mushrooms', '#/fungi'], ['Rooms and spots', '#/where'], ['Photos', '#/photos'],
   ['Labels', '#/labels'], ['Winter plan', '#/winter'], ['Cold-night checklist', '#/frost'], ['Getting plants ready to come inside', '#/inside'], ['Back outside', '#/outside'], ['Fertilizer', '#/fertilizer'],
   ['Grow lights', '#/lights'], ['Pots and trays', '#/pots'], ['Weather', '#/weather'], ['Homes and places', '#/weather?sec=places'], ['Identify', '#/identify'], ['Library', '#/library'], ['Around home', '#/around'],
@@ -103,7 +109,6 @@ Object.assign(acts, {
 });
 document.addEventListener('keydown', e => {
   const t = e.target, typing = t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable);
-  if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey && !document.querySelector('dialog[open]')) { e.preventDefault(); searchDialog(); return; }
   const d = document.querySelector('dialog[open] form.srch-dlg'); if (!d) return;
   if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
     const links = [...d.querySelectorAll('.srch-list a')]; if (!links.length) return;

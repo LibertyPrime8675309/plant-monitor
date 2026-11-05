@@ -80,4 +80,23 @@ def mock_problem():                      # 1.31.0: lets a test record a backgrou
     S.problem(b.get('area', 'weather'), b.get('text', 'Test problem'), b.get('detail', ''))
     return S.jsonify(ok=True)
 
+PUSHED = []                               # 1.33.0: notifications the app tried to send, instead of a real push service
+def fake_push(sub, payload):
+    PUSHED.append({'login': sub['login'], 'device': sub['device'], 'endpoint': sub['endpoint'], **payload})
+    return 410 if 'gone' in sub['endpoint'] else 201
+S.PUSH_SEND['fn'] = fake_push
+@S.app.route('/mock/pushed', methods=['GET', 'DELETE'])
+def mock_pushed():
+    if S.request.method == 'DELETE': PUSHED.clear()
+    return S.jsonify(pushed=PUSHED)
+@S.app.route('/mock/push/run', methods=['POST'])
+def mock_push_run():                     # the clock-driven sends, now, as if it were the hour asked for
+    b = S.request.get_json(silent=True) or {}
+    c = S.sqlite3.connect(S.DB_PATH, timeout=30); c.row_factory = S.sqlite3.Row
+    try:
+        if b.get('what') == 'cold': S.push_cold(c)
+        else: S.push_due(c)
+    finally: c.close()
+    return S.jsonify(ok=True)
+
 S.app.run(host='127.0.0.1', port=int(os.environ.get('PORT', '8080')), threaded=True)

@@ -179,6 +179,12 @@ const acts = {
     try { await navigator.clipboard.writeText('Problems from Plant record ' + (META && META.version) + ':\n' + PROBTEXT); if (m) m.textContent = 'Copied. Paste it into the chat with Claude.'; }
     catch (e) { if (m) m.textContent = 'Could not copy. Select the list and copy it yourself.'; }
   },
+  async bkcopynow(el) {              // 1.33.0
+    const m = document.getElementById('bk-copy-msg'); el.disabled = true; if (m) m.textContent = 'Copying…';
+    try { const r = await api('POST', '/api/backups/copies', {}); const st = r.status || {}; if (m) m.textContent = `Done. Folder: ${st.dir || 'not set up'}. Other computer: ${st.receiver || 'not set up'}.`; }
+    catch (e) { if (m) m.textContent = e.message; }
+    el.disabled = false;
+  },
   async bkrestore(el) {              // 1.31.0: put a backup's database back in place
     if (!(await needName())) return;
     const r = await modal(html`<form method="dialog"><h2>Restore this backup?</h2>
@@ -582,6 +588,10 @@ Object.assign(acts, {
 function wtFocusTop() { const t = document.querySelector('#wx-table .pager'); if (t) t.scrollIntoView({ block: 'nearest' }); }
 let PLACE_RESULTS = [];
 const formActs = {
+  async bkcopies(form) {             // 1.33.0
+    const b = { url: form.elements.url.value.trim() }; if (form.elements.token.value) b.token = form.elements.token.value;
+    await api('PUT', '/api/backups/copies', b); toast('Saved'); route();
+  },
   audf() { clearTimeout(AUD.t); AUD.offset = 0; audLoad(); },       // Enter in the search box searches straight away
   async bknow(form) {
     if (!(await needName())) return;

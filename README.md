@@ -940,6 +940,32 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
 
+## Notifications, a second copy of backups, and search (from 1.33.0)
+
+### Notifications
+
+**Settings, Notifications.** Press **Turn on for this device** on each phone or computer that should get messages (the browser asks for permission once). On an iPhone or iPad, add the app to the Home Screen first (Share, then Add to Home Screen) and open it from there. Then tick which kinds reach you; the choices are your own, saved for your sign-in, and apply to every device you turned on:
+
+- **Cold nights:** when a cold night comes into the forecast, and a reminder at about 3 pm the day before it.
+- **Shopping alerts:** a price at or under your limit, or something back in stock.
+- **Watering and feeding due:** one message at about 8 am with what is due today.
+- **Requests from Claude:** when a release adds a request (a photo or an answer Claude needs).
+
+Cold nights and what is due are for the home you start on (People, Starts on). **Send a test** checks a device. Messages go through the browser's own push service (Google's for Chrome, Apple's for Safari); only the title and a line of text are sent, encrypted for that device. Notifications need the app's Tailscale address (https) or this computer itself.
+
+### Second copy of backups
+
+**Backups, Second copy.** Each new backup is copied as soon as it is made:
+
+- **Another drive:** to the folder named by `PLANTDB_COPY_DIR` in the `.env` file next to `docker-compose.yml` (for example `PLANTDB_COPY_DIR=D:\PlantBackups`), after `docker compose up -d`. Until that is set, copies go to `backups-copy` next to the data folder, which is the same drive. The newest 10 are kept.
+- **Another computer:** run the receiver from the `receiver` folder of the release on it (its README has the steps: Docker, a token, Tailscale), then type its address and token on the Backups page. The newest 20 are kept there.
+
+**Copy the newest backup now** tries both. What happened last shows under the form, and failures go on the Problems list.
+
+### Search everywhere
+
+The **Search** button in the top bar, or the `/` key anywhere, opens a search over plants (code, names, where they are, notes), pages, groups, rooms and spots, stores, mushroom finds, Shopping items and species in the library. Results are grouped; the arrow keys move through them and Enter opens one.
+
 ## Jobs (from 1.32.0)
 
 **Settings, Jobs** shows what the app is doing in the background: what is running now (with how far it has got), what runs on a schedule (the hourly weather update, the store check, the automatic backup) with when each is next due and when it last ran, and what has finished since the app started, with how long each took. The owner has a **Run now** button for the weather update, the store check and a backup. The window keeps itself up to date while it is open.

@@ -213,7 +213,7 @@ function shortcutsDialog() {
     <table class="tbl"><tbody>
       ${k('R', 'Read this page aloud (press again, or Escape, to stop)')}${k('Escape', 'Stop reading')}
       ${k('[', 'Previous plant (on a plant page)')}${k(']', 'Next plant (on a plant page)')}
-      ${k('E', 'Edit this plant (on a plant page)')}${k('/', 'Search plants')}
+      ${k('E', 'Edit this plant (on a plant page)')}${k('/', 'Search: the plant filter on the Plants page, everything else elsewhere')}
       ${k('H', 'Go to the Plants page')}${k('M', 'Open or fold the section menu')}${k('L', 'Choose the location for the weather')}${k('U', 'Undo the care you just logged, while its message is showing')}${k('?', 'Show this list')}
     </tbody></table>
     <div class="row"><button class="btn" value="ok" autofocus>Close</button></div></form>`);
@@ -233,10 +233,10 @@ document.addEventListener('keydown', e => {
     case 'm': case 'M': click('[data-act=navtoggle]:not([aria-hidden])'); break;
     case 'l': case 'L': e.preventDefault(); placeDialog(); break;          // 1.11.0: choose the location
     case '?': e.preventDefault(); shortcutsDialog(); break;
-    case '/': {
+    case '/': {                               // the Plants page's own search box when it is on screen; Search everywhere elsewhere (1.33.0)
       e.preventDefault();
       const d = document.getElementById('pn-filters'); if (d) d.open = true;
-      const q = document.querySelector('input[data-f=q]'); if (q) { q.focus(); q.select(); } else go('#/');
+      const q = document.querySelector('input[data-f=q]'); if (q) { q.focus(); q.select(); } else searchDialog();
       break;
     }
   }
@@ -369,9 +369,25 @@ const mb = n => n >= 1073741824 ? (n / 1073741824).toFixed(1) + ' GB' : n >= 104
 const BK_FREQ_WORDS = { '6h': 'Every 6 hours', '12h': 'Every 12 hours', daily: 'Every day', '3d': 'Every 3 days', weekly: 'Every week' };
 const BK_KIND = { manual: 'Made by you', auto: 'Automatic', update: 'Before an update' };
 let BK = null;
+let CP = null;
+function copiesHtml(C) {          // 1.33.0: the second copy of each backup
+  const st = C.status || {};
+  return html`<section class="blk" id="bk-copies"><h2>Second copy</h2>
+    <p>Backups are on this PC's drive. A second copy of each new backup can also go to another drive, and to another computer over Tailscale (your girlfriend's PC, say), as soon as the backup is made. The newest ${C.keep} are kept in the folder, the newest 20 on the other computer.</p>
+    <h3>Another drive</h3>
+    ${C.dir_ok ? html`<p><span aria-hidden="true">✓</span> Copies go to <code>${C.dir_env || 'backups-copy, next to the data folder'}</code>${C.dir_files.length ? ` (${C.dir_files.length} there now).` : ' (none there yet).'}${!C.dir_env ? ' That is the same drive: to use another one, put <code>PLANTDB_COPY_DIR=D:\\PlantBackups</code> (your folder) in the <code>.env</code> file next to docker-compose.yml, then run the updater or <code>docker compose up -d</code>.' : ''}</p>`
+      : html`<p class="muted">No folder is mapped. Put <code>PLANTDB_COPY_DIR=D:\\PlantBackups</code> (a folder on another drive) in the <code>.env</code> file next to docker-compose.yml, then run <code>docker compose up -d</code>.</p>`}
+    <h3>Another computer</h3>
+    <form data-form="bkcopies" class="f-grid" autocomplete="off">
+      <label class="f">Receiver address<small>The other computer's Tailscale address and port, from its receiver (see the receiver folder in the release)</small><input type="url" name="url" maxlength="300" placeholder="http://100.101.102.103:8089" value="${C.url || ''}"></label>
+      <label class="f">Token<small>${C.have_token ? 'Saved. Type a new one to change it.' : 'The BACKUP_TOKEN from the receiver\'s .env file.'}</small><input type="password" name="token" maxlength="200" autocomplete="off"></label>
+      <div class="row"><button class="btn" type="submit">Save</button>${C.url || C.dir_ok ? html`<button class="btn ghost" type="button" data-act="bkcopynow">Copy the newest backup now</button>` : ''}</div></form>
+    ${st.file ? html`<p class="hint">Last copy: ${st.file}, ${when(st.at)}. Folder: ${st.dir || 'not set up'}. Other computer: ${st.receiver || 'not set up'}.</p>` : ''}
+    <p id="bk-copy-msg" role="status" aria-live="polite"></p></section>`;
+}
 async function viewBackups() {
   if (ME().role !== 'owner') return { title: 'Backups', html: html`<h1>Backups</h1><p class="notice">Backups are looked after by ${ME().owner_name}. They hold a copy of everything, so only the owner can make, download or restore them.</p>` };
-  BK = await api('GET', '/api/backups');
+  [BK, CP] = await Promise.all([api('GET', '/api/backups'), api('GET', '/api/backups/copies').catch(() => null)]);
   const S = BK.settings, hourOpt = h => new Date(2026, 0, 1, h).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const where = BK.mounted ? 'the backups folder inside your plant-database folder' : 'data\\backups inside your plant-database folder';
   const last = BK.backups[0];
@@ -396,6 +412,7 @@ async function viewBackups() {
         <label class="chk-row" style="border:0"><input type="checkbox" name="photos" ${S.photos ? raw('checked') : ''}><span>Include the photos in automatic backups</span></label>
         <p class="hint">The database is ${mb(BK.db_bytes)} (most of it is weather history); a backup zip is usually a third to a half of that. Backups now use ${mb(BK.total_bytes)}; ${mb(BK.free_bytes)} free. The app must be running for automatic backups; a missed one runs when it next starts.</p>
         <button class="btn" type="submit">Save automatic backup settings</button></form></section>
+    ${CP ? copiesHtml(CP) : ''}
     <section class="blk"><h2>Your backups (${BK.backups.length})</h2>
       ${BK.backups.length ? html`<div class="tbl-wrap"><table class="tbl"><caption class="sr">Backups, newest first</caption><thead><tr><th scope="col">Made</th><th scope="col">Type</th><th scope="col" class="num">Size</th><th scope="col">Contents</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
         ${BK.backups.map(b => html`<tr><th scope="row">${when(b.created_at)}${b.note ? html`<div class="hint">${b.note}</div>` : ''}</th><td>${BK_KIND[b.kind]}${b.by && b.kind !== 'auto' ? html`<div class="hint">${b.by}</div>` : ''}</td>

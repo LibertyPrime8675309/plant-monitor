@@ -13,3 +13,4 @@ dev/tmp/
 # the Tailscale container's sign-in (1.12.0) and any local settings file: private to each computer
 tailscale/state/
 .env
+backups-copy/

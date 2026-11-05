@@ -81,6 +81,7 @@ def run_backup_job(kind, photos, note, by):
             finally: c.close()
             BK_JOB.update(running=False, ok=True, file=name, finished=now())
             job_end(jid, True, name)
+            copy_backup(name)                                  # 1.33.0: the second copy, if one is set up
         except Exception as e:
             BK_JOB.update(running=False, ok=False, error=f'{type(e).__name__}: {e}'[:300], finished=now())
             job_end(jid, False, f'{type(e).__name__}: {e}')
