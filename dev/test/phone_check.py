@@ -123,7 +123,7 @@ try:
         check(not pg.locator('#newfill-btn').is_disabled() and not pg.evaluate("document.querySelector('input[name=common_name]').required"), 'with photos chosen, the names can be filled in from the first one, and the common name may wait')
         pg.click('#newfill-btn'); pg.wait_for_timeout(6000)
         st = pg.locator('#newfill-st').inner_text()
-        check(st.startswith('Filled in:') and pg.input_value('input[name=common_name]') == 'Texas bluebonnet' and pg.input_value('input[name=scientific_name]') == 'Lupinus texensis', f'the picture checker fills in the names ({st[:60]})')
+        check(st.startswith('The first name is filled in') and pg.locator('#new-splist li').count() >= 3 and pg.input_value('input[name=common_name]') == 'Texas bluebonnet' and pg.input_value('input[name=scientific_name]') == 'Lupinus texensis', f'the picture checker fills in the names ({st[:60]})')
         pg.click('form[data-form=new] button[type=submit]'); pg.wait_for_timeout(6000)
         new1 = pg.url.split('/plant/')[-1]
         st, d = call('GET', '/api/plants/' + new1)
