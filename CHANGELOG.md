@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.39.0 (2026-11-05)
+- **Better names from Identify.** The picture checker now weighs its names toward what you are likely to be looking at: species and genera already in your record, houseplant genera, and the plants of your state, plus a lift for a name when one of your own named plants' photos looks like the picture (a new pot of a plant you have gets its name). Each lifted name says why ("Lifted: a houseplant", "looks like your photos").
+- **Ten names, not three** (five shown, "Show 5 more names"), and the three likeliest genera: when no species fits, the genus is the safer answer.
+- **Several pictures of one plant:** "Add another photo of the same plant" (or a camera shot) checks them together.
+- **Three looks at each picture:** as it is, the whole picture letterboxed (nothing cut off a wide shot), and its middle, averaged.
+- **Pl@ntNet first when unsure:** a new choice under Second opinions asks Pl@ntNet on its own whenever this computer is not sure, and shows its answer above the computer's own. Needs the Pl@ntNet key; one of its 500 free pictures a day each time.
+- The updater rebuilds the picture checker container for this version; its first start re-reads the photo fingerprints it already has (no new download).
+- The weights are a first setting by judgment, not yet measured on your photos: `dev/vision/prior_test.py` measures them on the PC when you want to tune them.
+
 ## 1.38.0 (2026-11-05)
 - **Watering offline:** on Today, Watered and Still moist take the plant off the list at once without a connection; the care log shows the entry as "not sent yet" until it is sent.
 - **Reconnecting:** the app notices when the plant server can be reached again (every 30 seconds, when the app comes to the front, when the network returns), sends what was waiting and redraws the page; **Try to connect now** on the offline note and the Offline use page. "Offline" now also means "the plant server cannot be reached" (Tailscale off, computer asleep), not only "no network".

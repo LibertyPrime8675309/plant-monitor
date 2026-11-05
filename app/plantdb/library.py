@@ -33,9 +33,9 @@ def vision_call(path, data=None, ctype=None, timeout=60):
     except (urllib.error.URLError, OSError, TimeoutError):
         abort(503, 'The picture checker is not running. Start it with the updater, or see README, "Identify a plant".')
 
-def picture_bytes(max_side=None):
+def picture_bytes(max_side=None, f=None):
     """The picture sent with the request (field 'image'), checked, turned upright and saved as JPEG."""
-    f = request.files.get('image')
+    f = f or request.files.get('image')
     if not f: abort(400, 'Send a picture')
     try:
         im = ImageOps.exif_transpose(Image.open(f.stream)); im.load(); im = im.convert('RGB')
@@ -43,6 +43,12 @@ def picture_bytes(max_side=None):
         abort(400, 'That is not a picture this can read (use JPG or PNG)')
     if max_side: im.thumbnail((max_side, max_side))
     b = io.BytesIO(); im.save(b, 'JPEG', quality=88); return b.getvalue()
+
+def pictures_bytes(max_side=None):
+    """1.39.0: every picture sent (field 'image', and 'images' for more of the same plant), up to six."""
+    fs = ([request.files['image']] if 'image' in request.files else []) + request.files.getlist('images')
+    if not fs: abort(400, 'Send a picture')
+    return [picture_bytes(max_side, f) for f in fs[:6]]
 
 def multipart(fields, files):
     """A small multipart/form-data body: fields {name: value}, files [(name, filename, bytes, type)]."""
@@ -89,17 +95,26 @@ def mark_owned(c, items, key='scientific_name'):
 @app.route('/api/identify', methods=['POST'])
 def identify():
     """A picture (field 'image') in; the closest plants in the record and the likeliest species out (from this computer)."""
-    scope = vscope(db(), request.args.get('scope', 'common'))
-    body, ct = multipart({}, [('image', 'picture.jpg', picture_bytes(1024), 'image/jpeg')])
-    out = vision_call('/identify?scope=' + scope, body, ct, timeout=90)
     c = db()
+    scope = vscope(c, request.args.get('scope', 'common'))
+    pics = pictures_bytes(1024)
+    body, ct = multipart({}, [('image', 'picture.jpg', pics[0], 'image/jpeg')] + [('images', f'picture{i + 2}.jpg', b, 'image/jpeg') for i, b in enumerate(pics[1:])])
+    out = vision_call('/identify?scope=' + scope, body, ct, timeout=120)
     matches = []
     for m in out.get('matches', []):
         b = plant_brief(c, m['code'])
         if b: matches.append(b | {'score': m['score'], 'confidence': m.get('confidence'), 'matched_photo': m.get('photo')})
     out['matches'] = matches
     mark_owned(c, out.get('species', []))
+    for x in out.get('species', []): x['basis_words'] = [BASIS_WORDS.get(w, w) for w in (x.get('basis') or [])]
+    # 1.39.0: Pl@ntNet as the first opinion when this computer is unsure, if the owner turned that on and saved a key
+    sure_match = matches and (matches[0].get('confidence') or 0) >= 0.5 and not out.get('likely_new')
+    top_p = (out.get('species') or [{}])[0].get('probability') or 0
+    if setting(c, 'plantnet_auto', '') == '1' and setting(c, 'plantnet_key', '') and not sure_match and top_p < 0.5 and request.args.get('plantnet', '1') != '0':
+        try: out['plantnet'] = plantnet_ask(c, pics[0])
+        except Exception as e: out['plantnet'] = {'species': [], 'error': getattr(e, 'description', None) or str(e)}
     return jsonify(out)
+BASIS_WORDS = {'own_sp': 'a species you have', 'own_gen': 'a genus you have', 'house': 'a houseplant', 'state': 'grows in this state', 'looks': 'looks like your photos'}
 
 @app.route('/api/identify/status')
 def identify_status():
@@ -1178,9 +1193,14 @@ def identify_settings():
             if k and not re.match(r'^[A-Za-z0-9_\-]{10,200}$', k): abort(400, f'That does not look like a {word} key. Copy it again, without spaces.')
             set_setting(c, name, k)
             audit_only(c, 'setting', name, None, key_hint(k) or '(removed)', editor(), f'{word} key ' + ('saved' if k else 'removed'))
+        if 'plantnet_auto' in b:                  # 1.39.0: ask Pl@ntNet on its own when this computer is unsure
+            v = '1' if b.get('plantnet_auto') else ''
+            set_setting(c, 'plantnet_auto', v)
+            audit_only(c, 'setting', 'plantnet_auto', None, v or '(off)', editor(), 'Pl@ntNet first opinion when unsure ' + ('turned on' if v else 'turned off'))
         c.commit()
     pk, ck = setting(c, 'plantnet_key', ''), setting(c, 'claude_key', '')
-    return jsonify(plantnet=bool(pk), plantnet_hint=key_hint(pk), claude=bool(ck), claude_hint=key_hint(ck), claude_model=CLAUDE_MODEL)
+    return jsonify(plantnet=bool(pk), plantnet_hint=key_hint(pk), claude=bool(ck), claude_hint=key_hint(ck), claude_model=CLAUDE_MODEL,
+                   plantnet_auto=setting(c, 'plantnet_auto', '') == '1')
 
 def outside_call(url, data, headers, timeout=60):
     req = urllib.request.Request(url, data=data, headers=headers | {'User-Agent': 'plant-database (home garden record)'}, method='POST')
@@ -1195,13 +1215,16 @@ def outside_call(url, data, headers, timeout=60):
 @app.route('/api/identify/plantnet', methods=['POST'])
 def identify_plantnet():
     """Second opinion from Pl@ntNet (free key: 500 pictures a day). Pl@ntNet does not keep the pictures, by its terms."""
-    c = db()
+    return jsonify(plantnet_ask(db(), picture_bytes(1280)))
+
+def plantnet_ask(c, pic):
+    """Pl@ntNet's answer for one picture (JPEG bytes), as a dict; aborts with a readable reason when it cannot answer."""
     key = setting(c, 'plantnet_key', '')
     if not key: abort(400, 'Pl@ntNet is not set up. The owner can save a key on the Identify page, under "Second opinions".')
-    body, ct = multipart({'organs': 'auto'}, [('images', 'picture.jpg', picture_bytes(1280), 'image/jpeg')])
+    body, ct = multipart({'organs': 'auto'}, [('images', 'picture.jpg', pic, 'image/jpeg')])
     url = PLANTNET_URL + '?' + urllib.parse.urlencode({'api-key': key, 'lang': 'en', 'nb-results': 5, 'include-related-images': 'false'})
     st, j = outside_call(url, body, {'Content-Type': ct})
-    if st == 404: return jsonify(species=[], note='Pl@ntNet did not recognise a plant in that picture.')
+    if st == 404: return {'species': [], 'note': 'Pl@ntNet did not recognise a plant in that picture.', 'source': 'Pl@ntNet'}
     if st in (401, 403): abort(502, 'Pl@ntNet refused the key. Check it on my.plantnet.org and save it again.')
     if st == 429: abort(502, 'The Pl@ntNet key has used all of today\'s pictures. It resets tomorrow.')
     if st != 200: abort(502, 'Could not reach Pl@ntNet. Check the internet connection and try again.')
@@ -1212,7 +1235,7 @@ def identify_plantnet():
                     'genus': (sp.get('genus') or {}).get('scientificNameWithoutAuthor', ''), 'family': (sp.get('family') or {}).get('scientificNameWithoutAuthor', ''),
                     'common_name': ', '.join((sp.get('commonNames') or [])[:3]), 'probability': round(float(r.get('score') or 0), 3)})
     mark_owned(c, out)
-    return jsonify(species=out, remaining=j.get('remainingIdentificationRequests'), source='Pl@ntNet')
+    return {'species': out, 'remaining': j.get('remainingIdentificationRequests'), 'source': 'Pl@ntNet'}
 
 CLAUDE_ASK = ('Identify the plant in this photo. It is one of the potted or garden plants of a home grower in {place} '
               '({zone}). Reply with JSON only, no other text: {"plant": true or false (is there a plant in the photo), '

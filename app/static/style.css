@@ -1127,6 +1127,10 @@ html:not([data-narrow="1"]) .more-f .filters>label:first-child{grid-column:auto}
 .id-m img{width:4rem;height:4rem;object-fit:cover;flex:none}
 .id-m small{display:block;color:var(--ink-2);font-size:1rem}
 .id-sps{padding-left:1.6em;max-width:52rem}
+.id-sps.id-fold > li:nth-child(n+6){display:none}   /* 1.39.0: ten names, five shown until "Show more" */
+.id-again{align-items:center}
+.id-more-pic{width:3rem;height:3rem;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
+.tag-why{background:var(--sheet);border:1px solid var(--line)}
 .id-sp{margin:0 0 1rem;padding:.6rem .8rem;border-left:4px solid var(--line);background:var(--sheet)}
 .id-sp .sci{font-family:var(--serif);font-size:1.2rem;font-weight:600}
 .id-p{float:right;font-size:1.1rem;margin-left:.6rem}

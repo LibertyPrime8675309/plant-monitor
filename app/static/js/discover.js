@@ -72,6 +72,7 @@ async function viewIdentify() {
             <input type="password" name="plantnet_key" autocomplete="off" spellcheck="false"></label>
           <label class="f">Anthropic API key, for Claude<small>From console.anthropic.com, "API keys". It is billed to that account. Leave empty to keep the saved one.</small>
             <input type="password" name="claude_key" autocomplete="off" spellcheck="false"></label>
+          <label class="chk"><input type="checkbox" name="plantnet_auto" ${keys && keys.plantnet_auto ? raw('checked') : ''}>Ask Pl@ntNet on its own whenever this computer is unsure (needs the Pl@ntNet key; one of its 500 free pictures a day each time)</label>
           <p class="hint">The keys stay on this computer, in the database (and so in its backups). The app never shows them again, only their last 4 characters.</p>
           <div class="row"><button class="btn" type="submit">Save keys</button>
             ${keys && keys.plantnet ? html`<button class="btn ghost" type="button" data-act="idkeydel" data-k="plantnet_key">Remove the Pl@ntNet key</button>` : ''}
@@ -159,9 +160,33 @@ function idGrab(maxSide) {
   return c;
 }
 const toBlob = c => new Promise(res => c.toBlob(res, 'image/jpeg', 0.86));
-async function idAsk(blob, scope) {
+async function idAsk(blob, scope, more) {      // 1.39.0: more = other pictures of the same plant, checked together
   const fd = new FormData(); fd.append('image', blob, 'picture.jpg');
+  (more || []).forEach((b, i) => fd.append('images', b, `picture${i + 2}.jpg`));
   return api('POST', '/api/identify?scope=' + enc(scope || idScope()), undefined, fd);
+}
+// 1.39.0: another picture of the same plant, from a file or the camera: all of them are checked together
+async function idAddShot(blob, url) {
+  if (!ID.shot) return;
+  ID.shot.more = (ID.shot.more || []).concat([blob]); ID.shot.moreUrls = (ID.shot.moreUrls || []).concat([url]);
+  const res = document.getElementById('id-res'); if (res) res.insertAdjacentHTML('afterbegin', rend(html`<p class="muted" role="status">Checking ${ID.shot.more.length + 1} pictures together…</p>`));
+  try {
+    ID.shot.result = await idAsk(ID.shot.blob, null, ID.shot.more); ID.shot.plantnet = ID.shot.result.plantnet || null;
+    idPaint(ID.shot.result, ID.shot.url);
+    await idPopup(ID.shot.result);
+  } catch (e) { toast(e.message, true); }
+}
+async function idMoreFile(input) {
+  const f = input.files && input.files[0]; input.value = '';
+  if (!f) return;
+  const url = await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = no; fr.readAsDataURL(f); });
+  await idAddShot(f, url);
+}
+async function idSnapMore() {
+  const c = idGrab(1600); if (!c || !ID.shot) return;
+  ID.paused = true;
+  try { await idAddShot(await toBlob(c), c.toDataURL('image/jpeg', 0.8)); } catch (e) { toast(e.message, true); }
+  ID.paused = false;
 }
 async function idQr() {
   if (!ID.qr) return false;
@@ -228,7 +253,7 @@ async function idSnap() {
     const blob = await toBlob(c);
     ID.shot = { blob, url: c.toDataURL('image/jpeg', 0.8) };
     idSay('Checking this picture…');
-    ID.shot.result = await idAsk(blob);
+    ID.shot.result = await idAsk(blob); ID.shot.plantnet = ID.shot.result.plantnet || null;
     idPaint(ID.shot.result, ID.shot.url);
     await idPopup(ID.shot.result);
   } catch (e) { toast(e.message, true); }
@@ -241,7 +266,7 @@ async function idFile(input) {
   try {
     const url = await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = no; fr.readAsDataURL(f); });
     ID.shot = { blob: f, url };
-    ID.shot.result = await idAsk(f);
+    ID.shot.result = await idAsk(f); ID.shot.plantnet = ID.shot.result.plantnet || null;
     idPaint(ID.shot.result, url);
     await idPopup(ID.shot.result);
   } catch (e) { if (res) res.innerHTML = rend(html`<div class="notice bad" role="alert">${e.message}</div>`); }
@@ -262,6 +287,7 @@ function spCard(s, i, src, withAdd) {
   else if (s.us_states && s.us_states.length) tags.push(html`<span class="tag">In ${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}</span>`);
   if (s.yours && s.yours.length) tags.push(html`<span class="tag tag-yours">You have this: ${s.yours.join(', ')}</span>`);
   else if (s.yours_genus && s.yours_genus.length) tags.push(html`<span class="tag">Same genus as ${s.yours_genus.slice(0, 4).join(', ')}</span>`);
+  (s.basis_words || []).filter(w => !/you have/.test(w) || !(s.yours && s.yours.length)).forEach(w => tags.push(html`<span class="tag tag-why">Lifted: ${w}</span>`));   // 1.39.0
   return html`<li class="id-sp"><div><i class="sci">${s.scientific_name}</i>${s.common_name ? html` <span>${s.common_name}</span>` : ''}
       ${s.probability != null ? html`<b class="id-p">${pct(s.probability)}</b>` : ''}</div>
     <div class="muted">${[s.family, s.order].filter(Boolean).join(', ')}</div>
@@ -278,12 +304,18 @@ function idPaint(r, picUrl, live) {
     ${top ? html`<h3>${c >= 0.5 && !r.likely_new ? 'Your plant' : 'Closest of your plants'}</h3>
       <p>${c >= 0.5 && !r.likely_new ? html`${sureWord(c)} <b>${top.code}, ${top.common_name}</b>: ${pct(c)} sure.` : html`Probably none of your plants: the closest is ${top.code}, ${top.common_name}, ${pct(c)} sure${r.likely_new ? ', and it looks different from all your photos' : ''}.`}</p>
       <ol class="id-ms ${c >= 0.5 && !r.likely_new ? 'id-sure' : ''}">${m.slice(0, 3).map((x, i) => idMatchCard(x, i === 0))}</ol>` : html`<p>There are no photos of your plants to compare with yet.</p>`}
+    ${r.plantnet ? html`<h3>Pl@ntNet says</h3>${r.plantnet.error ? html`<p class="notice bad">${r.plantnet.error}</p>` : r.plantnet.note ? html`<p>${r.plantnet.note}</p>` : ''}
+      ${(r.plantnet.species || []).length ? html`<p class="hint">This computer was not sure, so Pl@ntNet was asked first (Second opinions, below).</p><ol class="id-sps">${r.plantnet.species.map((s, i) => spCard(s, i, 'plantnet', !live && canChange()))}</ol>` : ''}` : ''}
     <h3>What it could be</h3>
     ${r.scope === 'fungi' ? fungiSafety(true) : ''}
-    ${r.genera && r.genera[0] ? html`<p>Most likely genus: <i>${r.genera[0].genus}</i> (${pct(r.genera[0].probability)}). Names below are from: ${sc ? sc[1] : 'the species list'}.</p>` : ''}
-    <ol class="id-sps">${(r.species || []).map((s, i) => spCard(s, i, 'local', !live && canChange()))}</ol>
+    ${r.genera && r.genera[0] ? html`<p>Most likely genus: ${r.genera.slice(0, 3).map((g, i) => html`${i ? ', then ' : ''}<i>${g.genus}</i> (${pct(g.probability)})`)}. When none of the names below fits, the genus is the safer answer. Names from: ${sc ? sc[1] : 'the species list'}${r.pictures > 1 ? `, from ${r.pictures} pictures together` : ''}.</p>` : ''}
+    <ol class="id-sps ${(r.species || []).length > 5 ? 'id-fold' : ''}" id="id-splist">${(r.species || []).map((s, i) => spCard(s, i, 'local', !live && canChange()))}</ol>
+    ${(r.species || []).length > 5 ? html`<p><button class="btn small ghost" type="button" data-act="idmoresp" aria-controls="id-splist" aria-expanded="false">Show ${(r.species || []).length - 5} more names</button></p>` : ''}
+    ${live ? '' : html`<div class="row id-again"><label class="btn ghost small">Add another photo of the same plant<input type="file" accept="image/*" data-act="idmorefile" class="sr"></label>
+      ${ID.stream ? html`<button class="btn ghost small" type="button" data-act="idsnapmore">Add a camera shot of it</button>` : ''}
+      ${(ID.shot && ID.shot.moreUrls || []).map((u, i) => html`<img class="id-more-pic" src="${u}" alt="Extra picture ${i + 1}">`)}</div>`}
     ${live ? '' : html`<div id="id-more">${idMoreBtns()}</div>`}
-    <p class="hint">Checked in ${r.seconds} seconds by ${r.model} on this computer.</p>`);
+    <p class="hint">Checked in ${r.seconds} seconds by ${r.model} on this computer${r.prior ? ', weighted toward the plants you have, houseplants and the plants of your state' : ''}.</p>`);
 }
 function idMoreBtns() {
   if (!canChange() || !ID.keys) return '';
@@ -1311,6 +1343,8 @@ function spFrom(src, i) {
 Object.assign(acts, {
   idcam: () => idCamToggle(),
   idsnap: () => idSnap(),
+  idsnapmore: () => idSnapMore(),
+  idmoresp(el) { const l = document.getElementById('id-splist'); if (!l) return; const open = l.classList.toggle('id-fold'); el.setAttribute('aria-expanded', String(!open)); el.textContent = open ? `Show ${l.children.length - 5} more names` : 'Show fewer names'; if (!open) { const sixth = l.children[5]; if (sixth) { sixth.setAttribute('tabindex', '-1'); sixth.focus(); } } },
   idopen: el => { idStop(); go('#/plant/' + enc(el.dataset.code)); },
   idask: el => idAskOutside(el.dataset.who),
   idnew: el => { const s = spFrom(el.dataset.src, el.dataset.i); if (s) idNewPlant(s, el.dataset.src !== 'library'); },
@@ -1320,7 +1354,7 @@ Object.assign(acts, {
     await guard(async () => { await api('PUT', '/api/identify/settings', { [el.dataset.k]: '' }); toast('Key removed'); route(); });
   },
 });
-Object.assign(changeActs, { idfile: el => idFile(el) });
+Object.assign(changeActs, { idfile: el => idFile(el), idmorefile: el => idMoreFile(el) });
 Object.assign(formActs, {
   async spnotes(form) {
     if (!SPCUR || !(await needName())) return;
@@ -1329,8 +1363,10 @@ Object.assign(formActs, {
   async idkeys(form) {
     const b = {};
     ['plantnet_key', 'claude_key'].forEach(k => { const v = form.elements[k].value.trim(); if (v) b[k] = v; });
-    if (!Object.keys(b).length) { toast('Paste a key first.', true); return; }
-    await api('PUT', '/api/identify/settings', b); toast('Keys saved'); route();
+    const auto = !!form.elements.plantnet_auto.checked;
+    if (!Object.keys(b).length && auto === !!(ID.keys && ID.keys.plantnet_auto)) { toast('Paste a key first.', true); return; }
+    b.plantnet_auto = auto;
+    await api('PUT', '/api/identify/settings', b); toast(Object.keys(b).length > 1 ? 'Keys saved' : 'Saved'); route();
   },
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && ID.stream) { idStop(); idCamUi(false); } });
