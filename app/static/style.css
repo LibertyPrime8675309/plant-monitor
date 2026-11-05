@@ -1616,3 +1616,10 @@ html[data-role=viewer] :is([data-act=snsedit],[data-act=snsrm]){display:none!imp
 .cal-steps li{margin:.4rem 0}
 .cal-now{font-size:1.15em}
 html[data-role=viewer] :is([data-act=snscal],[data-act=calstep]){display:none!important}
+/* 1.36.0: the soil moisture chart on a plant's timeline, and the calendar badges */
+.mchart{width:100%;max-width:44rem;height:auto;color:var(--ink);display:block;margin:.4rem 0}
+.mc-grid{stroke:var(--line);stroke-width:1}
+.mc-lbl{font-size:11px;fill:var(--ink-2)}
+.mc-water{stroke:var(--cyan);stroke-width:2;stroke-dasharray:3 3}
+.bd.b-soil{font-weight:400;color:var(--ink)}
+.bd.b-water{color:var(--cyan)}

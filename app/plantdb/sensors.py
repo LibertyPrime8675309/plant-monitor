@@ -132,6 +132,32 @@ def sensors_summary(c):
     return {'n': len(cards), 'look': sum(1 for s in cards if s['needs_look']), 'quiet': sum(1 for s in cards if s['quiet']),
             'cards': [{'device': s['device'], 'name': s['name'], 'words': s['words'], 'needs_look': s['needs_look'], 'quiet': s['quiet'], 'plant': s['plant']} for s in cards if s['needs_look'] or s['quiet']]}
 
+@app.route('/api/sensors/days')
+def sensors_days():
+    """1.36.0: for a plant's timeline and calendar: the soil moisture of the sensor in its pot, day by day (local days), with
+    the plant's waterings in the same span. ?plant=CODE&days=60."""
+    c = db()
+    p = plant_row(c, request.args.get('plant', ''))
+    try: days = max(7, min(int(request.args.get('days', 60)), 400))
+    except ValueError: abort(400, 'days must be a whole number')
+    cf = c.execute('SELECT * FROM sensor_devices WHERE plant_id=? ORDER BY updated_at DESC', (p['id'],)).fetchall()
+    tz = tzinfo(location(c)['tz']); today = local_today(c)
+    start = (today - timedelta(days=days - 1)).isoformat()
+    water = [r[0] for r in c.execute("SELECT done_on FROM care_log WHERE plant_code=? AND kind='water' AND done_on>=? ORDER BY done_on", (p['code'], start))]
+    out = {'code': p['code'], 'start': start, 'end': today.isoformat(), 'waterings': water, 'range': [p['soil_moisture_low'], p['soil_moisture_high']], 'sensors': []}
+    for conf in cf:
+        rows = c.execute("SELECT ts, soil_moisture FROM readings WHERE source='sensor' AND device=? AND soil_moisture IS NOT NULL AND ts>=? ORDER BY ts",
+                         (conf['device'], (datetime.combine(today - timedelta(days=days), datetime.min.time(), tz) - timedelta(days=1)).astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))).fetchall()
+        if not rows: continue
+        by = {}
+        for ts, v in rows:
+            d = parse_ts(ts).astimezone(tz).date().isoformat()
+            if d < start: continue
+            x = by.setdefault(d, [0.0, 0, v, v]); x[0] += v; x[1] += 1; x[2] = min(x[2], v); x[3] = max(x[3], v)
+        out['sensors'].append({'device': conf['device'], 'name': conf['name'] or conf['device'],
+                               'days': [{'d': d, 'avg': round(x[0] / x[1], 1), 'min': round(x[2], 1), 'max': round(x[3], 1)} for d, x in sorted(by.items())]})
+    return jsonify(out)
+
 @app.route('/api/sensors/summary')
 def sensors_summary_api():
     """For Today: how many sensors need a look or have gone quiet, and which."""

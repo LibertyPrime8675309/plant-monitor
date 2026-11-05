@@ -408,12 +408,33 @@ function tlCompare(D) {
   return html`<h3>Compare two photos</h3><p class="muted">The oldest and the newest photo, side by side. Pick others to compare.</p>
     <div class="tl-pick">${opt(a, 'a')}${opt(b, 'b')}</div><div class="tl-cmp">${fig(a)}${fig(b)}</div>`;
 }
+// ---------- 1.36.0: the soil moisture over the last 60 days, from the sensor in the pot, with the waterings marked ----------
+let SNSDAYS = null;
+function moistureChart(D) {
+  if (!D || !D.sensors.length) return '';
+  const S = D.sensors[0], days = [], d0 = new Date(D.start + 'T00:00:00'), d1 = new Date(D.end + 'T00:00:00');
+  for (let d = new Date(d0); d <= d1; d.setDate(d.getDate() + 1)) days.push(d.toISOString().slice(0, 10));
+  const by = Object.fromEntries(S.days.map(x => [x.d, x])), W = 640, H = 150, L = 34, R = 8, T = 10, B = 26;
+  const x = i => L + i / Math.max(1, days.length - 1) * (W - L - R), y = v => T + (100 - v) / 100 * (H - T - B);
+  let path = '';
+  days.forEach((d, i) => { const v = by[d]; if (!v) return; path += (path ? ' L' : 'M') + x(i).toFixed(1) + ' ' + y(v.avg).toFixed(1); });
+  const [lo, hi] = D.range || [], band = lo != null && hi != null ? html`<rect x="${L}" y="${y(hi).toFixed(1)}" width="${W - L - R}" height="${(y(lo) - y(hi)).toFixed(1)}" class="sns-band"/>` : '';
+  const wset = new Set(D.waterings), marks = days.map((d, i) => wset.has(d) ? html`<g><line x1="${x(i).toFixed(1)}" x2="${x(i).toFixed(1)}" y1="${T}" y2="${H - B}" class="mc-water"/><text x="${x(i).toFixed(1)}" y="${H - B + 14}" text-anchor="middle" class="mc-lbl">▲</text></g>` : '');
+  const ticks = [0, 25, 50, 75, 100].map(v => html`<g><line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" class="mc-grid"/><text x="${L - 4}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" class="mc-lbl">${v}</text></g>`);
+  const first = days.findIndex(d => by[d]), lastD = S.days[S.days.length - 1];
+  const words = `Soil moisture from ${S.name} over the last ${days.length} days: ${S.days.length} days with readings, lowest ${Math.min(...S.days.map(z => z.min))}%, highest ${Math.max(...S.days.map(z => z.max))}%, now ${lastD.avg}%. ${D.waterings.length} watering${D.waterings.length === 1 ? '' : 's'} marked.`;
+  return html`<h3>Soil moisture, last ${days.length} days</h3>
+    <svg class="mchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${words}">${band}${ticks}${marks}<path d="${path}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+      <text x="${L}" y="${H - 2}" class="mc-lbl">${tlShort(D.start)}</text><text x="${W - R}" y="${H - 2}" text-anchor="end" class="mc-lbl">${tlShort(D.end)}</text></svg>
+    <p class="hint">${words} ▲ marks a watering (pressed, or seen by the sensor)${lo != null && hi != null ? `; the shaded band is this plant's range, ${lo} to ${hi}%` : ''}. <a href="#/sensors">Your sensors</a>.</p>`;
+}
 function tlRender() {
   const box = document.getElementById('tl-box'), D = TL.data; if (!box || !D) return;
   const ev = D.events.filter(e => !TL.hide.has(e.kind));
   const days = []; ev.forEach(e => { const d = tlDay(e.at); if (!days.length || days[days.length - 1].d !== d) days.push({ d, items: [] }); days[days.length - 1].items.push(e); });
   const trend = [tlTrend(D.health, D.current.health, 'Health', h => HEALTH_ORDER[h] ?? -1), tlTrend(D.confidence, D.current.id_confidence, 'ID confidence', n => +n)].filter(Boolean);
   box.innerHTML = rend(html`${trend.length ? html`<ul class="tl-trend">${trend}</ul>` : ''}
+    ${moistureChart(SNSDAYS)}
     ${tlCompare(D)}
     <h3>Everything that has happened</h3>
     <fieldset class="tl-filter"><legend>Show</legend>${TL_KINDS.map(([k, w]) => html`<label class="chk"><input type="checkbox" data-act="tlkind" value="${k}" ${TL.hide.has(k) ? '' : raw('checked')}>${w}</label>`)}</fieldset>
@@ -527,6 +548,7 @@ async function viewPlant(code) {
   const [p, h, cur, st] = await Promise.all([api('GET', '/api/plants/' + enc(code)), api('GET', '/api/plants/' + enc(code) + '/history'), loadCond(), api('GET', '/api/settings').catch(() => ({}))]);
   CUR = { p, h, base: st.base_url || location.origin };
   HEATV = await loadHeat(p);                     // 1.36.0: the summer heat for this plant (cached for 10 minutes per place and temperature)
+  SNSDAYS = await api('GET', '/api/sensors/days?days=60&plant=' + enc(code)).catch(() => null);   // 1.36.0: the soil moisture day by day, for the timeline and the calendar
   PIDX = KEEP != null ? KEEP : Math.max(0, p.photos.findIndex(x => x.is_primary));
   KEEP = null;
   const archived = p.status === 'archived';

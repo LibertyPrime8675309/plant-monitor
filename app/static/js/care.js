@@ -655,7 +655,7 @@ async function productDialog(x) {
 // ---------- fertilizer panel on a plant page ----------
 function fertCfgPlant(p) {
   return {
-    legend: html`Shaded green days are in this plant's feeding season. Hatched days are its resting season: do not fertilize. "Fed" marks a feeding you logged and "Due" the next one this page suggests.`,
+    legend: html`Shaded green days are in this plant's feeding season. Hatched days are its resting season: do not fertilize. "Fed" marks a feeding you logged and "Due" the next one this page suggests.${typeof SNSDAYS !== 'undefined' && SNSDAYS && SNSDAYS.code === p.code && SNSDAYS.sensors.length ? ' "Soil" is the day\'s average soil moisture from the sensor in its pot, and "Watered" a watering (pressed, or seen by the sensor).' : ''}`,
     cell(ds, c) {
       const es = entriesFor(p.code), fed = es.filter(e => e.applied_on === ds), nd = nextDue(p, es);
       const inS = hasSeason(p) && monthIn(p, +ds.slice(5, 7));
@@ -663,8 +663,11 @@ function fertCfgPlant(p) {
       fed.forEach(e => badges.push({ cls: 'b-fed', text: '● Fed ' + e.product }));
       if (nd === ds && !fed.length) badges.push({ cls: 'b-due', text: '▲ Due' });
       if (hasSeason(p) && !inS && !badges.length) badges.push({ cls: 'b-rest', text: 'Rest' });
+      const soil = typeof SNSDAYS !== 'undefined' && SNSDAYS && SNSDAYS.code === p.code && SNSDAYS.sensors.length ? SNSDAYS.sensors[0].days.find(x => x.d === ds) : null;   // 1.36.0
+      if (soil) badges.push({ cls: 'b-soil', text: `Soil ${Math.round(soil.avg)}%` });
+      if (SNSDAYS && SNSDAYS.code === p.code && SNSDAYS.waterings.includes(ds)) badges.push({ cls: 'b-water', text: '▲ Watered' });
       return { cls: hasSeason(p) ? (inS ? 'cal-in' : 'cal-rest') : '', badges,
-        aria: (fed.length ? 'Fed with ' + fed.map(e => e.product).join(' and ') + '. ' : '') + (nd === ds && !fed.length ? 'Next feeding due. ' : '') + (hasSeason(p) ? (inS ? 'In feeding season.' : 'Resting season, do not fertilize.') : '') };
+        aria: (soil ? `Soil moisture ${Math.round(soil.avg)}%. ` : '') + (SNSDAYS && SNSDAYS.code === p.code && SNSDAYS.waterings.includes(ds) ? 'Watered. ' : '') + (fed.length ? 'Fed with ' + fed.map(e => e.product).join(' and ') + '. ' : '') + (nd === ds && !fed.length ? 'Next feeding due. ' : '') + (hasSeason(p) ? (inS ? 'In feeding season.' : 'Resting season, do not fertilize.') : '') };
     },
     pick(ds) { fertDayDetail(p, ds); },
   };
