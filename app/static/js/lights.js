@@ -68,7 +68,9 @@ function ltLightCard(L) {
   return html`<article class="lt-light" aria-labelledby="ltl-${L.id}">
     ${L.photo ? html`<img class="lt-photo" src="${L.photo}" alt="${S.photo_alt || ''}" loading="lazy">` : ''}
     <div class="lt-body"><h3 id="ltl-${L.id}">${L.name}</h3>
-    ${(() => { const can = canChange(), ed = k => raw(`data-ed="light" data-id="${L.id}" data-k="${k}" ${can ? '' : 'readonly'}`); return html`<div class="field-grid lt-ed">
+    <dl class="dl lt-facts"><dt>You have</dt><dd>${L.count}${L.in_use ? ` (${L.in_use} in use in your spots)` : ''}</dd>${S.model ? html`<dt>Model</dt><dd>${S.model}</dd>` : ''}${L.fixture ? html`<dt>Where it is</dt><dd>${L.fixture}</dd>` : ''}</dl>
+    ${canChange() ? html`<p class="row noprint"><button class="btn ghost small" type="button" data-act="ltedit" data-id="${L.id}" aria-expanded="false" aria-controls="lt-ed-${L.id}">Edit the name, count, model and where it is</button></p>` : ''}
+    ${(() => { const can = canChange(), ed = k => raw(`data-ed="light" data-id="${L.id}" data-k="${k}" ${can ? '' : 'readonly'}`); return html`<div class="field-grid lt-ed" id="lt-ed-${L.id}" hidden>
       <label class="f">Name<input type="text" maxlength="80" value="${L.name}" ${ed('name')}></label>
       <label class="f lt-n">How many you have<input type="number" inputmode="numeric" min="0" max="100" step="1" value="${L.count}" ${ed('count')}><small>${L.in_use ? `${L.in_use} in use in your spots.` : 'None in a spot yet.'}</small></label>
       <label class="f">Manufacturer model<input type="text" maxlength="80" value="${S.model || ''}" ${ed('model')}></label>

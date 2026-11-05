@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.39.1 (2026-11-05)
+- **Room for the content** (Ethan, November 5): list pages keep one row of controls (search, the one or two that matter most, sort) and fold the rest under **More filters**, which opens by itself while a folded filter is on. Plants page: Search, Home, Location, Sort on the row; Health, Group, Show, ID confidence and the rest folded. Library: Search, Look in, Sort; the rest folded. Identify → Your plant photos: the six extra selects that stood one under another, full width, are in the fold with the others (that was a mistake in 1.28.0). Audit log: the search and filters box starts folded unless a filter is on.
+- **Read this page aloud** sits beside the page title on a computer instead of on a row of its own.
+- A page with no sections (the Plants page, the Audit log and others) no longer shows the empty "On this page" menu; its width goes to the content.
+- Plants page: a shorter line under the title; "Plants that need something from you", "Copy my answers for Claude" and "N to photograph" on one row.
+- Grow lights: a light's name, count, model and place are text until you press **Edit the name, count, model and where it is**.
+- Weather: the Location box is one line.
+
 ## 1.39.0 (2026-11-05)
 - **Better names from Identify.** The picture checker now weighs its names toward what you are likely to be looking at: species and genera already in your record, houseplant genera, and the plants of your state, plus a lift for a name when one of your own named plants' photos looks like the picture (a new pot of a plant you have gets its name). Each lifted name says why ("Lifted: a houseplant", "looks like your photos").
 - **Ten names, not three** (five shown, "Show 5 more names"), and the three likeliest genera: when no species fits, the genus is the safer answer.

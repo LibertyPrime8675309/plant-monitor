@@ -553,9 +553,9 @@ async function viewHistory() {
   const F = AUD.facets, f = AUD.f, sel = (k, v) => v === f[k] ? raw('selected') : '';
   return {
     title: 'Audit log',
-    html: html`<div class="hero"><div><h1>Audit log</h1><p class="muted">Every change to every record: plant pages, photos, feeding and care, requests, settings and backups. ${F.total.toLocaleString()} changes since ${F.first ? midDay(F.first.slice(0, 10)) : 'the start'}. Times are shown in your time zone.</p></div>
+    html: html`<div class="hero"><div><h1>Audit log</h1><p class="muted">Every change to every record. ${F.total.toLocaleString()} changes since ${F.first ? midDay(F.first.slice(0, 10)) : 'the start'}. Times are shown in your time zone.</p></div>
       <div class="row noprint"><a class="btn ghost small" href="/api/export.csv">Download plants (CSV)</a><a class="btn ghost small" href="/api/readings.csv">Download weather and sensor readings (CSV)</a><a class="btn ghost small" href="/api/export.json">Download all data (JSON)</a></div></div>
-    <details class="aud-fbox noprint" id="aud-fbox" ${document.documentElement.dataset.narrow !== '1' || audInUse() ? raw('open') : ''}><summary>Filters<span id="aud-inuse">${audInUseWords()}</span></summary>
+    <details class="aud-fbox noprint" id="aud-fbox" ${audInUse() ? raw('open') : ''}><summary>Search and filters<span id="aud-inuse">${audInUseWords()}</span></summary>
     <form class="aud-filters" role="search" aria-label="Filter the audit log" data-form="audf">
       <label class="f aud-q">Search<input type="search" name="q" data-f="audq" value="${f.q}" placeholder="Words, plant code or name"></label>
       <label class="f">Plant<select name="plant" data-f="aud"><option value="">All plants</option><option value="-" ${sel('plant', '-')}>Not about one plant</option>

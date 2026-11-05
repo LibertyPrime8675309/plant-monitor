@@ -716,7 +716,7 @@ async function route() {
 
 // ---------- section menu (left or right, can be folded away) ----------
 let NAVSESSION = null;                // on narrow screens the menu starts folded; opening it there lasts until a link is chosen
-function navOpen() { const P = window.PlantPrefs.get(), narrow = document.documentElement.dataset.narrow === '1'; return NAVSESSION != null ? NAVSESSION : (P.navopen === '1' && !narrow); }
+function navOpen() { const P = window.PlantPrefs.get(), r = document.documentElement, narrow = r.dataset.narrow === '1'; if (r.dataset.navempty === '1' && !narrow) return false; return NAVSESSION != null ? NAVSESSION : (P.navopen === '1' && !narrow); }
 // 1.26.0: with large text on a computer, the page links fold behind the Pages button once they would take more than two rows (or
 // the top bar more than a fifth of the window), and a top bar still taller than a fifth of the window scrolls away with the page, as on phones, instead of staying pinned
 // 1.29.0: the top bar has six sections; the pages of the section you are in are on a second row (Ethan's choice, November 2026)
@@ -807,6 +807,7 @@ function buildSideNav() {
     NAVITEMS.push({ el: sec, head: marked ? sec : h, text, id: sec.id });
   });
   buildJumpRow();
+  document.documentElement.dataset.navempty = NAVITEMS.length <= 1 ? '1' : '0';     // 1.39.1: only "Top of the page": no menu for this page
   list.innerHTML = rend(html`${NAVITEMS.map((it, i) => html`<li><a href="#${it.id || 'app'}" data-act="navgo" data-i="${i}">${it.text}</a></li>`)}`);
   if (!NAVITEMS.length) list.innerHTML = rend(html`<li class="muted">This page has no sections.</li>`);
   if (pinned) NAVPIN = NAVITEMS.findIndex(it => (it.id || 'top') === pinned);
