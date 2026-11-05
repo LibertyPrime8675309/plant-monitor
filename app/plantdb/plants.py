@@ -373,7 +373,7 @@ def several_photo():
     return jsonify(out)
 
 def sev_species(x):
-    return {k: x.get(k) for k in ('scientific_name', 'common_name', 'family', 'genus', 'kind', 'probability', 'sources', 'basis_words', 'yours', 'yours_genus')} | {'pets': pets_word(x.get('scientific_name'))}
+    return {k: x.get(k) for k in ('scientific_name', 'common_name', 'family', 'genus', 'order', 'kind', 'probability', 'sources', 'plantnet_probability', 'basis_words', 'yours', 'yours_genus', 'us_states', 'in_texas', 'kingdom')} | {'pets': pets_word(x.get('scientific_name'))}
 
 @app.route('/api/plants/several/identify', methods=['POST'])
 def several_identify():

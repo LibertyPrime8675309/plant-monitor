@@ -102,16 +102,18 @@ def sp_key(name):
 
 def rejections(c, plant_code=None):
     """{'species': {keys}, 'genera': {lower genus}} said "Not this" for this plant, plus the ones said with no plant (session-wide picks the client sends itself)."""
-    sp, gn = set(), set()
+    sp, gn, ssp, sgn = set(), set(), set(), set()
     q = 'SELECT name, genus FROM id_rejections WHERE plant_code=?' if plant_code else 'SELECT name, genus FROM id_rejections WHERE 0'
     for name, g in c.execute(q, (plant_code,) if plant_code else ()):
-        (gn if g else sp).add(sp_key(name) if not g else name.strip().lower())
-    return {'species': sp, 'genera': gn}
+        if g: gn.add(name.strip().lower()); sgn.add(name.strip().capitalize())
+        else: sp.add(sp_key(name)); ssp.add(name.strip())
+    return {'species': sp, 'genera': gn, 'shown_species': ssp, 'shown_genera': sgn}
 
 def identify_pictures(c, pics, scope, exclude=None, exclude_genera=None, plant_code=None, plantnet='auto', n=10):
     rej = rejections(c, plant_code)
     ex_sp = rej['species'] | {sp_key(x) for x in (exclude or [])}
     ex_gn = rej['genera'] | {x.strip().lower() for x in (exclude_genera or [])}
+    shown = {'species': sorted({x.strip() for x in (exclude or [])} | rej['shown_species']), 'genera': sorted({x.strip().capitalize() for x in (exclude_genera or [])} | rej['shown_genera'])}
     body, ct = multipart({}, [('image', 'picture.jpg', pics[0], 'image/jpeg')] + [('images', f'picture{i + 2}.jpg', b, 'image/jpeg') for i, b in enumerate(pics[1:])])
     out = vision_call('/identify?scope=' + scope + '&n=' + str(min(40, n + len(ex_sp) + 10)), body, ct, timeout=120)
     matches = []
@@ -160,7 +162,7 @@ def identify_pictures(c, pics, scope, exclude=None, exclude_genera=None, plant_c
         if x.get('family'): fam[x['family']] = fam.get(x['family'], 0) + x['probability']
     out['genera'] = [{'genus': g, 'probability': round(q, 3)} for g, q in sorted(gen.items(), key=lambda kv: -kv[1])[:5]]
     out['families'] = [{'family': f, 'probability': round(q, 3)} for f, q in sorted(fam.items(), key=lambda kv: -kv[1])[:3]]
-    out['excluded'] = {'species': sorted(ex_sp), 'genera': sorted(ex_gn)}
+    out['excluded'] = shown
     out['pictures'] = len(pics)
     if pn is None: out.pop('plantnet', None)
     return out
