@@ -72,7 +72,8 @@ manifest = None if full else {'version': ver, 'packs': {k: {'zip': f'plant-datab
 with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
     for d, dirs, files in os.walk(ROOT):
         rel = os.path.relpath(d, ROOT)
-        dirs[:] = [x for x in dirs if x not in SKIP_DIRS and not (rel == '.' and x in ('data', 'backups')) and not (rel == 'tailscale' and x == 'state')]   # 1.12.0: the Tailscale sign-in
+        dirs[:] = [x for x in dirs if x not in SKIP_DIRS and not (rel == '.' and x in ('data', 'backups')) and not (rel == 'tailscale' and x == 'state')
+                   and not (rel == 'mirror' and x in ('data', 'backups', 'received')) and not (rel == os.path.join('mirror', 'tailscale') and x == 'state') and not (rel == 'receiver' and x == 'received')]   # 1.12.0: the Tailscale sign-in; 1.37.0: the mirror's own data
         if not full and os.path.abspath(d) == PHOTOS: continue          # photos travel in the packs
         for f in files:
             if rel == '.' and (f in SKIP_TOP or f.endswith('.zip')): continue

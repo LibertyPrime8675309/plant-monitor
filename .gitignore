@@ -14,3 +14,9 @@ dev/tmp/
 tailscale/state/
 .env
 backups-copy/
+# the mirror machine's own data (1.37.0)
+mirror/data/
+mirror/backups/
+mirror/received/
+mirror/tailscale/state/
+receiver/received/

@@ -600,7 +600,7 @@ async function route() {
   if (parts[0] !== 'new') NEWFILL = null;
   if (parts[0] !== 'fungi' || parts[1] !== 'new') MUFILL = null;
   const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' || parts[0] === 'sensors' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' || parts[0] === 'species' || parts[0] === 'wishlist' || parts[0] === 'around' ? 'library' : parts[0] === 'fungi' ? 'fungi' : parts[0] === 'offline' || parts[0] === 'decisions' ? 'offline' : parts[0] === 'today' || !parts.length ? 'today' : 'plants';
-  navMark(parts[0] === 'weather' && qs.get('sec') === 'places' ? 'places' : ['sensors', 'pots', 'where', 'settings', 'new', 'wishlist', 'frost', 'inside', 'outside', 'around', 'decisions'].includes(parts[0]) ? parts[0] : parts[0] === 'shopping' || parts[0] === 'store' ? 'shopping' : nav);
+  navMark(parts[0] === 'weather' && qs.get('sec') === 'places' ? 'places' : ['sensors', 'pots', 'where', 'settings', 'new', 'wishlist', 'frost', 'inside', 'outside', 'around', 'decisions', 'review'].includes(parts[0]) ? parts[0] : parts[0] === 'share' ? 'photos' : parts[0] === 'shopping' || parts[0] === 'store' ? 'shopping' : nav);
   pagesMenu(false);
   wlBadge();
   // 1.30.0: the screen changes at once. If the page is not ready in a moment, its name shows with "Loading"; a page opened before
@@ -632,6 +632,8 @@ async function route() {
     else if (parts[0] === 'winter') view = await viewWinter();
     else if (parts[0] === 'weather') view = await viewWeather(qs.get('sec'));
     else if (parts[0] === 'sensors') view = await viewSensors();     // 1.35.0
+    else if (parts[0] === 'review') view = await viewReview(qs);     // 1.37.0
+    else if (parts[0] === 'share') view = await viewShare();           // 1.37.0
     else if (parts[0] === 'settings') view = viewSettings();
     else if (parts[0] === 'where') view = await viewWhere();
     else if (parts[0] === 'pots') view = await viewPots();
@@ -673,7 +675,8 @@ async function route() {
     if (parts[0] !== 'frost' && parts[0] !== 'plant' && parts[0] !== 'today' && parts.length) app.insertAdjacentHTML('afterbegin', rend(frostBanner()));   // plant pages have their own note; Today has its own section
     if (OFF.saved && OFF.saved !== 'none') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice off-note noprint" role="note"><strong>Offline.</strong> This is what this device saved${OFF.saved ? ' on ' + when(OFF.saved) : ''}. Changes you make are kept here and sent when you are back online. <a href="#/offline">Offline page</a></p>`));
     offNotice(parts);
-    if (ME().role === 'viewer') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice vw-note noprint" role="note"><strong>View only.</strong> You can look at everything here, but changes are turned off. Ask ${ME().owner_name} if you would like to edit.</p>`));
+    if (META && META.mirror && META.mirror.on) app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice vw-note mirror-note noprint" role="note"><strong>This is the mirror:</strong> a read-only copy${META.mirror.made ? ` of the backup made ${when(META.mirror.made)}` : META.mirror.at ? ` taken ${when(META.mirror.at)}` : ', waiting for its first backup'}${META.mirror.error ? ` (${META.mirror.error})` : ''}. Changes are turned off here; ${META.mirror.main ? html`make them in <a href="${META.mirror.main}">the main app</a>` : 'make them in the main app'}.</p>`));   // 1.37.0
+    else if (ME().role === 'viewer') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice vw-note noprint" role="note"><strong>View only.</strong> You can look at everything here, but changes are turned off. Ask ${ME().owner_name} if you would like to edit.</p>`));
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
     if (view.after) view.after();
     if (parts[0] === 'weather' && qs.get('sec') === 'places') setTimeout(() => { const t = document.getElementById('sec-places'); if (t) { scrollToSection(t); navFlash(t); } }, 300);   // 1.29.0: Homes and places
@@ -704,7 +707,7 @@ function navOpen() { const P = window.PlantPrefs.get(), narrow = document.docume
 // 1.29.0: the top bar has six sections; the pages of the section you are in are on a second row (Ethan's choice, November 2026)
 const SECTIONS = [
   ['today', 'Today', [['today', 'Today', '#/']]],
-  ['plants', 'Plants', [['plants', 'All plants', '#/plants'], ['groups', 'Groups', '#/groups'], ['new', 'Add plants', '#/new'], ['fungi', 'Mushrooms', '#/fungi'], ['where', 'Rooms and spots', '#/where'], ['photos', 'Photos', '#/photos'], ['labels', 'Labels', '#/labels']]],
+  ['plants', 'Plants', [['plants', 'All plants', '#/plants'], ['groups', 'Groups', '#/groups'], ['new', 'Add plants', '#/new'], ['fungi', 'Mushrooms', '#/fungi'], ['where', 'Rooms and spots', '#/where'], ['photos', 'Photos', '#/photos'], ['labels', 'Labels', '#/labels'], ['review', 'Year in review', '#/review']]],   // 1.37.0: the year in review
   ['care', 'Care', [['winter', 'Winter plan', '#/winter'], ['frost', 'Cold-night checklist', '#/frost'], ['inside', 'Coming inside', '#/inside'], ['outside', 'Back outside', '#/outside'], ['fertilizer', 'Fertilizer', '#/fertilizer'], ['lights', 'Grow lights', '#/lights'], ['pots', 'Pots and trays', '#/pots']]],   // 1.36.0: every page in its section's row
   ['weather', 'Weather', [['weather', 'Weather', '#/weather'], ['sensors', 'Sensors', '#/sensors'], ['places', 'Homes and places', '#/weather?sec=places']]],
   ['discover', 'Discover', [['identify', 'Identify', '#/identify'], ['library', 'Library', '#/library'], ['around', 'Around home', '#/around'], ['wishlist', 'Wishlist', '#/wishlist'], ['shopping', 'Shopping', '#/shopping']]],

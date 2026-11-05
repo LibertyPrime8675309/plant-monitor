@@ -1630,3 +1630,14 @@ html[data-role=viewer] :is([data-act=snscal],[data-act=calstep]){display:none!im
 .hl li{padding-left:1.6em;text-indent:-1.6em}
 .hl li>span{display:inline-block;width:1.6em;text-indent:0;font-weight:700}
 .hl-bad>span{color:var(--madder)} .hl-ok>span{color:var(--moss)}
+/* 1.37.0: the year in review, shared photos, the mirror note */
+.rv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,24rem),1fr));gap:1rem;margin:.8rem 0}
+.rv-card{border:var(--bw) solid var(--line);background:var(--sheet);padding:.8rem 1rem;min-width:0}
+.rv-card h3{margin:0 0 .3rem}
+.rv-card.rv-bad{border-left:.45rem solid var(--madder)} .rv-card.rv-good{border-left:.45rem solid var(--moss)}
+.rv-phs{display:flex;gap:.6rem;flex-wrap:wrap;margin:.4rem 0}
+.rv-ph{margin:0;text-align:center;font-size:.85em} .rv-ph img{width:120px;height:120px;object-fit:cover;border:1px solid var(--line);display:block}
+.rv-facts{padding-left:1.2rem;margin:.4rem 0 0;color:var(--ink-2)}
+.share-grid{display:flex;flex-wrap:wrap;gap:.8rem;margin:.6rem 0} .share-grid figure{margin:0;max-width:14rem} .share-grid img{width:100%;height:auto;border:1px solid var(--line)}
+.mirror-note{border-left-color:var(--ochre)}
+@media print{.rv-grid{display:block}.rv-card{break-inside:avoid;margin-bottom:.8rem}}

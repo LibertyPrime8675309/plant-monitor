@@ -17,7 +17,7 @@ def set_setting(c, key, value):
     c.execute('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)', (key, value))
 
 PROBLEM_AREA = {'weather': 'Weather update', 'backup': 'Backup', 'shops': 'Shopping check', 'stores': 'Store look-up', 'library': 'Library download',
-                'know': 'Library lookups', 'offline': 'Offline changes', 'vision': 'Picture checker', 'gzip': 'Sending a page', 'start': 'Starting the app', 'push': 'Notifications', 'sensors': 'Sensors'}
+                'know': 'Library lookups', 'offline': 'Offline changes', 'vision': 'Picture checker', 'gzip': 'Sending a page', 'start': 'Starting the app', 'push': 'Notifications', 'sensors': 'Sensors', 'mirror': 'Mirror'}
 def problem(area, text, detail='', conn=None):
     """1.31.0: a problem in a background job, kept for the Problems list on Settings (the last 200). The same problem again
     within a day counts up instead of adding a line. Never raises: it is called from places that are already failing."""

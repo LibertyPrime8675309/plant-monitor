@@ -941,6 +941,20 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
 
+## Photos from your phone, the year in review, and the mirror (from 1.37.0)
+
+### Share a photo from your phone
+
+On an Android phone with the app added to the Home Screen (Chrome or Edge: menu → Add to Home screen), **Plants** appears in the phone's share sheet. Share a photo (or several) from the camera or gallery and choose Plants: the app opens on **Photos shared with Plant record**, with the pictures shown, a plant to choose (recently changed ones first) and a caption. **Add** puts them on that plant, or under Photos to assign later. iPhones do not offer this for web apps; there, use the camera button on the plant's page as before. The Photos page has a link to the shared-photos page too.
+
+### The year in review
+
+**Plants → Year in review** (`#/review`): one card per plant for a year, from everything the app logged: new this year or archived, how its health went, moves between places, waterings and feedings, how many cold nights it sat outside below its damage point and how many days at or above its heat-damage temperature, requests answered, and its first and last photo of the year. The plants with the hardest year come first (■), those that got better are marked ✓. Choose the year, narrow the list (hard year, got better, new, quiet) and print it. Good for deciding what to keep, what to move and what to let go.
+
+### The mirror: a read-only copy on another machine
+
+The `mirror` folder in the app folder sets up a second copy of the app on another machine (the spare hardware, or your girlfriend's PC): it runs the same app with the backup receiver, takes the newest backup every 5 minutes and shows that, read-only, at `https://plants-mirror.<your tailnet>.ts.net`. Every page on the mirror says which backup it shows and links to the main app; changes are refused. `mirror/README.md` has the steps (cmd.exe, PowerShell and bash). Photos on the mirror come from the last backup made with photos, so set the Backups page to include photos now and then.
+
 ## Finding your way, summer heat for each plant, probe calibration and the health of the app (from 1.36.0)
 
 ### Every page in its section's row

@@ -4,7 +4,7 @@ running, what is waiting on a schedule, and what went wrong, in one place. The w
 from .core import *   # noqa: F401,F403
 
 JOB_WORD = {'weather': 'Weather update', 'backup': 'Backup', 'shops': 'Store check', 'library': 'Library photos', 'know': 'Library lookups',
-            'area': 'Library download', 'geo': 'Store map positions', 'restore': 'Restore', 'copy': 'Backup copy to the other computer'}
+            'area': 'Library download', 'geo': 'Store map positions', 'restore': 'Restore', 'copy': 'Backup copy to the other computer', 'mirror': 'Mirror update'}
 JOBS = {'lock': threading.Lock(), 'running': {}, 'done': [], 'next': 0}
 
 def job_start(kind, label='', total=0):
