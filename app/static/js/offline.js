@@ -275,6 +275,8 @@ async function viewOffline() {
             : html`<span>It looks most like: ${(x.result.species || []).slice(0, 3).map((s, i) => html`${i ? '; ' : ''}<a href="#/species/${enc(s.scientific_name)}"><i>${s.scientific_name}</i></a>${s.common_name ? ` (${s.common_name})` : ''} ${pct(s.probability)}`)}${(x.result.matches || [])[0] && (x.result.matches[0].confidence || 0) >= 0.5 ? html`. Your plant ${x.result.matches[0].code}?` : ''}</span>`}
           <button class="btn ghost small" type="button" data-act="offidrm" data-id="${x.id}" aria-label="Remove this waiting picture">Remove</button></li>`)}</ul>` : html`<p class="muted">None. Pictures taken for Identify without a connection wait here and are checked when you're back online.</p>`}
     </section>
+    <section aria-labelledby="off-fresh-h"><h2 id="off-fresh-h">Saved pages</h2><p>Pages you have opened show straight away from what was saved last time, and are checked again just after (${QC.size} saved right now, kept 15 minutes). If something looks stale, clear them: the next page you open comes fresh from the server.</p>
+      <p class="row"><button class="btn ghost" type="button" data-act="qcclear">Clear the saved pages</button></p></section>
     ${keep || dl ? html`<section aria-labelledby="off-forget-h"><h2 id="off-forget-h">Forget the copy</h2><p>Deletes what this device saved (not the changes waiting to be sent, and nothing on the plant record itself).</p>
       <p class="row"><button class="btn danger" type="button" data-act="offforget">Delete the saved copy on this device</button></p></section>` : ''}`,
   };
@@ -310,6 +312,7 @@ Object.assign(acts, {
   },
   async offretry(el) { const op = (await offOps()).find(o => o.id === el.dataset.id); if (op) { delete op.failed; delete op.error; await idbPut('outbox', op); } await offSync(); route(); },
   async offidrm(el) { await idbDel('idq', el.dataset.id); await offPaint(); route(); },
+  qcclear() { const n = QC.size; QC.clear(); QGEN++; toast(n ? `Cleared ${n} saved page${n === 1 ? '' : 's'}` : 'Nothing was saved'); route(); },   // 1.36.0
   async offforget() {
     if (!(await confirmBox('Delete the saved copy?', 'This device will need a connection to show the plant record until it is saved again. Changes waiting to be sent are kept.', 'Delete the saved copy', true))) return;
     await Promise.all(['plantdb-api', 'plantdb-photos', 'plantdb-library-photos'].map(n => caches.delete(n)));
