@@ -480,6 +480,8 @@ function placeLabels(base) {
 }
 
 // ---------- audit log page: every change to every record, with filters (1.10.0; was the Change log page) ----------
+let AUDOPEN = false;             // 1.39.1: the audit filters box stays open for the visit once you open it
+document.addEventListener('toggle', e => { if (e.target && e.target.id === 'aud-fbox') AUDOPEN = e.target.open; }, true);
 const AUD = { f: { q: '', plant: '', who: '', kind: '', field: '', from: '', to: '', order: 'desc' }, offset: 0, limit: 100, facets: null, total: 0, t: null };
 try { const s = JSON.parse(localStorage.getItem('plantdb.auditf') || '{}'); Object.keys(AUD.f).forEach(k => { if (typeof s[k] === 'string') AUD.f[k] = s[k]; }); } catch (e) { /* defaults */ }
 const audSave = () => { try { localStorage.setItem('plantdb.auditf', JSON.stringify(AUD.f)); } catch (e) { /* not remembered */ } };
@@ -555,7 +557,7 @@ async function viewHistory() {
     title: 'Audit log',
     html: html`<div class="hero"><div><h1>Audit log</h1><p class="muted">Every change to every record. ${F.total.toLocaleString()} changes since ${F.first ? midDay(F.first.slice(0, 10)) : 'the start'}. Times are shown in your time zone.</p></div>
       <div class="row noprint"><a class="btn ghost small" href="/api/export.csv">Download plants (CSV)</a><a class="btn ghost small" href="/api/readings.csv">Download weather and sensor readings (CSV)</a><a class="btn ghost small" href="/api/export.json">Download all data (JSON)</a></div></div>
-    <details class="aud-fbox noprint" id="aud-fbox" ${audInUse() ? raw('open') : ''}><summary>Search and filters<span id="aud-inuse">${audInUseWords()}</span></summary>
+    <details class="aud-fbox noprint" id="aud-fbox" ${audInUse() || AUDOPEN ? raw('open') : ''}><summary>Search and filters<span id="aud-inuse">${audInUseWords()}</span></summary>
     <form class="aud-filters" role="search" aria-label="Filter the audit log" data-form="audf">
       <label class="f aud-q">Search<input type="search" name="q" data-f="audq" value="${f.q}" placeholder="Words, plant code or name"></label>
       <label class="f">Plant<select name="plant" data-f="aud"><option value="">All plants</option><option value="-" ${sel('plant', '-')}>Not about one plant</option>

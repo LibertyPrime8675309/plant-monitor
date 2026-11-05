@@ -186,6 +186,7 @@ const MORE = [
 const moreOpts = d => typeof d.opts === 'function' ? d.opts() : d.opts;
 const moreOn = () => MORE_KEYS.filter(k => G[k]).length;
 let MOREOPEN = false, CAREDUE = null;
+try { MOREOPEN = localStorage.getItem('plantdb.morefilters') === '1'; } catch (e) { /* this visit only */ }   // 1.39.1: the fold remembers whether you left it open
 function lightBand(p) { const d = p.dli_low; return d == null ? '' : d < 6 ? 'low' : d < 12 ? 'indirect' : d < 25 ? 'sun' : 'full'; }
 const PET_KEY = { 'Toxic to pets': 'toxic', 'Mildly toxic to pets': 'mild', 'Not known to be toxic': 'notknown', 'Safe for pets (ASPCA)': 'safe' };
 function hereZone() { const Z = META && META.zone; return !Z ? null : Z.zone ? zoneNum(Z.zone) : zoneNum(String(Z.map_zone || '').split(' ')[0]); }

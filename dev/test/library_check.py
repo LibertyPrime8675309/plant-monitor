@@ -32,14 +32,14 @@ with sync_playwright() as p:
     pg = b.new_page(viewport={'width': 1280, 'height': 900})
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and '404' not in m.text else None)
-    pg.add_init_script("localStorage.setItem('plantdb.editor','Lib Test')")
+    pg.add_init_script("localStorage.setItem('plantdb.editor','Lib Test');localStorage.setItem('plantdb.morefilters','1')")
     pg.goto(LOCAL + '/#/today'); pg.wait_for_timeout(1000); pg.evaluate("localStorage.removeItem('plantdb.library')")
     pg.goto(LOCAL + '/#/library'); pg.wait_for_timeout(3000)
     cards = lambda: pg.locator('#lib-res .lib-card').count()
     check(cards() == 48 and 'Showing 48 of 64' in pg.inner_text('#lib-count'), 'the page lists the plants straight away, without a search')
     for lab in ('Search', 'Look in', 'Kind of plant', 'Family', 'Grows wild in', 'Show', 'Sort by', 'Show as', 'Your area', 'Only plants with a common name'):
-        if pg.locator('.lib-filters label', has_text=lab).count() < 1: check(False, f'filter "{lab}" has a label')
-    check(pg.locator('.lib-filters label').count() == 10, 'ten filters, each with a real label')
+        if pg.locator('.lib-filters label, #more-f label', has_text=lab).count() < 1: check(False, f'filter "{lab}" has a label')
+    check(pg.locator('.lib-filters label, #more-f label').count() == 10, 'ten filters, each with a real label')
     pg.click('#lib-more'); pg.wait_for_timeout(1500)
     check(cards() == 64 and pg.locator('#lib-more').is_hidden() and pg.evaluate("document.activeElement.closest('.lib-card') !== null"), '"Show more" adds the rest, and moves the keyboard to the first new one')
     pg.wait_for_timeout(9000)
@@ -87,7 +87,7 @@ with sync_playwright() as p:
     check(pg.evaluate('location.hash').startswith('#/library') and pg.locator('input[data-f=libfamily]').input_value() == 'Araceae', 'the family in the classification links to the library filtered to that family')
     # a phone, largest text
     ph = b.new_page(viewport={'width': 390, 'height': 844})
-    ph.add_init_script("localStorage.setItem('plantdb.editor','Lib Test');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
+    ph.add_init_script("localStorage.setItem('plantdb.editor','Lib Test');localStorage.setItem('plantdb.morefilters','1');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
     for u in ('/#/library', '/#/species/Monstera%20deliciosa'):
         ph.goto(LOCAL + u); ph.wait_for_timeout(3500)
         check(ph.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), f'{u}: no sideways scrolling on a phone with the largest text')

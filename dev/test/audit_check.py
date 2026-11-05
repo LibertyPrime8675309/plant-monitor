@@ -73,6 +73,8 @@ with sync_playwright() as pw:
     check(pg.locator('.aud-tbl tbody tr').count() == 100, '100 rows on a page')
     pg.locator('[data-act=audpage][data-d="1"]').click(); pg.wait_for_timeout(900)
     check(pg.locator('#aud-sum').inner_text().startswith('Showing 101 to 200'), 'Next page')
+    check(not pg.locator('#aud-fbox').evaluate('d => d.open'), '1.39.1: the search and filters box starts folded, so the log comes first')
+    pg.click('#aud-fbox summary'); pg.wait_for_timeout(300)
     pg.fill('input[data-f=audq]', 'hyacinth'); pg.wait_for_timeout(1200)
     s = pg.locator('#aud-sum').inner_text()
     check(s.startswith('Showing 1 to') and 'containing "hyacinth"' in s, f'search box: "{s}"')

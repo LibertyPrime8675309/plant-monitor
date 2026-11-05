@@ -785,7 +785,7 @@ function navLayout() {
   document.querySelectorAll('.pane').forEach(p => { const j = p.querySelector('.jump'); p.style.setProperty('--jump-h', (j ? j.offsetHeight : 0) + 'px'); });
   pnavLayout();
 }
-document.addEventListener('toggle', e => { if (e.target && e.target.id === 'pn-filters') PNOPEN = e.target.open; if (e.target && e.target.id === 'more-f') MOREOPEN = e.target.open; }, true);
+document.addEventListener('toggle', e => { if (e.target && e.target.id === 'pn-filters') PNOPEN = e.target.open; if (e.target && e.target.id === 'more-f') { MOREOPEN = e.target.open; try { localStorage.setItem('plantdb.morefilters', MOREOPEN ? '1' : '0'); } catch (x) { /* this visit only */ } } }, true);
 let NAVITEMS = [];
 function buildSideNav() {
   const list = document.getElementById('sn-list'); if (!list) return;
