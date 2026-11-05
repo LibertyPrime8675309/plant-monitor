@@ -1,0 +1,69 @@
+{
+ "id": "B7",
+ "created": "2026-11-05",
+ "author": "Claude (Ethan's grow light labels, Nov 2026)",
+ "lights_update": [
+  {
+   "key": "sansi-tripod",
+   "note": "model number and ratings from its label (batch B7)",
+   "set": {
+    "model": [
+     null,
+     "C23ZW016-H0045A27"
+    ],
+    "power": [
+     "Plugs into an outlet; 58 in cord",
+     "Plugs into an outlet (120 V AC, 60 Hz, 0.7 A); 58 in cord"
+    ],
+    "notes": [
+     "",
+     "Label: \"LED Grow Light\", 45 W, 4000 K. Rated for wet locations, so rain on a porch is fine (the plug and the remote are not)."
+    ]
+   }
+  },
+  {
+   "key": "barrina-t5",
+   "note": "model number and ratings from a strip's label (batch B7)",
+   "set": {
+    "model": [
+     null,
+     "NC05"
+    ],
+    "power": [
+     "Plugs into an outlet; 4 cords with switches and 7 linking cables for the 8 strips (5 W each)",
+     "Plugs into an outlet (100 to 277 V AC, 50/60 Hz); 4 cords with switches and 7 linking cables for the 8 strips (5 W each, full spectrum)"
+    ],
+    "notes": [
+     "",
+     "Label: \"T5 LED GROW LIGHT\", model NC05, 5 W a strip. Up to 16 strips can be linked on one cord (you have 8). ETL listed to UL 8800 (horticultural lighting) and UL 153."
+    ]
+   }
+  },
+  {
+   "key": "sansi-gooseneck",
+   "note": "no model label on the light; its bulbs' model from their print, the clamp's rating (batch B7)",
+   "set": {
+    "model": [
+     null,
+     "No model on the light; its bulbs are SANSI C21GL-GE26-10W"
+    ],
+    "notes": [
+     "Its four heads take E26 bulbs. The model of the bulbs that came with it is not known yet.",
+     "Its four heads take E26 bulbs. The four bulbs that came with it are SANSI C21GL-GE26-10W (120 V AC, 60 Hz, 0.2 A, 10 W; made February 2025), the same bulb as your six spare 10 W bulbs, so any of them can go in any head. The clamp is marked \"Max: 4 x 10 W\": never put a bigger bulb in a head. The bulbs are not dimmable, are rated for damp locations, and must not be used in totally enclosed fixtures (the open heads are fine)."
+    ]
+   }
+  }
+ ],
+ "requests_done": [
+  {
+   "key": "lights-models",
+   "answer": "Ethan photographed the labels on November 4: SANSI tripod C23ZW016-H0045A27, Barrina T5 strips NC05, and the gooseneck's bulbs C21GL-GE26-10W (the light itself has no model label, only \"Max: 4 x 10 W\" on the clamp). Still unknown: the Commercial Electric disk light; asked again on its own."
+  }
+ ],
+ "requests_add": [
+  {
+   "key": "lights-model-disk",
+   "text": "Grow lights: the model number of the Commercial Electric disk light, from its box or a label on the back. A photo of the label is enough."
+  }
+ ]
+}

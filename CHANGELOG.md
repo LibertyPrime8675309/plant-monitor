@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.37.1 (2026-11-05)
+- Grow lights, from the labels Ethan photographed (batch B7): the SANSI tripod is model C23ZW016-H0045A27 (45 W, 120 V, 0.7 A, 4000 K, rated for wet locations); the Barrina T5 strips are model NC05 (5 W a strip, 100 to 277 V, up to 16 linked); the 4-head gooseneck has no model label, only "Max: 4 x 10 W" on its clamp, and its four bulbs are SANSI C21GL-GE26-10W, the same as the six spare 10 W bulbs. The request for the disk light's model stays open on its own.
+
 ## 1.37.0 (2026-11-05)
 - **Share a photo from your phone:** with the app on an Android phone's Home Screen, "Plants" is in the share sheet; shared pictures open a page where you choose the plant and press Add.
 - **Year in review** (Plants → Year in review): one card per plant for a year: health, moves, waterings, feedings, cold nights and hot days outside, requests, first and last photo; the hardest years first.
