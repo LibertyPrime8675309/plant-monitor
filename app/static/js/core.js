@@ -582,7 +582,7 @@ async function route() {
   if (parts[0] !== 'new') NEWFILL = null;
   if (parts[0] !== 'fungi' || parts[1] !== 'new') MUFILL = null;
   const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' || parts[0] === 'sensors' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' || parts[0] === 'species' || parts[0] === 'wishlist' || parts[0] === 'around' ? 'library' : parts[0] === 'fungi' ? 'fungi' : parts[0] === 'offline' || parts[0] === 'decisions' ? 'offline' : parts[0] === 'today' || !parts.length ? 'today' : 'plants';
-  navMark(parts[0] === 'weather' && qs.get('sec') === 'places' ? 'places' : parts[0] === 'sensors' ? 'sensors' : parts[0] === 'pots' ? 'pots' : parts[0] === 'where' ? 'where' : parts[0] === 'settings' ? 'settings' : parts[0] === 'new' ? 'new' : parts[0] === 'wishlist' ? 'wishlist' : parts[0] === 'shopping' || parts[0] === 'store' ? 'shopping' : nav);
+  navMark(parts[0] === 'weather' && qs.get('sec') === 'places' ? 'places' : ['sensors', 'pots', 'where', 'settings', 'new', 'wishlist', 'frost', 'inside', 'outside', 'around', 'decisions'].includes(parts[0]) ? parts[0] : parts[0] === 'shopping' || parts[0] === 'store' ? 'shopping' : nav);
   pagesMenu(false);
   wlBadge();
   // 1.30.0: the screen changes at once. If the page is not ready in a moment, its name shows with "Loading"; a page opened before
@@ -659,6 +659,7 @@ async function route() {
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
     if (view.after) view.after();
     if (parts[0] === 'weather' && qs.get('sec') === 'places') setTimeout(() => { const t = document.getElementById('sec-places'); if (t) { scrollToSection(t); navFlash(t); } }, 300);   // 1.29.0: Homes and places
+    else if (qs.get('sec')) { const go2 = () => { const t = document.getElementById(qs.get('sec')); if (t) { scrollToSection(t); navFlash(t); } }; setTimeout(go2, 300); setTimeout(go2, 1500); }   // 1.36.0: #/plant/P-001?sec=inside opens the page at that section
     buildSideNav(); navLayout(); addReadButtons(); setTimeout(() => { buildSideNav(); navLayout(); addReadButtons(); }, 1200);
     if (h !== lastPath) { window.scrollTo(0, 0); app.focus({ preventScroll: true }); NAVPIN = -1; navActive(); }
     else if (fresh && keepY) window.scrollTo(0, keepY);
@@ -686,10 +687,10 @@ function navOpen() { const P = window.PlantPrefs.get(), narrow = document.docume
 const SECTIONS = [
   ['today', 'Today', [['today', 'Today', '#/']]],
   ['plants', 'Plants', [['plants', 'All plants', '#/plants'], ['groups', 'Groups', '#/groups'], ['new', 'Add plants', '#/new'], ['fungi', 'Mushrooms', '#/fungi'], ['where', 'Rooms and spots', '#/where'], ['photos', 'Photos', '#/photos'], ['labels', 'Labels', '#/labels']]],
-  ['care', 'Care', [['winter', 'Winter plan', '#/winter'], ['fertilizer', 'Fertilizer', '#/fertilizer'], ['lights', 'Grow lights', '#/lights'], ['pots', 'Pots and trays', '#/pots']]],
+  ['care', 'Care', [['winter', 'Winter plan', '#/winter'], ['frost', 'Cold-night checklist', '#/frost'], ['inside', 'Coming inside', '#/inside'], ['outside', 'Back outside', '#/outside'], ['fertilizer', 'Fertilizer', '#/fertilizer'], ['lights', 'Grow lights', '#/lights'], ['pots', 'Pots and trays', '#/pots']]],   // 1.36.0: every page in its section's row
   ['weather', 'Weather', [['weather', 'Weather', '#/weather'], ['sensors', 'Sensors', '#/sensors'], ['places', 'Homes and places', '#/weather?sec=places']]],
-  ['discover', 'Discover', [['identify', 'Identify', '#/identify'], ['library', 'Library', '#/library'], ['wishlist', 'Wishlist', '#/wishlist'], ['shopping', 'Shopping', '#/shopping']]],
-  ['settings', 'Settings', [['settings', 'Settings', '#/settings'], ['offline', 'Offline use', '#/offline'], ['backups', 'Backups', '#/backups'], ['history', 'Audit log', '#/history']]],
+  ['discover', 'Discover', [['identify', 'Identify', '#/identify'], ['library', 'Library', '#/library'], ['around', 'Around home', '#/around'], ['wishlist', 'Wishlist', '#/wishlist'], ['shopping', 'Shopping', '#/shopping']]],
+  ['settings', 'Settings', [['settings', 'Settings', '#/settings'], ['offline', 'Offline use', '#/offline'], ['decisions', 'Offline decisions', '#/decisions'], ['backups', 'Backups', '#/backups'], ['history', 'Audit log', '#/history']]],
 ];
 const secOf = nav => (SECTIONS.find(x => x[2].some(p => p[0] === nav)) || SECTIONS[1]);
 function navMark(nav) {

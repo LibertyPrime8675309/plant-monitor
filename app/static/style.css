@@ -1623,3 +1623,4 @@ html[data-role=viewer] :is([data-act=snscal],[data-act=calstep]){display:none!im
 .mc-water{stroke:var(--cyan);stroke-width:2;stroke-dasharray:3 3}
 .bd.b-soil{font-weight:400;color:var(--ink)}
 .bd.b-water{color:var(--cyan)}
+.card-link{margin:.2rem 0 .3rem;font-size:.95em;position:relative;z-index:2}

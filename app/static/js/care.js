@@ -252,7 +252,7 @@ function todayPrep(PR, t) {
   const say = ['todo', 'doing', 'ready', 'apart'].filter(k => c[k]).map(k => `${c[k]} ${w[k].toLowerCase()}`).join(', ');
   const row = (p, words, btns) => jobRow({ code: p.code, common_name: p.name, photo: p.photo }, words, btns);
   return html`<section class="blk" id="today-inside"><h2>Getting ready to come inside (${again.length + free.length})</h2>
-    <p>${PR.plants.length} coming inside${say ? ': ' + say : ''}. <a href="#/inside">Open the list</a></p>
+    <p>${PR.plants.length} coming inside${say ? ': ' + say : ''}.</p><p><a class="btn small ghost" href="#/inside">Open the Coming inside page</a></p>
     ${again.length ? html`<ul class="jobs">${again.map(({ p, m }) => row(p, html`${m.title}, round ${m.done.length + 1}. The last round was ${relDay(m.done[m.done.length - 1])}.`,
       html`<button class="btn small" type="button" data-act="prepdone" data-code="${p.code}" data-k="${m.key}" aria-label="${p.name}: ${m.title.toLowerCase()} done today">Done today</button>`))}</ul>` : ''}
     ${free.length ? html`<ul class="jobs">${free.map(p => row(p, 'Its 3 weeks apart end today. If you have seen no pests, it can join your other houseplants.', html`<a class="btn small ghost" href="#/plant/${enc(p.code)}">Open its page</a>`))}</ul>` : ''}

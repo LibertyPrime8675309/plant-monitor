@@ -70,3 +70,15 @@ def test_place_heat_needs_three_whole_years():
     assert h['years'] == 3 and h['over86'] > 100 and h['zone'] == S.ahs_heat_zone(h['over86']) and h['hottest'] == 100
     assert [m['month'] for m in h['months']][0] in ('May', 'Jun') and all(y['over86'] == h['over86'] for y in h['per_year'] if not y['partial'])
     c.execute('DELETE FROM weather_daily WHERE loc_id=?', (lid,)); c.commit(); S.PLACE_HEAT.clear()
+
+# ---- 1.36.0: every page the router knows is listed in a section's row (or reached from a listed page by a link in the code)
+def test_every_route_is_reachable():
+    import os, re
+    here = os.path.dirname(os.path.abspath(__file__)); js = os.path.join(here, '..', '..', '..', 'app', 'static', 'js')
+    core = open(os.path.join(js, 'core.js'), encoding='utf-8').read()
+    routes = set(re.findall(r"parts\[0\] === '([a-z]+)'", core)) - {'plant', 'group', 'species', 'store', 'fungi', 'today', 'audit'}   # pages of one thing, reached from lists; audit is the old name of history
+    listed = set(re.findall(r"\['([a-z]+)', '[^']+', '#/[^']*'\]", core.split('const SECTIONS')[1].split('];')[0]))
+    everything = ' '.join(open(os.path.join(js, f), encoding='utf-8').read() for f in os.listdir(js))
+    missing = [r for r in routes if r not in listed and f'href="#/{r}' not in everything]
+    assert not missing, f'pages nobody can find: {missing}'
+    assert {'frost', 'inside', 'outside', 'around', 'decisions', 'sensors'} <= listed

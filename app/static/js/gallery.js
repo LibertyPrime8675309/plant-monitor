@@ -58,6 +58,7 @@ function sheet(p) {
     <h3 class="name"><a class="sheet-link" href="#/plant/${enc(p.code)}">${p.common_name}</a></h3>
     <p class="sci latin">${p.scientific_name || 'Scientific name not set'}</p>
     <div class="tags">${isArch(p) ? html`<span class="tag tag-arch">Archived</span>` : ''}${HOMES().length > 1 ? html`<span class="tag tag-homeat">⌂ ${plantHome(p).name}</span>` : ''}${planTag(p.winter_plan)}${healthTag(p.health_rating)}</div>
+    ${p.winter_plan === 'Move indoors' && (p.site || 'Outdoors') !== 'Indoors' ? html`<p class="card-link"><a href="#/plant/${enc(p.code)}?sec=inside">Pest check before it comes inside</a></p>` : ''}
     ${needsYou(p) ? html`<p class="needs-badge">Needs from you: ${[p.requests_open ? `${p.requests_open} request${p.requests_open === 1 ? '' : 's'}` : '', p.id_confidence != null && p.id_confidence < 70 ? 'ID info' : ''].filter(Boolean).join(', ')}</p>` : ''}
     <div class="meter"><span>ID ${p.id_confidence == null ? 'not rated' : p.id_confidence + '%'}</span><i style="--v:${p.id_confidence || 0}%;--mc:${confColor(p.id_confidence)}"></i></div>
   </article>`;

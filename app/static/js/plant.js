@@ -610,7 +610,7 @@ async function viewPlant(code) {
           ${lines(p.winter_steps).length ? html`<h3>Steps</h3>${ol(p.winter_steps)}` : ''}
           ${lines(p.indoor_setup).length ? html`<h3>Keeping it comfortable when the weather cannot</h3>${ul(p.indoor_setup)}` : ''}</section>
 
-        <section class="blk" id="inside"><h2>Getting ready to come inside</h2><div id="prep-box" data-code="${p.code}"><p class="loading">Loading the pest check plan</p></div></section>
+        <section class="blk" id="inside"><h2>Getting ready to come inside</h2><p class="row noprint"><a class="btn small ghost" href="#/inside">Every plant coming inside, with its status</a></p><div id="prep-box" data-code="${p.code}"><p class="loading">Loading the pest check plan</p></div></section>
 
         <section class="blk" id="health"><h2>Health</h2>
           <p>${healthTag(p.health_rating)}</p>${paras(p.health_summary)}
