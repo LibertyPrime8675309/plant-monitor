@@ -130,14 +130,21 @@ const acts = {
   audpage(el) { AUD.offset = Math.max(0, AUD.offset + Number(el.dataset.d) * AUD.limit); audLoad(); const s = document.getElementById('aud-sum'); if (s) { s.scrollIntoView({ block: 'start' }); s.setAttribute('tabindex', '-1'); s.focus({ preventScroll: true }); } },
   async prepdone(el) {
     if (!(await needName())) return;
-    const k = el.dataset.k, code = el.dataset.code;
-    await guard(async () => { await api('POST', '/api/care', { plant: code, kind: 'prep_' + k }); toast('Saved: ' + PREP_CARE['prep_' + k]); await prepAfterChange(code, `[data-act=prepdone][data-k="${k}"][data-code="${code}"]`); });
+    const k = el.dataset.k, code = el.dataset.code, f = prepFocus(el, code);
+    await guard(async () => { await api('POST', '/api/care', { plant: code, kind: 'prep_' + k }); toast('Saved: ' + PREP_CARE['prep_' + k]); await prepAfterChange(code, f); });
   },
-  async prepundo(el) {
-    const k = el.dataset.k, code = el.dataset.code, D = PREP.data;
-    const last = D && D.code === code ? (D.log || []).filter(x => x.kind === 'prep_' + k).pop() : null; if (!last) return;
+  async prepstart(el) {         // 1.40.1
     if (!(await needName())) return;
-    await guard(async () => { await api('DELETE', '/api/care/' + last.id); toast('Removed: ' + PREP_CARE['prep_' + k] + ', ' + relDay(last.done_on)); await prepAfterChange(code, `[data-act=prepdone][data-k="${k}"][data-code="${code}"]`); });
+    const code = el.dataset.code, f = prepFocus(el, code);
+    await guard(async () => { await api('POST', '/api/care', { plant: code, kind: 'prep_start' }); toast('Started the checklist. Inspect it for pests first.'); await prepAfterChange(code, f); });
+  },
+  prepjump() { const h = document.getElementById('pm-head'); if (h) { scrollToSection(h); h.focus({ preventScroll: true }); } },
+  async prepundo(el) {
+    const k = el.dataset.k, code = el.dataset.code, f = prepFocus(el, code);
+    const D = document.getElementById('prep-box') ? (PREP.data && PREP.data.code === code ? PREP.data : null) : (PREP.list ? PREP.list.plants.find(p => p.code === code) : null);
+    const last = D ? (D.log || []).filter(x => x.kind === 'prep_' + k).pop() : null; if (!last) return;
+    if (!(await needName())) return;
+    await guard(async () => { await api('DELETE', '/api/care/' + last.id); toast('Removed: ' + PREP_CARE['prep_' + k] + ', ' + relDay(last.done_on)); await prepAfterChange(code, f); });
   },
   openprep(el) { try { sessionStorage.setItem('plantdb.toprep', el.dataset.code); } catch (e) { /* the page still opens */ } go('#/plant/' + enc(el.dataset.code)); },
   async fccopy() {
