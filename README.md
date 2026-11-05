@@ -941,6 +941,17 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
 
+## One identifier (from 1.40.0)
+
+Identify, **Add a plant** and **Several plants from photos** now share one identification path, so they give the same answer for the same photos:
+
+1. All the photos of the plant go to the picture checker on this computer together (it compares them with your own plants' photos and names the species, weighted as in 1.39.0).
+2. **Pl@ntNet** is asked as well whenever its key is saved: always when "Ask Pl@ntNet on its own" is ticked on the Identify page, otherwise only when this computer is unsure. Its answer is merged into the same list — a name both agree on moves up, and each name says who said so (**This computer**, **Pl@ntNet 96%**).
+3. The likeliest **genus** and **family** are worked out over the whole list. When no species fits, those are the safer answers (Pl@ntNet named Ethan's split rocks *Pleiospilos nelii* at 96% where the computer alone had six wrong names; this is why the key matters).
+4. **Not this** / **Not this genus** on every name: the name (or the whole genus) leaves the list, the photos are checked again without it, and the choice is logged in the audit log.
+
+On **Several plants from photos**, each plant's photos are checked together as soon as you have sorted them (and again whenever you change the sorting); each plant has **Check the photos again** and **Ask Pl@ntNet about this plant**. On **Add a plant**, "Fill in the names from the first photo" uses all the photos on the form and shows the list with **Use this name** on each.
+
 ## Room for the content (from 1.39.1)
 
 List pages put the content first. Each keeps one row of controls (Search, the one or two that matter most on that page, Sort) and folds the rest under **More filters**, which opens by itself while one of its filters is on and remembers your choice for the visit:

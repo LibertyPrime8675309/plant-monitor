@@ -232,23 +232,33 @@ const acts = {
     box.hidden = !box.hidden; el.setAttribute('aria-expanded', String(!box.hidden)); el.textContent = box.hidden ? 'Edit the name, count, model and where it is' : 'Done editing';
     if (!box.hidden) { const i = box.querySelector('input'); if (i) i.focus(); }
   },
-  async newfill(el) {                   // 1.38.0: Add a plant: the names from the first photo on the form
-    const form = el.closest('form'), inp = form && form.elements.__photos, st = document.getElementById('newfill-st');
-    const f = inp && inp.files[0]; if (!f) return;
-    el.disabled = true; if (st) st.textContent = 'Checking the photo…';
+  async newfill(el) {                   // 1.38.0: Add a plant: the names from the photos on the form; 1.40.0: all of them together, with Pl@ntNet, and "Not this"
+    const form = el.closest('form') || document.querySelector('form[data-form=new]'), inp = form && form.elements.__photos, st = document.getElementById('newfill-st');
+    const files = inp ? [...inp.files] : []; if (!files.length) return;
+    el.disabled = true; if (st) st.innerHTML = rend(html`<p class="muted" role="status">Checking ${files.length === 1 ? 'the photo' : `the ${files.length} photos together`}…</p>`);
     try {
       if (!navigator.onLine || !(await offProbe())) { if (st) st.textContent = 'This needs a connection to the plant server. Save the plant now and the photo is checked when it can be reached; the names are then offered on the Offline page.'; return; }
-      const r = await idAsk(f), sp = (r.species || []).filter(x => x.scientific_name);
-      const m = (r.matches || [])[0];
-      if (!sp.length) { if (st) st.textContent = 'The picture checker had no suggestion for this photo. Type the names yourself.'; return; }
-      const s0 = sp[0], put = (k, v) => { const i = form.elements[k]; if (i && !i.value.trim()) i.value = v == null ? '' : v; };
-      put('common_name', (s0.common_name || '').split(',')[0].trim() || s0.scientific_name); put('scientific_name', s0.scientific_name); put('genus', (s0.scientific_name || '').split(' ')[0]); put('family', s0.family || '');
-      put('id_confidence', Math.round((s0.probability || 0) * 100)); put('id_basis', 'Suggested by the picture checker on this computer from the first photo. Check it.');
-      if (st) st.textContent = `Filled in: ${s0.common_name || s0.scientific_name} (${Math.round((s0.probability || 0) * 100)}% likely)${sp.length > 1 ? '. Other guesses: ' + sp.slice(1, 3).map(x => x.common_name || x.scientific_name).join(', ') : ''}${m && m.confidence >= .6 ? `. It may be a plant you already have: ${m.code} ${m.common_name || ''}` : ''}. Empty fields were filled; anything you had typed was left alone.`;
-      const cn = form.elements.common_name; if (cn) cn.focus();
-    } catch (e) { if (st) st.textContent = e.message; }
+      const r = await idAsk(files[0], null, files.slice(1, 6), NEWID.ex); NEWID.r = r;
+      const sp = (r.species || []).filter(x => x.scientific_name), m = (r.matches || [])[0];
+      if (!sp.length) { if (st) st.innerHTML = rend(html`<p>No name was found for this photo. Type the names yourself.</p>`); return; }
+      acts.newuse({ dataset: { i: '0' } }, true);
+      if (st) st.innerHTML = rend(html`${m && m.confidence >= .6 ? html`<p class="notice" role="note"><strong>This may be a plant you already have:</strong> <a href="#/plant/${enc(m.code)}" target="_blank" rel="noopener">${m.code} ${m.common_name || ''}</a> (${pct(m.confidence)} sure).</p>` : ''}
+        <p>The first name is filled in (empty fields only; what you typed stays). Choose another with <strong>Use this name</strong>, or say <strong>Not this</strong> to check again without it.</p>
+        ${idNamesPanel(r, { src: 'new', id: 'new-splist', use: 'newuse', reject: 'new' })}`);
+    } catch (e) { if (st) st.innerHTML = rend(html`<p class="notice bad">${e.message}</p>`); }
     finally { el.disabled = false; }
   },
+  newuse(el, quiet) {                   // 1.40.0: put one of the names found on the form
+    const s0 = NEWID.r && (NEWID.r.species || [])[+el.dataset.i]; const form = document.querySelector('form[data-form=new]'); if (!s0 || !form) return;
+    const put = (k, v, force) => { const i = form.elements[k]; if (i && (force || !i.value.trim())) i.value = v == null ? '' : v; };
+    const force = !quiet;
+    put('common_name', (s0.common_name || '').split(',')[0].trim() || s0.scientific_name, force); put('scientific_name', s0.scientific_name, force); put('genus', (s0.scientific_name || '').split(' ')[0], force); put('family', s0.family || '', force);
+    put('id_confidence', Math.round((s0.probability || 0) * 100), force);
+    put('id_basis', `Suggested by ${(s0.sources || ['the picture checker on this computer']).map(w => w === 'this computer' ? 'the picture checker on this computer' : w).join(' and ')} from the photo${NEWID.r.pictures > 1 ? 's' : ''} on the form. Check it.`, force);
+    if (!quiet) { toast('Names filled in: ' + ((s0.common_name || '').split(',')[0].trim() || s0.scientific_name)); const cn = form.elements.common_name; if (cn) cn.focus(); }
+  },
+  sevrecheck(el) { return sevIdentify(+el.dataset.g, true); },
+  sevask(el) { return sevIdentify(+el.dataset.g, true, 'yes'); },
   async sevsave() {
     if (!(await needName())) return;
     const err = document.getElementById('sev-err');
@@ -257,7 +267,7 @@ const acts = {
     if (bad) { if (err) err.textContent = `Plant ${bad[1] + 1} needs a common name.`; const i = document.querySelector(`[data-f=sevfield][data-g="${bad[1]}"][data-k=common_name]`); if (i) i.focus(); return; }
     const plants = list.map(([P, gi]) => { const n = SEV.photos.filter(p => p.group === gi).length;
       const fields = { ...P.fields, site: SEV.site, home_id: SEV.home || '',
-        id_basis: P.pick >= 0 ? `Suggested by the picture checker on this computer from ${n} photo${n === 1 ? '' : 's'} (${P.fields.id_confidence || 0}% likely). Check it.` : '' };
+        id_basis: P.pick >= 0 ? `Suggested by ${((P.species[P.pick] || {}).sources || ['the picture checker on this computer']).map(w => w === 'this computer' ? 'the picture checker on this computer' : w).join(' and ')} from ${n} photo${n === 1 ? '' : 's'} (${P.fields.id_confidence || 0}% likely). Check it.` : '' };
       return { fields, photos: SEV.photos.filter(p => p.group === gi).map(p => p.file) }; });
     const shared = SEV.photos.filter(p => p.rel === 'all').map(p => p.file);      // 1.38.0: wide shots go on every plant
     SEV.busy = true; const b = document.querySelector('[data-act=sevsave]'); if (b) b.disabled = true;
