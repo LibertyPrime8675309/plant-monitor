@@ -75,10 +75,15 @@ with sync_playwright() as p:
     t = pg.inner_text('main')
     check('Swiss cheese plant' in pg.locator('h1').inner_text() or 'Swiss cheese plant' in t, 'it shows the common name from iNaturalist')
     check('A test plant & its relatives' in t and 'From Wikipedia' in t, 'the short description, credited to Wikipedia')
-    check(pg.locator('#sp-gallery figure img').count() == 1 and 'Your plant P-049' in pg.inner_text('#sp-gallery') and '1 of 6' in pg.inner_text('#sp-gallery'),
-          'a photo gallery: your own photos first (P-049, P-084 and P-088), then iNaturalist photos')
-    for _ in range(3): pg.click('[data-act=spph][data-d="1"]'); pg.wait_for_timeout(300)
-    check('Test Person 0' in pg.inner_text('#sp-gallery') and 'CC BY-NC' in pg.inner_text('#sp-gallery') and 'CC-BY-NC' not in pg.inner_text('#sp-gallery'), 'each iNaturalist photo names its photographer and licence')
+    import re as _re
+    gm = _re.search(r'1 of (\d+)', pg.inner_text('#sp-gallery')); gn = int(gm.group(1)) if gm else 0
+    check(pg.locator('#sp-gallery figure img').count() == 1 and 'Your plant P-049' in pg.inner_text('#sp-gallery') and gn >= 6,
+          f'a photo gallery: your own photos first (P-049, P-084, P-088 and the Thai Constellations), then iNaturalist photos ({gn})')
+    seen = ''
+    for _ in range(gn - 1):
+        pg.click('[data-act=spph][data-d="1"]'); pg.wait_for_timeout(200); seen += pg.inner_text('#sp-gallery')
+        if 'Test Person 0' in seen: break
+    check('Test Person 0' in seen and 'CC BY-NC' in seen and 'CC-BY-NC' not in seen, 'each iNaturalist photo names its photographer and licence')
     for h in ('Names', 'Classification', 'Where it grows wild in the US', 'Looks like', 'More about it elsewhere'):
         check(pg.locator('h2', has_text=h).count() == 1, f'section "{h}"')
     check('P-049' in pg.inner_text('.sp-yours'), 'your plants of this species are listed')

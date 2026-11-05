@@ -101,3 +101,12 @@ aeoniumh|Royal Horticultural Society: Aeonium haworthii|https://www.rhs.org.uk/P
 aeoniumh|Plants of the World Online (Kew): Aeonium haworthii|https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:272228-1
 cites|Kew: CITES resources|https://www.kew.org/science/our-science/science-services/UK-CITES/cites-resources
 hyacinth|Texas Invasives: Texas Parks and Wildlife prohibited exotic species|https://texasinvasives.org/plant_database/tpwd_results.php
+b8|Wikipedia: Pleiospilos nelii|https://en.wikipedia.org/wiki/Pleiospilos_nelii
+b8|World of Succulents: Pleiospilos nelii|https://worldofsucculents.com/pleiospilos-nelii/
+b8|World of Succulents: Pleiospilos nelii Royal Flush|https://worldofsucculents.com/scientific-names/pleiospilos-nelii-royal-flush/
+b8|LLIFLE: Pleiospilos nelii|https://llifle.info/Encyclopedia/SUCCULENTS/Family/Aizoaceae/14724/Pleiospilos_nelii
+b8|ASPCA toxic and non-toxic plants|https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants
+b8|NC State Extension Plant Toolbox: Gynura aurantiaca|https://plants.ces.ncsu.edu/plants/gynura-aurantiaca
+b8|NC State Extension Plant Toolbox: Episcia cupreata|https://plants.ces.ncsu.edu/plants/episcia-cupreata
+b8|Wikipedia: Begonia rex|https://en.wikipedia.org/wiki/Begonia_rex
+b8|UConn Home and Garden Education Center: Rex begonia|https://homegarden-cahnr.media.uconn.edu/wp-content/uploads/sites/3479/2022/08/Rex-Begonia.pdf
