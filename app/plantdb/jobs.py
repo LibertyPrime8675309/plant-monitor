@@ -87,3 +87,37 @@ def jobs_run_now():
     else: abort(400, 'kind must be weather, shops or backup')
     audit_only(c, 'setting', 'jobs', None, kind, editor(), f'{JOB_WORD[kind]} started from the Jobs window'); c.commit()
     return jsonify(ok=True)
+
+# ---- 1.36.0: the health of the app, in one answer (the card at the top of Settings)
+def dir_size(path):
+    n = 0
+    for root, dirs, files in os.walk(path):
+        for f in files:
+            try: n += os.path.getsize(os.path.join(root, f))
+            except OSError: pass
+    return n
+
+@app.route('/api/health')
+def health_api():
+    """Version, the database, the last backup and its copies, the last weather update and store check, problems, the data
+    folder's size and the free space on its disk. Worked out at most once a minute."""
+    c = db()
+    hit = HEALTH.get('at')
+    if hit and time.time() - hit < 60: return jsonify(HEALTH['data'])
+    sched = {x['kind']: x for x in jobs_schedule(c)}
+    st = json.loads(setting(c, 'backup_copy_status', '{}') or '{}')
+    try: du = shutil.disk_usage(DATA_DIR); free = du.free; total = du.total
+    except OSError: free = total = None
+    plants, photos = c.execute("SELECT COUNT(*) FROM plants WHERE status='active'").fetchone()[0], c.execute('SELECT COUNT(*) FROM photos').fetchone()[0]
+    out = {'version': APP_VERSION, 'db_version': setting(c, 'db_version', ''), 'plants': plants, 'photos': photos,
+           'db_bytes': os.path.getsize(DB_PATH) if os.path.exists(DB_PATH) else 0, 'data_bytes': dir_size(DATA_DIR), 'free_bytes': free, 'disk_bytes': total,
+           'backup': {'last': sched.get('backup', {}).get('last', ''), 'next': sched.get('backup', {}).get('next', ''), 'every': sched.get('backup', {}).get('every', '')},
+           'copy': {'at': st.get('at', ''), 'dir': st.get('dir', ''), 'receiver': st.get('receiver', '')},
+           'weather': {'last': sched.get('weather', {}).get('last', ''), 'next': sched.get('weather', {}).get('next', '')},
+           'shops': {'last': sched.get('shops', {}).get('last', ''), 'next': sched.get('shops', {}).get('next', ''), 'every': sched.get('shops', {}).get('every', '')},
+           'problems': c.execute('SELECT COUNT(*) FROM problems WHERE cleared_at IS NULL').fetchone()[0],
+           'sensors': c.execute("SELECT COUNT(DISTINCT device) FROM readings WHERE source='sensor'").fetchone()[0],
+           'readings': c.execute('SELECT COUNT(*) FROM readings').fetchone()[0], 'runs_as': runs_as(), 'at': now()}
+    HEALTH.update(at=time.time(), data=out)
+    return jsonify(out)
+HEALTH = {}

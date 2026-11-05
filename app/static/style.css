@@ -1624,3 +1624,9 @@ html[data-role=viewer] :is([data-act=snscal],[data-act=calstep]){display:none!im
 .bd.b-soil{font-weight:400;color:var(--ink)}
 .bd.b-water{color:var(--cyan)}
 .card-link{margin:.2rem 0 .3rem;font-size:.95em;position:relative;z-index:2}
+/* 1.36.0: the Health of the app card on Settings */
+.set-health{grid-column:1/-1}
+.hl{list-style:none;padding:0;margin:.3rem 0 .6rem;display:grid;gap:.3rem}
+.hl li{padding-left:1.6em;text-indent:-1.6em}
+.hl li>span{display:inline-block;width:1.6em;text-indent:0;font-weight:700}
+.hl-bad>span{color:var(--madder)} .hl-ok>span{color:var(--moss)}
