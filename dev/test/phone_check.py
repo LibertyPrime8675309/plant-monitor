@@ -66,6 +66,8 @@ try:
         check(pg.evaluate('!!navigator.serviceWorker.controller'), 'the service worker is in charge of the page')
         code = pg.locator('#today-water .job').first.get_attribute('data-code'); n0 = pg.locator('#today-water .job').count()
         pg.goto(B + '/#/plant/' + code); pg.wait_for_timeout(3000)
+        st, F = call('GET', '/api/frost'); cold = next(x for x in F['plants'] if x['plan'] == 'Move indoors' and x['code'] != code)['code']
+        pg.goto(B + '/#/frost'); pg.wait_for_timeout(3000)
         pg.goto(B + '/#/new'); pg.wait_for_timeout(2500)
         pg.goto(B + '/#/'); pg.wait_for_timeout(3000)
 
@@ -83,14 +85,23 @@ try:
               'the plant\'s care log shows the watering as not sent yet, without a Remove button')
         pg.click('[data-act=offtry]'); pg.wait_for_timeout(1500)
         check(pg.locator('.toast').count() == 1 and 'cannot be reached' in pg.locator('.toast').inner_text(), '"Try to connect now" says the plant server still cannot be reached')
+        # the other changes made from a phone show at once too: other care, and the cold-night list
+        pg.click('[data-act=careother]'); pg.wait_for_timeout(800)
+        pg.select_option('#dlg select[name=kind]', 'repot'); pg.fill('#dlg input[name=note]', 'offline repot'); pg.click('#dlg button[value=ok]'); pg.wait_for_timeout(4000)
+        logs = pg.locator('.care-log li').all_inner_texts()
+        check(len(logs) >= 2 and logs[0].startswith('Repotted') and 'offline repot' in logs[0] and 'not sent yet' in logs[0], '"Log other care" offline: the entry shows in the care log as not sent yet')
+        pg.goto(B + '/#/frost'); pg.wait_for_timeout(4000)
+        n_rows = pg.locator('.fz-row').count()
+        pg.click(f'[data-act=frostin][data-code="{cold}"]'); pg.wait_for_timeout(4000)
+        check(pg.locator(f'.fz-row[data-code="{cold}"]').count() == 0 and pg.locator('.fz-row').count() == n_rows - 1, f'"Moved indoors" offline takes the plant off the cold-night list at once ({cold}: rows {n_rows} -> {pg.locator(".fz-row").count()}; {[t[:60] for t in pg.locator(".toast").all_inner_texts()]})')
         # ---- the server comes back: the app notices on its own (every 30 seconds), sends the outbox and shows the real page
         start(False)
         took = wait_net(pg, 'Online', 70)
         check(took is not None, f'the badge goes back to Online on its own once the server answers ({took} s)')
         pg.wait_for_timeout(3000)
         st, log = call('GET', '/api/care?n=3&plant=' + code)
-        check(log and log[0]['kind'] == 'water', 'the watering made offline reached the server')
-        check(pg.locator('.off-note').count() == 0 and pg.locator('.care-log li').first.count() == 1 and 'not sent yet' not in pg.locator('.care-log li').first.inner_text(), 'the page is drawn again from the server: no offline note, the entry is the real one')
+        check(log and {log[0]['kind'], log[1]['kind']} == {'water', 'repot'} and call('GET', '/api/plants/' + cold)[1]['site'] == 'Indoors', 'the watering, the repotting and the move made offline reached the server')
+        check(pg.locator('.off-note').count() == 0 and pg.locator('.fz-row').count() == n_rows - 1, 'the page is drawn again from the server: no offline note, and the list is the real one')
 
         # ---- Back returns to where you were
         pg.goto(B + '/#/plants'); pg.wait_for_timeout(3000)
