@@ -270,6 +270,11 @@ def init_db():
     c.executescript(SHOPS_SCHEMA)                 # 1.27.0: shops, what they have from the wishlist, and price alerts
     c.executescript(SENSOR_SCHEMA)                # 1.35.0: your sensors: names, where they sit, the plant they are in
     if 'weight_g' not in {r[1] for r in c.execute('PRAGMA table_info(readings)')}: c.execute('ALTER TABLE readings ADD COLUMN weight_g REAL')   # 1.35.0: a weighing cell under the pot
+    rc = {r[1] for r in c.execute('PRAGMA table_info(readings)')}
+    if 'soil_raw' not in rc: c.execute('ALTER TABLE readings ADD COLUMN soil_raw REAL')          # 1.36.0: the soil probe's raw volts, for calibrating in the app
+    sd = {r[1] for r in c.execute('PRAGMA table_info(sensor_devices)')}
+    for col in ('cal_dry', 'cal_wet'):
+        if col not in sd: c.execute(f'ALTER TABLE sensor_devices ADD COLUMN {col} REAL')
     c.executescript(PUSH_SCHEMA)                  # 1.33.0: devices that get notifications
     wl = {r[1] for r in c.execute('PRAGMA table_info(wishlist)')}
     for col, typ in (('max_price', 'REAL'), ('alert_stock', 'INTEGER NOT NULL DEFAULT 0'), ('search_words', "TEXT NOT NULL DEFAULT ''")):

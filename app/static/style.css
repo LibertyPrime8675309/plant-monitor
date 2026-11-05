@@ -1613,3 +1613,6 @@ html[data-role=viewer] :is([data-act=snsedit],[data-act=snsrm]){display:none!imp
 /* 1.36.0: summer heat under About this plant, and the counts on the Weather page */
 .heat-counts li{margin:.3rem 0}
 .v-hot{border-left-color:var(--ochre)}
+.cal-steps li{margin:.4rem 0}
+.cal-now{font-size:1.15em}
+html[data-role=viewer] :is([data-act=snscal],[data-act=calstep]){display:none!important}

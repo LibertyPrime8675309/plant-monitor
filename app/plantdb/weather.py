@@ -5,9 +5,9 @@ from .core import *   # noqa: F401,F403
 DEFAULT_LOC = {'name': 'Round Rock, TX', 'lat': 30.5083, 'lon': -97.6789, 'tz': 'America/Chicago'}
 LUX_PER_PAR = 54.0          # sunlight: about 54 lux per umol/m2/s. A rough conversion; grow lights differ.
 PAR_PER_WM2 = 2.1           # sunlight: global radiation (W/m2) to PAR (umol/m2/s), about 2.1
-METRICS = ('temp_f', 'humidity', 'par', 'lux', 'soil_moisture', 'soil_temp_f', 'soil_ph', 'weight_g')     # 1.35.0: weight_g
+METRICS = ('temp_f', 'humidity', 'par', 'lux', 'soil_moisture', 'soil_temp_f', 'soil_ph', 'weight_g', 'soil_raw')     # 1.35.0: weight_g; 1.36.0: soil_raw (probe volts)
 LIMITS = {'temp_f': (-60, 160), 'humidity': (0, 100), 'par': (0, 4000), 'lux': (0, 200000),
-          'soil_moisture': (0, 100), 'soil_temp_f': (-40, 160), 'soil_ph': (0, 14), 'weight_g': (0, 200000)}
+          'soil_moisture': (0, 100), 'soil_temp_f': (-40, 160), 'soil_ph': (0, 14), 'weight_g': (0, 200000), 'soil_raw': (0, 10)}
 
 def setting(c, key, default=None):
     r = c.execute('SELECT value FROM settings WHERE key=?', (key,)).fetchone()
@@ -462,8 +462,8 @@ def clean_reading(d, device_default='sensor'):
     return out
 
 def insert_reading(c, source, r):
-    c.execute('INSERT OR REPLACE INTO readings(ts,source,device,temp_f,humidity,par,lux,soil_moisture,soil_temp_f,soil_ph,weight_g,note) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
-              (r['ts'], source, r['device'], r['temp_f'], r['humidity'], r['par'], r['lux'], r['soil_moisture'], r['soil_temp_f'], r['soil_ph'], r.get('weight_g'), r.get('note')))
+    c.execute('INSERT OR REPLACE INTO readings(ts,source,device,temp_f,humidity,par,lux,soil_moisture,soil_temp_f,soil_ph,weight_g,soil_raw,note) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',
+              (r['ts'], source, r['device'], r['temp_f'], r['humidity'], r['par'], r['lux'], r['soil_moisture'], r['soil_temp_f'], r['soil_ph'], r.get('weight_g'), r.get('soil_raw'), r.get('note')))
 
 @app.route('/api/readings', methods=['POST'])
 def post_readings():
@@ -532,7 +532,7 @@ def readings_series():
     names = list(dict.fromkeys(names))[:400]
     for v in names:
         if not re.match(r'^[a-z0-9_]{2,60}$', v): abort(400, 'unknown measurement')
-    inner = ['ts', 'temp_f', 'humidity', 'par', 'lux', 'soil_moisture', 'soil_temp_f', 'soil_ph', 'weight_g'] + [f"json_extract(extra,'$.{v}') AS x{i}" for i, v in enumerate(names)]
+    inner = ['ts', 'temp_f', 'humidity', 'par', 'lux', 'soil_moisture', 'soil_temp_f', 'soil_ph', 'weight_g', 'soil_raw'] + [f"json_extract(extra,'$.{v}') AS x{i}" for i, v in enumerate(names)]
     sel = ['COUNT(*) AS n', 'AVG(temp_f) AS temp_f', 'MIN(temp_f) AS temp_min', 'MAX(temp_f) AS temp_max'] + \
           [f'AVG({m}) AS {m}' for m in METRICS if m != 'temp_f']
     for i, v in enumerate(names):
@@ -825,7 +825,7 @@ def weather_refresh():
 
 # ---- the table of everything logged
 SENSOR_COLS = [('temp_f', 'Temperature', '°F'), ('humidity', 'Humidity', '%'), ('par', 'PAR', 'µmol/m²/s'), ('lux', 'Light', 'lux'),
-               ('soil_moisture', 'Soil moisture', '%'), ('soil_temp_f', 'Soil temperature', '°F'), ('soil_ph', 'Soil pH', ''), ('weight_g', 'Pot weight', 'g'), ('note', 'Note', '')]   # 1.35.0: weight
+               ('soil_moisture', 'Soil moisture', '%'), ('soil_temp_f', 'Soil temperature', '°F'), ('soil_ph', 'Soil pH', ''), ('weight_g', 'Pot weight', 'g'), ('soil_raw', 'Probe volts', 'V'), ('note', 'Note', '')]   # 1.35.0: weight; 1.36.0: probe volts
 
 def wx_units(c):
     try: u = json.loads(setting(c, 'wx_units', '{}') or '{}')

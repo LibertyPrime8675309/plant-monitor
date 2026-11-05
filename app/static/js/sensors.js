@@ -48,6 +48,7 @@ function snsCard(s, onPlant) {
     ${s.metrics.length || dli ? html`<dl class="sns-dl">${s.metrics.map(snsMetric)}${dli}</dl>` : ''}
     ${s.plant && s.metrics.some(m => m.key === 'soil_moisture') ? html`<p class="hint">${s.auto_water ? 'A jump in soil moisture logs a watering for this plant.' : 'A jump in soil moisture is not logged as a watering.'}</p>` : ''}
     <div class="row noprint"><button class="btn small ghost" type="button" data-act="snsedit" data-dev="${s.device}">Change name, spot or plant</button>
+      ${s.raw ? html`<button class="btn small ghost" type="button" data-act="snscal" data-dev="${s.device}">${s.calibrated ? 'Calibrate the soil probe again' : 'Calibrate the soil probe'}</button>` : ''}
       ${ME().role === 'owner' ? html`<button class="btn small danger" type="button" data-act="snsrm" data-dev="${s.device}">Forget this sensor</button>` : ''}</div></article>`;
 }
 async function viewSensors() {
@@ -98,7 +99,36 @@ async function snsDialog(dev) {
     toast('Sensor saved'); route();
   });
 }
+// 1.36.0: calibrating a soil probe in the app: the probe in dry air is 0 %, in a glass of water 100 %
+let CALPOLL = 0;
+function calBody(d, name) {
+  const fresh = d.raw != null && d.raw_minutes != null && d.raw_minutes <= 20;
+  return html`<p class="cal-now" role="status"><strong>Probe now:</strong> ${d.raw == null ? 'no raw reading yet' : `${d.raw} V, ${d.raw_minutes === 0 ? 'just now' : d.raw_minutes + ' minute' + (d.raw_minutes === 1 ? '' : 's') + ' ago'}`}${fresh ? '' : d.raw == null ? '' : ' (wait for a fresh one)'}</p>
+    <ol class="cal-steps"><li>Take the probe out of the pot, wipe it, and hold it in the air. When a fresh reading shows, press <strong>This is dry air</strong>.</li>
+      <li>Put the probe in a glass of water up to its line. When a fresh reading shows, press <strong>This is water</strong>.</li></ol>
+    <p><strong>Saved:</strong> dry air ${d.cal_dry == null ? 'not yet' : d.cal_dry + ' V'}; water ${d.cal_wet == null ? 'not yet' : d.cal_wet + ' V'}.${d.done ? ' The app now works out the soil moisture from the probe\'s volts, so the numbers in the ESPHome file no longer matter.' : ''}</p>
+    <div class="row"><button class="btn" type="button" data-act="calstep" data-step="dry" data-dev="${d.device}" ${fresh ? '' : raw('disabled')}>This is dry air</button>
+      <button class="btn" type="button" data-act="calstep" data-step="wet" data-dev="${d.device}" ${fresh ? '' : raw('disabled')}>This is water</button>
+      ${d.cal_dry != null || d.cal_wet != null ? html`<button class="btn ghost" type="button" data-act="calstep" data-step="clear" data-dev="${d.device}">Start over</button>` : ''}</div>`;
+}
+async function calDialog(dev) {
+  const s = SNS.list.find(x => x.device === dev), name = s ? s.name : dev;
+  let d; try { d = await api('GET', '/api/sensors/' + enc(dev) + '/calibrate'); } catch (e) { toast(e.message, true); return; }
+  clearInterval(CALPOLL);
+  CALPOLL = setInterval(async () => { if (!dlg.open || !document.getElementById('cal-box')) { clearInterval(CALPOLL); return; } try { const x = await api('GET', '/api/sensors/' + enc(dev) + '/calibrate'); const b = document.getElementById('cal-box'); if (b) b.innerHTML = rend(calBody(x, name)); } catch (e) { /* next time */ } }, 5000);
+  await modal(html`<form method="dialog"><h2>Calibrate the soil probe: ${name}</h2>
+    <p>Each probe reads a little differently. Two readings, one in dry air and one in water, tell the app what 0 % and 100 % look like for this one. The reading refreshes every few seconds.</p>
+    <div id="cal-box">${calBody(d, name)}</div>
+    <div class="row"><button class="btn ghost" value="cancel">Close</button></div></form>`);
+  clearInterval(CALPOLL); route();
+}
 Object.assign(acts, {
+  snscal(el) { calDialog(el.dataset.dev); },
+  async calstep(el) {
+    if (!(await needName())) return;
+    try { const d = await api('POST', '/api/sensors/' + enc(el.dataset.dev) + '/calibrate', { step: el.dataset.step }); const b = document.getElementById('cal-box'); if (b) b.innerHTML = rend(calBody(d, '')); toast(el.dataset.step === 'clear' ? 'Calibration cleared' : el.dataset.step === 'dry' ? 'Dry air saved' : 'Water saved'); }
+    catch (e) { toast(e.message, true); }
+  },
   snsedit(el) { snsDialog(el.dataset.dev); },
   async snsrm(el) {
     const s = SNS.list.find(x => x.device === el.dataset.dev);
