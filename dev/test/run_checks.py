@@ -18,7 +18,7 @@ ORDER = [('frost', '40'), ('care', 'fresh'), ('read', 'share'), ('timeline', 'sh
          ('card', 'fresh'), ('photos', 'fresh'), ('water', 'fresh'), ('library', 'fresh'), ('filters', 'fresh'), ('fungi', 'fresh'), ('wishlist', 'fresh'),
          ('know', 'fresh'), ('facts', 'fresh'), ('shops', 'fresh'), ('layout', 'fresh'), ('dialog', 'fresh'), ('offline', 'fresh'), ('sectionmenu', 'fresh'),
          ('homes', 'fresh'), ('places', 'fresh'), ('several', 'fresh'), ('where', 'fresh'), ('pots', 'fresh'), ('prefs', 'fresh'), ('shopping', 'fresh'),
-         ('quickwins', 'fresh'), ('smoke', 'fresh')]
+         ('quickwins', 'fresh'), ('jobs', 'fresh'), ('smoke', 'fresh')]
 TIMEOUT = {'smoke': 600, 'shopping': 600, 'quickwins': 600}
 SERVER = None
 
@@ -27,20 +27,34 @@ def stop_server():
     if SERVER and SERVER.poll() is None:
         SERVER.terminate()
         try: SERVER.wait(10)
-        except subprocess.TimeoutExpired: SERVER.kill()
+        except subprocess.TimeoutExpired: SERVER.kill(); SERVER.wait(5)
     SERVER = None
 
 def start_server(base):
     """A fresh data folder, the mock server, then one weather update so the forecast is filled in."""
     global SERVER
     stop_server()
+    try:                                                   # a mock server left running by hand would answer instead of ours
+        out = subprocess.run(['pgrep', '-f', 'dev/test/mock_server.py'], capture_output=True, text=True).stdout.split()
+        for pid in out:
+            if int(pid) != os.getpid():
+                import signal; os.kill(int(pid), signal.SIGTERM)
+        if out: time.sleep(2)
+    except (OSError, ValueError, FileNotFoundError): pass
     import shutil; shutil.rmtree(DATA, ignore_errors=True); os.makedirs(DATA)
     env = dict(os.environ, MOCK_TS=os.environ.get('MOCK_TS', '1'), MOCK_BASE_F=base, DATA_DIR=DATA)
     env.pop('MOCK_VISION', None)
+    for _ in range(20):                                    # wait for the port to be free, so the new server is the one that answers
+        import socket
+        with socket.socket() as sk:
+            if sk.connect_ex(('127.0.0.1', 8080)) != 0: break
+        time.sleep(1)
+    else: raise SystemExit('port 8080 is still in use; stop whatever is on it')
     SERVER = subprocess.Popen([sys.executable, os.path.join(HERE, 'mock_server.py')], cwd=ROOT, env=env,
                               stdout=open(os.path.join(ROOT, 'dev', 'tmp', 'mock.log'), 'w'), stderr=subprocess.STDOUT)
     for _ in range(60):
         time.sleep(1)
+        if SERVER.poll() is not None: raise SystemExit('the mock server stopped; see dev/tmp/mock.log')
         try: urllib.request.urlopen('http://127.0.0.1:8080/api/meta', timeout=2).read(); break
         except Exception: pass
     else: raise SystemExit('the mock server did not start; see dev/tmp/mock.log')

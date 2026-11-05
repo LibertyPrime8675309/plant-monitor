@@ -24,7 +24,7 @@ def check(cond, what):
     if not cond: fails.append(what)
 
 S.init_db()
-S.local_today = lambda c: TODAY
+S.patch('local_today', lambda c: TODAY)
 c = S.sqlite3.connect(S.DB_PATH)
 home = c.execute('SELECT id FROM locations WHERE is_home=1').fetchone()[0]
 days = [{'date': (TODAY + timedelta(days=i)).isoformat(), 'low': v, 'high': v + 20} for i, v in enumerate(LOWS)]

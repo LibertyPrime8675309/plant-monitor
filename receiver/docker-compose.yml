@@ -1,0 +1,14 @@
+# The backup receiver, for the second computer. See README.md in this folder.
+services:
+  backup-receiver:
+    build: .
+    container_name: plant-backup-receiver
+    restart: unless-stopped
+    ports:
+      - "8089:8089"
+    volumes:
+      - ./received:/received
+    environment:
+      BACKUP_TOKEN: ${BACKUP_TOKEN:?Put BACKUP_TOKEN=some-long-random-text in a file named .env next to this file}
+      RECEIVE_DIR: /received
+      KEEP: "20"
