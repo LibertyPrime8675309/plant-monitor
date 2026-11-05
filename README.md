@@ -941,6 +941,20 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
 
+## Better names from Identify (from 1.39.0)
+
+The picture checker (BioCLIP, on this computer) used to rank every species by the picture alone, which put three wrong names on the screen often enough. From 1.39.0 it weighs the names toward what you are likely to be looking at:
+
+- **Your record:** a species already named in your plants, or its genus, is lifted. A new pot of a plant you have gets its name.
+- **Your photos:** when one of your named plants' photos looks like the picture, that species is lifted (the closer, the more).
+- **Houseplants** (about 150 genera grown indoors) and **the plants of your state** (with the state list chosen) are lifted a little.
+- Each lifted name says why on its card ("Lifted: a houseplant", "Lifted: looks like your photos"). The line under the result says the names are weighted. To turn the weighting off, put `VISION_PRIOR=0` in `.env` and restart.
+- **Ten names** come back, five shown; **Show 5 more names** unfolds the rest. The three likeliest **genera** are on the line above: when no species fits, the genus is the safer answer.
+- **Several pictures of one plant:** after a result, **Add another photo of the same plant** (or **Add a camera shot of it**) checks them all together. Each picture is also looked at three ways (as it is, the whole picture letterboxed, and its middle).
+- **Pl@ntNet first when unsure:** under Second opinions, tick **Ask Pl@ntNet on its own whenever this computer is unsure**. With the Pl@ntNet key saved, a picture the computer is not sure about (no sure match among your plants, best name under 50%) goes to Pl@ntNet at once and its answer shows above the computer's own. Each costs one of Pl@ntNet's 500 free pictures a day.
+
+The weights were set by judgment, not measured on your photos. `dev/vision/prior_test.py` (run on the PC, where the model and photos are) says how often the right name comes first with and without them, so they can be tuned.
+
 ## On the phone and offline (from 1.38.0)
 
 ### Watering offline
