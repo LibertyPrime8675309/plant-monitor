@@ -9,6 +9,9 @@
 const OFF = { online: navigator.onLine, reach: null, probing: false, sending: false, n: 0, failed: 0, conflicts: 0, saved: null, queuedAt: 0, k: 0, dl: null, idq: 0 };
 const OFF_OK = [                              // the changes that can wait for a connection
   ['POST', /^\/api\/care$/], ['DELETE', /^\/api\/care\/\d+$/], ['POST', /^\/api\/plants$/],
+  // 1.38.0: the everyday changes made from a phone wait too: feedings, the cold-night ticks, answers for Claude, the to-photograph ticks, photo captions and removals, the porch reminder
+  ['POST', /^\/api\/fertilizer$/], ['POST', /^\/api\/frost\/done$/], ['PUT', /^\/api\/requests\/[^/]+$/], ['PATCH', /^\/api\/to-photograph\/\d+$/],
+  ['PATCH', /^\/api\/photos\/\d+$/], ['DELETE', /^\/api\/photos\/\d+$/], ['POST', /^\/api\/outside\/porch$/],
   ['PUT', /^\/api\/plants\/[^/]+$/], ['POST', /^\/api\/plants\/[^/]+\/(site|status|photos)$/],
   ['POST', /^\/api\/fungi$/], ['PUT', /^\/api\/fungi\/[^/]+$/], ['POST', /^\/api\/fungi\/[^/]+\/(status|photos)$/], ['PATCH', /^\/api\/fungi\/photos\/\d+$/], ['DELETE', /^\/api\/fungi\/photos\/\d+$/],
   ['PUT', /^\/api\/library\/notes$/], ['PUT', /^\/api\/wishlist$/], ['DELETE', /^\/api\/wishlist$/]];
@@ -47,6 +50,12 @@ function offWords(op) {                       // what a waiting change is, in wo
   if (/\/site$/.test(u)) return `${code}: moved to ${b.site}`;
   if (/\/status$/.test(u)) return `${code}: ${b.archived ? 'archived' : 'brought back'}`;
   if (/\/photos$/.test(u)) { const n = (op.form || []).filter(p => p.blob).length; return `${code}: ${n} photo${n === 1 ? '' : 's'} added`; }
+  if (u === '/api/fertilizer') return `Fed ${(b.plants || [b.plant]).join(', ')} (${b.applied_on})`;
+  if (u === '/api/frost/done') return `${b.code}: ${b.what ? 'marked as covered' : 'covered tick removed'} for ${b.date}`;
+  if (/^\/api\/requests\//.test(u)) return `Request ${u.split('/')[3]}: ${b.answer ? 'answered' : b.done ? 'marked done' : 'reopened'}`;
+  if (/^\/api\/to-photograph\//.test(u)) return `To photograph: ${'done' in b ? (b.done ? 'ticked off' : 'unticked') : 'edited'}`;
+  if (/^\/api\/photos\//.test(u)) return op.method === 'DELETE' ? 'A photo removed' : b.is_primary ? 'Main photo changed' : b.plant_code ? `A photo moved to ${b.plant_code}` : 'A photo caption changed';
+  if (u === '/api/outside/porch') return `${b.code}: porch reminder ${b.action === 'clear' ? 'turned off' : 'started'}`;
   if (u === '/api/plants') return `New plant ${op.temp}${b.fields && b.fields.common_name ? ': ' + b.fields.common_name : ''}`;
   if (/^\/api\/plants\//.test(u)) return `${code}: edited ${Object.keys(b.fields || {}).join(', ') || 'details'}`;
   if (u === '/api/fungi') return `New mushroom find ${op.temp}${b.fields && b.fields.name ? ': ' + b.fields.name : ''}`;
@@ -71,8 +80,7 @@ async function offPatch(url, fn) {            // so the page shows a change made
 const offDayAdd = (d, n) => { const t = new Date(d + 'T12:00:00'); t.setDate(t.getDate() + n); return t.toISOString().slice(0, 10); };
 const offDayDiff = (a, b) => Math.round((new Date(a + 'T12:00:00') - new Date(b + 'T12:00:00')) / 86400000);
 async function offCareSeen(kind, codes, day, op) {
-  if (!['water', 'check'].includes(kind)) return;
-  await offPatch('/api/water', W => {
+  if (['water', 'check'].includes(kind)) await offPatch('/api/water', W => {
     for (const st of W.plants || []) {
       if (!codes.includes(st.code)) continue;
       const every = Math.max(1, st.every || 1);
@@ -132,12 +140,67 @@ async function offQueue(method, url, body, form) {
     }
     await offPatch(path, j => Object.assign(j, fields));
   }
-  if (/\/site$/.test(path)) await offPatch(path.replace(/\/site$/, ''), j => { j.site = op.body.site; });
+  if (/\/site$/.test(path)) {
+    await offPatch(path.replace(/\/site$/, ''), j => { j.site = op.body.site; });
+    const code = decodeURIComponent(path.split('/')[3]);
+    await offPlantLists(code, j => { j.site = op.body.site; });
+    if (op.body.site !== 'Outdoors') await offPatch('/api/frost', F => {      // 1.38.0: off the cold-night list at once
+      const gone = (F.plants || []).filter(p => p.code === code);
+      F.plants = (F.plants || []).filter(p => p.code !== code);
+      gone.forEach(p => { if (F.worst && F.worst.counts && F.worst.counts[p.level] > 0 && !p.done) F.worst.counts[p.level]--; });
+    });
+  }
+  if (method === 'PUT' && /^\/api\/plants\/[^/]+$/.test(path)) await offPlantLists(decodeURIComponent(path.split('/')[3]), j => Object.assign(j, op.body.fields || {}));
+  if (method === 'DELETE' && /^\/api\/care\/\d+$/.test(path)) {                   // the entry leaves the plant's care log at once
+    const id = +path.split('/')[3];
+    for (const u of await offCachedUrls(/^\/api\/care\?/)) await offPatch(u, log => { const k = Array.isArray(log) ? log.findIndex(e => e.id === id) : -1; if (k >= 0) log.splice(k, 1); });
+  }
+  if (path === '/api/fertilizer' && method === 'POST') {
+    const codes = op.body.plants || (op.body.plant ? [op.body.plant] : []);
+    if (!op.body.applied_on) op.body.applied_on = todayStr();
+    shim = { ids: [], offline: true };
+    await offPatch('/api/fertilizer', log => { if (Array.isArray(log)) codes.forEach(c => log.unshift(Object.assign({}, op.body, { id: 'off-' + op.id, plant_code: c, created_by: op.who, created_at: op.made, pending: true }))); });
+  }
+  if (path === '/api/frost/done') await offPatch('/api/frost', F => { (F.plants || []).forEach(p => { if (p.code === op.body.code && p.next && p.next.date === op.body.date) p.done = op.body.what || null; }); });
+  if (method === 'PUT' && /^\/api\/requests\//.test(path)) {
+    const id = path.split('/')[3], fix = r => { if (String(r.id) === id) { if ('done' in op.body) r.done = op.body.done ? 1 : 0; if ('answer' in op.body) r.answer = op.body.answer; r.pending = true; } };
+    await offPatch('/api/requests?open=1', L => { if (Array.isArray(L)) { L.forEach(fix); const k = L.findIndex(r => String(r.id) === id && r.done); if (k >= 0) L.splice(k, 1); } });
+    for (const u of await offCachedUrls(/^\/api\/plants\/[^/?]+$/)) await offPatch(u, j => { (j.requests || []).forEach(fix); });
+  }
+  if (method === 'PATCH' && /^\/api\/to-photograph\//.test(path)) await offPatch('/api/to-photograph', L => { (L || []).forEach(t => { if (String(t.id) === path.split('/')[3]) Object.assign(t, op.body, { pending: true }); }); });
+  if (/^\/api\/photos\/\d+$/.test(path)) {                                   // a caption, the main photo, or a photo removed
+    const id = +path.split('/')[3];
+    for (const u of await offCachedUrls(/^\/api\/plants\/[^/?]+$/)) await offPatch(u, j => {
+      const ph = j.photos || [], k = ph.findIndex(x => x.id === id); if (k < 0) return;
+      if (method === 'DELETE') ph.splice(k, 1);
+      else { if (op.body.caption != null) ph[k].caption = op.body.caption; if (op.body.is_primary) ph.forEach((x, i) => { x.is_primary = i === k ? 1 : 0; }); ph[k].pending = true; }
+    });
+  }
+  if (path === '/api/outside/porch' && op.body.action === 'clear') await offPatch('/api/outside', O => { O.porch = (O.porch || []).filter(p => p.code !== op.body.code); });
+  if (path === '/api/wishlist') {
+    const name = op.body.name || new URLSearchParams(url.split('?')[1] || '').get('name');
+    await offPatch('/api/wishlist', W => {
+      const L = W.wishlist || [], k = L.findIndex(x => x.name === name);
+      if (method === 'DELETE') { if (k >= 0) L.splice(k, 1); }
+      else if (k >= 0) Object.assign(L[k], op.body, { pending: true });
+      else L.unshift(Object.assign({ name, common_name: '', notes: '', where_seen: '', status: 'want', kind: 'plant', max_price: null, alert_stock: 0, search_words: '', yours: [], terms: [], added_by: op.who, added_at: op.made }, op.body, { pending: true }));
+    });
+  }
+  if (path === '/api/library/notes' && method === 'PUT') await offPatch('/api/library/notes', N => {
+    const L = N.notes || [], k = L.findIndex(x => x.name === op.body.name), row = { name: op.body.name, notes: op.body.notes || '', tags: op.body.tags || '', updated_by: op.who, updated_at: op.made, pending: true };
+    if (k >= 0) Object.assign(L[k], row); else L.push(row);
+  });
   if (/\/status$/.test(path) && /^\/api\/plants\//.test(path)) await offPatch(path.replace(/\/status$/, ''), j => { j.status = op.body.archived ? 'archived' : 'active'; });
   await idbPut('outbox', op);
   OFF.queuedAt = Date.now();
   offPaint();
   return shim;
+}
+async function offCachedUrls(re) {             // the saved answers whose path matches (so a change can be shown on every page that uses them)
+  try { const c = await caches.open('plantdb-api'); return (await c.keys()).map(r => new URL(r.url)).filter(u => re.test(u.pathname + u.search)).map(u => u.pathname + u.search); } catch (e) { return []; }
+}
+async function offPlantLists(code, fn) {       // the plant's entry in the saved plant lists (the Plants page, Today's feed list and so on)
+  for (const u of await offCachedUrls(/^\/api\/plants(\?|$)/)) await offPatch(u, L => { (Array.isArray(L) ? L : []).forEach(p => { if (p.code === code) fn(p); }); });
 }
 async function offFindDict(f) {                // a waiting find, in the shape the mushroom pages use
   const meta = (await offSavedJson('/api/fungi?status=none')) || (await offSavedJson('/api/fungi?status=active')) || { fields: [], enums: {} };
@@ -303,7 +366,8 @@ function offNotice(parts) {                    // on a plant or find page: its c
   return offOps().then(ops => {
     const mine = ops.filter(o => o.url.includes('/' + code) || (o.body && (o.body.plant === code || (o.body.plants || []).includes(code))) || o.temp === code);
     if (!mine.length || !document.getElementById('app')) return;
-    document.getElementById('app').insertAdjacentHTML('afterbegin', rend(html`<div class="notice off-note noprint" role="note"><strong>Not sent yet:</strong> ${mine.map(offWords).join('; ')}. ${navigator.onLine && OFF.reach !== 'no' ? 'Sending soon.' : 'They will be sent when this device is back online.'} <a href="#/offline">Offline page</a></div>`));
+    const pics = mine.filter(o => /\/photos$/.test(o.url.split('?')[0])).flatMap(o => (o.form || []).filter(p => p.blob).map(p => URL.createObjectURL(p.blob)));
+    document.getElementById('app').insertAdjacentHTML('afterbegin', rend(html`<div class="notice off-note noprint" role="note"><strong>Not sent yet:</strong> ${mine.map(offWords).join('; ')}.${pics.length ? html`<span class="off-pics">${pics.map((u, i) => html`<img src="${u}" alt="Photo waiting to be sent ${i + 1}" width="64" height="64">`)}</span>` : ''} ${navigator.onLine && OFF.reach !== 'no' ? 'Sending soon.' : 'They will be sent when this device is back online.'} <a href="#/offline">Offline page</a></div>`));
   });
 }
 // the Offline page

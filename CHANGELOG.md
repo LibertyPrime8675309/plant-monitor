@@ -7,6 +7,7 @@
 - **Photos on the Add a plant form**, with **Fill in the names from the first photo**. Identify's "Choose a photo" and the plant page's "Add photos" let the phone offer its photos instead of forcing the camera.
 - **Adding a plant without a connection:** it is kept on the device (stand-in name allowed when there is a photo), sent later, and its first photo is then checked, with the names offered on the Offline use page.
 - **Several plants from photos:** small previews made on the phone (no more white patches); under each photo you say "Same plant as the photo above", "A different plant", "Shows all of them" (a wide shot copied to every plant) or "Leave this photo out". The "minutes apart" grouping is gone.
+- **The other changes made from a phone now wait offline too, and show at once:** "Log other care" and Remove on a care entry, Moved indoors and Covered on the cold-night list, Fed (a feeding), answers and "done" on requests from Claude, the Still-to-photograph ticks, photo captions, main photo and photo removal, the porch reminder, wishlist and species notes. Edits to a plant now show on the Plants page cards too, and photos added offline show as thumbnails in the "Not sent yet" line.
 - On a phone the Save bar of a form sits above the bottom bar instead of under it.
 
 ## 1.37.1 (2026-11-05)

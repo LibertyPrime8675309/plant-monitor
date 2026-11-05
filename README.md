@@ -947,6 +947,8 @@ To go back, delete that line from `.env` and run `docker compose up -d` again.
 
 On the Today page without a connection, **Watered** and **Still moist** now take the plant off the list at once, and the plant's care log shows the entry as "not sent yet". The plant server gets it when it can be reached again (the entry then loses its "not sent yet" and gains its Remove button).
 
+The same goes for the other everyday changes: "Log other care" and Remove on a care entry, Moved indoors and Covered on the cold-night list, Fed, answers to Claude's requests, the Still-to-photograph ticks, photo captions, main photo and photo removal, the porch reminder, the wishlist and species notes. Each shows on its page at once and goes to the server later; a photo added offline shows as a thumbnail in the "Not sent yet" line on the plant's page. Settings, rooms and spots, lights, groups, stores, backups and sensors still need a connection (they are things you do at the PC).
+
 ### When Tailscale comes back
 
 The app now tells apart "this phone has no network" from "the plant server cannot be reached" (Tailscale off, or the computer asleep): both show as **Offline** at the top. While the server is out of reach the app tries again every 30 seconds, whenever you bring it to the front, and when the network comes back; the offline note on every page and the Offline use page have a **Try to connect now** button as well. When the server answers, the waiting changes are sent and the page is drawn again from the server (unless you are in the middle of a form). No relaunch needed.
