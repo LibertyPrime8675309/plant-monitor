@@ -81,7 +81,9 @@ with sync_playwright() as p:
     check(vw.locator(f'#grid .sheet[data-code="{code}"] .ph-btn').first.is_visible(), 'but can browse the photos on the Plants page')
     # 1.21.0: wide photos on the cards, and sharper thumbnails
     pg.goto(LOCAL + '/#/plants'); pg.wait_for_timeout(2500)
-    pg.evaluate("window.scrollTo(0, document.body.scrollHeight)"); pg.wait_for_timeout(2500); pg.evaluate("window.scrollTo(0, 0)")
+    for _ in range(40):                     # scroll through the whole grid, so every lazy photo loads (the newest plants, at the end, are portrait shots)
+        pg.mouse.wheel(0, 1500); pg.wait_for_timeout(150)
+    pg.wait_for_timeout(1500); pg.evaluate("window.scrollTo(0, 0)")
     wide = pg.locator('#grid .mat img.wide')
     fit = lambda: wide.first.evaluate("e => getComputedStyle(e).objectFit")
     check(wide.count() >= 1 and fit() == 'contain', f'wide photos are shown whole by default ({wide.count()} wide photos)')
