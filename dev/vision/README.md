@@ -7,6 +7,7 @@ Python with torch, open_clip_torch, numpy and pillow (any venv; not part of the 
 2. `fit_conf.py <out.npz>`: fits `CONF[model]` (logistic on margin and score) and prints how often each confidence band was right.
 3. `novel_test.py <out.npz> w0 w1 w2`: leaves each whole plant out, to set `NOVEL[model]` and see how often a plant that is not in the record would pop up.
 4. `species_test.py <out.npz> <names_dir> [usda_states.json]`: zero-shot species naming for photos whose plant has a clear "Genus species" name, per scope. `names_dir` is the service's cache folder for that model.
+5. `prior_test.py <out.npz> <names_dir> [usda_states.json]` (1.39.0): the same ranking with and without the service's prior (species and genera in the record, houseplant genera, Texas, look-alike photos of the record's own named plants, with the photo's own plant left out). Not yet run on Ethan's photos: the sandbox has no torch and the npz is on his PC. Run it there to set `PRIOR` in `vision/service.py` with numbers instead of judgment.
 
 Results on 213 photos (October 26, 2026):
 
