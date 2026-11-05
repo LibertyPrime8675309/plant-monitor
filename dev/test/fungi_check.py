@@ -48,7 +48,7 @@ with sync_playwright() as p:
     pg = b.new_page(viewport={'width': 1280, 'height': 900})
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and '404' not in m.text and '409' not in m.text else None)
-    pg.add_init_script("localStorage.setItem('plantdb.editor','Fungi Test')")
+    pg.add_init_script("localStorage.setItem('plantdb.editor','Fungi Test');localStorage.setItem('plantdb.morefilters','1')")
     pg.goto(LOCAL + '/#/plants'); pg.wait_for_timeout(1500); pg.evaluate("localStorage.removeItem('plantdb.fungi')")
     if pg.locator('#pages-btn').is_visible(): pg.click('#pages-btn')       # 1.26.0: with less room the links fold behind Pages
     pg.click('#sub-nav a[data-nav=fungi]'); pg.wait_for_timeout(1500)
@@ -137,7 +137,7 @@ with sync_playwright() as p:
     check('edible' not in t.lower().replace('edible ones', '').replace('edible one', ''), 'and never calls any mushroom edible')
     # fungi in the library and on the Identify page
     pg.goto(LOCAL + '/#/library?scope=fungi'); pg.wait_for_timeout(2500)
-    check(pg.locator('select[data-f=libscope]').input_value() == 'fungi' and pg.locator('.lib-filters label', has_text='Kind of fungus').count() == 1, 'the library can look in "Fungi worldwide", with kinds of fungi')
+    check(pg.locator('select[data-f=libscope]').input_value() == 'fungi' and pg.locator('.lib-filters label, #more-f label', has_text='Kind of fungus').count() == 1, 'the library can look in "Fungi worldwide", with kinds of fungi')
     check(pg.locator('#lib-res .lib-card').count() == 5 and 'Mushroom' in pg.inner_text('#lib-res'), 'and lists them')
     pg.goto(LOCAL + '/#/species/Leucocoprinus%20birnbaumii'); pg.wait_for_timeout(2500)
     t = pg.inner_text('main')
@@ -164,7 +164,7 @@ with sync_playwright() as p:
     # a phone with the largest text
     ph = b.new_page(viewport={'width': 390, 'height': 844})
     ph.on('pageerror', lambda e: errs.append(str(e)))
-    ph.add_init_script("localStorage.setItem('plantdb.editor','Fungi Test');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
+    ph.add_init_script("localStorage.setItem('plantdb.editor','Fungi Test');localStorage.setItem('plantdb.morefilters','1');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
     for u in ('/#/fungi', '/#/fungi/F-001', '/#/fungi/new', '/#/fungi/safety'):
         ph.goto(LOCAL + u); ph.wait_for_timeout(2000)
         check(ph.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), f'{u}: no sideways scrolling on a phone with the largest text')
