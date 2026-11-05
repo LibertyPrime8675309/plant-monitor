@@ -7,6 +7,9 @@
 - **Add several plants:** once you have sorted the photos, each plant's photos are checked together (that is what should have turned six guesses into two); **Check the photos again** and **Ask Pl@ntNet about this plant** on each plant.
 - **Add a plant:** "Fill in the names from the first photo" now uses all the photos on the form, shows the full list with **Use this name** on each, and the same Not this buttons.
 - The name a plant gets says which checker suggested it ("Suggested by the picture checker on this computer and Pl@ntNet from 3 photos").
+## 1.39.2 (2026-11-05)
+- **Corrections to the 13 new indoor plants** (batch B9): a few of their values were not from the app's own lists ("Indoors all year" as a winter plan, and some leaf-type, pot-size and pet-safety words), so filters and counts could miss them; and their sources now come only from checked links. Anything you edited on those pages since installing 1.39.1 is left alone.
+- If you have not installed 1.39.1 yet, install this one instead; it has everything 1.39.1 had.
 
 ## 1.39.1 (2026-11-05)
 - **Room for the content** (Ethan, November 5): list pages keep one row of controls (search, the one or two that matter most, sort) and fold the rest under **More filters**, which opens by itself while a folded filter is on. Plants page: Search, Home, Location, Sort on the row; Health, Group, Show, ID confidence and the rest folded. Library: Search, Look in, Sort; the rest folded. Identify → Your plant photos: the six extra selects that stood one under another, full width, are in the fold with the others (that was a mistake in 1.28.0). Audit log: the search and filters box starts folded unless a filter is on.

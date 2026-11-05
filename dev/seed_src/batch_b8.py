@@ -7,7 +7,7 @@ HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.pat
 CARE = {
     'plant_type': 'Succulent (mesemb, living stone)', 'kingdom': 'Plantae (plants)', 'taxon_order': 'Caryophyllales', 'family': 'Aizoaceae', 'genus': 'Pleiospilos',
     'location': 'Shared terracotta pot with the other split rock', 'container': 'Terracotta pot, peat-based mix with perlite (too rich for a mesemb: see health steps)',
-    'site': 'Indoors', 'leaf_type': 'Succulent leaves', 'pot_size': 'Small: fits in a bucket', 'growth_habit': 'A stemless succulent of one or two pairs of thick, egg-shaped leaves; a new pair grows up through the cleft each year as the old pair shrivels',
+    'site': 'Indoors', 'leaf_type': 'Succulent or cactus', 'pot_size': 'Small: fits in a bucket', 'growth_habit': 'A stemless succulent of one or two pairs of thick, egg-shaped leaves; a new pair grows up through the cleft each year as the old pair shrivels',
     'temp_ideal_low': 50, 'temp_ideal_high': 85, 'temp_damage_below': 32, 'temp_lethal_below': 25, 'temp_damage_above': 100,
     'temp_notes': 'Takes a light frost only when bone dry. Keep it above freezing; cool (45-55 F) and dry in winter is ideal.',
     'humidity_low': 20, 'humidity_high': 50, 'humidity_notes': 'Likes dry air. Damp, still air invites rot.',
@@ -33,7 +33,7 @@ CARE = {
     'bloom': 'A large yellow-orange, daisy-like flower from the cleft in autumn or early winter, opening in the afternoon, on a mature plant.', 'fruit': 'A seed capsule that opens when wet; rarely set indoors.',
     'danger_humans': 'Not known to be toxic. Not for eating.', 'danger_animals': 'Not on the ASPCA toxic lists. Keep it out of reach anyway: a chewed body is a dead plant.', 'pet_safety': 'Not known to be toxic',
     'propagation': 'Seed (easy, slow). Division of a clump of two or more heads in spring, letting the cut dry for a few days before potting.',
-    'sources': 'Pl@ntNet identification, November 5, 2026 (Pleiospilos nelii, 96%) | https://identify.plantnet.org\nLLIFLE: Pleiospilos nelii | https://www.llifle.com/Encyclopedia/SUCCULENTS/Family/Aizoaceae/22166/Pleiospilos_nelii\nWorld of Succulents: Pleiospilos nelii | https://worldofsucculents.com/pleiospilos-nelii-split-rock\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants',
+    'sources': 'Pl@ntNet identification on the Identify page, November 5, 2026 (Pleiospilos nelii, 96%)\nWikipedia: Pleiospilos nelii | https://en.wikipedia.org/wiki/Pleiospilos_nelii\nWorld of Succulents: Pleiospilos nelii | https://worldofsucculents.com/pleiospilos-nelii/\nWorld of Succulents: Pleiospilos nelii Royal Flush | https://worldofsucculents.com/scientific-names/pleiospilos-nelii-royal-flush/\nLLIFLE: Pleiospilos nelii | https://llifle.info/Encyclopedia/SUCCULENTS/Family/Aizoaceae/14724/Pleiospilos_nelii\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants',
     'health_rating': 'Good',
     'notes': 'Photographed on November 5, 2026, in a terracotta pot shared with the other split rock. Identified by Claude from the photos (85% sure for the purple one, 75% for the green) and confirmed by Pl@ntNet (96%). Ethan: the picture checker alone named six wrong plants; this was the case that led to 1.40.0.',
 }
@@ -86,7 +86,7 @@ VANILLA = {
     'vpd_low': 0.5, 'vpd_high': 1.2,
     'light_summary': 'Bright, filtered light', 'light_hours': '4-6 h of bright indirect light', 'par_low': 150, 'par_high': 400, 'dli_low': 6.0, 'dli_high': 15.0,
     'light_notes': 'Bright but not hot sun: an east window, or a few feet from a south one. Yellow, bleached leaves mean too much direct sun; long gaps between leaves mean too little light.',
-    'winter_plan': 'Indoors all year', 'winter_summary': 'A tropical orchid: indoors all year in Round Rock.',
+    'winter_plan': 'Move indoors', 'winter_summary': 'A tropical orchid: indoors all year in Round Rock.',
     'winter_triggers': 'Already indoors; keep it away from cold windows and heater vents.',
     'winter_steps': 'Keep it warm (above 60 F) and the light bright.\nWater a little less from November to February, but never let the moss dry out completely.\nMist the moss pole so the aerial roots keep growing into it.',
     'indoor_setup': 'East window or a grow light 10-14 in away for 12 h a day; a humidifier or a grouped, humid corner. Keep the moss pole damp: the aerial roots feed the vine as it climbs.',
@@ -105,7 +105,7 @@ VANILLA = {
     'bloom': 'Pale greenish-yellow orchid flowers, each open for one day, on vines several years old and 10 ft or more long. Hand-pollinate for pods.', 'fruit': 'The vanilla pod: a long green bean that takes 9 months to ripen and months of curing after. Rare indoors.',
     'danger_humans': 'The sap can irritate skin; wash after pruning. Cured pods are the vanilla of the kitchen.', 'danger_animals': 'Not on the ASPCA toxic lists.', 'pet_safety': 'Not known to be toxic',
     'propagation': 'Stem cuttings of 3 or more nodes laid on damp sphagnum, the lowest node buried, kept warm and humid.',
-    'sources': "NC State Extension Plant Toolbox: Vanilla planifolia | https://plants.ces.ncsu.edu/plants/vanilla-planifolia/\nMissouri Botanical Garden: Vanilla planifolia | https://www.missouribotanicalgarden.org/PlantFinder/PlantFinderDetails.aspx?kempercode=b588\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants",
+    'sources': 'Wikipedia: Vanilla planifolia | https://en.wikipedia.org/wiki/Vanilla_planifolia\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants',
     'health_rating': 'Fair',
     'health_summary': 'Climbing well with plenty of new leaves and aerial roots into the pole, but one leaf is yellowing and one at the base has dried brown, and the lower vine looks thin.',
     'health_observations': 'Good new growth at the top of the pole\nOne yellowing leaf, one dried brown leaf near the base\nAerial roots reaching into the moss pole\nSphagnum looks dry on top',
@@ -133,7 +133,7 @@ ROF = {
     'vpd_low': 0.6, 'vpd_high': 1.3,
     'light_summary': 'Bright indirect light (not the full sun the tag says)', 'light_hours': '6-8 h bright indirect, or a grow light 12 h', 'par_low': 150, 'par_high': 400, 'dli_low': 6.0, 'dli_high': 14.0,
     'light_notes': "The tag's 'full sun' is for outdoor nurseries in shade cloth; indoors, direct midday sun scorches the cream patches. Good light keeps the variegation; too little turns new leaves plain green.",
-    'winter_plan': 'Indoors all year', 'winter_summary': 'A tropical aroid: indoors all year in Round Rock, under the grow light in winter.',
+    'winter_plan': 'Move indoors', 'winter_summary': 'A tropical aroid: indoors all year in Round Rock, under the grow light in winter.',
     'winter_triggers': 'Already indoors; keep it above 60 F and away from the window glass on cold nights.',
     'winter_steps': 'Keep it under the grow light 12 h a day.\nWater less in winter: let the chunky mix dry almost through.\nNo feeding from November to February.',
     'indoor_setup': 'Under the grow light 10-14 in away for 12 h a day, or a bright east window. Humidity 50% or more. It can be given a small pole to climb as it grows.',
@@ -152,7 +152,7 @@ ROF = {
     'bloom': 'Rare indoors (an aroid spathe).', 'fruit': 'None indoors.',
     'danger_humans': 'All parts contain calcium oxalate crystals: chewing burns the mouth and throat. The sap can irritate skin.', 'danger_animals': 'Toxic to cats and dogs (ASPCA, Philodendron): drooling, mouth pain, vomiting.', 'pet_safety': 'Toxic to pets',
     'propagation': 'Stem cuttings with a node, or division of a plant with more than one crown, rooted in moist chunky mix or sphagnum.',
-    'sources': "H-E-B tag on the plant (Philodendron Ring of Fire, 'Philodendron serratum', full sun, foliage)\nNC State Extension Plant Toolbox: Philodendron | https://plants.ces.ncsu.edu/plants/philodendron/\nASPCA toxic and non-toxic plants: Philodendron | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants",
+    'sources': "H-E-B tag on the plant (Philodendron Ring of Fire, 'Philodendron serratum', full sun, foliage)\nNC State Extension Plant Toolbox: Philodendron hederaceum | https://plants.ces.ncsu.edu/plants/philodendron-hederaceum/\nThe University of Kansas Health System Poison Control: Philodendron | https://www.kansashealthsystem.com/care/centers/poison-control-center/poisonous-plants/philodendron\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants",
     'health_rating': 'Fair',
     'health_summary': 'A young plant with a few good variegated leaves and a strong new one opening, but one leaf has dried brown, two lower leaves are pale and limp, and the leaf stalks are long: it is settling in and could use a little more light and a steady watering rhythm.',
     'health_observations': 'New leaf opening, well variegated\nOne lower leaf dried brown\nTwo pale, thin lower leaves\nLong leaf stalks (reaching for light)\nChunky lava and bark mix, good drainage\nUnder a grow light, with humidity meters reading about 65%',
@@ -171,7 +171,7 @@ THAI = {
     'common_name': "Monstera 'Thai Constellation'", 'scientific_name': "Monstera deliciosa 'Thai Constellation'", 'aliases': "Tag: H-E-B 'Monstera Thai Constellation, Monstera deliciosa'; Swiss cheese plant (variegated)",
     'plant_type': 'Tropical foliage plant (aroid)', 'kingdom': 'Plantae (plants)', 'taxon_order': 'Alismatales', 'family': 'Araceae', 'genus': 'Monstera',
     'location': 'Indoors, on the plant table under the grow light, sharing a pot with the other Thai Constellation', 'container': 'Grey plastic pot on a terracotta saucer, sphagnum moss and bark with lava rock, a plastic-mesh moss pole shared by both plants; H-E-B tag',
-    'site': 'Indoors', 'leaf_type': 'Large leaves', 'pot_size': 'Medium: needs two hands',
+    'site': 'Indoors', 'leaf_type': 'Large leaves', 'pot_size': 'Medium: fits in a big tub',
     'growth_habit': 'A climbing aroid: heart-shaped juvenile leaves now, splits and holes (fenestrations) once it climbs; the cream variegation is stable (tissue-culture)',
     'id_confidence': 95,
     'id_basis': "The H-E-B tag reads 'Monstera Thai Constellation, Monstera deliciosa', and the leaves match: heart-shaped juvenile Monstera leaves speckled and splashed with cream, on a moss pole in sphagnum. 'Thai Constellation' is the tissue-cultured variegated form of Monstera deliciosa with stable cream speckling.",
@@ -183,7 +183,7 @@ THAI = {
     'vpd_low': 0.6, 'vpd_high': 1.3,
     'light_summary': 'Bright indirect light (the cream parts cannot photosynthesise, so it needs more light than a green Monstera, but no hot sun)', 'light_hours': '6-8 h bright indirect, or a grow light 12 h', 'par_low': 150, 'par_high': 400, 'dli_low': 6.0, 'dli_high': 15.0,
     'light_notes': "The tag's 'full sun' is nursery shade-house advice. Indoors, direct midday sun scorches the cream areas (the browning on the palest leaf). Too little light gives small, slow leaves.",
-    'winter_plan': 'Indoors all year', 'winter_summary': 'A tropical aroid: indoors all year in Round Rock, under the grow light in winter.',
+    'winter_plan': 'Move indoors', 'winter_summary': 'A tropical aroid: indoors all year in Round Rock, under the grow light in winter.',
     'winter_triggers': 'Already indoors; keep it above 60 F and away from cold glass.',
     'winter_steps': 'Grow light 12 h a day.\nLet the sphagnum dry on top before watering; water less from November to February.\nNo feeding in winter.\nKeep the moss pole damp so the aerial roots take hold.',
     'indoor_setup': 'Under the grow light 12-18 in away for 12 h, or a bright east or north-east window. Humidity 50% or more. Tie new growth to the pole as it climbs: leaves get bigger and split sooner.',
@@ -202,7 +202,7 @@ THAI = {
     'bloom': 'Rare indoors (a creamy spathe on a mature plant).', 'fruit': 'The edible "fruit salad" fruit of the species, on mature outdoor plants only; unripe fruit burns the mouth.',
     'danger_humans': 'Leaves and stems contain calcium oxalate crystals: chewing burns the mouth and throat.', 'danger_animals': 'Toxic to cats and dogs (ASPCA): drooling, mouth pain, vomiting.', 'pet_safety': 'Toxic to pets',
     'propagation': 'A stem cutting with a node and an aerial root, rooted in water, sphagnum or perlite. Choose a node whose leaf has both green and cream.',
-    'sources': "H-E-B tag on the plant (Monstera Thai Constellation, Monstera deliciosa, full sun, foliage)\nNC State Extension Plant Toolbox: Monstera deliciosa | https://plants.ces.ncsu.edu/plants/monstera-deliciosa/\nASPCA toxic and non-toxic plants: Swiss cheese plant | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/swiss-cheese-plant",
+    'sources': 'H-E-B tag on the plant (Monstera Thai Constellation, Monstera deliciosa, full sun, foliage)\nPlants of the World Online (Kew): Monstera deliciosa | https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:87478-1/general-information\nQueensland Poisons Information Centre: Fruit salad plant | https://www.poisonsinfo.health.qld.gov.au/plants-and-mushrooms/fruit-salad-plant-monstera-deliciosa\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants',
     'health_rating': 'Fair',
     'health_summary': 'Growing, with fresh juvenile leaves and aerial roots reaching the pole, but several leaves have dried tips and brown patches on the cream areas, and one or two old leaves have died back at the base. Looks like the cream parts have scorched or dried in low humidity, and the sphagnum has been kept fairly wet.',
     'health_observations': 'Juvenile heart-shaped leaves, no splits yet\nCream areas browning on the palest leaf\nDried leaf tips and one dead leaf at the base\nAerial roots growing into the shared moss pole\nSphagnum and lava rock, pot on a saucer under the grow light',
@@ -236,14 +236,14 @@ THAI_R = THAI | {
 # Batches 4 and 5: a moth orchid in a white pot, and two orchids in the pumpkin pot
 ORCHID = {
     'plant_type': 'Orchid (epiphyte)', 'kingdom': 'Plantae (plants)', 'taxon_order': 'Asparagales', 'family': 'Orchidaceae', 'genus': 'Phalaenopsis',
-    'site': 'Indoors', 'leaf_type': 'Strap leaves', 'pot_size': 'Small: fits in a bucket',
+    'site': 'Indoors', 'leaf_type': 'Large leaves', 'pot_size': 'Small: fits in a bucket',
     'temp_ideal_low': 65, 'temp_ideal_high': 85, 'temp_damage_below': 50, 'temp_lethal_below': 35, 'temp_damage_above': 95,
     'temp_notes': 'Warm-growing. A few weeks of nights around 60 F in autumn set the flower spike; keep it above 55 F.',
     'humidity_low': 50, 'humidity_high': 70, 'humidity_notes': 'Likes humid air with movement; buds drop in very dry rooms.',
     'vpd_low': 0.5, 'vpd_high': 1.2,
     'light_summary': 'Bright, indirect light (an east window)', 'light_hours': '4-6 h bright indirect, or a grow light 10-12 h', 'par_low': 80, 'par_high': 250, 'dli_low': 3.0, 'dli_high': 9.0,
     'light_notes': 'Leaves should be a medium grass green: dark green means too little light, yellow-green or red-tinged means too much. Never hot midday sun.',
-    'winter_plan': 'Indoors all year', 'winter_summary': 'A tropical orchid: indoors all year in Round Rock.',
+    'winter_plan': 'Move indoors', 'winter_summary': 'A tropical orchid: indoors all year in Round Rock.',
     'winter_triggers': 'Already indoors; away from cold glass and heater vents.',
     'winter_steps': 'Cooler nights (60-65 F) for a few weeks in autumn help a flower spike form.\nWater a little less in winter; let the bark dry between waterings.\nFeed lightly or not at all until the spike shows.',
     'indoor_setup': 'East window or a grow light 12-18 in away. Humidity 50% or more; a small fan nearby helps. Water in the morning so the crown dries by night.',
@@ -259,9 +259,9 @@ ORCHID = {
     'native_range': 'Hybrids of Phalaenopsis species from South-East Asia, the Philippines and northern Australia, growing on trees in humid forest.',
     'conservation_status': 'Not applicable: a cultivated hybrid.', 'invasive': 'Not a risk here.',
     'bloom': 'A spike of long-lasting flowers (white, pink, purple, yellow or spotted) once or twice a year, usually winter to spring, each spike open for 2-3 months.', 'fruit': 'None in the home.',
-    'danger_humans': 'Not toxic.', 'danger_animals': 'Non-toxic to cats and dogs (ASPCA).', 'pet_safety': 'Safe for pets',
+    'danger_humans': 'Not toxic.', 'danger_animals': 'Non-toxic to cats and dogs (ASPCA).', 'pet_safety': 'Safe for pets (ASPCA)',
     'propagation': 'Keikis (plantlets) that form on old flower spikes, potted up once they have roots 2-3 in long.',
-    'sources': 'American Orchid Society: Phalaenopsis culture sheet | https://www.aos.org/orchids/culture-sheets/phalaenopsis\nASPCA non-toxic plants: Moth orchid | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/moth-orchid',
+    'sources': 'Wikipedia: Phalaenopsis | https://en.wikipedia.org/wiki/Phalaenopsis\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants',
 }
 PHAL = ORCHID | {
     'common_name': 'Moth orchid (white geometric pot)', 'scientific_name': 'Phalaenopsis hybrid (stake: Phalaenopsis amabilis)', 'aliases': "Hand-written stake: 'Moth Orchid, Phalaenopsis amabilis'",
@@ -312,7 +312,7 @@ PUMP_B = ORCHID | {
     'id_improve': 'A photo of the base from the side: is there a cane or a pseudobulb?\nA photo of any new green growth\nWhere it came from and what the flowers were, if it has flowered',
     'light_summary': 'Bright, indirect light', 'genus': 'Orchidaceae (genus unknown)', 'pet_safety': 'Not known to be toxic', 'danger_animals': 'Orchids as a group are not on the ASPCA toxic lists.',
     'propagation': 'Depends on the genus: keikis or cane divisions.',
-    'sources': 'American Orchid Society: Dendrobium culture sheet | https://www.aos.org/orchids/culture-sheets/dendrobium',
+    'sources': 'Wikipedia: Phalaenopsis | https://en.wikipedia.org/wiki/Phalaenopsis\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants',
     'health_rating': 'Poor',
     'health_summary': 'Declining: most leaves have yellowed and dried to brown, with only a few green, limp leaves left on a shrivelling base. Sitting in clay pebbles in a bowl with no drainage, the roots have most likely rotted or dried out.',
     'health_observations': 'Most leaves yellow or dried brown\nA few green leaves, limp\nBase ridged and shrivelling\nClay pebbles in a bowl without drainage',
@@ -327,13 +327,13 @@ PUMP_B = ORCHID | {
 # Batch 6: four plants in one terracotta bowl: purple passion, two flame violets, a small rex begonia
 BOWL = {
     'location': 'Indoors, in the terracotta bowl on the shelf, shared with three other plants', 'container': 'Wide terracotta bowl with saucer, peat-based mix with perlite and charcoal; Costa Farms tags',
-    'site': 'Indoors', 'pot_size': 'Medium: needs two hands', 'kingdom': 'Plantae (plants)',
-    'winter_plan': 'Indoors all year', 'winter_summary': 'Tropical: indoors all year in Round Rock.', 'winter_triggers': 'Already indoors; keep it above 55 F.',
+    'site': 'Indoors', 'pot_size': 'Medium: fits in a big tub', 'kingdom': 'Plantae (plants)',
+    'winter_plan': 'Move indoors', 'winter_summary': 'Tropical: a houseplant, indoors all year in Round Rock.', 'winter_triggers': 'Already indoors; keep it above 55 F.',
     'zone_notes': 'A houseplant here.', 'invasive': 'Not a risk here.', 'pests_current': '', 'pests_found': '',
 }
 GYNURA = BOWL | {
     'common_name': 'Purple passion plant', 'scientific_name': 'Gynura aurantiaca', 'aliases': "Velvet plant, purple velvet plant; Costa Farms tag 'Purple Passion Plant', back 'Gynura aurantica' (misspelt)",
-    'plant_type': 'Tropical foliage plant', 'taxon_order': 'Asterales', 'family': 'Asteraceae', 'genus': 'Gynura', 'leaf_type': 'Medium leaves',
+    'plant_type': 'Tropical foliage plant', 'taxon_order': 'Asterales', 'family': 'Asteraceae', 'genus': 'Gynura', 'leaf_type': 'Fuzzy or velvety leaves',
     'growth_habit': 'A soft-stemmed, sprawling perennial with toothed dark-green leaves covered in purple velvet hairs; trails or climbs to 2-3 ft',
     'id_confidence': 98,
     'id_basis': "The Costa Farms tag says Purple Passion Plant / Gynura aurantica, and nothing else looks like it: toothed dark leaves densely covered in purple velvet hairs, purple stems, and the small orange-yellow daisy flowers now open at the top. The tag misspells the species; it is Gynura aurantiaca.",
@@ -352,9 +352,9 @@ GYNURA = BOWL | {
     'height_pot': '1 to 2 ft, trailing', 'width_pot': '1 to 2 ft', 'growth_rate': 'Fast', 'lifespan': 'A few years; take cuttings to keep it going',
     'zone_low': '10', 'zone_high': '12', 'native_range': 'Java and other Indonesian islands, as a forest-edge scrambler.', 'conservation_status': 'Not assessed; common in cultivation.',
     'bloom': 'Small orange-yellow, dandelion-like flower heads in clusters at the stem tips (open now), with an unpleasant smell: most growers pinch them off.', 'fruit': 'Fluffy seed heads; of no use indoors.',
-    'danger_humans': 'Not known to be toxic; the tag says not for consumption.', 'danger_animals': 'Non-toxic to cats and dogs (ASPCA, Velvet plant).', 'pet_safety': 'Safe for pets',
+    'danger_humans': 'Not known to be toxic; the tag says not for consumption.', 'danger_animals': 'Non-toxic to cats and dogs (ASPCA, Velvet plant).', 'pet_safety': 'Safe for pets (ASPCA)',
     'propagation': 'Tip cuttings root in water or moist mix in a week or two.',
-    'sources': "Costa Farms tags on the plant (Purple Passion Plant; Gynura aurantica: bright, weekly, keep above 50 F)\nASPCA non-toxic plants: Velvet plant | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/velvet-plant\nNC State Extension Plant Toolbox: Gynura aurantiaca | https://plants.ces.ncsu.edu/plants/gynura-aurantiaca/",
+    'sources': 'Costa Farms tags on the plant (Purple Passion Plant; Gynura aurantica: bright, weekly, keep above 50 F)\nNC State Extension Plant Toolbox: Gynura aurantiaca | https://plants.ces.ncsu.edu/plants/gynura-aurantiaca\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants',
     'health_rating': 'Good',
     'health_summary': 'Vigorous and deeply coloured, flowering at the tips. The flowers smell bad and sap the plant; pinching them (and the tips) keeps it bushy. It is leaning toward the light.',
     'health_observations': 'Dense purple velvet, strong colour\nOrange-yellow flower heads open at the tip\nStem leaning toward the light\nShares the bowl with two flame violets and a small begonia',
@@ -368,7 +368,7 @@ GYNURA = BOWL | {
     ],
 }
 EPISCIA = BOWL | {
-    'plant_type': 'Tropical foliage plant (gesneriad)', 'taxon_order': 'Lamiales', 'family': 'Gesneriaceae', 'genus': 'Episcia', 'leaf_type': 'Medium leaves',
+    'plant_type': 'Tropical foliage plant (gesneriad)', 'taxon_order': 'Lamiales', 'family': 'Gesneriaceae', 'genus': 'Episcia', 'leaf_type': 'Fuzzy or velvety leaves',
     'growth_habit': 'A low, creeping gesneriad spreading by runners (stolons), with velvety, quilted leaves; red or orange tubular flowers',
     'temp_ideal_low': 65, 'temp_ideal_high': 85, 'temp_damage_below': 55, 'temp_lethal_below': 40, 'temp_damage_above': 95, 'temp_notes': 'Tag: keep above 50 F. It sulks and spots below 60 F; truly tropical.',
     'humidity_low': 50, 'humidity_high': 80, 'humidity_notes': "Wants humid air: the tag says 'ideal for terrariums'. Edges brown and leaves curl in dry rooms.", 'vpd_low': 0.4, 'vpd_high': 1.0,
@@ -386,7 +386,7 @@ EPISCIA = BOWL | {
     'bloom': 'Red-orange tubular flowers with fringed edges, on and off through the warm months in good light.', 'fruit': 'Rarely set indoors.',
     'danger_humans': 'Not known to be toxic; the tag says not for consumption.', 'danger_animals': 'Not on the ASPCA toxic lists (African-violet relatives are non-toxic).', 'pet_safety': 'Not known to be toxic',
     'propagation': 'Pin a runner plantlet onto moist mix until it roots, then cut it free; leaf cuttings also work.',
-    'sources': "Costa Farms tags on the plant (Flame Violet, ideal for terrariums; Episcia cupreata: bright tolerates medium, weekly, keep above 50 F)\nNC State Extension Plant Toolbox: Episcia cupreata | https://plants.ces.ncsu.edu/plants/episcia-cupreata/",
+    'sources': 'Costa Farms tags on the plant (Flame Violet, ideal for terrariums; Episcia cupreata: bright tolerates medium, weekly, keep above 50 F)\nNC State Extension Plant Toolbox: Episcia cupreata | https://plants.ces.ncsu.edu/plants/episcia-cupreata\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants',
 }
 EPI_BRONZE = EPISCIA | {
     'common_name': 'Flame violet, copper-leaved', 'scientific_name': 'Episcia cupreata', 'aliases': "Costa Farms tag 'Flame Violet', back 'Episcia cupreata'; the larger, copper-bronze clump",
@@ -423,7 +423,7 @@ EPI_DARK = EPISCIA | {
 }
 BEGONIA = BOWL | {
     'common_name': 'Rex begonia, silver-leaved (small)', 'scientific_name': 'Begonia rex-cultorum hybrid', 'aliases': 'Painted-leaf begonia; the small silver plant at the edge of the bowl',
-    'plant_type': 'Tropical foliage plant', 'taxon_order': 'Cucurbitales', 'family': 'Begoniaceae', 'genus': 'Begonia', 'leaf_type': 'Medium leaves',
+    'plant_type': 'Tropical foliage plant', 'taxon_order': 'Cucurbitales', 'family': 'Begoniaceae', 'genus': 'Begonia', 'leaf_type': 'Large leaves',
     'growth_habit': 'A rhizomatous begonia: a creeping rhizome at the soil surface sending up lopsided, patterned leaves on short red stalks',
     'id_confidence': 70,
     'id_basis': 'A very small plant with lopsided, rounded leaves patterned silver over dark green with dark veins and a red leaf stalk: a rex (painted-leaf) begonia, the silver-and-green type. It has no tag; the pattern and the leaf shape say Begonia rex-cultorum, but at this size the cultivar cannot be named.',
@@ -445,7 +445,7 @@ BEGONIA = BOWL | {
     'bloom': 'Small pink flowers, insignificant; grown for the leaves.', 'fruit': 'None of note.',
     'danger_humans': 'Not known to harm people from handling; the roots and tubers contain soluble oxalates.', 'danger_animals': 'Toxic to cats and dogs (ASPCA, Begonia): the underground parts most of all; vomiting and drooling.', 'pet_safety': 'Toxic to pets',
     'propagation': 'Leaf cuttings laid on moist mix, or a piece of rhizome with a growing point.',
-    'sources': 'ASPCA toxic plants: Begonia | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/begonia\nNC State Extension Plant Toolbox: Begonia rex-cultorum | https://plants.ces.ncsu.edu/plants/begonia-rex-cultorum-group/',
+    'sources': 'Wikipedia: Begonia rex | https://en.wikipedia.org/wiki/Begonia_rex\nUConn Home and Garden Education Center: Rex begonia | https://homegarden-cahnr.media.uconn.edu/wp-content/uploads/sites/3479/2022/08/Rex-Begonia.pdf\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants',
     'health_rating': 'Fair',
     'health_summary': 'Tiny: two or three patterned leaves and one pale new leaf, at the edge of a bowl shared with much bigger plants. It will be shaded out and over-watered where it is.',
     'health_observations': 'Two or three silver-patterned leaves, one pale new leaf\nRed leaf stalks, a creeping rhizome\nAt the edge of the bowl, under the Gynura',
@@ -460,3 +460,19 @@ batch = {'id': 'B8', 'created': '2026-11-05', 'author': "Claude (Ethan's split r
 out = os.path.join(ROOT, 'app', 'seed', 'batches', 'batchB8.json')
 json.dump(batch, open(out, 'w'), indent=1, ensure_ascii=False)
 print('wrote', out, len(batch['plants']), 'plants')
+
+# Batch B9: corrections to B8 as it shipped in 1.39.1 (values not in the app's lists, and sources that were not from the checked list).
+# Each update finds its plant by its main photo and only changes a field that still holds the 1.39.1 value, so anything Ethan
+# edited is left alone; on an install that never had the 1.39.1 B8 the old values do not match and nothing changes.
+shipped = os.path.join(HERE, 'b8_as_shipped_1.39.1.json')
+if os.path.exists(shipped):
+    old = {p['photos'][0]['file']: p for p in json.load(open(shipped))['plants']}
+    ups = []
+    for p in batch['plants']:
+        o = old.get(p['photos'][0]['file'])
+        if not o: continue
+        diff = {k: [o.get(k), p.get(k)] for k in ('winter_plan', 'leaf_type', 'pot_size', 'pet_safety', 'sources', 'winter_summary') if o.get(k) != p.get(k)}
+        if diff: ups.append({'name': o['common_name'], 'photos': [p['photos'][0]['file']], 'note': 'Corrections to batch B8 (1.39.1): list values and sources', 'set': diff})
+    b9 = {'id': 'B9', 'created': '2026-11-05', 'author': 'Claude (corrections to batch B8 as shipped in 1.39.1)', 'updates': ups}
+    json.dump(b9, open(os.path.join(ROOT, 'app', 'seed', 'batches', 'batchB9.json'), 'w'), indent=1, ensure_ascii=False)
+    print('wrote batchB9.json', len(ups), 'updates')
