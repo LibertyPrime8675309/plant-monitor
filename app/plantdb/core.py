@@ -104,6 +104,7 @@ FIELDS = [
     ('height_pot', 'text', 'Mature height in a pot'), ('width_pot', 'text', 'Mature width in a pot'),
     ('growth_rate', 'text', 'Growth rate'), ('lifespan', 'text', 'Lifespan'),
     ('zone_low', 'text', 'Hardiness zone, coldest (USDA)'), ('zone_high', 'text', 'Hardiness zone, warmest (USDA)'), ('zone_notes', 'long', 'Hardiness notes'),
+    ('heat_zone_high', 'int', 'Heat zone, hottest (AHS)'), ('heat_zone_low', 'int', 'Heat zone, coolest (AHS)'), ('heat_zone_source', 'text', 'Heat zone source'),   # 1.36.0: summer heat
     ('native_range', 'long', 'Native range'), ('conservation_status', 'long', 'Conservation status'), ('invasive', 'long', 'Invasive risk'),
     ('bloom', 'long', 'Flowers'), ('fruit', 'long', 'Fruit'),
     ('danger_humans', 'long', 'Dangers to people'), ('danger_animals', 'long', 'Dangers to pets and other animals'),
@@ -116,7 +117,7 @@ FIELD_NAMES = [f[0] for f in FIELDS]
 FIELD_KIND = {f[0]: f[1] for f in FIELDS}
 FIELD_LABEL = {f[0]: f[2] for f in FIELDS}
 FIELD_LABEL['fertilizer_log'] = 'Fertilizer entry'
-INT_RANGES = {'id_confidence': (0, 100), 'temp_ideal_low': (-60, 150), 'temp_ideal_high': (-60, 150),
+INT_RANGES = {'id_confidence': (0, 100), 'temp_ideal_low': (-60, 150), 'temp_ideal_high': (-60, 150), 'heat_zone_high': (1, 12), 'heat_zone_low': (1, 12),
               'temp_damage_below': (-60, 150), 'temp_lethal_below': (-60, 150),
               'humidity_low': (0, 100), 'humidity_high': (0, 100),
               'temp_damage_above': (0, 200), 'par_low': (0, 4000), 'par_high': (0, 4000),

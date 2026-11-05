@@ -1610,3 +1610,6 @@ html:is([data-narrow="1"],[data-topcompact="1"]) :is(.srch-btn .srch-l,.place-bt
 .sns-plant{margin:.4rem 0 1rem}
 .sns-plant .sns-card{max-width:40rem}
 html[data-role=viewer] :is([data-act=snsedit],[data-act=snsrm]){display:none!important}
+/* 1.36.0: summer heat under About this plant, and the counts on the Weather page */
+.heat-counts li{margin:.3rem 0}
+.v-hot{border-left-color:var(--ochre)}

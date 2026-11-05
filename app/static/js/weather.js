@@ -120,7 +120,7 @@ function seasonExpected(ref) {     // the written reference where it applies (Ro
   return { rows: [], src: 'none' };
 }
 // 1.34.0: the USDA hardiness zone (winter) and the AHS heat zone (summer) side by side, both from the place's own weather history
-function climateBlock(W, H) {
+function climateBlock(W, H, P) {
   const Z = META && String(META.place.id) === String(W.location.id) ? META.zone : null;
   const winter = Z && Z.zone ? html`<p>The last ${Z.years} winters averaged a coldest night of <strong>${Z.winter_low}°F</strong>, which is <strong>USDA hardiness zone ${Z.zone}</strong> (how cold a usual winter gets, the zone on plant tags).${Z.map_note ? ' ' + Z.map_note : ''} <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>`
     : Z && Z.map_zone ? html`<p>Zone ${Z.map_zone} on the 2023 USDA map. The winter zone from your own weather history appears after 3 whole years of it.</p>`
@@ -130,7 +130,14 @@ function climateBlock(W, H) {
       From ${H.years} whole years of weather (${H.since} on). Many plant tags give a heat zone range next to the hardiness zones; this is the number to compare it with.</p>`
     : html`<p class="muted">The summer heat zone appears after 3 whole years of weather history here${H.years ? ` (${H.years} so far)` : ''}.</p>`;
   const rows = (H.per_year || []).filter(y => !y.partial || y.over86);
-  return html`${winter}${summer}
+  // 1.36.0: how the plants fare in a usual summer here, each count a link to the Plants page with the Summer here filter set
+  const n = { hard: 0, few: 0, fine: 0, hotter: 0 };
+  for (const x of Object.values((P && P.plants) || {})) { if (x.level) n[x.level]++; if (x.fit === 'hotter') n.hotter++; }
+  const link = (k, count, words) => count ? html`<li><a href="#/plants" data-act="heatf" data-heatf="${k}">${count} plant${count === 1 ? '' : 's'}</a>: ${words}</li>` : '';
+  const plantsPart = H.zone && (n.hard + n.few + n.fine + n.hotter) ? html`<h3>Your plants in a usual summer here</h3><ul class="heat-counts">${link('hard', n.hard, 'summer heat is hard on them (10 days or more reach the temperature where their leaves scorch)')}
+      ${link('few', n.few, 'a few days a summer are too hot for them')}${link('fine', n.fine, 'summer heat is fine for them')}${link('hotter', n.hotter, `${H.place} is hotter than the AHS heat zones they are listed for`)}</ul>
+      <p class="hint">Each link opens the Plants page with the "Summer here" filter set. Each plant's page has the details under About this plant.</p>` : '';
+  return html`${winter}${summer}${plantsPart}
     ${rows.length ? html`<div class="tbl-wrap"><table class="tbl heat-tbl"><caption class="sr">Hot days each year in ${H.place}</caption>
       <thead><tr><th scope="col">Year</th><th scope="col">Days above ${H.line}°F</th><th scope="col">Hottest day</th></tr></thead>
       <tbody>${rows.map(y => html`<tr><th scope="row">${y.year}${y.partial ? ' (so far)' : ''}</th><td>${y.over86}</td><td>${y.hottest}°F</td></tr>`)}</tbody></table></div>` : ''}`;
@@ -171,7 +178,7 @@ async function viewWeather(sec) {
   let W;
   try { W = await api('GET', '/api/weather?x=1' + locQS()); }
   catch (e) { if (e.status === 404) { savePlace(null); W = await api('GET', '/api/weather'); } else throw e; }
-  const [cond, plants, ing, monthly, ref, st, heat] = await Promise.all([loadCond(), api('GET', '/api/plants'), (ME().role === 'owner' ? api('GET', '/api/ingest').catch(() => null) : null), api('GET', '/api/weather/monthly?x=1' + locQS()), api('GET', '/api/reference'), api('GET', '/api/settings'), api('GET', '/api/heat?x=1' + locQS()).catch(() => null)]);
+  const [cond, plants, ing, monthly, ref, st, heat, heatP] = await Promise.all([loadCond(), api('GET', '/api/plants'), (ME().role === 'owner' ? api('GET', '/api/ingest').catch(() => null) : null), api('GET', '/api/weather/monthly?x=1' + locQS()), api('GET', '/api/reference'), api('GET', '/api/settings'), api('GET', '/api/heat?x=1' + locQS()).catch(() => null), api('GET', '/api/heat/plants?x=1' + locQS()).catch(() => null)]);
   WX.places = W.places || []; WX.place = W.location; WX.home = W.home;
   WX.compare = WX.compare.filter(id => WX.places.some(p => String(p.id) === id && String(p.id) !== String(W.location.id)));
   const atHome = W.location.is_home;
@@ -200,7 +207,7 @@ async function viewWeather(sec) {
       ${wtControls()}<div id="wx-table"><p class="loading">Loading table</p></div></section>
     <section class="blk"><h2>Expected and tracked this season in ${W.location.name}</h2>${seasonTable(ref, monthly)}
       <p class="hint">${ref.applies !== false ? `Expected values are 30-year averages for ${W.location.name}. ` : ''}Tracked values come from the readings above: the average of each day's low and high, and how many nights fell to 32°F or below. Days with fewer than 12 readings are skipped.</p></section>
-    <section class="blk" id="wx-climate"><h2>Your climate: winter cold and summer heat in ${W.location.name}</h2>${climateBlock(W, heat)}</section>
+    <section class="blk" id="wx-climate"><h2>Your climate: winter cold and summer heat in ${W.location.name}</h2>${climateBlock(W, heat, heatP)}</section>
     ${ing ? html`<section class="blk" id="sensor"><h2>Connect your sensor</h2><p><a class="btn small ghost" href="#/sensors">Your sensors: newest values and alerts</a></p>
       <p>A sensor on your network can send readings to this app. Each reading becomes part of the history above, and "My sensor" can drive the current conditions on every plant page.</p>
       <div class="notice">Sensors on your home network send to this computer's network address on port 8082${lanIp ? '' : ' (for example 192.168.1.20; the README shows how to find yours)'}. That port only takes readings with the token below; the rest of the app stays closed. It is shut until you open it: put the line <span class="code">PLANTDB_SENSOR_BIND=0.0.0.0</span> in a file named .env next to docker-compose.yml, then run docker compose up -d (README, "Connecting your own sensor").</div>
