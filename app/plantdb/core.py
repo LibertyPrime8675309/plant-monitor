@@ -829,6 +829,9 @@ def guard():
             if not (a and hmac.compare_digest(a.password or '', PASSWORD)):
                 return Response('Password required', 401, {'WWW-Authenticate': 'Basic realm="Plant database"'})
         g.user = {'via': 'local', 'login': None, 'name': editor(), 'role': 'owner'}     # this computer (or the home network, if opened to it)
+    if MIRROR:                       # 1.37.0: on the mirror everyone can only look
+        g.user = dict(g.user, role='viewer', mirror=True)
+        if request.method not in ('GET', 'HEAD', 'OPTIONS') and request.path != '/api/me/prefs': abort(403, 'This is the read-only mirror. Make changes in the main app' + (f' at {MIRROR_MAIN}' if MIRROR_MAIN else '') + '.')
     refusal = role_refusal(g.user)
     if refusal: abort(403, refusal)
     if request.method not in ('GET', 'HEAD', 'OPTIONS'):

@@ -6,7 +6,7 @@
    Changes made while offline are not handled here: the page keeps them in its outbox and sends them when it is back online. */
 const VERSION = '__VERSION__';
 const SHELL = 'plantdb-shell-' + VERSION, API = 'plantdb-api', PICS = 'plantdb-photos', LIBPICS = 'plantdb-library-photos';
-const SHELL_FILES = ['/', '/js/core.js', '/js/gallery.js', '/js/plant.js', '/js/care.js', '/js/edit.js', '/js/weather.js', '/js/ui.js', '/js/lights.js', '/js/events.js', '/js/discover.js', '/js/offline.js', '/js/notify.js', '/js/sensors.js', '/js/main.js', '/style.css', '/prefs.js', '/card.html', '/card.js', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
+const SHELL_FILES = ['/', '/js/core.js', '/js/gallery.js', '/js/plant.js', '/js/care.js', '/js/edit.js', '/js/weather.js', '/js/ui.js', '/js/lights.js', '/js/events.js', '/js/discover.js', '/js/offline.js', '/js/notify.js', '/js/sensors.js', '/js/review.js', '/js/main.js', '/style.css', '/prefs.js', '/card.html', '/card.js', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
 const NO_SAVE = /^\/api\/(people|backups|ingest|weather\/job|backups\/job|audit|library\/prefetch|library\/local|offline\/|identify\/settings|calendar\/settings|me$)/;
 const WAIT_MS = 5000;
 let downUntil = 0;                           // after the server fails to answer, use saved copies at once for a while (weak signal)
@@ -63,6 +63,25 @@ async function shell(req) {
     return (await c.match(req.mode === 'navigate' ? '/' : req, { ignoreSearch: true })) || new Response('Offline, and the app is not saved on this device yet.', { status: 503 });
   }
 }
+// 1.37.0: the share sheet ("Share → Plants") posts the pictures here; keep them in a cache and open the page that adds them
+self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  if (e.request.method !== 'POST' || url.pathname !== '/share') return;
+  e.respondWith((async () => {
+    try {
+      const fd = await e.request.formData(), c = await caches.open('plantdb-share'), files = fd.getAll('photos');
+      let i = 0;
+      for (const f of files) {
+        if (!f || !f.size) continue;
+        const name = (f.name || ('photo-' + (i + 1) + '.jpg')).replace(/[^\w.\-]+/g, '_');
+        await c.put(new Request('/shared/' + String(Date.now() + i).padStart(16, '0') + '-' + name), new Response(f, { headers: { 'Content-Type': f.type || 'image/jpeg', 'X-Name': name } }));
+        i++;
+      }
+    } catch (err) { /* nothing shared after all */ }
+    return Response.redirect('/#/share', 303);
+  })());
+});
+
 self.addEventListener('fetch', e => {
   const req = e.request, url = new URL(req.url);
   if (req.method !== 'GET' || url.origin !== self.location.origin) return;

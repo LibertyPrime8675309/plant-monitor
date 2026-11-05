@@ -3,8 +3,8 @@ database, helpers, people, security), then one module per feature. Everything is
 still gives S.app, S.init_db, S.light_verdict and the rest, as before 1.32.0."""
 import os, sys, threading
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from plantdb import core, where, weather, plants, care, fert, groups, lights, library, fungi, shopping, audit, offline, frost, backups, jobs, push, search, copies, heat, sensors
-MODULES = [core, where, weather, plants, care, fert, groups, lights, library, fungi, shopping, audit, offline, frost, backups, jobs, push, search, copies, heat, sensors]
+from plantdb import core, where, weather, plants, care, fert, groups, lights, library, fungi, shopping, audit, offline, frost, backups, jobs, push, search, copies, heat, sensors, review, mirror
+MODULES = [core, where, weather, plants, care, fert, groups, lights, library, fungi, shopping, audit, offline, frost, backups, jobs, push, search, copies, heat, sensors, review, mirror]
 globals().update(core.link(MODULES))
 def patch(name, value):
     """For tests: replace a function (http_json, say) in every module at once, since each holds its own link to it."""
@@ -12,7 +12,10 @@ def patch(name, value):
     globals()[name] = value
 
 init_db()
-threading.Thread(target=backup_loop, daemon=True).start()
+if os.environ.get('PLANTDB_BACKUPS', '1') == '1' and not MIRROR:
+    threading.Thread(target=backup_loop, daemon=True).start()
+if MIRROR:
+    threading.Thread(target=mirror_loop, daemon=True).start()        # 1.37.0: the read-only mirror takes the newest backup every few minutes
 if os.environ.get('PLANTDB_SHOPS', '1') == '1':
     threading.Thread(target=shops_loop, daemon=True).start()          # 1.27.0: the wishlist's shops, twice a day
 if os.environ.get('PLANTDB_OSM', '1') == '1':

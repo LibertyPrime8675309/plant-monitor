@@ -172,7 +172,7 @@ def backup_file(name):
         return jsonify(ok=True)
     return send_from_directory(BACKUP_DIR, name, as_attachment=True, mimetype='application/zip')
 
-def restore_backup(name, by):
+def restore_backup(name, by, before=True):
     """1.31.0: puts the database from a backup zip in place of the one in use, after making a backup of that one first. Photos in
     the zip that the photos folder lacks are added; no photo is ever removed. The copy is made with SQLite's own backup, which is
     safe while the app runs, and then init_db() brings an older database up to this version. Returns what was done."""
@@ -192,7 +192,7 @@ def restore_backup(name, by):
                 if not t.execute("SELECT 1 FROM sqlite_master WHERE name='plants'").fetchone(): raise ValueError('That is not a plant record database.')
                 plants = t.execute('SELECT COUNT(*) FROM plants').fetchone()[0]
             finally: t.close()
-            before = make_backup('manual', False, f'Before restoring {name}', by)
+            before_name = make_backup('manual', False, f'Before restoring {name}', by) if before else None
             with BK_LOCK:
                 src = sqlite3.connect(tmpdb); dst = sqlite3.connect(DB_PATH, timeout=60)
                 try:
@@ -214,7 +214,7 @@ def restore_backup(name, by):
         audit_only(c, 'backup', 'restore', None, name, by, f'Restored from {name} ({plants} plants, made {meta.get("created_at", "")[:10]} by version {meta.get("version", "?")}). The database from before is in {before}.')
         c.commit()
     finally: c.close()
-    return {'ok': True, 'before': before, 'plants': plants, 'photos_added': added, 'version': meta.get('version')}
+    return {'ok': True, 'before': before_name, 'plants': plants, 'photos_added': added, 'version': meta.get('version')}
 
 @app.route('/api/backups/restore', methods=['POST'])
 def backup_restore():

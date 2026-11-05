@@ -343,7 +343,7 @@ async function viewPhotos() {
   const [un, todo] = await Promise.all([api('GET', '/api/photos/unassigned'), api('GET', '/api/to-photograph')]);
   return {
     title: 'Photos',
-    html: html`<h1>Photos</h1><p class="muted">Garden overview shots and anything not yet matched to a plant.</p>
+    html: html`<h1>Photos</h1><p class="muted">Garden overview shots and anything not yet matched to a plant.</p><p class="noprint"><a href="#/share">Photos shared from your phone</a> (Share → Plants on an Android phone with the app on its Home Screen).</p>
     <section class="blk"><h2>Photos without a plant (${un.length})</h2>
       <label class="f" style="max-width:420px">Upload photos<small>They stay here until you assign them to a plant.</small><input type="file" accept="image/*" multiple data-act="addloose"></label>
       ${un.length ? html`<div class="pgrid">${un.map(x => html`<div class="pcard"><img src="${thumbUrl(x.file)}" alt="${x.caption || 'Unassigned photo'}" data-act="zoomloose" data-file="${x.file}" data-cap="${x.caption}">
