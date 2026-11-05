@@ -19,7 +19,7 @@ function ltRoomsBlock() {
   return html`<div class="lt-rooms">${rooms.map(([room, ps]) => html`<section class="lt-room" aria-label="${room}"><h3>${room}</h3><ul>${ps.map(pl => {
     const sp = LT.spots.filter(s => s.place_id === pl.id), n = sp.reduce((a, s) => a + s.plants.length, 0);
     return html`<li><span><strong>${pl.name || 'The room itself'}</strong><br><span class="muted">${sp.length ? `${sp.map(s => s.name).join(', ')}: ${n} plant${n === 1 ? '' : 's'}` : 'No light spot here yet'}</span></span>
-      <span class="row noprint"><button class="btn ghost small" type="button" data-act="roomedit" data-id="${pl.id}">Rename</button><button class="btn ghost small" type="button" data-act="roomdel" data-id="${pl.id}">Remove</button></span></li>`; })}</ul></section>`)}</div>`;
+      <span class="row noprint"><button class="btn ghost small" type="button" data-act="roomedit" data-id="${pl.id}" aria-label="Rename the room ${pl.name}">Rename</button><button class="btn ghost small" type="button" data-act="roomdel" data-id="${pl.id}" aria-label="Remove the room ${pl.name}">Remove</button></span></li>`; })}</ul></section>`)}</div>`;
 }
 async function roomDialog(pl) {
   if (!(await needName())) return;

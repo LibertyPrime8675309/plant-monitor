@@ -34,6 +34,17 @@ with sync_playwright() as p:
                     if (r.left < s.right && s.left < r.right && r.top < s.bottom && s.top < r.bottom) out.push(ids[i] + ' and ' + ids[j]);
                   } return out; })()''')
                 for x in hits: bad.append(f'{name}: the {x} buttons overlap')
+                if size == 'laptop' and theme == 'light':      # 1.36.0: every button and link has a name that says what it does (not a bare "Remove" among many)
+                    nameless = pg.evaluate('''(() => {
+                      const generic = new Set(['remove', 'delete', 'edit', 'change', 'go', 'ok', 'open', 'show', 'more', 'here', 'click here', 'rename', 'download', 'add', '']);
+                      const out = [];
+                      for (const el of document.querySelectorAll('main button, main a[href], header button, header a[href]')) {
+                        if (el.closest('[hidden]') || !el.getClientRects().length) continue;
+                        const name = (el.getAttribute('aria-label') || el.getAttribute('title') || el.textContent || '').trim().replace(/\\s+/g, ' ');
+                        if (generic.has(name.toLowerCase())) out.push((el.dataset.act || el.getAttribute('href') || el.className) + ': "' + name + '"');
+                      }
+                      return out.slice(0, 8); })()''')
+                    for x in nameless: bad.append(f'{name}: a control without a telling name ({x})')
                 for e in errs: bad.append(f'{name}: {e}')
                 errs.clear()
             pg.close()

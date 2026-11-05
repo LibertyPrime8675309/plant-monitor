@@ -391,7 +391,7 @@ function libAreasHtml(d) {
       <td><span class="pct-num">${a.total ? `${a.percent}%` : '—'}</span>${a.total ? html`<span class="pct-bar" aria-hidden="true"><i style="width:${Math.min(100, a.percent)}%"></i></span>` : ''}</td>
       <td>${day(a.checked_at)}</td>
       ${owner ? html`<td><div class="row" style="gap:.4rem"><button class="btn small" type="button" data-act="libareaupd" data-id="${a.id}" ${a.state !== 'idle' || !d.online ? raw('disabled') : ''}>Check for updates</button>
-        <button class="btn small ghost" type="button" data-act="libareadel" data-id="${a.id}" data-name="${a.name}">Remove</button></div></td>` : ''}</tr>`)}</tbody></table></div>`
+        <button class="btn small ghost" type="button" data-act="libareadel" data-id="${a.id}" data-name="${a.name}" aria-label="Remove the area ${a.name}">Remove</button></div></td>` : ''}</tr>`)}</tbody></table></div>`
     : html`<p class="muted">No areas yet.${owner ? ' Add one below.' : ' The owner can add them.'}</p>`}
   ${owner && d.running ? html`<p class="row"><button class="btn ghost" type="button" data-act="libareastop">Stop all downloads</button></p>` : ''}
   ${owner ? html`<h3>Add an area</h3>${d.online ? html`<form class="todo-add" data-form="libareafind"><label style="flex:1 1 18rem;font-weight:700">Country, state, county, city or park<input type="text" name="q" placeholder="California" autocomplete="off"></label><button class="btn" type="submit" style="align-self:end">Search</button></form>
@@ -756,7 +756,7 @@ function spWishHtml(d) {
   if (!w) return canChange() ? html`<div class="sp-wish"><button class="btn ghost" type="button" data-act="spwish">Add to my wishlist</button></div>` : '';
   return html`<div class="sp-wish notice" role="note"><p><strong>${w.status === 'got' ? 'On your wishlist: you got it.' : 'On your wishlist.'}</strong> Added by ${w.added_by} on ${when(w.added_at)}.
     ${w.where_seen ? html`Where to find it: ${w.where_seen}.` : ''}</p>${w.notes ? html`<p class="pl">${w.notes}</p>` : ''}
-    <p class="row"><a href="#/wishlist">Open the wishlist</a>${canChange() ? html`<button class="btn ghost small" type="button" data-act="wledit" data-name="${w.name}">Edit</button>` : ''}</p></div>`;
+    <p class="row"><a href="#/wishlist">Open the wishlist</a>${canChange() ? html`<button class="btn ghost small" type="button" data-act="wledit" data-name="${w.name}" aria-label="Edit the wishlist entry for ${w.common_name || w.name}">Edit</button>` : ''}</p></div>`;
 }
 // ---------- 1.23.0: around home (#/around) ----------
 async function viewAround() {
@@ -1059,7 +1059,7 @@ function storeRows(list, cols) {
       <td>${s.error ? html`<span class="bad-text">⚠ ${s.status}</span>` : s.status || (s.enabled ? 'Not checked yet' : 'Off')}${s.checked_at ? html`<br><small class="muted">${when(s.checked_at)}</small>` : ''}</td>
       ${owner ? html`<td><label class="chk"><input type="checkbox" data-act="shopon" data-key="${s.key}" ${s.enabled ? raw('checked') : ''}> On</label>
         ${s.kind !== 'api' ? html`<button class="btn ghost small" type="button" data-act="shopedit" data-key="${s.key}">Change address</button>` : ''}
-        ${s.custom ? html`<button class="btn danger small" type="button" data-act="shoprm" data-key="${s.key}">Remove</button>` : ''}</td>` : ''}</tr>`)}
+        ${s.custom ? html`<button class="btn danger small" type="button" data-act="shoprm" data-key="${s.key}" aria-label="Remove the store ${s.name}">Remove</button>` : ''}</td>` : ''}</tr>`)}
   </tbody></table></div>`;
 }
 let STF = { show: 'all', carries: '' };
@@ -1138,7 +1138,7 @@ async function viewStore(key) {
     <section class="blk" aria-labelledby="st-notes"><h2 id="st-notes">What they had</h2>
       <p class="hint">For notes after you call or visit. Everyone who can open the plant record sees them.</p>
       ${s.notes.length ? html`<ul class="wl-alert-list">${s.notes.map(n => html`<li><strong>${midDay(n.created_at.slice(0, 10))}</strong>, ${n.created_by}: ${n.text}
-        ${can && (owner || n.created_by === me) ? html` <button class="btn ghost small" type="button" data-act="storenoterm" data-id="${n.id}">Remove</button>` : ''}</li>`)}</ul>` : html`<p class="muted">No notes yet.</p>`}
+        ${can && (owner || n.created_by === me) ? html` <button class="btn ghost small" type="button" data-act="storenoterm" data-id="${n.id}" aria-label="Remove this note">Remove</button>` : ''}</li>`)}</ul>` : html`<p class="muted">No notes yet.</p>`}
       ${can ? html`<form data-form="storenote" class="store-note"><label class="f">Add a note<textarea name="text" rows="2" maxlength="1000" required></textarea></label><div class="row"><button class="btn" type="submit">Save the note</button></div></form>` : ''}</section>`,
   };
 }

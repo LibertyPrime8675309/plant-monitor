@@ -51,7 +51,7 @@ async function notifyDialog() {
       <p class="hint">These are your own choices, saved for your sign-in. Cold nights and what is due are for the home you start on.</p></fieldset>
     <fieldset class="opt-group"><legend>Your devices (${d.devices.length})</legend>
       ${d.devices.length ? html`<ul class="ntf-list">${d.devices.map(x => html`<li>${x.device || 'A device'} <small class="muted">since ${when(x.created_at)}${x.last_ok ? `, last message ${when(x.last_ok)}` : ''}${x.fails ? `, ${x.fails} failed` : ''}</small>
-        <button class="btn ghost small" type="button" data-act="pushrm" data-id="${x.id}">Remove</button></li>`)}</ul>` : html`<p class="muted">None yet.</p>`}</fieldset>
+        <button class="btn ghost small" type="button" data-act="pushrm" data-id="${x.id}" aria-label="Remove the device ${x.device}">Remove</button></li>`)}</ul>` : html`<p class="muted">None yet.</p>`}</fieldset>
     <div class="row"><button class="btn" value="ok" autofocus>Done</button></div></form>`;
   const open = document.querySelector('dialog[open] form.ntf-dlg');
   if (open) { open.outerHTML = rend(box); return; }
@@ -79,10 +79,8 @@ document.addEventListener('change', e => {
 });
 
 // ---------- 1.33.0: search everywhere (the magnifier in the top bar, or the / key away from the Plants page: see the shortcuts in ui.js) ----------
-const PAGES_LIST = [['Today', '#/'], ['All plants', '#/plants'], ['Groups', '#/groups'], ['Add plants', '#/new'], ['Mushrooms', '#/fungi'], ['Rooms and spots', '#/where'], ['Photos', '#/photos'],
-  ['Labels', '#/labels'], ['Winter plan', '#/winter'], ['Cold-night checklist', '#/frost'], ['Getting plants ready to come inside', '#/inside'], ['Back outside', '#/outside'], ['Fertilizer', '#/fertilizer'],
-  ['Grow lights', '#/lights'], ['Pots and trays', '#/pots'], ['Weather', '#/weather'], ['Sensors', '#/sensors'], ['Homes and places', '#/weather?sec=places'], ['Identify', '#/identify'], ['Library', '#/library'], ['Around home', '#/around'],
-  ['Wishlist', '#/wishlist'], ['Shopping', '#/shopping'], ['Stores', '#/shopping/stores'], ['Settings', '#/settings'], ['Offline use', '#/offline'], ['Backups', '#/backups'], ['Audit log', '#/history'], ['Needs your decision', '#/decisions']];
+// 1.36.0: the pages are the sections' own lists (core.js SECTIONS), so a page added there is found here too, plus the pages inside Shopping
+const PAGES_LIST = SECTIONS.flatMap(sec => sec[2].map(([k, label, href]) => [label, href])).concat([['Shopping list for a store visit', '#/shopping/list'], ['Stores', '#/shopping/stores']]);
 let SRCH = { t: 0, q: '', seq: 0 };
 function searchDialog() {
   modal(html`<form method="dialog" class="srch-dlg" role="search"><h2>Search</h2>

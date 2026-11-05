@@ -112,14 +112,60 @@ function humBlock(p, cur) {
 }
 // ---------- 1.14.0: about this plant ----------
 const ABOUT_FIELDS = ['growth_habit', 'kingdom', 'taxon_order', 'family', 'genus', 'height_ground', 'width_ground', 'height_pot', 'width_pot', 'growth_rate', 'lifespan',
-  'zone_low', 'zone_high', 'zone_notes', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'pet_safety', 'propagation', 'sources'];
+  'zone_low', 'zone_high', 'zone_notes', 'heat_zone_high', 'heat_zone_low', 'heat_zone_source', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'pet_safety', 'propagation', 'sources'];
 function zoneNum(z) { const m = /^\s*(\d{1,2})\s*([ab])?\s*$/i.exec(String(z || '')); return m ? +m[1] + ((m[2] || '').toLowerCase() === 'b' ? 0.5 : 0) : null; }
+// ---------- 1.36.0: summer heat (AHS heat zones) under About this plant, grown from prototype #33 ----------
+let HEATV = null;
+const HEAT_CACHE = new Map();         // `${place}|${above}` -> {at, data}
+const MONTH_FULL = { Jan: 'January', Feb: 'February', Mar: 'March', Apr: 'April', May: 'May', Jun: 'June', Jul: 'July', Aug: 'August', Sep: 'September', Oct: 'October', Nov: 'November', Dec: 'December' };
+function andList(a) { return a.length < 2 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+function heatMonths(ms) {               // ['Jun','Jul','Aug','Sep'] -> 'June to September'; gaps -> 'May, July and August'
+  const all = Object.keys(MONTH_FULL), idx = ms.map(m => all.indexOf(m.month));
+  const run = idx.every((v, i) => !i || v === idx[i - 1] + 1);
+  return run && ms.length > 2 ? `${MONTH_FULL[ms[0].month]} to ${MONTH_FULL[ms[ms.length - 1].month]}` : andList(ms.map(m => MONTH_FULL[m.month]));
+}
+async function loadHeat(p) {
+  const above = has(p.temp_damage_above) ? +p.temp_damage_above : '', key = `${PLACE || ''}|${above}`, hit = HEAT_CACHE.get(key);
+  if (hit && Date.now() - hit.at < 10 * 60e3) return hit.data;
+  try { const H = await api('GET', '/api/heat' + (above !== '' ? '?above=' + above : '')); HEAT_CACHE.set(key, { at: Date.now(), data: H }); return H; }
+  catch (e) { return null; }
+}
+function heatVerdict(p, H) {
+  const T = H.above, n = H.reach, where = p.site === 'Indoors' || p.site === 'Garage or shed' ? ` It is ${p.site === 'Indoors' ? 'indoors' : 'in the garage or shed'} now, so this matters when it goes outside.` : '';
+  if (T == null || n == null) return '';
+  const when = (H.hot_months || []).length ? `, mostly in ${heatMonths(H.hot_months)}` : '';
+  const days = x => x < 1 ? 'Less than 1 day' : `About ${Math.round(x)} day${Math.round(x) === 1 ? '' : 's'}`;
+  if (H.level === 'fine') return html`<p class="nowstate v-ok"><strong>✓ Summer heat is fine for it here.</strong> A usual summer's hottest day, about ${H.hottest}°F, stays below the ${T}°F where its leaves start to scorch.${where}</p>`;
+  if (H.level === 'few') return html`<p class="nowstate v-hot"><strong>▲ A few days a summer are too hot for it.</strong> ${days(n)} a year reach ${T}°F or more, where its leaves can scorch${when}. Move it into afternoon shade when the forecast is that hot.${where}</p>`;
+  return html`<p class="nowstate v-damage"><strong>■ Summer heat is hard on it here.</strong> ${days(n)} a year reach ${T}°F or more, where its leaves can scorch${when}. Keep it in afternoon shade, or bring it inside, through those months.${where}</p>`;
+}
+function heatRange(p, H) {             // the AHS heat zones the plant is listed for, against the zone here
+  const hi = has(p.heat_zone_high) ? +p.heat_zone_high : null, lo = has(p.heat_zone_low) ? +p.heat_zone_low : null;
+  if (hi == null || lo == null) return html`<p class="muted">No published AHS heat zone range for this plant yet. You can add one with Edit, under About this plant.</p>`;
+  const top = Math.max(hi, lo), bot = Math.min(hi, lo), src = String(p.heat_zone_source || ''), i = src.lastIndexOf('|');
+  const t = i > 0 ? src.slice(0, i).trim() : src.trim(), u = i > 0 ? src.slice(i + 1).trim() : '';
+  const from = !src.trim() ? '' : /^https?:\/\//.test(u) ? html` (from <a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>)` : html` (from ${t})`;
+  const listed = html`It is listed for <strong>AHS heat zones ${top} to ${bot}</strong>${from}.`;
+  if (H.zone == null) return html`<p>${listed}</p>`;
+  if (H.zone > top) return html`<p class="nowstate v-damage"><strong>■ ${H.place} is hotter than its heat zones.</strong> ${listed} Here is zone ${H.zone}, so expect it to struggle through the summer unless it gets shade, extra water or a cooler spot.</p>`;
+  if (H.zone < bot) return html`<p class="nowstate v-cool"><strong>▼ Summers here are cooler than its heat zones.</strong> ${listed} Here is zone ${H.zone}, so it may grow or flower less than it would somewhere hotter.</p>`;
+  return html`<p class="nowstate v-ok"><strong>✓ ${H.place} is within its heat zones.</strong> ${listed} Here is zone ${H.zone}.</p>`;
+}
+function heatBlock(p, H) {
+  const head = html`<h3>Summer heat (AHS heat zones)</h3>`;
+  if (!H) return '';
+  if (H.zone == null) return html`${head}<p class="muted">Not enough weather history yet. Once ${H.place} has 3 whole years of weather, this says how many hot days a usual year has and what that means for this plant. <a href="#/weather">Load the weather history on the Weather page</a>.</p>${heatRange(p, H)}`;
+  return html`${head}<p>Where you are: over the last ${H.years} years at ${H.place}, an average of ${H.over86} days a year went above ${H.line}°F, which is <strong>heat zone ${H.zone}</strong>
+      on the American Horticultural Society's scale of 1 (cool summers) to 12 (very hot). A usual year's hottest day is about ${H.hottest}°F. <a href="#/weather">The Weather page</a> has each year's count.</p>
+    ${heatVerdict(p, H)}${heatRange(p, H)}
+    <p class="hint">${H.line}°F is where many plants start to suffer from heat. The highs are air temperatures in the shade from the weather history; in full sun, leaves and dark pots get hotter.${has(p.temp_damage_above) ? '' : ' This plant has no "Heat damage above" temperature yet (Edit, under Temperature), so there is no verdict for it.'}</p>`;
+}
 function zoneHere(p) {
   const Z = META && META.zone, lo = zoneNum(p.zone_low), here = !Z ? null : Z.zone ? zoneNum(Z.zone) : zoneNum(String(Z.map_zone || '').split(' ')[0]);   // no weather history yet: the colder end of the map zone
   const where = html`${Z && Z.zone ? html`<p>Where you are: the last ${Z.years} winters of weather at ${placeName()} averaged a coldest night of ${Z.winter_low}°F, which is <strong>zone ${Z.zone}</strong>.${Z.map_note ? ' ' + Z.map_note : ''} <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>`
     : Z && Z.map_zone ? html`<p>Where you are: zone ${Z.map_zone} on the 2023 USDA map. <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>` : ''}`;
-  // 1.34.0: summer heat next to winter cold, from the same weather history
-  const H = META && META.heat, summer = H && H.zone ? html`<p>Summer here: a usual year has ${H.over86} days above ${H.line}°F, <strong>AHS heat zone ${H.zone}</strong> of 12, with the hottest day about ${H.hottest}°F. If this plant's tag gives a heat zone range, compare it with ${H.zone}; <a href="#/weather">the Weather page</a> has each year's count.</p>` : '';
+  // 1.34.0: summer heat next to winter cold, from the same weather history; 1.36.0: the whole verdict for this plant (heatBlock)
+  const summer = heatBlock(p, HEATV);
   if (lo == null || here == null) return html`${where}${summer}`;
   const ok = here >= lo, gap = Math.round((lo - here) * 2);
   return html`${where}<p class="nowstate ${ok ? 'v-ok' : 'v-cool'}"><strong>${ok ? '✓ Hardy here.' : '▼ Not hardy here.'}</strong> ${ok ? 'It can stay outside through a usual winter, though a rare hard freeze can still hurt it.'
@@ -139,7 +185,7 @@ function aboutBlock(p) {
       ${row('Species', p.scientific_name)}${row('Growth rate', p.growth_rate)}${row('Lifespan', p.lifespan)}</dl>
     ${size.length ? html`<h3>Mature size</h3><div class="tbl-wrap"><table class="tbl"><thead><tr><th scope="col">Where</th><th scope="col">Height</th><th scope="col">Width</th></tr></thead>
       <tbody>${size.map(r => html`<tr><th scope="row">${r[0]}</th><td>${r[1] || ''}</td><td>${r[2] || ''}</td></tr>`)}</tbody></table></div>` : ''}
-    ${zones || p.zone_notes ? html`<h3>Hardiness zones (USDA)</h3>${zones ? html`<p><strong>${zones}.</strong></p>` : ''}${paras(p.zone_notes)}${zoneHere(p)}` : ''}
+    ${zones || p.zone_notes ? html`<h3>Hardiness zones (USDA)</h3>${zones ? html`<p><strong>${zones}.</strong></p>` : ''}${paras(p.zone_notes)}${zoneHere(p)}` : heatBlock(p, HEATV)}
     ${p.native_range ? html`<h3>Native range</h3>${paras(p.native_range)}` : ''}
     ${p.conservation_status ? html`<h3>Conservation status</h3>${paras(p.conservation_status)}` : ''}
     ${p.invasive ? html`<h3>Invasive risk</h3>${paras(p.invasive)}` : ''}
@@ -362,12 +408,33 @@ function tlCompare(D) {
   return html`<h3>Compare two photos</h3><p class="muted">The oldest and the newest photo, side by side. Pick others to compare.</p>
     <div class="tl-pick">${opt(a, 'a')}${opt(b, 'b')}</div><div class="tl-cmp">${fig(a)}${fig(b)}</div>`;
 }
+// ---------- 1.36.0: the soil moisture over the last 60 days, from the sensor in the pot, with the waterings marked ----------
+let SNSDAYS = null;
+function moistureChart(D) {
+  if (!D || !D.sensors.length) return '';
+  const S = D.sensors[0], days = [], d0 = new Date(D.start + 'T00:00:00'), d1 = new Date(D.end + 'T00:00:00');
+  for (let d = new Date(d0); d <= d1; d.setDate(d.getDate() + 1)) days.push(d.toISOString().slice(0, 10));
+  const by = Object.fromEntries(S.days.map(x => [x.d, x])), W = 640, H = 150, L = 34, R = 8, T = 10, B = 26;
+  const x = i => L + i / Math.max(1, days.length - 1) * (W - L - R), y = v => T + (100 - v) / 100 * (H - T - B);
+  let path = '';
+  days.forEach((d, i) => { const v = by[d]; if (!v) return; path += (path ? ' L' : 'M') + x(i).toFixed(1) + ' ' + y(v.avg).toFixed(1); });
+  const [lo, hi] = D.range || [], band = lo != null && hi != null ? html`<rect x="${L}" y="${y(hi).toFixed(1)}" width="${W - L - R}" height="${(y(lo) - y(hi)).toFixed(1)}" class="sns-band"/>` : '';
+  const wset = new Set(D.waterings), marks = days.map((d, i) => wset.has(d) ? html`<g><line x1="${x(i).toFixed(1)}" x2="${x(i).toFixed(1)}" y1="${T}" y2="${H - B}" class="mc-water"/><text x="${x(i).toFixed(1)}" y="${H - B + 14}" text-anchor="middle" class="mc-lbl">▲</text></g>` : '');
+  const ticks = [0, 25, 50, 75, 100].map(v => html`<g><line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" class="mc-grid"/><text x="${L - 4}" y="${(y(v) + 4).toFixed(1)}" text-anchor="end" class="mc-lbl">${v}</text></g>`);
+  const first = days.findIndex(d => by[d]), lastD = S.days[S.days.length - 1];
+  const words = `Soil moisture from ${S.name} over the last ${days.length} days: ${S.days.length} days with readings, lowest ${Math.min(...S.days.map(z => z.min))}%, highest ${Math.max(...S.days.map(z => z.max))}%, now ${lastD.avg}%. ${D.waterings.length} watering${D.waterings.length === 1 ? '' : 's'} marked.`;
+  return html`<h3>Soil moisture, last ${days.length} days</h3>
+    <svg class="mchart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${words}">${band}${ticks}${marks}<path d="${path}" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linejoin="round"/>
+      <text x="${L}" y="${H - 2}" class="mc-lbl">${tlShort(D.start)}</text><text x="${W - R}" y="${H - 2}" text-anchor="end" class="mc-lbl">${tlShort(D.end)}</text></svg>
+    <p class="hint">${words} ▲ marks a watering (pressed, or seen by the sensor)${lo != null && hi != null ? `; the shaded band is this plant's range, ${lo} to ${hi}%` : ''}. <a href="#/sensors">Your sensors</a>.</p>`;
+}
 function tlRender() {
   const box = document.getElementById('tl-box'), D = TL.data; if (!box || !D) return;
   const ev = D.events.filter(e => !TL.hide.has(e.kind));
   const days = []; ev.forEach(e => { const d = tlDay(e.at); if (!days.length || days[days.length - 1].d !== d) days.push({ d, items: [] }); days[days.length - 1].items.push(e); });
   const trend = [tlTrend(D.health, D.current.health, 'Health', h => HEALTH_ORDER[h] ?? -1), tlTrend(D.confidence, D.current.id_confidence, 'ID confidence', n => +n)].filter(Boolean);
   box.innerHTML = rend(html`${trend.length ? html`<ul class="tl-trend">${trend}</ul>` : ''}
+    ${moistureChart(SNSDAYS)}
     ${tlCompare(D)}
     <h3>Everything that has happened</h3>
     <fieldset class="tl-filter"><legend>Show</legend>${TL_KINDS.map(([k, w]) => html`<label class="chk"><input type="checkbox" data-act="tlkind" value="${k}" ${TL.hide.has(k) ? '' : raw('checked')}>${w}</label>`)}</fieldset>
@@ -480,6 +547,8 @@ function plantEdHtml(p) {
 async function viewPlant(code) {
   const [p, h, cur, st] = await Promise.all([api('GET', '/api/plants/' + enc(code)), api('GET', '/api/plants/' + enc(code) + '/history'), loadCond(), api('GET', '/api/settings').catch(() => ({}))]);
   CUR = { p, h, base: st.base_url || location.origin };
+  HEATV = await loadHeat(p);                     // 1.36.0: the summer heat for this plant (cached for 10 minutes per place and temperature)
+  SNSDAYS = await api('GET', '/api/sensors/days?days=60&plant=' + enc(code)).catch(() => null);   // 1.36.0: the soil moisture day by day, for the timeline and the calendar
   PIDX = KEEP != null ? KEEP : Math.max(0, p.photos.findIndex(x => x.is_primary));
   KEEP = null;
   const archived = p.status === 'archived';
@@ -541,7 +610,7 @@ async function viewPlant(code) {
           ${lines(p.winter_steps).length ? html`<h3>Steps</h3>${ol(p.winter_steps)}` : ''}
           ${lines(p.indoor_setup).length ? html`<h3>Keeping it comfortable when the weather cannot</h3>${ul(p.indoor_setup)}` : ''}</section>
 
-        <section class="blk" id="inside"><h2>Getting ready to come inside</h2><div id="prep-box" data-code="${p.code}"><p class="loading">Loading the pest check plan</p></div></section>
+        <section class="blk" id="inside"><h2>Getting ready to come inside</h2><p class="row noprint"><a class="btn small ghost" href="#/inside">Every plant coming inside, with its status</a></p><div id="prep-box" data-code="${p.code}"><p class="loading">Loading the pest check plan</p></div></section>
 
         <section class="blk" id="health"><h2>Health</h2>
           <p>${healthTag(p.health_rating)}</p>${paras(p.health_summary)}

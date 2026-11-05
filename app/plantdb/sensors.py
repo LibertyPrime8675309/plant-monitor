@@ -23,7 +23,7 @@ SENSOR_WATER_HOURS = 3
 SENSOR_SCHEMA = """
 CREATE TABLE IF NOT EXISTS sensor_devices(device TEXT PRIMARY KEY, name TEXT NOT NULL DEFAULT '',
   plant_id INTEGER REFERENCES plants(id) ON DELETE SET NULL, spot_id INTEGER, area_id INTEGER, quiet_hours INTEGER NOT NULL DEFAULT 3,
-  auto_water INTEGER NOT NULL DEFAULT 1, updated_by TEXT, updated_at TEXT);
+  auto_water INTEGER NOT NULL DEFAULT 1, cal_dry REAL, cal_wet REAL, updated_by TEXT, updated_at TEXT);
 """
 
 def sensor_judge(key, v, lo, hi, p=None):
@@ -105,6 +105,7 @@ def sensor_card(c, dev, conf, now_t, full=True):
             'quiet_hours': quiet_h, 'quiet': quiet, 'auto_water': bool(conf['auto_water']) if conf else True,
             'plant': {'code': p['code'], 'common_name': p['common_name'], 'site': p['site'], 'status': p['status']} if p is not None else None,
             'place': sensor_place(c, conf), 'metrics': metrics, 'dli': dli, 'needs_look': bool(alerts),
+            'raw': bool(c.execute(f'SELECT 1 FROM readings WHERE {sw} AND soil_raw IS NOT NULL LIMIT 1', (dev,)).fetchone()), 'calibrated': bool(conf and conf['cal_dry'] is not None and conf['cal_wet'] is not None),
             'words': ('Quiet: last heard ' + ago_words(mins) + '. Check its battery, power or Wi-Fi.') if quiet and mins is not None else 'Quiet: nothing received yet.' if quiet else
                      ('Needs a look: ' + ', '.join((x['judge']['word'].lower() + ' ' + (x.get('label') or 'daily light').lower()) for x in alerts) + '.') if alerts else 'All in range.' if p is not None else 'Sending.'}
 
@@ -130,6 +131,32 @@ def sensors_summary(c):
     cards = [sensor_card(c, d, conf.get(d), t, full=False) for d in devs]
     return {'n': len(cards), 'look': sum(1 for s in cards if s['needs_look']), 'quiet': sum(1 for s in cards if s['quiet']),
             'cards': [{'device': s['device'], 'name': s['name'], 'words': s['words'], 'needs_look': s['needs_look'], 'quiet': s['quiet'], 'plant': s['plant']} for s in cards if s['needs_look'] or s['quiet']]}
+
+@app.route('/api/sensors/days')
+def sensors_days():
+    """1.36.0: for a plant's timeline and calendar: the soil moisture of the sensor in its pot, day by day (local days), with
+    the plant's waterings in the same span. ?plant=CODE&days=60."""
+    c = db()
+    p = plant_row(c, request.args.get('plant', ''))
+    try: days = max(7, min(int(request.args.get('days', 60)), 400))
+    except ValueError: abort(400, 'days must be a whole number')
+    cf = c.execute('SELECT * FROM sensor_devices WHERE plant_id=? ORDER BY updated_at DESC', (p['id'],)).fetchall()
+    tz = tzinfo(location(c)['tz']); today = local_today(c)
+    start = (today - timedelta(days=days - 1)).isoformat()
+    water = [r[0] for r in c.execute("SELECT done_on FROM care_log WHERE plant_code=? AND kind='water' AND done_on>=? ORDER BY done_on", (p['code'], start))]
+    out = {'code': p['code'], 'start': start, 'end': today.isoformat(), 'waterings': water, 'range': [p['soil_moisture_low'], p['soil_moisture_high']], 'sensors': []}
+    for conf in cf:
+        rows = c.execute("SELECT ts, soil_moisture FROM readings WHERE source='sensor' AND device=? AND soil_moisture IS NOT NULL AND ts>=? ORDER BY ts",
+                         (conf['device'], (datetime.combine(today - timedelta(days=days), datetime.min.time(), tz) - timedelta(days=1)).astimezone(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ'))).fetchall()
+        if not rows: continue
+        by = {}
+        for ts, v in rows:
+            d = parse_ts(ts).astimezone(tz).date().isoformat()
+            if d < start: continue
+            x = by.setdefault(d, [0.0, 0, v, v]); x[0] += v; x[1] += 1; x[2] = min(x[2], v); x[3] = max(x[3], v)
+        out['sensors'].append({'device': conf['device'], 'name': conf['name'] or conf['device'],
+                               'days': [{'d': d, 'avg': round(x[0] / x[1], 1), 'min': round(x[2], 1), 'max': round(x[3], 1)} for d, x in sorted(by.items())]})
+    return jsonify(out)
 
 @app.route('/api/sensors/summary')
 def sensors_summary_api():
@@ -193,6 +220,33 @@ def sensor_save(device):
     c.commit()
     return jsonify(ok=True)
 
+@app.route('/api/sensors/<path:device>/calibrate', methods=['GET', 'POST'])
+def sensor_calibrate(device):
+    """1.36.0: calibrate a soil probe in the app. GET: the newest raw volts and the two numbers saved. POST {step: 'dry' | 'wet' | 'clear'}:
+    takes the newest raw reading (under 20 minutes old) as dry air or water; 'clear' forgets both."""
+    c = db()
+    dev = re.sub(r'[^\w .\-@]', '', device)[:40]
+    cf = c.execute('SELECT * FROM sensor_devices WHERE device=?', (dev,)).fetchone()
+    raw = c.execute("SELECT soil_raw, ts FROM readings WHERE source='sensor' AND device=? AND soil_raw IS NOT NULL ORDER BY ts DESC LIMIT 1", (dev,)).fetchone()
+    if not cf and not raw: abort(404, 'no sensor by that name has sent a reading')
+    if request.method == 'POST':
+        step = (request.get_json(silent=True) or {}).get('step')
+        if step not in ('dry', 'wet', 'clear'): abort(400, 'step must be dry, wet or clear')
+        if step != 'clear':
+            if not raw: abort(400, 'This sensor has not sent its raw probe volts (soil_raw) yet.')
+            if time.time() - parse_ts(raw['ts']).timestamp() > 20 * 60: abort(400, f'The newest raw reading is from {ago_words(round((time.time() - parse_ts(raw["ts"]).timestamp()) / 60))}; wait for a fresh one.')
+        if not cf:
+            c.execute('INSERT INTO sensor_devices(device,name,quiet_hours,updated_by,updated_at) VALUES(?,?,?,?,?)', (dev, '', SENSOR_QUIET_DEFAULT, editor(), now()))
+        if step == 'clear': c.execute('UPDATE sensor_devices SET cal_dry=NULL, cal_wet=NULL, updated_by=?, updated_at=? WHERE device=?', (editor(), now(), dev))
+        else: c.execute(f"UPDATE sensor_devices SET cal_{step}=?, updated_by=?, updated_at=? WHERE device=?", (raw['soil_raw'], editor(), now(), dev))
+        cf = c.execute('SELECT * FROM sensor_devices WHERE device=?', (dev,)).fetchone()
+        if cf['cal_dry'] is not None and cf['cal_wet'] is not None: sensor_apply_cal(c, dev, cf)
+        audit_only(c, 'setting', 'sensor:' + dev, None, f"dry {cf['cal_dry']}, wet {cf['cal_wet']}", editor(), f'Soil probe "{cf["name"] or dev}" calibrated: ' + ('cleared' if step == 'clear' else step))
+        c.commit()
+    return jsonify(device=dev, raw=raw['soil_raw'] if raw else None, raw_at=raw['ts'] if raw else None, raw_minutes=round((time.time() - parse_ts(raw['ts']).timestamp()) / 60) if raw else None,
+                   cal_dry=cf['cal_dry'] if cf else None, cal_wet=cf['cal_wet'] if cf else None,
+                   done=bool(cf and cf['cal_dry'] is not None and cf['cal_wet'] is not None))
+
 @app.route('/api/sensors/<path:device>', methods=['DELETE'])
 def sensor_forget(device):
     """Owner: forget a sensor's set-up and its readings (for a probe that was retired or renamed)."""
@@ -205,12 +259,22 @@ def sensor_forget(device):
     return jsonify(ok=True, removed=n)
 
 # ---- the watering tie-in: a jump in soil moisture means the pot was watered
+def sensor_apply_cal(c, dev, cf, since=None):
+    """1.36.0: a probe calibrated in the app: its raw volts become soil moisture (dry air = 0 %, water = 100 %)."""
+    if not cf or cf['cal_dry'] is None or cf['cal_wet'] is None or cf['cal_dry'] == cf['cal_wet']: return
+    dry, wet = cf['cal_dry'], cf['cal_wet']
+    c.execute("""UPDATE readings SET soil_moisture = MAX(0, MIN(100, ROUND((? - soil_raw) / (? - ?) * 100, 1)))
+                 WHERE source='sensor' AND device=? AND soil_raw IS NOT NULL""" + (' AND ts>=?' if since else ''), (dry, dry, wet, dev) + ((since,) if since else ()))
+
 def sensor_after_readings(c, rows):
-    """Called after readings arrive. For a sensor in a plant's pot with auto_water on: when the soil moisture rose by
-    SENSOR_WATER_JUMP points or more within SENSOR_WATER_HOURS, log a watering for today (once a day, like the button)."""
-    devs = {r['device'] for r in rows if r.get('soil_moisture') is not None}
-    if not devs: return
+    """Called after readings arrive. A calibrated probe's raw volts become soil moisture first. Then, for a sensor in a
+    plant's pot with auto_water on: when the soil moisture rose by SENSOR_WATER_JUMP points or more within
+    SENSOR_WATER_HOURS, log a watering for today (once a day, like the button)."""
     conf = sensor_confs(c)
+    for dev in {r['device'] for r in rows if r.get('soil_raw') is not None}:
+        sensor_apply_cal(c, dev, conf.get(dev), min(r['ts'] for r in rows if r['device'] == dev))
+    devs = {r['device'] for r in rows if r.get('soil_moisture') is not None or r.get('soil_raw') is not None}
+    if not devs: return
     for dev in devs:
         cf = conf.get(dev)
         if not cf or not cf['plant_id'] or not cf['auto_water']: continue

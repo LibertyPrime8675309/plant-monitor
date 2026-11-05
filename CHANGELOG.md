@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.36.0 (2026-11-05)
+- **Every page in its section's row:** the cold-night checklist, Coming inside and Back outside under Care; Around home under Discover; Offline decisions under Settings. Plant pages, plant cards and Today lead to Coming inside as well. The search window lists the same pages. (Ethan, November 4: "Getting plants ready to come inside" was only reachable from a button on the Winter plan.)
+- **Summer heat for each plant** (About this plant): a verdict from the plant's heat-damage temperature and the weather history, and its AHS heat zone range against yours (batch B6 adds ranges with sources for 20 plants). "Summer here" filter on the Plants page; counts on the Weather page.
+- **Calibrate the soil probe** in the app: dry air, then a glass of water; the app then works out the moisture from the probe's volts.
+- **Soil moisture on the plant's page:** the last 60 days drawn on the Timeline with the waterings marked; each day's average on the fertilizer calendar.
+- **Health of the app** card on Settings: version, backups and their copies, weather and store checks, problems, disk space.
+- **Clear the saved pages** on the Offline page.
+- Every Remove, Change, Delete and Download button says what it acts on; the smoke test checks for bare names.
+
 ## 1.35.0 (2026-11-04)
 - **Your sensors** (Weather → Sensors): one card per sensor with its newest values in large type (soil moisture, air and root-zone temperature, humidity, light, soil pH, pot weight), a small line of the last 24 hours for each, and the day's lowest and highest. Name a sensor, say where it sits (a room or spot) and which plant's pot it is in: its values are then compared with that plant's ranges, in words with a mark (✓ In range, ↓ Dry, ! Too cold…), on the Sensors page and under Water and soil on the plant's page. A sensor that stops sending says Quiet.
 - **Today** lists the sensors that need a look or have gone quiet.

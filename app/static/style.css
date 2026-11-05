@@ -1610,3 +1610,23 @@ html:is([data-narrow="1"],[data-topcompact="1"]) :is(.srch-btn .srch-l,.place-bt
 .sns-plant{margin:.4rem 0 1rem}
 .sns-plant .sns-card{max-width:40rem}
 html[data-role=viewer] :is([data-act=snsedit],[data-act=snsrm]){display:none!important}
+/* 1.36.0: summer heat under About this plant, and the counts on the Weather page */
+.heat-counts li{margin:.3rem 0}
+.v-hot{border-left-color:var(--ochre)}
+.cal-steps li{margin:.4rem 0}
+.cal-now{font-size:1.15em}
+html[data-role=viewer] :is([data-act=snscal],[data-act=calstep]){display:none!important}
+/* 1.36.0: the soil moisture chart on a plant's timeline, and the calendar badges */
+.mchart{width:100%;max-width:44rem;height:auto;color:var(--ink);display:block;margin:.4rem 0}
+.mc-grid{stroke:var(--line);stroke-width:1}
+.mc-lbl{font-size:11px;fill:var(--ink-2)}
+.mc-water{stroke:var(--cyan);stroke-width:2;stroke-dasharray:3 3}
+.bd.b-soil{font-weight:400;color:var(--ink)}
+.bd.b-water{color:var(--cyan)}
+.card-link{margin:.2rem 0 .3rem;font-size:.95em;position:relative;z-index:2}
+/* 1.36.0: the Health of the app card on Settings */
+.set-health{grid-column:1/-1}
+.hl{list-style:none;padding:0;margin:.3rem 0 .6rem;display:grid;gap:.3rem}
+.hl li{padding-left:1.6em;text-indent:-1.6em}
+.hl li>span{display:inline-block;width:1.6em;text-indent:0;font-weight:700}
+.hl-bad>span{color:var(--madder)} .hl-ok>span{color:var(--moss)}

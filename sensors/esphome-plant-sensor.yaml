@@ -53,8 +53,16 @@ one_wire:
     pin: GPIO4
 
 sensor:
-  # Soil moisture: the probe gives about 2.9 V in dry air and 1.3 V in water on 3.3 V boards. The two numbers below turn
-  # that into 0 to 100 %. Calibrate once: note the raw voltage in dry air (0 %) and in a glass of water (100 %).
+  # Soil moisture. The probe's raw volts (about 2.9 V in dry air and 1.3 V in water on 3.3 V boards) are sent as well, so you
+  # can calibrate in the app: Sensors -> Calibrate the soil probe (dry air, then a glass of water). Once calibrated, the app
+  # works out the percentage itself and the two numbers under calibrate_linear no longer matter.
+  - platform: adc
+    pin: GPIO34
+    name: "Soil probe volts"
+    id: soil_raw
+    attenuation: 11db
+    update_interval: ${every}
+    accuracy_decimals: 2
   - platform: adc
     pin: GPIO34
     name: "Soil moisture"
@@ -117,6 +125,7 @@ interval:
           json: |-
             root["device"] = "${device}";
             if (!std::isnan(id(soil).state)) root["soil_moisture"] = id(soil).state;
+            if (!std::isnan(id(soil_raw).state)) root["soil_raw"] = id(soil_raw).state;
             if (!std::isnan(id(air_c).state)) root["temp_c"] = id(air_c).state;
             if (!std::isnan(id(hum).state)) root["humidity"] = id(hum).state;
             if (!std::isnan(id(lux).state)) root["lux"] = id(lux).state;

@@ -50,7 +50,7 @@ async function loadCarePlant() {
   box.innerHTML = rend(html`<div class="verdict-box v-${w && w.state === 'due' ? 'due' : 'wait'}" role="status"><h3>Watering</h3><p>${w ? waterWords(w) : ''}</p>
       <p class="hint">Change the gap with "Check for water every (days)" in Edit this page. Rain of ${W.rain_counts_in} in or more counts as a watering for plants whose Location is Outdoors.</p></div>
     <h3>Care log</h3>${log.length ? html`<ul class="care-log">${log.map(e => html`<li><strong>${CARE_WORD[e.kind] || e.kind}</strong> ${relDay(e.done_on)}${e.note ? ': ' + e.note : ''} <span class="muted">(${e.created_by})</span>
-      <button class="btn small ghost noprint" type="button" data-act="caredel" data-id="${e.id}" data-what="${(CARE_WORD[e.kind] || e.kind) + ' ' + relDay(e.done_on)}">Remove</button></li>`)}</ul>`
+      <button class="btn small ghost noprint" type="button" data-act="caredel" data-id="${e.id}" data-what="${(CARE_WORD[e.kind] || e.kind) + ' ' + relDay(e.done_on)}" aria-label="Remove: ${(CARE_WORD[e.kind] || e.kind)} ${relDay(e.done_on)}">Remove</button></li>`)}</ul>`
       : html`<p class="muted">Nothing logged yet. Use the buttons near the top of the page.</p>`}`);
 }
 async function careDialog(code, name) {
@@ -252,7 +252,7 @@ function todayPrep(PR, t) {
   const say = ['todo', 'doing', 'ready', 'apart'].filter(k => c[k]).map(k => `${c[k]} ${w[k].toLowerCase()}`).join(', ');
   const row = (p, words, btns) => jobRow({ code: p.code, common_name: p.name, photo: p.photo }, words, btns);
   return html`<section class="blk" id="today-inside"><h2>Getting ready to come inside (${again.length + free.length})</h2>
-    <p>${PR.plants.length} coming inside${say ? ': ' + say : ''}. <a href="#/inside">Open the list</a></p>
+    <p>${PR.plants.length} coming inside${say ? ': ' + say : ''}.</p><p><a class="btn small ghost" href="#/inside">Open the Coming inside page</a></p>
     ${again.length ? html`<ul class="jobs">${again.map(({ p, m }) => row(p, html`${m.title}, round ${m.done.length + 1}. The last round was ${relDay(m.done[m.done.length - 1])}.`,
       html`<button class="btn small" type="button" data-act="prepdone" data-code="${p.code}" data-k="${m.key}" aria-label="${p.name}: ${m.title.toLowerCase()} done today">Done today</button>`))}</ul>` : ''}
     ${free.length ? html`<ul class="jobs">${free.map(p => row(p, 'Its 3 weeks apart end today. If you have seen no pests, it can join your other houseplants.', html`<a class="btn small ghost" href="#/plant/${enc(p.code)}">Open its page</a>`))}</ul>` : ''}
@@ -584,7 +584,7 @@ function entryRows(list, plantsByCode, showPlant) {
   return html`<div class="tbl-wrap"><table class="tbl"><caption class="sr">Fertilizer entries</caption><thead><tr><th>Date</th>${showPlant ? html`<th>Plant</th>` : ''}<th>Fertilizer</th><th>N-P-K</th><th>Amount</th><th class="num">About ppm N</th><th>How</th><th class="noprint"><span class="sr">Actions</span></th></tr></thead><tbody>
     ${list.map(e => html`<tr><th scope="row">${midDay(e.applied_on)}</th>${showPlant ? html`<td><a href="#/plant/${enc(e.plant_code)}">${(plantsByCode[e.plant_code] || {}).common_name || e.plant_code}</a></td>` : ''}
       <td>${e.product}${e.note ? html`<div class="hint">${e.note}</div>` : ''}</td><td>${npkText(e)}</td><td>${doseText(e)}</td><td class="num">${e.ppm_n == null ? '' : fmt(e.ppm_n, 0)}</td><td>${e.method}</td>
-      <td class="noprint"><button class="btn ghost small" type="button" data-act="fertedit" data-id="${e.id}">Change</button> <button class="btn danger small" type="button" data-act="fertdel" data-id="${e.id}">Remove</button></td></tr>`)}</tbody></table></div>`;
+      <td class="noprint"><button class="btn ghost small" type="button" data-act="fertedit" data-id="${e.id}" aria-label="Change the feeding on ${e.applied_on}">Change</button> <button class="btn danger small" type="button" data-act="fertdel" data-id="${e.id}" aria-label="Remove the feeding on ${e.applied_on}">Remove</button></td></tr>`)}</tbody></table></div>`;
 }
 
 // ---------- what each plant needs, and the closest fertilizer you have (1.11.0) ----------
@@ -621,7 +621,7 @@ function productsBlock() {
       ${P.map((x, i) => html`<tr><th scope="row">${x.product}${x.note ? html`<div class="hint">${x.note}</div>` : ''}</th>
         <td>${npkText(x)}${ratioText(x.n, x.p, x.k) ? html`<div class="hint">ratio ${ratioText(x.n, x.p, x.k)}</div>` : ''}</td><td>${x.form}</td>
         <td>${x.last_used ? html`${midDay(x.last_used)}<div class="hint">${doseText(x)}${x.uses > 1 ? `, ${x.uses} times in all` : ''}</div>` : html`<span class="muted">Not used yet</span>`}</td>
-        <td class="noprint"><div class="row" style="gap:.4rem"><button class="btn ghost small" type="button" data-act="fzedit" data-i="${i}">Change</button>${x.saved ? html`<button class="btn danger small" type="button" data-act="fzdel" data-i="${i}">Remove</button>` : ''}</div></td></tr>`)}</tbody></table></div>
+        <td class="noprint"><div class="row" style="gap:.4rem"><button class="btn ghost small" type="button" data-act="fzedit" data-i="${i}" aria-label="Change the fertilizer ${x.product}">Change</button>${x.saved ? html`<button class="btn danger small" type="button" data-act="fzdel" data-i="${i}" aria-label="Remove the fertilizer ${x.product}">Remove</button>` : ''}</div></td></tr>`)}</tbody></table></div>
       <p class="hint">Amounts aim for about 150 ppm of the strongest of N, P and K at full strength, 75 at half and 40 at a quarter, which is a usual rate for plants in pots. If the label says to use less, use the label.</p>`
     : html`<p class="muted">None yet.</p>`}`;
 }
@@ -655,7 +655,7 @@ async function productDialog(x) {
 // ---------- fertilizer panel on a plant page ----------
 function fertCfgPlant(p) {
   return {
-    legend: html`Shaded green days are in this plant's feeding season. Hatched days are its resting season: do not fertilize. "Fed" marks a feeding you logged and "Due" the next one this page suggests.`,
+    legend: html`Shaded green days are in this plant's feeding season. Hatched days are its resting season: do not fertilize. "Fed" marks a feeding you logged and "Due" the next one this page suggests.${typeof SNSDAYS !== 'undefined' && SNSDAYS && SNSDAYS.code === p.code && SNSDAYS.sensors.length ? ' "Soil" is the day\'s average soil moisture from the sensor in its pot, and "Watered" a watering (pressed, or seen by the sensor).' : ''}`,
     cell(ds, c) {
       const es = entriesFor(p.code), fed = es.filter(e => e.applied_on === ds), nd = nextDue(p, es);
       const inS = hasSeason(p) && monthIn(p, +ds.slice(5, 7));
@@ -663,8 +663,11 @@ function fertCfgPlant(p) {
       fed.forEach(e => badges.push({ cls: 'b-fed', text: '● Fed ' + e.product }));
       if (nd === ds && !fed.length) badges.push({ cls: 'b-due', text: '▲ Due' });
       if (hasSeason(p) && !inS && !badges.length) badges.push({ cls: 'b-rest', text: 'Rest' });
+      const soil = typeof SNSDAYS !== 'undefined' && SNSDAYS && SNSDAYS.code === p.code && SNSDAYS.sensors.length ? SNSDAYS.sensors[0].days.find(x => x.d === ds) : null;   // 1.36.0
+      if (soil) badges.push({ cls: 'b-soil', text: `Soil ${Math.round(soil.avg)}%` });
+      if (SNSDAYS && SNSDAYS.code === p.code && SNSDAYS.waterings.includes(ds)) badges.push({ cls: 'b-water', text: '▲ Watered' });
       return { cls: hasSeason(p) ? (inS ? 'cal-in' : 'cal-rest') : '', badges,
-        aria: (fed.length ? 'Fed with ' + fed.map(e => e.product).join(' and ') + '. ' : '') + (nd === ds && !fed.length ? 'Next feeding due. ' : '') + (hasSeason(p) ? (inS ? 'In feeding season.' : 'Resting season, do not fertilize.') : '') };
+        aria: (soil ? `Soil moisture ${Math.round(soil.avg)}%. ` : '') + (SNSDAYS && SNSDAYS.code === p.code && SNSDAYS.waterings.includes(ds) ? 'Watered. ' : '') + (fed.length ? 'Fed with ' + fed.map(e => e.product).join(' and ') + '. ' : '') + (nd === ds && !fed.length ? 'Next feeding due. ' : '') + (hasSeason(p) ? (inS ? 'In feeding season.' : 'Resting season, do not fertilize.') : '') };
     },
     pick(ds) { fertDayDetail(p, ds); },
   };

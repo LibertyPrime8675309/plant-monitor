@@ -239,7 +239,7 @@ async function viewWhere() {
       <span class="muted">${a.plants} plant${a.plants === 1 ? '' : 's'}${a.lights ? `, ${a.lights} light spot${a.lights === 1 ? '' : 's'}` : ''}. Counts as: ${a.site}.</span>
       ${can ? html`<button class="btn small ghost wh-del" type="button" data-act="whareadel" data-id="${a.id}" data-name="${a.name}">Remove ${a.name}</button>` : ''}</div>
     <ul class="wh-spots">${a.spots.map(sp => html`<li><label class="f">Spot<input type="text" maxlength="60" value="${sp.name}" data-ed="spot" data-id="${sp.id}" data-k="name" ${can ? '' : raw('readonly')}></label>
-      <span class="muted">${sp.plants} plant${sp.plants === 1 ? '' : 's'}</span>${can ? html`<button class="btn small ghost" type="button" data-act="whspotdel" data-id="${sp.id}" data-name="${sp.name}">Remove</button>` : ''}</li>`)}
+      <span class="muted">${sp.plants} plant${sp.plants === 1 ? '' : 's'}</span>${can ? html`<button class="btn small ghost" type="button" data-act="whspotdel" data-id="${sp.id}" data-name="${sp.name}" aria-label="Remove the spot ${sp.name}">Remove</button>` : ''}</li>`)}
       ${can ? html`<li><form class="row wh-add" data-form="whspotadd" data-aid="${a.id}"><label class="f">New spot in ${a.name}<input type="text" name="name" maxlength="60" placeholder="${a.side === 'out' ? 'Pallet shelf' : 'Brown hutch'}"></label><button class="btn small" type="submit">Add spot</button></form></li>` : ''}</ul></li>`;
   const sideHtml = (h, side) => html`<section class="blk wh-side"><h3>${side === 'out' ? 'Outside' : 'Inside'}</h3><ul class="wh-areas">${h.areas.filter(a => a.side === side).map(areaHtml)}</ul>
     ${can ? html`<form class="row wh-add" data-form="whareaadd" data-home="${h.home.is_home ? '' : h.home.id}" data-side="${side}"><label class="f">New ${side === 'out' ? 'area outside' : 'room inside'}<input type="text" name="name" maxlength="60" placeholder="${side === 'out' ? 'Patio' : 'Dining room'}"></label>
@@ -408,10 +408,28 @@ async function problemsDialog() {           // 1.31.0
   PROBTEXT = text();
 }
 let PROBALL = false, PROBTEXT = '';
+// 1.36.0: the health of the app in one card: version, backups and their copies, the last weather update and store check, problems, disk space
+const gb = n => n == null ? '' : n >= 1e9 ? (n / 1e9).toFixed(1) + ' GB' : (n / 1e6).toFixed(0) + ' MB';
+async function loadHealth() {
+  const box = document.getElementById('health-box'); if (!box) return;
+  let H; try { H = await api('GET', '/api/health'); } catch (e) { box.innerHTML = rend(html`<p class="notice bad">Could not check: ${e.message}</p>`); return; }
+  const ok = (good, text) => html`<li class="${good ? 'hl-ok' : 'hl-bad'}"><span aria-hidden="true">${good ? '✓' : '!'}</span> ${text}</li>`;
+  const oldAge = ts => ts && (Date.now() - new Date(ts)) > 2 * 86400e3;
+  const lowDisk = H.free_bytes != null && H.free_bytes < 2e9;
+  const copyGood = H.copy.at && !/failed/.test(H.copy.dir + H.copy.receiver) && (H.copy.dir || H.copy.receiver);
+  box.innerHTML = rend(html`<ul class="hl">
+    <li><span aria-hidden="true">●</span> Version ${H.version}${H.db_version && H.db_version !== H.version ? ` (the database was last opened by ${H.db_version})` : ''}, running as ${H.runs_as || 'the app'}. ${H.plants} plants, ${H.photos} photos, ${H.readings.toLocaleString()} readings${H.sensors ? ` from ${H.sensors} sensor${H.sensors === 1 ? '' : 's'}` : ''}.</li>
+    ${ok(H.backup.last && !oldAge(H.backup.last), H.backup.last ? `Last backup ${when(H.backup.last)}${/^\d{4}-/.test(H.backup.next) ? ', next ' + when(H.backup.next) : ''}.` : H.backup.every === 'turned off' ? 'Automatic backups are turned off.' : 'No automatic backup yet.')}
+    ${ok(copyGood, H.copy.at ? `Second copy ${when(H.copy.at)}: ${[H.copy.dir ? 'folder ' + H.copy.dir : '', H.copy.receiver ? 'other computer ' + H.copy.receiver : ''].filter(Boolean).join('; ') || 'nowhere set up'}.` : 'No second copy of a backup yet (Backups page).')}
+    ${ok(H.weather.last && !oldAge(H.weather.last), H.weather.last ? `Weather updated ${when(H.weather.last)}.` : 'No weather update yet.')}
+    ${ok(true, H.shops.last ? `Stores checked ${when(H.shops.last)} (${H.shops.every}).` : `Stores not checked yet (${H.shops.every}).`)}
+    ${ok(!H.problems, H.problems ? `${H.problems} problem${H.problems === 1 ? '' : 's'} to look at.` : 'No problems.')}
+    ${ok(!lowDisk, `Data folder ${gb(H.data_bytes)} (database ${gb(H.db_bytes)})${H.free_bytes != null ? `; ${gb(H.free_bytes)} free of ${gb(H.disk_bytes)} on its disk` : ''}.`)}</ul>`);
+}
 function viewSettings() {
   const me = ME(), owner = me.role === 'owner';
   const card = (title, text, btn) => html`<section class="blk set-card"><h2>${title}</h2><p>${text}</p><div class="row">${btn}</div></section>`;
-  return { title: 'Settings', after: () => { api('GET', '/api/problems').then(d => { const n = document.getElementById('prob-n'); if (n && d.open) n.textContent = ` (${d.open})`; }).catch(() => {}); }, html: html`<h1>Settings</h1>
+  return { title: 'Settings', after: () => { api('GET', '/api/problems').then(d => { const n = document.getElementById('prob-n'); if (n && d.open) n.textContent = ` (${d.open})`; }).catch(() => {}); loadHealth(); }, html: html`<h1>Settings</h1>
     <p class="muted">Plant record version <strong>${META.version}</strong>${META.runs_as ? `, running as ${META.runs_as}` : ''}. The version number is also always beside the name at the top of the page.</p>
     <div class="set-grid">
     ${card('You and the people who use the app', owner ? 'Your name in the audit log, and who can view, edit or own the app.' : 'Your name in the audit log, and what you are allowed to do.', html`<button class="btn" type="button" data-act="who">${owner ? 'Open people and names' : 'Open your name'}</button>`)}
@@ -422,8 +440,8 @@ function viewSettings() {
     ${card('Homes and places', 'Where plants live, and the places whose weather is tracked.', html`<a class="btn" href="#/weather?sec=places">Open Homes and places</a>`)}
     ${card('Stores and keys', 'The stores Shopping checks, the eBay and Etsy keys, and the Pl@ntNet and Claude keys for Identify.', html`<a class="btn" href="#/shopping/stores">Stores</a><a class="btn ghost" href="#/identify">Keys (Identify page)</a>`)}
     ${card('Notifications', 'Messages on your phone or computer, even when the app is closed: cold nights, Shopping alerts, what is due today, and requests from Claude. Chosen for your own sign-in.', html`<button class="btn" type="button" data-act="notify" aria-haspopup="dialog">Open Notifications</button>`)}
-    ${card('Jobs', 'What the app is doing in the background: weather updates, store checks, backups and library downloads, with when each is next due.', html`<button class="btn" type="button" data-act="jobs" aria-haspopup="dialog">Open the Jobs list</button>`)}
-    ${card('Problems', 'Anything that went wrong in the background: a weather update, a backup, a store check. Copy the list to Claude when something looks off.', html`<button class="btn" type="button" data-act="problems" aria-haspopup="dialog">Open the Problems list<span id="prob-n"></span></button>`)}
+    <section class="blk set-card set-health" id="health"><h2>Health of the app</h2><div id="health-box" aria-live="polite"><p class="loading">Checking</p></div>
+      <div class="row"><button class="btn" type="button" data-act="jobs" aria-haspopup="dialog">Open the Jobs list</button><button class="btn ghost" type="button" data-act="problems" aria-haspopup="dialog">Open the Problems list<span id="prob-n"></span></button></div></section>
     ${card('Debug', 'A live view of the audit log at the bottom of the screen, and other tools for checking the app.', html`<button class="btn" type="button" id="debug-btn" data-act="debug" aria-haspopup="dialog">Open Debug</button>`)}
     </div>` };
 }
@@ -449,7 +467,7 @@ function peopleRows(P) {
   return html`<ul class="people">${P.people.map(p => html`<li><span><strong>${p.name}</strong>${p.login === self ? ' (you)' : ''}<br><span class="hint">${p.login}. Last here ${when(p.last_seen)}.</span></span>
     <label class="f">What ${p.name} can do<select data-f="prole" data-login="${p.login}">${P.roles.map(r => html`<option value="${r.key}" ${r.key === p.role ? raw('selected') : ''}>${r.label}</option>`)}</select></label>
     ${P.homes && P.homes.length > 1 ? html`<label class="f">Starts on<select data-f="phome" data-login="${p.login}">${P.homes.map(h => html`<option value="${h.id}" ${(p.home_id || P.main_home) === h.id ? raw('selected') : ''}>${h.name}</option>`)}</select></label>` : ''}
-    ${p.login === self ? '' : html`<button class="btn small danger" type="button" data-act="pdel" data-login="${p.login}" data-name="${p.name}">Remove</button>`}</li>`)}</ul>`;
+    ${p.login === self ? '' : html`<button class="btn small danger" type="button" data-act="pdel" data-login="${p.login}" data-name="${p.name}" aria-label="Remove ${p.name} from the people list">Remove</button>`}</li>`)}</ul>`;
 }
 function peoplePaint(P) { const b = document.getElementById('people-box'); if (b) b.innerHTML = rend(peopleRows(P)); }
 
@@ -582,7 +600,7 @@ async function route() {
   if (parts[0] !== 'new') NEWFILL = null;
   if (parts[0] !== 'fungi' || parts[1] !== 'new') MUFILL = null;
   const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' || parts[0] === 'sensors' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' || parts[0] === 'species' || parts[0] === 'wishlist' || parts[0] === 'around' ? 'library' : parts[0] === 'fungi' ? 'fungi' : parts[0] === 'offline' || parts[0] === 'decisions' ? 'offline' : parts[0] === 'today' || !parts.length ? 'today' : 'plants';
-  navMark(parts[0] === 'weather' && qs.get('sec') === 'places' ? 'places' : parts[0] === 'sensors' ? 'sensors' : parts[0] === 'pots' ? 'pots' : parts[0] === 'where' ? 'where' : parts[0] === 'settings' ? 'settings' : parts[0] === 'new' ? 'new' : parts[0] === 'wishlist' ? 'wishlist' : parts[0] === 'shopping' || parts[0] === 'store' ? 'shopping' : nav);
+  navMark(parts[0] === 'weather' && qs.get('sec') === 'places' ? 'places' : ['sensors', 'pots', 'where', 'settings', 'new', 'wishlist', 'frost', 'inside', 'outside', 'around', 'decisions'].includes(parts[0]) ? parts[0] : parts[0] === 'shopping' || parts[0] === 'store' ? 'shopping' : nav);
   pagesMenu(false);
   wlBadge();
   // 1.30.0: the screen changes at once. If the page is not ready in a moment, its name shows with "Loading"; a page opened before
@@ -659,6 +677,7 @@ async function route() {
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
     if (view.after) view.after();
     if (parts[0] === 'weather' && qs.get('sec') === 'places') setTimeout(() => { const t = document.getElementById('sec-places'); if (t) { scrollToSection(t); navFlash(t); } }, 300);   // 1.29.0: Homes and places
+    else if (qs.get('sec')) { const go2 = () => { const t = document.getElementById(qs.get('sec')); if (t) { scrollToSection(t); navFlash(t); } }; setTimeout(go2, 300); setTimeout(go2, 1500); }   // 1.36.0: #/plant/P-001?sec=inside opens the page at that section
     buildSideNav(); navLayout(); addReadButtons(); setTimeout(() => { buildSideNav(); navLayout(); addReadButtons(); }, 1200);
     if (h !== lastPath) { window.scrollTo(0, 0); app.focus({ preventScroll: true }); NAVPIN = -1; navActive(); }
     else if (fresh && keepY) window.scrollTo(0, keepY);
@@ -686,10 +705,10 @@ function navOpen() { const P = window.PlantPrefs.get(), narrow = document.docume
 const SECTIONS = [
   ['today', 'Today', [['today', 'Today', '#/']]],
   ['plants', 'Plants', [['plants', 'All plants', '#/plants'], ['groups', 'Groups', '#/groups'], ['new', 'Add plants', '#/new'], ['fungi', 'Mushrooms', '#/fungi'], ['where', 'Rooms and spots', '#/where'], ['photos', 'Photos', '#/photos'], ['labels', 'Labels', '#/labels']]],
-  ['care', 'Care', [['winter', 'Winter plan', '#/winter'], ['fertilizer', 'Fertilizer', '#/fertilizer'], ['lights', 'Grow lights', '#/lights'], ['pots', 'Pots and trays', '#/pots']]],
+  ['care', 'Care', [['winter', 'Winter plan', '#/winter'], ['frost', 'Cold-night checklist', '#/frost'], ['inside', 'Coming inside', '#/inside'], ['outside', 'Back outside', '#/outside'], ['fertilizer', 'Fertilizer', '#/fertilizer'], ['lights', 'Grow lights', '#/lights'], ['pots', 'Pots and trays', '#/pots']]],   // 1.36.0: every page in its section's row
   ['weather', 'Weather', [['weather', 'Weather', '#/weather'], ['sensors', 'Sensors', '#/sensors'], ['places', 'Homes and places', '#/weather?sec=places']]],
-  ['discover', 'Discover', [['identify', 'Identify', '#/identify'], ['library', 'Library', '#/library'], ['wishlist', 'Wishlist', '#/wishlist'], ['shopping', 'Shopping', '#/shopping']]],
-  ['settings', 'Settings', [['settings', 'Settings', '#/settings'], ['offline', 'Offline use', '#/offline'], ['backups', 'Backups', '#/backups'], ['history', 'Audit log', '#/history']]],
+  ['discover', 'Discover', [['identify', 'Identify', '#/identify'], ['library', 'Library', '#/library'], ['around', 'Around home', '#/around'], ['wishlist', 'Wishlist', '#/wishlist'], ['shopping', 'Shopping', '#/shopping']]],
+  ['settings', 'Settings', [['settings', 'Settings', '#/settings'], ['offline', 'Offline use', '#/offline'], ['decisions', 'Offline decisions', '#/decisions'], ['backups', 'Backups', '#/backups'], ['history', 'Audit log', '#/history']]],
 ];
 const secOf = nav => (SECTIONS.find(x => x[2].some(p => p[0] === nav)) || SECTIONS[1]);
 function navMark(nav) {

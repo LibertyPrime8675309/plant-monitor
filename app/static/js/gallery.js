@@ -4,8 +4,8 @@
 
 // ---------- gallery ----------
 const G = { q: '', plan: '', health: '', low: false, needs: false, sort: 'code', group: '', status: 'active', site: '', home: '',   // 1.28.0: home   // 1.16.2: status and site
-  light: '', pets: '', hardy: '', care: '', grow: '', leaf: '', pot: '', photo: '', area: '', spot: '' };                  // 1.17.0: more filters; 1.34.0: area and spot (from a room or shelf label)
-const MORE_KEYS = ['light', 'pets', 'hardy', 'care', 'grow', 'leaf', 'pot', 'photo'];     // the More filters (defined further down)
+  light: '', pets: '', hardy: '', care: '', grow: '', leaf: '', pot: '', photo: '', heat: '', area: '', spot: '' };                  // 1.17.0: more filters; 1.34.0: area and spot (from a room or shelf label)
+const MORE_KEYS = ['light', 'pets', 'hardy', 'care', 'grow', 'leaf', 'pot', 'photo', 'heat'];   // 1.36.0: heat (Summer here)     // the More filters (defined further down)
 // the Plants page filters are remembered in this browser and also decide where Previous / Next plant go on plant pages
 function gLoad() { try { const s = JSON.parse(localStorage.getItem('plantdb.filters') || '{}'); for (const k of ['q', 'plan', 'health', 'low', 'needs', 'sort', 'group', 'status', 'site', 'home', 'area', 'spot', ...MORE_KEYS]) if (k in s && typeof s[k] === typeof G[k]) G[k] = s[k]; } catch (e) { /* defaults */ } }
 gLoad();
@@ -58,6 +58,7 @@ function sheet(p) {
     <h3 class="name"><a class="sheet-link" href="#/plant/${enc(p.code)}">${p.common_name}</a></h3>
     <p class="sci latin">${p.scientific_name || 'Scientific name not set'}</p>
     <div class="tags">${isArch(p) ? html`<span class="tag tag-arch">Archived</span>` : ''}${HOMES().length > 1 ? html`<span class="tag tag-homeat">⌂ ${plantHome(p).name}</span>` : ''}${planTag(p.winter_plan)}${healthTag(p.health_rating)}</div>
+    ${p.winter_plan === 'Move indoors' && (p.site || 'Outdoors') !== 'Indoors' ? html`<p class="card-link"><a href="#/plant/${enc(p.code)}?sec=inside">Pest check before it comes inside</a></p>` : ''}
     ${needsYou(p) ? html`<p class="needs-badge">Needs from you: ${[p.requests_open ? `${p.requests_open} request${p.requests_open === 1 ? '' : 's'}` : '', p.id_confidence != null && p.id_confidence < 70 ? 'ID info' : ''].filter(Boolean).join(', ')}</p>` : ''}
     <div class="meter"><span>ID ${p.id_confidence == null ? 'not rated' : p.id_confidence + '%'}</span><i style="--v:${p.id_confidence || 0}%;--mc:${confColor(p.id_confidence)}"></i></div>
   </article>`;
@@ -179,6 +180,7 @@ const MORE = [
   { key: 'leaf', label: 'Leaf type', opts: () => [...((META.enums || {}).leaf_type || []).map(x => [x, x]), ['unset', 'Leaf type not set']] },
   { key: 'pot', label: 'Pot size', opts: () => [...((META.enums || {}).pot_size || []).map(x => [x, x]), ['unset', 'Pot size not set']] },
   { key: 'photo', label: 'Photos', opts: [['none', 'No photo yet'], ['old', 'Newest photo over a month old']] },
+  { key: 'heat', label: 'Summer here', opts: () => Object.entries(HEAT_WORD) },          // 1.36.0
 ];
 const moreOpts = d => typeof d.opts === 'function' ? d.opts() : d.opts;
 const moreOn = () => MORE_KEYS.filter(k => G[k]).length;
@@ -204,6 +206,7 @@ function moreOk(p) {
   if (k.hardy && hardyKey(p) !== k.hardy) return false;
   if (k.care && CAREDUE) { const c = CAREDUE.get(p.code) || {}; if (k.care === 'water' ? !c.water : k.care === 'feed' ? !c.feed : !(c.water || c.feed)) return false; }
   if (k.grow && (k.grow === 'yes') !== !!p.light_spot) return false;
+  if (k.heat && !heatOk(p, k.heat)) return false;                 // 1.36.0
   if (k.leaf && (k.leaf === 'unset' ? !!p.leaf_type : p.leaf_type !== k.leaf)) return false;
   if (k.pot && (k.pot === 'unset' ? !!p.pot_size : p.pot_size !== k.pot)) return false;
   if (k.photo === 'none' && p.photo_count) return false;
@@ -488,4 +491,21 @@ async function plantGroupsDialog() {
     if (f.elements.newg.value.trim()) await api('POST', '/api/groups', { name: f.elements.newg.value, kind: 'picked', codes: [p.code] });
     toast('Groups saved'); await loadGroups(true); KEEP = PIDX; route();
   });
+}
+
+// ---------- 1.36.0: the Summer here filter, from /api/heat/plants (loaded the first time the filter is used) ----------
+let HEATP = null, HEATP_LOADING = false;      // {place, at, map: code -> {level, fit}}
+const HEAT_WORD = { hard: 'Summer heat is hard on it', few: 'A few days a summer are too hot', fine: 'Summer heat is fine for it', hotter: 'Hotter than its heat zones', nodata: 'No summer verdict yet' };
+function loadHeatPlants() {
+  if (HEATP_LOADING) return; HEATP_LOADING = true;
+  api('GET', '/api/heat/plants').then(r => { HEATP = { place: PLACE || '', at: Date.now(), zone: r.zone, map: new Map(Object.entries(r.plants || {})) }; })
+    .catch(() => { HEATP = { place: PLACE || '', at: Date.now(), zone: null, map: new Map() }; })
+    .finally(() => { HEATP_LOADING = false; if (location.hash.startsWith('#/plants')) drawGrid(); });
+}
+function heatOk(p, want) {
+  if (!HEATP || HEATP.place !== (PLACE || '') || Date.now() - HEATP.at > 10 * 60e3) { loadHeatPlants(); if (!HEATP) return true; }
+  const x = HEATP.map.get(p.code) || {};
+  if (want === 'hotter') return x.fit === 'hotter';
+  if (want === 'nodata') return !x.level;
+  return x.level === want;
 }

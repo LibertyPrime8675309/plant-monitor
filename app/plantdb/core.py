@@ -104,6 +104,7 @@ FIELDS = [
     ('height_pot', 'text', 'Mature height in a pot'), ('width_pot', 'text', 'Mature width in a pot'),
     ('growth_rate', 'text', 'Growth rate'), ('lifespan', 'text', 'Lifespan'),
     ('zone_low', 'text', 'Hardiness zone, coldest (USDA)'), ('zone_high', 'text', 'Hardiness zone, warmest (USDA)'), ('zone_notes', 'long', 'Hardiness notes'),
+    ('heat_zone_high', 'int', 'Heat zone, hottest (AHS)'), ('heat_zone_low', 'int', 'Heat zone, coolest (AHS)'), ('heat_zone_source', 'text', 'Heat zone source'),   # 1.36.0: summer heat
     ('native_range', 'long', 'Native range'), ('conservation_status', 'long', 'Conservation status'), ('invasive', 'long', 'Invasive risk'),
     ('bloom', 'long', 'Flowers'), ('fruit', 'long', 'Fruit'),
     ('danger_humans', 'long', 'Dangers to people'), ('danger_animals', 'long', 'Dangers to pets and other animals'),
@@ -116,7 +117,7 @@ FIELD_NAMES = [f[0] for f in FIELDS]
 FIELD_KIND = {f[0]: f[1] for f in FIELDS}
 FIELD_LABEL = {f[0]: f[2] for f in FIELDS}
 FIELD_LABEL['fertilizer_log'] = 'Fertilizer entry'
-INT_RANGES = {'id_confidence': (0, 100), 'temp_ideal_low': (-60, 150), 'temp_ideal_high': (-60, 150),
+INT_RANGES = {'id_confidence': (0, 100), 'temp_ideal_low': (-60, 150), 'temp_ideal_high': (-60, 150), 'heat_zone_high': (1, 12), 'heat_zone_low': (1, 12),
               'temp_damage_below': (-60, 150), 'temp_lethal_below': (-60, 150),
               'humidity_low': (0, 100), 'humidity_high': (0, 100),
               'temp_damage_above': (0, 200), 'par_low': (0, 4000), 'par_high': (0, 4000),
@@ -269,6 +270,11 @@ def init_db():
     c.executescript(SHOPS_SCHEMA)                 # 1.27.0: shops, what they have from the wishlist, and price alerts
     c.executescript(SENSOR_SCHEMA)                # 1.35.0: your sensors: names, where they sit, the plant they are in
     if 'weight_g' not in {r[1] for r in c.execute('PRAGMA table_info(readings)')}: c.execute('ALTER TABLE readings ADD COLUMN weight_g REAL')   # 1.35.0: a weighing cell under the pot
+    rc = {r[1] for r in c.execute('PRAGMA table_info(readings)')}
+    if 'soil_raw' not in rc: c.execute('ALTER TABLE readings ADD COLUMN soil_raw REAL')          # 1.36.0: the soil probe's raw volts, for calibrating in the app
+    sd = {r[1] for r in c.execute('PRAGMA table_info(sensor_devices)')}
+    for col in ('cal_dry', 'cal_wet'):
+        if col not in sd: c.execute(f'ALTER TABLE sensor_devices ADD COLUMN {col} REAL')
     c.executescript(PUSH_SCHEMA)                  # 1.33.0: devices that get notifications
     wl = {r[1] for r in c.execute('PRAGMA table_info(wishlist)')}
     for col, typ in (('max_price', 'REAL'), ('alert_stock', 'INTEGER NOT NULL DEFAULT 0'), ('search_words', "TEXT NOT NULL DEFAULT ''")):
