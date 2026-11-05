@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.31.0 (2026-11-04)
+- **Windows High Contrast mode.** When Windows is set to a high-contrast theme, the chosen filter, the page you are on, keyboard focus, tags and alerts are all drawn with the theme's own colours and an outline, so nothing disappears.
+- **Problems** (Settings): anything that went wrong in the background (a weather update, a backup, a store check, a library download) is listed in plain words, with the details folded away and a **Copy the list for Claude** button. The owner can clear them.
+- **Restore** on the Backups page: puts a backup's database back in place. A backup of how things are now is made first, photos are never removed (ones in the backup that are missing are put back), and an older backup is brought up to this version. A backup made by a newer version is refused.
+- **Starts on:** on the people list, the owner can choose which home each person starts on. Someone whose plants are at Nevada City opens the app there, and their own choice stands after that.
+- **An older version will not change a newer database.** If an older zip is ever installed over a newer one, the app only shows a page saying which version to install, and leaves your data alone.
+- Faster weather pages on a large history: indexes on the readings, listings and photos tables.
+
 ## 1.30.0 (2026-11-04)
 - **Shopping** (under Discover): the stores are checked for your wishlist plants and for garden supplies.
   - Watch for pots and trays, potting mixes, amendments, fertilizers, pest control, frost cloth and covers, grow lights and timers, and tools and labels, each with its own alerts.

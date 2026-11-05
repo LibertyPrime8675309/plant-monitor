@@ -1523,3 +1523,32 @@ summary .sum-h{display:inline;margin:0}
 .store-note textarea{width:100%}
 .dbg-times td,.dbg-times th{font-size:.9em}
 a[href^="tel:"]{white-space:nowrap}
+
+/* 1.31.0: Windows High Contrast mode (forced colours). The browser replaces every colour with the system's, so anything shown
+   only by a background or a coloured border is drawn again here with system colours and a visible outline. */
+@media (forced-colors:active){
+  :root{--ring:3px}
+  .btn,.ledger button,.tag,.tag-home,.sheet,.wl-item,.set-card,.notice,.toast,#console,dialog{forced-color-adjust:none;color:CanvasText;background:Canvas;border:2px solid CanvasText}
+  .btn{color:ButtonText;background:ButtonFace;border-color:ButtonText}
+  .btn:not(.ghost):not(.danger){background:ButtonText;color:ButtonFace}
+  .btn.danger{border-style:double;border-width:4px}
+  .btn:disabled,.btn[aria-disabled=true]{color:GrayText;border-color:GrayText;background:ButtonFace}
+  a{color:LinkText} a:visited{color:VisitedText}
+  .top,.sub-in,header.top nav a{background:Canvas;color:CanvasText}
+  .top nav a[aria-current=page],#sub-nav a[aria-current=page]{outline:3px solid Highlight;outline-offset:-3px;text-decoration:underline}
+  .opts span{forced-color-adjust:none;border:2px solid ButtonText;background:ButtonFace;color:ButtonText}
+  .opts input:checked+span,.ledger button[aria-pressed=true],.chips button[aria-pressed=true]{forced-color-adjust:none;background:Highlight;color:HighlightText;border-color:HighlightText;outline:3px solid CanvasText;outline-offset:2px;text-decoration:underline}
+  .toast,.undo-toast{background:Highlight;color:HighlightText;border:3px solid CanvasText}
+  .undo-toast .btn{background:ButtonFace;color:ButtonText;border-color:ButtonText}
+  .notice.bad,.bad-text{border-color:CanvasText;color:CanvasText;text-decoration:underline wavy}
+  .fz-row.is-done{opacity:1;text-decoration:line-through}
+  .lv,.tag.tag-yours,.tag.tag-arch{color:CanvasText}
+  .sn-flash{outline:4px solid Highlight}
+  :focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,.opts input:focus-visible+span,.pane:focus-visible{outline:3px solid Highlight;outline-offset:2px}
+  img{forced-color-adjust:none}
+  .nav-badge{border:2px solid CanvasText;padding:0 .3em;border-radius:1em}
+}
+/* 1.31.0: the Problems list */
+.prob-list{list-style:none;padding:0;display:grid;gap:.8rem}
+.prob-list li{border:var(--bw) solid var(--line);padding:.6rem .8rem}
+.prob-detail{white-space:pre-wrap;font-size:.85em;max-height:12rem;overflow:auto;background:var(--sheet);padding:.5rem;border:1px solid var(--line)}

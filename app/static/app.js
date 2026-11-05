@@ -369,10 +369,25 @@ document.addEventListener('keydown', e => {
 document.addEventListener('change', e => { const el = e.target; if (el.dataset && el.dataset.ed) edSave(el); }, true);
 
 // 1.29.0: Settings: one page for the things that are not about plants
+async function problemsDialog() {           // 1.31.0
+  const d = await api('GET', '/api/problems?' + (PROBALL ? 'all=1' : ''));
+  const owner = ME().role === 'owner';
+  const text = () => d.problems.map(p => `${when(p.at)} | ${p.area_word} | ${p.text}${p.times > 1 ? ` (${p.times} times)` : ''}${p.detail ? '\n    ' + p.detail.trim().split('\n').slice(-3).join('\n    ') : ''}`).join('\n');
+  modal(html`<form method="dialog" class="prob-dlg"><h2>Problems</h2>
+    <p class="muted">${d.problems.length ? `${d.problems.length} ${PROBALL ? 'kept' : 'not yet cleared'}, newest first. Clearing one just takes it off this list.` : (PROBALL ? 'Nothing has been recorded.' : 'Nothing is waiting. Problems that were cleared can still be shown.')}</p>
+    ${d.problems.length ? html`<ul class="prob-list">${d.problems.map(p => html`<li ${p.cleared_at ? raw('class="muted"') : ''}><strong>${p.area_word}</strong>: ${p.text}${p.times > 1 ? html` <span class="tag">${p.times} times</span>` : ''}<br><small>${when(p.at)}${p.cleared_at ? ', cleared' : ''}</small>
+      ${p.detail ? html`<details><summary>Details</summary><pre class="prob-detail">${p.detail}</pre></details>` : ''}
+      ${owner && !p.cleared_at ? html`<button class="btn ghost small" type="button" data-act="probclear" data-id="${p.id}">Clear</button>` : ''}</li>`)}</ul>` : ''}
+    <div class="row">${d.problems.length ? html`<button class="btn ghost" type="button" data-act="probcopy">Copy the list for Claude</button>` : ''}${owner && d.open ? html`<button class="btn ghost" type="button" data-act="probclear" data-id="all">Clear them all</button>` : ''}
+      <button class="btn ghost" type="button" data-act="proball">${PROBALL ? 'Only the ones not cleared' : 'Show cleared ones too'}</button><button class="btn" value="ok" autofocus>Done</button></div>
+    <p id="prob-msg" role="status" aria-live="polite"></p></form>`);
+  PROBTEXT = text();
+}
+let PROBALL = false, PROBTEXT = '';
 function viewSettings() {
   const me = ME(), owner = me.role === 'owner';
   const card = (title, text, btn) => html`<section class="blk set-card"><h2>${title}</h2><p>${text}</p><div class="row">${btn}</div></section>`;
-  return { title: 'Settings', html: html`<h1>Settings</h1>
+  return { title: 'Settings', after: () => { api('GET', '/api/problems').then(d => { const n = document.getElementById('prob-n'); if (n && d.open) n.textContent = ` (${d.open})`; }).catch(() => {}); }, html: html`<h1>Settings</h1>
     <p class="muted">Plant record version <strong>${META.version}</strong>${META.runs_as ? `, running as ${META.runs_as}` : ''}. The version number is also always beside the name at the top of the page.</p>
     <div class="set-grid">
     ${card('You and the people who use the app', owner ? 'Your name in the audit log, and who can view, edit or own the app.' : 'Your name in the audit log, and what you are allowed to do.', html`<button class="btn" type="button" data-act="who">${owner ? 'Open people and names' : 'Open your name'}</button>`)}
@@ -382,6 +397,7 @@ function viewSettings() {
     ${card('Audit log', 'Every change anyone has made, with filters and a download.', html`<a class="btn" href="#/history">Open the Audit log</a>`)}
     ${card('Homes and places', 'Where plants live, and the places whose weather is tracked.', html`<a class="btn" href="#/weather?sec=places">Open Homes and places</a>`)}
     ${card('Stores and keys', 'The stores Shopping checks, the eBay and Etsy keys, and the Pl@ntNet and Claude keys for Identify.', html`<a class="btn" href="#/shopping/stores">Stores</a><a class="btn ghost" href="#/identify">Keys (Identify page)</a>`)}
+    ${card('Problems', 'Anything that went wrong in the background: a weather update, a backup, a store check. Copy the list to Claude when something looks off.', html`<button class="btn" type="button" data-act="problems" aria-haspopup="dialog">Open the Problems list<span id="prob-n"></span></button>`)}
     ${card('Debug', 'A live view of the audit log at the bottom of the screen, and other tools for checking the app.', html`<button class="btn" type="button" id="debug-btn" data-act="debug" aria-haspopup="dialog">Open Debug</button>`)}
     </div>` };
 }
@@ -406,6 +422,7 @@ function peopleRows(P) {
   const self = ME().login;
   return html`<ul class="people">${P.people.map(p => html`<li><span><strong>${p.name}</strong>${p.login === self ? ' (you)' : ''}<br><span class="hint">${p.login}. Last here ${when(p.last_seen)}.</span></span>
     <label class="f">What ${p.name} can do<select data-f="prole" data-login="${p.login}">${P.roles.map(r => html`<option value="${r.key}" ${r.key === p.role ? raw('selected') : ''}>${r.label}</option>`)}</select></label>
+    ${P.homes && P.homes.length > 1 ? html`<label class="f">Starts on<select data-f="phome" data-login="${p.login}">${P.homes.map(h => html`<option value="${h.id}" ${(p.home_id || P.main_home) === h.id ? raw('selected') : ''}>${h.name}</option>`)}</select></label>` : ''}
     ${p.login === self ? '' : html`<button class="btn small danger" type="button" data-act="pdel" data-login="${p.login}" data-name="${p.name}">Remove</button>`}</li>`)}</ul>`;
 }
 function peoplePaint(P) { const b = document.getElementById('people-box'); if (b) b.innerHTML = rend(peopleRows(P)); }
@@ -4334,7 +4351,7 @@ async function viewBackups() {
       ${BK.backups.length ? html`<div class="tbl-wrap"><table class="tbl"><caption class="sr">Backups, newest first</caption><thead><tr><th scope="col">Made</th><th scope="col">Type</th><th scope="col" class="num">Size</th><th scope="col">Contents</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
         ${BK.backups.map(b => html`<tr><th scope="row">${when(b.created_at)}${b.note ? html`<div class="hint">${b.note}</div>` : ''}</th><td>${BK_KIND[b.kind]}${b.by && b.kind !== 'auto' ? html`<div class="hint">${b.by}</div>` : ''}</td>
           <td class="num">${mb(b.bytes)}</td><td>${b.broken ? html`<strong>Damaged file</strong>` : html`Database${b.photos ? ' and photos' : ''}${b.plants != null ? `, ${b.plants} plants` : ''}${b.version ? html`<div class="hint">App version ${b.version}</div>` : ''}`}</td>
-          <td><div class="row" style="gap:.4rem"><a class="btn small" href="/api/backups/${enc(b.file)}" download>Download</a><button class="btn small danger" type="button" data-act="bkdel" data-file="${b.file}">Delete</button></div></td></tr>`)}</tbody></table></div>` : html`<div class="empty">No backups yet.</div>`}</section>
+          <td><div class="row" style="gap:.4rem"><a class="btn small" href="/api/backups/${enc(b.file)}" download>Download</a>${!b.broken && ME().role === 'owner' ? html`<button class="btn small ghost" type="button" data-act="bkrestore" data-file="${b.file}" data-made="${when(b.created_at)}" data-plants="${b.plants == null ? '' : b.plants}" data-photos="${b.photos ? '1' : ''}">Restore</button>` : ''}<button class="btn small danger" type="button" data-act="bkdel" data-file="${b.file}">Delete</button></div></td></tr>`)}</tbody></table></div>` : html`<div class="empty">No backups yet.</div>`}</section>
     <section class="blk"><h2>Restoring a backup</h2>
       <ol><li>Stop the app (in the plant-database folder): <span class="code">docker compose down</span></li>
         <li>Rename the current <span class="code">data\\plants.db</span> to <span class="code">plants-old.db</span> (keep it until you are sure).</li>
@@ -5008,6 +5025,33 @@ const acts = {
     const label = dlg.querySelector('[name=label]').value.trim(), note = dlg.querySelector('[name=note]').value.trim();
     if (!label) return;
     await guard(async () => { await api('PATCH', '/api/to-photograph/' + t.id, { label, note }); toast('Saved'); route(); });
+  },
+  problems() { problemsDialog(); },
+  proball() { PROBALL = !PROBALL; const d = document.querySelector('dialog[open]'); if (d) d.close(); problemsDialog(); },
+  async probclear(el) { await guard(async () => { await api('POST', '/api/problems', el.dataset.id === 'all' ? { all: true } : { id: +el.dataset.id }); const d = document.querySelector('dialog[open]'); if (d) d.close(); problemsDialog(); }); },
+  async probcopy() {
+    const m = document.getElementById('prob-msg');
+    try { await navigator.clipboard.writeText('Problems from Plant record ' + (META && META.version) + ':\n' + PROBTEXT); if (m) m.textContent = 'Copied. Paste it into the chat with Claude.'; }
+    catch (e) { if (m) m.textContent = 'Could not copy. Select the list and copy it yourself.'; }
+  },
+  async bkrestore(el) {              // 1.31.0: put a backup's database back in place
+    if (!(await needName())) return;
+    const r = await modal(html`<form method="dialog"><h2>Restore this backup?</h2>
+      <p>The plant record goes back to how it was on <strong>${el.dataset.made}</strong>${el.dataset.plants ? ` (${el.dataset.plants} plants)` : ''}. Every plant, note, setting and log entry made since then is replaced by what the backup holds.</p>
+      <ul><li>A backup of how things are now is made first, so this can be undone by restoring that one.</li>
+        <li>Photos are never removed. ${el.dataset.photos ? 'Photos in the backup that are missing from your folder are put back.' : 'This backup has no photos; your photos stay as they are.'}</li>
+        <li>An older backup is brought up to this version on the way in.</li></ul>
+      <div class="row"><button class="btn danger" value="ok">Restore it</button><button class="btn ghost" value="cancel" autofocus>Cancel</button></div></form>`);
+    if (r !== 'ok') return;
+    el.disabled = true; toast('Restoring. This takes a few seconds.');
+    await guard(async () => {
+      const x = await api('POST', '/api/backups/restore', { file: el.dataset.file });
+      QC.clear(); PCODES_AT = 0; FROST = null; PGROUPS = null; META = null;
+      await modal(html`<form method="dialog"><h2>Restored</h2><p>${x.plants} plants are back as they were. ${x.photos_added ? `${x.photos_added} photos were put back. ` : ''}The database from before is kept as <code>${x.before}</code>.</p>
+        <div class="row"><button class="btn" value="ok" autofocus>Done</button></div></form>`);
+      location.reload();
+    });
+    el.disabled = false;
   },
   async bkdel(el) {
     if (!(await needName())) return;
@@ -7327,6 +7371,12 @@ document.addEventListener('change', e => {
     const k = el.dataset.dbg; DBG[k] = el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value; dbgSave(); conApply();
     const m = document.getElementById('dbg-msg');      // the usual pop-up notes are hidden while this window is open
     if (m) m.textContent = k === 'console' ? (el.checked ? 'The console is on, at the bottom of the screen.' : 'The console is off.') : k === 'lines' ? `It now shows ${el.value} changes before you scroll.` : el.checked ? 'Screen readers will announce new changes.' : 'Screen readers will not announce new changes.';
+    return;
+  }
+  if (el.dataset && el.dataset.f === 'phome') {        // 1.31.0: the home a person starts on
+    const m = document.getElementById('who-msg'), label = el.options[el.selectedIndex].text;
+    api('PUT', '/api/people', { login: el.dataset.login, home_id: el.value }).then(r => { peoplePaint(r); if (m) m.textContent = `Saved: starts on ${label}.`; })
+      .catch(e => { if (m) m.textContent = e.message; });
     return;
   }
   if (el.dataset && el.dataset.f === 'prole') {

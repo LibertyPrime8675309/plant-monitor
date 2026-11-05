@@ -35,7 +35,10 @@ with sync_playwright() as p:
     check('Undo' in (focused or ''), f'focus stays on that plant (on "{focused}")')
     # move a plant indoors: it leaves the list
     row = pg.locator('.fz-row:has(button[data-act=frostin])').first; code2 = row.get_attribute('data-code')
-    row.locator('button[data-act=frostin]').click(); pg.wait_for_timeout(1800)
+    row.locator('button[data-act=frostin]').click()
+    for _ in range(12):
+        pg.wait_for_timeout(500)
+        if pg.locator(f'.fz-row[data-code="{code2}"]').count() == 0: break
     check(pg.locator(f'.fz-row[data-code="{code2}"]').count() == 0, f'{code2} moved indoors and left the list')
     pg.locator('#fz-in').screenshot(path=f'{OUT}/frost-group-light.png')
     pg.locator('.fz-row').first.screenshot(path=f'{OUT}/frost-row-light.png')
