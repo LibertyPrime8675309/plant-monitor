@@ -2,10 +2,10 @@
 
 One line each, most wanted first. A prototyping session takes the top one that is not already in progress, and marks it "(in progress: proto/<branch>)".
 
-- Summer heat: an AHS heat-zone style "days above 86°F" count from the weather history, next to the USDA zone on About this plant, for plants that struggle in Texas summers.
-- Sensor dashboard for the DIY plant monitor (soil moisture, temperature, light) once hardware is posting to `/api/readings`.
+- Turn the pots: a reminder to give each pot by a window a quarter turn every week or two so it grows straight, with a page under Care and a section on Today. (suggested by Claude) (in progress: proto/turn-pots)
 
 ## Done
+1.34.0 to 1.36.0 (November 4 and 5, 2026, pull requests #51, #52 and #53): Summer heat (the AHS heat zone from the weather history, and a verdict per plant on About this plant) and Your sensors (the sensor dashboard).
 1.19.0 (October 28, 2026, pull requests #23 and #26): Undo right after a quick care button, and large-print care cards for a plant or a whole group.
 1.18.0 and 1.18.1 (October 26 to 28, 2026, pull request #25): Identify a plant with the camera (BioCLIP 2.5 on Ethan's PC, with Pl@ntNet and Claude as second opinions) and the plant library; the top menu fixed for iPads.
 1.16.2 and 1.17.x (October 26, 2026, pull requests #22 and #24): Show, Location and eight more filters on the Plants page, and Safety for pets.
