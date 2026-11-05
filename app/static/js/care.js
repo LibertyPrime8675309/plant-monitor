@@ -259,8 +259,8 @@ function todayPrep(PR, t) {
     ${!again.length && !free.length ? html`<p class="notice ok">No sprays due and nobody to move today.</p>` : ''}</section>`;
 }
 async function viewToday() {
-  const [W, reqs, , PR, WA, J] = await Promise.all([api('GET', '/api/water'), api('GET', '/api/requests?open=1'), loadFertData(true), api('GET', '/api/prep').catch(() => null),
-    api('GET', '/api/wishlist/alerts').catch(() => ({ alerts: [] })), api('GET', '/api/jobs').catch(() => null)]);
+  const [W, reqs, , PR, WA, J, SN] = await Promise.all([api('GET', '/api/water'), api('GET', '/api/requests?open=1'), loadFertData(true), api('GET', '/api/prep').catch(() => null),
+    api('GET', '/api/wishlist/alerts').catch(() => ({ alerts: [] })), api('GET', '/api/jobs').catch(() => null), api('GET', '/api/sensors/summary').catch(() => null)]);   // 1.35.0: sensors
   const by = Object.fromEntries(FERT.plants.map(p => [p.code, p])), t = todayStr();
   const ws = W.plants.filter(w => by[w.code]);
   const due = ws.filter(w => w.state === 'due').sort((a, b) => b.overdue - a.overdue), soon = ws.filter(w => w.state === 'soon'), unk = ws.filter(w => w.state === 'unknown');
@@ -272,13 +272,15 @@ async function viewToday() {
   // 1.34.0: Today is the page the app opens on. One line says what needs you, with a button to jump to each part
   const F = FROST, cold = F && F.first ? F.worst.counts.danger + F.worst.counts.damage + F.worst.counts.watch : 0;
   const prepN = PR && PR.plants ? PR.plants.reduce((k, p) => k + p.methods.filter(m => m.next_due && m.next_due <= t).length + (p.status === 'apart' && p.keep_until && p.keep_until <= t ? 1 : 0), 0) : 0;
-  const jumps = [cold ? [`Cold night (${cold})`, 'today-cold'] : null, [`Water (${due.length})`, 'today-water'], [`Feed (${feed.length})`, 'today-feed'],
+  const snN = SN ? SN.look + SN.quiet : 0;
+  const jumps = [cold ? [`Cold night (${cold})`, 'today-cold'] : null, snN ? [`Sensors (${snN})`, 'today-sensors'] : null, [`Water (${due.length})`, 'today-water'], [`Feed (${feed.length})`, 'today-feed'],
     WA.alerts.length ? [`Shopping (${WA.alerts.length})`, 'today-wish'] : null, [`Needed from you (${needs.length})`, 'today-needs']].filter(Boolean);
-  const bits = [cold ? `a cold night ${fzDay(F.first.date, true)}` : '', n(due.length, 'plant to water', 'plants to water'), n(feed.length, 'to feed', 'to feed'),
+  const bits = [cold ? `a cold night ${fzDay(F.first.date, true)}` : '', snN ? n(snN, 'sensor to look at', 'sensors to look at') : '', n(due.length, 'plant to water', 'plants to water'), n(feed.length, 'to feed', 'to feed'),
     WA.alerts.length ? n(WA.alerts.length, 'Shopping alert', 'Shopping alerts') : '', n(needs.length, 'thing Claude needs from you', 'things Claude needs from you')].filter(Boolean);
   const line = bits.length > 1 ? bits.slice(0, -1).join(', ') + ', and ' + bits[bits.length - 1] : bits[0];
   const quiet = [];
   if (PR && PR.plants && !prepN) quiet.push('No pest rounds due.');
+  if (SN && SN.n && !snN) quiet.push(`${SN.n} sensor${SN.n === 1 ? '' : 's'} sending, all in range.`);
   if (J) {
     const sc = Object.fromEntries((J.schedule || []).map(x => [x.kind, x]));
     if (sc.shops) quiet.push(sc.shops.last ? `Stores last checked ${when(sc.shops.last)}${/^\d{4}-/.test(sc.shops.next) ? '; next ' + when(sc.shops.next) : ''}.` : 'The stores have not been checked yet.');
@@ -292,6 +294,8 @@ async function viewToday() {
       ${W.avg_high != null ? `Highs have been about ${W.avg_high}°F lately.` : ''} ${Object.keys(W.rain).length ? `Rain counted as watering for plants out in the open: ${Object.entries(W.rain).slice(-3).map(([d, i]) => relDay(d) + ', ' + i + ' in').join('; ')}.` : ''}</p>
       <p class="row td-jumps">${jumps.map(([l, id]) => html`<a class="btn small ghost" href="#${id}" data-act="jumpsec" data-sec="${id}">${l}</a>`)}</p></div>
     ${cold ? html`<section class="blk" id="today-cold">${frostBanner(true)}</section>` : ''}
+    ${snN ? html`<section class="blk" id="today-sensors"><h2>Sensors (${snN})</h2><ul class="jobs">${SN.cards.map(s => html`<li class="job"><span class="job-nophoto" aria-hidden="true"></span><div class="job-txt"><a class="nm" href="#/sensors">${s.name}</a>${s.plant ? html` <span class="muted">${s.plant.code} ${s.plant.common_name}</span>` : ''}<div>${s.words}</div></div>
+      <div class="job-acts">${s.plant ? html`<a class="btn small ghost" href="#/plant/${enc(s.plant.code)}">Open its plant</a>` : ''}</div></li>`)}</ul><p><a class="btn small ghost" href="#/sensors">All your sensors</a></p></section>` : ''}
     <section class="blk" id="today-water"><h2>Water (${due.length})</h2>
       ${due.length ? html`${due.length > 1 ? html`<p><button class="btn small ghost" type="button" data-act="careall" data-kind="water" data-codes="${due.map(w => w.code).join(',')}">Watered all ${due.length}</button></p>` : ''}
         <ul class="jobs">${due.map(w => jobRow(by[w.code], waterWords(w), wbtn(w)))}</ul>` : html`<p class="notice ok">Nothing is due for water today.</p>`}

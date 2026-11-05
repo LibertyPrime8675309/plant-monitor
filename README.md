@@ -536,6 +536,7 @@ Open **Weather**, then **Connect your sensor**. It shows the address and a priva
 - `temp_f` or `temp_c`; `humidity` (%)
 - `par` (umol/m2/s) or `lux` (converted at 54 lux per PAR)
 - `soil_moisture` (%), `soil_temp_f` or `soil_temp_c`, `soil_ph`
+- `weight_g`: the weight of the pot on a weighing cell (from 1.35.0; the app shows how it changes as the pot dries)
 
 Send up to 500 readings at once as `{"readings":[ ... ]}`. A reading with an impossible value is refused with an explanation.
 
@@ -939,6 +940,31 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 - bash: `echo 'PLANTDB_VISION_MODEL=bioclip-2' >> .env && docker compose up -d`
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
+
+## Your sensors (from 1.35.0)
+
+**Weather → Sensors** (`#/sensors`) shows every sensor that sends readings, one card each, the ones that need a look first: its newest values in large type (soil moisture, air temperature, humidity, light now, root-zone temperature, soil pH, pot weight), a small line of the last 24 hours for each, the lowest and highest of the day, and how much the soil moisture and weight changed since a day before. Daily light is worked out once a day of light readings is in.
+
+Press **Change name, spot or plant** to give a sensor a name you will recognise, say where it sits (a room, area or spot from Rooms and spots) and which plant's pot it is in. Once it is in a plant, each value is compared with that plant's ranges, in words with a mark: **✓ In range**, **↓ Dry**, **↑ Wet**, **Cool**, **Warm**, **Dry air**, **Humid**, **Too dim**, **Too bright**, and **! Too cold** when the air is below the plant's damage point. The same card shows under **Water and soil** on the plant's page. A sensor that has sent nothing for longer than its quiet hours (3 to start with) says **Quiet** with a dashed border. The owner can **Forget this sensor** (its readings go too).
+
+- **Today** lists the sensors that need a look or have gone quiet, with a jump button; "Quiet today" says when all are in range.
+- **Watering from the sensor:** when a sensor in a plant's pot sees the soil moisture jump by 15 points or more within 3 hours, the app logs a watering for that plant for the day (once a day, signed "Sensor"), so the Today page stops asking. Turn it off per sensor in its window.
+- **Notifications:** a new kind, **Sensor alerts**: a dry pot, dangerous cold at a sensor, or a sensor gone quiet, once a day each (Settings → Notifications).
+
+### An ESP32 sensor node with ESPHome
+
+The easiest build is an ESP32 running [ESPHome](https://esphome.io): no code, a short text file. `sensors/esphome-plant-sensor.yaml` in the app folder is ready for a capacitive soil moisture probe, an SHT31 air temperature and humidity sensor, a BH1750 light sensor, a DS18B20 soil temperature probe and an HX711 weighing cell under the pot; delete the sensors you do not have. It posts one reading every 10 minutes to port 8082.
+
+1. Open port 8082 to your home network (see "Connecting your own sensor" above) and copy the token from Weather → Connect your sensor.
+2. Install ESPHome on the PC and start its dashboard (it runs in Docker, like the app):
+   - Windows (cmd.exe): `docker run -d --name esphome -p 6052:6052 -v %USERPROFILE%\esphome:/config ghcr.io/esphome/esphome`
+   - Windows (PowerShell): `docker run -d --name esphome -p 6052:6052 -v $env:USERPROFILE\esphome:/config ghcr.io/esphome/esphome`
+   - bash: `docker run -d --name esphome -p 6052:6052 -v ~/esphome:/config ghcr.io/esphome/esphome`
+3. Copy `sensors/esphome-plant-sensor.yaml` into that `esphome` folder, and make `secrets.yaml` next to it with your Wi-Fi name and password, `plantdb_url` (`http://<your PC's Wi-Fi address>:8082/api/readings`) and `plantdb_token`. Change `device` at the top of the file to the name you want to see in the app.
+4. Open `http://localhost:6052`, plug the ESP32 into the PC by USB, and press **Install** → **Plug into this computer** (the first flash is over USB; after that, updates go over Wi-Fi).
+5. The sensor appears on the Sensors page with its first reading. Name it and put it in its plant.
+
+Calibrate the soil probe once: note its raw voltage in dry air and in a glass of water and put those two numbers in the `calibrate_linear` lines (the file says where).
 
 ## Today as the home page, the shopping list, speaking a note, room labels and summer heat (from 1.34.0)
 

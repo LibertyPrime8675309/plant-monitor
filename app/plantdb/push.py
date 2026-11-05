@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS push_subs(id INTEGER PRIMARY KEY AUTOINCREMENT, login
 PUSH_KINDS = [('cold', 'Cold nights', 'When the forecast turns, and a reminder the afternoon before each cold night.'),
               ('shopping', 'Shopping alerts', 'A price at or under your limit, or something back in stock.'),
               ('due', 'Watering and feeding due', 'One message in the morning with what is due today.'),
-              ('requests', 'Requests from Claude', 'When Claude adds a request in the app: a photo or an answer it needs.')]
+              ('requests', 'Requests from Claude', 'When Claude adds a request in the app: a photo or an answer it needs.'),
+              ('sensors', 'Sensor alerts', 'A dry pot, dangerous cold at a sensor, or a sensor that has gone quiet: once a day each.')]   # 1.35.0
 PUSH_SUBJECT = 'mailto:plant-record@' + (os.environ.get('PLANTDB_PUSH_DOMAIN') or 'example.invalid')
 PUSH_SEND = {'fn': None}             # a stand-in sender for tests: fn(sub, payload) -> status
 
@@ -126,7 +127,7 @@ def push_loop():
             c = sqlite3.connect(DB_PATH, timeout=30); c.row_factory = sqlite3.Row
             try:
                 if c.execute('SELECT 1 FROM push_subs LIMIT 1').fetchone():
-                    push_cold(c); push_due(c)
+                    push_cold(c); push_due(c); push_sensors(c)
             finally: c.close()
         except Exception as e: problem_exc('push', e, 'The notifications check failed')
         time.sleep(600)

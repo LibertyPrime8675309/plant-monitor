@@ -267,6 +267,8 @@ def init_db():
     c.executescript(SYNC_SCHEMA)                  # 1.24.0: changes sent later from devices, and clashes to decide
     c.executescript(FACTS_SCHEMA)                 # 1.27.0: uses, partners, deterrents, propagation and breeding for each species
     c.executescript(SHOPS_SCHEMA)                 # 1.27.0: shops, what they have from the wishlist, and price alerts
+    c.executescript(SENSOR_SCHEMA)                # 1.35.0: your sensors: names, where they sit, the plant they are in
+    if 'weight_g' not in {r[1] for r in c.execute('PRAGMA table_info(readings)')}: c.execute('ALTER TABLE readings ADD COLUMN weight_g REAL')   # 1.35.0: a weighing cell under the pot
     c.executescript(PUSH_SCHEMA)                  # 1.33.0: devices that get notifications
     wl = {r[1] for r in c.execute('PRAGMA table_info(wishlist)')}
     for col, typ in (('max_price', 'REAL'), ('alert_stock', 'INTEGER NOT NULL DEFAULT 0'), ('search_words', "TEXT NOT NULL DEFAULT ''")):
@@ -679,7 +681,8 @@ def role_refusal(u):
     role, path, change = u['role'], request.path, request.method not in ('GET', 'HEAD', 'OPTIONS')
     if role == 'owner': return None
     if path == '/api/me': return None                                    # your own name
-    if path.startswith(OWNER_ONLY_PATHS) or (change and path.startswith(OWNER_ONLY_CHANGES)) or (change and re.match(r'^/api/places/\d+$', path)):
+    if path.startswith(OWNER_ONLY_PATHS) or (change and path.startswith(OWNER_ONLY_CHANGES)) or (change and re.match(r'^/api/places/\d+$', path)) \
+       or (request.method == 'DELETE' and path.startswith('/api/sensors/')):      # 1.35.0: forgetting a sensor and its readings
         return f'Only {owner_name(db())} can do this.'
     if role == 'viewer' and change and path not in VIEWER_POSTS and not path.startswith(VIEWER_PREFIXES):
         return f'You can look at everything, but changes are turned off for you. Ask {owner_name(db())} if you would like to edit.'

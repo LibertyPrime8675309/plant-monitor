@@ -81,7 +81,7 @@ document.addEventListener('change', e => {
 // ---------- 1.33.0: search everywhere (the magnifier in the top bar, or the / key away from the Plants page: see the shortcuts in ui.js) ----------
 const PAGES_LIST = [['Today', '#/'], ['All plants', '#/plants'], ['Groups', '#/groups'], ['Add plants', '#/new'], ['Mushrooms', '#/fungi'], ['Rooms and spots', '#/where'], ['Photos', '#/photos'],
   ['Labels', '#/labels'], ['Winter plan', '#/winter'], ['Cold-night checklist', '#/frost'], ['Getting plants ready to come inside', '#/inside'], ['Back outside', '#/outside'], ['Fertilizer', '#/fertilizer'],
-  ['Grow lights', '#/lights'], ['Pots and trays', '#/pots'], ['Weather', '#/weather'], ['Homes and places', '#/weather?sec=places'], ['Identify', '#/identify'], ['Library', '#/library'], ['Around home', '#/around'],
+  ['Grow lights', '#/lights'], ['Pots and trays', '#/pots'], ['Weather', '#/weather'], ['Sensors', '#/sensors'], ['Homes and places', '#/weather?sec=places'], ['Identify', '#/identify'], ['Library', '#/library'], ['Around home', '#/around'],
   ['Wishlist', '#/wishlist'], ['Shopping', '#/shopping'], ['Stores', '#/shopping/stores'], ['Settings', '#/settings'], ['Offline use', '#/offline'], ['Backups', '#/backups'], ['Audit log', '#/history'], ['Needs your decision', '#/decisions']];
 let SRCH = { t: 0, q: '', seq: 0 };
 function searchDialog() {

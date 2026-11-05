@@ -1583,3 +1583,30 @@ html:is([data-narrow="1"],[data-topcompact="1"]) :is(.srch-btn .srch-l,.place-bt
 .spk-btn.spk-on::before{background:currentColor;animation:spk-pulse 1s infinite alternate}
 @keyframes spk-pulse{from{transform:scale(.7)}to{transform:scale(1.15)}}
 @media (prefers-reduced-motion:reduce){.spk-btn.spk-on::before{animation:none}}
+/* 1.35.0: your sensors. Every state is a word in a tag with its own mark (✓ ↓ ↑ !), so colour is never the only signal */
+.sns-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,22rem),1fr));gap:1rem;margin:.8rem 0}
+.sns-card{border:var(--bw) solid var(--line);background:var(--sheet);padding:.9rem 1rem;min-width:0}
+.sns-card h3{margin:0 0 .3rem;overflow-wrap:anywhere}
+.sns-card h3 .hint{display:inline-block;max-width:100%;overflow-wrap:anywhere}
+.sns-card.sns-alert{border-left:.45rem solid var(--madder)}
+.sns-card.sns-off{border-style:dashed}
+.sns-look{margin:.2rem 0;color:var(--madder)}
+.sns-heard{margin:.3rem 0;color:var(--ink-2)}
+.sns-card .notice{margin:.5rem 0}
+.sns-dl{display:grid;gap:.7rem;margin:.7rem 0}
+.sns-m{border-top:1px solid var(--line-2);padding-top:.55rem;min-width:0}
+.sns-m dt{font-weight:700}
+.sns-m dd{margin:.15rem 0 0;display:flex;flex-direction:column;gap:.25rem;min-width:0}
+.sns-top{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.sns-big{font-size:1.9rem;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
+.sns-spark{flex:none;color:var(--ink);max-width:100%;height:auto}
+.sns-band{fill:currentColor;opacity:.12}
+.sns-judge{margin:0}
+.sns-judge .tag{margin-right:.35rem}
+.sns-ok{color:var(--moss)}
+.sns-low,.sns-high{color:var(--ochre)}
+.sns-bad{background:var(--madder);border-color:var(--madder);color:var(--on-bad)}
+.sns-plant:empty{display:none}
+.sns-plant{margin:.4rem 0 1rem}
+.sns-plant .sns-card{max-width:40rem}
+html[data-role=viewer] :is([data-act=snsedit],[data-act=snsrm]){display:none!important}

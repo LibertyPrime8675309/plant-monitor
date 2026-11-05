@@ -201,7 +201,7 @@ async function viewWeather(sec) {
     <section class="blk"><h2>Expected and tracked this season in ${W.location.name}</h2>${seasonTable(ref, monthly)}
       <p class="hint">${ref.applies !== false ? `Expected values are 30-year averages for ${W.location.name}. ` : ''}Tracked values come from the readings above: the average of each day's low and high, and how many nights fell to 32°F or below. Days with fewer than 12 readings are skipped.</p></section>
     <section class="blk" id="wx-climate"><h2>Your climate: winter cold and summer heat in ${W.location.name}</h2>${climateBlock(W, heat)}</section>
-    ${ing ? html`<section class="blk" id="sensor"><h2>Connect your sensor</h2>
+    ${ing ? html`<section class="blk" id="sensor"><h2>Connect your sensor</h2><p><a class="btn small ghost" href="#/sensors">Your sensors: newest values and alerts</a></p>
       <p>A sensor on your network can send readings to this app. Each reading becomes part of the history above, and "My sensor" can drive the current conditions on every plant page.</p>
       <div class="notice">Sensors on your home network send to this computer's network address on port 8082${lanIp ? '' : ' (for example 192.168.1.20; the README shows how to find yours)'}. That port only takes readings with the token below; the rest of the app stays closed. It is shut until you open it: put the line <span class="code">PLANTDB_SENSOR_BIND=0.0.0.0</span> in a file named .env next to docker-compose.yml, then run docker compose up -d (README, "Connecting your own sensor").</div>
       <dl class="dl"><dt>Address</dt><dd><span class="code">${netUrl}</span></dd><dt>Token</dt><dd><span class="code" id="tok">${ing.token}</span></dd></dl>
