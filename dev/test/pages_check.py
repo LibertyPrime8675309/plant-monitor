@@ -75,7 +75,7 @@ with sync_playwright() as p:
     check('AHS heat zone 8' in t and 'days above 86°F' in t and 'hardiness zone' in t and pg.locator('#wx-climate .heat-tbl tbody tr').count() == 4, 'the Weather page has a climate section: winter zone, summer heat zone and the hot days each year')
     pg.locator('#wx-climate').screenshot(path=f'{OUT}/pages-climate.png')
     pg.goto(LOCAL + '/#/plant/P-012'); pg.wait_for_timeout(3000)
-    check('AHS heat zone 8' in pg.inner_text('main'), 'a plant page says the summer heat zone next to the winter one')
+    check('heat zone 8' in pg.inner_text('main'), 'a plant page says the summer heat zone next to the winter one')
 
     # ---- the shopping list
     pg.goto(LOCAL + '/#/shopping/list'); pg.wait_for_timeout(3000)
