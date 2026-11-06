@@ -345,7 +345,7 @@ function sevDrawPlant(gi) {
 }
 function sevDraw(focusSel) {
   const box = document.getElementById('sev'); if (!box) return;
-  box.innerHTML = rend(sevHtml()); buildSideNav();
+  box.innerHTML = rend(sevHtml()); buildSideNav(); addFoldButtons();
   if (focusSel) { const el = box.querySelector(focusSel); if (el) el.focus(); }
 }
 // 1.38.0: the preview of each photo is made small on this device (about 800 px) before it is shown, so a phone does not hold ten

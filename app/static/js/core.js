@@ -618,7 +618,7 @@ async function route() {
   wlBadge();
   // 1.30.0: the screen changes at once. If the page is not ready in a moment, its name shows with "Loading"; a page opened before
   // shows what was saved from last time, and is checked again just after (see QC above)
-  const t0 = performance.now(), fresh = ROUTE_FRESH; ROUTE_FRESH = false;
+  const t0 = performance.now(), fresh = ROUTE_FRESH || h === lastPath; ROUTE_FRESH = false;   // 1.42.0: the same page drawn again after a change keeps its place (no Loading flash that sent it to the top)
   const quick = !fresh && !(parts[2] === 'edit' || parts[0] === 'new' || (parts[0] === 'fungi' && parts[1] === 'new') || parts[0] === 'decisions' || parts[0] === 'offline');
   QUICK = quick ? { used: [], stale: [] } : { used: [], stale: [], off: true };
   TIMING = { page: '#' + h, calls: [], quick };
@@ -695,7 +695,7 @@ async function route() {
     if (view.after) view.after();
     if (parts[0] === 'weather' && qs.get('sec') === 'places') setTimeout(() => { const t = document.getElementById('sec-places'); if (t) { scrollToSection(t); navFlash(t); } }, 300);   // 1.29.0: Homes and places
     else if (qs.get('sec')) { const go2 = () => { const t = document.getElementById(qs.get('sec')); if (t) { scrollToSection(t); navFlash(t); } }; setTimeout(go2, 300); setTimeout(go2, 1500); }   // 1.36.0: #/plant/P-001?sec=inside opens the page at that section
-    buildSideNav(); navLayout(); addReadButtons(); setTimeout(() => { buildSideNav(); navLayout(); addReadButtons(); }, 1200);
+    buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); setTimeout(() => { buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); }, 1200);
     if (h !== lastPath) { if (!(wentBack && !qs.get('sec') && scrollBack(h))) window.scrollTo(0, 0); app.focus({ preventScroll: true }); NAVPIN = -1; navActive(); }
     else if (fresh && keepY) window.scrollTo(0, keepY);
     lastPath = h;
@@ -808,6 +808,7 @@ function buildSideNav() {
   });
   buildJumpRow();
   document.documentElement.dataset.navempty = NAVITEMS.length <= 1 ? '1' : '0';     // 1.39.1: only "Top of the page": no menu for this page
+  if (typeof pinLayout === 'function') pinLayout();                                 // 1.42.0: Display follows the menu
   list.innerHTML = rend(html`${NAVITEMS.map((it, i) => html`<li><a href="#${it.id || 'app'}" data-act="navgo" data-i="${i}">${it.text}</a></li>`)}`);
   if (!NAVITEMS.length) list.innerHTML = rend(html`<li class="muted">This page has no sections.</li>`);
   if (pinned) NAVPIN = NAVITEMS.findIndex(it => (it.id || 'top') === pinned);
@@ -827,6 +828,7 @@ function buildJumpRow() {
   row.innerHTML = rend(html`${items.map(it => html`<button class="btn ghost small" type="button" data-act="jump" data-id="${it.id}">${name(it)}</button>`)}`);
 }
 function scrollToSection(t) {
+  foldOpenFor(t);            // 1.42.0
   const beh = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', pane = t.closest('.pane');
   const split = document.documentElement.dataset.layout !== 'single' && document.documentElement.dataset.narrow !== '1';
   if (pane && split) {   // scroll only this half, not the whole page

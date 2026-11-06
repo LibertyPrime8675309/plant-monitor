@@ -44,9 +44,13 @@ const acts = {
   lightnew() { lightDialog(null); },
   roomnew() { roomDialog(null); },
   roomedit(el) { roomDialog(LT.places.find(p => p.id === +el.dataset.id)); },
+  shelfnew(el) { roomDialog(null, { room: el.dataset.room }); },       // 1.42.0
   async roomdel(el) {
     const pl = LT.places.find(p => p.id === +el.dataset.id); if (!pl) return;
-    if (!(await confirmBox('Remove this room or shelf?', `"${pl.label}" leaves the list.${pl.spots.length ? ` The ${pl.spots.length} light spot${pl.spots.length === 1 ? '' : 's'} there stay, with "Where" set to "Not chosen yet".` : ''}`, 'Remove it', true))) return;
+    const room = !pl.name, shelves = room ? LT.places.filter(p => p.room === pl.room && p.name) : [];
+    const spots = room ? LT.spots.filter(s => s.place_id === pl.id || shelves.some(x => x.id === s.place_id)) : LT.spots.filter(s => s.place_id === pl.id);
+    const what = room ? `The room "${pl.room}"${shelves.length ? ` and its ${shelves.length} shel${shelves.length === 1 ? 'f' : 'ves'} (${shelves.map(x => x.name).join(', ')})` : ''} leave${shelves.length ? '' : 's'} the list.` : `The shelf "${pl.name}" leaves the list. The room ${pl.room} stays.`;
+    if (!(await confirmBox(room ? 'Remove this room?' : 'Remove this shelf?', `${what}${spots.length ? ` The ${spots.length} light spot${spots.length === 1 ? '' : 's'} there stay, with "Where" set to ${room ? '"Not chosen yet"' : `the room as a whole`}.` : ''}`, room ? 'Remove the room' : 'Remove the shelf', true))) return;
     await guard(async () => { await api('DELETE', '/api/lights/places/' + pl.id); toast('Removed'); route(); });
   },
   async usethisbase() { await guard(async () => { await api('PUT', '/api/settings', { base_url: location.origin }); toast('Codes now open ' + location.origin); route(); }); },
@@ -151,6 +155,19 @@ const acts = {
     if (!(await needName())) return;
     const code = el.dataset.code, f = el.closest('#prep-box') ? '#pm-inspect-tick' : `#mi-${code}-inspect-tick`;      // 1.41.1: on to the first tick box
     await guard(async () => { await api('POST', '/api/care', { plant: code, kind: 'prep_start' }); toast('Started the checklist. Inspect it for pests first.'); await prepAfterChange(code, f); });
+  },
+  lttop(el) {                 // 1.42.0: the Grow lights summary at the top folds as one
+    const t = document.getElementById('lt-top'), b = document.getElementById('lt-top-body'), open = b.hidden;
+    b.hidden = !open; t.dataset.open = open ? '1' : '0'; el.setAttribute('aria-expanded', open ? 'true' : 'false'); el.textContent = open ? 'Hide the summary' : 'Show the summary';
+    try { localStorage.setItem('plantdb.lttop', open ? '1' : '0'); } catch (e) { /* this visit only */ }
+    ltTopMeasure();
+  },
+  ltspotsall(el) { const on = el.dataset.open === '1'; document.querySelectorAll('details.lt-spot-fold').forEach(d => { d.open = on; }); },
+  secfold(el) {               // 1.42.0: Show or hide a section
+    const it = NAVITEMS.find(x => x.id === el.dataset.for); if (!it) return;
+    const folded = el.getAttribute('aria-expanded') === 'true';
+    foldSet(it, folded, true); navActive();
+    if (!folded) window.dispatchEvent(new Event('resize'));     // charts and the like measure themselves again
   },
   prepfold(el) { const on = el.dataset.open === '1'; document.querySelectorAll('details.mi-fold').forEach(d => { d.open = on; }); },
   prepjump() { const h = document.getElementById('pm-head'); if (h) { scrollToSection(h); h.focus({ preventScroll: true }); } },

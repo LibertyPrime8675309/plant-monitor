@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.42.0 (2026-11-05)
+- **Every section can be folded shut, on every page** (Ethan, November 5). Each section in the side menu has a **Hide** / **Show** button by its title. What you fold is remembered on that device for that page; plant pages share one memory, so folding Temperature on one plant folds it on all of them. Choosing a folded section in the menu opens it.
+- **The side menu is called Navigation** (it was "On this page"), and its button on the edge of the screen says Navigation (it said Sections). **Display** has moved to the bottom of the Navigation menu. On a page with no sections, which has no menu, it stays in the corner.
+- **Grow lights:**
+  - **The top of the page stays in view as you scroll:** the title, the short description and a new table: Inside, Coming in, Assigned light spot, No assigned light spot, and the 7-day mol/m² average outdoors. **Hide the summary** folds them as one, leaving the title. The "This winter" box is gone; its numbers are in the table.
+  - **Add a light** sits by the Your lights title, and **Set up a spot** by the Your light spots title.
+  - **Each of your light spots folds.** Shut, it still shows its name, where it is, its mol/m² per day and how many plants. **Open every spot** and **Close every spot** are above them.
+  - **The plants in a spot are two to a row** on a wide screen (one on a phone). Each shows its code on one line and its range on the next ("6–12 mol/m² per day").
+- **Rooms and shelves:**
+  - **Removing a shelf no longer takes the room with it.** The Remove button beside "The room itself" removed the whole room with its shelves, and the page jumped back to the top. Now each room's title has its own **New Shelf**, **Rename** and **Remove room**, and each shelf has its own Rename and Remove. Removing even the last shelf leaves the room, and each confirmation says which one goes.
+  - **After any change the page stays where you were,** here and on every other page that redraws itself after a change.
+  - **New Room** (it was "Add a room or shelf") and **New Shelf** open the **Build-A-Room** window. New Shelf fills in its room and puts you in the shelf box.
+
 ## 1.41.1 (2026-11-05)
 - **The coming-inside checklist is tick boxes** (Ethan, November 5). Every step is listed in order with a tick box, its rating, why, and how to do it, on the plant's page and on the Coming inside page. Tick a step when you have done it; untick it to take it back.
 - **Steps that are not recommended stay in the list,** marked "Not recommended: not needed" (or "not for this plant") with a dashed border, and can still be ticked.
