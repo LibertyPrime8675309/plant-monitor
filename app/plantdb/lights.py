@@ -563,7 +563,7 @@ def light_place_add():
     c.commit()
     return jsonify(id=pid), 201
 
-@app.route('/api/lights/places/<int:i>', methods=['PUT', 'DELETE'])
+@app.route('/api/lights/places/<int(signed=True):i>', methods=['PUT', 'DELETE'])     # 1.41.1: signed, a room itself is minus its id
 def light_place_one(i):
     """i is a spot's id, or minus an area's id (the room itself). Changes go to Rooms and spots."""
     c = db()

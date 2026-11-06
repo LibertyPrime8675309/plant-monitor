@@ -149,9 +149,10 @@ const acts = {
   },
   async prepstart(el) {         // 1.40.1
     if (!(await needName())) return;
-    const code = el.dataset.code, f = prepFocus(el, code);
+    const code = el.dataset.code, f = el.closest('#prep-box') ? '#pm-inspect-tick' : `#mi-${code}-inspect-tick`;      // 1.41.1: on to the first tick box
     await guard(async () => { await api('POST', '/api/care', { plant: code, kind: 'prep_start' }); toast('Started the checklist. Inspect it for pests first.'); await prepAfterChange(code, f); });
   },
+  prepfold(el) { const on = el.dataset.open === '1'; document.querySelectorAll('details.mi-fold').forEach(d => { d.open = on; }); },
   prepjump() { const h = document.getElementById('pm-head'); if (h) { scrollToSection(h); h.focus({ preventScroll: true }); } },
   async prepundo(el) {
     const k = el.dataset.k, code = el.dataset.code, f = prepFocus(el, code);
@@ -625,6 +626,17 @@ const changeActs = {
     await guard(async () => { await api('POST', '/api/photos', undefined, fd); toast('Photos added'); route(); });
   },
   preptrait(el) { prepSaveTraits({ [el.dataset.k]: el.value }, `select[data-act=preptrait][data-k="${el.dataset.k}"]`, (el.dataset.k === 'leaf_type' ? 'Leaf type: ' : 'Pot size: ') + (el.value || 'not set')); },
+  async preptick(el) {        // 1.41.1: a step's tick box: ticking logs it today, unticking takes back the last time
+    const k = el.dataset.k, code = el.dataset.code, f = prepFocus(el, code), on = el.checked;
+    if (!(await needName())) { el.checked = !on; return; }
+    if (on) { await guard(async () => { await api('POST', '/api/care', { plant: code, kind: 'prep_' + k }); toast('Saved: ' + PREP_CARE['prep_' + k]); }); }
+    else {
+      const D = document.getElementById('prep-box') ? (PREP.data && PREP.data.code === code ? PREP.data : null) : (PREP.list ? PREP.list.plants.find(p => p.code === code) : null);
+      const last = D ? (D.log || []).filter(x => x.kind === 'prep_' + k).pop() : null;
+      if (last) await guard(async () => { await api('DELETE', '/api/care/' + last.id); toast('Removed: ' + PREP_CARE['prep_' + k] + ', ' + relDay(last.done_on)); });
+    }
+    await prepAfterChange(code, f);
+  },
   preppest(el) {
     const got = [...document.querySelectorAll('input[data-act=preppest]:checked')].map(x => x.value);
     prepSaveTraits({ pests_found: got }, `input[data-act=preppest][value="${el.value}"]`, got.length ? 'Pests found: ' + got.join(', ') : 'No pests found');

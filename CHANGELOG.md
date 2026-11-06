@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.41.1 (2026-11-05)
+- **The coming-inside checklist is tick boxes** (Ethan, November 5). Every step is listed in order with a tick box, its rating, why, and how to do it, on the plant's page and on the Coming inside page. Tick a step when you have done it; untick it to take it back.
+- **Steps that are not recommended stay in the list,** marked "Not recommended: not needed" (or "not for this plant") with a dashed border, and can still be ticked.
+- **Each plant folds shut on the Coming inside page,** showing its photo, its next step and how many recommended steps are done. Open one for its tick boxes. **Open every plant** and **Close every plant** are at the top, and a plant you opened stays open while you tick.
+- Start the checklist moves you to the first tick box. The single "next step" button from 1.40.1 is gone; a spray's second round has its own **Round 2 done today** button.
+- **Removing or renaming a room on the Grow lights page works** (it said "Request failed (405)"). A room with plants in it says to move them first.
+- **The disk light's card uses the whole width** on the Grow lights page. A light with no photo was squeezed into the narrow photo column.
+
 ## 1.41.0 (2026-11-05)
 - **The light spot window, reworked** (Ethan, November 5):
   - **Plants in this spot** is now one plant a row, with its photo, its light needs and a link that opens its page in a new tab.
