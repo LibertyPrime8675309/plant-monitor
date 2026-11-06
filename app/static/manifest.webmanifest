@@ -1,0 +1,16 @@
+{
+  "name": "Plant record",
+  "short_name": "Plants",
+  "description": "Your plants, mushroom finds and plant library, also without a connection.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "share_target": { "action": "/share", "method": "POST", "enctype": "multipart/form-data", "params": { "title": "title", "text": "text", "files": [{ "name": "photos", "accept": ["image/*"] }] } },
+  "background_color": "#1b4b72",
+  "theme_color": "#1b4b72",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

@@ -97,7 +97,7 @@ with sync_playwright() as p:
     for page in ('today', 'fertilizer', 'frost'):
         pg.goto(f'{BASE}/#/{page}'); pg.wait_for_timeout(1800)
         check(pg.locator('#ics-box').count() == 1, f'"Add to your calendar" section on the {page} page')
-    pg.goto(BASE + '/#/'); pg.wait_for_timeout(1200)
+    pg.goto(BASE + '/#/plants'); pg.wait_for_timeout(1200)
     check(pg.locator('#ics-box').count() == 0, 'not on the Plants page')
     pg.goto(BASE + '/#/fertilizer'); pg.wait_for_timeout(1800)
     pg.locator('#ics-box').scroll_into_view_if_needed(); pg.locator('#ics-box').screenshot(path=f'{OUT}/calendar-section-light.png')

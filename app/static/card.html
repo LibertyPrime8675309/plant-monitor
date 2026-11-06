@@ -17,14 +17,18 @@
     <h1 id="pc-title">Large-print care card</h1>
     <p id="pc-intro">Loading…</p>
     <form id="pc-opts" class="pc-opts" hidden>
-      <fieldset class="opt-group"><legend>Notes</legend>
+      <fieldset class="opt-group"><legend>Size</legend>
+        <label class="pc-opt"><input type="radio" name="size" value="card" checked> 4 × 6 inch card: the main facts only, to tape to a pot or shelf</label>
+        <label class="pc-opt"><input type="radio" name="size" value="page"> Full page (Letter): the main facts and the notes</label>
+      </fieldset>
+      <fieldset class="opt-group" id="pc-notes"><legend>Notes</legend>
         <label class="pc-opt"><input type="radio" name="notes" value="short" checked> Short: the first sentence of each note</label>
         <label class="pc-opt"><input type="radio" name="notes" value="full"> Full: every note in full</label>
       </fieldset>
       <fieldset class="opt-group"><legend>Also show</legend>
         <label class="pc-opt"><input type="checkbox" name="photo" checked> The plant's main photo</label>
         <label class="pc-opt"><input type="checkbox" name="qr" checked> A code to scan that opens the plant's page</label>
-        <label class="pc-opt"><input type="checkbox" name="pets"> Dangers to pets and people</label>
+        <label class="pc-opt"><input type="checkbox" name="pets" checked> Dangers to pets and people</label>
       </fieldset>
       <p class="row"><button class="btn" type="button" id="pc-print">Print</button>
         <span class="hint" id="pc-count"></span></p>

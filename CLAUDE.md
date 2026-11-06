@@ -36,20 +36,21 @@ This is Ethan's home plant database: a Flask + SQLite web app ("Plant record") t
   - Batch files apply in **filename order**, once each. Name new ones so they sort last: `batch9d.json`, then `batchA1.json`. `batch10.json` would sort before `batch2.json`.
 - **Access (from 1.12.0).** People reach the app through its own Tailscale container: port 8081, with identity headers, roles owner/editor/viewer. This computer uses port 8080 (localhost only), and sensors use 8082 (readings only).
   - Any new route that changes data is refused for viewers automatically.
-  - The one exception is `VIEWER_POSTS` (`/api/identify`), a POST that changes nothing.
-  - Owner-only areas must be added to `OWNER_ONLY_PATHS` or `OWNER_ONLY_CHANGES` in `server.py`.
+  - The exceptions are `VIEWER_POSTS` (`/api/identify`, `/api/me/prefs`) and `VIEWER_PREFIXES` (`/api/push/`): requests that change nothing of the plants, or only the person's own settings and devices.
+  - Owner-only areas must be added to `OWNER_ONLY_PATHS` or `OWNER_ONLY_CHANGES` in `app/plantdb/core.py`.
   - Buttons that make changes must also be added to the viewer CSS block in `style.css`.
   - Never publish 8081, and never trust `Tailscale-User-*` headers on any other port.
   - The container starts as root and `app/start.py` picks the user (10001 if it can write to the data folders, else root). Don't add `USER` to the Dockerfile, and keep gunicorn settings in `app/gunicorn.conf.py`.
-- Keep the front end dependency-free (vanilla JS, one CSS file) and compatible with the strict Content Security Policy: **no inline scripts or inline event handlers**. Actions use `data-act` / `data-f` / `data-form` attributes, handled by delegation in `app.js`.
+- **Mushrooms (from 1.22.0):** nothing in the app may say or suggest that a wild mushroom is edible or safe; IDs are always "leads, not proof". Front-end names for finds use the `mu` prefix (`fz` belongs to the frost checklist).
+- Keep the front end dependency-free (vanilla JS in `app/static/js/*.js`, loaded in order; one CSS file) and compatible with the strict Content Security Policy: **no inline scripts or inline event handlers**. Actions use `data-act` / `data-f` / `data-form` attributes, handled by delegation in `static/js/events.js`.
 - **Test before shipping:**
-  1. Run the app with `dev/test/mock_server.py` (fake weather, no internet).
-  2. Run `dev/test/smoke.py`, and look at the screenshots it saves in `dev/tmp/shots/`.
+  1. `python3 -m pytest dev/test/unit -q` (seconds).
+  2. `python3 dev/test/run_checks.py` runs every browser check and the smoke test on a fresh mock server each (fake weather, no internet; about 90 minutes), or `run_checks.py lights shops` for a few. Look at the screenshots in `dev/tmp/shots/`. GitHub runs the same on every pull request (`.github/workflows/checks.yml`).
   3. For upgrades, also test on a copy of a database that has the previous version's batches applied.
 - Docker Hub is not reachable from Claude's sandbox. `docker compose config` works, a real image build does not, so say so when a change touches the Dockerfile.
 
 ## Where things are
-- `app/`: the app (`server.py`, `static/app.js`, `static/style.css`, `static/index.html`, `static/prefs.js`, `seed/`)
+- `app/`: the app (`server.py` is the entry point; the code is in `plantdb/`, one module per feature, `core.py` first; `static/js/*.js`, `static/style.css`, `static/index.html`, `static/prefs.js`, `seed/`)
 - `vision/`: the picture checker container for Identify and Library (BioCLIP on the processor; 1.18.0). Its model and lists download into `data/vision` on first start. `dev/vision/` holds the tests that chose the model.
 - `tools/`: the updater and `make-release.py`
 - `dev/seed_src/`: scripts that built each upgrade batch from Ethan's photos; `plants_*.py` and `envdata.py` hold the plant data and care profiles

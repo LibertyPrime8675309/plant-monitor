@@ -12,10 +12,10 @@ with sync_playwright() as p:
     b = p.chromium.launch(); pg = b.new_page(viewport={'width': 1280, 'height': 900})
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.add_init_script("localStorage.setItem('plantdb.editor','New Plant Test')")
-    pg.goto(BASE + '/'); pg.wait_for_timeout(2000)
+    pg.goto(BASE + '/#/plants'); pg.wait_for_timeout(2000)
     pg.click('a[href="#/new"]'); pg.wait_for_timeout(1500)
     check(pg.locator('form[data-form=new]').count() == 1 and 'Something went wrong' not in pg.inner_text('main'), 'Add a plant opens the form')
-    check(pg.locator('select[name=site]').input_value() == 'Outdoors', 'the location starts as Outdoors')
+    check(pg.locator('[name=__side][value=out]').is_checked(), 'the plant starts as Outside (1.29.0: Inside or outside, then the area)')
     pg.fill('input[name=common_name]', 'Test basil'); pg.click('form[data-form=new] button[type=submit]'); pg.wait_for_timeout(2000)
     code = pg.evaluate('location.hash').split('/')[-1]
     r = json.loads(urllib.request.urlopen(BASE + '/api/plants/' + code).read())

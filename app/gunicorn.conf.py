@@ -6,7 +6,7 @@
 bind = ['0.0.0.0:8080', '0.0.0.0:8081', '0.0.0.0:8082']
 # One worker: the app seeds its database on first start and SQLite is happiest with a single writer process.
 workers = 1
-threads = 4
+threads = 8
 timeout = 60
 worker_tmp_dir = '/tmp'
 # gunicorn 25.1 added a control socket for its gunicornc tool, made in a home folder. The app does not use it, and the

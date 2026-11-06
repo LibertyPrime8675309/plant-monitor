@@ -84,8 +84,8 @@ function Running-Version {
 # Run docker/robocopy with their messages logged. Windows PowerShell 5.1 treats any text a program
 # writes to stderr as an error, and docker writes its normal progress there, so relax that here.
 function Native([scriptblock]$sb) {
-    $old = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
-    try { & $sb 2>&1 | ForEach-Object { $l = "$_".Trim(); if ($l) { Say ("  " + $l) } } } finally { $ErrorActionPreference = $old }
+    $__eap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    try { & $sb 2>&1 | ForEach-Object { $l = "$_".Trim(); if ($l) { Say ("  " + $l) } } } finally { $ErrorActionPreference = $__eap }
     return $LASTEXITCODE
 }
 function JoinAll([string]$base, [string[]]$parts) { $p = $base; foreach ($x in $parts) { $p = Join-Path $p $x }; return $p }
@@ -105,8 +105,8 @@ function Pending-Packs([string]$root) {
     return $out
 }
 function Docker-Ready {
-    $old = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
-    try { docker info --format '{{.ServerVersion}}' 2>&1 | Out-Null; return ($LASTEXITCODE -eq 0) } catch { return $false } finally { $ErrorActionPreference = $old }
+    $__eap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    try { docker info --format '{{.ServerVersion}}' 2>&1 | Out-Null; return ($LASTEXITCODE -eq 0) } catch { return $false } finally { $ErrorActionPreference = $__eap }
 }
 
 Say ''
@@ -266,8 +266,8 @@ try {
 # ---- 6. rebuild and restart ------------------------------------------------------------------------
 # Docker output as text (for reading the app's own log), with Windows PowerShell 5.1's error handling relaxed as in Native.
 function Native-Text([scriptblock]$sb) {
-    $old = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
-    try { $t = (& $sb 2>&1 | Out-String) } finally { $ErrorActionPreference = $old }
+    $__eap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    try { $t = (& $sb 2>&1 | Out-String) } finally { $ErrorActionPreference = $__eap }
     return "$t"
 }
 function Wait-Version {
@@ -280,9 +280,9 @@ function Wait-Version {
 }
 # docker output, logged line by line as in Native, and also kept as text
 function Native-Capture([scriptblock]$sb) {
-    $old = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    $__eap = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
     $lines = New-Object System.Collections.Generic.List[string]
-    try { & $sb 2>&1 | ForEach-Object { $l = "$_".Trim(); if ($l) { Say ("  " + $l); $lines.Add($l) } } } finally { $ErrorActionPreference = $old }
+    try { & $sb 2>&1 | ForEach-Object { $l = "$_".Trim(); if ($l) { Say ("  " + $l); $lines.Add($l) } } } finally { $ErrorActionPreference = $__eap }
     return @{ code = $LASTEXITCODE; text = ($lines -join "`n") }
 }
 function Port-Free([int]$p) {
@@ -383,13 +383,24 @@ if ($now -eq $newVersion -and -not (Test-Path (JoinAll $AppFolder @('tailscale',
     Say 'To use the app away from home, run "Set Up Remote Access.cmd" in the plant-database\tools folder once (README: "Using the app away from home").' 'Cyan'
 }
 
-# ---- 7. tidy up old image ------------------------------------------------------------------------
-if ($installed -and $installed -ne $newVersion) {
-    $old = "plant-database:$installed"
-    $doRemove = $RemoveOldImage
-    if (-not $doRemove -and -not $Yes) { $doRemove = (Read-Host ("Delete the old Docker image {0} to free disk space? Type Y and press Enter, or just Enter to keep it" -f $old)) -match '^(y|yes)$' }
-    if ($doRemove) {
-        if ((Native { docker image rm $old }) -eq 0) { Say ("Removed the old image {0}." -f $old) 'Green' }
+# ---- 7. tidy up old images -----------------------------------------------------------------------
+# 1.19.1: every older plant-database and plant-database-vision image, not only the last version's app image. (Until 1.19.1 the
+# image name was kept in $old, the same name the Native helper used inside, so Docker was asked to delete an image called "Stop".)
+if ($installed -and $installed -ne $newVersion -and $now -eq $newVersion) {
+    $oldImages = @((Native-Text { docker image ls --format '{{.Repository}}:{{.Tag}}' }) -split "`r?`n" | ForEach-Object { $_.Trim() } |
+        Where-Object { $_ -match '^plant-database(-vision)?:\d+\.\d+\.\d+$' -and $_ -notmatch (':' + [regex]::Escape($newVersion) + '$') } | Sort-Object -Unique)
+    if ($oldImages.Count) {
+        $doRemove = $RemoveOldImage
+        if (-not $doRemove -and -not $Yes) {
+            Say ("Older versions' Docker images still take up disk space: " + ($oldImages -join ', '))
+            $doRemove = (Read-Host 'Delete them? Type Y and press Enter, or just Enter to keep them') -match '^(y|yes)$'
+        }
+        if ($doRemove) {
+            $gone = @()
+            foreach ($img in $oldImages) { if ((Native { docker image rm $img }) -eq 0) { $gone += $img } }
+            if ($gone.Count) { Say ("Removed {0} old image(s): {1}" -f $gone.Count, ($gone -join ', ')) 'Green' }
+            if ($gone.Count -lt $oldImages.Count) { Say 'Some old images could not be removed (see above). They do no harm; the updater offers again next time.' 'Yellow' }
+        }
     }
 }
 Say ("Log saved to " + $LogFile)

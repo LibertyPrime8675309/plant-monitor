@@ -71,7 +71,8 @@ with sync_playwright() as p:
                 a = get('/api/audit?n=20')
                 rows = a if isinstance(a, list) else a.get('entries', [])
                 check(any('Undone right after it was logged' in (r.get('note') or '') for r in rows), 'change log says "Undone right after it was logged"')
-                # plant page: Watered today, then Undo
+                # plant page: Watered today, then Undo (1.21.0: on a plant not watered today, since the button is off once it is)
+                W = get('/api/water'); code = next(w['code'] for w in W['plants'] if w['last_water'] != W['today'])
                 pg.goto(BASE + '/#/plant/' + code); pg.wait_for_timeout(2500)
                 b4 = len(log_for(code))
                 pg.locator('.quick-btns [data-act=care][data-kind=water]').click(); pg.wait_for_timeout(1500)

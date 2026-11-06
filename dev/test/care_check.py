@@ -38,8 +38,9 @@ with sync_playwright() as p:
     pg.goto(BASE + '/#/plant/P-031'); pg.wait_for_timeout(2500)
     st = pg.locator('#quick-status').inner_text()
     check(st.startswith('Water:'), 'quick status line: ' + st[:120])
-    pg.locator('.quick button[data-kind=water]').click(); pg.wait_for_timeout(1500)
-    check(pg.locator('.care-log li').count() >= 1 and 'Watered' in pg.locator('.care-log li').first.inner_text(), 'Watered today shows in the care log')
+    wb = pg.locator('.quick button[data-kind=water]')
+    if wb.is_enabled(): wb.click(); pg.wait_for_timeout(1500)        # 1.21.0: off already if "I watered all" above included it
+    check(pg.locator('.care-log li').count() >= 1 and 'Watered' in pg.locator('.care-log li').first.inner_text() and wb.is_disabled(), 'Watered today shows in the care log, and the button is off for the rest of the day')
     pg.locator('.quick button[data-act=careother]').click(); pg.wait_for_timeout(400)
     pg.select_option('dialog[open] select[name=kind]', 'repot'); pg.fill('dialog[open] input[name=note]', 'moved to a 10 inch pot')
     pg.locator('dialog[open] button[value=ok]').click(); pg.wait_for_timeout(1500)

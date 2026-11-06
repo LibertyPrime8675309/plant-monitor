@@ -1,0 +1,133 @@
+# Plant record: an ESPHome sensor node (1.35.0). One ESP32 with any of these, in a pot or on a shelf:
+#   - a capacitive soil moisture probe (analog, "Capacitive Soil Moisture Sensor v1.2" or similar) on GPIO34
+#   - an SHT31 (or SHT30/SHT35) air temperature and humidity sensor on I2C
+#   - a BH1750 light sensor on I2C (lux; the app turns it into PAR)
+#   - a DS18B20 soil temperature probe on GPIO4
+#   - an HX711 weighing cell under the pot (weight in grams; the app shows how it changes as the pot dries)
+# Delete the sensors you do not have. Every 10 minutes the node posts one reading to the app's sensor port (8082).
+#
+# Before flashing, fill in secrets.yaml (next to this file in the ESPHome dashboard):
+#   wifi_ssid: "your network"
+#   wifi_password: "your password"
+#   plantdb_url: "http://192.168.1.20:8082/api/readings"   # the PC that runs Plant record, port 8082
+#   plantdb_token: "the token from Weather -> Connect your sensor"
+# and change `device` below to a name you will recognise (one per node).
+
+substitutions:
+  device: monstera-pot          # the sensor's name in the app
+  every: 10min
+
+esphome:
+  name: plant-${device}
+  friendly_name: Plant sensor ${device}
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+logger:
+api:                          # Home Assistant, if you use it; harmless otherwise
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "Plant sensor ${device}"
+
+captive_portal:
+
+http_request:
+  useragent: plant-record-sensor
+  timeout: 10s
+  verify_ssl: false
+
+i2c:
+  sda: GPIO21
+  scl: GPIO22
+
+one_wire:
+  - platform: gpio
+    pin: GPIO4
+
+sensor:
+  # Soil moisture. The probe's raw volts (about 2.9 V in dry air and 1.3 V in water on 3.3 V boards) are sent as well, so you
+  # can calibrate in the app: Sensors -> Calibrate the soil probe (dry air, then a glass of water). Once calibrated, the app
+  # works out the percentage itself and the two numbers under calibrate_linear no longer matter.
+  - platform: adc
+    pin: GPIO34
+    name: "Soil probe volts"
+    id: soil_raw
+    attenuation: 11db
+    update_interval: ${every}
+    accuracy_decimals: 2
+  - platform: adc
+    pin: GPIO34
+    name: "Soil moisture"
+    id: soil
+    attenuation: 11db
+    update_interval: ${every}
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    filters:
+      - calibrate_linear:
+          - 2.9 -> 0.0
+          - 1.3 -> 100.0
+      - clamp:
+          min_value: 0
+          max_value: 100
+
+  - platform: sht3xd
+    temperature:
+      name: "Air temperature"
+      id: air_c
+    humidity:
+      name: "Humidity"
+      id: hum
+    address: 0x44
+    update_interval: ${every}
+
+  - platform: bh1750
+    name: "Light"
+    id: lux
+    address: 0x23
+    update_interval: ${every}
+
+  - platform: dallas_temp
+    name: "Soil temperature"
+    id: soil_c
+    update_interval: ${every}
+
+  # Weight: tare with the empty pot (or just note the number); the app shows the change, not the absolute weight.
+  - platform: hx711
+    name: "Pot weight"
+    id: weight
+    dout_pin: GPIO16
+    clk_pin: GPIO17
+    gain: 128
+    update_interval: ${every}
+    unit_of_measurement: g
+    filters:
+      - calibrate_linear:
+          - 0 -> 0
+          - 100000 -> 1000     # raw reading with a 1 kg weight on the cell: change it after weighing something known
+
+interval:
+  - interval: ${every}
+    then:
+      - http_request.post:
+          url: !secret plantdb_url
+          headers:
+            Content-Type: application/json
+            X-Ingest-Token: !secret plantdb_token
+          json: |-
+            root["device"] = "${device}";
+            if (!std::isnan(id(soil).state)) root["soil_moisture"] = id(soil).state;
+            if (!std::isnan(id(soil_raw).state)) root["soil_raw"] = id(soil_raw).state;
+            if (!std::isnan(id(air_c).state)) root["temp_c"] = id(air_c).state;
+            if (!std::isnan(id(hum).state)) root["humidity"] = id(hum).state;
+            if (!std::isnan(id(lux).state)) root["lux"] = id(lux).state;
+            if (!std::isnan(id(soil_c).state)) root["soil_temp_c"] = id(soil_c).state;
+            if (!std::isnan(id(weight).state)) root["weight_g"] = id(weight).state;

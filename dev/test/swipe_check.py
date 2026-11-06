@@ -57,8 +57,10 @@ with sync_playwright() as pw:
     hint = swipe(ph, cdp, 320, 500, 90, 510, shot='swipe-2-hint.png')
     check('Next plant' in hint and '[ready]' in hint, f'while swiping left a label names the next plant and says it is ready ({hint})')
     check(ph.evaluate('location.hash') == '#/plant/P-021', f'swiping left opens the next plant ({ph.evaluate("location.hash")})')
+    ph.evaluate("document.getElementById('ident').scrollIntoView()"); ph.wait_for_timeout(300)   # swipes that start on the photo are left alone
     hint = swipe(ph, cdp, 80, 500, 320, 505)
     check(ph.evaluate('location.hash') == '#/plant/P-020' and 'Previous plant' in hint, 'swiping right opens the previous plant')
+    ph.evaluate("document.getElementById('ident').scrollIntoView()"); ph.wait_for_timeout(300)
     swipe(ph, cdp, 200, 650, 230, 250)
     check(ph.evaluate('location.hash') == '#/plant/P-020', 'scrolling up and down does not change the plant')
     swipe(ph, cdp, 300, 500, 250, 505)
@@ -69,6 +71,7 @@ with sync_playwright() as pw:
     swipe(ph, cdp, bx['x'] + bx['width'] - 20, bx['y'] + bx['height'] / 2, bx['x'] + 10, bx['y'] + bx['height'] / 2 + 4)
     check(ph.evaluate('location.hash') == '#/plant/P-020', 'a swipe that starts on a form field is left alone')
     ph.goto(BASE + '/#/plant/P-001'); ph.wait_for_timeout(2000)
+    ph.evaluate("document.getElementById('ident').scrollIntoView()"); ph.wait_for_timeout(300)
     hint = swipe(ph, cdp, 80, 500, 320, 505)
     check(ph.evaluate('location.hash') == '#/plant/P-001' and 'first plant' in hint, 'on the first plant, swiping right says so and stays')
     check(ph.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), 'no sideways scrolling on the phone')
@@ -76,6 +79,7 @@ with sync_playwright() as pw:
     swipe(ph, cdp, 320, 500, 90, 510)
     check(ph.evaluate('location.hash') == '#/plant/P-001', 'with swiping turned off in Display, a swipe does nothing')
     ph.evaluate("PlantPrefs.set('swipe', '1')")
+    ph.locator('#nav-tab').click(); ph.wait_for_timeout(400)          # 1.42.0: Display is at the bottom of the Navigation menu
     ph.locator('#display-btn').click(); ph.wait_for_timeout(500)
     check(ph.locator('dialog fieldset', has=ph.locator('legend', has_text='Swipe between plants')).count() == 1, 'Display has a Swipe between plants setting')
     ctx.close(); b.close()
