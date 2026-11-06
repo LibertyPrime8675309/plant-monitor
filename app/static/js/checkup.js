@@ -174,7 +174,7 @@ Object.assign(changeActs, {
       if (ph) { p.photo = ph.file; p.newphoto = true; }
       p.pics = (p.pics || 0) + files.length;
       const box = document.getElementById('ck-pic'); if (box) box.innerHTML = rend(ckPhotoHtml(p));
-      toast(r && r.offline ? `Photo kept on this device for ${p.code}. It is sent when the connection is back.` : `Photo added to ${p.code}`);
+      if (!(r && r.offline)) toast(`Photo added to ${p.code}`);
     });
     el.value = '';
   },
@@ -217,7 +217,7 @@ Object.assign(formActs, {
       }
       const text = changed ? `health ${p.health || 'not set'} to ${nh}` : 'looks the same';
       const cr = await api('POST', '/api/care', { plant: p.code, kind: 'looked', note: (changed ? `Health ${p.health || 'not set'} to ${nh}` : 'Looks the same') + (note ? '. ' + note : '') });
-      toast(cr && cr.offline ? `Kept on this device: ${p.code} ${text}. It is sent when the connection is back.` : `Saved: ${p.code} ${text}`);   // 1.38.0 offline: the saves wait like other care
+      if (!(cr && cr.offline)) toast(`Saved: ${p.code} ${text}`);   // offline (1.38.0), the save waits like other care, and the offline layer says so itself
       ckNext({ kind: changed ? 'changed' : 'same', now: nh, was: p.health, text: text + (note ? ` ("${note}")` : '') });
     } catch (e) {
       if (btn) btn.disabled = false;

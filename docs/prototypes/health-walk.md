@@ -39,7 +39,7 @@ Each plant has a health rating (Good, Fair, Poor or Critical). With about 85 pla
 - A health rating changed on the Edit page also counts as looking the plant over. Ratings set by Claude's upgrade batches don't.
 - People with view-only access can see the list of due plants, but can't start a walk.
 - **With 1.42.0:** the walk-through page's sections and the group page's Health walk-through section are in the Navigation menu, each with a Show or hide button. On the walk itself the plant's name is a heading but not a page section, so the card has no Show or hide button and the Navigation menu stays out of the way.
-- **With no connection** (1.38.0 offline use): saves, new ratings and photos wait on the device like other care, and are sent when the connection is back; the message after saving says so. Opening the walk-through needs the connection, or a copy kept on the device.
+- **With no connection** (1.38.0 offline use): saves, new ratings and photos wait on the device like other care, and are sent when the connection is back, with the app's usual message saying so. Opening the walk-through needs the connection, or a copy kept on the device.
 
 ## How it looks
 Choosing the plants, on a laptop:
