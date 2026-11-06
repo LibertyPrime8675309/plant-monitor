@@ -113,6 +113,7 @@ with sync_playwright() as p:
     pg.locator('.quick-btns #tn-plant-btn').click(); pg.wait_for_timeout(1800)
     check(sum(1 for e in call('GET', f'/api/care?plant={a}') if e['kind'] == 'turn') == n0 + 1 and pg.locator('#tn-plant-btn').is_disabled()
           and 'Turned today' in pg.inner_text('#tn-plant-btn') and 'Turned:' in pg.inner_text('#toasts'), 'pressing it logs the turn, says so with Undo, and shows it as done')
+    check(pg.evaluate("document.activeElement.id") == 'tn-plant' and 'turned today' in pg.inner_text('#tn-plant'), 'focus moves to the line saying it was turned and when next (not back to Watered today)')
     check('Turned the pot' in pg.inner_text('.care-log'), 'the turn shows in the care log on the page')
     pg.locator('.undo-toast [data-undo=undo]').click(); pg.wait_for_timeout(1800)
     check(sum(1 for e in call('GET', f'/api/care?plant={a}') if e['kind'] == 'turn') == n0 and not pg.locator('#tn-plant-btn').is_disabled(), 'Undo takes it back and the button is ready again')

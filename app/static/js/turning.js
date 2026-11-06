@@ -10,7 +10,7 @@ const tnPl = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 const tnRow = p => ({ code: p.code, common_name: p.name, photo: p.photo });
 function tnWords(p) {
   const where = p.where ? p.where + '. ' : p.site !== 'Indoors' ? p.site + '. ' : '';
-  if (p.state === 'never') return where + 'No turn logged yet. Press Turned when you turn it, and reminders start from there.';
+  if (p.state === 'never') return where + 'No turn logged yet. Reminders start from the first time you mark it turned.';
   const over = daysBetween(p.due_on, todayStr());
   const when = p.state === 'due' ? (over > 0 ? `${tnPl(over, 'day', 'days')} overdue` : 'Due today') : p.state === 'soon' ? 'Due tomorrow' : 'Next turn ' + relDay(p.due_on);
   return `${where}${when}. Last turned ${relDay(p.last)}${p.days > 1 ? ` (${p.days} days ago)` : ''}.`;
@@ -55,8 +55,9 @@ async function viewTurning() {
 async function tnAfterChange(code) {
   if (document.getElementById('care-plant')) {          // on a plant's page: just its care part, focus back on the button
     await loadCarePlant();
-    const b = document.querySelector('#tn-plant button:not([disabled])') || document.querySelector('.quick-btns [data-act=care][data-kind=water]');
-    if (b) b.focus({ preventScroll: true });
+    // the pressed button is now "✓ Turned today" and disabled, so focus goes to the line that says it was turned and when next
+    const b = document.querySelector('#tn-plant-btn:not([disabled])') || document.querySelector('#tn-plant button:not([disabled])') || document.getElementById('tn-plant');
+    if (b) { if (b.id === 'tn-plant') b.setAttribute('tabindex', '-1'); b.focus({ preventScroll: true }); }
     return;
   }
   const y = window.scrollY; await route(); window.scrollTo(0, y);
