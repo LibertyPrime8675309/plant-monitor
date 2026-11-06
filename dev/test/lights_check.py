@@ -135,6 +135,14 @@ done = {r['rkey']: r for r in rq2 if r.get('rkey')}
 check(all(done[k]['done'] for k in ('lights-disk', 'lights-spots', 'lights-sockets', 'lights-lamps', 'lights-models')) and not done['lights-model-disk']['done'], 'answered questions are closed (lamps from batch A6, model numbers from batch B7), the disk light\'s model is still open')
 check(d7['sansi-80w']['fixture'].startswith('Suggested: the bare socket on the long') and 'clamp-on' in d7['sansi-30w']['fixture'] and 'Five bare sockets are left spare' in d7['sansi-10w']['fixture'],
       'each bulb has a suggested lamp or socket from his answer (batch A6)')
+# 1.41.1: a room itself has a negative id; renaming and removing it said "Request failed (405)"
+st, rm = call('POST', '/api/lights/places', {'room': 'Test sunroom'})
+check(st == 201 and rm['id'] < 0 and call('PUT', '/api/lights/places/%d' % rm['id'], {'room': 'Test sunroom 2'})[0] == 200
+      and any(pl['label'] == 'Test sunroom 2' for pl in call('GET', '/api/lights')[1]['places']), 'a room itself can be renamed (negative id)')
+check(call('DELETE', '/api/lights/places/%d' % rm['id'])[0] == 200 and not any(pl['id'] == rm['id'] for pl in call('GET', '/api/lights')[1]['places']), 'and removed')
+busy = next(pl['id'] for pl in j7['places'] if pl['label'] == 'Downstairs Living Room')
+st, e = call('DELETE', '/api/lights/places/%d' % busy)
+check(st == 409 and 'Move them' in str(e), f'a room with plants in it says why it cannot go, instead of 405 ({st} {e})')
 pid = next(pl['id'] for pl in j7['places'] if pl['label'] == 'Downstairs Living Room, Large Brown Hutch')
 st, _ = call('PUT', '/api/lights/spots/%d' % sid, {'name': 'Living room window', 'place': pid, 'light': p0['light_id'], 'units': p0['units'], 'distance': p0['distance_in'], 'hours': p0['hours'], 'dim': p0['dim_pct']})
 sp = next(s for s in call('GET', '/api/lights')[1]['spots'] if s['id'] == sid)
@@ -194,6 +202,9 @@ with sync_playwright() as p:
     check(pg.locator('.lt-light img.lt-photo').count() == 10 and all(pg.locator('.lt-light img.lt-photo').nth(i).get_attribute('alt') for i in range(10)), 'every light photo has a description')
     check(pg.locator('.lv').count() > 10 and pg.locator('.lv span[aria-hidden]').count() == pg.locator('.lv').count(), 'verdicts are words with a symbol, not colour alone')
     pg.screenshot(path=os.path.join(OUT, 'lights-1-page.png'))
+    np_ = pg.locator('article.lt-light.no-photo')
+    check(np_.count() >= 1 and all(w[1] > 0.8 * w[0] for w in np_.evaluate_all('els => els.map(e => [e.getBoundingClientRect().width, e.querySelector(".lt-body").getBoundingClientRect().width])')),
+          '1.41.1: a light with no photo (the disk light) uses the whole card, not the narrow photo column')
     pg.click('#lt-plan [data-act=spotnew]'); pg.wait_for_timeout(1200)
     check(pg.locator('dialog select[name=place] optgroup').count() == 5, 'the spot window offers the rooms and shelves (and the second home\'s room)')
     t1 = pg.inner_text('#sp-prev')

@@ -1,4 +1,4 @@
-"""Checks "Getting ready to come inside": the ratings, the choices on a plant page, Done today and Undo, the second
+"""Checks "Getting ready to come inside": the ratings, the choices on a plant page, the tick boxes (1.41.1), the second
 spray round on the Today page, moving inside, the Coming inside page, the Edit page and phone width.
 Start the mock server with a fresh data folder first, then:  python3 dev/test/prep_check.py [base-url]
 Screenshots: dev/tmp/shots/prep-*.png"""
@@ -56,19 +56,28 @@ with sync_playwright() as pw:
     st = pg.locator('#prep-box .pr-top [data-act=prepstart]')
     check(st.count() == 1 and 'Not started' in pg.locator('#prep-box .pr-status').inner_text(), 'a plant not started has a Start the checklist button')
     st.click(); pg.wait_for_timeout(1200)
-    check('In progress' in pg.locator('#prep-box .pr-status').inner_text() and pg.evaluate("document.activeElement.dataset.k") == 'inspect',
-          'Start: In progress, and focus moves to "Inspected for pests today"')
+    check('In progress' in pg.locator('#prep-box .pr-status').inner_text() and pg.evaluate("document.activeElement.id") == 'pm-inspect-tick',
+          'Start: In progress, and focus moves to the first tick box')
     pg.locator('#prep-box .pr-top [data-act=prepundo][data-k=start]').click(); pg.wait_for_timeout(1200)
     check('Not started' in pg.locator('#prep-box .pr-status').inner_text(), 'Undo the start puts it back')
-    pg.locator('#pm-inspect button[data-act=prepdone]').click(); pg.wait_for_timeout(1200)
-    check('Done today' in pg.locator('#pm-inspect .pm-done').inner_text(), 'Done today marks it done')
+    # 1.41.1: every step is a tick box; the ones not recommended are marked but can be ticked
+    check(pg.locator('#prep-box input[data-act=preptick]').count() == 10 and pg.locator('#prep-box details.pm-rest').count() == 0, 'all 10 steps have a tick box, none hidden away')
+    nr = pg.locator('#prep-box li.mi-not')
+    check(nr.count() >= 1 and all('Not recommended' in nr.nth(i).inner_text() for i in range(nr.count())), f'{nr.count()} steps marked Not recommended, in words')
+    pg.locator('#pm-inspect-tick').check(); pg.wait_for_timeout(1200)
+    check('Done today' in pg.locator('#pm-inspect .pm-done').inner_text() and pg.locator('#pm-inspect-tick').is_checked(), 'ticking a step marks it done today')
     check('In progress' in pg.locator('#prep-box .pr-status').inner_text(), 'status becomes In progress')
     check('Inspected for pests' in pg.locator('.care-log').inner_text(), 'it shows in the care log')
-    pg.locator('#pm-inspect button[data-act=prepundo]').click(); pg.wait_for_timeout(1200)
-    check(pg.locator('#pm-inspect .pm-done').count() == 0, 'Undo the last one takes it back off')
-    pg.locator('#pm-inspect button[data-act=prepdone]').click(); pg.wait_for_timeout(1200)
-    pg.locator('#pm-soap button[data-act=prepdone]').click(); pg.wait_for_timeout(1200)
-    check('Round 2 is due' in pg.locator('#pm-soap .pm-done').inner_text(), 'one soap round: round 2 is due')
+    check(pg.evaluate("document.activeElement.id") == 'pm-inspect-tick', 'focus stays on the tick box')
+    pg.locator('#pm-inspect-tick').uncheck(); pg.wait_for_timeout(1200)
+    check(pg.locator('#pm-inspect .pm-done').count() == 0 and not pg.locator('#pm-inspect-tick').is_checked(), 'unticking takes it back off')
+    pg.locator('#pm-inspect-tick').check(); pg.wait_for_timeout(1200)
+    pg.locator('#pm-soap-tick').check(); pg.wait_for_timeout(1200)
+    check('Round 2 is due' in pg.locator('#pm-soap .pm-done').inner_text() and pg.locator('#pm-soap [data-act=prepdone]').count() == 1, 'one soap round: round 2 is due, with its own button')
+    nk = nr.first.get_attribute('id').replace('pm-', '')
+    pg.locator(f'#pm-{nk}-tick').check(); pg.wait_for_timeout(1200)
+    check(any(m['key'] == nk and m['done'] for m in call('GET', '/api/plants/P-065/prep')['methods']), f'a step not recommended ({nk}) can still be ticked')
+    pg.locator(f'#pm-{nk}-tick').uncheck(); pg.wait_for_timeout(1200)
     pg.close()
     # a soap round 6 days ago on another plant: the Today page asks for round 2
     old = (date.today() - timedelta(days=6)).isoformat()
@@ -85,23 +94,34 @@ with sync_playwright() as pw:
     # the Coming inside page
     t.goto(f'{BASE}/#/inside'); t.wait_for_timeout(2000)
     check(t.locator('h1').inner_text() == 'Getting plants ready to come inside', 'Coming inside page opens')
-    check(t.locator('#in-doing li.job[data-code="P-065"]').count() == 1, 'P-065 is listed as In progress')
+    check(t.locator('#in-doing details.mi-fold[data-code="P-065"]').count() == 1, 'P-065 is listed as In progress')
     check(t.locator('#in-methods details').count() == 10, 'it explains all 10 methods')
-    # 1.40.1: start from the Coming inside page, then the next step from the same row
-    row = t.locator('#in-todo li.job').first; code = row.get_attribute('data-code')
+    # 1.41.1: each plant folds open to its tick boxes
+    folds = t.locator('details.mi-fold')
+    check(folds.count() == len(call('GET', '/api/prep')['plants']) and t.locator('details.mi-fold[open]').count() == 0, 'every plant is folded shut to start with')
+    t.click('[data-act=prepfold][data-open="1"]'); t.wait_for_timeout(300)
+    check(t.locator('details.mi-fold[open]').count() == folds.count(), 'Open every plant')
+    t.click('[data-act=prepfold][data-open="0"]'); t.wait_for_timeout(300)
+    check(t.locator('details.mi-fold[open]').count() == 0, 'Close every plant')
+    row = t.locator('#in-todo details.mi-fold').first; code = row.get_attribute('data-code')
+    row.locator(':scope > summary').click(); t.wait_for_timeout(300)
+    check(row.locator('input[data-act=preptick]').count() == 10 and row.locator('details.pm-steps').count() >= 8, f'{code} opens to its 10 tick boxes, with how to do each')
     row.locator('[data-act=prepstart]').click(); t.wait_for_timeout(1800)
-    nb = t.locator(f'#in-doing li.job[data-code="{code}"] [data-act=prepdone][data-k=inspect]')
-    check(nb.count() == 1 and t.evaluate("document.activeElement.dataset.k") == 'inspect', f'Coming inside page: Start moves {code} to In progress, with "Inspected for pests today" focused')
-    nb.click(); t.wait_for_timeout(1800)
-    check(call('GET', f'/api/plants/{code}/prep')['methods'][0]['done'] != [], 'that button logs the inspection')
+    fd = t.locator(f'#in-doing details.mi-fold[data-code="{code}"]')
+    check(fd.count() == 1 and fd.evaluate('d => d.open') and t.evaluate("document.activeElement.id") == f'mi-{code}-inspect-tick', f'Start moves {code} to In progress, still open, focus on its first tick box')
+    t.locator(f'#mi-{code}-inspect-tick').check(); t.wait_for_timeout(1800)
+    check(call('GET', f'/api/plants/{code}/prep')['methods'][0]['done'] != [] and t.locator(f'#mi-{code}-inspect-tick').is_checked(), 'ticking there logs the inspection')
+    check('1 of' in fd.locator(':scope > summary').inner_text(), 'and the fold says how many recommended steps are done')
     settled = [x['code'] for x in call('GET', '/api/prep')['plants'] if x['status'] == 'settled']
     if settled:     # a plant already inside (a new one from a store) can go through it too, and is kept apart for 3 weeks from the start
-        t.locator(f'#in-settled li.job[data-code="{settled[0]}"] [data-act=prepstart]').click(); t.wait_for_timeout(1800)
+        sf = t.locator(f'#in-settled details.mi-fold[data-code="{settled[0]}"]'); sf.locator(':scope > summary').click(); t.wait_for_timeout(300)
+        sf.locator('[data-act=prepstart]').click(); t.wait_for_timeout(1800)
         d = call('GET', f'/api/plants/{settled[0]}/prep')
         check(d['status'] == 'doing' and d['started'] and d['keep_until'] == (date.fromisoformat(d['started']) + timedelta(days=21)).isoformat(), f'{settled[0]} (already inside): started, kept apart until {d["keep_until"]}')
     else: check(False, 'a plant already inside to start')
     t.screenshot(path=f'{OUT}/prep-page.png')
-    t.locator('#in-doing li.job[data-code="P-065"] button[data-act=openprep]').click(); t.wait_for_timeout(3500)
+    pf = t.locator('#in-doing details.mi-fold[data-code="P-065"]'); pf.locator(':scope > summary').click(); t.wait_for_timeout(300)
+    pf.locator('button[data-act=openprep]').click(); t.wait_for_timeout(3500)
     top = t.evaluate("(() => { const s = document.getElementById('inside').getBoundingClientRect().top, p = document.getElementById('inside').closest('.pane'); return s - (p ? Math.max(p.getBoundingClientRect().top, 0) : 0); })()")
     check(t.url.endswith('/plant/P-065') and -5 <= top < 120, f'"Open its plan" opens the plant at this section ({top:.0f}px below the top of its half)')
     # moving inside

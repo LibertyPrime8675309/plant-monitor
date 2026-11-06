@@ -65,7 +65,7 @@ function ltSpotCard(s, i, plan) {
 function ltLightCard(L) {
   const S = L.specs, bits = [S.watts ? S.watts + ' W' : '', S.lumens ? fmt(S.lumens) + ' lumens' : '', S.kelvin ? S.kelvin + 'K ' + (S.kelvin >= 5000 ? 'cool white' : S.kelvin >= 3500 ? 'neutral white' : 'warm white') : '', S.cri ? 'colour rendering (CRI) ' + S.cri : ''].filter(Boolean);
   const sp = S.spectrum;
-  return html`<article class="lt-light" aria-labelledby="ltl-${L.id}">
+  return html`<article class="lt-light${L.photo ? '' : ' no-photo'}" aria-labelledby="ltl-${L.id}">
     ${L.photo ? html`<img class="lt-photo" src="${L.photo}" alt="${S.photo_alt || ''}" loading="lazy">` : ''}
     <div class="lt-body"><h3 id="ltl-${L.id}">${L.name}</h3>
     <dl class="dl lt-facts"><dt>You have</dt><dd>${L.count}${L.in_use ? ` (${L.in_use} in use in your spots)` : ''}</dd>${S.model ? html`<dt>Model</dt><dd>${S.model}</dd>` : ''}${L.fixture ? html`<dt>Where it is</dt><dd>${L.fixture}</dd>` : ''}</dl>
