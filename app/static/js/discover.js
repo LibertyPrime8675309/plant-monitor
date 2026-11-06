@@ -81,15 +81,14 @@ async function viewIdentify() {
     </section>
     <section class="id-sec" aria-labelledby="h-idph"><h2 id="h-idph">Your plant photos</h2>
       <p>These are the photos Identify compares your pictures with, one row per plant. Choose a plant or a photo to open its page. The search and filters are the same as on the Plants page; changing them here changes them there too.</p>
-      <div class="filters">
+      <div class="filters filters-main">
         <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
-        <label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
-        ${homeFilter()}${siteFilter()}${groupFilter()}${statusFilter()}
         <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
         <label class="chk"><input type="checkbox" data-f="idphnone" ${IDPH.none ? raw('checked') : ''}>Only plants with no photos</label>
         <button class="btn ghost small" type="button" data-act="clearfilters">Clear filters</button>
       </div>
-      ${moreSelects()}
+      ${moreFilters(html`<label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
+        ${homeFilter()}${siteFilter()}${groupFilter()}${statusFilter()}`, (G.health ? 1 : 0) + (G.home ? 1 : 0) + (G.site ? 1 : 0) + (G.group ? 1 : 0) + (G.status !== 'active' ? 1 : 0))}
       <p id="idph-count" class="muted" role="status" aria-live="polite"></p>
       <div id="idph-tbl"></div>
       <p class="row"><button class="btn" type="button" data-act="idphmore" id="idph-more" hidden>Show more</button></p>
@@ -482,23 +481,23 @@ async function viewLibrary(qs) {
     title: 'Library',
     after: () => { if (ready) libLoad(); libAreasPoll(); libListsPoll(); },
     html: html`<h1>Library</h1>
-    <p>Every plant species this computer knows, ${st && st.species ? Number(st.species).toLocaleString() : 'about 349,000'} in all${st && st.fungi ? html`, and ${Number(st.fungi).toLocaleString()} fungi (choose "Fungi worldwide" under Look in)` : ''}. Search, filter, and open any of them for its photos, description, classification, where it grows in the US, and the species it is most often mistaken for.</p>
+    <p>Every plant species this computer knows, ${st && st.species ? Number(st.species).toLocaleString() : 'about 349,000'} in all${st && st.fungi ? html`, and ${Number(st.fungi).toLocaleString()} fungi (choose "Fungi worldwide" under Look in)` : ''}. Open any of them for its photos, description, where it grows, and look-alikes.</p>
     ${ready ? '' : html`<p class="notice bad" role="status">${idStatusText(st)}</p>`}
     <p class="row"><a class="btn ghost" href="#/around">Around home: what's flowering and fruiting</a><a class="btn ghost" href="#/wishlist">Your wishlist (${wl.wishlist.filter(w => w.status === 'want' && (w.kind || 'plant') === 'plant').length} wanted)</a></p>
-    <div class="filters lib-filters" role="search" aria-label="Search and filter the library">
+    <div class="filters filters-main lib-filters" role="search" aria-label="Search and filter the library">
       <label>Search<input type="search" data-f="libq" value="${LIB.q}" placeholder="Common or scientific name" autocomplete="off"></label>
       <label>Look in${sel('libscope', ID_SCOPES.map(([k, l]) => [k, l + (st && st.scopes && st.scopes[k] ? ` (${Number(st.scopes[k].count).toLocaleString()})` : '')]))}</label>
-      <label>${fungi ? 'Kind of fungus' : 'Kind of plant'}${sel('libkind', [['', 'Any kind'], ...((fac && fac.kinds) || []).map(k => [k.key, `${k.label} (${k.count.toLocaleString()})`])])}</label>
+      <label>Sort by${sel('libsort', LIB_SORTS)}</label>
+    </div>
+    ${filterFold(html`<label>${fungi ? 'Kind of fungus' : 'Kind of plant'}${sel('libkind', [['', 'Any kind'], ...((fac && fac.kinds) || []).map(k => [k.key, `${k.label} (${k.count.toLocaleString()})`])])}</label>
       <label>Family<input type="text" data-f="libfamily" list="lib-fams" value="${LIB.family}" placeholder="Any family" autocomplete="off">
         <datalist id="lib-fams">${((fac && fac.families) || []).map(f => html`<option value="${f.name}">${f.name} (${f.count})</option>`)}</datalist></label>
       <label>Grows wild in${sel('libstate', [['', 'Anywhere'], ['us', 'The United States'], ...(regionState() ? [[regionState(), LIB_STATE_WORD(regionState())]] : []), ...((fac && fac.states) || []).filter(x => x !== regionState()).map(x => [x, LIB_STATE_WORD(x)])])}${fungi ? html`<small>Lichens only: the USDA lists have no other fungi</small>` : ''}</label>
       <label>Show${sel('libmine', [['', 'All of them'], ['species', 'Only ones I have'], ['genus', 'Ones I have, or of the same genus'], ['wish', 'On my wishlist'], ['notes', 'Ones with notes or tags'],
         ...mine.tags.map(t => ['tag:' + t, `Tagged "${t}"`])])}</label>
       <label>Your area${sel('libknow', [['', 'Any'], ...Object.entries(knowWord()).filter(([k]) => fungi ? ['near', 'fruiting', 'hardy'].includes(k) : k !== 'fruiting')])}</label>
-      <label>Sort by${sel('libsort', LIB_SORTS)}</label>
       <label>Show as${sel('libview', [['cards', 'Cards with photos'], ['table', 'A table']])}</label>
-      <label class="chk"><input type="checkbox" data-f="libcommon" ${LIB.common ? raw('checked') : ''}>Only ${fungi ? 'fungi' : 'plants'} with a common name</label>
-    </div>
+      <label class="chk"><input type="checkbox" data-f="libcommon" ${LIB.common ? raw('checked') : ''}>Only ${fungi ? 'fungi' : 'plants'} with a common name</label>`, libFiltersOn() + (LIB.view === 'table' ? 1 : 0))}
     <p class="row lib-count"><span id="lib-count" class="muted" role="status" aria-live="polite"></span>
       <button class="btn ghost small" type="button" data-act="libclear" id="lib-clear" ${libFiltersOn() || LIB.q ? '' : raw('hidden')}>Clear search and filters</button></p>
     <div id="lib-res"></div>

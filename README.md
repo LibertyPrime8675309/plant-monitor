@@ -941,6 +941,19 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
 
+## Room for the content (from 1.39.1)
+
+List pages put the content first. Each keeps one row of controls (Search, the one or two that matter most on that page, Sort) and folds the rest under **More filters**, which opens by itself while one of its filters is on and remembers your choice for the visit:
+
+| Page | On the row | Folded |
+|---|---|---|
+| Plants | Search, Home, Location, Sort by | Health, Group, Show (active or archived), ID confidence under 70%, Light needs, Pets, Winter here, Care today, and the rest |
+| Identify → Your plant photos | Search, Sort by, Only plants with no photos | Health, Home, Location, Group, Show, and the rest |
+| Library | Search, Look in, Sort by | Kind, Family, Grows wild in, Show, Your area, Show as, Only with a common name |
+| Audit log | (the whole box is folded until a filter is on) | |
+
+**Read this page aloud** sits beside the page title on a computer. A page with no sections has no "On this page" menu. On Grow lights, a light's name, count, model and place are shown as text; **Edit the name, count, model and where it is** opens the fields.
+
 ## Better names from Identify (from 1.39.0)
 
 The picture checker (BioCLIP, on this computer) used to rank every species by the picture alone, which put three wrong names on the screen often enough. From 1.39.0 it weighs the names toward what you are likely to be looking at:

@@ -35,7 +35,7 @@ if not top or top.group(1) != ver: print(f'WARNING: the top CHANGELOG entry is {
 
 def photo_packs():
     """{pack name: [photo files]}: the initial seed, then each upgrade batch in the order they apply. A photo belongs to
-    the first batch that uses it; photos no batch mentions go in a pack called 'extra'."""
+    the first batch that uses it; photos no batch mentions are left out."""
     order, seen = [], set()
     def take(pack, f):
         if f and f not in seen and os.path.exists(os.path.join(PHOTOS, f)):
@@ -49,7 +49,10 @@ def photo_packs():
         for p in b.get('plants', []):
             for ph in p.get('photos', []): take(b['id'], ph['file'])
         for ph in b.get('existing_photos', []): take(b['id'], ph['file'])
-    for f in sorted(os.listdir(PHOTOS)): take('extra', f)
+    # 1.39.2: a photo no batch uses is not shipped at all (it used to go in an 'extra' pack, which then had to be sent too,
+    # and the updater stopped without it although no plant needs it)
+    stray = [f for f in sorted(os.listdir(PHOTOS)) if f not in seen and not f.startswith('.')]
+    if stray: print('NOTE: not shipped, no batch uses them: ' + ', '.join(stray))
     packs = {}
     for pack, f in order: packs.setdefault(pack, []).append(f)
     out = {}

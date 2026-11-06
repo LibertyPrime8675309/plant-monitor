@@ -227,6 +227,11 @@ const acts = {
     await guard(async () => { await api('DELETE', '/api/containers/' + el.dataset.id); META = await api('GET', '/api/meta'); toast('Removed'); route(); }); },
   async ctphotodel(el) { if (!(await needName())) return; await guard(async () => { await api('DELETE', '/api/containers/photos/' + el.dataset.id); toast('Photo removed'); route(); }); },
   sevreset() { SEV.photos.forEach(p => { try { URL.revokeObjectURL(p.url); } catch (e) { /* gone */ } }); Object.assign(SEV, { step: 'pick', photos: [], order: [], plants: [], done: null, busy: false }); SEV.home = sevDefaultHome(); sevDraw('input[type=file]'); },
+  ltedit(el) {                          // 1.39.1: a light's name, count, model and place are text until you ask to edit them
+    const box = document.getElementById('lt-ed-' + el.dataset.id); if (!box) return;
+    box.hidden = !box.hidden; el.setAttribute('aria-expanded', String(!box.hidden)); el.textContent = box.hidden ? 'Edit the name, count, model and where it is' : 'Done editing';
+    if (!box.hidden) { const i = box.querySelector('input'); if (i) i.focus(); }
+  },
   async newfill(el) {                   // 1.38.0: Add a plant: the names from the first photo on the form
     const form = el.closest('form'), inp = form && form.elements.__photos, st = document.getElementById('newfill-st');
     const f = inp && inp.files[0]; if (!f) return;

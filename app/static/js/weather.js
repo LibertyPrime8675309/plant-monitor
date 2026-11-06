@@ -190,11 +190,10 @@ async function viewWeather(sec) {
   return {
     title: 'Weather',
     html: html`<h1>Weather and sensors</h1>
-    <p class="muted">Tracks the weather for ${WX.places.length > 1 ? `${WX.places.length} places` : W.location.name} from Open-Meteo (free, no account), and takes readings from your own sensors. Everything is stored in your data folder, so the history keeps growing.</p>
     <div class="placebar noprint" role="group" aria-label="Place">
       <label>Location<select data-f="wxplace">${WX.places.map(p => html`<option value="${p.id}" ${String(p.id) === String(W.location.id) ? raw('selected') : ''}>${p.name}${p.is_home ? ' (home)' : ''}</option>`)}</select></label>
       <a class="btn small ghost" href="#sec-places" data-act="gotoplaces">Add or manage places</a>
-      <p class="hint" style="flex-basis:100%;margin:0">The same choice as the Location button at the top of every page: plant pages, frost warnings, watering and the Winter plan all use ${W.location.name}${atHome ? '' : html`, not the home place (${W.home.name})`}.</p></div>
+      <span class="hint">Open-Meteo weather and your own sensors, kept in your data folder.${atHome ? '' : html` This is not the home place (${W.home.name}); the Location button at the top chooses it.`}</span></div>
     ${condCard(null, cond)}
     <section class="blk"><h2>Next 7 days in ${W.location.name}</h2>${forecastBlock(W, plants)}</section>
     <section class="blk"><h2>Tracked history</h2>

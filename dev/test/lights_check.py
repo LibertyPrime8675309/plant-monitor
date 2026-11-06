@@ -154,6 +154,8 @@ with sync_playwright() as p:
     pg.add_init_script("localStorage.setItem('plantdb.editor','Light Test')")
     pg.goto(LOCAL + '/#/lights'); pg.wait_for_timeout(2500)
     check(pg.locator('#lt-rooms .lt-room').count() == 5 and 'Big Brown Hutch' in pg.inner_text('#lt-rooms') and 'Living room window' in pg.inner_text('#lt-rooms'), 'the page lists his rooms with the spot on its shelf')
+    check('SANSI-80W-TEST' in pg.inner_text('#lt-lights') and pg.locator('#lt-lights .lt-ed:visible').count() == 0, '1.39.1: each light shows its model as text; the edit fields wait behind a button')
+    pg.locator('[data-act=ltedit]').first.click(); pg.wait_for_timeout(300)
     check('Manufacturer model' in pg.inner_text('#lt-lights') and pg.locator('#lt-lights [data-k=model]').evaluate_all("els => els.some(e => e.value === 'SANSI-80W-TEST')"), 'each light shows its manufacturer model (1.29.0: in a box you can type in)')
     check(pg.locator('#lt-spots article').count() == 1 and pg.locator('#lt-plan article').count() >= 5 and pg.locator('.lt-light').count() == 11, 'the page shows your spot, the suggestions and your 11 lights')
     check(pg.locator('.lt-light img.lt-photo').count() == 10 and all(pg.locator('.lt-light img.lt-photo').nth(i).get_attribute('alt') for i in range(10)), 'every light photo has a description')

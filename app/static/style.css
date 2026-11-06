@@ -491,6 +491,7 @@ section.blk,section[id],h2[id]{scroll-margin-top:calc(var(--top-h) + .8rem)}
 html[data-navside=right] #sidenav{left:auto;right:0;border-right:0;border-left:2px solid var(--line)}
 html[data-navopen="1"] #sidenav{display:block}
 html[data-navopen="1"] #nav-tab{display:none}
+html[data-navempty="1"][data-narrow="0"] #nav-tab{display:none}   /* 1.39.1: a page with no sections has no section menu, so its width goes to the content */
 .sn-head{display:flex;flex-direction:column;gap:.5rem;margin-bottom:.6rem}
 .sn-title{font-size:1.15rem;margin:0}
 .sn-btns{display:flex;gap:.5rem;flex-wrap:wrap}
@@ -665,6 +666,10 @@ section.has-rd{position:relative}
 main section.blk.has-rd>h2,section.needs.has-rd>h2{padding-right:10rem}
 .cond header .rd-btn{position:static}
 .rd-page{margin:.2rem 0 .9rem;display:flex;gap:.7rem;align-items:center;flex-wrap:wrap}
+/* 1.39.1: on a computer the read-aloud button sits beside the page title instead of taking a row of its own */
+html[data-narrow="0"] h1:has(+ .rd-page){display:inline-block;margin-right:1.2rem;vertical-align:baseline}
+html[data-narrow="0"] h1 + .rd-page{display:inline-flex;vertical-align:baseline;margin:0 0 .6rem}
+html[data-narrow="0"] h1 + .rd-page .hint{font-size:.85em}
 .rd-page .btn{display:inline-flex;gap:.4rem;align-items:center}
 .rd-on{outline:3px dashed var(--focus);outline-offset:6px;border-radius:4px}
 #rd-stop{position:fixed;left:50%;transform:translateX(-50%);bottom:1rem;z-index:40;box-shadow:0 4px 18px rgba(0,0,0,.35);min-height:3rem;padding-inline:1.4rem}
@@ -1625,7 +1630,7 @@ html[data-role=viewer] :is([data-act=snsedit],[data-act=snsrm]){display:none!imp
 .cal-steps li{margin:.4rem 0}
 .cal-now{font-size:1.15em}
 html[data-role=viewer] :is([data-act=snscal],[data-act=calstep]){display:none!important}
-html[data-role=viewer] :is([data-act=offiduse],[data-act=newfill]){display:none!important}   /* 1.38.0 */
+html[data-role=viewer] :is([data-act=offiduse],[data-act=newfill],[data-act=ltedit]){display:none!important}   /* 1.38.0 */
 .off-pics{display:inline-flex;gap:.3rem;margin-left:.5rem;vertical-align:middle}
 .off-pics img{width:3rem;height:3rem;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
 /* 1.36.0: the soil moisture chart on a plant's timeline, and the calendar badges */
