@@ -14,7 +14,7 @@ with sync_playwright() as p:
     pg = b.new_page(viewport={'width': 1366, 'height': 900})
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.add_init_script("localStorage.setItem('plantdb.editor','Frost Test')")
-    pg.goto(BASE + '/#/'); pg.wait_for_timeout(2000)
+    pg.goto(BASE + '/#/plants'); pg.wait_for_timeout(2000)
     ban = pg.locator('.fz-banner')
     check(ban.count() == 1, 'banner shows on the Plants page')
     print('     ' + ban.inner_text().replace('\n', ' | ')[:300])
@@ -35,7 +35,10 @@ with sync_playwright() as p:
     check('Undo' in (focused or ''), f'focus stays on that plant (on "{focused}")')
     # move a plant indoors: it leaves the list
     row = pg.locator('.fz-row:has(button[data-act=frostin])').first; code2 = row.get_attribute('data-code')
-    row.locator('button[data-act=frostin]').click(); pg.wait_for_timeout(1800)
+    row.locator('button[data-act=frostin]').click()
+    for _ in range(12):
+        pg.wait_for_timeout(500)
+        if pg.locator(f'.fz-row[data-code="{code2}"]').count() == 0: break
     check(pg.locator(f'.fz-row[data-code="{code2}"]').count() == 0, f'{code2} moved indoors and left the list')
     pg.locator('#fz-in').screenshot(path=f'{OUT}/frost-group-light.png')
     pg.locator('.fz-row').first.screenshot(path=f'{OUT}/frost-row-light.png')
@@ -47,13 +50,13 @@ with sync_playwright() as p:
     # hide the banner
     pg.goto(BASE + '/#/winter'); pg.wait_for_timeout(1500)
     pg.click('button[data-act=frosthide]'); pg.wait_for_timeout(500)
-    pg.goto(BASE + '/#/'); pg.wait_for_timeout(1500)
+    pg.goto(BASE + '/#/plants'); pg.wait_for_timeout(1500)
     check(pg.locator('.fz-banner').count() == 0, 'hidden banner stays hidden')
     pg.evaluate("localStorage.removeItem('plantdb.frosthide')")
     for name, vp, theme in [('phone-dark', (390, 844), 'dark'), ('wide-dark', (1920, 1080), 'dark')]:
         q = b.new_page(viewport={'width': vp[0], 'height': vp[1]}); q.on('pageerror', lambda e: errs.append(str(e)))
         q.add_init_script("localStorage.setItem('plantdb.editor','Frost Test');localStorage.setItem('plantdb.display',JSON.stringify({theme:'%s'}))" % theme)
-        q.goto(BASE + '/#/'); q.wait_for_timeout(1800); q.screenshot(path=f'{OUT}/frost-banner-{name}.png')
+        q.goto(BASE + '/#/plants'); q.wait_for_timeout(1800); q.screenshot(path=f'{OUT}/frost-banner-{name}.png')
         q.goto(BASE + '/#/frost'); q.wait_for_timeout(1800); q.screenshot(path=f'{OUT}/frost-checklist-{name}.png')
         over = q.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth')
         check(over <= 2, f'{name}: no sideways scrolling ({over}px)')

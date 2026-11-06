@@ -38,9 +38,14 @@ def identify():
          'blue': [('P-030', .60, .52), ('P-031', .58, None), ('P-032', .57, None)]}[c]
     sp = SP if c == 'blue' else SP[1:] + SP[:1]
     if request.args.get('scope') == 'fungi': sp = FUNGI[:3]
-    return jsonify(model='bioclip-2.5-vith14 (test)', likely_new=c == 'blue', scope=request.args.get('scope', 'common'), seconds=0.1,
+    n_pics = len(request.files.getlist('images')) + (1 if 'image' in request.files else 0)      # 1.39.0: several pictures of one plant
+    extra = [] if request.args.get('scope') == 'fungi' else [{'scientific_name': f'Testia species{i:02d}', 'common_name': f'Test plant {i:02d}' if i % 3 else '', 'genus': 'Testia', 'family': 'Testaceae', 'order': 'Testales',
+                                                               'in_texas': False, 'us_states': [], 'usda_symbol': '', 'probability': round(.07 - i * .007, 3), 'basis': []} for i in range(1, 8)]
+    basis = {'Monstera deliciosa': ['house', 'looks'], 'Lupinus texensis': ['state'], 'Agave americana': ['own_gen']}
+    return jsonify(model='bioclip-2.5-vith14 (test)', likely_new=c == 'blue', scope=request.args.get('scope', 'common'), seconds=0.1, pictures=n_pics, prior=True,
                    matches=[{'code': k, 'score': s, 'photo': None, 'confidence': cf} for k, s, cf in m],
-                   species=[x | {'probability': p} for x, p in zip(sp, (.41, .22, .09))], genera=[{'genus': sp[0]['genus'], 'probability': .5}])
+                   species=([x | {'probability': p, 'basis': basis.get(x['scientific_name'], [])} for x, p in zip(sp, (.41, .22, .09))] + extra)[:int(request.args.get('n', 10))],
+                   genera=[{'genus': sp[0]['genus'], 'probability': .5}, {'genus': sp[1]['genus'], 'probability': .2}, {'genus': 'Testia', 'probability': .1}])
 
 @app.get('/names')
 def names():
@@ -235,7 +240,7 @@ def aspca(animal):
 
 # 1.27.0: stand-in shops for the wishlist checks. A Shopify store answers on 127.0.0.1, a WooCommerce store on localhost (shops
 # are told apart by their address), a nursery page, and eBay and Etsy's search services. /mock/shop/set changes the stock.
-SHOP = {'bluebonnet_price': '4.95', 'bluebonnet_stock': True, 'calls': []}
+SHOP = {'bluebonnet_price': '4.95', 'bluebonnet_stock': True, 'pumice_price': '13.99', 'calls': []}
 
 @app.get('/products.json')
 def shop_shopify():
@@ -246,7 +251,11 @@ def shop_shopify():
         {'title': 'Texas Bluebonnet (Lupinus texensis) seed packet', 'handle': 'texas-bluebonnet', 'variants': [
             {'title': '1 oz', 'price': SHOP['bluebonnet_price'], 'available': SHOP['bluebonnet_stock']}, {'title': '1 lb', 'price': '39.00', 'available': False}]},
         {'title': 'Monstera deliciosa, 6 inch pot', 'handle': 'monstera-6', 'variants': [{'title': 'Default Title', 'price': '29.99', 'available': False}]},
-        {'title': 'Pothos Golden', 'handle': 'pothos', 'variants': [{'title': 'Default Title', 'price': '12.00', 'available': True}]}])
+        {'title': 'Pothos Golden', 'handle': 'pothos', 'variants': [{'title': 'Default Title', 'price': '12.00', 'available': True}]},
+        # 1.30.0: garden supplies, for Shopping
+        {'title': 'Pumice 1/4 in', 'handle': 'pumice', 'variants': [{'title': '0.5 cu ft', 'price': SHOP.get('pumice_price', '13.99'), 'available': True}, {'title': '2 cu ft', 'price': '39.99', 'available': True}]},
+        {'title': 'Perlite, coarse 8 qt', 'handle': 'perlite', 'variants': [{'title': 'Default Title', 'price': '9.00', 'available': True}]},
+        {'title': 'Frost protection blanket 10 x 12 ft', 'handle': 'frost-cloth', 'variants': [{'title': 'Default Title', 'price': '18.99', 'available': True}]}])
 
 @app.get('/wp-json/wc/store/v1/products')
 def shop_woo():
@@ -287,3 +296,25 @@ def etsy_search():
     q = request.args.get('keywords', '').lower()
     res = [{'title': 'Texas bluebonnet seeds, 500 count', 'url': 'https://www.etsy.com/listing/9', 'price': {'amount': 650, 'divisor': 100, 'currency_code': 'USD'}, 'quantity': 3}] if 'bluebonnet' in q else []
     return jsonify(count=len(res), results=res)
+
+
+# 1.30.0: a stand-in for OpenStreetMap's place search (Nominatim), for store addresses and map positions
+OSM = {'calls': []}
+@app.get('/mock/osm/search')
+def osm_search():
+    q = request.args.get('q', ''); OSM['calls'].append(q)
+    if 'Weiss' in q or 'Maltman' in q:
+        return jsonify([{'lat': '39.2290', 'lon': '-121.0580', 'display_name': 'Weiss Brothers Nursery, 615, Maltman Drive, Grass Valley',
+                         'address': {'house_number': '615', 'road': 'Maltman Drive', 'city': 'Grass Valley', 'state': 'California', 'postcode': '95945'},
+                         'extratags': {'opening_hours': 'Mo-Sa 08:00-17:00;Su 09:00-16:00', 'phone': '+1 530-273-5814', 'website': 'http://www.weissbrothersnursery.com/'}}])
+    if 'Far Away' in q:
+        return jsonify([{'lat': '47.6', 'lon': '-122.3', 'address': {'city': 'Seattle'}, 'extratags': {'phone': '1'}}])
+    if 'Round Rock' in q or 'TX' in q:
+        return jsonify([{'lat': '30.5100', 'lon': '-97.6800', 'address': {'city': 'Round Rock', 'state': 'Texas'}, 'extratags': {}}])
+    if 'CA' in q or 'Nevada City' in q or 'Grass Valley' in q:
+        return jsonify([{'lat': '39.2200', 'lon': '-121.0600', 'address': {'city': 'Grass Valley', 'state': 'California'}, 'extratags': {}}])
+    return jsonify([])
+
+@app.get('/mock/osm/calls')
+def osm_calls():
+    return jsonify(OSM)

@@ -59,7 +59,7 @@ check(idx['scope'] == 'areas' and len(idx['species']) >= 1 and idx['areas'] == [
 with sync_playwright() as p:
     b = p.chromium.launch()
     ctx = b.new_context(viewport={'width': 1920, 'height': 1080}, extra_http_headers=E)
-    ctx.add_init_script("localStorage.setItem('plantdb.editor','Ethan')")
+    ctx.add_init_script("localStorage.setItem('plantdb.editor','Ethan');localStorage.setItem('plantdb.morefilters','1')")
     pg = ctx.new_page(); pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.goto(TS + '/#/library'); pg.wait_for_timeout(4000)
     sec = pg.locator('#h-libpre').locator('xpath=..')
@@ -82,7 +82,7 @@ with sync_playwright() as p:
     v.goto(TS + '/#/library'); v.wait_for_timeout(4000)
     check(v.locator('table.lib-areas').count() == 1 and v.locator('[data-act=libareaupd]').count() == 0, 'someone who can only view sees the table but no buttons')
     ph = b.new_context(viewport={'width': 384, 'height': 740}, is_mobile=True, has_touch=True, service_workers='block', extra_http_headers=E)
-    ph.add_init_script("localStorage.setItem('plantdb.editor','Ethan');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
+    ph.add_init_script("localStorage.setItem('plantdb.editor','Ethan');localStorage.setItem('plantdb.morefilters','1');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
     q = ph.new_page(); q.on('pageerror', lambda e: errs.append(str(e)))
     q.goto(TS + '/#/library'); q.wait_for_timeout(4000)
     check(not q.evaluate('document.documentElement.scrollWidth > innerWidth + 1'), 'on a phone with the largest text nothing scrolls sideways')

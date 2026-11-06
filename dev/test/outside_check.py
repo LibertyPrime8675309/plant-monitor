@@ -24,7 +24,7 @@ def check(cond, what):
     if not cond: fails.append(what)
 
 S.init_db()
-S.local_today = lambda c: TODAY
+S.patch('local_today', lambda c: TODAY)
 c = S.sqlite3.connect(S.DB_PATH)
 home = c.execute('SELECT id FROM locations WHERE is_home=1').fetchone()[0]
 days = [{'date': (TODAY + timedelta(days=i)).isoformat(), 'low': v, 'high': v + 20} for i, v in enumerate(LOWS)]
@@ -36,6 +36,7 @@ while d < date(2027, 1, 1):
     c.execute("INSERT OR REPLACE INTO weather_daily(loc_id,date,data,kind,updated_at) VALUES(?,?,?,'observed','x')",
               (home, d.isoformat(), json.dumps({'temperature_2m_min': low}), ))
     d += timedelta(days=1)
+c.execute("UPDATE plants SET status='archived' WHERE CAST(SUBSTR(code,3) AS INTEGER) > 89")      # houseplants added after the seed (batch B8 on): this check is about the seed's outdoor plants
 c.execute("UPDATE plants SET site='Indoors' WHERE code IN ('P-001','P-003','P-005','P-008','P-012','P-013')")
 c.execute("UPDATE plants SET site='Garage or shed' WHERE code='P-007'")
 c.execute("UPDATE plants SET temp_damage_below=46 WHERE code='P-005'")      # safe at 49°F: fine this week, but early by the history

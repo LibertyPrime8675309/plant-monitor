@@ -22,25 +22,26 @@
     <a class="brand" href="#/">Plant record</a><span class="ver" id="app-ver" title="Version of the app that is running"></span>
     <button class="pages-btn" id="pages-btn" type="button" data-act="pages" aria-controls="main-nav" aria-expanded="false"><span aria-hidden="true">&#9776;</span> Pages: <span id="pages-cur">Plants</span></button>
     <nav aria-label="Main" id="main-nav">
-      <a href="#/today" data-sec="today">Today</a>
-      <a href="#/" data-sec="plants">Plants</a>
+      <a href="#/" data-sec="today">Today</a>
+      <a href="#/plants" data-sec="plants">Plants</a>
       <a href="#/winter" data-sec="care">Care</a>
       <a href="#/weather" data-sec="weather">Weather</a>
       <a href="#/identify" data-sec="discover">Discover</a>
       <a href="#/settings" data-sec="settings">Settings</a>
     </nav>
-    <div class="top-acts"><a class="net" id="net" href="#/offline" data-state="online" title="Offline use: what is saved on this device, and changes waiting to be sent">Online</a><button class="place-btn" id="place-btn" type="button" data-act="place" aria-haspopup="dialog"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span class="pl-l">Location:</span> <span id="place-name">…</span></button>
+    <div class="top-acts"><button class="srch-btn" id="search-btn" type="button" data-act="search" aria-haspopup="dialog" title="Search everything (the / key)"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5 21 21"/></svg><span class="srch-l">Search</span></button><a class="net" id="net" href="#/offline" data-state="online" title="Offline use: what is saved on this device, and changes waiting to be sent">Online</a><button class="place-btn" id="place-btn" type="button" data-act="place" aria-haspopup="dialog"><svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span class="pl-l">Location:</span> <span id="place-name">…</span></button>
     <button class="who" type="button" data-act="who" aria-label="Change who is editing"><span id="who-name"></span></button></div>
   </div>
   <nav class="sub-in" id="sub-nav" aria-label="Pages in this section"></nav>
 </header>
-<aside id="sidenav" class="noprint" aria-label="Sections of this page">
-  <div class="sn-head"><h2 class="sn-title">On this page</h2>
+<aside id="sidenav" class="noprint" aria-label="Navigation: the sections of this page">
+  <div class="sn-head"><h2 class="sn-title">Navigation</h2>
     <div class="sn-btns"><button class="btn small ghost" type="button" data-act="navside" id="sn-side">Move right</button>
     <button class="btn small" type="button" data-act="navtoggle" aria-controls="sidenav" aria-expanded="true">Hide</button></div></div>
   <ol id="sn-list"></ol>
+  <div class="sn-foot" id="sn-foot"><button id="display-btn" type="button" data-act="display" aria-haspopup="dialog"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20 9 5l6 15M5.5 14h7M16 20l3.500-9 3.500 9M17.200 17h4.600"/></svg>Display</button></div>
 </aside>
-<button id="nav-tab" class="noprint" type="button" data-act="navtoggle" aria-controls="sidenav" aria-expanded="false"><span aria-hidden="true">&#9776;</span> Sections</button>
+<button id="nav-tab" class="noprint" type="button" data-act="navtoggle" aria-controls="sidenav" aria-expanded="false"><span aria-hidden="true">&#9776;</span> Navigation</button>
 <main id="app" tabindex="-1"><p class="loading">Loading plants</p></main>
 <section id="console" class="noprint" hidden aria-labelledby="con-title">
   <div class="con-head"><h2 id="con-title">Audit log (live)</h2><span id="con-state" class="con-state">Starting</span>
@@ -49,10 +50,24 @@
   <button id="con-new" class="con-new" type="button" data-act="connew" hidden>New changes below: show</button>
 </section>
 <div id="corner" class="noprint">
-<button id="display-btn" type="button" data-act="display" aria-haspopup="dialog"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20 9 5l6 15M5.5 14h7M16 20l3.500-9 3.500 9M17.200 17h4.600"/></svg>Display</button>
 </div>
 <div id="toasts" role="status" aria-live="polite"></div>
 <dialog id="dlg"></dialog>
-<script src="/app.js"></script>
+<script src="/js/core.js"></script>
+<script src="/js/gallery.js"></script>
+<script src="/js/plant.js"></script>
+<script src="/js/care.js"></script>
+<script src="/js/edit.js"></script>
+<script src="/js/weather.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/lights.js"></script>
+<script src="/js/events.js"></script>
+<script src="/js/discover.js"></script>
+<script src="/js/offline.js"></script>
+<script src="/js/notify.js"></script>
+<script src="/js/voice.js"></script>
+<script src="/js/sensors.js"></script>
+<script src="/js/review.js"></script>
+<script src="/js/main.js"></script>
 </body>
 </html>

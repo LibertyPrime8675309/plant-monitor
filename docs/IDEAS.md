@@ -1,7 +1,7 @@
 # Feature ideas
 
 One line each, most wanted first. A prototyping session takes the top one that is not already in progress, and marks it "(in progress: proto/<branch>)".
-- Search by voice: a button beside every search box (and the V key) that fills the box from what you say, tidies spoken plant codes and opens a plant with "open ...". (suggested by Claude) (in progress: proto/voice-search)
+- Search by voice: a button beside every search box (and the V key) that fills the box from what you say, tidies spoken plant codes and opens a plant or page with "open ...", turned into words on this computer by its own Whisper service. (suggested by Claude) (in progress: proto/voice-search)
 
 - Summer heat: an AHS heat-zone style "days above 86°F" count from the weather history, next to the USDA zone on About this plant, for plants that struggle in Texas summers.
 - Sensor dashboard for the DIY plant monitor (soil moisture, temperature, light) once hardware is posting to `/api/readings`.

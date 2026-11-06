@@ -1,0 +1,308 @@
+{
+ "id": "B9",
+ "created": "2026-11-05",
+ "author": "Claude (corrections to batch B8 as shipped in 1.39.1)",
+ "updates": [
+  {
+   "name": "Split rock, purple form ('Royal Flush')",
+   "photos": [
+    "img_b8_pn_purple_1.jpg"
+   ],
+   "note": "Corrections to batch B8 (1.39.1): list values and sources",
+   "set": {
+    "leaf_type": [
+     "Succulent leaves",
+     "Succulent or cactus"
+    ],
+    "sources": [
+     "Pl@ntNet identification, November 5, 2026 (Pleiospilos nelii, 96%) | https://identify.plantnet.org\nLLIFLE: Pleiospilos nelii | https://www.llifle.com/Encyclopedia/SUCCULENTS/Family/Aizoaceae/22166/Pleiospilos_nelii\nWorld of Succulents: Pleiospilos nelii | https://worldofsucculents.com/pleiospilos-nelii-split-rock\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants",
+     "Pl@ntNet identification on the Identify page, November 5, 2026 (Pleiospilos nelii, 96%)\nWikipedia: Pleiospilos nelii | https://en.wikipedia.org/wiki/Pleiospilos_nelii\nWorld of Succulents: Pleiospilos nelii | https://worldofsucculents.com/pleiospilos-nelii/\nWorld of Succulents: Pleiospilos nelii Royal Flush | https://worldofsucculents.com/scientific-names/pleiospilos-nelii-royal-flush/\nLLIFLE: Pleiospilos nelii | https://llifle.info/Encyclopedia/SUCCULENTS/Family/Aizoaceae/14724/Pleiospilos_nelii\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants"
+    ]
+   }
+  },
+  {
+   "name": "Split rock, green form",
+   "photos": [
+    "img_b8_pn_green_1.jpg"
+   ],
+   "note": "Corrections to batch B8 (1.39.1): list values and sources",
+   "set": {
+    "leaf_type": [
+     "Succulent leaves",
+     "Succulent or cactus"
+    ],
+    "sources": [
+     "Pl@ntNet identification, November 5, 2026 (Pleiospilos nelii, 96%) | https://identify.plantnet.org\nLLIFLE: Pleiospilos nelii | https://www.llifle.com/Encyclopedia/SUCCULENTS/Family/Aizoaceae/22166/Pleiospilos_nelii\nWorld of Succulents: Pleiospilos nelii | https://worldofsucculents.com/pleiospilos-nelii-split-rock\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants",
+     "Pl@ntNet identification on the Identify page, November 5, 2026 (Pleiospilos nelii, 96%)\nWikipedia: Pleiospilos nelii | https://en.wikipedia.org/wiki/Pleiospilos_nelii\nWorld of Succulents: Pleiospilos nelii | https://worldofsucculents.com/pleiospilos-nelii/\nWorld of Succulents: Pleiospilos nelii Royal Flush | https://worldofsucculents.com/scientific-names/pleiospilos-nelii-royal-flush/\nLLIFLE: Pleiospilos nelii | https://llifle.info/Encyclopedia/SUCCULENTS/Family/Aizoaceae/14724/Pleiospilos_nelii\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants"
+    ]
+   }
+  },
+  {
+   "name": "Vanilla orchid",
+   "photos": [
+    "img_b8_vanilla_1.jpg"
+   ],
+   "note": "Corrections to batch B8 (1.39.1): list values and sources",
+   "set": {
+    "winter_plan": [
+     "Indoors all year",
+     "Move indoors"
+    ],
+    "sources": [
+     "NC State Extension Plant Toolbox: Vanilla planifolia | https://plants.ces.ncsu.edu/plants/vanilla-planifolia/\nMissouri Botanical Garden: Vanilla planifolia | https://www.missouribotanicalgarden.org/PlantFinder/PlantFinderDetails.aspx?kempercode=b588\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants",
+     "Wikipedia: Vanilla planifolia | https://en.wikipedia.org/wiki/Vanilla_planifolia\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants"
+    ]
+   }
+  },
+  {
+   "name": "Philodendron 'Ring of Fire'",
+   "photos": [
+    "img_b8_rof_1.jpg"
+   ],
+   "note": "Corrections to batch B8 (1.39.1): list values and sources",
+   "set": {
+    "winter_plan": [
+     "Indoors all year",
+     "Move indoors"
+    ],
+    "sources": [
+     "H-E-B tag on the plant (Philodendron Ring of Fire, 'Philodendron serratum', full sun, foliage)\nNC State Extension Plant Toolbox: Philodendron | https://plants.ces.ncsu.edu/plants/philodendron/\nASPCA toxic and non-toxic plants: Philodendron | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants",
+     "H-E-B tag on the plant (Philodendron Ring of Fire, 'Philodendron serratum', full sun, foliage)\nNC State Extension Plant Toolbox: Philodendron hederaceum | https://plants.ces.ncsu.edu/plants/philodendron-hederaceum/\nThe University of Kansas Health System Poison Control: Philodendron | https://www.kansashealthsystem.com/care/centers/poison-control-center/poisonous-plants/philodendron\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants"
+    ]
+   }
+  },
+  {
+   "name": "Monstera 'Thai Constellation' (left of the pole, speckled leaves)",
+   "photos": [
+    "img_b8_thai_pot1.jpg"
+   ],
+   "note": "Corrections to batch B8 (1.39.1): list values and sources",
+   "set": {
+    "winter_plan": [
+     "Indoors all year",
+     "Move indoors"
+    ],
+    "pot_size": [
+     "Medium: needs two hands",
+     "Medium: fits in a big tub"
+    ],
+    "sources": [
+     "H-E-B tag on the plant (Monstera Thai Constellation, Monstera deliciosa, full sun, foliage)\nNC State Extension Plant Toolbox: Monstera deliciosa | https://plants.ces.ncsu.edu/plants/monstera-deliciosa/\nASPCA toxic and non-toxic plants: Swiss cheese plant | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/swiss-cheese-plant",
+     "H-E-B tag on the plant (Monstera Thai Constellation, Monstera deliciosa, full sun, foliage)\nPlants of the World Online (Kew): Monstera deliciosa | https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:87478-1/general-information\nQueensland Poisons Information Centre: Fruit salad plant | https://www.poisonsinfo.health.qld.gov.au/plants-and-mushrooms/fruit-salad-plant-monstera-deliciosa\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants"
+    ]
+   }
+  },
+  {
+   "name": "Monstera 'Thai Constellation' (right of the pole, cream leaves)",
+   "photos": [
+    "img_b8_thai_pot2.jpg"
+   ],
+   "note": "Corrections to batch B8 (1.39.1): list values and sources",
+   "set": {
+    "winter_plan": [
+     "Indoors all year",
+     "Move indoors"
+    ],
+    "pot_size": [
+     "Medium: needs two hands",
+     "Medium: fits in a big tub"
+    ],
+    "sources": [
+     "H-E-B tag on the plant (Monstera Thai Constellation, Monstera deliciosa, full sun, foliage)\nNC State Extension Plant Toolbox: Monstera deliciosa | https://plants.ces.ncsu.edu/plants/monstera-deliciosa/\nASPCA toxic and non-toxic plants: Swiss cheese plant | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/swiss-cheese-plant",
+     "H-E-B tag on the plant (Monstera Thai Constellation, Monstera deliciosa, full sun, foliage)\nPlants of the World Online (Kew): Monstera deliciosa | https://powo.science.kew.org/taxon/urn:lsid:ipni.org:names:87478-1/general-information\nQueensland Poisons Information Centre: Fruit salad plant | https://www.poisonsinfo.health.qld.gov.au/plants-and-mushrooms/fruit-salad-plant-monstera-deliciosa\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants"
+    ]
+   }
+  },
+  {
+   "name": "Moth orchid (white geometric pot)",
+   "photos": [
+    "img_b8_phal_pot.jpg"
+   ],
+   "note": "Corrections to batch B8 (1.39.1): list values and sources",
+   "set": {
+    "winter_plan": [
+     "Indoors all year",
+     "Move indoors"
+    ],
+    "leaf_type": [
+     "Strap leaves",
+     "Large leaves"
+    ],
+    "pet_safety": [
+     "Safe for pets",
+     "Safe for pets (ASPCA)"
+    ],
+    "sources": [
+     "American Orchid Society: Phalaenopsis culture sheet | https://www.aos.org/orchids/culture-sheets/phalaenopsis\nASPCA non-toxic plants: Moth orchid | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/moth-orchid",
+     "Wikipedia: Phalaenopsis | https://en.wikipedia.org/wiki/Phalaenopsis\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants"
+    ]
+   }
+  },
+  {
+   "name": "Mini moth orchid (pumpkin pot, dark-leaved)",
+   "photos": [
+    "img_b8_pump_pot.jpg"
+   ],
+   "note": "Corrections to batch B8 (1.39.1): list values and sources",
+   "set": {
+    "winter_plan": [
+     "Indoors all year",
+     "Move indoors"
+    ],
+    "leaf_type": [
+     "Strap leaves",
+     "Large leaves"
+    ],
+    "pet_safety": [
+     "Safe for pets",
+     "Safe for pets (ASPCA)"
+    ],
+    "sources": [
+     "American Orchid Society: Phalaenopsis culture sheet | https://www.aos.org/orchids/culture-sheets/phalaenopsis\nASPCA non-toxic plants: Moth orchid | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/moth-orchid",
+     "Wikipedia: Phalaenopsis | https://en.wikipedia.org/wiki/Phalaenopsis\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants"
+    ]
+   }
+  },
+  {
+   "name": "Orchid, narrow-leaved (pumpkin pot, yellowing)",
+   "photos": [
+    "img_b8_pump_base.jpg"
+   ],
+   "note": "Corrections to batch B8 (1.39.1): list values and sources",
+   "set": {
+    "winter_plan": [
+     "Indoors all year",
+     "Move indoors"
+    ],
+    "leaf_type": [
+     "Strap leaves",
+     "Large leaves"
+    ],
+    "sources": [
+     "American Orchid Society: Dendrobium culture sheet | https://www.aos.org/orchids/culture-sheets/dendrobium",
+     "Wikipedia: Phalaenopsis | https://en.wikipedia.org/wiki/Phalaenopsis\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants"
+    ]
+   }
+  },
+  {
+   "name": "Purple passion plant",
+   "photos": [
+    "img_b8_gyn_plant.jpg"
+   ],
+   "note": "Corrections to batch B8 (1.39.1): list values and sources",
+   "set": {
+    "winter_plan": [
+     "Indoors all year",
+     "Move indoors"
+    ],
+    "leaf_type": [
+     "Medium leaves",
+     "Fuzzy or velvety leaves"
+    ],
+    "pot_size": [
+     "Medium: needs two hands",
+     "Medium: fits in a big tub"
+    ],
+    "pet_safety": [
+     "Safe for pets",
+     "Safe for pets (ASPCA)"
+    ],
+    "sources": [
+     "Costa Farms tags on the plant (Purple Passion Plant; Gynura aurantica: bright, weekly, keep above 50 F)\nASPCA non-toxic plants: Velvet plant | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/velvet-plant\nNC State Extension Plant Toolbox: Gynura aurantiaca | https://plants.ces.ncsu.edu/plants/gynura-aurantiaca/",
+     "Costa Farms tags on the plant (Purple Passion Plant; Gynura aurantica: bright, weekly, keep above 50 F)\nNC State Extension Plant Toolbox: Gynura aurantiaca | https://plants.ces.ncsu.edu/plants/gynura-aurantiaca\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants"
+    ],
+    "winter_summary": [
+     "Tropical: indoors all year in Round Rock.",
+     "Tropical: a houseplant, indoors all year in Round Rock."
+    ]
+   }
+  },
+  {
+   "name": "Flame violet, copper-leaved",
+   "photos": [
+    "img_b8_epi_bronze.jpg"
+   ],
+   "note": "Corrections to batch B8 (1.39.1): list values and sources",
+   "set": {
+    "winter_plan": [
+     "Indoors all year",
+     "Move indoors"
+    ],
+    "leaf_type": [
+     "Medium leaves",
+     "Fuzzy or velvety leaves"
+    ],
+    "pot_size": [
+     "Medium: needs two hands",
+     "Medium: fits in a big tub"
+    ],
+    "sources": [
+     "Costa Farms tags on the plant (Flame Violet, ideal for terrariums; Episcia cupreata: bright tolerates medium, weekly, keep above 50 F)\nNC State Extension Plant Toolbox: Episcia cupreata | https://plants.ces.ncsu.edu/plants/episcia-cupreata/",
+     "Costa Farms tags on the plant (Flame Violet, ideal for terrariums; Episcia cupreata: bright tolerates medium, weekly, keep above 50 F)\nNC State Extension Plant Toolbox: Episcia cupreata | https://plants.ces.ncsu.edu/plants/episcia-cupreata\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants"
+    ],
+    "winter_summary": [
+     "Tropical: indoors all year in Round Rock.",
+     "Tropical: a houseplant, indoors all year in Round Rock."
+    ]
+   }
+  },
+  {
+   "name": "Flame violet, dark-leaved",
+   "photos": [
+    "img_b8_epi_dark.jpg"
+   ],
+   "note": "Corrections to batch B8 (1.39.1): list values and sources",
+   "set": {
+    "winter_plan": [
+     "Indoors all year",
+     "Move indoors"
+    ],
+    "leaf_type": [
+     "Medium leaves",
+     "Fuzzy or velvety leaves"
+    ],
+    "pot_size": [
+     "Medium: needs two hands",
+     "Medium: fits in a big tub"
+    ],
+    "sources": [
+     "Costa Farms tags on the plant (Flame Violet, ideal for terrariums; Episcia cupreata: bright tolerates medium, weekly, keep above 50 F)\nNC State Extension Plant Toolbox: Episcia cupreata | https://plants.ces.ncsu.edu/plants/episcia-cupreata/",
+     "Costa Farms tags on the plant (Flame Violet, ideal for terrariums; Episcia cupreata: bright tolerates medium, weekly, keep above 50 F)\nNC State Extension Plant Toolbox: Episcia cupreata | https://plants.ces.ncsu.edu/plants/episcia-cupreata\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants"
+    ],
+    "winter_summary": [
+     "Tropical: indoors all year in Round Rock.",
+     "Tropical: a houseplant, indoors all year in Round Rock."
+    ]
+   }
+  },
+  {
+   "name": "Rex begonia, silver-leaved (small)",
+   "photos": [
+    "img_b8_beg_small.jpg"
+   ],
+   "note": "Corrections to batch B8 (1.39.1): list values and sources",
+   "set": {
+    "winter_plan": [
+     "Indoors all year",
+     "Move indoors"
+    ],
+    "leaf_type": [
+     "Medium leaves",
+     "Large leaves"
+    ],
+    "pot_size": [
+     "Medium: needs two hands",
+     "Medium: fits in a big tub"
+    ],
+    "sources": [
+     "ASPCA toxic plants: Begonia | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants/begonia\nNC State Extension Plant Toolbox: Begonia rex-cultorum | https://plants.ces.ncsu.edu/plants/begonia-rex-cultorum-group/",
+     "Wikipedia: Begonia rex | https://en.wikipedia.org/wiki/Begonia_rex\nUConn Home and Garden Education Center: Rex begonia | https://homegarden-cahnr.media.uconn.edu/wp-content/uploads/sites/3479/2022/08/Rex-Begonia.pdf\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants"
+    ],
+    "winter_summary": [
+     "Tropical: indoors all year in Round Rock.",
+     "Tropical: a houseplant, indoors all year in Round Rock."
+    ]
+   }
+  }
+ ]
+}

@@ -1,0 +1,73 @@
+# Plant record mirror (1.37.0): a read-only copy of the app on another machine, kept up to date from the backups the receiver
+# gets, reachable on Tailscale as "plants-mirror". See README.md in this folder. Run it from the unzipped release folder's
+# mirror/ subfolder: the app is built from the folder above (..), the same as on the main PC.
+services:
+  backup-receiver:
+    build: ../receiver
+    container_name: plant-backup-receiver
+    restart: unless-stopped
+    ports:
+      - "8089:8089"
+    volumes:
+      - ./received:/received
+    environment:
+      BACKUP_TOKEN: ${BACKUP_TOKEN:?Put BACKUP_TOKEN=some-long-random-text in a file named .env next to this file}
+      RECEIVE_DIR: /received
+      KEEP: "20"
+
+  plants-mirror:
+    build:
+      context: ..
+      args:
+        PLANTDB_VERSION: "${PLANTDB_VERSION:-mirror}"
+    image: plant-database-mirror:latest
+    container_name: plant-mirror
+    volumes:
+      - ./data:/data
+      - ./backups:/backups
+      - ./received:/mirror-in:ro
+    expose:
+      - "8081"
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      PLANTDB_MIRROR: "1"
+      PLANTDB_MIRROR_MAIN: ${PLANTDB_MIRROR_MAIN:-}      # the main app's address, for the note on every page, e.g. https://plants.tail1234.ts.net
+      PLANTDB_MIRROR_MINUTES: "5"
+      PLANTDB_WEATHER: "0"            # the mirror shows the main app's weather history; it does not fetch its own
+      PLANTDB_SHOPS: "0"
+      PLANTDB_OSM: "0"
+      PLANTDB_PUSH: "0"
+      PLANTDB_BACKUPS: "0"
+      PLANTDB_VISION_URL: ""
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+
+  tailscale:
+    image: tailscale/tailscale:stable
+    container_name: plant-mirror-tailscale
+    environment:
+      TS_HOSTNAME: plants-mirror
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_SERVE_CONFIG: /config/serve.json
+      TS_USERSPACE: "true"
+      TS_AUTH_ONCE: "true"
+      TS_AUTHKEY: ${TS_AUTHKEY:-}
+    volumes:
+      - ./tailscale/state:/var/lib/tailscale
+      - ./tailscale/config:/config:ro
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped

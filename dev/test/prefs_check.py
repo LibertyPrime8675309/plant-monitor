@@ -28,10 +28,10 @@ with sync_playwright() as p:
     b = p.chromium.launch()
     def device(w, h):
         ctx = b.new_context(viewport={'width': w, 'height': h}, extra_http_headers=E)
-        ctx.add_init_script("localStorage.setItem('plantdb.editor','Ethan')")
+        ctx.add_init_script("localStorage.setItem('plantdb.editor','Ethan');localStorage.setItem('plantdb.morefilters','1')")
         pg = ctx.new_page(); pg.on('pageerror', lambda e: errs.append(str(e))); return pg
     a = device(1920, 1080)
-    a.goto(TS + '/#/'); a.wait_for_timeout(3000)
+    a.goto(TS + '/#/plants'); a.wait_for_timeout(3000)
     check(a.locator('#main-nav a[data-sec]').count() == 6 and a.locator('#main-nav a[aria-current=page]').inner_text().strip() == 'Plants', 'the top bar has six sections, with Plants marked')
     check([x.strip() for x in a.locator('#sub-nav a').all_inner_texts()][:4] == ['All plants', 'Groups', 'Add plants', 'Mushrooms'], 'Plants has its pages on a second row, Mushrooms among them')
     check(a.locator('#app-ver').is_visible() and a.locator('#app-ver').inner_text().startswith('v'), 'the version is on screen')
@@ -41,7 +41,7 @@ with sync_playwright() as p:
     check(a.locator('#main-nav a[aria-current=page]').inner_text().strip() == 'Discover' and a.locator('#sub-nav a[aria-current=page]').inner_text().strip().startswith('Wishlist'), 'Wishlist has its own link under Discover')
     check(a.locator('#place-btn .pl-l').inner_text().strip() == 'Home:', 'the Location button says Home')
     # a filter on one device follows to another
-    a.goto(TS + '/#/'); a.wait_for_timeout(2500)
+    a.goto(TS + '/#/plants'); a.wait_for_timeout(2500)
     a.locator('select[data-f=health]').select_option('Good'); a.wait_for_timeout(1500)
     check('"health":"Good"' in (call('GET', '/api/me/prefs', h=E, base=TS)[1]['prefs'].get('filters') or ''), 'a Plants filter is saved for your sign-in')
     # Display: this device only by default
@@ -51,7 +51,10 @@ with sync_playwright() as p:
     pr = call('GET', '/api/me/prefs', h=E, base=TS)[1]['prefs']
     check('"size":"160"' in (pr.get('display.text') or ''), 'ticking "Use these on every device" shares that part')
     c2 = device(1280, 900)
-    c2.goto(TS + '/#/'); c2.wait_for_timeout(5000)
+    c2.goto(TS + '/#/plants'); c2.wait_for_timeout(3000)
+    for _ in range(20):                       # it starts again once with the synced settings: give that a moment
+        if c2.locator('select[data-f=health]').count() and c2.locator('select[data-f=health]').input_value() == 'Good': break
+        c2.wait_for_timeout(500)
     check(c2.locator('select[data-f=health]').input_value() == 'Good', 'another device opens with the same Plants filter')
     check(c2.evaluate("document.documentElement.dataset.size") != '160', 'but keeps its own text size, because it has not ticked the box')
     c2.evaluate("window.PlantSync.share('text', true)"); c2.wait_for_timeout(1500)
