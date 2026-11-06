@@ -141,13 +141,30 @@ document.addEventListener('keydown', e => {
 // Ten ways to keep outdoor pests out of the house. The server rates each one for each plant (from its leaf type, pot
 // size, the pests found, its health and the weather); this draws the plant page section, the Coming inside page and
 // the Today page jobs, and logs each step to the care log as a "prep_" entry.
-const PREP_CARE = { prep_inspect: 'Inspected for pests', prep_potclean: 'Cleaned the pot and saucer', prep_rinse: 'Rinsed with water', prep_wipe: 'Wiped the leaves',
+const PREP_CARE = { prep_start: 'Started the move-inside checklist', prep_inspect: 'Inspected for pests', prep_potclean: 'Cleaned the pot and saucer', prep_rinse: 'Rinsed with water', prep_wipe: 'Wiped the leaves',
   prep_soap: 'Sprayed insecticidal soap', prep_oil: 'Sprayed horticultural oil', prep_alcohol: 'Dabbed pests with rubbing alcohol', prep_soak: 'Soaked the pot',
   prep_topsoil: 'Refreshed the top of the soil', prep_repot: 'Repotted in fresh soil' };
 Object.assign(CARE_WORD, PREP_CARE);          // the care log and "Log other care" know these steps too
 const PR_SIGN = { 'Best': '★', 'Good': '✓', 'Use with care': '!', 'Not needed': '–', 'Not for this plant': '✕' };
 const prBadge = r => html`<span class="pr-badge pr-${r.toLowerCase().replace(/\s+/g, '-')}"><span aria-hidden="true">${PR_SIGN[r] || ''}</span> ${r}</span>`;
-const PREP = { data: null };
+const PREP = { data: null, list: null };
+// 1.40.1: the buttons beside a plant's status: Start the checklist, then the next step as one button ("Inspected for pests today"),
+// on the plant page and on each row of the Coming inside page. A plant already inside can start it too (a new plant from a store).
+function prepActs(D, where) {
+  const nm = D.name || D.common_name || D.code, b = [];
+  if (!D.started && ['todo', 'apart', 'settled'].includes(D.status))
+    b.push(html`<button class="btn small ${D.status === 'todo' ? '' : 'ghost'}" type="button" data-act="prepstart" data-code="${D.code}" aria-label="${nm}: start the checklist">Start the checklist</button>`);
+  if (D.next_key && (D.status !== 'todo'))
+    b.push(html`<button class="btn small" type="button" data-act="prepdone" data-code="${D.code}" data-k="${D.next_key}" data-where="${where}" aria-label="${nm}: ${D.next_word.toLowerCase()} today">${D.next_word} today</button>`);
+  if (D.started && !D.done_count)
+    b.push(html`<button class="btn small ghost" type="button" data-act="prepundo" data-code="${D.code}" data-k="start" data-where="${where}" aria-label="${nm}: undo the start">Undo the start</button>`);
+  return b;
+}
+function prepFocus(el, code) {        // where focus goes after a prep button redraws the page
+  if (el.closest('.pr-top')) return '#prep-box .pr-top button';
+  if (el.closest('#prep-box')) return `[data-act=prepdone][data-k="${el.dataset.k}"][data-code="${code}"]`;
+  return `li.job[data-code="${code}"] .job-acts button`;
+}
 function prepMethodItem(m, n, code) {
   return html`<li class="pm" id="pm-${m.key}"><div class="pm-head"><h4 class="pm-title"><span class="pm-n">${n}.</span> ${m.title}</h4>${prBadge(m.rating)}</div>
     <p class="pm-why">${m.reason}</p>
@@ -161,7 +178,9 @@ function prepRender() {
   const o = D.options, main = D.methods.filter(m => m.rank >= 2), rest = D.methods.filter(m => m.rank < 2), num = m => D.methods.indexOf(m) + 1;
   box.innerHTML = rend(html`
     ${D.winter_plan !== 'Move indoors' ? html`<p class="hint">Its winter plan is ${D.winter_plan}, so it usually stays outside. If you do bring it in, this is how.</p>` : ''}
-    <div class="verdict-box pr-status" role="status"><p><strong>${D.status_word}.</strong> ${D.next}</p></div>
+    <div class="verdict-box pr-status" role="status"><p><strong>${D.status_word}.</strong> ${D.next}</p>
+      ${D.status === 'settled' && !D.started ? html`<p class="hint">Start the checklist if it is new from a store, or came in without a check.</p>` : ''}</div>
+    <p class="row pr-top noprint">${prepActs(D, 'top')}<button class="btn small ghost" type="button" data-act="prepjump">Go to the checklist</button></p>
     <fieldset class="pr-traits"><legend>About this plant</legend>
       <p class="hint">These decide which methods suit it. Claude filled in the leaf type from the photos; change anything that is wrong.</p>
       <div class="field-grid">
@@ -175,7 +194,7 @@ function prepRender() {
       ${D.watch.length ? html`<details class="pr-watch"><summary>What this plant often gets (${D.watch.length})</summary><ul>${D.watch.map(x => html`<li>${x}</li>`)}</ul></details>` : ''}
       </fieldset>
     ${D.best.length ? html`<p><strong>Best for this plant:</strong> ${D.best.join(', ')}.</p>` : ''}
-    <h3>Methods, in the order to do them</h3>
+    <h3 id="pm-head" tabindex="-1">The checklist, in the order to do it</h3>
     <ul class="pm-list">${main.map(m => prepMethodItem(m, num(m), D.code))}</ul>
     ${rest.length ? html`<details class="pm-rest"><summary>${rest.length} more ${rest.length === 1 ? 'method is' : 'methods are'} not needed or not suitable for this plant</summary>
       <ul class="pm-list">${rest.map(m => prepMethodItem(m, num(m), D.code))}</ul></details>` : ''}
@@ -215,10 +234,12 @@ function prepWords(p) {
   return html`${p.next}<br><span class="pr-sub">${t.charAt(0).toUpperCase() + t.slice(1)}. Best: ${p.best.join(', ').toLowerCase()}.</span>`;
 }
 async function viewInside() {
-  const D = await api('GET', '/api/prep');
+  const D = await api('GET', '/api/prep'); PREP.list = D;
   const c = D.counts, w = D.status_words;
   const groups = ['doing', 'todo', 'ready', 'apart', 'settled'].map(k => [k, D.plants.filter(p => p.status === k)]).filter(g => g[1].length);
-  const open = p => html`<button class="btn small ghost" type="button" data-act="openprep" data-code="${p.code}">Open its plan</button>`;
+  const open = p => html`${prepActs(p, 'row')}<button class="btn small ghost" type="button" data-act="openprep" data-code="${p.code}" aria-label="${p.name}: open its plan">Open its plan</button>`;
+  const gHint = { todo: 'Press Start the checklist on a plant, then do its steps one at a time. Each step has its own button.',
+    settled: 'Already inside. Start the checklist for any that are new from a store, or came in without a check.' };
   const say = ['todo', 'doing', 'ready', 'apart', 'settled'].filter(k => c[k]).map(k => `${c[k]} ${w[k].toLowerCase()}`).join(', ');
   return {
     title: 'Getting plants ready to come inside',
@@ -226,12 +247,12 @@ async function viewInside() {
     <p class="muted">Ten ways to keep ants, mites and other outdoor pests out of the house, and where each plant that is coming inside is up to. Each plant's page rates the methods for that plant, with the steps.</p>
     <div class="verdict-box" role="status"><p><strong>${D.plants.length} ${D.plants.length === 1 ? 'plant' : 'plants'} coming inside:</strong> ${say || 'none yet'}.</p>${D.weather.spray ? html`<p>${D.weather.spray}</p>` : ''}</div>
     <section class="blk" id="in-order"><h2>The order of work</h2><ol class="steps">
-      <li>Outdoors, a week or two before the move, inspect each plant and tick what you find on its page.</li>
+      <li>Outdoors, a week or two before the move, press Start the checklist for each plant. Inspect it first, and tick what you find on its page.</li>
       <li>Clean its pot, then do the methods rated Best for it.</li>
       <li>If you found pests, spray again 5 to 7 days later. The Today page reminds you.</li>
       <li>Bring it inside and change its Location to Indoors (or press Moved indoors).</li>
       <li>Keep it apart from your other houseplants for ${D.keep_apart_days} days, with yellow sticky traps nearby, and check it at every watering.</li></ol></section>
-    ${groups.map(([k, list]) => html`<section class="blk" id="in-${k}"><h2>${w[k]} (${list.length})</h2>
+    ${groups.map(([k, list]) => html`<section class="blk" id="in-${k}"><h2>${w[k]} (${list.length})</h2>${gHint[k] ? html`<p class="hint">${gHint[k]}</p>` : ''}
       <ul class="jobs">${list.map(p => jobRow({ code: p.code, common_name: p.name, photo: p.photo }, prepWords(p), open(p)))}</ul></section>`)}
     <section class="blk" id="in-methods"><h2>How to do each method</h2>
       <p class="hint">Not every method suits every plant: open a plant's plan to see which are best for it.</p>

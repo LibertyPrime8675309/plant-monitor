@@ -52,6 +52,14 @@ with sync_playwright() as pw:
     check(d['pests_found'] == ['Mealybugs', 'Scale'] and rating(d, 'soap') == 'Best' and rating(d, 'oil') == 'Best', 'scale and mealybugs: soap and oil become Best')
     check(call('GET', '/api/plants/P-065')['version'] == v0 + 3, 'each choice is saved as a page version')
     pg.screenshot(path=f'{OUT}/prep-choices.png')
+    # 1.40.1: Start the checklist, beside the status
+    st = pg.locator('#prep-box .pr-top [data-act=prepstart]')
+    check(st.count() == 1 and 'Not started' in pg.locator('#prep-box .pr-status').inner_text(), 'a plant not started has a Start the checklist button')
+    st.click(); pg.wait_for_timeout(1200)
+    check('In progress' in pg.locator('#prep-box .pr-status').inner_text() and pg.evaluate("document.activeElement.dataset.k") == 'inspect',
+          'Start: In progress, and focus moves to "Inspected for pests today"')
+    pg.locator('#prep-box .pr-top [data-act=prepundo][data-k=start]').click(); pg.wait_for_timeout(1200)
+    check('Not started' in pg.locator('#prep-box .pr-status').inner_text(), 'Undo the start puts it back')
     pg.locator('#pm-inspect button[data-act=prepdone]').click(); pg.wait_for_timeout(1200)
     check('Done today' in pg.locator('#pm-inspect .pm-done').inner_text(), 'Done today marks it done')
     check('In progress' in pg.locator('#prep-box .pr-status').inner_text(), 'status becomes In progress')
@@ -79,6 +87,19 @@ with sync_playwright() as pw:
     check(t.locator('h1').inner_text() == 'Getting plants ready to come inside', 'Coming inside page opens')
     check(t.locator('#in-doing li.job[data-code="P-065"]').count() == 1, 'P-065 is listed as In progress')
     check(t.locator('#in-methods details').count() == 10, 'it explains all 10 methods')
+    # 1.40.1: start from the Coming inside page, then the next step from the same row
+    row = t.locator('#in-todo li.job').first; code = row.get_attribute('data-code')
+    row.locator('[data-act=prepstart]').click(); t.wait_for_timeout(1800)
+    nb = t.locator(f'#in-doing li.job[data-code="{code}"] [data-act=prepdone][data-k=inspect]')
+    check(nb.count() == 1 and t.evaluate("document.activeElement.dataset.k") == 'inspect', f'Coming inside page: Start moves {code} to In progress, with "Inspected for pests today" focused')
+    nb.click(); t.wait_for_timeout(1800)
+    check(call('GET', f'/api/plants/{code}/prep')['methods'][0]['done'] != [], 'that button logs the inspection')
+    settled = [x['code'] for x in call('GET', '/api/prep')['plants'] if x['status'] == 'settled']
+    if settled:     # a plant already inside (a new one from a store) can go through it too, and is kept apart for 3 weeks from the start
+        t.locator(f'#in-settled li.job[data-code="{settled[0]}"] [data-act=prepstart]').click(); t.wait_for_timeout(1800)
+        d = call('GET', f'/api/plants/{settled[0]}/prep')
+        check(d['status'] == 'doing' and d['started'] and d['keep_until'] == (date.fromisoformat(d['started']) + timedelta(days=21)).isoformat(), f'{settled[0]} (already inside): started, kept apart until {d["keep_until"]}')
+    else: check(False, 'a plant already inside to start')
     t.screenshot(path=f'{OUT}/prep-page.png')
     t.locator('#in-doing li.job[data-code="P-065"] button[data-act=openprep]').click(); t.wait_for_timeout(3500)
     top = t.evaluate("(() => { const s = document.getElementById('inside').getBoundingClientRect().top, p = document.getElementById('inside').closest('.pane'); return s - (p ? Math.max(p.getBoundingClientRect().top, 0) : 0); })()")

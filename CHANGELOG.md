@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.40.1 (2026-11-05)
+- **Start the checklist** for getting a plant ready to come inside (Ethan, November 5: there was no way to start it). The button sits right under the plant's status, on its page and on each plant's row of the Coming inside page. After that, the same place has one button for the next step, named for what you did ("Inspected for pests today", then the next Best method), so you can work down the list without scrolling. **Undo the start** takes it back until you have done a step; **Go to the checklist** jumps to the full list, now headed "The checklist, in the order to do it".
+- **Plants already inside can go through it too:** the 13 indoor plants (and any plant inside) have a Start the checklist button, for a new plant from a store or one brought in without a check. It is then kept apart from your other houseplants for 3 weeks from the day you started. A good one to start: the moth orchid with mealybugs.
+- The updater's log has no more garbled progress bars from the app's own build. (The picture checker's build still shows them; they go the next time its packages change, so it does not download 1 GB again just for that.)
+
 ## 1.40.0 (2026-11-05)
 - **One identifier** behind Identify, Add a plant and Add several plants: every photo of the plant is checked together, Pl@ntNet is part of the answer whenever its key is saved (always with "Ask Pl@ntNet on its own", or when this computer is unsure), and the two lists are merged into one, each name saying who said so and how sure. The likeliest **family** joins the likeliest genus.
 - **Not this** and **Not this genus** on every name, on all three pages: the name leaves the list, the photos are checked again without it, and the choice is logged.
