@@ -1772,3 +1772,9 @@ ul.lt-plants.lt-two{grid-template-columns:repeat(auto-fit,minmax(max(min(100%,19
 .lt-room-head h3{margin:0}
 .lt-room-head .row{margin:0}
 .lt-top .rd-page .hint{display:none}     /* the shortcut hint is on every other page; here the title row stays one line */
+
+/* ---- prototype (proto/frost-dates): frost dates on the Weather page and the Cold-night checklist ---- */
+.fd-dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:.4rem 1.2rem;margin:.4rem 0 .8rem}
+.fd-dl>div{border-left:4px solid var(--line);padding:.2rem 0 .2rem .7rem} .fd-dl dt{font-weight:600} .fd-dl dd{margin:0} .fd-dl dd .hint{display:block}
+.fd-groups{list-style:none;padding:0;margin:.6rem 0} .fd-g{border-top:1px solid var(--line);padding:.6rem 0} .fd-g:first-child{border-top:0}
+.fd-h{margin:0 0 .2rem;font-size:1.05em} .fd-g p{margin:.2rem 0} .fd-names{overflow-wrap:anywhere}

@@ -82,3 +82,45 @@ def test_every_route_is_reachable():
     missing = [r for r in routes if r not in listed and f'href="#/{r}' not in everything]
     assert not missing, f'pages nobody can find: {missing}'
     assert {'frost', 'inside', 'outside', 'around', 'decisions', 'sensors'} <= listed
+
+# ---- prototype (proto/frost-dates): frost dates from the weather history
+def test_frost_season_helpers():
+    from datetime import date
+    assert S.season_of(date(2025, 7, 1)) == 2025 and S.season_of(date(2026, 6, 30)) == 2025
+    assert S.season_day(date(2025, 7, 1)) == 0 and S.season_label(S.season_day(date(2025, 12, 4))) == 'Dec 4'
+    assert S.middle([3, 1, 2]) == 2 and S.middle([1, 2, 3, 4]) == 2.5 and S.middle([]) is None
+
+def test_season_stats_first_last_and_none():
+    from datetime import date
+    w = {2021: [(date(2021, 11, 20), 31), (date(2022, 2, 10), 25), (date(2022, 3, 1), 33)],
+         2022: [(date(2022, 12, 4), 32), (date(2023, 2, 22), 30)],
+         2023: [(date(2023, 12, 20), 35)]}
+    st = S.season_stats(w, 32)
+    assert st['winters'] == 3 and st['had'] == 2 and st['none'] == 1 and not st['most_none']
+    assert st['first']['earliest'] == 'Nov 20' and st['first']['latest'] == 'Dec 4' and st['last']['latest'] == 'Feb 22'
+    assert S.season_stats(w, 32, strict=True)['first']['latest'] == 'Feb 22'       # strict: the 32°F night of Dec 4 is not below 32
+    assert S.season_stats(w, 26)['most_none'] and S.season_stats(w, 26)['first']['usual'] == 'Feb 10'
+
+def test_frost_dates_needs_three_whole_winters():
+    import json, math
+    from datetime import date, timedelta
+    c = S.sqlite3.connect(S.DB_PATH, timeout=30); c.row_factory = S.sqlite3.Row
+    L = S.home_place(c); lid = L['id']
+    c.execute('DELETE FROM weather_daily WHERE loc_id=?', (lid,)); S.PLACE_LOWS.clear()
+    start = S.season_of(S.datetime.now(S.tzinfo(L['tz'])).date())
+    def fill(s):
+        d = date(s, 7, 1)
+        while d < date(s + 1, 7, 1):
+            doy = d.timetuple().tm_yday
+            lo = 50 + 25 * math.sin((doy - 110) / 365 * 2 * math.pi)        # coldest (25°F) in mid-January
+            c.execute("INSERT OR REPLACE INTO weather_daily(loc_id,date,data,kind,updated_at) VALUES(?,?,?,?,?)", (lid, d.isoformat(), json.dumps({'temperature_2m_min': lo}), 'observed', S.now()))
+            d += timedelta(days=1)
+    fill(start - 1); fill(start - 2); c.commit()
+    r = S.frost_dates(c, L)
+    assert not r['ready'] and r['winters'] == 2 and 'freeze' not in r
+    fill(start - 3); c.commit(); S.PLACE_LOWS.clear()
+    r = S.frost_dates(c, L)
+    assert r['ready'] and r['winters'] == 3 and r['freeze']['first']['usual'].startswith('Dec') and r['freeze']['last']['usual'].startswith(('Feb', 'Mar'))
+    assert r['hard']['first']['usual_day'] > r['freeze']['first']['usual_day'] and r['frost_free_days'] > 250
+    assert [w['winter'] for w in r['per_winter']][0] == f'{start - 1} to {start}'
+    c.execute('DELETE FROM weather_daily WHERE loc_id=?', (lid,)); c.commit(); S.PLACE_LOWS.clear()
