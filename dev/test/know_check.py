@@ -46,7 +46,7 @@ with sync_playwright() as p:
     pg = b.new_page(viewport={'width': 1280, 'height': 900})
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and '404' not in m.text else None)
-    pg.add_init_script("localStorage.setItem('plantdb.editor','Know Test')")
+    pg.add_init_script("localStorage.setItem('plantdb.editor','Know Test');localStorage.setItem('plantdb.morefilters','1')")
     pg.goto(LOCAL + '/#/today'); pg.wait_for_timeout(1000); pg.evaluate("localStorage.removeItem('plantdb.library')")
     pg.goto(LOCAL + '/#/library'); pg.wait_for_timeout(3000)
     t = pg.inner_text('#lib-lists')
@@ -90,7 +90,7 @@ with sync_playwright() as p:
     vw.goto(TS + '/#/species/Testia%20species05'); vw.wait_for_timeout(2500)
     check('Full sun' in vw.inner_text('main') and vw.locator('[data-act=spcare]').count() == 0, 'a viewer reads the care sheet but cannot ask for one')
     ph = b.new_page(viewport={'width': 390, 'height': 844})
-    ph.add_init_script("localStorage.setItem('plantdb.editor','Know Test');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
+    ph.add_init_script("localStorage.setItem('plantdb.editor','Know Test');localStorage.setItem('plantdb.morefilters','1');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
     for u in ('/#/around', '/#/species/Melia%20azedarach', '/#/library'):
         ph.goto(LOCAL + u); ph.wait_for_timeout(2500)
         check(ph.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), f'{u}: no sideways scrolling on a phone with the largest text')

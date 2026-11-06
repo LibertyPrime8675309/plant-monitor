@@ -13,3 +13,10 @@ dev/tmp/
 # the Tailscale container's sign-in (1.12.0) and any local settings file: private to each computer
 tailscale/state/
 .env
+backups-copy/
+# the mirror machine's own data (1.37.0)
+mirror/data/
+mirror/backups/
+mirror/received/
+mirror/tailscale/state/
+receiver/received/

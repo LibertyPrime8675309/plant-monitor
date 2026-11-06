@@ -19,8 +19,8 @@ with sync_playwright() as p:
     b = p.chromium.launch()
     pg = b.new_page(viewport={'width': 1280, 'height': 900})
     pg.on('pageerror', lambda e: errs.append(str(e)))
-    pg.add_init_script("localStorage.setItem('plantdb.editor','Filter Test')")
-    pg.goto(BASE + '/'); pg.wait_for_timeout(2500)
+    pg.add_init_script("localStorage.setItem('plantdb.editor','Filter Test');localStorage.setItem('plantdb.morefilters','1')")
+    pg.goto(BASE + '/#/plants'); pg.wait_for_timeout(2500)
     check(pg.locator('.filters select[data-f=status]').count() == 1 and pg.locator('.filters select[data-f=site]').count() == 1 and pg.locator('[data-f=archived]').count() == 0,
           'Show and Location are in the filter row, and the old checkbox at the bottom is gone')
     n = lambda: pg.locator('#grid .sheet').count()
@@ -38,11 +38,11 @@ with sync_playwright() as p:
     pg.goto(BASE + '/#/plant/' + arch[0]['code']); pg.wait_for_timeout(2500)
     check('archived included' in pg.inner_text('#pn-sum') and pg.locator('#pn-pos').inner_text().startswith('plant '), 'Previous and Next include archived plants when the filter does')
     check(pg.locator('#pn-filters select[data-f=status]').count() == 1 and pg.locator('#pn-filters select[data-f=site]').count() == 1, 'the Previous / Next panel has the same filters')
-    pg.goto(BASE + '/'); pg.wait_for_timeout(1500); pg.click('[data-act=clearfilters]') if pg.locator('[data-act=clearfilters]').count() else None
+    pg.goto(BASE + '/#/plants'); pg.wait_for_timeout(1500); pg.click('[data-act=clearfilters]') if pg.locator('[data-act=clearfilters]').count() else None
     # ---- 1.17.0: more filters
-    pg.goto(BASE + '/'); pg.wait_for_timeout(2000)
+    pg.goto(BASE + '/#/plants'); pg.wait_for_timeout(2000)
     pg.select_option('select[data-f=status]', 'active'); pg.wait_for_timeout(300)
-    check(pg.locator('#more-f select[data-f=more]').count() == 8, 'More filters has 8 choices')
+    check(pg.locator('#more-f select[data-f=more]').count() == 9, 'More filters has 9 choices')
     if not pg.locator('#more-f').evaluate('d => d.open'): pg.click('#more-f > summary')
     def more(key, val):
         pg.select_option(f'#more-f select[data-key={key}]', val); pg.wait_for_timeout(700); return n()
@@ -67,12 +67,12 @@ with sync_playwright() as p:
     check(more('photo', 'none') == len([p for p in act if not p.get('photo_count')]), 'Photos: no photo yet')
     more('photo', '')
     pg.goto(BASE + '/#/plant/P-020'); pg.wait_for_timeout(2000)
-    check(pg.locator('#pn-filters select[data-f=more]').count() == 8, 'the Previous / Next panel has the same 8 filters')
+    check(pg.locator('#pn-filters select[data-f=more]').count() == 9, 'the Previous / Next panel has the same 9 filters')
     pg.goto(BASE + '/#/plant/P-020'); pg.wait_for_timeout(1500)
     check('Toxic to pets' in pg.inner_text('#about'), 'the fiddle-leaf fig page says it is toxic to pets')
     ph = b.new_page(viewport={'width': 390, 'height': 844})
-    ph.add_init_script("localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
-    ph.goto(BASE + '/'); ph.wait_for_timeout(2500)
+    ph.add_init_script("localStorage.setItem('plantdb.morefilters','1');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
+    ph.goto(BASE + '/#/plants'); ph.wait_for_timeout(2500)
     check(ph.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), 'on a phone with the largest text there is no sideways scrolling')
     ph.screenshot(path=os.path.join(OUT, 'filters-2-phone.png'))
     b.close()

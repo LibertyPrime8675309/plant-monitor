@@ -48,7 +48,7 @@ check(L['lights'], 'the Grow lights page still works')
 with sync_playwright() as p:
     b = p.chromium.launch()
     ctx = b.new_context(viewport={'width': 1920, 'height': 1080}, extra_http_headers=E)
-    ctx.add_init_script("localStorage.setItem('plantdb.editor','Ethan')")
+    ctx.add_init_script("localStorage.setItem('plantdb.editor','Ethan');localStorage.setItem('plantdb.morefilters','1')")
     pg = ctx.new_page(); pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.goto(TS + '/#/pots'); pg.wait_for_timeout(3000)
     card = pg.locator(f'#ct-{pot["id"]}')
@@ -71,6 +71,7 @@ with sync_playwright() as p:
     # light cards and plant pages, edited in place
     pg.goto(TS + '/#/lights'); pg.wait_for_timeout(3000)
     lid = L['lights'][0]['id']
+    pg.locator(f'[data-act=ltedit][data-id="{lid}"]').click(); pg.wait_for_timeout(300)      # 1.39.1: the fields wait behind a button
     m = pg.locator(f'[data-ed=light][data-id="{lid}"][data-k=model]'); m.fill('TEST-MODEL-1'); m.press('Tab'); pg.wait_for_timeout(1500)
     check([l for l in call('GET', '/api/lights')[1]['lights'] if l['id'] == lid][0]['specs']['model'] == 'TEST-MODEL-1', 'a light\'s model saves when you leave the box')
     f0 = [l for l in call('GET', '/api/lights')[1]['lights'] if l['id'] == lid][0]
@@ -85,7 +86,7 @@ with sync_playwright() as p:
     v.goto(TS + '/#/pots'); v.wait_for_timeout(3000)
     check(v.locator('[data-act=ctadd]').count() == 0 and v.locator('[data-k=qty][readonly]').count() >= 1, 'someone who can only view sees the items but cannot change them')
     ph = b.new_context(viewport={'width': 384, 'height': 740}, is_mobile=True, has_touch=True, service_workers='block', extra_http_headers=E)
-    ph.add_init_script("localStorage.setItem('plantdb.editor','Ethan');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
+    ph.add_init_script("localStorage.setItem('plantdb.editor','Ethan');localStorage.setItem('plantdb.morefilters','1');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
     qq = ph.new_page(); qq.on('pageerror', lambda e: errs.append(str(e)))
     qq.goto(TS + '/#/pots'); qq.wait_for_timeout(3000)
     check(not qq.evaluate('document.documentElement.scrollWidth > innerWidth + 1'), 'on a phone with the largest text nothing scrolls sideways')

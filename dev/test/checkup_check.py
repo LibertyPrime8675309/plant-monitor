@@ -27,8 +27,20 @@ g1 = call('POST', '/api/groups', {'name': 'Walk test A', 'kind': 'picked', 'code
 g2 = call('POST', '/api/groups', {'name': 'Walk test B', 'kind': 'picked', 'codes': ['P-003']})['id']
 call('PUT', f'/api/checkup/groups/{g1}', {'days': 30}); call('PUT', f'/api/checkup/groups/{g2}', {'days': 21})
 x = call('GET', '/api/checkup')
-check(cd('P-010', x)['every'] in (30, 7) and cd('P-003', x)['every'] in (21, 7) and 'Walk test B' in (cd('P-003', x)['every_why'] if cd('P-003', x)['every'] == 21 else 'Walk test B'),
+check(cd('P-010', x)['every'] == 30 and cd('P-003', x)['every'] == 21 and 'Walk test B' in cd('P-003', x)['every_why'],
       "a group's own number applies to its plants, and a plant in two groups goes by the shorter")
+# Ethan, November 6: a group's own number decides even for plants in Poor or Critical health, so it can be LATER than 7 (cacti once a month)
+poor = [p['code'] for p in D['plants'] if p['health'] in ('Poor', 'Critical')]
+check(len(poor) >= 2, f'the test data has plants in Poor or Critical health ({len(poor)})')
+g3 = call('POST', '/api/groups', {'name': 'Walk test cacti', 'kind': 'picked', 'codes': [poor[0]]})['id']
+call('PUT', f'/api/checkup/groups/{g3}', {'days': 30})
+x = call('GET', '/api/checkup')
+check(cd(poor[0], x)['every'] == 30 and 'Walk test cacti' in cd(poor[0], x)['every_why'], f"a plant in Poor or Critical health in a group with 30 days is due every 30, not 7 ({cd(poor[0], x)['every']})")
+check(cd(poor[1], x)['every'] == 7 and 'health' in cd(poor[1], x)['every_why'], 'one in no group with its own number still goes by 7')
+call('PUT', f'/api/checkup/groups/{g3}', {'days': 3})
+check(cd(poor[0])['every'] == 3, "and a group's number can make them due sooner too")
+call('PUT', f'/api/checkup/groups/{g3}', {'days': None})
+check(cd(poor[0])['every'] == 7, 'emptying it goes back to 7 for a plant in Poor or Critical health')
 check(next(g for g in x['groups'] if g['id'] == g1)['days'] == 30, 'the groups list carries each one\'s number')
 call('PUT', f'/api/checkup/groups/{g1}', {'days': None})
 check(cd('P-010')['every'] in (14, 7), 'emptying it goes back to the usual number')
@@ -50,6 +62,10 @@ with sync_playwright() as pw:
     check(link.count() == 1 and 'looked over' in pg.locator('.ck-today').inner_text(), 'Today has one line about the walk-through, with a link')
     link.click(); pg.wait_for_timeout(2000)
     check(pg.locator('h1').inner_text() == 'Health walk-through', 'the link opens the walk-through')
+    check(pg.locator('#sub-nav a[data-nav=checkup][aria-current=page]').count() == 1 and pg.locator('#sub-nav a[data-nav=today]').count() == 1, 'it is the second page under Today')
+    check('even when its health is Poor or Critical' in pg.locator('#ck-how-often').inner_text(), "the settings say a group's number decides even for Poor or Critical plants")
+    pg.wait_for_timeout(1500)
+    check(pg.locator('#ck-how-often [data-act=secfold]').count() == 1 and pg.locator('#sn-list a', has_text='How often plants are due').count() == 1, '1.42.0: its sections are in Navigation, with Show or hide')
     total = len(D['plants']) - 1
     check(f'{total} plants are due' in pg.locator('.verdict-box').inner_text(), 'it says how many plants are due')
     check(pg.locator('#ck-count').inner_text() == f'This walk-through has {total} plants.', 'it says how many plants the walk will have')
@@ -62,6 +78,7 @@ with sync_playwright() as pw:
     check(f'Plant 1 of {len(indoor)}' in pg.locator('.ck-prog').inner_text(), 'the walk shows "Plant 1 of N"')
     check(first['code'] in pg.locator('#ck-name').inner_text(), 'plants come in the chosen order (by code)')
     check(pg.evaluate("document.activeElement && document.activeElement.id") == 'ck-name', 'the plant name has the keyboard focus, so a screen reader reads it')
+    check(pg.locator('#ck-name[role=heading][aria-level="2"]').count() == 1 and pg.locator('.ck-card [data-act=secfold]').count() == 0, 'the plant name is a heading, without a Show or hide button on the card')
     check(pg.locator('#ck-save').inner_text().startswith('Looks the same'), 'with the health unchanged, the button says "Looks the same"')
     shot(pg, 'laptop-card')
     pg.locator('#ck-save').click(); pg.wait_for_timeout(1500)
@@ -117,7 +134,9 @@ with sync_playwright() as pw:
     check('Looked over' in pg.locator('.care-log').inner_text(), 'the plant page care log shows "Looked over"')
     pg.goto(BASE + f'/#/group/{g2}'); pg.wait_for_timeout(2500)
     gw = pg.locator('#g-walk')
-    check(gw.count() == 1 and 'every 21 days' in gw.inner_text(), "a group page has a Health walk-through section with the group's number")
+    check(gw.count() == 1 and 'every 21 days' in gw.inner_text() and 'even when their health is Poor or Critical' in gw.inner_text(), "a group page has a Health walk-through section with the group's number")
+    pg.wait_for_timeout(1500)
+    check(gw.locator('[data-act=secfold]').count() == 1 and pg.locator('#sn-list a', has_text='Health walk-through').count() == 1, 'the group section is in Navigation, with Show or hide')
     gw.locator('input[name=days]').fill('5'); gw.locator('button[type=submit]').click(); pg.wait_for_timeout(2000)
     check('every 5 days' in pg.locator('#g-walk').inner_text() and next(g for g in call('GET', '/api/checkup')['groups'] if g['id'] == g2)['days'] == 5, 'the number can be changed there')
     pg.locator('#g-walk').scroll_into_view_if_needed(); pg.screenshot(path=os.path.join(OUT, 'checkup-laptop-group.png'))

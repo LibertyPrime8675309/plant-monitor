@@ -19,7 +19,7 @@ with sync_playwright() as p:
     pg = b.new_page(viewport={'width': 1920, 'height': 1080})
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.add_init_script("localStorage.setItem('plantdb.editor','Dlg Test');localStorage.removeItem('plantdb.display')")
-    pg.goto(LOCAL + '/#/'); pg.wait_for_timeout(2500)
+    pg.goto(LOCAL + '/#/plants'); pg.wait_for_timeout(2500)
     pg.click('#display-btn'); pg.wait_for_timeout(500)
     d = pg.locator('#dlg')
     bb = d.bounding_box()
@@ -64,7 +64,7 @@ with sync_playwright() as p:
     for name, w, h in (('galaxy-s21-ultra', 384, 854), ('iphone-11', 414, 896)):
         ph = b.new_page(viewport={'width': w, 'height': h}, device_scale_factor=2, is_mobile=True, has_touch=True)
         ph.add_init_script("localStorage.setItem('plantdb.editor','Dlg Test')")
-        ph.goto(LOCAL + '/#/'); ph.wait_for_timeout(2500)
+        ph.goto(LOCAL + '/#/plants'); ph.wait_for_timeout(2500)
         ph.evaluate("document.getElementById('display-btn').click()"); ph.wait_for_timeout(500)
         bx = ph.locator('#dlg').bounding_box()
         check(bx['width'] >= w - 1 and bx['height'] >= h - 2, f'{name}: Display settings covers the screen')

@@ -14,7 +14,7 @@ Leaves out dev/, docs/, data, backups, git files and caches. Checks that VERSION
 CHANGELOG entry agree."""
 import os, re, sys, json, glob, zipfile, datetime
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
-SKIP_DIRS = {'.git', '.github', 'dev', 'docs', 'dist', '__pycache__'}
+SKIP_DIRS = {'.git', '.github', 'dev', 'docs', 'dist', '__pycache__', 'backups-copy'}
 SKIP_TOP = {'CLAUDE.md', '.env'}         # .env may hold a Tailscale auth key
 PACK_LIMIT = 28 * 1000 * 1000          # bytes of photos per pack zip (photos are already compressed)
 PHOTOS = os.path.join(ROOT, 'app', 'seed', 'photos')
@@ -35,7 +35,7 @@ if not top or top.group(1) != ver: print(f'WARNING: the top CHANGELOG entry is {
 
 def photo_packs():
     """{pack name: [photo files]}: the initial seed, then each upgrade batch in the order they apply. A photo belongs to
-    the first batch that uses it; photos no batch mentions go in a pack called 'extra'."""
+    the first batch that uses it; photos no batch mentions are left out."""
     order, seen = [], set()
     def take(pack, f):
         if f and f not in seen and os.path.exists(os.path.join(PHOTOS, f)):
@@ -49,7 +49,10 @@ def photo_packs():
         for p in b.get('plants', []):
             for ph in p.get('photos', []): take(b['id'], ph['file'])
         for ph in b.get('existing_photos', []): take(b['id'], ph['file'])
-    for f in sorted(os.listdir(PHOTOS)): take('extra', f)
+    # 1.39.2: a photo no batch uses is not shipped at all (it used to go in an 'extra' pack, which then had to be sent too,
+    # and the updater stopped without it although no plant needs it)
+    stray = [f for f in sorted(os.listdir(PHOTOS)) if f not in seen and not f.startswith('.')]
+    if stray: print('NOTE: not shipped, no batch uses them: ' + ', '.join(stray))
     packs = {}
     for pack, f in order: packs.setdefault(pack, []).append(f)
     out = {}
@@ -72,7 +75,8 @@ manifest = None if full else {'version': ver, 'packs': {k: {'zip': f'plant-datab
 with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
     for d, dirs, files in os.walk(ROOT):
         rel = os.path.relpath(d, ROOT)
-        dirs[:] = [x for x in dirs if x not in SKIP_DIRS and not (rel == '.' and x in ('data', 'backups')) and not (rel == 'tailscale' and x == 'state')]   # 1.12.0: the Tailscale sign-in
+        dirs[:] = [x for x in dirs if x not in SKIP_DIRS and not (rel == '.' and x in ('data', 'backups')) and not (rel == 'tailscale' and x == 'state')
+                   and not (rel == 'mirror' and x in ('data', 'backups', 'received')) and not (rel == os.path.join('mirror', 'tailscale') and x == 'state') and not (rel == 'receiver' and x == 'received')]   # 1.12.0: the Tailscale sign-in; 1.37.0: the mirror's own data
         if not full and os.path.abspath(d) == PHOTOS: continue          # photos travel in the packs
         for f in files:
             if rel == '.' and (f in SKIP_TOP or f.endswith('.zip')): continue

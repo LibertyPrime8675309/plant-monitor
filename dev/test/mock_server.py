@@ -15,6 +15,7 @@ os.environ.setdefault('PLANTDB_EBAY_API', os.environ['PLANTDB_VISION_URL'] + '/m
 os.environ.setdefault('PLANTDB_ETSY_API', os.environ['PLANTDB_VISION_URL'] + '/mock/etsy')
 os.environ.setdefault('PLANTDB_SHOP_GAP', '0')
 os.environ.setdefault('PLANTDB_SHOPS', '0')            # no checks on a schedule in tests (the real shops are not reachable)
+os.environ.setdefault('PLANTDB_OSM_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/osm')                         # 1.30.0: store addresses
 os.environ.setdefault('PLANTDB_INAT_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/inat/v1')                 # 1.21.0: library photos
 os.environ.setdefault('PLANTDB_INAT_IMG_OK', os.environ['PLANTDB_VISION_URL'] + '/mock/inat/img/')
 os.environ.setdefault('PLANTDB_ASPCA_MIN', '3')
@@ -37,7 +38,7 @@ def fake(url, tries=3):
     # MOCK_BASE_F sets the average temperature for places south of 40°N (default 65); each day also drifts up or down a few degrees
     base = 30.0 if float(q['latitude'])>40 else float(os.environ.get('MOCK_BASE_F', '65'))
     return {kind:{'time':ts, **{n:[round(base + 12*math.sin((t/3600 % 24)/24*6.283) + 6*math.cos(t/86400*1.3),1) for t in ts] for n in names}}, kind+'_units':{n:('°F' if ('temp' in n or 'dew' in n) else 'inch' if ('precip' in n or 'rain' in n) else 'u') for n in names}}
-S.http_json=fake
+S.patch('http_json', fake)
 S.init_db()
 # rain: dry, except about 0.6 in every fifth day, and never in the last 9 days, so some plants are always due for water
 # whatever the date (watering reminders can be tested)
@@ -51,7 +52,7 @@ def _with_rain(url, tries=3):
             if n == 'time' or 'probability' in n or not any(w in n for w in ('precip', 'rain', 'showers', 'snowfall')): continue
             d[kind][n] = [(0.6 if kind == 'daily' or int(t // 3600) % 24 == 15 else 0.0) if int(t // 86400) % 5 == 0 and t < _time.time() - 9 * 86400 else 0.0 for t in d[kind]['time']]
     return d
-S.http_json = _with_rain
+S.patch('http_json', _with_rain)
 # 1.12.0: a second port that stands in for the Tailscale container (MOCK_TS=1). Requests to it are treated as coming through
 # Tailscale Serve, so tests send Tailscale-User-Login / Tailscale-User-Name themselves, as Serve would.
 if os.environ.get('MOCK_TS') == '1':
@@ -73,4 +74,52 @@ if os.environ.get('MOCK_VISION', 'fake') == 'fake':
     else:
         _vs = make_server('127.0.0.1', _port, _mv.app, threaded=True)
         threading.Thread(target=_vs.serve_forever, daemon=True).start()
+@S.app.route('/mock/problem', methods=['POST'])
+def mock_problem():                      # 1.31.0: lets a test record a background problem
+    b = S.request.get_json(silent=True) or {}
+    S.problem(b.get('area', 'weather'), b.get('text', 'Test problem'), b.get('detail', ''))
+    return S.jsonify(ok=True)
+
+PUSHED = []                               # 1.33.0: notifications the app tried to send, instead of a real push service
+def fake_push(sub, payload):
+    PUSHED.append({'login': sub['login'], 'device': sub['device'], 'endpoint': sub['endpoint'], **payload})
+    return 410 if 'gone' in sub['endpoint'] else 201
+S.PUSH_SEND['fn'] = fake_push
+@S.app.route('/mock/pushed', methods=['GET', 'DELETE'])
+def mock_pushed():
+    if S.request.method == 'DELETE': PUSHED.clear()
+    return S.jsonify(pushed=PUSHED)
+@S.app.route('/mock/push/run', methods=['POST'])
+def mock_push_run():                     # the clock-driven sends, now, as if it were the hour asked for
+    b = S.request.get_json(silent=True) or {}
+    c = S.sqlite3.connect(S.DB_PATH, timeout=30); c.row_factory = S.sqlite3.Row
+    try:
+        if b.get('what') == 'cold': S.push_cold(c)
+        elif b.get('what') == 'sensors': S.push_sensors(c)
+        else: S.push_due(c)
+    finally: c.close()
+    return S.jsonify(ok=True)
+
+@S.app.route('/mock/history', methods=['POST'])
+def mock_history():                      # 1.34.0: whole years of daily highs and lows, so the winter and summer zones can be worked out
+    b = S.request.get_json(silent=True) or {}
+    years, lid = int(b.get('years', 4)), int(b.get('loc', 1))
+    import math
+    c = S.sqlite3.connect(S.DB_PATH, timeout=30)
+    try:
+        this_year = S.datetime.now(S.timezone.utc).year
+        for y in range(this_year - years, this_year):
+            d = S.date(y, 1, 1)
+            while d.year == y:
+                doy = d.timetuple().tm_yday
+                hi = 71 + 27 * math.sin((doy - 110) / 365 * 2 * math.pi) + (3 if doy % 7 == 0 else 0)     # Round Rock-like: 44°F highs in January, 98 in July
+                lo = hi - 22 - (6 if doy % 11 == 0 else 0)
+                c.execute("INSERT INTO weather_daily(loc_id,date,data,kind,updated_at) VALUES(?,?,?,?,?) ON CONFLICT(loc_id,date) DO UPDATE SET data=excluded.data",
+                          (lid, d.isoformat(), S.json.dumps({'temperature_2m_max': round(hi, 1), 'temperature_2m_min': round(lo, 1)}), 'observed', S.now()))
+                d += S.timedelta(days=1)
+        c.commit()
+    finally: c.close()
+    S.PLACE_HEAT.clear(); S.PLACE_CLIMATE.clear()
+    return S.jsonify(ok=True, years=years)
+
 S.app.run(host='127.0.0.1', port=int(os.environ.get('PORT', '8080')), threaded=True)

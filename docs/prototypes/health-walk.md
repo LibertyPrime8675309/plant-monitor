@@ -1,6 +1,6 @@
 # Prototype: Health walk-through
 
-Branch: `proto/health-walk`
+Branch: `proto/health-walk`. Rebuilt on November 6 for 1.42.0 (the code was split into modules in 1.32.0); the feature is the same, with Ethan's answers of November 6 added.
 
 ## What it does and why
 Each plant has a health rating (Good, Fair, Poor or Critical). With about 85 plants, it's easy for the ratings to go stale, and there was no quick way to go round and check them. The health walk-through lets you go round your plants one at a time, on a phone in the garden or at the computer, and say how each one looks today.
@@ -32,10 +32,14 @@ Each plant has a health rating (Good, Fair, Poor or Critical). With about 85 pla
 - **How often plants are due** (changed after Ethan's answers on the pull request):
   - Usually every **14 days**, and every **7 days** for plants in Poor or Critical health. Both numbers can be changed at the bottom of the walk-through page.
   - **Each group can have its own number.** A group's page has a new **Health walk-through** section with "Days between looks for this group" (empty means the usual number), and a button to walk through that group's due plants.
-  - A plant in several groups goes by the shortest of their numbers. A plant in Poor or Critical health goes by that number instead, when it is shorter.
+  - A plant in a group with its own number goes by that number, **even when its health is Poor or Critical** (from Ethan's answer of November 6). So a group can be looked at less often than 7 days, for example cacti once a month, or more often.
+  - A plant in several such groups goes by the shortest of their numbers.
+  - A plant in no group with its own number goes by the usual 14 days, or 7 when its health is Poor or Critical.
   - The walk-through page lists the groups that have their own number.
 - A health rating changed on the Edit page also counts as looking the plant over. Ratings set by Claude's upgrade batches don't.
 - People with view-only access can see the list of due plants, but can't start a walk.
+- **With 1.42.0:** the walk-through page's sections and the group page's Health walk-through section are in the Navigation menu, each with a Show or hide button. On the walk itself the plant's name is a heading but not a page section, so the card has no Show or hide button and the Navigation menu stays out of the way.
+- **With no connection** (1.38.0 offline use): saves, new ratings and photos wait on the device like other care, and are sent when the connection is back; the message after saving says so. Opening the walk-through needs the connection, or a copy kept on the device.
 
 ## How it looks
 Choosing the plants, on a laptop:
@@ -69,7 +73,7 @@ The new line on the Today page, on a phone:
 ## How to try it
 1. Start the app with `dev/test/mock_server.py` and a fresh data folder under `dev/tmp/`.
 2. Open Today and press **Health walk-through**, or go to `#/checkup`.
-3. `python3 dev/test/checkup_check.py` runs the focused checks (choosing, saving, skipping, going back, a change made elsewhere, stopping and carrying on, the care log, phone widths).
+3. `python3 dev/test/run_checks.py checkup` runs the focused checks (choosing, saving, skipping, going back, a change made elsewhere, stopping and carrying on, the care log, each group's number including for Poor or Critical plants, Navigation and Show or hide, phone widths).
 
 ## What it changes in your database
 Nothing in its structure: no new tables or columns. It adds a new kind of care log entry, "Looked over". New health ratings, notes added to the Health summary and new photos are ordinary edits to the plant page. The numbers of days are kept in the settings table (`checkup_days`, `checkup_days_poor`, and `checkup_group_days` for the groups); until you change them, 14 and 7 are used. Nothing changes until you use it.
@@ -80,6 +84,9 @@ Nothing in its structure: no new tables or columns. It adds a new kind of care l
 3. **Take a photo:** added on each plant.
 4. **Poor and Critical sooner:** every 7 days by default.
 
+## Ethan's answers (November 6) and what changed
+1. **A group's number may make its Poor or Critical plants due later than 7 days:** yes. A group's own number now decides for its plants whatever their health. Plants in no group with its own number still go by 7 days when their health is Poor or Critical. The settings at the bottom of the walk-through page and the group's section say so.
+2. **Where it goes:** it stays as the second page under **Today**.
+
 ## Open questions for Ethan
-1. Should a group's number also make its plants due **later** than 7 days when they are in Poor or Critical health (for example cacti you only want to check monthly)? At the moment Poor or Critical always wins when it is shorter.
-2. With the new top bar (1.29.0), the walk-through is a second page under **Today**. Is that the right place, or would you rather have it under **Plants** or **Care**?
+None.

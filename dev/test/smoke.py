@@ -6,7 +6,7 @@ import json, os, sys
 from playwright.sync_api import sync_playwright
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
-PAGES = ['#/', '#/plant/P-006', '#/plant/P-006/edit', '#/winter', '#/outside', '#/weather', '#/fertilizer', '#/lights', '#/photos', '#/labels', '#/history', '#/backups', '#/checkup']
+PAGES = ['#/', '#/plants', '#/plant/P-006', '#/plant/P-006/edit', '#/winter', '#/outside', '#/weather', '#/fertilizer', '#/lights', '#/photos', '#/labels', '#/history', '#/backups', '#/checkup']
 SIZES = {'wide': (1920, 1080, ''), 'laptop': (1280, 800, ''), 'phone': (390, 844, ''), 'phone-bigtext': (390, 844, '190')}   # 190 = the largest text size
 bad = []
 with sync_playwright() as p:
@@ -22,7 +22,7 @@ with sync_playwright() as p:
             for path in PAGES:
                 pg.goto(BASE + '/' + path); pg.wait_for_timeout(1500)
                 over = pg.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth')
-                name = f"{size}-{theme}-{path.strip('#/').replace('/', '_') or 'plants'}.png"
+                name = f"{size}-{theme}-{path.strip('#/').replace('/', '_') or 'today'}.png"
                 pg.screenshot(path=os.path.join(OUT, name))
                 if over > 2: bad.append(f'{name}: page scrolls sideways by {over}px')
                 hits = pg.evaluate('''(() => {      // buttons pinned to the screen must never cover each other
@@ -34,6 +34,17 @@ with sync_playwright() as p:
                     if (r.left < s.right && s.left < r.right && r.top < s.bottom && s.top < r.bottom) out.push(ids[i] + ' and ' + ids[j]);
                   } return out; })()''')
                 for x in hits: bad.append(f'{name}: the {x} buttons overlap')
+                if size == 'laptop' and theme == 'light':      # 1.36.0: every button and link has a name that says what it does (not a bare "Remove" among many)
+                    nameless = pg.evaluate('''(() => {
+                      const generic = new Set(['remove', 'delete', 'edit', 'change', 'go', 'ok', 'open', 'show', 'more', 'here', 'click here', 'rename', 'download', 'add', '']);
+                      const out = [];
+                      for (const el of document.querySelectorAll('main button, main a[href], header button, header a[href]')) {
+                        if (el.closest('[hidden]') || !el.getClientRects().length) continue;
+                        const name = (el.getAttribute('aria-label') || el.getAttribute('title') || el.textContent || '').trim().replace(/\\s+/g, ' ');
+                        if (generic.has(name.toLowerCase())) out.push((el.dataset.act || el.getAttribute('href') || el.className) + ': "' + name + '"');
+                      }
+                      return out.slice(0, 8); })()''')
+                    for x in nameless: bad.append(f'{name}: a control without a telling name ({x})')
                 for e in errs: bad.append(f'{name}: {e}')
                 errs.clear()
             pg.close()

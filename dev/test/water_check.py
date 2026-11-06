@@ -44,7 +44,7 @@ with sync_playwright() as p:
     pg.locator('.undo-toast [data-undo=undo]').click(); pg.wait_for_timeout(1800)
     check(btn.is_enabled() and btn.inner_text() == 'Watered today' and not todays('P-008'), 'Undo takes the watering back and switches the button on again')
     # Water all on the Plants page
-    pg.goto(BASE + '/'); pg.wait_for_timeout(2500)
+    pg.goto(BASE + '/#/plants'); pg.wait_for_timeout(2500)
     pg.select_option('select[data-f=site]', 'Covered porch'); pg.wait_for_timeout(600)
     shown = [x for x in pg.locator('#grid .sheet').evaluate_all('els => els.map(e => e.dataset.code)')]
     wa = pg.locator('#wa-btn')

@@ -1,5 +1,159 @@
 # Changelog
 
+## 1.42.0 (2026-11-05)
+- **Every section can be folded shut, on every page** (Ethan, November 5). Each section in the side menu has a **Hide** / **Show** button by its title. What you fold is remembered on that device for that page; plant pages share one memory, so folding Temperature on one plant folds it on all of them. Choosing a folded section in the menu opens it.
+- **The side menu is called Navigation** (it was "On this page"), and its button on the edge of the screen says Navigation (it said Sections). **Display** has moved to the bottom of the Navigation menu. On a page with no sections, which has no menu, it stays in the corner.
+- **Grow lights:**
+  - **The top of the page stays in view as you scroll:** the title, the short description and a new table: Inside, Coming in, Assigned light spot, No assigned light spot, and the 7-day mol/m² average outdoors. **Hide the summary** folds them as one, leaving the title. The "This winter" box is gone; its numbers are in the table.
+  - **Add a light** sits by the Your lights title, and **Set up a spot** by the Your light spots title.
+  - **Each of your light spots folds.** Shut, it still shows its name, where it is, its mol/m² per day and how many plants. **Open every spot** and **Close every spot** are above them.
+  - **The plants in a spot are two to a row** on a wide screen (one on a phone). Each shows its code on one line and its range on the next ("6–12 mol/m² per day").
+- **Rooms and shelves:**
+  - **Removing a shelf no longer takes the room with it.** The Remove button beside "The room itself" removed the whole room with its shelves, and the page jumped back to the top. Now each room's title has its own **New Shelf**, **Rename** and **Remove room**, and each shelf has its own Rename and Remove. Removing even the last shelf leaves the room, and each confirmation says which one goes.
+  - **After any change the page stays where you were,** here and on every other page that redraws itself after a change.
+  - **New Room** (it was "Add a room or shelf") and **New Shelf** open the **Build-A-Room** window. New Shelf fills in its room and puts you in the shelf box.
+
+## 1.41.1 (2026-11-05)
+- **The coming-inside checklist is tick boxes** (Ethan, November 5). Every step is listed in order with a tick box, its rating, why, and how to do it, on the plant's page and on the Coming inside page. Tick a step when you have done it; untick it to take it back.
+- **Steps that are not recommended stay in the list,** marked "Not recommended: not needed" (or "not for this plant") with a dashed border, and can still be ticked.
+- **Each plant folds shut on the Coming inside page,** showing its photo, its next step and how many recommended steps are done. Open one for its tick boxes. **Open every plant** and **Close every plant** are at the top, and a plant you opened stays open while you tick.
+- Start the checklist moves you to the first tick box. The single "next step" button from 1.40.1 is gone; a spray's second round has its own **Round 2 done today** button.
+- **Removing or renaming a room on the Grow lights page works** (it said "Request failed (405)"). A room with plants in it says to move them first.
+- **The disk light's card uses the whole width** on the Grow lights page. A light with no photo was squeezed into the narrow photo column.
+
+## 1.41.0 (2026-11-05)
+- **The light spot window, reworked** (Ethan, November 5):
+  - **Plants in this spot** is now one plant a row, with its photo, its light needs and a link that opens its page in a new tab.
+  - Each row has a tag saying how the light, at the setting you have chosen, suits it ("Good", "A bit dim", "Too bright"), and it changes as you change the setting.
+  - **Search plants**, **Show** (fits this setting, fits or nearly fits, not in a spot yet, ticked, lives inside, coming inside) and **Sort** (name, code, most light needed first, best fit first) sit above the list.
+- **More about the chosen light**, right under the menu: type, power and colour, brightness steps, how many are free, and its strongest and weakest light within the distances it was measured at (PAR), with the daily light that gives (mol/m² a day) on 12 hours and from 8 to 16 hours.
+  - For example, the SANSI 80 W bulb: 721 PAR at 12 in, down to 23.6 at 48 in on 25%; 1 to 31.1 mol/m² a day on 12 hours.
+- **The Light menu** is A to Z, with the disk light in its own "Room lights" group. Each light says its type, watts, its most light and how many are free.
+- **Best setting for the ticked plants**: one button picks the distance, hours and brightness that put the most of them in their range, and says how many fit.
+- **A better spot for a plant that does not fit.** In the window and on the spot cards, a plant that is too dim or too bright says which of your other spots would suit it.
+- **Add plants** on each spot card, straight to the plants not in a spot yet.
+- **Set up all suggested spots** in one go, each changeable afterwards.
+- **From a plant's own page** (Sunlight, Grow light this winter): Set up the suggested spot, Add it to one of your spots (each with how it suits the plant), or Set up a new spot for it.
+- **Tick boxes and menus follow your theme.** On a computer set to dark mode with the app on its light theme, unticked boxes showed as dark squares (as in your screenshot). They now match the theme you chose.
+- On a phone with large text, the verdict tags ("Too bright") wrap instead of pushing the page past the screen edge.
+
+## 1.40.1 (2026-11-05)
+- **Start the checklist** for getting a plant ready to come inside (Ethan, November 5: there was no way to start it). The button sits right under the plant's status, on its page and on each plant's row of the Coming inside page. After that, the same place has one button for the next step, named for what you did ("Inspected for pests today", then the next Best method), so you can work down the list without scrolling. **Undo the start** takes it back until you have done a step; **Go to the checklist** jumps to the full list, now headed "The checklist, in the order to do it".
+- **Plants already inside can go through it too:** the 13 indoor plants (and any plant inside) have a Start the checklist button, for a new plant from a store or one brought in without a check. It is then kept apart from your other houseplants for 3 weeks from the day you started. A good one to start: the moth orchid with mealybugs.
+- The updater's log has no more garbled progress bars from the app's own build. (The picture checker's build still shows them; they go the next time its packages change, so it does not download 1 GB again just for that.)
+
+## 1.40.0 (2026-11-05)
+- **One identifier** behind Identify, Add a plant and Add several plants: every photo of the plant is checked together, Pl@ntNet is part of the answer whenever its key is saved (always with "Ask Pl@ntNet on its own", or when this computer is unsure), and the two lists are merged into one, each name saying who said so and how sure. The likeliest **family** joins the likeliest genus.
+- **Not this** and **Not this genus** on every name, on all three pages: the name leaves the list, the photos are checked again without it, and the choice is logged.
+- **Check the name from its photos** on a plant's page (Plant identification): all its photos through the same identifier, **Use this name** renames the plant (the old names stay in its history), and a "Not this" there sticks to that plant for good.
+- **Add several plants:** once you have sorted the photos, each plant's photos are checked together (that is what should have turned six guesses into two); **Check the photos again** and **Ask Pl@ntNet about this plant** on each plant.
+- **Add a plant:** "Fill in the names from the first photo" now uses all the photos on the form, shows the full list with **Use this name** on each, and the same Not this buttons.
+- The name a plant gets says which checker suggested it ("Suggested by the picture checker on this computer and Pl@ntNet from 3 photos").
+## 1.39.2 (2026-11-05)
+- **Corrections to the 13 new indoor plants** (batch B9): a few of their values were not from the app's own lists ("Indoors all year" as a winter plan, and some leaf-type, pot-size and pet-safety words), so filters and counts could miss them; and their sources now come only from checked links. Anything you edited on those pages since installing 1.39.1 is left alone.
+- If you have not installed 1.39.1 yet, install this one instead; it has everything 1.39.1 had.
+
+## 1.39.1 (2026-11-05)
+- **Room for the content** (Ethan, November 5): list pages keep one row of controls (search, the one or two that matter most, sort) and fold the rest under **More filters**, which opens by itself while a folded filter is on. Plants page: Search, Home, Location, Sort on the row; Health, Group, Show, ID confidence and the rest folded. Library: Search, Look in, Sort; the rest folded. Identify → Your plant photos: the six extra selects that stood one under another, full width, are in the fold with the others (that was a mistake in 1.28.0). Audit log: the search and filters box starts folded unless a filter is on.
+- **Read this page aloud** sits beside the page title on a computer instead of on a row of its own.
+- A page with no sections (the Plants page, the Audit log and others) no longer shows the empty "On this page" menu; its width goes to the content.
+- Plants page: a shorter line under the title; "Plants that need something from you", "Copy my answers for Claude" and "N to photograph" on one row.
+- Grow lights: a light's name, count, model and place are text until you press **Edit the name, count, model and where it is**.
+- Weather: the Location box is one line.
+
+## 1.39.0 (2026-11-05)
+- **Better names from Identify.** The picture checker now weighs its names toward what you are likely to be looking at: species and genera already in your record, houseplant genera, and the plants of your state, plus a lift for a name when one of your own named plants' photos looks like the picture (a new pot of a plant you have gets its name). Each lifted name says why ("Lifted: a houseplant", "looks like your photos").
+- **Ten names, not three** (five shown, "Show 5 more names"), and the three likeliest genera: when no species fits, the genus is the safer answer.
+- **Several pictures of one plant:** "Add another photo of the same plant" (or a camera shot) checks them together.
+- **Three looks at each picture:** as it is, the whole picture letterboxed (nothing cut off a wide shot), and its middle, averaged.
+- **Pl@ntNet first when unsure:** a new choice under Second opinions asks Pl@ntNet on its own whenever this computer is not sure, and shows its answer above the computer's own. Needs the Pl@ntNet key; one of its 500 free pictures a day each time.
+- The updater rebuilds the picture checker container for this version; its first start re-reads the photo fingerprints it already has (no new download).
+- The weights are a first setting by judgment, not yet measured on your photos: `dev/vision/prior_test.py` measures them on the PC when you want to tune them.
+
+## 1.38.0 (2026-11-05)
+- **Watering offline:** on Today, Watered and Still moist take the plant off the list at once without a connection; the care log shows the entry as "not sent yet" until it is sent.
+- **Reconnecting:** the app notices when the plant server can be reached again (every 30 seconds, when the app comes to the front, when the network returns), sends what was waiting and redraws the page; **Try to connect now** on the offline note and the Offline use page. "Offline" now also means "the plant server cannot be reached" (Tailscale off, computer asleep), not only "no network".
+- **Back returns to where you were** on a page; photo boxes have their size before the photo loads, so pages do not jump.
+- **Photos on the Add a plant form**, with **Fill in the names from the first photo**. Identify's "Choose a photo" and the plant page's "Add photos" let the phone offer its photos instead of forcing the camera.
+- **Adding a plant without a connection:** it is kept on the device (stand-in name allowed when there is a photo), sent later, and its first photo is then checked, with the names offered on the Offline use page.
+- **Several plants from photos:** small previews made on the phone (no more white patches); under each photo you say "Same plant as the photo above", "A different plant", "Shows all of them" (a wide shot copied to every plant) or "Leave this photo out". The "minutes apart" grouping is gone.
+- **The other changes made from a phone now wait offline too, and show at once:** "Log other care" and Remove on a care entry, Moved indoors and Covered on the cold-night list, Fed (a feeding), answers and "done" on requests from Claude, the Still-to-photograph ticks, photo captions, main photo and photo removal, the porch reminder, wishlist and species notes. Edits to a plant now show on the Plants page cards too, and photos added offline show as thumbnails in the "Not sent yet" line.
+- On a phone the Save bar of a form sits above the bottom bar instead of under it.
+
+## 1.37.1 (2026-11-05)
+- Grow lights, from the labels Ethan photographed (batch B7): the SANSI tripod is model C23ZW016-H0045A27 (45 W, 120 V, 0.7 A, 4000 K, rated for wet locations); the Barrina T5 strips are model NC05 (5 W a strip, 100 to 277 V, up to 16 linked); the 4-head gooseneck has no model label, only "Max: 4 x 10 W" on its clamp, and its four bulbs are SANSI C21GL-GE26-10W, the same as the six spare 10 W bulbs. The request for the disk light's model stays open on its own.
+
+## 1.37.0 (2026-11-05)
+- **Share a photo from your phone:** with the app on an Android phone's Home Screen, "Plants" is in the share sheet; shared pictures open a page where you choose the plant and press Add.
+- **Year in review** (Plants → Year in review): one card per plant for a year: health, moves, waterings, feedings, cold nights and hot days outside, requests, first and last photo; the hardest years first.
+- **The mirror:** `mirror/` sets up a read-only copy of the app on another machine, kept current from the backups the receiver gets, on Tailscale as plants-mirror. Every page on it says so and links to the main app.
+
+## 1.36.0 (2026-11-05)
+- **Every page in its section's row:** the cold-night checklist, Coming inside and Back outside under Care; Around home under Discover; Offline decisions under Settings. Plant pages, plant cards and Today lead to Coming inside as well. The search window lists the same pages. (Ethan, November 4: "Getting plants ready to come inside" was only reachable from a button on the Winter plan.)
+- **Summer heat for each plant** (About this plant): a verdict from the plant's heat-damage temperature and the weather history, and its AHS heat zone range against yours (batch B6 adds ranges with sources for 20 plants). "Summer here" filter on the Plants page; counts on the Weather page.
+- **Calibrate the soil probe** in the app: dry air, then a glass of water; the app then works out the moisture from the probe's volts.
+- **Soil moisture on the plant's page:** the last 60 days drawn on the Timeline with the waterings marked; each day's average on the fertilizer calendar.
+- **Health of the app** card on Settings: version, backups and their copies, weather and store checks, problems, disk space.
+- **Clear the saved pages** on the Offline page.
+- Every Remove, Change, Delete and Download button says what it acts on; the smoke test checks for bare names.
+
+## 1.35.0 (2026-11-04)
+- **Your sensors** (Weather → Sensors): one card per sensor with its newest values in large type (soil moisture, air and root-zone temperature, humidity, light, soil pH, pot weight), a small line of the last 24 hours for each, and the day's lowest and highest. Name a sensor, say where it sits (a room or spot) and which plant's pot it is in: its values are then compared with that plant's ranges, in words with a mark (✓ In range, ↓ Dry, ! Too cold…), on the Sensors page and under Water and soil on the plant's page. A sensor that stops sending says Quiet.
+- **Today** lists the sensors that need a look or have gone quiet.
+- **Watering from the sensor:** a jump in soil moisture logs a watering for the plant (once a day; turn it off per sensor).
+- **Sensor alerts** as notifications: a dry pot, dangerous cold, a sensor gone quiet, once a day each.
+- **Pot weight:** readings can carry `weight_g` from a weighing cell under the pot.
+- **ESPHome:** `sensors/esphome-plant-sensor.yaml`, a ready file for an ESP32 node with a soil probe, air sensor, light sensor, soil thermometer and weighing cell; the README says how to flash it.
+
+## 1.34.0 (2026-11-04)
+- **Today is the page the app opens on.** One line says what needs you, with a button to jump to each part; the cold-night warning is a section of the page; "Quiet today" says what is not due (pest rounds, the last store check and backup, problems). All plants is one click away (its address is now `#/plants`).
+- **Shopping list for a store visit** (Shopping → Shopping list): choose a store; what it carries comes first with what you are watching for, the rest under "Not carried here". Add extra lines, tick what you bought, and "Done shopping" marks them as got it. Large print and Print.
+- **Speak a note:** a Speak button on every box that takes several lines, when the browser has voice typing (Chrome, Edge, Safari). The words are added after what is there.
+- **Room, area and shelf labels** on the Labels page: scanning one opens the Plants page showing just that place's plants.
+- **Summer heat next to winter cold:** the Weather page's new "Your climate" section gives the USDA zone and the AHS heat zone (days above 86°F a year, hottest day, the hot months, each year's count) from your own weather history; plant pages say the heat zone next to the winter zone.
+
+## 1.33.0 (2026-11-04)
+- **Notifications** (Settings): messages on your phone or computer even when the app is closed. Turn them on per device; choose for your own sign-in which kinds reach you: cold nights (when the forecast turns, and a reminder at 3 pm the day before), Shopping alerts, what is due today (at 8 am), and requests from Claude. Cold nights and what is due are for the home you start on. They go through the browser's own push service and need the app's Tailscale address (or this computer itself).
+- **Second copy of backups** (Backups page): each new backup is also copied to a folder on another drive (`PLANTDB_COPY_DIR` in `.env`; until then a `backups-copy` folder next to the data), and to another computer over Tailscale that runs the small **receiver** included in the release (`receiver` folder, with its own README). **Copy the newest backup now** tries it.
+- **Search everywhere**: the Search button in the top bar, or the `/` key. Finds plants, pages, groups, rooms and spots, stores, mushroom finds, Shopping items and species in the library, grouped, with the arrow keys to move and Enter to open.
+- The image build installs one more Python package (cryptography) for the notifications; the Dockerfile itself is unchanged.
+- Top bar: when Search, Online, Location and Editing no longer fit beside the name, the Search button keeps only its magnifier and the Location button only its pin and place name (their full names stay for screen readers) before the bar grows another row. And when the bar is tall enough to scroll with the page, the open "On this page" menu no longer covers its left end.
+
+## 1.32.0 (2026-11-04)
+- **Jobs** (Settings): one list of what the app is doing in the background (weather updates, store checks, backups, library downloads, store map positions), when each scheduled one is next due and last ran, and what finished, with how long it took. The owner can start the weather update, the store check or a backup from there.
+- **Under the hood:** the server's code is now in modules, one per feature, and the page's code in twelve files instead of one, so changes are smaller and safer. Nothing you see has changed.
+- **Tests:** unit tests that run in a second, a runner for the browser checks, and GitHub runs both on every pull request.
+
+## 1.31.0 (2026-11-04)
+- **Windows High Contrast mode.** When Windows is set to a high-contrast theme, the chosen filter, the page you are on, keyboard focus, tags and alerts are all drawn with the theme's own colours and an outline, so nothing disappears.
+- **Problems** (Settings): anything that went wrong in the background (a weather update, a backup, a store check, a library download) is listed in plain words, with the details folded away and a **Copy the list for Claude** button. The owner can clear them.
+- **Restore** on the Backups page: puts a backup's database back in place. A backup of how things are now is made first, photos are never removed (ones in the backup that are missing are put back), and an older backup is brought up to this version. A backup made by a newer version is refused.
+- **Starts on:** on the people list, the owner can choose which home each person starts on. Someone whose plants are at Nevada City opens the app there, and their own choice stands after that.
+- **An older version will not change a newer database.** If an older zip is ever installed over a newer one, the app only shows a page saying which version to install, and leaves your data alone.
+- Faster weather pages on a large history: indexes on the readings, listings and photos tables.
+
+## 1.30.0 (2026-11-04)
+- **Shopping** (under Discover): the stores are checked for your wishlist plants and for garden supplies.
+  - Watch for pots and trays, potting mixes, amendments, fertilizers, pest control, frost cloth and covers, grow lights and timers, and tools and labels, each with its own alerts.
+  - **Show** picks one kind (a dropdown on a phone), and **Stores near** picks Round Rock or Nevada City.
+  - **Cheapest now** gives the price per quart, pound or square foot when a listing says its size, and a price alert can be per unit.
+  - Each item lists the stores near you that carry that kind, with phone numbers you can tap.
+  - **Watch for more on Shopping** on each pot or tray, **Watch for it on Shopping** for each N-P-K ratio on the Fertilizer page, and **Watch the stores for frost cloth** on the cold-night checklist.
+  - The Wishlist page keeps your plants and points to Shopping for prices and alerts. The alert count is now beside Shopping.
+- **Stores**: every store, grouped near Round Rock, near Nevada City, and online. Each store has its own page with its address and a map link, how far it is, phone numbers, hours, email, website, what it carries, the listings it has for you with the price before, and **What they had** notes after you call or visit.
+  - **Edit details** and **Look them up on OpenStreetMap** fill in what is missing.
+  - Details for the five stores near Round Rock, and six new stores near Nevada City (including Peaceful Valley Farm & Garden Supply, which is also an online store), come from their websites (batch B5).
+  - The owner's store settings (on and off, how often, adding a store, the eBay and Etsy keys) moved to the Stores page.
+- **Quicker pages:**
+  - The page you choose shows at once, with its name and "Loading" if it takes a moment.
+  - A page you opened before shows straight away from what this device had, then checks for anything newer.
+  - Pointing at a link starts loading it, and the other pages of the section load in the background.
+  - The plant list, frost and groups no longer hold up every page.
+  - Answers are sent squeezed, about five times smaller, and the server handles more requests at once.
+  - **Settings, Debug, Page timings** shows how long each page took and why.
+- The third extra palm and "any plants not yet photographed" are ticked off the Still to photograph list (batch B5).
+- No new photo pack. The picture checker is unchanged.
+
 ## 1.29.0 (2026-11-04)
 - **A clearer top bar.** Six sections: **Today**, **Plants**, **Care**, **Weather**, **Discover** and **Settings**. The pages of the section you're in are on a second row:
   - Plants: All plants, Groups, Add plants, Mushrooms, Rooms and spots, Photos, Labels.

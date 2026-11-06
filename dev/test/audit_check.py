@@ -73,6 +73,8 @@ with sync_playwright() as pw:
     check(pg.locator('.aud-tbl tbody tr').count() == 100, '100 rows on a page')
     pg.locator('[data-act=audpage][data-d="1"]').click(); pg.wait_for_timeout(900)
     check(pg.locator('#aud-sum').inner_text().startswith('Showing 101 to 200'), 'Next page')
+    check(not pg.locator('#aud-fbox').evaluate('d => d.open'), '1.39.1: the search and filters box starts folded, so the log comes first')
+    pg.click('#aud-fbox summary'); pg.wait_for_timeout(300)
     pg.fill('input[data-f=audq]', 'hyacinth'); pg.wait_for_timeout(1200)
     s = pg.locator('#aud-sum').inner_text()
     check(s.startswith('Showing 1 to') and 'containing "hyacinth"' in s, f'search box: "{s}"')
@@ -95,7 +97,8 @@ with sync_playwright() as pw:
     check('No changes match' in pg.locator('#aud-list').inner_text(), 'From tomorrow: an empty message with Clear filters')
     pg.locator('#aud-list [data-act=audclear]').click(); pg.wait_for_timeout(1500)
     pg.screenshot(path=f'{OUT}/audit-page.png')
-    # the Debug window
+    # the Debug window (on the Settings page from 1.29.0)
+    pg.goto(f'{BASE}/#/settings'); pg.wait_for_timeout(2000)
     pg.locator('#debug-btn').click(); pg.wait_for_timeout(400)
     check(pg.locator('#dlg h2').inner_text() == 'Debug', 'Debug opens its window')
     pg.wait_for_timeout(600)
@@ -140,7 +143,8 @@ with sync_playwright() as pw:
     pg.screenshot(path=f'{OUT}/audit-console-plant.png')
     check(pane[0] <= pane[1] + 2 or pane[0] - pane[1] < 200, f'plant page halves end near the console ({pane[0]} vs {pane[1]})')
     pg.locator('[data-act=conclose]').click(); pg.wait_for_timeout(400)
-    check(not pg.locator('#console').is_visible() and pg.evaluate("document.activeElement.id") == 'debug-btn', 'Close hides it and puts you on the Debug button')
+    check(not pg.locator('#console').is_visible() and pg.evaluate("document.activeElement.id === 'debug-btn' || document.activeElement.tagName === 'H1'"),
+          'Close hides it and puts you on the Debug button, or the page heading when Debug is not on the page')
     check(json.loads(pg.evaluate("localStorage.getItem('plantdb.debug')"))['console'] == '0', 'and remembers it is off')
     pg.emulate_media(media='print')
     check(not pg.locator('#corner').is_visible(), 'printing leaves out the Debug and Display buttons')

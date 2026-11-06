@@ -37,7 +37,7 @@ with sync_playwright() as pw:
     pg.fill('dialog[open] textarea[name=answer]', 'It tastes very sweet, like sugar.'); pg.locator('dialog[open] button[value=ok]').click(); pg.wait_for_timeout(1500)
     check(pg.locator('#needs button[data-act=forclaude]').count() == 1, 'plant page: "Copy my answers for Claude" button in Needed from you')
     # Plants page shows how many answers are new
-    pg.goto(BASE + '/#/'); pg.wait_for_timeout(2000)
+    pg.goto(BASE + '/#/plants'); pg.wait_for_timeout(2000)
     btn = pg.locator('.needs-bar button[data-act=forclaude]')
     label = btn.inner_text() if btn.count() else ''
     check(re.search(r'\(\d+ new\)', label) is not None, 'Plants page button says how many are new: ' + label)
@@ -55,7 +55,7 @@ with sync_playwright() as pw:
     pg.locator('dialog[open] button[value=close]').click(); pg.wait_for_timeout(300)
     check(pg.locator('.needs-bar .fc-n').count() == 0, 'the "(new)" count goes once copied')
     # next time starts from the copy
-    pg.goto(BASE + '/#/history'); pg.goto(BASE + '/#/'); pg.wait_for_timeout(1800)
+    pg.goto(BASE + '/#/history'); pg.goto(BASE + '/#/plants'); pg.wait_for_timeout(1800)
     pg.locator('.needs-bar button[data-act=forclaude]').click(); pg.wait_for_timeout(800)
     check('Nothing new from me' in pg.locator('#fc-text').input_value(), 'opening it again: nothing new since the copy')
     pg.select_option('select[data-act=fcrange]', 'all'); pg.wait_for_timeout(800)
@@ -73,7 +73,7 @@ with sync_playwright() as pw:
     # phone, dark, biggest text
     q = ctx.new_page(); q.set_viewport_size({'width': 390, 'height': 844}); q.on('pageerror', lambda e: errs.append(str(e)))
     q.add_init_script("localStorage.setItem('plantdb.display',JSON.stringify({theme:'dark',size:'190'}))")
-    q.goto(BASE + '/#/'); q.wait_for_timeout(2000)
+    q.goto(BASE + '/#/plants'); q.wait_for_timeout(2000)
     q.evaluate("document.querySelector('.needs-bar button[data-act=forclaude]').click()"); q.wait_for_timeout(800)   # the phone top bar can cover it
     q.screenshot(path=f'{OUT}/copy-phone-dark.png')
     over = q.evaluate('document.getElementById("dlg").scrollWidth - document.getElementById("dlg").clientWidth')
@@ -84,7 +84,7 @@ with sync_playwright() as pw:
     b2 = pw.chromium.launch(args=['--host-resolver-rules=MAP plants.test 127.0.0.1'])
     r = b2.new_page(); r.on('pageerror', lambda e: errs.append(str(e)))
     r.add_init_script("localStorage.setItem('plantdb.editor','Copy Test')")
-    r.goto(f'http://plants.test:{port}/#/'); r.wait_for_timeout(2000)
+    r.goto(f'http://plants.test:{port}/#/plants'); r.wait_for_timeout(2000)
     r.locator('.needs-bar button[data-act=forclaude]').click(); r.wait_for_timeout(800)
     r.locator('button[data-act=fccopy]').click(); r.wait_for_timeout(800)
     check(not r.evaluate('window.isSecureContext') and 'Copied' in r.locator('#fc-status').inner_text(), 'copying works on a page opened by a network address too')
