@@ -624,7 +624,7 @@ document.addEventListener('keydown', e => {
 document.addEventListener('input', e => {
   if (e.target.dataset && e.target.dataset.f === 'sevfield') { const P = SEV.plants[+e.target.dataset.g]; P.fields[e.target.dataset.k] = e.target.value; P.typed.add(e.target.dataset.k);
     if (e.target.dataset.k === 'common_name') { const lg = e.target.closest('fieldset.sev-plant').querySelector('legend'); lg.textContent = lg.textContent.replace(/(: .*)?$/, e.target.value ? ': ' + e.target.value : ''); } }
-  if (e.target.closest && e.target.closest('form[data-spot]')) spotPreview();
+  if (e.target.closest && e.target.closest('form[data-spot]')) { if (e.target.dataset.sp) spotFilter(); else if (e.target.name === 'plant') { spotFilter(); spotPreview(); } else spotPreview(); }
   if (e.target.closest && e.target.closest('form[data-fert]')) {
     if (e.target.name === 'product') { const x = FERT.products.find(q => q.product.toLowerCase() === e.target.value.trim().toLowerCase()); const f = e.target.form; if (x && !f.elements.n.value && !f.elements.amount.value) { ['form', 'n', 'p', 'k', 'amount', 'amount_unit', 'water_amount', 'water_unit', 'method'].forEach(k => { if (x[k] != null && f.elements[k]) f.elements[k].value = x[k]; }); } }
     fertPreview();

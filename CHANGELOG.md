@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.41.0 (2026-11-05)
+- **The light spot window, reworked** (Ethan, November 5):
+  - **Plants in this spot** is now one plant a row, with its photo, its light needs and a link that opens its page in a new tab.
+  - Each row has a tag saying how the light, at the setting you have chosen, suits it ("Good", "A bit dim", "Too bright"), and it changes as you change the setting.
+  - **Search plants**, **Show** (fits this setting, fits or nearly fits, not in a spot yet, ticked, lives inside, coming inside) and **Sort** (name, code, most light needed first, best fit first) sit above the list.
+- **More about the chosen light**, right under the menu: type, power and colour, brightness steps, how many are free, and its strongest and weakest light within the distances it was measured at (PAR), with the daily light that gives (mol/m² a day) on 12 hours and from 8 to 16 hours.
+  - For example, the SANSI 80 W bulb: 721 PAR at 12 in, down to 23.6 at 48 in on 25%; 1 to 31.1 mol/m² a day on 12 hours.
+- **The Light menu** is A to Z, with the disk light in its own "Room lights" group. Each light says its type, watts, its most light and how many are free.
+- **Best setting for the ticked plants**: one button picks the distance, hours and brightness that put the most of them in their range, and says how many fit.
+- **A better spot for a plant that does not fit.** In the window and on the spot cards, a plant that is too dim or too bright says which of your other spots would suit it.
+- **Add plants** on each spot card, straight to the plants not in a spot yet.
+- **Set up all suggested spots** in one go, each changeable afterwards.
+- **From a plant's own page** (Sunlight, Grow light this winter): Set up the suggested spot, Add it to one of your spots (each with how it suits the plant), or Set up a new spot for it.
+- **Tick boxes and menus follow your theme.** On a computer set to dark mode with the app on its light theme, unticked boxes showed as dark squares (as in your screenshot). They now match the theme you chose.
+- On a phone with large text, the verdict tags ("Too bright") wrap instead of pushing the page past the screen edge.
+
 ## 1.40.1 (2026-11-05)
 - **Start the checklist** for getting a plant ready to come inside (Ethan, November 5: there was no way to start it). The button sits right under the plant's status, on its page and on each plant's row of the Coming inside page. After that, the same place has one button for the next step, named for what you did ("Inspected for pests today", then the next Best method), so you can work down the list without scrolling. **Undo the start** takes it back until you have done a step; **Go to the checklist** jumps to the full list, now headed "The checklist, in the order to do it".
 - **Plants already inside can go through it too:** the 13 indoor plants (and any plant inside) have a Start the checklist button, for a new plant from a store or one brought in without a check. It is then kept apart from your other houseplants for 3 weeks from the day you started. A good one to start: the moth orchid with mealybugs.

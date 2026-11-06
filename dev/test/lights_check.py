@@ -91,6 +91,37 @@ check(st == 409 and 'spot' in msg, 'a light in use cannot be removed')
 st, _ = call('DELETE', '/api/lights/spots/%d' % sid2)
 check(st == 200 and other not in call('GET', '/api/lights')[1]['assigned'], 'removing a spot frees its plants')
 
+# ---- 1.41.0: what a light can give, the best setting, a better spot, adding plants from a plant's page
+j8 = call('GET', '/api/lights')[1]
+d8 = {L['key']: L for L in j8['lights']}
+R = d8['sansi-80w']['reach']
+check(R and R['near_in'] == 12 and R['far_in'] == 48 and R['dim_min'] == 25 and R['dli_any'][0] < R['dli12'][0] < R['dli12'][1] < R['dli_any'][1]
+      and abs(R['dli12'][1] - S.dli_of(R['ppfd_max'], 12)) <= 0.1, f"the 80 W bulb's reach: {R and (R['ppfd_max'], R['ppfd_min'], R['dli12'], R['dli_any'])}")
+check(d8['sansi-pot-clip']['reach']['one_point'] and d8['disk-light']['room_light'] and not any(L['room_light'] for k, L in d8.items() if k != 'disk-light'), 'one-distance lights and the room light are marked')
+check(all('foot' in c and 'photo' in c and 'inside' in c for c in j8['candidates']) and sum(1 for c in j8['candidates'] if c['photo']) > len(j8['candidates']) / 2, 'each plant in the list has its photo and the room its pot takes')
+needy = sorted([c for c in j8['candidates'] if c['need'] and c['code'] not in j8['assigned']], key=lambda c: c['need']['target'])
+lowp, mids = needy[0], needy[len(needy) // 2: len(needy) // 2 + 4]
+st, best = call('GET', '/api/lights/best?light=%d&units=1&plants=%s' % (d8['sansi-tripod']['id'], ','.join(c['code'] for c in mids)))
+st2, pv = call('GET', '/api/lights/preview?light=%d&distance=%g&hours=%g&dim=%d&units=1&plants=%s' % (d8['sansi-tripod']['id'], best['distance_in'], best['hours'], best['dim_pct'], ','.join(c['code'] for c in mids)))
+check(st == 200 and best['of'] == 4 and best['good'] >= 3 and sum(p['verdict'] == 'good' for p in pv['plants']) == best['good'] and pv['dli'] == best['dli'],
+      f"best setting for 4 plants under the tripod: {best.get('distance_in')} in, {best.get('hours')} h, {best.get('good')} of 4 in range, as the preview says")
+check(call('GET', '/api/lights/best?light=%d&units=1&plants=' % d8['sansi-tripod']['id'])[0] == 400, 'the best setting needs ticked plants')
+st, a = call('POST', '/api/lights/spots', {'name': 'Too bright test', 'light': d8['sansi-80w']['id'], 'units': 1, 'distance': 14, 'hours': 14, 'plants': [lowp['code']]})
+st, bb = call('POST', '/api/lights/spots', {'name': 'Dim test', 'light': d8['barrina-t5']['id'], 'units': 1, 'distance': 12, 'hours': 12, 'plants': []})
+j9 = call('GET', '/api/lights')[1]
+sa, sb = next(s for s in j9['spots'] if s['id'] == a['id']), next(s for s in j9['spots'] if s['id'] == bb['id'])
+pl = sa['plants'][0]
+want_b = lowp['need']['lo'] <= sb['dli'] <= lowp['need']['hi']
+check(pl['verdict'] == 'too_bright' and (pl['better'] or {}).get('id') == (bb['id'] if want_b else None), f"a plant too bright in its spot is pointed at one that suits it ({pl['verdict']}, {pl['better']}, other spot {sb['dli']})")
+pv = call('GET', '/api/lights/preview?light=%d&distance=14&hours=14&dim=100&units=1&plants=%s&spot=%d' % (d8['sansi-80w']['id'], lowp['code'], a['id']))[1]
+check((pv['plants'][0]['better'] or {}).get('id') == (bb['id'] if want_b else None), 'the spot window says so too')
+st, g = call('GET', '/api/lights?plant=' + lowp['code'])
+check(st == 200 and g['need'] and {x['id'] for x in g['spots']} >= {a['id'], bb['id']} and next(x for x in g['spots'] if x['id'] == a['id'])['verdict'] == 'too_bright', "the plant's page lists your spots with how each suits it")
+st, r = call('POST', '/api/lights/spots/%d/plants' % bb['id'], {'add': [lowp['code']]})
+check(st == 200 and call('GET', '/api/lights')[1]['assigned'].get(lowp['code']) == bb['id'], 'adding it to another spot from its page moves it there')
+check(call('POST', '/api/lights/spots/%d/plants' % bb['id'], {'add': []})[0] == 400 and call('POST', '/api/lights/spots/99999/plants', {'add': ['P-001']})[0] == 404, 'adding needs a plant and a spot that exists')
+call('DELETE', '/api/lights/spots/%d' % a['id']); call('DELETE', '/api/lights/spots/%d' % bb['id'])
+
 # ---- 1.13.1: rooms and shelves, the model field, Ethan's answers (batchA4)
 st, j7 = call('GET', '/api/lights')
 labels = [pl['label'] for pl in j7['places']]
@@ -144,6 +175,8 @@ call('GET', '/api/me', base=TS, h=E); call('GET', '/api/me', base=TS, h=V)
 check(call('GET', '/api/lights', base=TS, h=V)[0] == 200, 'a viewer can see the Grow lights page')
 check(call('POST', '/api/lights/spots', {'name': 'X', 'light': by['sansi-tripod']['id'], 'distance': 20, 'hours': 12}, base=TS, h=V)[0] == 403 and
       call('PUT', '/api/lights/%d' % L['id'], {'name': 'X', 'count': 1}, base=TS, h=V)[0] == 403, 'but cannot set up spots or change lights')
+check(call('POST', '/api/lights/spots/plan', {}, base=TS, h=V)[0] == 403 and call('POST', '/api/lights/spots/%d/plants' % sid, {'add': ['P-001']}, base=TS, h=V)[0] == 403
+      and call('GET', '/api/lights/best?light=%d&units=1&plants=P-001' % by['sansi-tripod']['id'], base=TS, h=V)[0] == 200, '1.41.0: nor set up the whole layout or add plants (the best setting only reads)')
 
 # ---- the page
 with sync_playwright() as p:
@@ -167,19 +200,74 @@ with sync_playwright() as p:
     pg.fill('dialog input[name=distance]', '40'); pg.wait_for_timeout(900)
     t2 = pg.inner_text('#sp-prev')
     check('mol/m² a day' in t1 and t1 != t2, 'the spot window shows the light at the leaves, and it changes with the distance')
+    # 1.41.0: the Light menu, the light's card, and the plant list's search, Show, Sort, links, tags and Best setting
+    grow = pg.locator('dialog select[name=light] optgroup[label="Grow lights"] option').all_inner_texts()
+    room = pg.locator('dialog select[name=light] optgroup[label="Room lights"] option').all_inner_texts()
+    names = [t.split(':')[0] for t in grow]
+    nat = lambda t: [int(x) if x.isdigit() else x.lower() for x in __import__('re').split(r'(\d+)', t)]       # A to Z, 2 ft before 10 W
+    check(names == sorted(names, key=nat) and len(grow) == 10 and len(room) == 1 and room[0].startswith('Commercial Electric disk light'), 'the Light menu is A to Z, the room light in its own group')
+    check(all('free' in t and ('PAR' in t or 'no light figures' in t) for t in grow + room), 'each light in the menu says its most light and how many are free')
+    check('Daily light' in pg.inner_text('#sp-light') and 'Light at the leaves' in pg.inner_text('#sp-light'), "the window shows the chosen light's reach")
+    pg.select_option('dialog select[name=light]', str(by['sansi-80w']['id'])); pg.wait_for_timeout(900)
+    check('SANSI 80 W' in pg.inner_text('#sp-light .sp-light-h') and '25%' in pg.inner_text('#sp-light'), 'choosing another light shows its card')
+    rows = pg.locator('ul.sp-plants li.sp-row')
+    check(rows.count() == len(j7['candidates']) and pg.locator('ul.sp-plants a[target=_blank][href^="#/plant/"]').count() == rows.count() and pg.locator('ul.sp-plants img').count() > rows.count() / 2,
+          'one plant a row, with a photo and a link that opens its page in a new tab')
+    pg.fill('dialog [data-sp=q]', 'fern'); pg.press('dialog [data-sp=q]', 'Enter'); pg.wait_for_timeout(400)
+    vis = pg.locator('ul.sp-plants li.sp-row:visible')
+    check(pg.evaluate('document.querySelector("dialog").open') and vis.count() >= 1 and all('fern' in vis.nth(i).inner_text().lower() for i in range(vis.count())), 'search finds the ferns, and Enter does not save the spot')
+    pg.fill('dialog [data-sp=q]', ''); pg.select_option('dialog [data-sp=show]', 'fit'); pg.wait_for_timeout(400)
+    vis = pg.locator('ul.sp-plants li.sp-row:visible')
+    check(vis.count() >= 1 and vis.count() == pg.locator('ul.sp-plants li.sp-row:visible .lv-good').count(), f'"Fits this setting" shows only plants this light suits ({vis.count()})')
+    pg.select_option('dialog [data-sp=show]', ''); pg.select_option('dialog [data-sp=sort]', 'need'); pg.wait_for_timeout(400)
+    tg = [float(x) for x in pg.locator('ul.sp-plants li.sp-row').evaluate_all('els => els.map(e => e.dataset.target).filter(Boolean)')]
+    check(tg == sorted(tg, reverse=True), 'Sort: most light needed first')
+    check('Showing %d of %d' % (rows.count(), rows.count()) in pg.inner_text('#sp-count'), 'it says how many are showing and ticked')
+    pg.locator('ul.sp-plants li.sp-row input[name=plant]').nth(0).check(); pg.locator('ul.sp-plants li.sp-row input[name=plant]').nth(1).check(); pg.wait_for_timeout(300)
+    pg.click('dialog [data-act=spotbest]'); pg.wait_for_timeout(1500)
+    check(pg.inner_text('#sp-best').startswith('Set to') and pg.input_value('dialog input[name=distance]') == pg.inner_text('#sp-best').split(' in ')[0].split()[-1], 'Best setting fills in the distance, hours and brightness and says how many fit')
     pg.screenshot(path=os.path.join(OUT, 'lights-2-window.png'))
+    pg.click('dialog button[value=cancel]'); pg.wait_for_timeout(300)
+    pg.click('#lt-spots [data-act=spotadd]'); pg.wait_for_timeout(1200)
+    check(pg.locator('dialog [data-sp=show]').input_value() == 'free' and pg.evaluate('document.activeElement.dataset.sp') == 'q', 'Add plants opens the spot with the plants not in a spot yet, at the search box')
     pg.click('dialog button[value=cancel]'); pg.wait_for_timeout(300)
     inspot = next(c for c, sp in call('GET', '/api/lights')[1]['assigned'].items() if sp == sid)
     pg.goto(LOCAL + '/#/plant/' + inspot); pg.wait_for_timeout(2500)
     check('Living room window' in pg.inner_text('#pl-grow'), "the plant page names the plant's light spot")
+    free = next(c['code'] for c in call('GET', '/api/lights')[1]['candidates'] if c['code'] not in call('GET', '/api/lights')[1]['assigned'] and c['need'])
+    pg.goto(LOCAL + '/#/plant/' + free); pg.wait_for_timeout(2500)
+    check(pg.locator('#pl-grow [data-act=grownew]').count() == 1 and pg.locator('#pl-grow [data-act=growadd]').count() == 1, 'a plant not in a spot can be put in one from its page')
+    pg.click('#pl-grow [data-act=grownew]'); pg.wait_for_timeout(1500)
+    check(pg.evaluate('[...document.querySelectorAll("dialog input[name=plant]:checked")].map(i => i.value)') == [free], '"Set up a new spot for it" starts with that plant ticked')
+    pg.click('dialog button[value=cancel]'); pg.wait_for_timeout(300)
+    pg.click('#pl-grow [data-act=growadd]'); pg.wait_for_timeout(900)
+    check(pg.locator('dialog input[name=spot]').count() >= 1 and pg.locator('dialog .lv').count() == pg.locator('dialog input[name=spot]').count(), '"Add it to one of your spots" lists them with how each suits it')
+    pg.click('dialog input[name=spot] >> nth=0'); pg.click('dialog button[value=ok]'); pg.wait_for_timeout(2000)
+    check('In the spot' in pg.inner_text('#pl-grow'), 'and adds it')
+    dk = b.new_context(viewport={'width': 1280, 'height': 900}, color_scheme='dark').new_page()
+    dk.add_init_script("localStorage.setItem('plantdb.display',JSON.stringify({theme:'light'}))"); dk.goto(LOCAL + '/#/lights'); dk.wait_for_timeout(1500)
+    check(dk.evaluate('getComputedStyle(document.documentElement).colorScheme') == 'light', 'tick boxes and menus follow the chosen light theme on a computer set to dark (they were dark squares)')
+    dk.close()
     ph = b.new_page(viewport={'width': 390, 'height': 844})
     ph.add_init_script("localStorage.setItem('plantdb.editor','Light Test');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
     ph.goto(LOCAL + '/#/lights'); ph.wait_for_timeout(2500)
     check(ph.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), 'on a phone with the largest text there is no sideways scrolling')
+    ph.click('[data-act=spotnew] >> nth=0'); ph.wait_for_timeout(1500)
+    check(ph.evaluate('(() => { const d = document.querySelector("dialog"); return d.scrollWidth <= d.clientWidth + 1; })()'), 'and none in the spot window')
+    ph.screenshot(path=os.path.join(OUT, 'lights-4-phone-window.png'))
+    ph.click('dialog button[value=cancel]'); ph.wait_for_timeout(300)
     ph.screenshot(path=os.path.join(OUT, 'lights-3-phone.png'), full_page=False)
     vw = b.new_page(viewport={'width': 1280, 'height': 900}, extra_http_headers=V)
     vw.goto(TS + '/#/lights'); vw.wait_for_timeout(2500)
-    check(vw.locator('[data-act=spotnew]:visible, [data-act=lightedit]:visible, [data-act=spotedit]:visible, [data-act=roomnew]:visible, [data-act=roomedit]:visible').count() == 0, 'a viewer sees no buttons that make changes')
+    check(vw.locator('[data-act=spotnew]:visible, [data-act=lightedit]:visible, [data-act=spotedit]:visible, [data-act=roomnew]:visible, [data-act=roomedit]:visible, [data-act=spotadd]:visible, [data-act=spotplanall]:visible').count() == 0, 'a viewer sees no buttons that make changes')
+    # 1.41.0: set up every suggested spot in one go
+    pg.goto(LOCAL + '/#/lights'); pg.wait_for_timeout(2500)
+    before = call('GET', '/api/lights')[1]; np = len(before['plan'])
+    pg.click('[data-act=spotplanall]'); pg.wait_for_timeout(600); pg.locator('dialog .btn').first.click(); pg.wait_for_timeout(3000)
+    after = call('GET', '/api/lights')[1]
+    check(np >= 2 and len(after['spots']) == len(before['spots']) + np and len(after['plan']) == 0 and all(c in after['assigned'] for s in before['plan'] for c in s['codes']),
+          f'"Set up all {np} suggested spots" sets them all up, with their plants')
+    check(call('POST', '/api/lights/spots/plan', {})[0] == 400, 'and there is nothing left to set up after')
     b.close()
 check(not errs, 'no JavaScript errors' + ('' if not errs else ': ' + '; '.join(errs[:3])))
 print('%d failed' % len(fails))

@@ -19,7 +19,21 @@ async function pickPlant(title, text, withNone) {
 const acts = {
   gphoto: el => sheetStep(el.dataset.code, +el.dataset.d),
   who() { whoDialog(); },
-  spotnew(el) { const p = el.dataset.plan != null ? LT.plan[+el.dataset.plan] : null; spotDialog(p ? { name: p.name, light_id: p.light_id, units: p.units, distance_in: p.distance_in, hours: p.hours, dim_pct: p.dim_pct, codes: p.codes } : { light_id: LT.lights[0] && LT.lights[0].id }); },
+  spotnew(el) { const p = el.dataset.plan != null ? LT.plan[+el.dataset.plan] : null; spotDialog(p ? { name: p.name, light_id: p.light_id, units: p.units, distance_in: p.distance_in, hours: p.hours, dim_pct: p.dim_pct, codes: p.codes } : { light_id: ltSorted()[0] && ltSorted()[0].id }); },
+  spotadd(el) { const s = LT.spots.find(x => x.id === +el.dataset.id); if (s) spotDialog({ ...s, codes: s.plants.map(p => p.code) }, { show: 'free' }); },     // 1.41.0
+  spotbest() { spotBest(); },
+  async spotplanall() {
+    if (!(await needName())) return;
+    const n = LT.plan.length, k = LT.plan.reduce((a, s) => a + s.codes.length, 0);
+    if (!(await confirmBox(`Set up all ${n} suggested spots?`, `${k} plants go into ${n} new spots, named "Bright light 1" and so on, with the settings shown. You can rename, move or change each one afterwards.`, 'Set up all of them'))) return;
+    await guard(async () => { const r = await api('POST', '/api/lights/spots/plan', {}); toast(`${r.made} spots set up, with ${r.plants} plants`); route(); });
+  },
+  async growsug(el) {
+    LT = await api('GET', '/api/lights'); const code = el.dataset.code, p = LT.plan.find(s => s.codes.includes(code)); if (!p) { toast('The suggested layout has changed. Open Grow lights to see it.', true); return; }
+    spotDialog({ name: p.name, light_id: p.light_id, units: p.units, distance_in: p.distance_in, hours: p.hours, dim_pct: p.dim_pct, codes: p.codes });
+  },
+  growadd(el) { growAddDialog(el.dataset.code); },
+  async grownew(el) { LT = await api('GET', '/api/lights'); spotDialog({ light_id: ltSorted()[0] && ltSorted()[0].id, codes: [el.dataset.code] }, { show: 'fit' }); },
   spotedit(el) { const s = LT.spots.find(x => x.id === +el.dataset.id); if (s) spotDialog({ ...s, codes: s.plants.map(p => p.code) }); },
   async spotdel(el) {
     const s = LT.spots.find(x => x.id === +el.dataset.id); if (!s) return;
