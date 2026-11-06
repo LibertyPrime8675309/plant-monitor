@@ -28,7 +28,7 @@ with sync_playwright() as p:
     b = p.chromium.launch()
     def device(w, h):
         ctx = b.new_context(viewport={'width': w, 'height': h}, extra_http_headers=E)
-        ctx.add_init_script("localStorage.setItem('plantdb.editor','Ethan')")
+        ctx.add_init_script("localStorage.setItem('plantdb.editor','Ethan');localStorage.setItem('plantdb.morefilters','1')")
         pg = ctx.new_page(); pg.on('pageerror', lambda e: errs.append(str(e))); return pg
     a = device(1920, 1080)
     a.goto(TS + '/#/plants'); a.wait_for_timeout(3000)

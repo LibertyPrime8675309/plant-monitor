@@ -38,9 +38,14 @@ def identify():
          'blue': [('P-030', .60, .52), ('P-031', .58, None), ('P-032', .57, None)]}[c]
     sp = SP if c == 'blue' else SP[1:] + SP[:1]
     if request.args.get('scope') == 'fungi': sp = FUNGI[:3]
-    return jsonify(model='bioclip-2.5-vith14 (test)', likely_new=c == 'blue', scope=request.args.get('scope', 'common'), seconds=0.1,
+    n_pics = len(request.files.getlist('images')) + (1 if 'image' in request.files else 0)      # 1.39.0: several pictures of one plant
+    extra = [] if request.args.get('scope') == 'fungi' else [{'scientific_name': f'Testia species{i:02d}', 'common_name': f'Test plant {i:02d}' if i % 3 else '', 'genus': 'Testia', 'family': 'Testaceae', 'order': 'Testales',
+                                                               'in_texas': False, 'us_states': [], 'usda_symbol': '', 'probability': round(.07 - i * .007, 3), 'basis': []} for i in range(1, 8)]
+    basis = {'Monstera deliciosa': ['house', 'looks'], 'Lupinus texensis': ['state'], 'Agave americana': ['own_gen']}
+    return jsonify(model='bioclip-2.5-vith14 (test)', likely_new=c == 'blue', scope=request.args.get('scope', 'common'), seconds=0.1, pictures=n_pics, prior=True,
                    matches=[{'code': k, 'score': s, 'photo': None, 'confidence': cf} for k, s, cf in m],
-                   species=[x | {'probability': p} for x, p in zip(sp, (.41, .22, .09))], genera=[{'genus': sp[0]['genus'], 'probability': .5}])
+                   species=([x | {'probability': p, 'basis': basis.get(x['scientific_name'], [])} for x, p in zip(sp, (.41, .22, .09))] + extra)[:int(request.args.get('n', 10))],
+                   genera=[{'genus': sp[0]['genus'], 'probability': .5}, {'genus': sp[1]['genus'], 'probability': .2}, {'genus': 'Testia', 'probability': .1}])
 
 @app.get('/names')
 def names():

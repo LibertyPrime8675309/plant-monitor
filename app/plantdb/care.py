@@ -8,6 +8,7 @@ CARE_KINDS.update({'prep_inspect': 'Inspected for pests', 'prep_potclean': 'Clea
                    'prep_wipe': 'Wiped the leaves', 'prep_soap': 'Sprayed insecticidal soap', 'prep_oil': 'Sprayed horticultural oil',
                    'prep_alcohol': 'Dabbed pests with rubbing alcohol', 'prep_soak': 'Soaked the pot', 'prep_topsoil': 'Refreshed the top of the soil',
                    'prep_repot': 'Repotted in fresh soil'})
+CARE_KINDS['prep_start'] = 'Started the move-inside checklist'     # 1.40.1: the Start button, so a plant shows as in progress before any step is done
 RAIN_COUNTS_IN = 0.25          # a day with at least this much rain counts as a watering for plants in the open
 
 def water_base_days(r):
@@ -481,31 +482,44 @@ def prep_plan(c, r, wx, log=None, with_steps=False):
     site = r['site'] or 'Outdoors'
     inside = site in INSIDE_SITES
     moved = prep_moved_in(c, r) if inside else None
+    started = [x['done_on'] for x in log if x['kind'] == 'prep_start']
+    start = date.fromisoformat(max(started)) if started else None
+    # 1.40.1: a plant already inside can go through the checklist too (a new plant from a store, or one brought in without a check)
+    check_inside = inside and start is not None and (moved is None or start >= moved)
     treat = [x['done_on'] for x in log if x['kind'] in ('prep_soap', 'prep_oil', 'prep_alcohol', 'prep_repot')]
     keep = None
-    if moved:
-        keep = moved + timedelta(days=KEEP_APART_DAYS)
+    if moved or check_inside:
+        keep = max(d for d in (moved, start if check_inside else None) if d) + timedelta(days=KEEP_APART_DAYS)
         if pests and treat:
             keep = max(keep, date.fromisoformat(max(treat)) + timedelta(days=KEEP_APART_AFTER_TREATMENT))
     todo = [x for x in methods if x['rating'] == 'Best' and not x['complete']]
-    if inside:
+    nxt_key = None
+    def next_step():
+        """The next step to do, and the method to log for it when it can be done today (None when it is a later round)."""
+        if not done['inspect']: return 'Inspect it for pests.', 'inspect'
+        first = next((x for x in todo if not x['next_due']), None)
+        if first: return f'Next: {first["title"].lower()}.', first['key']
+        x = todo[0]; dd = date.fromisoformat(x['next_due'])
+        return f'{x["title"]} again on or after {dd:%A}, {dd:%b} {dd.day} (round {len(x["done"]) + 1}).', (x['key'] if dd <= today else None)
+    if inside and check_inside and (todo or not done['inspect']):
+        status = 'doing'; nxt, nxt_key = next_step()
+        if not any(done.values()): nxt = 'Started. Inspect it for pests first.'
+    elif inside:
         if keep and today <= keep: status, nxt = 'apart', f'Keep it apart from your other houseplants until {keep:%A}, {keep:%b} {keep.day}, and check it at every watering.'
         else: status, nxt = 'settled', 'Inside and settled. Check it at every watering.'
-    elif not any(done.values()): status, nxt = 'todo', 'Start by inspecting it for pests.'
-    elif not done['inspect']: status, nxt = 'doing', 'Inspect it for pests.'
-    elif todo:
-        status = 'doing'
-        first = next((x for x in todo if not x['next_due']), None)
-        if first: nxt = f'Next: {first["title"].lower()}.'
-        else:
-            x = todo[0]; dd = date.fromisoformat(x['next_due'])
-            nxt = f'{x["title"]} again on or after {dd:%A}, {dd:%b} {dd.day} (round {len(x["done"]) + 1}).'
+    elif not any(done.values()):
+        if start: status, nxt, nxt_key = 'doing', 'Started. Inspect it for pests first.', 'inspect'
+        else: status, nxt, nxt_key = 'todo', 'Start by inspecting it for pests.', 'inspect'
+    elif not done['inspect'] or todo:
+        status = 'doing'; nxt, nxt_key = next_step()
     else: status, nxt = 'ready', 'Ready to come inside. Change its Location (or press Moved indoors) when you bring it in.'
     return {'code': r['code'], 'name': r['common_name'], 'site': site, 'winter_plan': r['winter_plan'], 'health': r['health_rating'],
             'leaf_type': r['leaf_type'] or '', 'pot_size': r['pot_size'] or '', 'pests_found': sorted(pests, key=PESTS.index),
             'watch': [x for x in (r['pests_watch'] or '').split('\n') if x.strip()],
             'methods': methods, 'best': [x['title'] for x in methods if x['rating'] == 'Best'],
-            'status': status, 'next': nxt, 'moved_in': moved.isoformat() if moved else None, 'keep_until': keep.isoformat() if keep else None,
+            'status': status, 'next': nxt, 'next_key': nxt_key, 'next_word': CARE_KINDS['prep_' + nxt_key] if nxt_key else None,
+            'started': start.isoformat() if start else None, 'inside': inside,
+            'moved_in': moved.isoformat() if moved else None, 'keep_until': keep.isoformat() if keep else None,
             'done_count': sum(1 for x in methods if x['done']), 'log': log}
 
 PREP_STATUS = {'todo': 'Not started', 'doing': 'In progress', 'ready': 'Ready to come inside', 'apart': 'Inside, kept apart', 'settled': 'Inside and settled'}
@@ -525,7 +539,7 @@ def prep_list():
     plants = []
     for r in rows:
         p = prep_plan(c, r, wx, logs.get(r['code'], []))
-        p['photo'] = photo(r['id']); p.pop('log')
+        p['photo'] = photo(r['id']); p['log'] = [{'id': x['id'], 'kind': x['kind'], 'done_on': x['done_on']} for x in p['log']]   # 1.40.1: for Undo on the Coming inside page
         plants.append(p)
     counts = {k: sum(1 for p in plants if p['status'] == k) for k in PREP_STATUS}
     return jsonify(weather=wx, status_words=PREP_STATUS, counts=counts, plants=plants,

@@ -526,8 +526,19 @@ async function guard(fn) {
 }
 
 // ---------- router ----------
-function go(h) { if (location.hash === h) route(); else location.hash = h; }
+function go(h) { NAVCLICK = Date.now(); if (location.hash === h) route(); else location.hash = h; }
 window.addEventListener('hashchange', route);
+// 1.38.0: where you were on each page. Going back (the browser's Back button, or a "Back to" link pressed after a page you came from)
+// returns to the same place on the page; a link to a new page starts at the top. The position is noted when you leave the page.
+const SCROLLS = {};
+let NAVCLICK = 0;
+document.addEventListener('click', e => { const a = e.target.closest('a[href^="#/"]'); if (a) NAVCLICK = Date.now(); }, true);
+function scrollBack(h) {
+  const y = SCROLLS[h]; if (!y) return false;
+  const put = () => { if (location.hash.replace(/^#/, '') === h && !document.querySelector('#dlg[open]')) window.scrollTo(0, y); };
+  put(); setTimeout(put, 250); setTimeout(put, 900);
+  return true;
+}
 let ROUTE_FRESH = false;             // set to draw the page again from fresh answers, keeping the scroll position
 async function quickRecheck(my, urls) {
   // the page was drawn from saved answers: ask again, and redraw if any changed, unless you have started typing or choosing on it
@@ -594,6 +605,8 @@ async function route() {
   const my = ++token;
   OFF.saved = null;
   const h = location.hash.replace(/^#/, '') || '/';
+  if (lastPath && lastPath !== h) SCROLLS[lastPath] = window.scrollY;
+  const wentBack = Date.now() - NAVCLICK > 1000;      // not from a link just pressed: Back, Forward, or typed
   const [hp, hq] = h.split('?');                     // 1.18.0: #/library?q=... keeps the search in the address
   const parts = hp.split('/').filter(Boolean), qs = new URLSearchParams(hq || '');
   if (parts[0] !== 'identify') idStop();
@@ -605,7 +618,7 @@ async function route() {
   wlBadge();
   // 1.30.0: the screen changes at once. If the page is not ready in a moment, its name shows with "Loading"; a page opened before
   // shows what was saved from last time, and is checked again just after (see QC above)
-  const t0 = performance.now(), fresh = ROUTE_FRESH; ROUTE_FRESH = false;
+  const t0 = performance.now(), fresh = ROUTE_FRESH || h === lastPath; ROUTE_FRESH = false;   // 1.42.0: the same page drawn again after a change keeps its place (no Loading flash that sent it to the top)
   const quick = !fresh && !(parts[2] === 'edit' || parts[0] === 'new' || (parts[0] === 'fungi' && parts[1] === 'new') || parts[0] === 'decisions' || parts[0] === 'offline');
   QUICK = quick ? { used: [], stale: [] } : { used: [], stale: [], off: true };
   TIMING = { page: '#' + h, calls: [], quick };
@@ -627,8 +640,8 @@ async function route() {
     if (myQuick.off) QUICK = null;
     if (parts[0] === 'plant' && parts[1] && parts[2] === 'edit') view = await viewEdit(decodeURIComponent(parts[1]));
     else if (parts[0] === 'plant' && parts[1]) view = await viewPlant(decodeURIComponent(parts[1]));
-    else if (parts[0] === 'new' && parts[1] === 'several') view = viewSeveral();
-    else if (parts[0] === 'new') view = viewForm(null);
+    else if (parts[0] === 'new' && parts[1] === 'several') view = await viewSeveral();
+    else if (parts[0] === 'new') { if (!ID.keys) { try { ID.keys = await api('GET', '/api/identify/settings'); } catch (e) { /* no Pl@ntNet then */ } } view = viewForm(null); }
     else if (parts[0] === 'winter') view = await viewWinter();
     else if (parts[0] === 'weather') view = await viewWeather(qs.get('sec'));
     else if (parts[0] === 'sensors') view = await viewSensors();     // 1.35.0
@@ -674,16 +687,17 @@ async function route() {
     myTiming.drawn = true; app.removeAttribute('aria-busy');
     app.innerHTML = rend(view.html);
     if (parts[0] !== 'frost' && parts[0] !== 'plant' && parts[0] !== 'today' && parts.length) app.insertAdjacentHTML('afterbegin', rend(frostBanner()));   // plant pages have their own note; Today has its own section
-    if (OFF.saved && OFF.saved !== 'none') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice off-note noprint" role="note"><strong>Offline.</strong> This is what this device saved${OFF.saved ? ' on ' + when(OFF.saved) : ''}. Changes you make are kept here and sent when you are back online. <a href="#/offline">Offline page</a></p>`));
-    offNotice(parts);
+    if (((OFF.saved && OFF.saved !== 'none') || !navigator.onLine || OFF.reach === 'no') && parts[0] !== 'offline') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice off-note noprint" role="note"><strong>Offline.</strong> This is what this device saved${OFF.saved && OFF.saved !== 'none' ? ' on ' + when(OFF.saved) : ''}. Changes you make are kept here and sent when the plant server can be reached. <button class="btn small ghost" type="button" data-act="offtry">Try to connect now</button> <a href="#/offline">Offline page</a></p>`));
+    await offNotice(parts);
+    if (my !== token) return;
     if (META && META.mirror && META.mirror.on) app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice vw-note mirror-note noprint" role="note"><strong>This is the mirror:</strong> a read-only copy${META.mirror.made ? ` of the backup made ${when(META.mirror.made)}` : META.mirror.at ? ` taken ${when(META.mirror.at)}` : ', waiting for its first backup'}${META.mirror.error ? ` (${META.mirror.error})` : ''}. Changes are turned off here; ${META.mirror.main ? html`make them in <a href="${META.mirror.main}">the main app</a>` : 'make them in the main app'}.</p>`));   // 1.37.0
     else if (ME().role === 'viewer') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice vw-note noprint" role="note"><strong>View only.</strong> You can look at everything here, but changes are turned off. Ask ${ME().owner_name} if you would like to edit.</p>`));
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
     if (view.after) view.after();
     if (parts[0] === 'weather' && qs.get('sec') === 'places') setTimeout(() => { const t = document.getElementById('sec-places'); if (t) { scrollToSection(t); navFlash(t); } }, 300);   // 1.29.0: Homes and places
     else if (qs.get('sec')) { const go2 = () => { const t = document.getElementById(qs.get('sec')); if (t) { scrollToSection(t); navFlash(t); } }; setTimeout(go2, 300); setTimeout(go2, 1500); }   // 1.36.0: #/plant/P-001?sec=inside opens the page at that section
-    buildSideNav(); navLayout(); addReadButtons(); setTimeout(() => { buildSideNav(); navLayout(); addReadButtons(); }, 1200);
-    if (h !== lastPath) { window.scrollTo(0, 0); app.focus({ preventScroll: true }); NAVPIN = -1; navActive(); }
+    buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); setTimeout(() => { buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); }, 1200);
+    if (h !== lastPath) { if (!(wentBack && !qs.get('sec') && scrollBack(h))) window.scrollTo(0, 0); app.focus({ preventScroll: true }); NAVPIN = -1; navActive(); }
     else if (fresh && keepY) window.scrollTo(0, keepY);
     lastPath = h;
     timingKeep(myTiming, t0, tData, performance.now());
@@ -694,6 +708,7 @@ async function route() {
     if (QUICK === myQuick) QUICK = null;
     app.removeAttribute('aria-busy');
     if (my !== token) return;
+    myTiming.drawn = true;                       // 1.38.0: so the "Loading" stand-in does not replace the message when the page failed within 150 ms
     app.innerHTML = rend(html`<div class="notice bad" role="alert"><strong>${e.status === 404 ? 'Not found' : 'Something went wrong'}</strong><p>${e.message}</p>
       <a class="btn ghost" href="#/plants">Back to all plants</a></div>`);
   }
@@ -702,7 +717,7 @@ async function route() {
 
 // ---------- section menu (left or right, can be folded away) ----------
 let NAVSESSION = null;                // on narrow screens the menu starts folded; opening it there lasts until a link is chosen
-function navOpen() { const P = window.PlantPrefs.get(), narrow = document.documentElement.dataset.narrow === '1'; return NAVSESSION != null ? NAVSESSION : (P.navopen === '1' && !narrow); }
+function navOpen() { const P = window.PlantPrefs.get(), r = document.documentElement, narrow = r.dataset.narrow === '1'; if (r.dataset.navempty === '1' && !narrow) return false; return NAVSESSION != null ? NAVSESSION : (P.navopen === '1' && !narrow); }
 // 1.26.0: with large text on a computer, the page links fold behind the Pages button once they would take more than two rows (or
 // the top bar more than a fifth of the window), and a top bar still taller than a fifth of the window scrolls away with the page, as on phones, instead of staying pinned
 // 1.29.0: the top bar has six sections; the pages of the section you are in are on a second row (Ethan's choice, November 2026)
@@ -771,7 +786,7 @@ function navLayout() {
   document.querySelectorAll('.pane').forEach(p => { const j = p.querySelector('.jump'); p.style.setProperty('--jump-h', (j ? j.offsetHeight : 0) + 'px'); });
   pnavLayout();
 }
-document.addEventListener('toggle', e => { if (e.target && e.target.id === 'pn-filters') PNOPEN = e.target.open; if (e.target && e.target.id === 'more-f') MOREOPEN = e.target.open; }, true);
+document.addEventListener('toggle', e => { if (e.target && e.target.id === 'pn-filters') PNOPEN = e.target.open; if (e.target && e.target.id === 'more-f') { MOREOPEN = e.target.open; try { localStorage.setItem('plantdb.morefilters', MOREOPEN ? '1' : '0'); } catch (x) { /* this visit only */ } } }, true);
 let NAVITEMS = [];
 function buildSideNav() {
   const list = document.getElementById('sn-list'); if (!list) return;
@@ -793,6 +808,8 @@ function buildSideNav() {
     NAVITEMS.push({ el: sec, head: marked ? sec : h, text, id: sec.id });
   });
   buildJumpRow();
+  document.documentElement.dataset.navempty = NAVITEMS.length <= 1 ? '1' : '0';     // 1.39.1: only "Top of the page": no menu for this page
+  if (typeof pinLayout === 'function') pinLayout();                                 // 1.42.0: Display follows the menu
   list.innerHTML = rend(html`${NAVITEMS.map((it, i) => html`<li><a href="#${it.id || 'app'}" data-act="navgo" data-i="${i}">${it.text}</a></li>`)}`);
   if (!NAVITEMS.length) list.innerHTML = rend(html`<li class="muted">This page has no sections.</li>`);
   if (pinned) NAVPIN = NAVITEMS.findIndex(it => (it.id || 'top') === pinned);
@@ -812,6 +829,7 @@ function buildJumpRow() {
   row.innerHTML = rend(html`${items.map(it => html`<button class="btn ghost small" type="button" data-act="jump" data-id="${it.id}">${name(it)}</button>`)}`);
 }
 function scrollToSection(t) {
+  foldOpenFor(t);            // 1.42.0
   const beh = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', pane = t.closest('.pane');
   const split = document.documentElement.dataset.layout !== 'single' && document.documentElement.dataset.narrow !== '1';
   if (pane && split) {   // scroll only this half, not the whole page

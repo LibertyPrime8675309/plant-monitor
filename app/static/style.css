@@ -164,7 +164,7 @@ html:not([data-layout=single]):not([data-narrow="1"]) .plant>.pane{height:100%;o
 .jump{display:flex;gap:.4rem;flex-wrap:wrap;margin:0 0 1.2rem}
 html:not([data-layout=single]):not([data-narrow="1"]) .jump{position:sticky;top:-.25rem;z-index:5;background:var(--paper);padding:.4rem 0 .6rem;margin-top:-.25rem;border-bottom:1px solid var(--line)}
 .main-photo{background:var(--sheet);border:1px solid var(--line);padding:.5rem;display:block;width:100%;cursor:zoom-in}
-.main-photo img{display:block;width:100%;max-height:62vh;object-fit:contain;background:var(--line-2)}
+.main-photo img{display:block;width:100%;aspect-ratio:4/3;max-height:62vh;object-fit:contain;background:var(--line-2)}   /* 1.38.0: the box has its size before the photo arrives, so the page does not jump */
 .thumbs{display:flex;gap:.6rem;flex-wrap:wrap;margin:.7rem 0}
 .thumbs button{padding:0;border:3px solid transparent;background:none;cursor:pointer;width:4.5rem;height:4.5rem}
 .thumbs button[aria-current=true]{border-color:var(--cyan)}
@@ -370,7 +370,7 @@ h1,h2,h3,.l-body,.label{overflow-wrap:anywhere}
 .tl-pick select{width:100%}
 .tl-cmp{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:.6rem 0 1.4rem}
 .tl-fig{margin:0;border:2px solid var(--line);border-radius:8px;overflow:hidden;background:var(--sheet)}
-.tl-fig img{display:block;width:100%;height:auto;max-height:60vh;object-fit:contain;background:var(--line-2,var(--line))}
+.tl-fig img{display:block;width:100%;aspect-ratio:4/3;max-height:60vh;object-fit:contain;background:var(--line-2,var(--line))}
 .tl-fig figcaption{padding:.5rem .7rem}
 .tl-filter{border:0;padding:0;margin:.2rem 0 .8rem;display:flex;flex-wrap:wrap;gap:.4rem 1.2rem}
 .tl-filter legend{font:inherit;font-weight:700;padding:0;margin-bottom:.3rem;width:100%}
@@ -487,10 +487,14 @@ html[data-navopen="1"][data-narrow="0"]:not([data-layout=single]) .plant .pane .
 html[data-width=wide]{--main-w:100vw}
 main{max-width:var(--main-w)}
 section.blk,section[id],h2[id]{scroll-margin-top:calc(var(--top-h) + .8rem)}
-#sidenav{position:fixed;top:var(--top-h);bottom:0;left:0;width:var(--nav-w);z-index:18;background:var(--sheet);border-right:2px solid var(--line);overflow:auto;padding:.9rem .9rem 6rem;display:none}
+#sidenav{position:fixed;top:var(--top-h);bottom:0;left:0;width:var(--nav-w);z-index:18;background:var(--sheet);border-right:2px solid var(--line);overflow:auto;padding:.9rem .9rem 0;display:none}
+/* 1.42.0: Display at the bottom of the Navigation menu, always in view while the menu is */
+.sn-foot{position:sticky;bottom:0;background:var(--sheet);border-top:2px solid var(--line);margin-top:1rem;padding:.7rem 0 .9rem}
+.sn-foot #display-btn{position:static;width:100%;justify-content:center;box-shadow:none}
 html[data-navside=right] #sidenav{left:auto;right:0;border-right:0;border-left:2px solid var(--line)}
 html[data-navopen="1"] #sidenav{display:block}
 html[data-navopen="1"] #nav-tab{display:none}
+html[data-navempty="1"][data-narrow="0"] #nav-tab{display:none}   /* 1.39.1: a page with no sections has no section menu, so its width goes to the content */
 .sn-head{display:flex;flex-direction:column;gap:.5rem;margin-bottom:.6rem}
 .sn-title{font-size:1.15rem;margin:0}
 .sn-btns{display:flex;gap:.5rem;flex-wrap:wrap}
@@ -665,6 +669,10 @@ section.has-rd{position:relative}
 main section.blk.has-rd>h2,section.needs.has-rd>h2{padding-right:10rem}
 .cond header .rd-btn{position:static}
 .rd-page{margin:.2rem 0 .9rem;display:flex;gap:.7rem;align-items:center;flex-wrap:wrap}
+/* 1.39.1: on a computer the read-aloud button sits beside the page title instead of taking a row of its own */
+html[data-narrow="0"] h1:has(+ .rd-page){display:inline-block;margin-right:1.2rem;vertical-align:baseline}
+html[data-narrow="0"] h1 + .rd-page{display:inline-flex;vertical-align:baseline;margin:0 0 .6rem}
+html[data-narrow="0"] h1 + .rd-page .hint{font-size:.85em}
 .rd-page .btn{display:inline-flex;gap:.4rem;align-items:center}
 .rd-on{outline:3px dashed var(--focus);outline-offset:6px;border-radius:4px}
 #rd-stop{position:fixed;left:50%;transform:translateX(-50%);bottom:1rem;z-index:40;box-shadow:0 4px 18px rgba(0,0,0,.35);min-height:3rem;padding-inline:1.4rem}
@@ -779,6 +787,31 @@ fieldset.pr-pests>legend{font:inherit;font-weight:700;padding:0;margin-bottom:.2
 .pr-sub{color:var(--ink-2)}
 .pr-badge{display:inline-flex;align-items:center;gap:.35rem;font-weight:700;font-size:.95rem;border:2px solid currentColor;border-radius:999px;padding:.05rem .7rem;white-space:nowrap}
 .pr-best{color:var(--moss)} .pr-good{color:var(--cyan)} .pr-use-with-care{color:var(--ochre)} .pr-not-needed{color:var(--ink-2)}
+/* 1.41.1: the move-inside checklist as tick boxes, and a fold per plant on the Coming inside page */
+ol.mi-list{list-style:none;padding:0;margin:.4rem 0 1rem}
+li.mi-item{border:2px solid var(--line);border-radius:8px;padding:.5rem .9rem;margin:0 0 .6rem;background:var(--sheet)}
+li.mi-item.mi-not{border-style:dashed;background:transparent}
+li.mi-item.mi-not .mi-title{font-weight:400}
+.mi-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:.3rem .7rem;align-items:center}
+.mi-head input[type=checkbox]{width:1.6rem;height:1.6rem;margin:0}
+.mi-title{font-weight:700;font-size:1.1rem;cursor:pointer;overflow-wrap:anywhere}
+.mi-body{padding-left:2.3rem}
+html[data-narrow="1"] .mi-head{grid-template-columns:auto minmax(0,1fr)}
+html[data-narrow="1"] .mi-head>span:last-child{grid-column:2;justify-self:start}
+html[data-narrow="1"] .mi-body{padding-left:0}
+.pr-not-rec{color:var(--ink-2);border-style:dashed;white-space:normal}
+ul.mi-plants{list-style:none;padding:0;margin:.4rem 0}
+li.mi-plant{border-top:1px solid var(--line)}
+li.mi-plant:last-child{border-bottom:1px solid var(--line)}
+details.mi-fold>summary{list-style:none;display:grid;grid-template-columns:1.2rem 4rem minmax(0,1fr);gap:.4rem .8rem;align-items:center;cursor:pointer;padding:.5rem 0}
+details.mi-fold>summary::-webkit-details-marker{display:none}
+details.mi-fold>summary::before{content:'▸';font-size:1.2em;line-height:1}
+details.mi-fold[open]>summary::before{content:'▾'}
+details.mi-fold>summary img,details.mi-fold>summary .job-nophoto{width:4rem;height:4rem;object-fit:cover;border:1px solid var(--line);display:block}
+html[data-narrow="1"] details.mi-fold>summary{grid-template-columns:1rem 2.6rem minmax(0,1fr);gap:.3rem .5rem}
+html[data-narrow="1"] details.mi-fold>summary img,html[data-narrow="1"] details.mi-fold>summary .job-nophoto{width:2.6rem;height:2.6rem}
+.mi-sum-txt{display:flex;flex-direction:column;gap:.1rem;min-width:0;overflow-wrap:anywhere}
+.mi-in{padding:.2rem 0 .8rem .8rem;border-left:4px solid var(--line);margin:0 0 .4rem .4rem}
 .pr-not-for-this-plant{background:var(--madder);border-color:var(--madder);color:var(--on-bad)}
 
 /* ---- 1.10.0: the Audit log page, the Debug button and the live audit log console ---- */
@@ -933,14 +966,14 @@ html[data-narrow="1"] .ics-how ol{padding-left:1.4rem} html[data-narrow="1"] .ic
 /* buttons that make changes are hidden from people who can only view (the server refuses those changes anyway) */
 html[data-role=viewer] :is(a[href="#/new"], a[href$="/edit"], .quick-btns, label.quick-photo, label:has(> input[type=file]), form[data-form=todo], form[data-form=placesearch], form[data-form=placeadd],
   form[data-form=wxloc], form[data-form=wxback], form[data-form=bknow], form[data-form=bkset],
-  [data-act=fertlog], [data-act=careother], [data-act=care], [data-act=careall], [data-act=caredel], [data-act=prepdone], [data-act=prepundo],
+  [data-act=fertlog], [data-act=careother], [data-act=care], [data-act=careall], [data-act=caredel], [data-act=prepdone], [data-act=prepundo], [data-act=prepstart],
   [data-act=reqanswer], [data-act=reqdone], [data-act=reqreopen], [data-act=archive], [data-act=restore], [data-act=movein], [data-act=moveout],
   [data-act=frostin], [data-act=frostcover], [data-act=frostallin], [data-act=frostallcover], [data-act=frostundo],
   [data-act=fzadd], [data-act=fzedit], [data-act=fzdel], [data-act=fertedit], [data-act=fertdel], [data-act=tododone], [data-act=tododel], [data-act=todoedit],
   [data-act=mainphoto], [data-act=movephoto], [data-act=rmphoto], [data-act=capedit], [data-act=assign], [data-act=rmloose], [data-act=setcond], [data-act=wxrefresh],
   [data-act=placehome], [data-act=placedel], [data-act=placeonoff], [data-act=placeplants], [data-act=plchome], [data-act=plcsearch], [data-act=plcadd], .plc-search, [data-act=tokregen], [data-act=forclaude],
-  [data-act=spotnew], [data-act=spotedit], [data-act=spotdel], [data-act=lightedit], [data-act=lightnew], [data-act=sevsave], form[data-form=sevgo], .add-mode, [data-act=libareaadd],
-  [data-act=roomnew], [data-act=roomedit], [data-act=roomdel],
+  [data-act=spotnew], [data-act=spotedit], [data-act=spotdel], [data-act=spotadd], [data-act=spotplanall], [data-act=growsug], [data-act=growadd], [data-act=grownew], [data-act=lightedit], [data-act=lightnew], [data-act=sevsave], form[data-form=sevgo], .add-mode, [data-act=libareaadd],
+  [data-act=roomnew], [data-act=roomedit], [data-act=roomdel], [data-act=shelfnew],
   [data-act=buynew], [data-act=buyedit], [data-act=buygot], [data-act=sldone], [data-act=buyrm], [data-act=buywatch], [data-act=wlcheck], [data-act=storeedit], [data-act=storelookup],
   [data-act=storenoterm], form[data-form=storenote]){display:none!important}
 /* only the owner changes the label address, places' settings and who is home */
@@ -963,7 +996,8 @@ ul.lt-plants{list-style:none;padding:0;margin:.6rem 0;display:grid;gap:.4rem}
 ul.lt-plants li{display:grid;grid-template-columns:3rem minmax(0,1fr) auto;gap:.3rem .7rem;align-items:center;padding:.3rem 0;border-top:1px solid var(--line)}
 ul.lt-plants li img{width:3rem;height:3rem;object-fit:cover;border:1px solid var(--line)}
 html[data-narrow="1"] ul.lt-plants li{grid-template-columns:3rem minmax(0,1fr)}
-html[data-narrow="1"] ul.lt-plants li .lv{grid-column:2}
+html[data-narrow="1"] ul.lt-plants li .lv{grid-column:1/-1;justify-self:start}
+html[data-narrow="1"] .lv{white-space:normal;max-width:100%}       /* 1.41.0: "Too bright" in big text no longer pushes past a phone's edge */
 .lv{display:inline-block;white-space:nowrap;font-weight:700;padding:.05rem .45rem;border:2px solid currentColor}
 .lv-good{color:var(--moss)} .lv-dim,.lv-bright{color:var(--ochre)} .lv-too_dim,.lv-too_bright{color:var(--madder)} .lv-unknown{color:var(--ink-2)}
 .lt-steps{margin:.6rem 0}
@@ -973,13 +1007,37 @@ html[data-narrow="1"] ul.lt-plants li .lv{grid-column:2}
 .lt-light{display:grid;grid-template-columns:minmax(0,14rem) minmax(0,1fr);gap:1rem;border:var(--bw) solid var(--line);background:var(--sheet);padding:.8rem 1rem}
 .lt-light h3{margin:0 0 .4rem}
 .lt-photo{width:100%;height:auto;border:1px solid var(--line);background:#fff}
-html[data-narrow="1"] .lt-light{grid-template-columns:minmax(0,1fr)}
+html[data-narrow="1"] .lt-light,.lt-light.no-photo{grid-template-columns:minmax(0,1fr)}   /* 1.41.1: a light with no photo used its narrow photo column for everything */
 html[data-narrow="1"] .lt-photo{max-width:16rem}
 .lt-ppfd caption{text-align:left;font-weight:700;padding:.3rem 0}
 .sp-prev{border-left:.4rem solid var(--moss);background:var(--moss-soft);padding:.5rem .8rem;margin:.6rem 0;min-height:2.5rem}
 .sp-prev p{margin:.2rem 0}
 ul.sp-verdicts{list-style:none;padding:0;margin:.3rem 0;display:grid;gap:.25rem}
-.sp-plants{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,18rem),1fr));gap:.2rem .8rem;max-height:18rem;overflow:auto;padding:.2rem}
+/* 1.41.0: the plant list in a light spot: one plant a row, with a photo, a link and how the light suits it */
+ul.sp-plants{list-style:none;margin:.4rem 0 0;padding:0 .2rem;max-height:min(30rem,60vh);overflow:auto;border-top:1px solid var(--line)}
+li.sp-row{display:grid;grid-template-columns:auto 3.5rem minmax(0,1fr) auto;gap:.3rem .8rem;align-items:center;padding:.45rem 0;border-bottom:1px solid var(--line)}
+li.sp-row[hidden]{display:none}
+li.sp-row img,.sp-nophoto{width:3.5rem;height:3.5rem;object-fit:cover;border:1px solid var(--line);display:block}
+.sp-txt{display:flex;flex-direction:column;gap:.1rem;min-width:0}
+.sp-txt label.nm{font-weight:700;cursor:pointer}
+.sp-txt a{align-self:flex-start}
+html[data-narrow="1"] li.sp-row{grid-template-columns:auto 3rem minmax(0,1fr)}
+html[data-narrow="1"] li.sp-row img,html[data-narrow="1"] .sp-nophoto{width:3rem;height:3rem}
+html[data-narrow="1"] li.sp-row .sp-fit{grid-column:3}
+.sp-tools{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,13rem),1fr));gap:.4rem 1rem;align-items:end}
+.sp-count{margin:.4rem 0 0;font-weight:700}
+.sp-light{border:var(--bw) solid var(--line);background:var(--paper,transparent);padding:.5rem .9rem;margin:.2rem 0 .8rem}
+.sp-light-h{margin:.2rem 0 .3rem;font-size:1.1em}
+.sp-light .dl{margin:.2rem 0}
+.sp-best:empty{display:none}
+.sp-best{font-weight:700;margin:.2rem 0}
+.lt-better{display:inline-block;margin-top:.15rem}
+label.sp-choice{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:.3rem .8rem;align-items:center;padding:.45rem 0;border-bottom:1px solid var(--line);font-weight:400}
+html[data-narrow="1"] label.sp-choice{grid-template-columns:auto minmax(0,1fr)}
+html[data-narrow="1"] label.sp-choice .lv{grid-column:2;justify-self:start}
+/* 1.41.0: the browser draws tick boxes, menus and scroll bars in the chosen theme, not the computer's (dark tick boxes on a light page) */
+:root[data-theme=light]{color-scheme:light}
+:root[data-theme=dark]{color-scheme:dark}
 .pl-grow:empty{display:none}
 .pl-grow{border-left:.4rem solid var(--moss);padding:.2rem .9rem;margin:.8rem 0}
 .pl-grow h3{margin:.3rem 0}
@@ -1127,6 +1185,13 @@ html:not([data-narrow="1"]) .more-f .filters>label:first-child{grid-column:auto}
 .id-m img{width:4rem;height:4rem;object-fit:cover;flex:none}
 .id-m small{display:block;color:var(--ink-2);font-size:1rem}
 .id-sps{padding-left:1.6em;max-width:52rem}
+.id-sps.id-fold > li:nth-child(n+6){display:none}   /* 1.39.0: ten names, five shown until "Show more" */
+.id-again{align-items:center}
+.id-more-pic{width:3rem;height:3rem;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
+.tag-why{background:var(--sheet);border:1px solid var(--line)}
+.tag-src{background:var(--ink);color:var(--paper)}   /* 1.40.0: which checker said so */
+.id-sum{margin:.3rem 0 .6rem}
+.sev-names .id-sps{padding-left:1.2em}
 .id-sp{margin:0 0 1rem;padding:.6rem .8rem;border-left:4px solid var(--line);background:var(--sheet)}
 .id-sp .sci{font-family:var(--serif);font-size:1.2rem;font-weight:600}
 .id-p{float:right;font-size:1.1rem;margin-left:.6rem}
@@ -1383,6 +1448,7 @@ html[data-narrow="1"] #corner{left:0;right:0;bottom:0;flex-direction:row;flex-wr
 html[data-narrow="1"] #corner>button{flex:1 1 auto;justify-content:center;min-height:44px;line-height:1.25;padding:.25em .45em;gap:.35em;position:static;box-shadow:none}   /* 44px: the size of a fingertip, whatever the text size */
 html[data-narrow="1"] #corner #nav-tab{border:3px solid var(--ink);border-radius:0;left:auto;right:auto;bottom:auto;top:auto}
 html[data-narrow="1"] main{padding-bottom:calc(var(--pin-h,4rem) + 1.5rem)}
+html[data-narrow="1"] .sticky-save{bottom:var(--pin-h,4rem)}   /* 1.38.0: the Save bar sits above the bottom bar, not under it */
 html[data-narrow="1"] #job-badge{max-width:calc(100vw - 2rem)}
 html[data-narrow="1"] .ver{font-size:.8em;padding:.1em .35em}
 /* 1.26.0: tables too wide for the screen (app.js fitTables) become one box per row. The row's name is its title; each value follows
@@ -1449,7 +1515,11 @@ html[data-role=viewer] :is([data-act=wlcheck], [data-act=wldismiss]){display:non
 .sev-plant.sev-off{opacity:.65;border-style:dashed}
 .sev-pics{list-style:none;padding:0;margin:.6rem 0;display:flex;flex-wrap:wrap;gap:.8rem}
 .sev-pics li{display:flex;flex-direction:column;gap:.3rem;width:11rem;max-width:100%}
-.sev-pics img{width:11rem;max-width:100%;height:11rem;object-fit:cover;border-radius:6px}
+.sev-pics img{width:11rem;max-width:100%;height:11rem;object-fit:cover;border-radius:6px;background:var(--line-2)}
+.sev-rel{border:0;padding:0;margin:0}
+.sev-rel .chk{display:flex;gap:.4rem;align-items:flex-start;margin:.15rem 0;font-size:.95em}
+.sev-pics li{width:16rem}
+.sev-shared{border-style:double}
 .sev-names{border:0;padding:0;margin:.6rem 0}
 .sev-names legend{font-weight:700;padding:0}
 .sev-names .chk{display:flex;gap:.5rem;align-items:flex-start;margin:.3rem 0}
@@ -1616,6 +1686,9 @@ html[data-role=viewer] :is([data-act=snsedit],[data-act=snsrm]){display:none!imp
 .cal-steps li{margin:.4rem 0}
 .cal-now{font-size:1.15em}
 html[data-role=viewer] :is([data-act=snscal],[data-act=calstep]){display:none!important}
+html[data-role=viewer] :is([data-act=offiduse],[data-act=newfill],[data-act=ltedit],[data-act=plantid],[data-act=plantuse],[data-act=plantask]){display:none!important}   /* 1.38.0 */
+.off-pics{display:inline-flex;gap:.3rem;margin-left:.5rem;vertical-align:middle}
+.off-pics img{width:3rem;height:3rem;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
 /* 1.36.0: the soil moisture chart on a plant's timeline, and the calendar badges */
 .mchart{width:100%;max-width:44rem;height:auto;color:var(--ink);display:block;margin:.4rem 0}
 .mc-grid{stroke:var(--line);stroke-width:1}
@@ -1645,3 +1718,61 @@ html[data-role=viewer] :is([data-act=snscal],[data-act=calstep]){display:none!im
 /* ---- prototype (proto/turn-pots): turn the pots ---- */
 .tn-every{margin:.6rem 0 1rem} .tn-every .f{max-width:28rem}
 html[data-role=viewer] :is([data-act=turned], [data-act=turnedall], [data-act=turnset], .tn-every){display:none!important}
+html[data-narrow="1"] .mi-head .pr-badge{white-space:normal;max-width:100%;display:inline-block;border-radius:8px}
+
+/* ---- 1.42.0: every section can be folded shut (Show or hide) ---- */
+.fold-hid{display:none!important}
+.has-fold{position:relative}
+.has-fold>.sec-tools{position:absolute;top:.3rem;right:0;display:flex;gap:.5rem;align-items:center;z-index:14}
+.sec-tools .rd-btn{position:static;margin:0}
+.sec-fold{display:inline-flex;gap:.35rem;align-items:center;white-space:nowrap}
+.has-fold>:is(h1,h2,h3).sec-keep,main section.blk.has-rd.has-fold>h2,section.needs.has-rd.has-fold>h2{padding-right:var(--tools-w,7rem)}
+.sec-head-row>.sec-tools{display:inline-flex;gap:.5rem;align-items:center;margin-left:auto}
+.sec-bare,.sec-inline{display:flex;justify-content:flex-end;gap:.5rem;margin:-.2rem 0 .5rem}
+section.has-fold[data-folded="1"]{padding-bottom:.3rem}
+html[data-narrow="1"] .has-fold>.sec-tools{position:static;margin:0 0 .6rem;flex-wrap:wrap}
+html[data-narrow="1"] .has-fold>:is(h1,h2,h3).sec-keep,html[data-narrow="1"] main section.blk.has-rd.has-fold>h2,html[data-narrow="1"] section.needs.has-rd.has-fold>h2{padding-right:0}
+@media (max-width:640px){.has-fold>.sec-tools{position:static;margin:0 0 .6rem;flex-wrap:wrap}.has-fold>:is(h1,h2,h3).sec-keep,main section.blk.has-rd.has-fold>h2{padding-right:0}}
+@media print{.fold-hid{display:revert!important}}
+.has-fold>.sec-tools:first-child{position:static;justify-content:flex-end;margin:0 0 .4rem}   /* a part with no title of its own (the photos) */
+
+/* ---- 1.42.0: Grow lights: the title and summary table stay at the top and fold as one; spots fold; plants two to a row ---- */
+.lt-top{position:sticky;top:var(--top-h);z-index:16;background:var(--paper);border-bottom:2px solid var(--line);padding:.2rem 0 .5rem;margin:0 0 1rem}
+.lt-top-row{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem 1.2rem}
+.lt-top-row h1{margin:0}
+.lt-top-row .rd-page{margin:0}
+.lt-top-btn{margin-left:auto}
+.lt-top-body>p{margin:.4rem 0}
+table.lt-sum-tbl{width:100%;margin:.4rem 0}
+table.lt-sum-tbl td{font-size:1.4rem;font-weight:700;text-align:center}
+table.lt-sum-tbl th{text-align:center}
+html[data-narrow="1"] .lt-top,html[data-toptall="1"] .lt-top{position:static}
+html:has(#lt-top) main section.blk>h2,html:has(#lt-top) main section.blk>header.sec-head{top:calc(var(--top-h) + var(--lt-top-h, 0px))}
+html:has(#lt-top) main section.blk{scroll-margin-top:calc(var(--top-h) + var(--lt-top-h, 0px) + .3rem)}
+html[data-narrow="1"] table.lt-sum-tbl thead{display:none}
+html[data-narrow="1"] table.lt-sum-tbl tr{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.3rem}
+html[data-narrow="1"] table.lt-sum-tbl td{display:block;font-size:1.15rem;text-align:left;border:1px solid var(--line);padding:.3rem .5rem}
+html[data-narrow="1"] table.lt-sum-tbl td::before{content:attr(data-h);display:block;font-size:.85rem;font-weight:700;color:var(--ink-2)}
+/* a section title with a button beside it */
+main section.blk>header.sec-head{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem 1rem;position:sticky;top:var(--top-h);z-index:13;background:var(--paper);margin:0 0 .6rem;padding:.45rem 0 .35rem}
+main section.blk>header.sec-head>h2{margin:0}
+header.sec-head>.sec-tools{margin-left:auto}
+.lt-spots{display:grid;gap:.7rem}
+details.lt-spot-fold{padding:0}
+details.lt-spot-fold>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1.2rem minmax(0,1fr);gap:.2rem .6rem;align-items:baseline;padding:.7rem 1rem}
+details.lt-spot-fold>summary::-webkit-details-marker{display:none}
+details.lt-spot-fold>summary::before{content:'▸';font-size:1.2em}
+details.lt-spot-fold[open]>summary::before{content:'▾'}
+details.lt-spot-fold>summary h3{margin:0;grid-column:2}
+details.lt-spot-fold>summary .lt-sum{grid-column:2;display:flex;flex-wrap:wrap;gap:.2rem 1.6rem}
+details.lt-spot-fold>summary:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.lt-spot-in{padding:0 1rem .8rem;border-top:1px solid var(--line)}
+ul.lt-plants.lt-two{grid-template-columns:repeat(auto-fit,minmax(max(min(100%,19rem),calc((100% - 1.2rem) / 2)),1fr));column-gap:1.2rem}
+.lt-pt{display:flex;flex-direction:column;min-width:0}
+.lt-pt .nm{font-weight:700}
+
+/* 1.42.0: a room's own buttons by its title */
+.lt-room-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.4rem .8rem;margin:0 0 .3rem}
+.lt-room-head h3{margin:0}
+.lt-room-head .row{margin:0}
+.lt-top .rd-page .hint{display:none}     /* the shortcut hint is on every other page; here the title row stays one line */

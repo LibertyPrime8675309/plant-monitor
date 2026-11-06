@@ -4,7 +4,7 @@ WORKDIR /app
 COPY requirements.txt .
 # The app's own unprivileged user ("plants", 10001). Since 1.12.1 the container starts as root and app/start.py switches
 # to this user when it can write to the data folders, or stays root (as before 1.12.0) when Docker does not allow that.
-RUN pip install --no-compile -r requirements.txt \
+RUN pip install --no-compile --progress-bar off --disable-pip-version-check -r requirements.txt \
  && useradd --system --uid 10001 --gid 0 --no-create-home --shell /usr/sbin/nologin plants
 COPY app/ /app/
 # The release number: shown in the app header, at /api/version and on the image in Docker Desktop.

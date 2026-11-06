@@ -53,7 +53,7 @@ async function viewIdentify() {
       <div class="row id-btns">
         <button class="btn" type="button" data-act="idcam" id="id-cam-btn">Start camera</button>
         <button class="btn ghost" type="button" data-act="idsnap" id="id-snap" disabled>Check this picture</button>
-        <label class="btn ghost id-file">Use a photo instead<input type="file" accept="image/*" capture="environment" data-act="idfile"></label>
+        <label class="btn ghost id-file">Choose a photo<input type="file" accept="image/*" data-act="idfile"></label>
       </div>
       <p class="hint">While the camera is on it checks about once a second, and also reads plant label QR codes. "Check this picture" holds the picture still and shows everything it found.</p>
       <label class="f id-scope">When it is not one of your plants, suggest names from
@@ -72,6 +72,7 @@ async function viewIdentify() {
             <input type="password" name="plantnet_key" autocomplete="off" spellcheck="false"></label>
           <label class="f">Anthropic API key, for Claude<small>From console.anthropic.com, "API keys". It is billed to that account. Leave empty to keep the saved one.</small>
             <input type="password" name="claude_key" autocomplete="off" spellcheck="false"></label>
+          <label class="chk"><input type="checkbox" name="plantnet_auto" ${keys && keys.plantnet_auto ? raw('checked') : ''}>Ask Pl@ntNet on its own whenever this computer is unsure (needs the Pl@ntNet key; one of its 500 free pictures a day each time)</label>
           <p class="hint">The keys stay on this computer, in the database (and so in its backups). The app never shows them again, only their last 4 characters.</p>
           <div class="row"><button class="btn" type="submit">Save keys</button>
             ${keys && keys.plantnet ? html`<button class="btn ghost" type="button" data-act="idkeydel" data-k="plantnet_key">Remove the Pl@ntNet key</button>` : ''}
@@ -80,15 +81,14 @@ async function viewIdentify() {
     </section>
     <section class="id-sec" aria-labelledby="h-idph"><h2 id="h-idph">Your plant photos</h2>
       <p>These are the photos Identify compares your pictures with, one row per plant. Choose a plant or a photo to open its page. The search and filters are the same as on the Plants page; changing them here changes them there too.</p>
-      <div class="filters">
+      <div class="filters filters-main">
         <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
-        <label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
-        ${homeFilter()}${siteFilter()}${groupFilter()}${statusFilter()}
         <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
         <label class="chk"><input type="checkbox" data-f="idphnone" ${IDPH.none ? raw('checked') : ''}>Only plants with no photos</label>
         <button class="btn ghost small" type="button" data-act="clearfilters">Clear filters</button>
       </div>
-      ${moreSelects()}
+      ${moreFilters(html`<label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
+        ${homeFilter()}${siteFilter()}${groupFilter()}${statusFilter()}`, (G.health ? 1 : 0) + (G.home ? 1 : 0) + (G.site ? 1 : 0) + (G.group ? 1 : 0) + (G.status !== 'active' ? 1 : 0))}
       <p id="idph-count" class="muted" role="status" aria-live="polite"></p>
       <div id="idph-tbl"></div>
       <p class="row"><button class="btn" type="button" data-act="idphmore" id="idph-more" hidden>Show more</button></p>
@@ -159,9 +159,74 @@ function idGrab(maxSide) {
   return c;
 }
 const toBlob = c => new Promise(res => c.toBlob(res, 'image/jpeg', 0.86));
-async function idAsk(blob, scope) {
+async function idAsk(blob, scope, more, ex) {  // 1.39.0: more = other pictures of the same plant, checked together; 1.40.0: ex = {species: [], genera: []} said "Not this"
   const fd = new FormData(); fd.append('image', blob, 'picture.jpg');
-  return api('POST', '/api/identify?scope=' + enc(scope || idScope()), undefined, fd);
+  (more || []).forEach((b, i) => fd.append('images', b, `picture${i + 2}.jpg`));
+  const q = { scope: scope || idScope() };
+  if (ex && ex.species.length) q.exclude = ex.species.join('|');
+  if (ex && ex.genera.length) q.exclude_genera = ex.genera.join('|');
+  return api('POST', '/api/identify?' + new URLSearchParams(q).toString(), undefined, fd);
+}
+// 1.40.0: "Not this": the name (or its genus) leaves the list, the pictures are checked again without it, and the choice is logged
+async function idNot(el) {
+  const ctx = el.dataset.ctx, name = el.dataset.name, genus = el.dataset.genus === '1';
+  if (ctx === 'id') {
+    if (!ID.shot) return;
+    ID.shot.ex = ID.shot.ex || { species: [], genera: [] }; (genus ? ID.shot.ex.genera : ID.shot.ex.species).push(name);
+    if (canChange()) api('POST', '/api/identify/reject', { name, genus }).catch(() => null);
+    const res = document.getElementById('id-res'); if (res) res.insertAdjacentHTML('afterbegin', rend(html`<p class="muted" role="status">Checking again without ${genus ? 'the genus ' : ''}${name}…</p>`));
+    try { ID.shot.result = await idAsk(ID.shot.blob, null, ID.shot.more, ID.shot.ex); ID.shot.plantnet = ID.shot.result.plantnet || null; idPaint(ID.shot.result, ID.shot.url); idSay(`Not ${name}. Checked again.`); }
+    catch (e) { toast(e.message, true); }
+    const f = document.querySelector('#id-splist li'); if (f) { f.setAttribute('tabindex', '-1'); f.focus(); }
+  } else if (ctx === 'sev') {
+    const P = SEV.plants[+el.dataset.g]; if (!P) return;
+    P.ex = P.ex || { species: [], genera: [] }; (genus ? P.ex.genera : P.ex.species).push(name);
+    if (canChange()) api('POST', '/api/identify/reject', { name, genus }).catch(() => null);
+    await sevIdentify(+el.dataset.g, true);
+  } else if (ctx === 'plant') {                // the plant's page: the rejection sticks to the plant
+    const code = el.dataset.g; if (!code) return;
+    await guard(async () => { await api('POST', '/api/identify/reject', { name, genus, plant: code }); await plantIdentify(code); });
+  } else if (ctx === 'new') {
+    NEWID.ex = NEWID.ex || { species: [], genera: [] }; (genus ? NEWID.ex.genera : NEWID.ex.species).push(name);
+    if (canChange()) api('POST', '/api/identify/reject', { name, genus }).catch(() => null);
+    const b = document.getElementById('newfill-btn'); if (b) acts.newfill(b);
+  }
+}
+// 1.39.0: another picture of the same plant, from a file or the camera: all of them are checked together
+async function idAddShot(blob, url) {
+  if (!ID.shot) return;
+  ID.shot.more = (ID.shot.more || []).concat([blob]); ID.shot.moreUrls = (ID.shot.moreUrls || []).concat([url]);
+  const res = document.getElementById('id-res'); if (res) res.insertAdjacentHTML('afterbegin', rend(html`<p class="muted" role="status">Checking ${ID.shot.more.length + 1} pictures together…</p>`));
+  try {
+    ID.shot.result = await idAsk(ID.shot.blob, null, ID.shot.more); ID.shot.plantnet = ID.shot.result.plantnet || null;
+    idPaint(ID.shot.result, ID.shot.url);
+    await idPopup(ID.shot.result);
+  } catch (e) { toast(e.message, true); }
+}
+// 1.40.0: a plant's page: its own photos through the one identifier, with its own "Not this" list; "Use this name" renames the plant
+let PLANTID = null;
+async function plantIdentify(code, plantnet) {
+  const box = document.getElementById('plant-id'); if (!box) return;
+  box.innerHTML = rend(html`<p class="muted" role="status">Checking its photos${ID.keys && ID.keys.plantnet ? ' with this computer and Pl@ntNet' : ''}…</p>`);
+  try {
+    if (!ID.keys) { try { ID.keys = await api('GET', '/api/identify/settings'); } catch (e) { /* fine */ } }
+    const r = await api('POST', '/api/plants/' + enc(code) + '/identify', { plantnet: plantnet || 'auto' }); PLANTID = { code, r };
+    box.innerHTML = rend(html`<h3>What its photos say it could be</h3>${idNamesPanel(r, { src: 'plant', id: 'plant-splist', use: 'plantuse', reject: 'plant', code })}
+      ${ID.keys && ID.keys.plantnet && !r.plantnet ? html`<p class="row"><button class="btn small ghost" type="button" data-act="plantask" data-code="${code}">Ask Pl@ntNet as well</button></p>` : ''}`);
+    const h = box.querySelector('h3'); if (h) { h.setAttribute('tabindex', '-1'); h.focus(); }
+  } catch (e) { box.innerHTML = rend(html`<div class="notice bad" role="alert">${e.message}</div>`); }
+}
+async function idMoreFile(input) {
+  const f = input.files && input.files[0]; input.value = '';
+  if (!f) return;
+  const url = await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = no; fr.readAsDataURL(f); });
+  await idAddShot(f, url);
+}
+async function idSnapMore() {
+  const c = idGrab(1600); if (!c || !ID.shot) return;
+  ID.paused = true;
+  try { await idAddShot(await toBlob(c), c.toDataURL('image/jpeg', 0.8)); } catch (e) { toast(e.message, true); }
+  ID.paused = false;
 }
 async function idQr() {
   if (!ID.qr) return false;
@@ -228,7 +293,7 @@ async function idSnap() {
     const blob = await toBlob(c);
     ID.shot = { blob, url: c.toDataURL('image/jpeg', 0.8) };
     idSay('Checking this picture…');
-    ID.shot.result = await idAsk(blob);
+    ID.shot.result = await idAsk(blob); ID.shot.plantnet = ID.shot.result.plantnet || null;
     idPaint(ID.shot.result, ID.shot.url);
     await idPopup(ID.shot.result);
   } catch (e) { toast(e.message, true); }
@@ -241,7 +306,7 @@ async function idFile(input) {
   try {
     const url = await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = no; fr.readAsDataURL(f); });
     ID.shot = { blob: f, url };
-    ID.shot.result = await idAsk(f);
+    ID.shot.result = await idAsk(f); ID.shot.plantnet = ID.shot.result.plantnet || null;
     idPaint(ID.shot.result, url);
     await idPopup(ID.shot.result);
   } catch (e) { if (res) res.innerHTML = rend(html`<div class="notice bad" role="alert">${e.message}</div>`); }
@@ -256,19 +321,37 @@ function spLinks(s) {
     <a href="https://powo.science.kew.org/results?q=${q}" target="_blank" rel="noopener noreferrer">Kew (POWO)</a>
     <a href="https://en.wikipedia.org/wiki/${enc(s.scientific_name.replace(/ /g, '_'))}" target="_blank" rel="noopener noreferrer">Wikipedia</a></span>`;
 }
-function spCard(s, i, src, withAdd) {
+// 1.40.0: one result panel for Identify, Add a plant and Add several: the merged names (this computer and Pl@ntNet), the likeliest
+// genus and family, "Not this" on every name (ctx says which page re-asks), and either "Add as a new plant" or a "Use this name" choice.
+function idNamesPanel(r, o) {
+  const sp = r.species || [], fold = sp.length > 5, id = o.id || 'id-splist';
+  const src = r.sources || ['this computer'];
+  return html`${r.plantnet && r.plantnet.error ? html`<p class="notice bad">Pl@ntNet: ${r.plantnet.error}</p>` : ''}${r.plantnet && r.plantnet.note && !(r.plantnet.species || []).length ? html`<p class="hint">${r.plantnet.note}</p>` : ''}
+    ${r.genera && r.genera[0] ? html`<p class="id-sum">Most likely genus: ${r.genera.slice(0, 3).map((g, i) => html`${i ? ', then ' : ''}<i>${g.genus}</i> (${pct(g.probability)})`)}${r.families && r.families[0] ? html`; family ${r.families.slice(0, 2).map((f, i) => html`${i ? ' or ' : ''}${f.family} (${pct(f.probability)})`)}` : ''}. ${sp.length ? 'When none of the names fits, the genus is the safer answer. ' : ''}From ${src.join(' and ')}${r.pictures > 1 ? ` (from ${r.pictures} pictures together)` : ''}.</p>` : ''}
+    ${sp.length ? html`<ol class="id-sps ${fold ? 'id-fold' : ''}" id="${id}">${sp.map((x, i) => spCard(x, i, o.src, o.add, o))}</ol>
+    ${fold ? html`<p><button class="btn small ghost" type="button" data-act="idmoresp" data-list="${id}" aria-controls="${id}" aria-expanded="false">Show ${sp.length - 5} more names</button></p>` : ''}` : html`<p class="muted">No name was found${(r.excluded && (r.excluded.species.length || r.excluded.genera.length)) ? ' that you have not said "Not this" to' : ''}.</p>`}
+    ${(r.excluded && (r.excluded.species.length || r.excluded.genera.length)) ? html`<p class="hint">Not this: ${[...r.excluded.genera.map(g => g + ' (the genus)'), ...r.excluded.species].join(', ')}.</p>` : ''}`;
+}
+function spCard(s, i, src, withAdd, o) {
+  o = o || {};
   const tags = [];
+  (s.sources || []).forEach(w => tags.push(html`<span class="tag tag-src">${w === 'Pl@ntNet' ? `Pl@ntNet${s.plantnet_probability != null ? ' ' + pct(s.plantnet_probability) : ''}` : 'This computer'}</span>`));
   if (inRegion(s)) tags.push(html`<span class="tag">Grows wild in ${LIB_STATE_WORD(regionState())}</span>`);
   else if (s.us_states && s.us_states.length) tags.push(html`<span class="tag">In ${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}</span>`);
   if (s.yours && s.yours.length) tags.push(html`<span class="tag tag-yours">You have this: ${s.yours.join(', ')}</span>`);
   else if (s.yours_genus && s.yours_genus.length) tags.push(html`<span class="tag">Same genus as ${s.yours_genus.slice(0, 4).join(', ')}</span>`);
+  (s.basis_words || []).filter(w => !/you have/.test(w) || !(s.yours && s.yours.length)).forEach(w => tags.push(html`<span class="tag tag-why">Lifted: ${w}</span>`));   // 1.39.0
   return html`<li class="id-sp"><div><i class="sci">${s.scientific_name}</i>${s.common_name ? html` <span>${s.common_name}</span>` : ''}
       ${s.probability != null ? html`<b class="id-p">${pct(s.probability)}</b>` : ''}</div>
     <div class="muted">${[s.family, s.order].filter(Boolean).join(', ')}</div>
     ${s.why ? html`<div>${s.why}</div>` : ''}
     ${tags.length ? html`<div class="id-tags">${tags}</div>` : ''}
+    ${o.pick != null ? html`<label class="chk"><input type="radio" name="sevsp${o.pick}" data-f="sevpick" data-g="${o.pick}" value="${i}" ${o.picked === i ? raw('checked') : ''}>Use this name</label>` : ''}
     <div class="id-acts">${spLinks(s)}${withAdd ? s.kingdom === 'Fungi' ? html`<button class="btn small" type="button" data-act="idfind" data-src="${src}" data-i="${i}">Record a mushroom find</button>`
-      : html`<button class="btn small" type="button" data-act="idnew" data-src="${src}" data-i="${i}">Add as a new plant</button>` : ''}</div></li>`;
+      : html`<button class="btn small" type="button" data-act="idnew" data-src="${src}" data-i="${i}">Add as a new plant</button>` : ''}
+      ${o.use ? html`<button class="btn small" type="button" data-act="${o.use}" data-i="${i}">Use this name</button>` : ''}
+      ${o.reject ? html`<button class="btn small ghost" type="button" data-act="idnot" data-ctx="${o.reject}" data-g="${o.pick == null ? (o.code || '') : o.pick}" data-name="${s.scientific_name}" aria-label="Not this: ${s.scientific_name}">Not this</button>
+      <button class="btn small ghost" type="button" data-act="idnot" data-ctx="${o.reject}" data-g="${o.pick == null ? (o.code || '') : o.pick}" data-name="${s.genus || (s.scientific_name || '').split(' ')[0]}" data-genus="1" aria-label="Not this genus: ${s.genus || (s.scientific_name || '').split(' ')[0]}">Not this genus</button>` : ''}</div></li>`;
 }
 function idPaint(r, picUrl, live) {
   const res = document.getElementById('id-res'); if (!res) return;
@@ -280,10 +363,12 @@ function idPaint(r, picUrl, live) {
       <ol class="id-ms ${c >= 0.5 && !r.likely_new ? 'id-sure' : ''}">${m.slice(0, 3).map((x, i) => idMatchCard(x, i === 0))}</ol>` : html`<p>There are no photos of your plants to compare with yet.</p>`}
     <h3>What it could be</h3>
     ${r.scope === 'fungi' ? fungiSafety(true) : ''}
-    ${r.genera && r.genera[0] ? html`<p>Most likely genus: <i>${r.genera[0].genus}</i> (${pct(r.genera[0].probability)}). Names below are from: ${sc ? sc[1] : 'the species list'}.</p>` : ''}
-    <ol class="id-sps">${(r.species || []).map((s, i) => spCard(s, i, 'local', !live && canChange()))}</ol>
+    ${idNamesPanel(r, { src: 'local', add: !live && canChange(), reject: live ? null : 'id' })}
+    ${live ? '' : html`<div class="row id-again"><label class="btn ghost small">Add another photo of the same plant<input type="file" accept="image/*" data-act="idmorefile" class="sr"></label>
+      ${ID.stream ? html`<button class="btn ghost small" type="button" data-act="idsnapmore">Add a camera shot of it</button>` : ''}
+      ${(ID.shot && ID.shot.moreUrls || []).map((u, i) => html`<img class="id-more-pic" src="${u}" alt="Extra picture ${i + 1}">`)}</div>`}
     ${live ? '' : html`<div id="id-more">${idMoreBtns()}</div>`}
-    <p class="hint">Checked in ${r.seconds} seconds by ${r.model} on this computer.</p>`);
+    <p class="hint">Checked in ${r.seconds} seconds by ${r.model} on this computer${r.prior ? ', weighted toward the plants you have, houseplants and the plants of your state' : ''}.</p>`);
 }
 function idMoreBtns() {
   if (!canChange() || !ID.keys) return '';
@@ -450,23 +535,23 @@ async function viewLibrary(qs) {
     title: 'Library',
     after: () => { if (ready) libLoad(); libAreasPoll(); libListsPoll(); },
     html: html`<h1>Library</h1>
-    <p>Every plant species this computer knows, ${st && st.species ? Number(st.species).toLocaleString() : 'about 349,000'} in all${st && st.fungi ? html`, and ${Number(st.fungi).toLocaleString()} fungi (choose "Fungi worldwide" under Look in)` : ''}. Search, filter, and open any of them for its photos, description, classification, where it grows in the US, and the species it is most often mistaken for.</p>
+    <p>Every plant species this computer knows, ${st && st.species ? Number(st.species).toLocaleString() : 'about 349,000'} in all${st && st.fungi ? html`, and ${Number(st.fungi).toLocaleString()} fungi (choose "Fungi worldwide" under Look in)` : ''}. Open any of them for its photos, description, where it grows, and look-alikes.</p>
     ${ready ? '' : html`<p class="notice bad" role="status">${idStatusText(st)}</p>`}
     <p class="row"><a class="btn ghost" href="#/around">Around home: what's flowering and fruiting</a><a class="btn ghost" href="#/wishlist">Your wishlist (${wl.wishlist.filter(w => w.status === 'want' && (w.kind || 'plant') === 'plant').length} wanted)</a></p>
-    <div class="filters lib-filters" role="search" aria-label="Search and filter the library">
+    <div class="filters filters-main lib-filters" role="search" aria-label="Search and filter the library">
       <label>Search<input type="search" data-f="libq" value="${LIB.q}" placeholder="Common or scientific name" autocomplete="off"></label>
       <label>Look in${sel('libscope', ID_SCOPES.map(([k, l]) => [k, l + (st && st.scopes && st.scopes[k] ? ` (${Number(st.scopes[k].count).toLocaleString()})` : '')]))}</label>
-      <label>${fungi ? 'Kind of fungus' : 'Kind of plant'}${sel('libkind', [['', 'Any kind'], ...((fac && fac.kinds) || []).map(k => [k.key, `${k.label} (${k.count.toLocaleString()})`])])}</label>
+      <label>Sort by${sel('libsort', LIB_SORTS)}</label>
+    </div>
+    ${filterFold(html`<label>${fungi ? 'Kind of fungus' : 'Kind of plant'}${sel('libkind', [['', 'Any kind'], ...((fac && fac.kinds) || []).map(k => [k.key, `${k.label} (${k.count.toLocaleString()})`])])}</label>
       <label>Family<input type="text" data-f="libfamily" list="lib-fams" value="${LIB.family}" placeholder="Any family" autocomplete="off">
         <datalist id="lib-fams">${((fac && fac.families) || []).map(f => html`<option value="${f.name}">${f.name} (${f.count})</option>`)}</datalist></label>
       <label>Grows wild in${sel('libstate', [['', 'Anywhere'], ['us', 'The United States'], ...(regionState() ? [[regionState(), LIB_STATE_WORD(regionState())]] : []), ...((fac && fac.states) || []).filter(x => x !== regionState()).map(x => [x, LIB_STATE_WORD(x)])])}${fungi ? html`<small>Lichens only: the USDA lists have no other fungi</small>` : ''}</label>
       <label>Show${sel('libmine', [['', 'All of them'], ['species', 'Only ones I have'], ['genus', 'Ones I have, or of the same genus'], ['wish', 'On my wishlist'], ['notes', 'Ones with notes or tags'],
         ...mine.tags.map(t => ['tag:' + t, `Tagged "${t}"`])])}</label>
       <label>Your area${sel('libknow', [['', 'Any'], ...Object.entries(knowWord()).filter(([k]) => fungi ? ['near', 'fruiting', 'hardy'].includes(k) : k !== 'fruiting')])}</label>
-      <label>Sort by${sel('libsort', LIB_SORTS)}</label>
       <label>Show as${sel('libview', [['cards', 'Cards with photos'], ['table', 'A table']])}</label>
-      <label class="chk"><input type="checkbox" data-f="libcommon" ${LIB.common ? raw('checked') : ''}>Only ${fungi ? 'fungi' : 'plants'} with a common name</label>
-    </div>
+      <label class="chk"><input type="checkbox" data-f="libcommon" ${LIB.common ? raw('checked') : ''}>Only ${fungi ? 'fungi' : 'plants'} with a common name</label>`, libFiltersOn() + (LIB.view === 'table' ? 1 : 0))}
     <p class="row lib-count"><span id="lib-count" class="muted" role="status" aria-live="polite"></span>
       <button class="btn ghost small" type="button" data-act="libclear" id="lib-clear" ${libFiltersOn() || LIB.q ? '' : raw('hidden')}>Clear search and filters</button></p>
     <div id="lib-res"></div>
@@ -1306,11 +1391,29 @@ Object.assign(acts, {
 function spFrom(src, i) {
   const list = src === 'library' ? LIB.res : src === 'local' ? ID.shot && ID.shot.result && ID.shot.result.species : ID.shot && ID.shot[src] && ID.shot[src].species;
   const s = list && list[+i];
-  return s ? Object.assign({}, s, { src: src === 'library' ? 'the plant library' : src === 'local' ? 'Identify (this computer)' : src === 'plantnet' ? 'Pl@ntNet' : 'Claude' }) : null;
+  return s ? Object.assign({}, s, { src: src === 'library' ? 'the plant library' : src === 'local' ? (s.sources && s.sources.length ? 'Identify (' + s.sources.join(' and ') + ')' : 'Identify (this computer)') : src === 'plantnet' ? 'Pl@ntNet' : 'Claude' }) : null;
 }
 Object.assign(acts, {
   idcam: () => idCamToggle(),
   idsnap: () => idSnap(),
+  idsnapmore: () => idSnapMore(),
+  idnot: el => idNot(el),
+  plantid: el => plantIdentify(el.dataset.code),
+  plantask: el => plantIdentify(el.dataset.code, 'yes'),
+  async plantuse(el) {                  // rename the plant to the chosen name (the page's own fields; the old name stays in the history)
+    const s0 = PLANTID && (PLANTID.r.species || [])[+el.dataset.i]; if (!s0) return;
+    if (!(await needName())) return;
+    const name = (s0.common_name || '').split(',')[0].trim() || s0.scientific_name;
+    if (!(await confirmBox(`Name it ${name}?`, `${s0.scientific_name}${s0.family ? ', ' + s0.family : ''}. The common and scientific names, genus, family and ID confidence change; the old ones stay in the page history.`, 'Use this name'))) return;
+    await guard(async () => {
+      const p = await api('GET', '/api/plants/' + enc(PLANTID.code));
+      const fields = { common_name: name, scientific_name: s0.scientific_name, genus: (s0.scientific_name || '').split(' ')[0], family: s0.family || p.family, id_confidence: Math.round((s0.probability || 0) * 100),
+        id_basis: `Suggested by ${(s0.sources || ['the picture checker on this computer']).map(w => w === 'this computer' ? 'the picture checker on this computer' : w).join(' and ')} from the plant's photos. Check it.` };
+      await api('PUT', '/api/plants/' + enc(PLANTID.code), { base_version: p.version, fields, note: 'Named from its photos' });
+      toast(`${PLANTID.code} is now ${name}`); await reloadPlant();
+    });
+  },
+  idmoresp(el) { const l = document.getElementById(el.dataset.list || 'id-splist'); if (!l) return; const open = l.classList.toggle('id-fold'); el.setAttribute('aria-expanded', String(!open)); el.textContent = open ? `Show ${l.children.length - 5} more names` : 'Show fewer names'; if (!open) { const sixth = l.children[5]; if (sixth) { sixth.setAttribute('tabindex', '-1'); sixth.focus(); } } },
   idopen: el => { idStop(); go('#/plant/' + enc(el.dataset.code)); },
   idask: el => idAskOutside(el.dataset.who),
   idnew: el => { const s = spFrom(el.dataset.src, el.dataset.i); if (s) idNewPlant(s, el.dataset.src !== 'library'); },
@@ -1320,7 +1423,7 @@ Object.assign(acts, {
     await guard(async () => { await api('PUT', '/api/identify/settings', { [el.dataset.k]: '' }); toast('Key removed'); route(); });
   },
 });
-Object.assign(changeActs, { idfile: el => idFile(el) });
+Object.assign(changeActs, { idfile: el => idFile(el), idmorefile: el => idMoreFile(el) });
 Object.assign(formActs, {
   async spnotes(form) {
     if (!SPCUR || !(await needName())) return;
@@ -1329,8 +1432,10 @@ Object.assign(formActs, {
   async idkeys(form) {
     const b = {};
     ['plantnet_key', 'claude_key'].forEach(k => { const v = form.elements[k].value.trim(); if (v) b[k] = v; });
-    if (!Object.keys(b).length) { toast('Paste a key first.', true); return; }
-    await api('PUT', '/api/identify/settings', b); toast('Keys saved'); route();
+    const auto = !!form.elements.plantnet_auto.checked;
+    if (!Object.keys(b).length && auto === !!(ID.keys && ID.keys.plantnet_auto)) { toast('Paste a key first.', true); return; }
+    b.plantnet_auto = auto;
+    await api('PUT', '/api/identify/settings', b); toast(Object.keys(b).length > 1 ? 'Keys saved' : 'Saved'); route();
   },
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden && ID.stream) { idStop(); idCamUi(false); } });
@@ -1428,8 +1533,8 @@ async function viewFindForm(code) {
     <h1>${code ? 'Edit ' + code : 'Add a mushroom find'}</h1>
     ${code ? '' : html`<p class="muted">Only the photos and where you found it really matter now; fill in the rest any time.</p>`}
     <form data-form="musave" ${code ? raw(`data-code="${esc(code)}" data-ver="${meta.version}"`) : ''} autocomplete="off">
-      ${code ? '' : html`<fieldset><legend>Photos</legend><label class="f">Photos of the cap, the underside, the stem and the base<small>On a phone this can open the camera. If the photos carry their location, it is offered for the find.</small>
-        <input type="file" name="photos" accept="image/*" multiple capture="environment"></label></fieldset>`}
+      ${code ? '' : html`<fieldset><legend>Photos</legend><label class="f">Photos of the cap, the underside, the stem and the base<small>On a phone you can take them or choose them from your photos. If the photos carry their location, it is offered for the find.</small>
+        <input type="file" name="photos" accept="image/*" multiple></label></fieldset>`}
       ${MU_GROUPS.map(([t, names]) => html`<fieldset><legend>${t}</legend><div class="field-grid">${names.map(n => muField(meta, F[n], v[n], plants))}</div>
         ${t === 'Where and when' ? html`<div class="mu-loc"><input type="hidden" name="lat" value="${v.lat == null ? '' : v.lat}"><input type="hidden" name="lon" value="${v.lon == null ? '' : v.lon}">
           <p id="mu-loc-txt" aria-live="polite">${v.lat != null ? html`Location saved: ${(+v.lat).toFixed(5)}, ${(+v.lon).toFixed(5)}.` : 'No map location saved.'}</p>
@@ -1461,7 +1566,7 @@ async function viewFind(code) {
     ${fungiSafety(true)}
     <div class="sp-grid">
       <section aria-labelledby="mu-ph-h"><h2 id="mu-ph-h">Photos</h2><div id="mu-gallery"></div>
-        <label class="f noprint mu-add">Add photos<small>On a phone this can open the camera.</small><input type="file" accept="image/*" multiple capture="environment" data-act="muaddphotos"></label></section>
+        <label class="f noprint mu-add">Add photos<small>On a phone you can take them or choose them from your photos.</small><input type="file" accept="image/*" multiple data-act="muaddphotos"></label></section>
       <section aria-labelledby="mu-id-h"><h2 id="mu-id-h">What could it be?</h2>
         <p>Identify compares a photo with about 49,000 fungi, on this computer. Treat its answer as a lead to check, never as proof.</p>
         <div class="row"><button class="btn" type="button" data-act="muident" ${ph.length ? '' : raw('disabled')}>Identify the photo shown</button></div>

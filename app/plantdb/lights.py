@@ -125,8 +125,19 @@ def light_dict(r, used=0):
     dmin, dmax = light_range(pts)
     return {'id': r['id'], 'key': r['lkey'], 'name': r['name'], 'count': r['count'], 'in_use': used, 'fixture': r['fixture'], 'notes': r['notes'],
             'specs': d, 'points': [{'distance_in': x, 'ppfd': y, 'area_sqft': a} for x, y, a in pts], 'min_in': dmin, 'max_in': dmax,
-            'max_dli': dli_of(ppfd_at(pts, dmin), 16) if pts else None,
+            'max_dli': dli_of(ppfd_at(pts, dmin), 16) if pts else None, 'reach': light_reach(d, pts),
+            'room_light': 'room light' in (d.get('kind') or '').lower(),
             'photo': d.get('photo'), 'chart': d.get('chart'), 'updated_by': r['updated_by'] or r['created_by'], 'updated_at': r['updated_at'] or r['created_at']}
+
+def light_reach(d, pts):
+    """1.41.0: what one of this light can give, within the distances its maker (or Claude) measured: the most light (its
+    nearest figure, full brightness) and the least (its farthest figure, its lowest brightness), and the daily light those
+    give on 12 hours, and from 8 hours at the least to 16 at the most. Not extended past the measured distances."""
+    if not pts: return None
+    dims = sorted({int(x) for x in (d.get('dimming') or [100]) if 0 < int(x) <= 100} | {100})
+    hi, lo = pts[0][1], pts[-1][1] * dims[0] / 100
+    return {'near_in': pts[0][0], 'far_in': pts[-1][0], 'ppfd_max': round(hi), 'ppfd_min': round(lo, 1), 'dim_min': dims[0],
+            'dli12': [dli_of(lo, 12), dli_of(hi, 12)], 'dli_any': [dli_of(lo, 8), dli_of(hi, 16)], 'one_point': len(pts) == 1}
 
 def spot_eval(c, s, L, plants):
     d = light_specs(L) if L is not None else {}
@@ -295,11 +306,67 @@ def lights_state(c):
     for p in plan:
         p['steps'] = step_down(byid[p['light_id']], p, [c.execute('SELECT * FROM plants WHERE code=?', (x,)).fetchone() for x in p['codes']], outdoor)
     cands = [{'code': r['code'], 'name': r['common_name'], 'site': r['site'], 'winter_plan': r['winter_plan'], 'need': plant_need(r),
-              'pot_size': r['pot_size']} for r in light_candidates(c)]
+              'pot_size': r['pot_size'], 'photo': plant_photo(c, r['id']), 'foot': round(plant_foot(c, r), 2), 'inside': r['site'] in INSIDE_SITES}
+             for r in light_candidates(c)]
+    # 1.41.0: a plant that does not fit its spot is pointed at one of your other spots that would suit it
+    for sp in out_spots:
+        for p in sp['plants']: p['better'] = better_spot(out_spots, p, sp['id'])
+    lights_out = [light_dict(L, used.get(L['id'], 0)) for L in lights]
+    for Ld in lights_out:      # how many of the plants that need a light this one could serve, at some setting within its range
+        rg = Ld['reach']
+        Ld['suits'] = sum(1 for x in cands if x['need'] and rg and x['need']['lo'] <= rg['dli_any'][1] and x['need']['hi'] >= rg['dli_any'][0]) if rg else 0
     places = [p | {'spots': [s['id'] for s in out_spots if s['place_id'] == p['id']]} for p in light_places(c)]
-    return {'lights': [light_dict(L, used.get(L['id'], 0)) for L in lights], 'spots': out_spots, 'plan': plan, 'unplaced': unplaced, 'places': places,
+    return {'lights': lights_out, 'spots': out_spots, 'plan': plan, 'unplaced': unplaced, 'places': places,
             'candidates': cands, 'assigned': {code: sid for sid, codes in assign.items() for code in codes}, 'outdoor_dli': outdoor,
             'verdicts': LIGHT_VERDICT}
+
+def better_spot(spots, p, here=None):
+    """One of your other spots whose light would suit this plant (verdict Good), nearest its needs' middle, or None."""
+    if p.get('verdict') in ('good', 'unknown', None) or p.get('lo') is None: return None
+    mid = (p['lo'] + p['hi']) / 2
+    fits = [s for s in spots if s['id'] != here and s.get('dli') is not None and light_verdict(s['dli'], p['lo'], p['hi']) == 'good']
+    if not fits: return None
+    s = min(fits, key=lambda s: abs(s['dli'] - mid))
+    return {'id': s['id'], 'name': s['name'], 'dli': s['dli']}
+
+def best_setting(c, L, units, plants):
+    """1.41.0: the distance, hours and brightness under light L that put the most of these plants in their range, then the
+    fewest just outside it, then not crowded, then nearest the middle of their ranges; whole inches within the light's range."""
+    d = light_specs(L); pts = light_points(d)
+    if not pts: return None
+    dmin, dmax = light_range(pts)
+    dims = sorted({int(x) for x in (d.get('dimming') or [100]) if 0 < int(x) <= 100} | {100}, reverse=True)
+    ns = [(r, plant_need(r)) for r in plants]
+    known = [(r, n) for r, n in ns if n]
+    foot = sum(plant_foot(c, r) for r in plants)
+    best = None
+    for dist in range(int(math.ceil(dmin)), int(math.floor(dmax)) + 1):
+        p = ppfd_at(pts, dist); area = area_at(pts, dist)
+        crowded = bool(area and foot > area * units * LIGHT_ROOM * 1.1)
+        for h in LIGHT_HOURS:
+            for dim in dims:
+                dl = dli_of(p, h, dim)
+                vs = [light_verdict(dl, n['lo'], n['hi']) for _, n in known]
+                off = sum(abs(math.log(max(dl, 0.01) / max(n['target'], 0.01))) for _, n in known)
+                key = (sum(v == 'good' for v in vs), sum(v in ('dim', 'bright') for v in vs), not crowded, h in (12, 14), dim == 100, -off)
+                if best is None or key > best[0]: best = (key, dist, h, dim, dl, p)
+    _, dist, h, dim, dl, p = best
+    return {'distance_in': dist, 'hours': h, 'dim_pct': dim, 'dli': dl, 'ppfd': round(p), 'good': best[0][0], 'of': len(known)}
+
+@app.route('/api/lights/best')
+def lights_best():
+    """Best setting for the ticked plants: ?light=ID&units=N&plants=P-001,P-002"""
+    c = db()
+    try: lid = int(request.args.get('light', 0)); units = max(1, min(50, int(request.args.get('units') or 1)))
+    except ValueError: abort(400, 'light and units must be numbers')
+    L = c.execute('SELECT * FROM lights WHERE id=?', (lid,)).fetchone()
+    if not L: abort(404, 'That light is not in your list')
+    codes = [x for x in (request.args.get('plants') or '').split(',') if x]
+    ps = [r for r in (c.execute('SELECT * FROM plants WHERE code=?', (x,)).fetchone() for x in codes) if r]
+    if not ps: abort(400, 'Tick the plants for this spot first')
+    b = best_setting(c, L, units, ps)
+    if not b: abort(400, 'This light has no light figures yet. Add them with "Change the light figures" under Your lights.')
+    return jsonify(b)
 
 @app.route('/api/lights')
 def lights_get():
@@ -313,7 +380,12 @@ def lights_get():
     spot = next((s for s in st['spots'] if s['id'] == sid), None) if sid else None
     sug = next((s for s in st['plan'] if code in s['codes']), None)
     un = next((u for u in st['unplaced'] if u['code'] == code), None)
-    return jsonify(spot=spot, suggestion=sug, unplaced=un, candidate=any(x['code'] == code for x in st['candidates']), lights=len(st['lights']))
+    cand = next((x for x in st['candidates'] if x['code'] == code), None)
+    n = cand['need'] if cand else None
+    spots = [{'id': s['id'], 'name': s['name'], 'place': s['place'], 'light': s['light'], 'dli': s['dli'], 'n': len(s['plants']),
+              'verdict': light_verdict(s['dli'], n and n['lo'], n and n['hi']), 'verdict_word': LIGHT_VERDICT[light_verdict(s['dli'], n and n['lo'], n and n['hi'])]}
+             for s in st['spots']]
+    return jsonify(spot=spot, suggestion=sug, unplaced=un, candidate=cand is not None, lights=len(st['lights']), need=n, spots=spots)
 
 @app.route('/api/lights/preview')
 def lights_preview():
@@ -326,7 +398,18 @@ def lights_preview():
     s = spot_fields(request.args, partial=True)
     codes = [x for x in (request.args.get('plants') or '').split(',') if x]
     ps = [r for r in (c.execute('SELECT * FROM plants WHERE code=?', (x,)).fetchone() for x in codes) if r]
-    return jsonify(spot_eval(c, s, L, ps))
+    ev = spot_eval(c, s, L, ps)
+    try: here = int(request.args.get('spot') or 0) or None
+    except ValueError: here = None
+    if any(p['verdict'] not in ('good', 'unknown') for p in ev['plants']):      # 1.41.0: where a plant that does not fit would
+        others = []
+        for o in c.execute('SELECT * FROM light_spots').fetchall():
+            Lo = c.execute('SELECT * FROM lights WHERE id=?', (o['light_id'],)).fetchone()
+            pts = light_points(light_specs(Lo)) if Lo else []
+            pp = ppfd_at(pts, o['distance_in']) if pts else None
+            others.append({'id': o['id'], 'name': o['name'], 'dli': dli_of(pp, o['hours'], o['dim_pct']) if pp else None})
+        for p in ev['plants']: p['better'] = better_spot(others, p, here)
+    return jsonify(ev)
 
 def spot_fields(b, partial=False):
     name = re.sub(r'\s+', ' ', str(b.get('name', ''))).strip()[:60]
@@ -391,12 +474,46 @@ def light_spot_add():
     if not L: abort(400, 'Choose one of your lights')
     who = editor()
     check_place(c, s['place_id'])
+    sid = make_spot(c, s, L, [str(x) for x in b.get('plants') or []], who)
+    c.commit()
+    return jsonify(id=sid), 201
+
+def make_spot(c, s, L, codes, who):
     sid = c.execute('INSERT INTO light_spots(name,light_id,units,distance_in,hours,dim_pct,notes,place_id,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
                     (s['name'], L['id'], s['units'], s['distance_in'], s['hours'], s['dim_pct'], s['notes'], s['place_id'], who, now())).lastrowid
     audit_only(c, 'light', 'light_spot', None, spot_text(s, L['name'], c), who, 'Grow light spot set up: ' + spot_text(s, L['name'], c))
-    set_spot_plants(c, sid, s['name'], [str(x) for x in b.get('plants') or []], who)
+    set_spot_plants(c, sid, s['name'], codes, who)
+    return sid
+
+@app.route('/api/lights/spots/plan', methods=['POST'])
+def light_spot_plan_all():
+    """1.41.0: set up every spot of the suggested layout at once, as it stands now. Each can be changed afterwards."""
+    c = db()
+    st = lights_state(c)
+    if not st['plan']: abort(400, 'There is no suggested layout: every plant that needs a light is in a spot.')
+    who = editor(); names = {s['name'] for s in st['spots']}; made = []
+    for p in st['plan']:
+        L = c.execute('SELECT * FROM lights WHERE id=?', (p['light_id'],)).fetchone()
+        name, k = p['name'], 2
+        while name in names: name = '%s (%d)' % (p['name'], k); k += 1
+        names.add(name)
+        s = {'name': name, 'units': p['units'], 'distance_in': p['distance_in'], 'hours': p['hours'], 'dim_pct': p['dim_pct'], 'notes': '', 'place_id': None}
+        made.append(make_spot(c, s, L, p['codes'], who))
     c.commit()
-    return jsonify(id=sid), 201
+    return jsonify(made=len(made), plants=sum(len(p['codes']) for p in st['plan'])), 201
+
+@app.route('/api/lights/spots/<int:i>/plants', methods=['POST'])
+def light_spot_add_plants(i):
+    """1.41.0: add plants to a spot without changing anything else: {add: [codes]} (from a plant's own page)"""
+    c = db()
+    s = c.execute('SELECT * FROM light_spots WHERE id=?', (i,)).fetchone()
+    if not s: abort(404, 'That spot is not set up any more')
+    add = [str(x) for x in (request.get_json(silent=True) or {}).get('add') or []]
+    if not add: abort(400, 'Choose a plant to add')
+    old = [x for (x,) in c.execute('SELECT plant_code FROM light_assign WHERE spot_id=?', (i,))]
+    set_spot_plants(c, i, s['name'], old + [x for x in add if x not in old], editor())
+    c.commit()
+    return jsonify(ok=True, name=s['name'])
 
 @app.route('/api/lights/spots/<int:i>', methods=['PUT', 'DELETE'])
 def light_spot_one(i):
@@ -446,7 +563,7 @@ def light_place_add():
     c.commit()
     return jsonify(id=pid), 201
 
-@app.route('/api/lights/places/<int:i>', methods=['PUT', 'DELETE'])
+@app.route('/api/lights/places/<int(signed=True):i>', methods=['PUT', 'DELETE'])     # 1.41.1: signed, a room itself is minus its id
 def light_place_one(i):
     """i is a spot's id, or minus an area's id (the room itself). Changes go to Rooms and spots."""
     c = db()

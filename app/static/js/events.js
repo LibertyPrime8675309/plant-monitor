@@ -19,7 +19,21 @@ async function pickPlant(title, text, withNone) {
 const acts = {
   gphoto: el => sheetStep(el.dataset.code, +el.dataset.d),
   who() { whoDialog(); },
-  spotnew(el) { const p = el.dataset.plan != null ? LT.plan[+el.dataset.plan] : null; spotDialog(p ? { name: p.name, light_id: p.light_id, units: p.units, distance_in: p.distance_in, hours: p.hours, dim_pct: p.dim_pct, codes: p.codes } : { light_id: LT.lights[0] && LT.lights[0].id }); },
+  spotnew(el) { const p = el.dataset.plan != null ? LT.plan[+el.dataset.plan] : null; spotDialog(p ? { name: p.name, light_id: p.light_id, units: p.units, distance_in: p.distance_in, hours: p.hours, dim_pct: p.dim_pct, codes: p.codes } : { light_id: ltSorted()[0] && ltSorted()[0].id }); },
+  spotadd(el) { const s = LT.spots.find(x => x.id === +el.dataset.id); if (s) spotDialog({ ...s, codes: s.plants.map(p => p.code) }, { show: 'free' }); },     // 1.41.0
+  spotbest() { spotBest(); },
+  async spotplanall() {
+    if (!(await needName())) return;
+    const n = LT.plan.length, k = LT.plan.reduce((a, s) => a + s.codes.length, 0);
+    if (!(await confirmBox(`Set up all ${n} suggested spots?`, `${k} plants go into ${n} new spots, named "Bright light 1" and so on, with the settings shown. You can rename, move or change each one afterwards.`, 'Set up all of them'))) return;
+    await guard(async () => { const r = await api('POST', '/api/lights/spots/plan', {}); toast(`${r.made} spots set up, with ${r.plants} plants`); route(); });
+  },
+  async growsug(el) {
+    LT = await api('GET', '/api/lights'); const code = el.dataset.code, p = LT.plan.find(s => s.codes.includes(code)); if (!p) { toast('The suggested layout has changed. Open Grow lights to see it.', true); return; }
+    spotDialog({ name: p.name, light_id: p.light_id, units: p.units, distance_in: p.distance_in, hours: p.hours, dim_pct: p.dim_pct, codes: p.codes });
+  },
+  growadd(el) { growAddDialog(el.dataset.code); },
+  async grownew(el) { LT = await api('GET', '/api/lights'); spotDialog({ light_id: ltSorted()[0] && ltSorted()[0].id, codes: [el.dataset.code] }, { show: 'fit' }); },
   spotedit(el) { const s = LT.spots.find(x => x.id === +el.dataset.id); if (s) spotDialog({ ...s, codes: s.plants.map(p => p.code) }); },
   async spotdel(el) {
     const s = LT.spots.find(x => x.id === +el.dataset.id); if (!s) return;
@@ -30,9 +44,13 @@ const acts = {
   lightnew() { lightDialog(null); },
   roomnew() { roomDialog(null); },
   roomedit(el) { roomDialog(LT.places.find(p => p.id === +el.dataset.id)); },
+  shelfnew(el) { roomDialog(null, { room: el.dataset.room }); },       // 1.42.0
   async roomdel(el) {
     const pl = LT.places.find(p => p.id === +el.dataset.id); if (!pl) return;
-    if (!(await confirmBox('Remove this room or shelf?', `"${pl.label}" leaves the list.${pl.spots.length ? ` The ${pl.spots.length} light spot${pl.spots.length === 1 ? '' : 's'} there stay, with "Where" set to "Not chosen yet".` : ''}`, 'Remove it', true))) return;
+    const room = !pl.name, shelves = room ? LT.places.filter(p => p.room === pl.room && p.name) : [];
+    const spots = room ? LT.spots.filter(s => s.place_id === pl.id || shelves.some(x => x.id === s.place_id)) : LT.spots.filter(s => s.place_id === pl.id);
+    const what = room ? `The room "${pl.room}"${shelves.length ? ` and its ${shelves.length} shel${shelves.length === 1 ? 'f' : 'ves'} (${shelves.map(x => x.name).join(', ')})` : ''} leave${shelves.length ? '' : 's'} the list.` : `The shelf "${pl.name}" leaves the list. The room ${pl.room} stays.`;
+    if (!(await confirmBox(room ? 'Remove this room?' : 'Remove this shelf?', `${what}${spots.length ? ` The ${spots.length} light spot${spots.length === 1 ? '' : 's'} there stay, with "Where" set to ${room ? '"Not chosen yet"' : `the room as a whole`}.` : ''}`, room ? 'Remove the room' : 'Remove the shelf', true))) return;
     await guard(async () => { await api('DELETE', '/api/lights/places/' + pl.id); toast('Removed'); route(); });
   },
   async usethisbase() { await guard(async () => { await api('PUT', '/api/settings', { base_url: location.origin }); toast('Codes now open ' + location.origin); route(); }); },
@@ -130,14 +148,35 @@ const acts = {
   audpage(el) { AUD.offset = Math.max(0, AUD.offset + Number(el.dataset.d) * AUD.limit); audLoad(); const s = document.getElementById('aud-sum'); if (s) { s.scrollIntoView({ block: 'start' }); s.setAttribute('tabindex', '-1'); s.focus({ preventScroll: true }); } },
   async prepdone(el) {
     if (!(await needName())) return;
-    const k = el.dataset.k, code = el.dataset.code;
-    await guard(async () => { await api('POST', '/api/care', { plant: code, kind: 'prep_' + k }); toast('Saved: ' + PREP_CARE['prep_' + k]); await prepAfterChange(code, `[data-act=prepdone][data-k="${k}"][data-code="${code}"]`); });
+    const k = el.dataset.k, code = el.dataset.code, f = prepFocus(el, code);
+    await guard(async () => { await api('POST', '/api/care', { plant: code, kind: 'prep_' + k }); toast('Saved: ' + PREP_CARE['prep_' + k]); await prepAfterChange(code, f); });
   },
-  async prepundo(el) {
-    const k = el.dataset.k, code = el.dataset.code, D = PREP.data;
-    const last = D && D.code === code ? (D.log || []).filter(x => x.kind === 'prep_' + k).pop() : null; if (!last) return;
+  async prepstart(el) {         // 1.40.1
     if (!(await needName())) return;
-    await guard(async () => { await api('DELETE', '/api/care/' + last.id); toast('Removed: ' + PREP_CARE['prep_' + k] + ', ' + relDay(last.done_on)); await prepAfterChange(code, `[data-act=prepdone][data-k="${k}"][data-code="${code}"]`); });
+    const code = el.dataset.code, f = el.closest('#prep-box') ? '#pm-inspect-tick' : `#mi-${code}-inspect-tick`;      // 1.41.1: on to the first tick box
+    await guard(async () => { await api('POST', '/api/care', { plant: code, kind: 'prep_start' }); toast('Started the checklist. Inspect it for pests first.'); await prepAfterChange(code, f); });
+  },
+  lttop(el) {                 // 1.42.0: the Grow lights summary at the top folds as one
+    const t = document.getElementById('lt-top'), b = document.getElementById('lt-top-body'), open = b.hidden;
+    b.hidden = !open; t.dataset.open = open ? '1' : '0'; el.setAttribute('aria-expanded', open ? 'true' : 'false'); el.textContent = open ? 'Hide the summary' : 'Show the summary';
+    try { localStorage.setItem('plantdb.lttop', open ? '1' : '0'); } catch (e) { /* this visit only */ }
+    ltTopMeasure();
+  },
+  ltspotsall(el) { const on = el.dataset.open === '1'; document.querySelectorAll('details.lt-spot-fold').forEach(d => { d.open = on; }); },
+  secfold(el) {               // 1.42.0: Show or hide a section
+    const it = NAVITEMS.find(x => x.id === el.dataset.for); if (!it) return;
+    const folded = el.getAttribute('aria-expanded') === 'true';
+    foldSet(it, folded, true); navActive();
+    if (!folded) window.dispatchEvent(new Event('resize'));     // charts and the like measure themselves again
+  },
+  prepfold(el) { const on = el.dataset.open === '1'; document.querySelectorAll('details.mi-fold').forEach(d => { d.open = on; }); },
+  prepjump() { const h = document.getElementById('pm-head'); if (h) { scrollToSection(h); h.focus({ preventScroll: true }); } },
+  async prepundo(el) {
+    const k = el.dataset.k, code = el.dataset.code, f = prepFocus(el, code);
+    const D = document.getElementById('prep-box') ? (PREP.data && PREP.data.code === code ? PREP.data : null) : (PREP.list ? PREP.list.plants.find(p => p.code === code) : null);
+    const last = D ? (D.log || []).filter(x => x.kind === 'prep_' + k).pop() : null; if (!last) return;
+    if (!(await needName())) return;
+    await guard(async () => { await api('DELETE', '/api/care/' + last.id); toast('Removed: ' + PREP_CARE['prep_' + k] + ', ' + relDay(last.done_on)); await prepAfterChange(code, f); });
   },
   openprep(el) { try { sessionStorage.setItem('plantdb.toprep', el.dataset.code); } catch (e) { /* the page still opens */ } go('#/plant/' + enc(el.dataset.code)); },
   async fccopy() {
@@ -226,7 +265,39 @@ const acts = {
   async ctdel(el) { if (!(await needName())) return; if (!(await confirmBox(`Remove ${el.dataset.name}?`, 'Its photos are removed too.', 'Remove', true))) return;
     await guard(async () => { await api('DELETE', '/api/containers/' + el.dataset.id); META = await api('GET', '/api/meta'); toast('Removed'); route(); }); },
   async ctphotodel(el) { if (!(await needName())) return; await guard(async () => { await api('DELETE', '/api/containers/photos/' + el.dataset.id); toast('Photo removed'); route(); }); },
-  sevreset() { SEV.photos.forEach(p => { try { URL.revokeObjectURL(p.url); } catch (e) { /* gone */ } }); Object.assign(SEV, { step: 'pick', photos: [], plants: [], done: null, busy: false }); SEV.home = sevDefaultHome(); sevDraw('input[type=file]'); },
+  sevreset() { SEV.photos.forEach(p => { try { URL.revokeObjectURL(p.url); } catch (e) { /* gone */ } }); Object.assign(SEV, { step: 'pick', photos: [], order: [], plants: [], done: null, busy: false }); SEV.home = sevDefaultHome(); sevDraw('input[type=file]'); },
+  ltedit(el) {                          // 1.39.1: a light's name, count, model and place are text until you ask to edit them
+    const box = document.getElementById('lt-ed-' + el.dataset.id); if (!box) return;
+    box.hidden = !box.hidden; el.setAttribute('aria-expanded', String(!box.hidden)); el.textContent = box.hidden ? 'Edit the name, count, model and where it is' : 'Done editing';
+    if (!box.hidden) { const i = box.querySelector('input'); if (i) i.focus(); }
+  },
+  async newfill(el) {                   // 1.38.0: Add a plant: the names from the photos on the form; 1.40.0: all of them together, with Pl@ntNet, and "Not this"
+    const form = el.closest('form') || document.querySelector('form[data-form=new]'), inp = form && form.elements.__photos, st = document.getElementById('newfill-st');
+    const files = inp ? [...inp.files] : []; if (!files.length) return;
+    el.disabled = true; if (st) st.innerHTML = rend(html`<p class="muted" role="status">Checking ${files.length === 1 ? 'the photo' : `the ${files.length} photos together`}…</p>`);
+    try {
+      if (!navigator.onLine || !(await offProbe())) { if (st) st.textContent = 'This needs a connection to the plant server. Save the plant now and the photo is checked when it can be reached; the names are then offered on the Offline page.'; return; }
+      const r = await idAsk(files[0], null, files.slice(1, 6), NEWID.ex); NEWID.r = r;
+      const sp = (r.species || []).filter(x => x.scientific_name), m = (r.matches || [])[0];
+      if (!sp.length) { if (st) st.innerHTML = rend(html`<p>No name was found for this photo. Type the names yourself.</p>`); return; }
+      acts.newuse({ dataset: { i: '0' } }, true);
+      if (st) st.innerHTML = rend(html`${m && m.confidence >= .6 ? html`<p class="notice" role="note"><strong>This may be a plant you already have:</strong> <a href="#/plant/${enc(m.code)}" target="_blank" rel="noopener">${m.code} ${m.common_name || ''}</a> (${pct(m.confidence)} sure).</p>` : ''}
+        <p>The first name is filled in (empty fields only; what you typed stays). Choose another with <strong>Use this name</strong>, or say <strong>Not this</strong> to check again without it.</p>
+        ${idNamesPanel(r, { src: 'new', id: 'new-splist', use: 'newuse', reject: 'new' })}`);
+    } catch (e) { if (st) st.innerHTML = rend(html`<p class="notice bad">${e.message}</p>`); }
+    finally { el.disabled = false; }
+  },
+  newuse(el, quiet) {                   // 1.40.0: put one of the names found on the form
+    const s0 = NEWID.r && (NEWID.r.species || [])[+el.dataset.i]; const form = document.querySelector('form[data-form=new]'); if (!s0 || !form) return;
+    const put = (k, v, force) => { const i = form.elements[k]; if (i && (force || !i.value.trim())) i.value = v == null ? '' : v; };
+    const force = !quiet;
+    put('common_name', (s0.common_name || '').split(',')[0].trim() || s0.scientific_name, force); put('scientific_name', s0.scientific_name, force); put('genus', (s0.scientific_name || '').split(' ')[0], force); put('family', s0.family || '', force);
+    put('id_confidence', Math.round((s0.probability || 0) * 100), force);
+    put('id_basis', `Suggested by ${(s0.sources || ['the picture checker on this computer']).map(w => w === 'this computer' ? 'the picture checker on this computer' : w).join(' and ')} from the photo${NEWID.r.pictures > 1 ? 's' : ''} on the form. Check it.`, force);
+    if (!quiet) { toast('Names filled in: ' + ((s0.common_name || '').split(',')[0].trim() || s0.scientific_name)); const cn = form.elements.common_name; if (cn) cn.focus(); }
+  },
+  sevrecheck(el) { return sevIdentify(+el.dataset.g, true); },
+  sevask(el) { return sevIdentify(+el.dataset.g, true, 'yes'); },
   async sevsave() {
     if (!(await needName())) return;
     const err = document.getElementById('sev-err');
@@ -235,10 +306,11 @@ const acts = {
     if (bad) { if (err) err.textContent = `Plant ${bad[1] + 1} needs a common name.`; const i = document.querySelector(`[data-f=sevfield][data-g="${bad[1]}"][data-k=common_name]`); if (i) i.focus(); return; }
     const plants = list.map(([P, gi]) => { const n = SEV.photos.filter(p => p.group === gi).length;
       const fields = { ...P.fields, site: SEV.site, home_id: SEV.home || '',
-        id_basis: P.pick >= 0 ? `Suggested by the picture checker on this computer from ${n} photo${n === 1 ? '' : 's'} (${P.fields.id_confidence || 0}% likely). Check it.` : '' };
+        id_basis: P.pick >= 0 ? `Suggested by ${((P.species[P.pick] || {}).sources || ['the picture checker on this computer']).map(w => w === 'this computer' ? 'the picture checker on this computer' : w).join(' and ')} from ${n} photo${n === 1 ? '' : 's'} (${P.fields.id_confidence || 0}% likely). Check it.` : '' };
       return { fields, photos: SEV.photos.filter(p => p.group === gi).map(p => p.file) }; });
+    const shared = SEV.photos.filter(p => p.rel === 'all').map(p => p.file);      // 1.38.0: wide shots go on every plant
     SEV.busy = true; const b = document.querySelector('[data-act=sevsave]'); if (b) b.disabled = true;
-    try { const r = await api('POST', '/api/plants/several', { plants }); ALL = await api('GET', '/api/plants?status=all'); META = await api('GET', '/api/meta'); SEV.done = r.codes; SEV.busy = false; sevDraw('.notice.ok'); toast(`${r.codes.length} plants added`); }
+    try { const r = await api('POST', '/api/plants/several', { plants, shared }); ALL = await api('GET', '/api/plants?status=all'); META = await api('GET', '/api/meta'); SEV.done = r.codes; SEV.busy = false; sevDraw('.notice.ok'); toast(`${r.codes.length} plants added`); }
     catch (e) { SEV.busy = false; if (b) b.disabled = false; if (err) err.textContent = e.message; }
   },
   idphmore() { IDPH.shown += IDPH_PAGE; drawIdPhotos(); const rows = document.querySelectorAll('#idph-tbl tbody tr'); const a = rows[IDPH.shown - IDPH_PAGE] && rows[IDPH.shown - IDPH_PAGE].querySelector('a'); if (a) a.focus(); },
@@ -462,13 +534,13 @@ const acts = {
   async care(el) {
     if (!(await needName())) return;
     const k = el.dataset.kind, code = el.dataset.code;
-    await guard(async () => { const r = await api('POST', '/api/care', { plant: code, kind: k }); careUndoToast((k === 'water' ? 'Watered: ' : 'Checked, still moist: ') + el.dataset.name, r && r.ids, code); await careRefresh(code); });
+    await guard(async () => { const r = await api('POST', '/api/care', { plant: code, kind: k }); careUndoToast((k === 'water' ? 'Watered: ' : 'Checked, still moist: ') + el.dataset.name + offWhen(r), r && r.ids, code); await careRefresh(code); });
   },
   async careall(el) {
     const codes = el.dataset.codes.split(',').filter(Boolean); if (!codes.length) return;
     if (!(await needName())) return;
     if (!(await confirmBox(`Mark ${codes.length} plants as watered today?`, 'Each one gets a "Watered" entry for today in its care log. You can remove any of them on the plant\'s page.', 'Mark as watered'))) return;
-    await guard(async () => { const r = await api('POST', '/api/care', { plants: codes, kind: el.dataset.kind }); careUndoToast(codes.length + ' plants marked as watered', r && r.ids); await careRefresh(); });
+    await guard(async () => { const r = await api('POST', '/api/care', { plants: codes, kind: el.dataset.kind }); careUndoToast(codes.length + ' plants marked as watered' + offWhen(r), r && r.ids); await careRefresh(); });
   },
   async waterall() {                    // 1.21.0: Plants page, every plant the filters show
     const shown = filteredPlants().filter(p => !isArch(p)); if (!shown.length) return;
@@ -480,7 +552,8 @@ const acts = {
       if (!(await confirmBox(`Mark ${todo.length} plant${todo.length === 1 ? '' : 's'} as watered today?`,
         `These are the plants shown with your filters.${skip ? ` ${skip} of them ${skip === 1 ? 'was' : 'were'} already watered today and ${skip === 1 ? 'is' : 'are'} skipped.` : ''} Each gets a "Watered" entry for today in its care log.`, 'Mark as watered'))) return;
       const r = await api('POST', '/api/care', { plants: todo.map(p => p.code), kind: 'water' });
-      careUndoToast(`${r.ids.length} plant${r.ids.length === 1 ? '' : 's'} marked as watered${skip ? ` (${skip} already watered today were skipped)` : ''}`, r.ids);
+      const nn = r.offline ? todo.length : r.ids.length;
+      careUndoToast(`${nn} plant${nn === 1 ? '' : 's'} marked as watered${skip ? ` (${skip} already watered today were skipped)` : ''}${offWhen(r)}`, r.ids);
     });
   },
   careother(el) { return careDialog(el.dataset.code, el.dataset.name); },
@@ -570,6 +643,17 @@ const changeActs = {
     await guard(async () => { await api('POST', '/api/photos', undefined, fd); toast('Photos added'); route(); });
   },
   preptrait(el) { prepSaveTraits({ [el.dataset.k]: el.value }, `select[data-act=preptrait][data-k="${el.dataset.k}"]`, (el.dataset.k === 'leaf_type' ? 'Leaf type: ' : 'Pot size: ') + (el.value || 'not set')); },
+  async preptick(el) {        // 1.41.1: a step's tick box: ticking logs it today, unticking takes back the last time
+    const k = el.dataset.k, code = el.dataset.code, f = prepFocus(el, code), on = el.checked;
+    if (!(await needName())) { el.checked = !on; return; }
+    if (on) { await guard(async () => { await api('POST', '/api/care', { plant: code, kind: 'prep_' + k }); toast('Saved: ' + PREP_CARE['prep_' + k]); }); }
+    else {
+      const D = document.getElementById('prep-box') ? (PREP.data && PREP.data.code === code ? PREP.data : null) : (PREP.list ? PREP.list.plants.find(p => p.code === code) : null);
+      const last = D ? (D.log || []).filter(x => x.kind === 'prep_' + k).pop() : null;
+      if (last) await guard(async () => { await api('DELETE', '/api/care/' + last.id); toast('Removed: ' + PREP_CARE['prep_' + k] + ', ' + relDay(last.done_on)); });
+    }
+    await prepAfterChange(code, f);
+  },
   preppest(el) {
     const got = [...document.querySelectorAll('input[data-act=preppest]:checked')].map(x => x.value);
     prepSaveTraits({ pests_found: got }, `input[data-act=preppest][value="${el.value}"]`, got.length ? 'Pests found: ' + got.join(', ') : 'No pests found');

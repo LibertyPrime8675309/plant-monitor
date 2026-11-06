@@ -264,7 +264,7 @@ Remove the line from `.env` and run `docker compose up -d` to close it again.
 
 ## Display settings and low vision
 
-Press the **Display** button (bottom right of every page; it stays on screen) to change how everything looks. The **Debug** button beside it is described under "Audit log" below. Changes apply at once and are remembered in that browser (each computer or phone keeps its own).
+Press the **Display** button (from 1.42.0 at the bottom of the Navigation menu; on a page with no menu, bottom right) to change how everything looks. The **Debug** button beside it is described under "Audit log" below. Changes apply at once and are remembered in that browser (each computer or phone keeps its own).
 
 - **Text and button size**: Standard, Comfortable (the new default, a little bigger than before), Large, Larger, Largest. Buttons, bars, charts and spacing scale together.
 - **Spacing**: Normal or Roomy (more space between lines, letters and words).
@@ -279,7 +279,7 @@ On a computer (from 1.26.1) the menu bar at the top uses the whole width of the 
 
 On a phone the menu bar at the top scrolls away with the page (scroll back to the top to reach it), and every page fits the width of the screen at every text size. From 1.26.0:
 - The list of pages folds behind one **Pages** button, which names the page you're on (for example "Pages: Groups"). Press it to show every page; choosing one, or pressing Escape, folds the list again.
-- **Sections**, **Debug** and **Display** share one bar along the bottom of the screen. With the largest text there isn't room for all three in one row, so Sections takes the top row and Debug and Display share the second.
+- **Navigation** and **Debug** share one bar along the bottom of the screen (from 1.42.0 Display is inside the Navigation menu).
 - On a computer with large text (or a small window such as a tablet held sideways), the page links fold behind the same **Pages** button once they would take more than two rows, or the top bar more than a fifth of the window. If the top bar is still that tall, it scrolls away with the page, as on a phone.
 - Tables too wide for the screen become one box per row: the row's name (a day, a plant, a backup) at the top, then each value next to its column's name, two or more to a line when they fit. The long table on the Weather page still scrolls sideways.
 - The same happens on a tablet or a small window whenever the text is large enough that the page switches to one column.
@@ -314,11 +314,13 @@ Keyboard shortcuts work on every page, except while you are typing in a box. **D
 | **L** | Choose the location for the weather |
 | **?** | List the shortcuts |
 
-### Section menu ("On this page")
+### Section menu ("Navigation", called "On this page" before 1.42.0)
+
+**From 1.42.0** the menu is called **Navigation**, and the **Display** button sits at its bottom (always in view while the menu is open). On a page with no sections, which has no menu, Display stays in the bottom-right corner. Every section in the menu has a **Hide** / **Show** button by its title that folds the section shut down to its title; the menu or a section button that goes to a folded section opens it again. What you fold is remembered on that device for that page (plant pages share one memory, so folding Temperature on one plant folds it on all of them). Sections that already fold by pressing their own title are left as they are.
 
 Every page has a menu down the side listing its sections (for example on the Weather page: Tracked history, All logged weather data, Location and updates). Choose one to jump straight to it; the section you are reading is highlighted. On plant pages it scrolls the details half, like the section buttons. From 1.27.3 the section you choose stays highlighted until you scroll yourself (even a short last section that cannot reach the top of the window), and it gets a thick outline for a couple of seconds so you can find it.
 
-- **Hide** folds the menu away; the **Sections** button at the edge of the screen brings it back.
+- **Hide** folds the menu away; the **Navigation** button (called Sections before 1.42.0) at the edge of the screen brings it back.
 - **Move to the right / Move to the left** swaps its side.
 - The same choices, plus **Page width: Use the full width of the window** (more room for charts and tables on a wide screen), are in **Display**. They are remembered on that computer.
 - On phones, narrow windows and very large text the menu starts folded, the Sections button sits at the bottom left, and the menu closes after you choose a section.
@@ -407,6 +409,10 @@ Each plant page has a **Timeline** section, just above Page history (also in the
 
 Outdoor plants often carry ants, spider mites, mealybugs and other pests. Each plant page has a **Getting ready to come inside** section, after Winter in Round Rock, that helps keep them out of the house.
 
+**Start the checklist** (from 1.40.1) sits right under the plant's status, on its page and inside its fold on the Coming inside page. Once started, the plant shows as In progress. **Undo the start** takes it back until you have done a step, and **Go to the checklist** jumps to the list.
+
+**The checklist is tick boxes (from 1.41.1).** All 10 steps are listed in order, each with a tick box, its rating, why, and "How to do it". Tick a step when you have done it (it is logged for today); untick it to take back the last time. Steps rated Not needed or Not for this plant are marked **Not recommended** with a dashed border, and can still be ticked. A spray that needs a second round says when, with a **Round 2 done today** button. A plant that is already inside can be started too, for a new plant from a store or one that came in without a check: it is then kept apart for 3 weeks from the day you started.
+
 1. Under **About this plant**, check the **Leaf type** and choose the **Pot size**. Claude filled in the leaf type for every plant; change it if it is wrong.
 2. Inspect the plant (the first method explains how) and tick any **Pests you found**. Leave them all unticked if you found nothing.
 3. The ten methods are listed in the order to do them, each rated for this plant: **Best**, **Good**, **Use with care**, **Not needed** or **Not for this plant**, with the reason. Open **How to do it** for the steps. Methods that are not needed or not suitable are folded away under one line.
@@ -414,7 +420,7 @@ Outdoor plants often carry ants, spider mites, mealybugs and other pests. Each p
 5. If a spray needs a second round, the **Today** page reminds you 5 days later.
 6. When the plant comes inside, change its Location to Indoors (or press **Moved indoors**). The section then says until when to keep it apart from your other houseplants: 3 weeks, or 2 weeks after its last treatment if you found pests.
 
-The page **Getting plants ready to come inside** (button on the Winter plan page, and links on the cold-night checklist and the Today page) lists every plant coming in, grouped as Not started, In progress, Ready to come inside, and Inside. Each one shows its next step and best methods, and **Open its plan** goes straight to that plant's section. The page also has the steps for all ten methods and advice on keeping plants apart.
+The page **Getting plants ready to come inside** (button on the Winter plan page, and links on the cold-night checklist and the Today page) lists every plant coming in, grouped as Not started, In progress, Ready to come inside, and Inside. From 1.41.1 each plant is folded shut: its photo, name, next step and how many recommended steps are done. Open it for its tick boxes, Start the checklist and **Open its plan** (straight to that plant's section). **Open every plant** and **Close every plant** are at the top, and a plant you opened stays open while you tick. The page also has the steps for all ten methods and advice on keeping plants apart.
 
 Pots are never cleaned with bleach: use hot soapy water, a brush and a day in the sun, or for extra cleaning 10 minutes in 3% hydrogen peroxide (never mixed with vinegar or other cleaners), then rinse. A new pot works too.
 
@@ -941,6 +947,72 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
 
+## One identifier (from 1.40.0)
+
+Identify, **Add a plant** and **Several plants from photos** now share one identification path, so they give the same answer for the same photos:
+
+1. All the photos of the plant go to the picture checker on this computer together (it compares them with your own plants' photos and names the species, weighted as in 1.39.0).
+2. **Pl@ntNet** is asked as well whenever its key is saved: always when "Ask Pl@ntNet on its own" is ticked on the Identify page, otherwise only when this computer is unsure. Its answer is merged into the same list — a name both agree on moves up, and each name says who said so (**This computer**, **Pl@ntNet 96%**).
+3. The likeliest **genus** and **family** are worked out over the whole list. When no species fits, those are the safer answers (Pl@ntNet named Ethan's split rocks *Pleiospilos nelii* at 96% where the computer alone had six wrong names; this is why the key matters).
+4. **Not this** / **Not this genus** on every name: the name (or the whole genus) leaves the list, the photos are checked again without it, and the choice is logged in the audit log.
+
+On a plant's page, **Check the name from its photos** (under Plant identification) runs all its photos through the same identifier; **Use this name** renames the plant and a "Not this" there sticks to that plant. On **Several plants from photos**, each plant's photos are checked together as soon as you have sorted them (and again whenever you change the sorting); each plant has **Check the photos again** and **Ask Pl@ntNet about this plant**. On **Add a plant**, "Fill in the names from the first photo" uses all the photos on the form and shows the list with **Use this name** on each.
+
+## Room for the content (from 1.39.1)
+
+List pages put the content first. Each keeps one row of controls (Search, the one or two that matter most on that page, Sort) and folds the rest under **More filters**, which opens by itself while one of its filters is on and remembers your choice for the visit:
+
+| Page | On the row | Folded |
+|---|---|---|
+| Plants | Search, Home, Location, Sort by | Health, Group, Show (active or archived), ID confidence under 70%, Light needs, Pets, Winter here, Care today, and the rest |
+| Identify → Your plant photos | Search, Sort by, Only plants with no photos | Health, Home, Location, Group, Show, and the rest |
+| Library | Search, Look in, Sort by | Kind, Family, Grows wild in, Show, Your area, Show as, Only with a common name |
+| Audit log | (the whole box is folded until a filter is on) | |
+
+**Read this page aloud** sits beside the page title on a computer. A page with no sections has no "On this page" menu. On Grow lights, a light's name, count, model and place are shown as text; **Edit the name, count, model and where it is** opens the fields.
+
+## Better names from Identify (from 1.39.0)
+
+The picture checker (BioCLIP, on this computer) used to rank every species by the picture alone, which put three wrong names on the screen often enough. From 1.39.0 it weighs the names toward what you are likely to be looking at:
+
+- **Your record:** a species already named in your plants, or its genus, is lifted. A new pot of a plant you have gets its name.
+- **Your photos:** when one of your named plants' photos looks like the picture, that species is lifted (the closer, the more).
+- **Houseplants** (about 150 genera grown indoors) and **the plants of your state** (with the state list chosen) are lifted a little.
+- Each lifted name says why on its card ("Lifted: a houseplant", "Lifted: looks like your photos"). The line under the result says the names are weighted. To turn the weighting off, put `VISION_PRIOR=0` in `.env` and restart.
+- **Ten names** come back, five shown; **Show 5 more names** unfolds the rest. The three likeliest **genera** are on the line above: when no species fits, the genus is the safer answer.
+- **Several pictures of one plant:** after a result, **Add another photo of the same plant** (or **Add a camera shot of it**) checks them all together. Each picture is also looked at three ways (as it is, the whole picture letterboxed, and its middle).
+- **Pl@ntNet first when unsure:** under Second opinions, tick **Ask Pl@ntNet on its own whenever this computer is unsure**. With the Pl@ntNet key saved, a picture the computer is not sure about (no sure match among your plants, best name under 50%) goes to Pl@ntNet at once and its answer shows above the computer's own. Each costs one of Pl@ntNet's 500 free pictures a day.
+
+The weights were set by judgment, not measured on your photos. `dev/vision/prior_test.py` (run on the PC, where the model and photos are) says how often the right name comes first with and without them, so they can be tuned.
+
+## On the phone and offline (from 1.38.0)
+
+### Watering offline
+
+On the Today page without a connection, **Watered** and **Still moist** now take the plant off the list at once, and the plant's care log shows the entry as "not sent yet". The plant server gets it when it can be reached again (the entry then loses its "not sent yet" and gains its Remove button).
+
+The same goes for the other everyday changes: "Log other care" and Remove on a care entry, Moved indoors and Covered on the cold-night list, Fed, answers to Claude's requests, the Still-to-photograph ticks, photo captions, main photo and photo removal, the porch reminder, the wishlist and species notes. Each shows on its page at once and goes to the server later; a photo added offline shows as a thumbnail in the "Not sent yet" line on the plant's page. Settings, rooms and spots, lights, groups, stores, backups and sensors still need a connection (they are things you do at the PC).
+
+### When Tailscale comes back
+
+The app now tells apart "this phone has no network" from "the plant server cannot be reached" (Tailscale off, or the computer asleep): both show as **Offline** at the top. While the server is out of reach the app tries again every 30 seconds, whenever you bring it to the front, and when the network comes back; the offline note on every page and the Offline use page have a **Try to connect now** button as well. When the server answers, the waiting changes are sent and the page is drawn again from the server (unless you are in the middle of a form). No relaunch needed.
+
+### Back goes back to where you were
+
+Going back to a page (the phone's Back button, or a "Back to…" link) returns to the same place on it. A link to a new page starts at the top. Photo boxes have their size before the photo arrives, so pages no longer jump as photos load.
+
+### Photos on the Add a plant form
+
+**Add a plant** (one plant) has a **Photos** field: take them now or choose them from the phone's photos. The first becomes the main photo. **Fill in the names from the first photo** asks the picture checker and fills in the empty name fields. On Identify and on the plant page, "Choose a photo" / "Add photos" no longer forces the camera open: the phone offers its photos too.
+
+### Adding a plant without a connection
+
+Without a connection, saving the Add a plant form keeps the plant on this device (with a NEW- code) and sends it when the server can be reached. With a photo, the common name may stay empty: a stand-in name ("New plant, date") is used. Once the plant is sent, its first photo is checked by the picture checker and the Offline use page shows what it looks like, with a button to **put the first name on** the plant. The Plants page says how many new plants are waiting.
+
+### Several plants from photos, on a phone
+
+The review screen makes small previews of the photos on the phone itself (about 800 px), so it no longer shows white patches while scrolling. See "Add several plants at once" below for the new per-photo questions and the wide shot that goes on every plant.
+
 ## Photos from your phone, the year in review, and the mirror (from 1.37.0)
 
 ### Share a photo from your phone
@@ -1205,8 +1277,7 @@ Plants can live at more than one home: Round Rock, and Nevada City in California
 2. Choose all the photos at once. A photo of a plant's label or tag helps.
 3. Press **Check these photos**. Each photo is checked by the picture checker on this computer, one at a time ("Checking photo 3 of 12").
 4. **The review screen** shows one box per plant:
-   - Photos taken within 3 minutes of each other (you can change this) that look like the same plant are put together.
-   - **Belongs to** under each photo moves it to another plant, to a new plant of its own, or leaves it out.
+   - From 1.38.0, under each photo you say what it shows: **Same plant as the photo above**, **A different plant**, **Shows all of them** (a wide shot that goes on every plant) or **Leave this photo out**. The photos are in the order they were taken; the first guess is "same plant" when the picture checker sees the same species in both, and the plant boxes follow your answers. (The old "taken within 3 minutes" grouping is gone.)
    - **What the picture checker thinks it is**: the 3 likeliest species, with how likely each is. The names, family, genus, plant type, safety for pets and ID confidence are filled in from the one chosen. Choose another, or **None of these** to type them yourself. Anything you type is kept.
    - **This may be a plant you already have** appears when a plant looks like one in the record. It starts unticked, so it isn't added twice.
 5. Press **Add N plants**. Nothing is added until then. Each plant gets its photos (the first is the main photo), and its page says where its name came from.
@@ -1307,11 +1378,24 @@ How much light a plant gets is its **daily light (DLI)**, in mol/m² a day: the 
 
 - **Light spots.** A spot is one of your lights over some plants: how many of that light side by side, how far it is from the top leaves, hours a day and brightness. Press **Set up a spot**. While you choose, the window shows the light at the leaves and says for every plant whether that is too dim, a bit dim, good, a bit bright or too bright. The setting is shown in words and with a symbol, not by colour alone.
 - **Suggested layout.** For plants that live inside or are coming in and are not in a spot yet. Plants that need the most light are placed first. Each goes under the smallest of your lights that can give it enough, sharing a light with plants whose needs overlap, while there is room under it. Pot sizes count, if they are set. **Set up this spot** opens the suggestion so you can rename it (for example "Living room shelf") or change anything first.
+- **The light spot window (from 1.41.0).**
+  - **Light** is A to Z, grow lights first and the disk light under Room lights. Each light says its type, watts, its most light (PAR, at its closest measured distance) and how many are free.
+  - Under it, a card on the chosen light: type, power and colour, brightness steps, how many are free, its light at the leaves from closest to farthest (PAR), and the daily light that gives: on 12 hours, and anywhere from 8 to 16 hours. The figures stay within the distances the maker (or Claude) measured; a light measured at one distance only says so.
+  - **Best setting for the ticked plants** picks the distance, hours and brightness that put the most ticked plants in their range, and says how many fit.
+  - **Plants in this spot** is one plant a row: its photo, its name (tick the box or the name), its light needs, whether it lives inside or is coming in, the spot it is in now, and **Open P-0xx**, which opens its page in a new tab so the window stays open. The tag on the right says how this light, at this setting, suits it, and changes as you change the setting.
+  - Above the list: **Search plants**, **Show** (all, fits this setting, fits or nearly fits, not in a spot yet, ticked, lives inside, coming inside) and **Sort** (name, code, most light needed first, best fit first). It says how many are showing and how many are ticked.
+  - Under the light at the leaves, how much room the ticked pots take against what the light covers, and for a plant that does not fit, one of your other spots that would suit it.
+- **Add plants (from 1.41.0)** on each spot opens it at the search box, showing the plants not in a spot yet. A plant that does not suit its spot says which of your spots would.
+- **The top of the page (from 1.42.0)** stays in view as you scroll: the title, the short description and a table: **Inside**, **Coming in**, **Assigned light spot**, **No assigned light spot** and the **7-day mol/m² average** outdoors in the open. **Hide the summary** folds the description and table, leaving the title; the app remembers which you chose. On a phone it scrolls with the page.
+- **Add a light** sits by the Your lights title and **Set up a spot** by the Your light spots title (1.42.0; the "This winter" box is gone, its numbers are in the table).
+- **Your light spots (from 1.42.0)** fold one by one. Shut, each still shows its name, where it is, its mol/m² per day and how many plants (and how many are not in their range). Open it for the light, the setting and its plants, two to a row on a wide screen (one on a phone), each with its code and its range per day ("6–12 mol/m² per day") on lines of their own. **Open every spot** and **Close every spot** are above them; the app remembers which you left open.
+- **Rooms and shelves (from 1.42.0):** each room's title has **New Shelf**, **Rename** and **Remove room**; each shelf has its own **Rename** and **Remove**, and removing a shelf (even the last one) leaves the room. **New Room** at the bottom, and New Shelf, open the **Build-A-Room** window. After a change the page stays where you were.
+- **Set up all suggested spots (from 1.41.0)** sets up the whole suggested layout in one go, named "Bright light 1" and so on. Rename, move or change each one afterwards.
 - **No light left for these** lists the plants your lights cannot cover, with the reason.
 - **Easing them in.** Under a spot, "Easing them in from outdoor light" gives a first and second week brighter and longer than the spot's own setting, so plants used to the sun do not drop their leaves all at once.
 - **Timers.** Each spot says whether to use the light's own timer or a plug-in outlet timer. Some lights forget their timer after a power cut.
 - **Your lights.** Press **Change this light** to note where it is (for a bulb, the lamp or socket it screws into), correct how many you have, or fix its figures. **Add a light** adds one you buy later. Type its figures as distance and PAR, for example "12 in 719, 24 in 234".
-- **Plant pages** show the plant's spot, or what the suggested layout gives it, under Sunlight.
+- **Plant pages** show the plant's spot, or what the suggested layout gives it, under Sunlight. From 1.41.0 a plant that lives inside or is coming in and is not in a spot has **Set up the suggested spot**, **Add it to one of your spots** (each spot with how its light suits this plant) and **Set up a new spot for it**.
 - **Rooms and shelves (from 1.13.1).** The rooms, shelves and tables where plants go inside. Yours are listed already: the Downstairs Living Room (Tall Black Shelf, Tall Brown Shelf, Short Brown Shelf, Large Brown Hutch, Side Table), My Bedroom (Shelves), the Garage and the Upstairs Living Room. Press **Add a room or shelf** to add more, for example each new bedroom shelf, and choose one under **Where** when you set up a light spot.
 - **Manufacturer model (from 1.13.1).** Each light has a field for the model number on its box or label. Fill it in with **Change this light**. From 1.27.2, the Barrina standing light, the SANSI 80 W, 30 W and 10 W bulbs and the SANSI pot clip lights have theirs filled in from your label photos.
 

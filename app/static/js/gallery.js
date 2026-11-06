@@ -129,24 +129,25 @@ async function viewGallery(qs) {
   let todoN = 0, fcN = 0;
   await Promise.all([api('GET', '/api/to-photograph').then(t => { todoN = t.filter(x => !x.done).length; }).catch(() => {}),
     api('GET', '/api/for-claude?range=last').then(d => { fcN = d.counts.answers; }).catch(() => {})]);
+  const pend = (await offOps()).filter(o => o.url === '/api/plants' && o.method === 'POST' && !o.failed);   // 1.38.0: plants added without a connection
   return {
     title: '',
-    html: html`<div class="hero"><div><h1 id="g-title">${G.status === 'archived' ? 'Archived plants' : 'Outdoor plants'}</h1>
-      <p class="muted">${META.counts.plants} plants and ${META.counts.photos} photos. Weather for ${placeName()}. Each plant has its own page, version number and change log.</p></div>
+    html: html`${pend.length ? html`<p class="notice off-note noprint" role="note"><strong>${pend.length} new plant${pend.length === 1 ? '' : 's'} waiting to be sent:</strong> ${pend.map(o => (o.body.fields || {}).common_name || o.temp).join(', ')}. ${pend.length === 1 ? 'It gets' : 'They get'} a page here once the plant server can be reached. <a href="#/offline">Offline page</a></p>` : ''}<div class="hero"><div><h1 id="g-title">${G.status === 'archived' ? 'Archived plants' : 'Outdoor plants'}</h1>
+      <p class="muted">${META.counts.plants} plants, ${META.counts.photos} photos. Weather for ${placeName()}.</p></div>
       <a class="btn" href="#/new">Add a plant</a></div>
-    <div class="needs-bar" role="group" aria-label="What Claude needs from you">
-      <button type="button" class="btn ${G.needs ? '' : 'ghost'}" data-act="needs" aria-pressed="${String(G.needs)}">${G.needs ? 'Showing plants that need something from you' : 'Show plants that need something from you'} (${needN})</button>
-      <span class="hint">Questions, checks, photos and ID details I am waiting for. ${todoN ? html`Plus <a href="#/photos">${todoN} things to photograph</a> that are not in the database yet.` : ''}</span>
-      <button type="button" class="btn ghost" data-act="forclaude"><span>Copy my answers for Claude${fcN ? html`<span class="fc-n"> (${fcN} new)</span>` : ''}</span></button></div>
+    <div class="needs-bar row" role="group" aria-label="What Claude needs from you">
+      <button type="button" class="btn small ${G.needs ? '' : 'ghost'}" data-act="needs" aria-pressed="${String(G.needs)}" title="Questions, checks, photos and ID details Claude is waiting for">${G.needs ? 'Showing plants that need something from you' : 'Plants that need something from you'} (${needN})</button>
+      <button type="button" class="btn small ghost" data-act="forclaude"><span>Copy my answers for Claude${fcN ? html`<span class="fc-n"> (${fcN} new)</span>` : ''}</span></button>
+      ${todoN ? html`<a class="btn small ghost" href="#/photos">${todoN} to photograph</a>` : ''}</div>
     <div class="ledger" role="group" aria-label="Filter by winter plan">${ledger()}</div>
-    <div class="filters">
+    <div class="filters filters-main">
       <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
-      <label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
-      ${homeFilter()}${siteFilter()}${groupFilter()}${statusFilter()}
+      ${homeFilter()}${siteFilter()}
       <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
-      <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70% (${lowN})</label>
     </div>
-    ${placeChip()}${moreFilters()}
+    ${placeChip()}${moreFilters(html`<label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
+      ${groupFilter()}${statusFilter()}
+      <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70% (${lowN})</label>`, (G.health ? 1 : 0) + (G.group ? 1 : 0) + (G.status !== 'active' ? 1 : 0) + (G.low ? 1 : 0))}
     <p id="count" class="muted" aria-live="polite"></p>
     <div class="water-all noprint"><button class="btn ghost" type="button" data-act="waterall" id="wa-btn">Water all</button>
       <span class="hint">Marks every plant shown (with the filters above) as watered today. Plants already watered today are skipped.</span></div>
@@ -185,6 +186,7 @@ const MORE = [
 const moreOpts = d => typeof d.opts === 'function' ? d.opts() : d.opts;
 const moreOn = () => MORE_KEYS.filter(k => G[k]).length;
 let MOREOPEN = false, CAREDUE = null;
+try { MOREOPEN = localStorage.getItem('plantdb.morefilters') === '1'; } catch (e) { /* this visit only */ }   // 1.39.1: the fold remembers whether you left it open
 function lightBand(p) { const d = p.dli_low; return d == null ? '' : d < 6 ? 'low' : d < 12 ? 'indirect' : d < 25 ? 'sun' : 'full'; }
 const PET_KEY = { 'Toxic to pets': 'toxic', 'Mildly toxic to pets': 'mild', 'Not known to be toxic': 'notknown', 'Safe for pets (ASPCA)': 'safe' };
 function hereZone() { const Z = META && META.zone; return !Z ? null : Z.zone ? zoneNum(Z.zone) : zoneNum(String(Z.map_zone || '').split(' ')[0]); }
@@ -216,11 +218,16 @@ function moreOk(p) {
 function moreSelects() {
   return html`${MORE.map(d => html`<label>${d.label}<select data-f="more" data-key="${d.key}"><option value="">Any</option>${moreOpts(d).map(([v, l]) => html`<option value="${v}" ${G[d.key] === v ? raw('selected') : ''}>${l}</option>`)}</select></label>`)}`;
 }
-function moreFilters() {
-  const n = moreOn();
+// 1.39.1: list pages keep one row of controls (search, the one or two that matter most, sort) and fold the rest, so the content
+// comes first on the screen (Ethan, November 2026). The fold opens by itself while any of its filters is on; your choice is remembered for the visit.
+function filterFold(inner, n, hint) {
   return html`<details class="more-f" id="more-f" ${MOREOPEN || n ? raw('open') : ''}><summary>More filters${n ? ` (${n} on)` : ''}</summary>
-    <div class="filters">${moreSelects()}</div>
-    <p class="hint">Light needs come from each plant's daily light range. "Winter here" compares the plant's coldest zone with yours. Care today follows the Today page.</p></details>`;
+    <div class="filters">${inner}</div>${hint ? html`<p class="hint">${hint}</p>` : ''}</details>`;
+}
+const MORE_HINT = 'Light needs come from each plant\'s daily light range. "Winter here" compares the plant\'s coldest zone with yours. Care today follows the Today page.';
+function moreFilters(extra, extraOn) {        // extra: more controls that go in the fold before the light/pets/winter/care ones
+  const n = moreOn() + (extraOn || 0);
+  return filterFold(html`${extra || ''}${moreSelects()}`, n, MORE_HINT);
 }
 function statusFilter() {
   return html`<label>Show<select data-f="status">${Object.entries(STATUS_WORD).map(([k, v]) => html`<option value="${k}" ${G.status === k ? raw('selected') : ''}>${v}</option>`)}</select></label>`;

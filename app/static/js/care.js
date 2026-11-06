@@ -28,7 +28,7 @@ function careQuick(p) {
       <button class="btn" type="button" data-act="care" data-kind="water" data-code="${p.code}" data-name="${p.common_name}">Watered today</button>
       <button class="btn ghost" type="button" data-act="care" data-kind="check" data-code="${p.code}" data-name="${p.common_name}">Checked: still moist</button>
       <button class="btn ghost" type="button" data-act="fertlog" data-code="${p.code}">Log feeding</button>
-      <label class="btn ghost quick-photo">Add a photo<input type="file" accept="image/*" capture="environment" data-act="addphotos" class="sr"></label>
+      <label class="btn ghost quick-photo">Add photos<input type="file" accept="image/*" multiple data-act="addphotos" class="sr"></label>
       <button class="btn ghost" type="button" data-act="careother" data-code="${p.code}" data-name="${p.common_name}">Log other care</button>
     </div>
     <p class="hint" id="water-done-note" hidden>Already watered today, so "Watered today" is off until tomorrow. To take it back, use Undo in the message, or Remove in the care log.</p></div>`;
@@ -50,7 +50,7 @@ async function loadCarePlant() {
   box.innerHTML = rend(html`<div class="verdict-box v-${w && w.state === 'due' ? 'due' : 'wait'}" role="status"><h3>Watering</h3><p>${w ? waterWords(w) : ''}</p>
       <p class="hint">Change the gap with "Check for water every (days)" in Edit this page. Rain of ${W.rain_counts_in} in or more counts as a watering for plants whose Location is Outdoors.</p></div>
     <h3>Care log</h3>${log.length ? html`<ul class="care-log">${log.map(e => html`<li><strong>${CARE_WORD[e.kind] || e.kind}</strong> ${relDay(e.done_on)}${e.note ? ': ' + e.note : ''} <span class="muted">(${e.created_by})</span>
-      <button class="btn small ghost noprint" type="button" data-act="caredel" data-id="${e.id}" data-what="${(CARE_WORD[e.kind] || e.kind) + ' ' + relDay(e.done_on)}" aria-label="Remove: ${(CARE_WORD[e.kind] || e.kind)} ${relDay(e.done_on)}">Remove</button></li>`)}</ul>`
+      ${e.pending ? html`<span class="muted">(not sent yet)</span>` : html`<button class="btn small ghost noprint" type="button" data-act="caredel" data-id="${e.id}" data-what="${(CARE_WORD[e.kind] || e.kind) + ' ' + relDay(e.done_on)}" aria-label="Remove: ${(CARE_WORD[e.kind] || e.kind)} ${relDay(e.done_on)}">Remove</button>`}</li>`)}</ul>`
       : html`<p class="muted">Nothing logged yet. Use the buttons near the top of the page.</p>`}`);
 }
 async function careDialog(code, name) {
@@ -141,27 +141,53 @@ document.addEventListener('keydown', e => {
 // Ten ways to keep outdoor pests out of the house. The server rates each one for each plant (from its leaf type, pot
 // size, the pests found, its health and the weather); this draws the plant page section, the Coming inside page and
 // the Today page jobs, and logs each step to the care log as a "prep_" entry.
-const PREP_CARE = { prep_inspect: 'Inspected for pests', prep_potclean: 'Cleaned the pot and saucer', prep_rinse: 'Rinsed with water', prep_wipe: 'Wiped the leaves',
+const PREP_CARE = { prep_start: 'Started the move-inside checklist', prep_inspect: 'Inspected for pests', prep_potclean: 'Cleaned the pot and saucer', prep_rinse: 'Rinsed with water', prep_wipe: 'Wiped the leaves',
   prep_soap: 'Sprayed insecticidal soap', prep_oil: 'Sprayed horticultural oil', prep_alcohol: 'Dabbed pests with rubbing alcohol', prep_soak: 'Soaked the pot',
   prep_topsoil: 'Refreshed the top of the soil', prep_repot: 'Repotted in fresh soil' };
 Object.assign(CARE_WORD, PREP_CARE);          // the care log and "Log other care" know these steps too
 const PR_SIGN = { 'Best': '★', 'Good': '✓', 'Use with care': '!', 'Not needed': '–', 'Not for this plant': '✕' };
 const prBadge = r => html`<span class="pr-badge pr-${r.toLowerCase().replace(/\s+/g, '-')}"><span aria-hidden="true">${PR_SIGN[r] || ''}</span> ${r}</span>`;
-const PREP = { data: null };
-function prepMethodItem(m, n, code) {
-  return html`<li class="pm" id="pm-${m.key}"><div class="pm-head"><h4 class="pm-title"><span class="pm-n">${n}.</span> ${m.title}</h4>${prBadge(m.rating)}</div>
-    <p class="pm-why">${m.reason}</p>
-    ${m.done.length ? html`<p class="pm-done"><strong>Done ${m.done.map(relDay).join(' and ')}.</strong>${m.next_due ? html` Round ${m.done.length + 1} is due ${relDay(m.next_due)}.` : ''}</p>` : ''}
-    ${m.steps ? html`<details class="pm-steps"><summary>How to do it</summary><ol>${m.steps.map(s => html`<li>${s}</li>`)}</ol></details>` : ''}
-    <p class="row pm-acts"><button class="btn small ${m.rank >= 3 && !m.complete ? '' : 'ghost'}" type="button" data-act="prepdone" data-code="${code}" data-k="${m.key}" aria-label="${m.title}: done today">Done today</button>
-      ${m.done.length ? html`<button class="btn small ghost" type="button" data-act="prepundo" data-code="${code}" data-k="${m.key}" aria-label="${m.title}: undo the last one">Undo the last one</button>` : ''}</p></li>`;
+const PREP = { data: null, list: null, open: new Set() };
+// 1.40.1: Start the checklist beside a plant's status. 1.41.1: the steps are a checklist of tick boxes instead of one "next step"
+// button, on the plant page and inside each plant's fold on the Coming inside page. Every method is listed in order; the ones
+// rated Not needed or Not for this plant are marked "Not recommended" but can still be ticked.
+function prepActs(D, where) {
+  const nm = D.name || D.common_name || D.code, b = [];
+  if (!D.started && ['todo', 'apart', 'settled'].includes(D.status))
+    b.push(html`<button class="btn small ${D.status === 'todo' ? '' : 'ghost'}" type="button" data-act="prepstart" data-code="${D.code}" aria-label="${nm}: start the checklist">Start the checklist</button>`);
+  if (D.started && !D.done_count)
+    b.push(html`<button class="btn small ghost" type="button" data-act="prepundo" data-code="${D.code}" data-k="start" data-where="${where}" aria-label="${nm}: undo the start">Undo the start</button>`);
+  return b;
+}
+function prepFocus(el, code) {        // where focus goes after a prep button redraws the page
+  if (el.closest('.pr-top')) return '#prep-box .pr-top button';
+  const item = el.closest('li.mi-item'); if (item && item.id) return `#${item.id} input[data-act=preptick]`;
+  return `details.mi-fold[data-code="${code}"] summary`;
+}
+const prepRec = m => m.rank >= 2;          // Best, Good and Use with care; Not needed and Not for this plant are not recommended
+function prepChecklist(D, where) {
+  const nm = D.name || D.common_name || D.code;
+  return html`<ol class="mi-list">${D.methods.map((m, i) => {
+    const iid = where === 'pg' ? `pm-${m.key}` : `mi-${D.code}-${m.key}`, cid = iid + '-tick', done = m.done.length > 0, rec = prepRec(m);
+    return html`<li class="mi-item pm${rec ? '' : ' mi-not'}${done ? ' mi-done' : ''}" id="${iid}">
+      <div class="mi-head"><input type="checkbox" id="${cid}" data-act="preptick" data-code="${D.code}" data-k="${m.key}" ${done ? raw('checked') : ''}
+          aria-describedby="${iid}-tag">
+        <label for="${cid}" class="mi-title"><span class="pm-n">${i + 1}.</span> ${m.title}</label>
+        <span id="${iid}-tag">${rec ? prBadge(m.rating) : html`<span class="pr-badge pr-not-rec"><span aria-hidden="true">⊘</span> Not recommended: ${m.rating.toLowerCase()}</span>`}</span></div>
+      <div class="mi-body">
+        ${done ? html`<p class="pm-done"><strong>Done ${m.done.map(relDay).join(' and ')}.</strong>${m.next_due ? html` Round ${m.done.length + 1} is due ${relDay(m.next_due)}.` : ''}</p>` : ''}
+        <p class="pm-why">${m.reason}</p>
+        ${done && !m.complete ? html`<p class="row pm-acts"><button class="btn small" type="button" data-act="prepdone" data-code="${D.code}" data-k="${m.key}" aria-label="${nm}: ${m.title.toLowerCase()}, round ${m.done.length + 1} done today">Round ${m.done.length + 1} done today</button></p>` : ''}
+        ${m.steps && m.steps.length ? html`<details class="pm-steps"><summary>How to do it</summary><ol>${m.steps.map(x => html`<li>${x}</li>`)}</ol></details>` : ''}</div></li>`; })}</ol>`;
 }
 function prepRender() {
   const box = document.getElementById('prep-box'), D = PREP.data; if (!box || !D || box.dataset.code !== D.code) return;
-  const o = D.options, main = D.methods.filter(m => m.rank >= 2), rest = D.methods.filter(m => m.rank < 2), num = m => D.methods.indexOf(m) + 1;
+  const o = D.options, nrec = D.methods.filter(prepRec).length;
   box.innerHTML = rend(html`
     ${D.winter_plan !== 'Move indoors' ? html`<p class="hint">Its winter plan is ${D.winter_plan}, so it usually stays outside. If you do bring it in, this is how.</p>` : ''}
-    <div class="verdict-box pr-status" role="status"><p><strong>${D.status_word}.</strong> ${D.next}</p></div>
+    <div class="verdict-box pr-status" role="status"><p><strong>${D.status_word}.</strong> ${D.next}</p>
+      ${D.status === 'settled' && !D.started ? html`<p class="hint">Start the checklist if it is new from a store, or came in without a check.</p>` : ''}</div>
+    <p class="row pr-top noprint">${prepActs(D, 'top')}<button class="btn small ghost" type="button" data-act="prepjump">Go to the checklist</button></p>
     <fieldset class="pr-traits"><legend>About this plant</legend>
       <p class="hint">These decide which methods suit it. Claude filled in the leaf type from the photos; change anything that is wrong.</p>
       <div class="field-grid">
@@ -175,10 +201,9 @@ function prepRender() {
       ${D.watch.length ? html`<details class="pr-watch"><summary>What this plant often gets (${D.watch.length})</summary><ul>${D.watch.map(x => html`<li>${x}</li>`)}</ul></details>` : ''}
       </fieldset>
     ${D.best.length ? html`<p><strong>Best for this plant:</strong> ${D.best.join(', ')}.</p>` : ''}
-    <h3>Methods, in the order to do them</h3>
-    <ul class="pm-list">${main.map(m => prepMethodItem(m, num(m), D.code))}</ul>
-    ${rest.length ? html`<details class="pm-rest"><summary>${rest.length} more ${rest.length === 1 ? 'method is' : 'methods are'} not needed or not suitable for this plant</summary>
-      <ul class="pm-list">${rest.map(m => prepMethodItem(m, num(m), D.code))}</ul></details>` : ''}
+    <h3 id="pm-head" tabindex="-1">The checklist, in the order to do it</h3>
+    <p class="hint">Tick each step when you have done it; untick it to take back the last time. ${nrec} of the ${D.methods.length} are recommended for this plant. The others are marked Not recommended, and you can still tick them.</p>
+    ${prepChecklist(D, 'pg')}
     <p class="hint">After it comes inside, keep it apart from your other houseplants for 3 weeks and check it at every watering. <a href="#/inside">See every plant that is coming inside</a>.</p>`);
 }
 async function loadPrep(box) {
@@ -209,16 +234,23 @@ async function prepSaveTraits(body, focusSel, said) {
     const f = document.querySelector(focusSel); if (f) f.focus({ preventScroll: true });
   });
 }
-function prepWords(p) {
-  const t = [p.leaf_type || 'leaf type not set', p.pot_size ? p.pot_size.split(':')[0].toLowerCase() + ' pot' : 'pot size not set',
-    p.pests_found.length ? 'found: ' + p.pests_found.join(', ').toLowerCase() : ''].filter(Boolean).join('; ');
-  return html`${p.next}<br><span class="pr-sub">${t.charAt(0).toUpperCase() + t.slice(1)}. Best: ${p.best.join(', ').toLowerCase()}.</span>`;
-}
 async function viewInside() {
-  const D = await api('GET', '/api/prep');
+  const D = await api('GET', '/api/prep'); PREP.list = D;
+  const steps = Object.fromEntries(D.methods.map(m => [m.key, m.steps]));      // "How to do it" under each step, as on the plant page
+  D.plants.forEach(p => p.methods.forEach(m => { if (!m.steps) m.steps = steps[m.key]; }));
   const c = D.counts, w = D.status_words;
   const groups = ['doing', 'todo', 'ready', 'apart', 'settled'].map(k => [k, D.plants.filter(p => p.status === k)]).filter(g => g[1].length);
-  const open = p => html`<button class="btn small ghost" type="button" data-act="openprep" data-code="${p.code}">Open its plan</button>`;
+  const gHint = { todo: 'Open a plant to see its steps, and tick each one as you do it.',
+    settled: 'Already inside. Start the checklist for any that are new from a store, or came in without a check.' };
+  const fold = p => {
+    const rec = p.methods.filter(prepRec), did = rec.filter(m => m.done.length).length, other = p.methods.filter(m => !prepRec(m) && m.done.length).length;
+    return html`<li class="mi-plant"><details class="mi-fold" data-code="${p.code}" ${PREP.open.has(p.code) ? raw('open') : ''}>
+      <summary>${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy" width="64" height="64">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}
+        <span class="mi-sum-txt"><span><strong>${p.name}</strong> <span class="muted">${p.code}</span></span><span>${p.next}</span>
+          <span class="pr-sub">${did} of ${rec.length} recommended steps done${other ? `, and ${other} other` : ''}.${p.pests_found.length ? ' Found: ' + p.pests_found.join(', ').toLowerCase() + '.' : ''}</span></span></summary>
+      <div class="mi-in">${prepChecklist(p, 'in')}
+        <p class="row noprint">${prepActs(p, 'row')}<button class="btn small ghost" type="button" data-act="openprep" data-code="${p.code}" aria-label="${p.name}: open its plan">Open its plan</button></p></div></details></li>`;
+  };
   const say = ['todo', 'doing', 'ready', 'apart', 'settled'].filter(k => c[k]).map(k => `${c[k]} ${w[k].toLowerCase()}`).join(', ');
   return {
     title: 'Getting plants ready to come inside',
@@ -226,13 +258,14 @@ async function viewInside() {
     <p class="muted">Ten ways to keep ants, mites and other outdoor pests out of the house, and where each plant that is coming inside is up to. Each plant's page rates the methods for that plant, with the steps.</p>
     <div class="verdict-box" role="status"><p><strong>${D.plants.length} ${D.plants.length === 1 ? 'plant' : 'plants'} coming inside:</strong> ${say || 'none yet'}.</p>${D.weather.spray ? html`<p>${D.weather.spray}</p>` : ''}</div>
     <section class="blk" id="in-order"><h2>The order of work</h2><ol class="steps">
-      <li>Outdoors, a week or two before the move, inspect each plant and tick what you find on its page.</li>
+      <li>Outdoors, a week or two before the move, open each plant below and tick its steps as you do them. Inspect it first, and tick the pests you find on its page.</li>
       <li>Clean its pot, then do the methods rated Best for it.</li>
       <li>If you found pests, spray again 5 to 7 days later. The Today page reminds you.</li>
       <li>Bring it inside and change its Location to Indoors (or press Moved indoors).</li>
       <li>Keep it apart from your other houseplants for ${D.keep_apart_days} days, with yellow sticky traps nearby, and check it at every watering.</li></ol></section>
-    ${groups.map(([k, list]) => html`<section class="blk" id="in-${k}"><h2>${w[k]} (${list.length})</h2>
-      <ul class="jobs">${list.map(p => jobRow({ code: p.code, common_name: p.name, photo: p.photo }, prepWords(p), open(p)))}</ul></section>`)}
+    ${D.plants.length ? html`<p class="row noprint"><button class="btn small ghost" type="button" data-act="prepfold" data-open="1">Open every plant</button><button class="btn small ghost" type="button" data-act="prepfold" data-open="0">Close every plant</button></p>` : ''}
+    ${groups.map(([k, list]) => html`<section class="blk" id="in-${k}"><h2>${w[k]} (${list.length})</h2>${gHint[k] ? html`<p class="hint">${gHint[k]}</p>` : ''}
+      <ul class="mi-plants">${list.map(fold)}</ul></section>`)}
     <section class="blk" id="in-methods"><h2>How to do each method</h2>
       <p class="hint">Not every method suits every plant: open a plant's plan to see which are best for it.</p>
       ${D.methods.map((m, i) => html`<details class="pm-steps pm-ref"><summary>${i + 1}. ${m.title}</summary><ol>${m.steps.map(s => html`<li>${s}</li>`)}</ol></details>`)}</section>
@@ -245,6 +278,7 @@ async function viewInside() {
         <li>Predatory mites, sold online, eat spider mites indoors if they come back.</li></ul></section>`,
   };
 }
+document.addEventListener('toggle', e => { const d = e.target; if (d.classList && d.classList.contains('mi-fold')) { if (d.open) PREP.open.add(d.dataset.code); else PREP.open.delete(d.dataset.code); } }, true);
 function todayPrep(PR, t) {
   const again = [], free = [];
   PR.plants.forEach(p => { p.methods.forEach(m => { if (m.next_due && m.next_due <= t) again.push({ p, m }); }); if (p.status === 'apart' && p.keep_until && p.keep_until <= t) free.push(p); });

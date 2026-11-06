@@ -14,6 +14,10 @@ What it does
 - POST /identify with a picture returns the closest plants in the records, with a confidence worked out from how far ahead
   the best match is, and the likeliest species from the chosen list (Texas, US, plants with a common name, or worldwide).
 - GET /names?q= searches the species list for the library page.
+- 1.39.0: a picture is looked at three ways (as is, letterboxed whole, and its middle), several pictures of one plant are
+  averaged (fields image + images), and the names are weighted by a prior: species and genera already named in the record,
+  houseplant genera, the state's plants, and the record's own photos that look like the picture (a new pot of a plant you
+  have). Ten names come back, each with the reasons ('basis') for its lift. VISION_PRIOR=0 turns the prior off.
 Nothing leaves the computer except the downloads above."""
 import csv, html, io, json, os, re, sqlite3, threading, time, urllib.request
 import numpy as np
@@ -136,19 +140,43 @@ def load_all():
         print('[vision] ERROR', repr(e), flush=True)
 
 # ---------------------------------------------------------------- your photos
-def embed(img):
-    from PIL import ImageOps
+def embed_one(img):
     t = M['torch']
     with t.no_grad():
-        x = M['pre'](ImageOps.exif_transpose(img).convert('RGB')).unsqueeze(0)
+        x = M['pre'](img).unsqueeze(0)
         e = M['model'].encode_image(x)[0].float().numpy()
+    return e / np.linalg.norm(e)
+
+def views_of(img):
+    """1.39.0: three looks at one picture: the model's own (short side resized, the middle cut square), the whole picture
+    letterboxed into a square (nothing cut off a wide shot), and the middle 60% (the plant, when it sits in the middle
+    of a busy picture). Their fingerprints are averaged."""
+    from PIL import Image
+    w, h = img.size
+    out = [img]
+    if abs(w - h) > min(w, h) * 0.1:
+        side = max(w, h); box = Image.new('RGB', (side, side), (128, 128, 128)); box.paste(img, ((side - w) // 2, (side - h) // 2)); out.append(box)
+    cw, ch = int(w * 0.6), int(h * 0.6)
+    out.append(img.crop(((w - cw) // 2, (h - ch) // 2, (w - cw) // 2 + cw, (h - ch) // 2 + ch)))
+    return out
+
+def embed(img, views=False):
+    from PIL import ImageOps
+    img = ImageOps.exif_transpose(img).convert('RGB')
+    if not views: return embed_one(img)
+    e = np.mean([embed_one(v) for v in views_of(img)], axis=0)
+    return e / np.linalg.norm(e)
+
+def embed_many(imgs):
+    """Several pictures of one plant: the average of their fingerprints (each with its views)."""
+    e = np.mean([embed(im, views=True) for im in imgs], axis=0)
     return e / np.linalg.norm(e)
 
 def photo_rows():
     db = os.path.join(DATA, 'plants.db')
     c = sqlite3.connect(f'file:{db}?mode=ro', uri=True, timeout=10)
     try:
-        return c.execute("SELECT ph.file, p.code FROM photos ph JOIN plants p ON p.id=ph.plant_id WHERE p.status='active' ORDER BY ph.id").fetchall()
+        return c.execute("SELECT ph.file, p.code, COALESCE(p.scientific_name, '') FROM photos ph JOIN plants p ON p.id=ph.plant_id WHERE p.status='active' ORDER BY ph.id").fetchall()
     finally:
         c.close()
 
@@ -160,7 +188,7 @@ def index_photos():
         z = np.load(path, allow_pickle=False)
         known = {f: e for f, e in zip(z['files'].tolist(), z['emb'])}
     rows = photo_rows()
-    new = [f for f, _ in rows if f not in known and os.path.exists(os.path.join(DATA, 'photos', f))]
+    new = [f for f, _, _ in rows if f not in known and os.path.exists(os.path.join(DATA, 'photos', f))]
     def save():
         if known: np.savez(path + '.tmp.npz', files=np.array(list(known)), emb=np.stack(list(known.values()))); os.replace(path + '.tmp.npz', path)
     for i, f in enumerate(new):
@@ -168,12 +196,37 @@ def index_photos():
         except Exception as e: print('[vision] skipped', f, e, flush=True)
         if S['state'] != 'ready': say('Fingerprinting your photos', i + 1, len(new))
         if i % 25 == 24: save()                       # so a restart part way through does not start over
-    files = [f for f, _ in rows if f in known]
+    files = [f for f, _, _ in rows if f in known]
     if new: save()
     with LOCK:
-        PHOTOS.update(files=files, codes=[c for f, c in rows if f in known], emb=np.stack([known[f] for f in files]) if files else None,
+        PHOTOS.update(files=files, codes=[c for f, c, _ in rows if f in known], emb=np.stack([known[f] for f in files]) if files else None,
+                      sp=[species_index(n) for f, _, n in rows if f in known],          # 1.39.0: which species each photo is a confirmed example of
                       mtime=os.path.getmtime(os.path.join(DATA, 'plants.db')))
+        own_names()
     return len(new)
+
+def species_index(name):
+    """The species list row for a plant's scientific name ('Epipremnum aureum', ignoring cultivar and author), or -1."""
+    m = re.match(r"^\s*([A-Z][a-z]+)\s+([a-z][a-z\-]+)", name or '')
+    if not m or m.group(2) in ('sp', 'spp', 'x', 'hybrid'): return -1
+    return NAMES['by_sp'].get(m.group(1) + ' ' + m.group(2), -1) if NAMES else -1
+
+def own_names():
+    """1.39.0: the species and genera already in the record (named plants), for the prior on what a new picture is."""
+    sp = {i for i in PHOTOS.get('sp', []) if i >= 0}
+    db = os.path.join(DATA, 'plants.db')
+    try:
+        c = sqlite3.connect(f'file:{db}?mode=ro', uri=True, timeout=10)
+        try: names = [r[0] for r in c.execute("SELECT scientific_name FROM plants WHERE status='active'")]
+        finally: c.close()
+    except Exception: names = []
+    gen = set()
+    for n in names:
+        i = species_index(n)
+        if i >= 0: sp.add(i)
+        m = re.match(r"^\s*([A-Z][a-z]+)", n or '')
+        if m: gen.add(m.group(1))
+    PHOTOS['own_sp'] = sp; PHOTOS['own_gen'] = gen
 
 def watch_photos():
     while True:
@@ -189,6 +242,32 @@ CONF = {'bioclip-2.5-vith14': (0.21, 10.43, 3.2), 'bioclip-2': (-0.21, 17.29, 3.
 # 2.5 scored under 0.65 for 28% of them, and only 2% of right answers scored that low (BioCLIP 2 scores higher overall).
 NOVEL = {'bioclip-2.5-vith14': 0.65, 'bioclip-2': 0.75}
 
+# 1.39.0: the prior. Added to a name's score (BioCLIP logits: the scale times the cosine, so a difference of 1 is about 0.01 in
+# cosine, the gap between close candidates). 'own_sp': a species already named in the record; 'own_gen': its genus is;
+# 'house': a genus grown as a houseplant; 'state': grows in the place's state (only for a state list); 'looks': one of the
+# record's photos of a named plant looks like this picture (scaled by how close, up to the full value).
+PRIOR = {'own_sp': 1.5, 'own_gen': 1.0, 'house': 0.7, 'state': 0.3, 'looks': 3.0}
+PRIOR_ON = os.environ.get('VISION_PRIOR', '1') != '0'
+HOUSE = set("""Adiantum Aechmea Aeonium Agave Aglaonema Alocasia Aloe Alpinia Anthurium Aphelandra Araucaria Ardisia Asparagus Aspidistra Asplenium
+Begonia Beaucarnea Billbergia Brassaia Bromelia Caladium Calathea Calliandra Carex Ceropegia Chamaedorea Chlorophytum Chrysalidocarpus Cissus Citrus
+Clivia Codiaeum Coffea Coleus Colocasia Cordyline Crassula Cryptanthus Ctenanthe Curcuma Cycas Cyclamen Cyperus Davallia Dieffenbachia Dionaea
+Dischidia Dracaena Dypsis Echeveria Epipremnum Episcia Euphorbia Fatsia Ficus Fittonia Gardenia Gasteria Goeppertia Guzmania Gynura Haworthia
+Haworthiopsis Hedera Hibiscus Hippeastrum Howea Hoya Hypoestes Impatiens Jasminum Kalanchoe Lithops Livistona Mammillaria Maranta Medinilla
+Monstera Musa Nematanthus Neoregelia Nephrolepis Nepenthes Oxalis Pachira Pachypodium Pandanus Pelargonium Peperomia Philodendron Phalaenopsis
+Phlebodium Phoenix Pilea Platycerium Plectranthus Polyscias Portulacaria Pothos Radermachera Raphidophora Rhaphidophora Rhipsalis Rhododendron
+Saintpaulia Sansevieria Sarracenia Saxifraga Schefflera Schlumbergera Scindapsus Sedum Selaginella Sempervivum Senecio Soleirolia Spathiphyllum
+Stephanotis Strelitzia Streptocarpus Stromanthe Syngonium Tillandsia Tradescantia Vriesea Yucca Zamia Zamioculcas Zantedeschia Zingiber
+Opuntia Cereus Echinocactia Echinocereus Ferocactus Gymnocalycium Astrophytum Parodia Rebutia Cylindropuntia Stapelia Huernia Adenium Plumeria
+Dendrobium Cattleya Oncidium Paphiopedilum Vanda Cymbidium Lavandula Rosmarinus Salvia Ocimum Mentha Thymus Origanum Capsicum Solanum Fragaria""".split())
+
+def prior_why(i, scope):
+    why = []
+    if i in PHOTOS.get('own_sp', ()): why.append('own_sp')
+    elif NAMES['rows'][i][0][5] in PHOTOS.get('own_gen', ()): why.append('own_gen')
+    if NAMES['rows'][i][0][5] in HOUSE: why.append('house')
+    if isinstance(scope, str) and scope.startswith('state:') and NAMES['sp'][i] in NAMES['usda'] and scope[6:].replace(' ', '') in NAMES['usda'][NAMES['sp'][i]]: why.append('state')
+    return why
+
 def confidence(score, margin):
     """How often the first choice was right, from tests on Ethan's own photos (October 2026): mostly the margin between
     the best plant and the next, a little the score itself. Rounded, and never shown as certain."""
@@ -200,6 +279,7 @@ def confidence(score, margin):
 @app.get('/status')
 def status():
     return jsonify(S | {'photos': len(PHOTOS['files']), 'species': int(NAMES['masks']['world'].sum()) if NAMES else 0,
+                        'prior': PRIOR_ON, 'named': len(PHOTOS.get('own_sp', ())), 'genera_known': len(PHOTOS.get('own_gen', ())),
                         'fungi': int(NAMES['masks']['fungi'].sum()) if NAMES else 0,
                         'scopes': {k: {'label': v, 'count': int(NAMES['masks'][k].sum()) if NAMES else 0} for k, v in SCOPES.items()}
                                   | ({request.args['state']: {'label': request.args['state'][6:], 'count': int(mask_for(request.args['state']).sum()) if NAMES else 0}}
@@ -210,13 +290,18 @@ def identify():
     if S['state'] == 'off': return jsonify(error=S['step'], status=S), 503
     if S['state'] != 'ready': return jsonify(error='The picture checker is still setting up: ' + S['step'], status=S), 503
     from PIL import Image
-    raw = request.files['image'].read() if 'image' in request.files else request.get_data()
-    if not raw: abort(400, 'Send a picture')
-    try: img = Image.open(io.BytesIO(raw))
-    except Exception: abort(400, 'That is not a picture this can read')
+    raws = [f.read() for f in request.files.getlist('images')] if request.files.getlist('images') else []     # 1.39.0: several pictures of one plant
+    if 'image' in request.files: raws.insert(0, request.files['image'].read())
+    if not raws: raws = [request.get_data()]
+    raws = [r for r in raws if r]
+    if not raws: abort(400, 'Send a picture')
+    imgs = []
+    for raw in raws[:6]:
+        try: imgs.append(Image.open(io.BytesIO(raw)))
+        except Exception: abort(400, 'That is not a picture this can read')
     t0 = time.time()
-    v = embed(img)
-    out = {'model': MODEL, 'matches': [], 'species': []}
+    v = embed_many(imgs) if len(imgs) > 1 else embed(imgs[0], views=request.args.get('views', '1') != '0')
+    out = {'model': MODEL, 'matches': [], 'species': [], 'pictures': len(imgs)}
     with LOCK: P = dict(PHOTOS)
     if P['emb'] is not None and len(P['files']):
         sims = P['emb'] @ v
@@ -235,14 +320,38 @@ def identify():
     mask = mask_for(scope, 'common')
     idx = np.where(mask)[0]
     logits = dot_rows(idx, v) * M['scale']
-    top = np.argsort(-logits)[:50]
-    p = np.exp(logits[top] - logits[top].max()); p /= p.sum()
-    for k in range(5):
-        out['species'].append(species_dict(idx[top[k]]) | {'probability': round(float(p[k]), 3)})
+    top = np.argsort(-logits)[:80]
+    # 1.39.0: what the picture is likely to be, before looking: a species or genus already in the record, a houseplant, a plant
+    # of the place's state; and the species of the record's own photos that look like this one (a new pot of a plant you have).
+    # Each adds to the name's score (log odds); PRIOR_OFF=1 turns it off for tests and comparisons.
+    cand = {int(idx[t]): float(logits[t]) for t in top}
+    basis = {}
+    if PRIOR_ON:
+        looks = {}                                # species index -> best similarity with a photo of a named plant in the record
+        if P['emb'] is not None and len(P['files']) and P.get('sp'):
+            sims = P['emb'] @ v
+            for j in np.argsort(-sims)[:8]:
+                i, sim = P['sp'][j], float(sims[j])
+                if i >= 0 and mask[i] and sim >= NOVEL.get(MODEL, 0.65): looks[i] = max(looks.get(i, 0), sim)
+        for i in looks:
+            if i not in cand: cand[i] = float(dot_rows(np.array([i]), v)[0]) * M['scale']
+        for i in list(cand):
+            why = prior_why(i, scope)
+            if i in looks: why.append('looks')
+            bonus = sum(PRIOR[w] for w in why if w != 'looks')
+            if i in looks: bonus += PRIOR['looks'] * (looks[i] - NOVEL.get(MODEL, 0.65)) / (1 - NOVEL.get(MODEL, 0.65))
+            if why: cand[i] += bonus; basis[i] = why
+    order = sorted(cand, key=lambda i: -cand[i])
+    sc = np.array([cand[i] for i in order]); p = np.exp(sc - sc.max()); p /= p.sum()
+    n_out = max(3, min(40, int(request.args.get('n', 10))))      # 1.40.0: the app asks for more when some names are excluded
+    for k in range(min(n_out, len(order))):
+        i = order[k]
+        out['species'].append(species_dict(i) | {'probability': round(float(p[k]), 3), 'basis': basis.get(i, [])})
     gen = {}                                      # the genus is right more often than the species: add up the top 50
-    for k in range(len(top)):
-        g = NAMES['rows'][idx[top[k]]][0][5]; gen[g] = gen.get(g, 0) + float(p[k])
-    out['genera'] = [{'genus': g, 'probability': round(q, 3)} for g, q in sorted(gen.items(), key=lambda kv: -kv[1])[:3]]
+    for k in range(min(50, len(order))):
+        g = NAMES['rows'][order[k]][0][5]; gen[g] = gen.get(g, 0) + float(p[k])
+    out['genera'] = [{'genus': g, 'probability': round(q, 3)} for g, q in sorted(gen.items(), key=lambda kv: -kv[1])[:5]]
+    out['prior'] = PRIOR_ON
     out['seconds'] = round(time.time() - t0, 2)
     out['scope'] = scope
     return jsonify(out)

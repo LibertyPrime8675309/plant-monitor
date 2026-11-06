@@ -10,9 +10,12 @@ const SHELL_FILES = ['/', '/js/core.js', '/js/gallery.js', '/js/plant.js', '/js/
 const NO_SAVE = /^\/api\/(people|backups|ingest|weather\/job|backups\/job|audit|library\/prefetch|library\/local|offline\/|identify\/settings|calendar\/settings|me$)/;
 const WAIT_MS = 5000;
 let downUntil = 0;                           // after the server fails to answer, use saved copies at once for a while (weak signal)
-const quick = () => !self.navigator.onLine || Date.now() < downUntil;
+const quick = () => Date.now() < downUntil;   // 1.38.0: navigator.onLine is not trusted here: on phones it can stay wrong after a VPN comes back
 const wentDown = () => { downUntil = Date.now() + 30000; };
 async function tryNet(req) {
+  if (req.headers.get('X-Probe')) {          // 1.38.0: the page asking whether the server is back: always ask it, and forget the failures if it answers
+    try { const r = await timeout(fetch(req), 8000); downUntil = 0; return r; } catch (e) { wentDown(); throw e; }
+  }
   if (quick()) { fetch(req).then(() => { downUntil = 0; }, () => {}); throw new Error('offline'); }   // see if it is back, without waiting
   try { const r = await timeout(fetch(req), WAIT_MS); downUntil = 0; return r; } catch (e) { wentDown(); throw e; }
 }
