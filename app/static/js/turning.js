@@ -53,6 +53,12 @@ async function viewTurning() {
   };
 }
 async function tnAfterChange(code) {
+  if (document.getElementById('care-plant')) {          // on a plant's page: just its care part, focus back on the button
+    await loadCarePlant();
+    const b = document.querySelector('#tn-plant button:not([disabled])') || document.querySelector('.quick-btns [data-act=care][data-kind=water]');
+    if (b) b.focus({ preventScroll: true });
+    return;
+  }
   const y = window.scrollY; await route(); window.scrollTo(0, y);
   const f = (code && document.querySelector(`.job[data-code="${code}"] button`)) || document.querySelector('#turn-due .job button, #today-turn .job button') || document.querySelector('main h1');
   if (f) f.focus({ preventScroll: true });
@@ -61,13 +67,13 @@ Object.assign(acts, {
   async turned(el) {
     if (!(await needName())) return;
     const code = el.dataset.code;
-    await guard(async () => { const r = await api('POST', '/api/care', { plant: code, kind: 'turn' }); careUndoToast('Turned: ' + el.dataset.name, r && r.ids, code); await tnAfterChange(); });
+    await guard(async () => { const r = await api('POST', '/api/care', { plant: code, kind: 'turn' }); careUndoToast('Turned: ' + el.dataset.name + offWhen(r), r && r.ids, code); await tnAfterChange(); });
   },
   async turnedall(el) {
     const codes = el.dataset.codes.split(',').filter(Boolean); if (!codes.length) return;
     if (!(await needName())) return;
     if (!(await confirmBox(`Mark ${codes.length} pots as turned today?`, 'Each one gets a "Turned the pot" entry for today in its care log. You can remove any of them on the plant\'s page.', 'Mark as turned'))) return;
-    await guard(async () => { const r = await api('POST', '/api/care', { plants: codes, kind: 'turn' }); careUndoToast(codes.length + ' pots marked as turned', r && r.ids); await tnAfterChange(); });
+    await guard(async () => { const r = await api('POST', '/api/care', { plants: codes, kind: 'turn' }); careUndoToast(codes.length + ' pots marked as turned' + offWhen(r), r && r.ids); await tnAfterChange(); });
   },
   async turnset(el) {
     if (!(await needName())) return;
@@ -99,5 +105,34 @@ Object.assign(changeActs, {
       if (last) last.insertAdjacentHTML('beforebegin', rend(html`<a class="btn small ghost" href="#today-turn" data-act="jumpsec" data-sec="today-turn">Turn (${n})</a>`));
     };
     return V;
+  };
+}
+
+// On a plant's own page (Ethan, November 6): a "Turned today" button beside "Watered today" for a pot on the list, with a line
+// saying when it is due. A plant left out (switched off, or under a light from above) says why, with Remind me. Plants out in
+// the open get nothing. loadCarePlant (care.js) is wrapped rather than edited, so this prototype stays in its own file.
+{
+  const careBase = loadCarePlant;
+  loadCarePlant = async function () {
+    await careBase();
+    if (!CUR) return;
+    const code = CUR.p.code, name = CUR.p.common_name;
+    let T; try { T = await api('GET', '/api/turning'); } catch (e) { return; }      // offline with nothing saved: leave it out
+    if (!CUR || CUR.p.code !== code) return;
+    const btns = document.querySelector('.quick-btns'); if (!btns) return;
+    const old = document.getElementById('tn-plant'); if (old) old.remove();
+    const oldB = document.getElementById('tn-plant-btn'); if (oldB) oldB.remove();
+    const p = T.plants.find(x => x.code === code), out = T.left_out.find(x => x.code === code);
+    const where = btns.parentElement;
+    if (p) {
+      const done = p.last === T.today;
+      const wb = btns.querySelector('[data-act=care][data-kind=water]');
+      (wb || btns.firstElementChild).insertAdjacentHTML('afterend', rend(html`<button class="btn ghost${done ? ' done-today' : ''}" type="button" id="tn-plant-btn" data-act="turned" data-code="${code}" data-name="${name}"
+        aria-describedby="tn-plant" ${done ? raw('disabled') : ''}>${done ? '✓ Turned today' : 'Turned today'}</button>`));
+      where.insertAdjacentHTML('beforeend', rend(html`<p class="hint" id="tn-plant">Turn the pot: ${done ? 'turned today; next turn ' + relDay(p.due_on) + '. To take it back, use Undo in the message, or Remove in the care log.' : tnWords(p)} <a href="#/turning">All pots</a></p>`));
+    } else if (out) {
+      where.insertAdjacentHTML('beforeend', rend(html`<p class="hint" id="tn-plant">Turn the pot: no reminders for this plant. ${out.why}.
+        <button class="btn small ghost" type="button" data-act="turnset" data-code="${code}" data-on="1" aria-label="${'Remind me to turn ' + name}">Remind me</button></p>`));
+    }
   };
 }

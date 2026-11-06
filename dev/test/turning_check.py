@@ -100,7 +100,37 @@ with sync_playwright() as p:
     if btn.count():
         btn.click(); pg.wait_for_selector('dialog[open]')
         check(pg.locator('dialog[open] select[name=kind] option[value=turn]').count() == 1, 'Log other care offers "Turned the pot"')
-        pg.keyboard.press('Escape')
+        pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
+    # Ethan, November 6: "Turned today" on the plant's own page, next to Watered today
+    tb = pg.locator('.quick-btns #tn-plant-btn')
+    order = pg.evaluate("[...document.querySelectorAll('.quick-btns > *')].map(b => b.id || b.dataset.kind || '').slice(0, 2)")
+    check(tb.count() == 1 and order == ['water', 'tn-plant-btn'] and 'Turn the pot:' in pg.inner_text('#tn-plant'), 'a plant on the list has "Turned today" next to Watered today, and a line saying when it is due')
+    if tb.is_disabled():                       # turned already on this run (I turned all ...): take today's turn back first
+        for e in call('GET', f'/api/care?plant={a}'):
+            if e['kind'] == 'turn' and e['done_on'] == t0['today']: call('DELETE', f"/api/care/{e['id']}")
+        pg.reload(); pg.wait_for_timeout(2500)
+    n0 = sum(1 for e in call('GET', f'/api/care?plant={a}') if e['kind'] == 'turn')
+    pg.locator('.quick-btns #tn-plant-btn').click(); pg.wait_for_timeout(1800)
+    check(sum(1 for e in call('GET', f'/api/care?plant={a}') if e['kind'] == 'turn') == n0 + 1 and pg.locator('#tn-plant-btn').is_disabled()
+          and 'Turned today' in pg.inner_text('#tn-plant-btn') and 'Turned:' in pg.inner_text('#toasts'), 'pressing it logs the turn, says so with Undo, and shows it as done')
+    check('Turned the pot' in pg.inner_text('.care-log'), 'the turn shows in the care log on the page')
+    pg.locator('.undo-toast [data-undo=undo]').click(); pg.wait_for_timeout(1800)
+    check(sum(1 for e in call('GET', f'/api/care?plant={a}') if e['kind'] == 'turn') == n0 and not pg.locator('#tn-plant-btn').is_disabled(), 'Undo takes it back and the button is ready again')
+    call('PUT', '/api/turning', {'plant': a, 'on': False}); pg.reload(); pg.wait_for_timeout(2500)
+    check(pg.locator('#tn-plant-btn').count() == 0 and 'Switched off by hand' in pg.inner_text('#tn-plant') and pg.locator('#tn-plant [data-act=turnset]').count() == 1,
+          'a plant left out has no button, but says why, with Remind me')
+    pg.locator('#tn-plant [data-act=turnset]').click(); pg.wait_for_timeout(2000)
+    check(pg.locator('#tn-plant-btn').count() == 1 and any(x['code'] == a for x in T()['plants']), 'Remind me there puts the button back')
+    out_code = next((c for c, p in plants.items() if p['site'] == 'Outdoors'), None)
+    if out_code:
+        pg.goto(BASE + f'/#/plant/{out_code}'); pg.wait_for_timeout(2500)
+        check(pg.locator('#tn-plant-btn').count() == 0 and pg.locator('#tn-plant').count() == 0, f'a plant out in the open ({out_code}) gets nothing about turning')
+    pg.goto(BASE + f'/#/plant/{a}'); pg.wait_for_timeout(2500)
+    pg.evaluate("document.querySelector('.quick').scrollIntoView({block: 'center'})"); pg.wait_for_timeout(200)
+    pg.locator('.quick').screenshot(path=os.path.join(OUT, 'turning-5-plant.png'))
+    pg.evaluate("document.documentElement.dataset.role = 'viewer'")
+    check(pg.locator('#tn-plant-btn:visible').count() == 0, 'people who can only view do not see Turned today')
+    pg.evaluate("document.documentElement.dataset.role = 'owner'")
     # phone, dark and large text
     for name, disp in (('phone-light', {}), ('phone-dark-big', {'theme': 'dark', 'size': '160'})):
         ph = br.new_page(viewport={'width': 390, 'height': 844}, device_scale_factor=2)
