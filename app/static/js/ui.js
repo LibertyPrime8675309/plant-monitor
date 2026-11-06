@@ -114,22 +114,105 @@ const SPEECH = { on: false, el: null, btn: null };
 const canSpeak = () => 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
 const RD_ICON = raw('<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10v4h4l5 4V6L8 10z"/><path d="M16.500 8.500a5 5 0 0 1 0 7M19 6a8.500 8.500 0 0 1 0 12"/></svg>');
 function addReadButtons() {
-  if (!canSpeak()) return;
+  if (!canSpeak()) { foldMeasure(); return; }
   const app = document.getElementById('app');
-  app.querySelectorAll('section.blk > h2, section.needs > h2, section.cond h2').forEach(h => {
-    const sec = h.closest('section'); if (!sec || sec.querySelector(':scope > .rd-btn, :scope > header > .rd-btn')) return;
+  app.querySelectorAll('section.blk > h2, section.blk > header.sec-head > h2, section.needs > h2, section.cond h2').forEach(h => {
+    const sec = h.closest('section'); if (!sec || sec.querySelector(':scope > .rd-btn, :scope > header > .rd-btn, :scope > .sec-tools > .rd-btn, :scope > header > .sec-tools > .rd-btn')) return;
     const name = h.textContent.trim();
     sec.classList.add('has-rd');
-    h.insertAdjacentHTML('afterend', rend(html`<button class="btn ghost small rd-btn noprint" type="button" data-act="readsec" aria-label="Read the ${name} section aloud">${RD_ICON}<span>Read aloud</span></button>`));
+    const b = rend(html`<button class="btn ghost small rd-btn noprint" type="button" data-act="readsec" aria-label="Read the ${name} section aloud">${RD_ICON}<span>Read aloud</span></button>`);
+    const tools = sec.querySelector(':scope > .sec-tools, :scope > header > .sec-tools');      // 1.42.0: beside Show or hide
+    if (tools) tools.insertAdjacentHTML('afterbegin', b); else h.insertAdjacentHTML('afterend', b);
   });
+  foldMeasure();
   const h1 = app.querySelector('h1');
   if (h1 && !app.querySelector('.rd-page')) h1.insertAdjacentHTML('afterend', rend(html`<p class="rd-page noprint"><button class="btn ghost small" type="button" data-act="readpage">${RD_ICON}<span>Read this page aloud</span></button>
     <span class="hint">Shortcut: R. Press Escape to stop.</span></p>`));
 }
+// ---------- 1.42.0: every section on every page can be folded shut, and stays so ----------
+// Each section in the Navigation menu gets a "Hide" / "Show" button beside its title (a section that already folds by its own
+// title, a <details>, is left as it is). What is folded is remembered on this device for that page, by the section's name
+// without its numbers ("Water (37)" and "Water (12)" are the same section); plant pages share one memory.
+const FOLDS = (() => { try { return JSON.parse(localStorage.getItem('plantdb.folds') || '{}'); } catch (e) { return {}; } })();
+const foldPage = () => { const h = (location.hash || '#/').split('?')[0]; return /^#\/plant\//.test(h) ? '#/plant' : h; };
+const foldKey = t => t.replace(/\(\s*[\d,]+\s*\)/g, '').replace(/[\d][\d,.]*/g, '#').replace(/\s+/g, ' ').trim().toLowerCase();
+function foldSave() { try { localStorage.setItem('plantdb.folds', JSON.stringify(FOLDS)); } catch (e) { /* this visit only */ } }
+function foldIsSet(text) { return (FOLDS[foldPage()] || []).includes(foldKey(text)); }
+function foldRemember(text, on) {
+  const pg = foldPage(), k = foldKey(text), list = (FOLDS[pg] || []).filter(x => x !== k);
+  if (on) list.push(k);
+  if (list.length) FOLDS[pg] = list; else delete FOLDS[pg];
+  foldSave();
+}
+function foldTarget(it) {          // the element that folds, and its title (kept in view, with the path down to it)
+  const h = it.head || it.el;
+  if (h.closest('summary') || it.el.closest('summary')) return null;
+  if (it.el === h && h.matches('h1,h2,h3')) return { bare: h };
+  const sec = it.el, title = h === sec ? sec.querySelector('h1,h2,h3') : h;
+  let keep = title; while (keep && keep.parentElement !== sec) keep = keep.parentElement;
+  return { sec, keep, title };
+}
+function foldBtn(it, open) {
+  return rend(html`<button class="btn ghost small sec-fold noprint" type="button" data-act="secfold" data-for="${it.id}" aria-expanded="${open ? 'true' : 'false'}"
+    aria-label="${open ? 'Hide' : 'Show'} the ${it.text} section"><span aria-hidden="true">${open ? '▾' : '▸'}</span> <span>${open ? 'Hide' : 'Show'}</span></button>`);
+}
+function addFoldButtons() {
+  NAVITEMS.forEach(it => {
+    if (it.top || !it.id) return;
+    const t = foldTarget(it); if (!t) return;
+    if (t.bare) {                      // a title with no section of its own: it folds what follows, up to the next title
+      const h = t.bare;
+      if (!(h.nextElementSibling && h.nextElementSibling.classList.contains('sec-tools'))) h.insertAdjacentHTML('afterend', rend(html`<div class="sec-tools sec-bare noprint">${raw(foldBtn(it, true))}</div>`));
+      foldSet(it, foldIsSet(it.text), false);
+      return;
+    }
+    const { sec, keep, title } = t;
+    if (sec.querySelector('.sec-fold')) return;
+    sec.classList.add('has-fold');
+    const tools = `<div class="sec-tools noprint">${foldBtn(it, true)}</div>`;
+    if (!keep) sec.insertAdjacentHTML('afterbegin', tools);                                   // no title: the buttons go first
+    else if (keep === title) { keep.classList.add('sec-keep'); keep.insertAdjacentHTML('afterend', tools); }  // beside the title, top right
+    else if (keep.matches('header')) { keep.classList.add('sec-keep', 'sec-head-row'); keep.insertAdjacentHTML('beforeend', tools); }
+    else { keep.classList.add('sec-keep'); title.insertAdjacentHTML('afterend', tools.replace('sec-tools', 'sec-tools sec-inline')); }   // a title further in
+    const rd = sec.querySelector(':scope > .rd-btn'); const tl = sec.querySelector('.sec-tools');
+    if (rd && tl) tl.insertAdjacentElement('afterbegin', rd);
+    if (foldIsSet(it.text)) foldSet(it, true, false);
+  });
+  foldMeasure();
+}
+function foldParts(it) {           // what hides: everything in the section beside the path down to its title, or what follows a bare title
+  const t = foldTarget(it); if (!t) return [];
+  if (t.bare) { const out = []; let n = t.bare.nextElementSibling; while (n && !n.matches('h1,h2') && !n.querySelector('h2') && !n.matches('section,details.blk')) { if (!n.classList.contains('sec-tools')) out.push(n); n = n.nextElementSibling; } return out; }
+  const out = [], tl = t.sec.querySelector('.sec-tools');
+  if (!t.title) return [...t.sec.children].filter(c => c !== tl);
+  for (let n = t.title; n && n !== t.sec; n = n.parentElement)
+    for (const c of n.parentElement.children) if (c !== n && !c.classList.contains('sec-tools') && !c.contains(tl) && !c.classList.contains('rd-page')) out.push(c);
+  return out;
+}
+function foldSet(it, folded, remember) {
+  foldParts(it).forEach(c => c.classList.toggle('fold-hid', folded));
+  const t = foldTarget(it); if (t && t.sec) t.sec.dataset.folded = folded ? '1' : '0';
+  document.querySelectorAll(`[data-act=secfold][data-for="${it.id}"]`).forEach(b => {
+    b.setAttribute('aria-expanded', folded ? 'false' : 'true'); b.setAttribute('aria-label', `${folded ? 'Show' : 'Hide'} the ${it.text} section`);
+    b.innerHTML = rend(html`<span aria-hidden="true">${folded ? '▸' : '▾'}</span> <span>${folded ? 'Show' : 'Hide'}</span>`);
+  });
+  if (remember) foldRemember(it.text, folded);
+}
+function foldOpenFor(el) {         // the menu or a section button goes to a folded section: open it first
+  const it = NAVITEMS.find(x => x.el === el || (x.head && x.head === el) || x.el.contains(el));
+  if (it && !it.top && foldParts(it).some(c => c.classList.contains('fold-hid'))) foldSet(it, false, true);
+}
+function foldMeasure() {           // room on the title's right for its buttons
+  document.querySelectorAll('#app .has-fold').forEach(sec => {
+    const tl = sec.querySelector(':scope > .sec-tools'); if (!tl) return;
+    sec.style.setProperty('--tools-w', Math.ceil(tl.getBoundingClientRect().width + 14) + 'px');
+  });
+}
+window.addEventListener('resize', () => { clearTimeout(foldMeasure.t); foldMeasure.t = setTimeout(foldMeasure, 200); });
 // the text a sighted reader would see: no buttons, form controls, icons, hidden parts or closed details
 function readableText(root) {
   const out = [];
-  const skip = el => el.matches('button,select,option,input,textarea,script,style,svg,canvas,dialog,.rd-btn,.rd-page,.thumbs,.jump,.pnav,.pn-filters,.strip,.ticks,.now-tag,.now-line,[aria-hidden="true"],[hidden]');
+  const skip = el => el.matches('button,select,option,input,textarea,script,style,svg,canvas,dialog,.rd-btn,.rd-page,.fold-hid,.sec-tools,.thumbs,.jump,.pnav,.pn-filters,.strip,.ticks,.now-tag,.now-line,[aria-hidden="true"],[hidden]');
   (function walk(n) {
     for (const c of n.childNodes) {
       if (c.nodeType === 3) { const t = c.textContent.replace(/\s+/g, ' '); if (t.trim()) out.push(t); continue; }
@@ -633,12 +716,15 @@ document.addEventListener('keydown', e => {      // Escape folds the list of pag
 });
 function pinLayout() {           // phones: the buttons pinned to the bottom of the screen stack up instead of covering each other
   const r = document.documentElement, tab = conEl('nav-tab'), corner = conEl('corner'), job = conEl('job-badge');
-  // 1.26.0: on phones Sections, Debug and Display share one bar along the bottom of the screen
+  // 1.26.0: on phones Navigation (was Sections) and Debug share one bar along the bottom of the screen
   if (tab && corner) {
     const home = document.getElementById('sidenav');
     if (r.dataset.narrow === '1' && tab.parentNode !== corner) corner.prepend(tab);
     else if (r.dataset.narrow !== '1' && tab.parentNode === corner && home) home.after(tab);
   }
+  // 1.42.0: Display sits at the bottom of the Navigation menu; on a page with no sections (no menu) it stays in the corner
+  const disp = conEl('display-btn'), foot = conEl('sn-foot'), inCorner = r.dataset.navempty === '1' && r.dataset.narrow !== '1';
+  if (disp && foot && corner) { if (inCorner && disp.parentNode !== corner) corner.append(disp); else if (!inCorner && disp.parentNode !== foot) foot.append(disp); }
   r.dataset.tabup = '0'; if (tab) tab.style.bottom = '';
   if (r.dataset.narrow !== '1' || !corner) { r.style.removeProperty('--pin-h'); if (job) job.style.bottom = ''; return; }
   const cr = corner.getBoundingClientRect();

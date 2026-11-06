@@ -16,25 +16,35 @@ function ltRooms() {                 // [[room, [places in it]], ...] in the ord
 function ltRoomsBlock() {
   const rooms = ltRooms();
   if (!rooms.length) return html`<p class="muted">None yet. Add the rooms, shelves and tables where plants will go.</p>`;
-  return html`<div class="lt-rooms">${rooms.map(([room, ps]) => html`<section class="lt-room" aria-label="${room}"><h3>${room}</h3><ul>${ps.map(pl => {
-    const sp = LT.spots.filter(s => s.place_id === pl.id), n = sp.reduce((a, s) => a + s.plants.length, 0);
-    return html`<li><span><strong>${pl.name || 'The room itself'}</strong><br><span class="muted">${sp.length ? `${sp.map(s => s.name).join(', ')}: ${n} plant${n === 1 ? '' : 's'}` : 'No light spot here yet'}</span></span>
-      <span class="row noprint"><button class="btn ghost small" type="button" data-act="roomedit" data-id="${pl.id}" aria-label="Rename the room ${pl.name}">Rename</button><button class="btn ghost small" type="button" data-act="roomdel" data-id="${pl.id}" aria-label="Remove the room ${pl.name}">Remove</button></span></li>`; })}</ul></section>`)}</div>`;
+  const spotsAt = pl => { const sp = LT.spots.filter(s => s.place_id === pl.id), n = sp.reduce((a, s) => a + s.plants.length, 0); return sp.length ? `${sp.map(s => s.name).join(', ')}: ${n} plant${n === 1 ? '' : 's'}` : ''; };
+  // 1.42.0: the room's own buttons sit by its title (New Shelf, Rename, Remove room); each shelf has its own Rename and Remove,
+  // so removing a shelf never takes the room with it
+  return html`<div class="lt-rooms">${rooms.map(([room, ps]) => {
+    const self = ps.find(pl => !pl.name), shelves = ps.filter(pl => pl.name), here = self ? spotsAt(self) : '';
+    return html`<section class="lt-room" aria-label="${room}"><div class="lt-room-head"><h3>${room}</h3>
+      <span class="row noprint"><button class="btn small" type="button" data-act="shelfnew" data-room="${room}" aria-label="New shelf in ${room}">New Shelf</button>
+        ${self ? html`<button class="btn ghost small" type="button" data-act="roomedit" data-id="${self.id}" aria-label="Rename the room ${room}">Rename</button><button class="btn ghost small" type="button" data-act="roomdel" data-id="${self.id}" aria-label="Remove the room ${room}">Remove room</button>` : ''}</span></div>
+      ${here ? html`<p class="muted">The room as a whole: ${here}</p>` : ''}
+      ${shelves.length ? html`<ul>${shelves.map(pl => html`<li><span><strong>${pl.name}</strong><br><span class="muted">${spotsAt(pl) || 'No light spot here yet'}</span></span>
+        <span class="row noprint"><button class="btn ghost small" type="button" data-act="roomedit" data-id="${pl.id}" aria-label="Rename the shelf ${pl.name}">Rename</button><button class="btn ghost small" type="button" data-act="roomdel" data-id="${pl.id}" aria-label="Remove the shelf ${pl.name}">Remove</button></span></li>`)}</ul>`
+        : html`<p class="muted">No shelves yet.</p>`}</section>`; })}</div>`;
 }
-async function roomDialog(pl) {
+async function roomDialog(pl, opt) {
   if (!(await needName())) return;
-  let x = { room: pl ? pl.room : '', name: pl ? pl.name : '' };
+  let x = { room: pl ? pl.room : (opt && opt.room) || '', name: pl ? pl.name : '' };
+  const shelfOnly = !pl && opt && opt.room;
   for (;;) {
-    const r = await modal(html`<form method="dialog"><h2>${pl ? 'Rename this room or shelf' : 'Add a room or shelf'}</h2>
-      <label class="f">Room<input type="text" name="room" maxlength="60" value="${x.room}" list="lt-roomlist" required autofocus><small>For example "My Bedroom". Pick one already listed to add a shelf to it.</small></label>
+    const r = await modal(html`<form method="dialog"><h2>${pl ? (pl.name ? 'Rename this shelf' : 'Rename this room') : 'Build-A-Room'}</h2>
+      ${!pl ? html`<p class="hint">${shelfOnly ? `A new shelf, table or spot in ${x.room}.` : 'A new room, and if you like its first shelf, table or spot.'}</p>` : ''}
+      <label class="f">Room<input type="text" name="room" maxlength="60" value="${x.room}" list="lt-roomlist" required ${shelfOnly ? '' : raw('autofocus')}><small>For example "My Bedroom". Pick one already listed to add a shelf to it.</small></label>
       <datalist id="lt-roomlist">${ltRooms().map(([room]) => html`<option value="${room}"></option>`)}</datalist>
-      <label class="f">Shelf, table or spot in the room<input type="text" name="name" maxlength="60" value="${x.name}"><small>For example "Top shelf by the window". Leave it empty for the room as a whole.</small></label>
-      <div class="row"><button class="btn" value="ok">${pl ? 'Save changes' : 'Add it'}</button><button class="btn ghost" value="cancel" formnovalidate>Cancel</button></div></form>`);
+      ${pl && !pl.name ? '' : html`<label class="f">Shelf, table or spot in the room<input type="text" name="name" maxlength="60" value="${x.name}" ${shelfOnly ? raw('required autofocus') : ''}><small>For example "Top shelf by the window".${shelfOnly ? '' : ' Leave it empty for the room as a whole.'}</small></label>`}
+      <div class="row"><button class="btn" value="ok">${pl ? 'Save changes' : shelfOnly ? 'Add the shelf' : 'Add it'}</button><button class="btn ghost" value="cancel" formnovalidate>Cancel</button></div></form>`);
     if (r !== 'ok') return;
-    const f = dlg.querySelector('form'); x = { room: f.elements.room.value, name: f.elements.name.value };
+    const f = dlg.querySelector('form'); x = { room: f.elements.room.value, name: f.elements.name ? f.elements.name.value : '' };
     try {
       if (pl) await api('PUT', '/api/lights/places/' + pl.id, x); else await api('POST', '/api/lights/places', x);
-      toast(pl ? 'Renamed' : 'Added'); route(); return;
+      toast(pl ? 'Renamed' : x.name.trim() ? `Added ${x.name.trim()} to ${x.room.trim()}` : `Added ${x.room.trim()}`); route(); return;
     } catch (e) { toast(e.message, true); }
   }
 }
@@ -47,20 +57,34 @@ function ltSteps(steps) {
     <p class="hint">Plants used to the sun drop leaves if the light falls all at once. Start bright and long, then settle on the spot's setting.</p>
     <ol>${steps.map(st => html`<li><strong>${st.when}:</strong> ${st.distance_in != null ? html`${fmt(st.distance_in, 1)} in from the leaves, ${fmt(st.hours, 1)} hours a day${st.dim_pct < 100 ? `, ${st.dim_pct}% brightness` : ''}, about ${st.dli} mol/m² a day. ` : ''}${st.text}</li>`)}</ol></details>`;
 }
-function ltSpotCard(s, i, plan) {
+const ltRange = (lo, hi) => has(lo) ? `${fmt(lo, 1)}–${fmt(hi, 1)} mol/m² per day` : 'Light needs not set';
+function ltPlantLi(p, extra) {      // 1.42.0: the code and the range on lines of their own
+  return html`<li>${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : html`<span></span>`}
+    <span class="lt-pt"><a class="nm" href="#/plant/${enc(p.code)}">${p.name}</a><span class="muted">${p.code}</span><span class="muted">${ltRange(p.lo, p.hi)}</span>${extra || ''}</span>${p.verdict ? lvTag(p.verdict, p.verdict_word) : html`<span></span>`}</li>`;
+}
+// 1.42.0: each of your spots folds; shut, it still shows its name, where it is, its daily light and how many plants
+const LT_OPEN = (() => { try { return new Set(JSON.parse(localStorage.getItem('plantdb.ltspots') || '[]')); } catch (e) { return new Set(); } })();
+document.addEventListener('toggle', e => { const d = e.target; if (d && d.classList && d.classList.contains('lt-spot-fold')) { if (d.open) LT_OPEN.add(d.dataset.id); else LT_OPEN.delete(d.dataset.id); try { localStorage.setItem('plantdb.ltspots', JSON.stringify([...LT_OPEN])); } catch (x) { /* this visit only */ } } }, true);
+function ltSpotBody(s, i, plan) {
   const L = ltLight(s.light_id);
-  return html`<article class="lt-spot" aria-labelledby="lts-${plan ? 'p' : 's'}${i}"><h3 id="lts-${plan ? 'p' : 's'}${i}">${s.name}</h3>
-    ${!plan ? html`<p><strong>Where:</strong> ${s.place || html`<span class="muted">Not chosen yet</span>`}</p>` : ''}
-    <p><strong>${s.light}</strong>: ${ltSetting(s)}.</p>
+  return html`<p><strong>${s.light}</strong>: ${ltSetting(s)}.</p>
     <p>About <strong>${has(s.dli) ? s.dli : '?'} mol/m² a day</strong> at the leaves${has(s.ppfd) ? html` (${fmt(s.ppfd)} PAR while it is on)` : ''}${s.area_sqft ? html`, lighting about ${fmt(s.area_sqft, 1)} sq ft well` : ''}.
       ${s.crowded ? html`<strong>Crowded:</strong> the pots take about ${fmt(s.room_needed_sqft, 1)} sq ft, so the plants at the edge get less.` : ''}</p>
     ${s.timer_note ? html`<p class="hint">${s.timer_note}</p>` : ''}
     ${ltSocketNote(L)}
-    ${s.plants.length ? html`<ul class="lt-plants">${s.plants.map(p => html`<li>${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : html`<span></span>`}
-      <span><a class="nm" href="#/plant/${enc(p.code)}">${p.name}</a><br><span class="muted">${p.code}. Needs ${has(p.lo) ? `${fmt(p.lo, 1)} to ${fmt(p.hi, 1)}` : '(not set)'} mol/m² a day.</span>${p.better ? html`<br><span class="lt-better">It would suit <strong>${p.better.name}</strong> (about ${p.better.dli} mol/m² a day).</span>` : ''}</span>${lvTag(p.verdict, p.verdict_word)}</li>`)}</ul>` : html`<p class="muted">No plants in this spot yet.</p>`}
+    ${s.plants.length ? html`<ul class="lt-plants lt-two">${s.plants.map(p => ltPlantLi(p, p.better ? html`<span class="lt-better">It would suit <strong>${p.better.name}</strong> (about ${p.better.dli} mol/m² a day).</span>` : ''))}</ul>` : html`<p class="muted">No plants in this spot yet.</p>`}
     ${ltSteps(s.steps)}
     <div class="row noprint">${plan ? html`<button class="btn" type="button" data-act="spotnew" data-plan="${i}">Set up this spot</button>`
-      : html`<button class="btn ghost" type="button" data-act="spotadd" data-id="${s.id}" aria-label="Add plants to ${s.name}">Add plants</button><button class="btn ghost" type="button" data-act="spotedit" data-id="${s.id}" aria-label="Change ${s.name}">Change this spot</button><button class="btn ghost" type="button" data-act="spotdel" data-id="${s.id}" aria-label="Remove ${s.name}">Remove this spot</button>`}</div></article>`;
+      : html`<button class="btn ghost" type="button" data-act="spotadd" data-id="${s.id}" aria-label="Add plants to ${s.name}">Add plants</button><button class="btn ghost" type="button" data-act="spotedit" data-id="${s.id}" aria-label="Change ${s.name}">Change this spot</button><button class="btn ghost" type="button" data-act="spotdel" data-id="${s.id}" aria-label="Remove ${s.name}">Remove this spot</button>`}</div>`;
+}
+function ltSpotCard(s, i, plan) {
+  if (plan) return html`<article class="lt-spot" aria-labelledby="lts-p${i}"><h3 id="lts-p${i}">${s.name}</h3>${ltSpotBody(s, i, true)}</article>`;
+  const n = s.plants.length, off = s.plants.filter(p => p.verdict && !['good', 'unknown'].includes(p.verdict)).length;
+  return html`<details class="lt-spot lt-spot-fold" data-id="${s.id}" ${LT_OPEN.has(String(s.id)) ? raw('open') : ''}>
+    <summary><h3 id="lts-s${i}">${s.name}</h3>
+      <span class="lt-sum"><span><strong>Where:</strong> ${s.place || 'Not chosen yet'}</span><span><strong>${has(s.dli) ? s.dli : '?'} mol/m² per day</strong></span>
+        <span><strong>Plants:</strong> ${n}${off ? ` (${off} not in their range)` : ''}</span></span></summary>
+    <div class="lt-spot-in">${ltSpotBody(s, i, false)}</div></details>`;
 }
 function ltLightCard(L) {
   const S = L.specs, bits = [S.watts ? S.watts + ' W' : '', S.lumens ? fmt(S.lumens) + ' lumens' : '', S.kelvin ? S.kelvin + 'K ' + (S.kelvin >= 5000 ? 'cool white' : S.kelvin >= 3500 ? 'neutral white' : 'warm white') : '', S.cri ? 'colour rendering (CRI) ' + S.cri : ''].filter(Boolean);
@@ -92,32 +116,38 @@ function ltLightCard(L) {
     ${S.url ? html`<p class="hint"><a href="${S.url}" target="_blank" rel="noopener noreferrer">Product page</a></p>` : ''}
     <div class="row noprint"><button class="btn ghost small" type="button" data-act="lightedit" data-id="${L.id}">Change the light figures, timer and brightness</button></div></div></article>`;
 }
-// 1.28.1: Your lights is at the top and folds; this browser remembers whether you left it open (open the first time)
-function ltLightsOpen() { try { return localStorage.getItem('plantdb.ltlights') !== '0'; } catch (e) { return true; } }
-document.addEventListener('toggle', e => { const d = e.target; if (d && d.dataset && d.dataset.remember === 'ltlights') { try { localStorage.setItem('plantdb.ltlights', d.open ? '1' : '0'); } catch (x) { /* this visit only */ } } }, true);
+// 1.42.0: the title and the summary table stay at the top of the page as you scroll, and fold as one
+function ltTopOpen() { try { return localStorage.getItem('plantdb.lttop') !== '0'; } catch (e) { return true; } }
+function ltTopMeasure() { const t = document.getElementById('lt-top'); document.documentElement.style.setProperty('--lt-top-h', (t && getComputedStyle(t).position === 'sticky' ? t.offsetHeight : 0) + 'px'); }
+window.addEventListener('resize', () => { if (document.getElementById('lt-top')) ltTopMeasure(); });
 async function viewLights() {
   LT = await api('GET', '/api/lights');
-  const n = LT.candidates.length, inSpots = Object.keys(LT.assigned).length, sug = LT.plan.reduce((a, s) => a + s.codes.length, 0);
+  const n = LT.candidates.length, inside = LT.candidates.filter(c => c.inside).length, inSpots = Object.keys(LT.assigned).length, sug = LT.plan.reduce((a, s) => a + s.codes.length, 0);
+  const open = ltTopOpen();
+  setTimeout(ltTopMeasure, 0); setTimeout(ltTopMeasure, 1300);
   return {
     title: 'Grow lights',
-    html: html`<h1>Grow lights</h1>
-    <p class="muted">Your grow lights, the spots they light, and how much light each plant gets there. A plant's daily light (DLI, in mol/m² a day) is the light at its leaves while the light is on (PAR) times the hours it is on. Each plant page has the range it wants.</p>
-    <details class="blk lt-lights-box" id="lt-lights" data-remember="ltlights" ${ltLightsOpen() ? raw('open') : ''}><summary><h2>Your lights (${LT.lights.length})</h2><span class="hint">Show or hide</span></summary>
-      <div class="lt-lights">${LT.lights.map(ltLightCard)}</div></details>
-    <div class="verdict-box" role="status"><h2 style="margin:0 0 .4rem">This winter</h2>
-      <p>${n} plant${n === 1 ? ' lives' : 's live'} inside or ${n === 1 ? 'is' : 'are'} coming in. ${inSpots} ${inSpots === 1 ? 'is' : 'are'} in a light spot you set up.${LT.plan.length ? ` The suggested layout below places ${sug} more under your lights.` : ''}${LT.unplaced.length ? ` ${LT.unplaced.length} ${LT.unplaced.length === 1 ? 'has' : 'have'} no light left in it.` : ''}</p>
-      ${has(LT.outdoor_dli) ? html`<p>Outdoors in the open, the last 7 days averaged about <strong>${LT.outdoor_dli} mol/m² a day</strong>. Under the porch roof it is much less.</p>` : ''}
-      <div class="row noprint"><button class="btn" type="button" data-act="spotnew">Set up a spot</button><button class="btn ghost" type="button" data-act="lightnew">Add a light</button></div></div>
-    <section class="blk" id="lt-spots"><h2>Your light spots</h2>
-      ${LT.spots.length ? html`<div class="lt-grid">${LT.spots.map((s, i) => ltSpotCard(s, i, false))}</div>` : html`<p class="muted">None yet. Set one up from the suggested layout below with one press, or with "Set up a spot".</p>`}</section>
+    html: html`<div class="lt-top" id="lt-top" data-open="${open ? '1' : '0'}">
+      <div class="lt-top-row"><h1>Grow lights</h1><button class="btn ghost small lt-top-btn noprint" type="button" data-act="lttop" aria-expanded="${open ? 'true' : 'false'}" aria-controls="lt-top-body">${open ? 'Hide the summary' : 'Show the summary'}</button></div>
+      <div class="lt-top-body" id="lt-top-body" ${open ? '' : raw('hidden')}>
+      <p class="muted">Your grow lights, the spots they light, and how much light each plant gets there. A plant's daily light (DLI, in mol/m² a day) is the light at its leaves while the light is on (PAR) times the hours it is on. Each plant page has the range it wants.</p>
+      <div class="tbl-wrap"><table class="tbl lt-sum-tbl"><caption class="sr">The ${n} plants that live inside or are coming in, and the daylight outdoors</caption>
+        <thead><tr><th scope="col">Inside</th><th scope="col">Coming in</th><th scope="col">Assigned light spot</th><th scope="col">No assigned light spot</th><th scope="col">7-day mol/m² average</th></tr></thead>
+        <tbody><tr><td data-h="Inside">${inside}</td><td data-h="Coming in">${n - inside}</td><td data-h="Assigned light spot">${inSpots}</td><td data-h="No assigned light spot">${n - inSpots}</td>
+          <td data-h="7-day mol/m² average">${has(LT.outdoor_dli) ? LT.outdoor_dli : 'Not known yet'}</td></tr></tbody></table></div>
+      <p class="hint">${LT.plan.length ? `The suggested layout below places ${sug} more under your lights. ` : ''}${LT.unplaced.length ? `${LT.unplaced.length} ${LT.unplaced.length === 1 ? 'has' : 'have'} no light left in it. ` : ''}${has(LT.outdoor_dli) ? 'The 7-day average is outdoors in the open; under the porch roof it is much less.' : ''}</p></div></div>
+    <section class="blk" id="lt-lights"><header class="sec-head"><h2>Your lights (${LT.lights.length})</h2><button class="btn ghost small noprint" type="button" data-act="lightnew">Add a light</button></header>
+      <div class="lt-lights">${LT.lights.map(ltLightCard)}</div></section>
+    <section class="blk" id="lt-spots"><header class="sec-head"><h2>Your light spots</h2><button class="btn small noprint" type="button" data-act="spotnew">Set up a spot</button></header>
+      ${LT.spots.length ? html`<p class="row noprint"><button class="btn ghost small" type="button" data-act="ltspotsall" data-open="1">Open every spot</button><button class="btn ghost small" type="button" data-act="ltspotsall" data-open="0">Close every spot</button></p>
+        <div class="lt-spots">${LT.spots.map((s, i) => ltSpotCard(s, i, false))}</div>` : html`<p class="muted">None yet. Set one up from the suggested layout below with one press, or with "Set up a spot".</p>`}</section>
     <section class="blk" id="lt-rooms"><h2>Rooms and shelves</h2><p>Where your plants go inside. Choose one for each light spot.</p>${ltRoomsBlock()}
-      <div class="row noprint"><button class="btn ghost" type="button" data-act="roomnew">Add a room or shelf</button></div></section>
+      <div class="row noprint"><button class="btn ghost" type="button" data-act="roomnew">New Room</button></div></section>
     <section class="blk" id="lt-plan"><h2>Suggested layout</h2>
       <p>For the plants that are not in a spot yet. Plants that need the most light are placed first. Each goes under the smallest of your lights that can give it enough, sharing a light with plants whose needs overlap, while there is room under it. "Set up this spot" opens it so you can rename it or change anything before saving.</p>
       ${LT.plan.length > 1 ? html`<p class="row noprint"><button class="btn" type="button" data-act="spotplanall">Set up all ${LT.plan.length} suggested spots</button></p>` : ''}
       ${LT.plan.length ? html`<div class="lt-grid">${LT.plan.map((s, i) => ltSpotCard(s, i, true))}</div>` : html`<p class="muted">Every plant that needs a light is in a spot.</p>`}
-      ${LT.unplaced.length ? html`<h3>No light left for these</h3><ul class="lt-plants">${LT.unplaced.map(u => html`<li>${u.photo ? html`<img src="${thumbUrl(u.photo)}" alt="" loading="lazy">` : html`<span></span>`}
-        <span><a class="nm" href="#/plant/${enc(u.code)}">${u.name}</a><br><span class="muted">${u.code}. Needs ${fmt(u.lo, 1)} to ${fmt(u.hi, 1)} mol/m² a day.</span> ${u.why}</span><span></span></li>`)}</ul>` : ''}</section>
+      ${LT.unplaced.length ? html`<h3>No light left for these</h3><ul class="lt-plants lt-two">${LT.unplaced.map(u => ltPlantLi(u, html`<span>${u.why}</span>`))}</ul>` : ''}</section>
     <section class="blk"><h2>How the numbers work</h2>
       <p>Makers measure light straight under the centre of the light at a few distances. The app draws a smooth line through those figures to get the light at any distance, then multiplies by the hours a day: 100 PAR for 12 hours is about 4.3 mol/m².</p>
       <p>The edges of a light's circle get less, and a window adds some. Plants that stretch or go pale want more; bleached or crisp leaves want less. Several of the same light side by side light a bigger area at about the same strength.</p></section>`,
