@@ -38,6 +38,7 @@ with sync_playwright() as p:
     pg.locator('form[data-form=sevgo] input[type=file]').set_input_files(files)
     pg.locator('form[data-form=sevgo] button[type=submit]').click()
     pg.locator('fieldset.sev-plant').first.wait_for(timeout=30000)
+    pg.locator('#sev-p0 .sev-names .id-sp').first.wait_for(timeout=30000); pg.wait_for_timeout(1500)     # 1.40.0: each plant's photos checked together
     plants = lambda: pg.locator('fieldset.sev-plant:not(.sev-shared):not(#sev-out)')
     n = plants().count()
     check(n == 2, f'4 photos become 2 plants to start with: the three the picture checker sees as one species, and the blue one ({n})')
@@ -52,8 +53,13 @@ with sync_playwright() as p:
     pg.screenshot(path=os.path.join(OUT, 'several-1-review.png'), full_page=True)
     # the green photo is a different plant after all; the blue one gets another name and a spot
     pg.locator('[data-f=sevrel][data-p="2"][value=new]').check(); pg.wait_for_timeout(600)
+    pg.locator('#sev-p2 .sev-names .id-sp').first.wait_for(timeout=30000); pg.wait_for_timeout(800)
     check(plants().count() == 3 and pg.locator('#sev-p1 .sev-pics li').count() == 1, '"A different plant" splits a photo off into a plant of its own, in order')
     p3 = pg.locator('#sev-p2')
+    check(p3.locator('.id-sp').count() >= 3 and 'From this computer' in p3.inner_text() and p3.locator('[data-act=idnot]').count() >= 6, 'each plant has the full names panel: sources, "Not this" on every name')
+    p3.locator('.id-sp').first.locator('[data-act=idnot]:not([data-genus])').click(); pg.wait_for_timeout(2500)
+    p3 = pg.locator('#sev-p2')
+    check(p3.locator('.id-sp .sci').first.inner_text() != 'Lupinus texensis' and 'Not this: Lupinus texensis' in p3.inner_text(), '"Not this" on a plant checks its photos again without that name')
     p3.locator('[data-f=sevpick]').nth(1).check(); pg.wait_for_timeout(400)
     p3 = pg.locator('#sev-p2')
     name3 = p3.locator('[data-f=sevfield][data-k=scientific_name]').input_value()

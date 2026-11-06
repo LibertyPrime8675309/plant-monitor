@@ -159,10 +159,38 @@ function idGrab(maxSide) {
   return c;
 }
 const toBlob = c => new Promise(res => c.toBlob(res, 'image/jpeg', 0.86));
-async function idAsk(blob, scope, more) {      // 1.39.0: more = other pictures of the same plant, checked together
+async function idAsk(blob, scope, more, ex) {  // 1.39.0: more = other pictures of the same plant, checked together; 1.40.0: ex = {species: [], genera: []} said "Not this"
   const fd = new FormData(); fd.append('image', blob, 'picture.jpg');
   (more || []).forEach((b, i) => fd.append('images', b, `picture${i + 2}.jpg`));
-  return api('POST', '/api/identify?scope=' + enc(scope || idScope()), undefined, fd);
+  const q = { scope: scope || idScope() };
+  if (ex && ex.species.length) q.exclude = ex.species.join('|');
+  if (ex && ex.genera.length) q.exclude_genera = ex.genera.join('|');
+  return api('POST', '/api/identify?' + new URLSearchParams(q).toString(), undefined, fd);
+}
+// 1.40.0: "Not this": the name (or its genus) leaves the list, the pictures are checked again without it, and the choice is logged
+async function idNot(el) {
+  const ctx = el.dataset.ctx, name = el.dataset.name, genus = el.dataset.genus === '1';
+  if (ctx === 'id') {
+    if (!ID.shot) return;
+    ID.shot.ex = ID.shot.ex || { species: [], genera: [] }; (genus ? ID.shot.ex.genera : ID.shot.ex.species).push(name);
+    if (canChange()) api('POST', '/api/identify/reject', { name, genus }).catch(() => null);
+    const res = document.getElementById('id-res'); if (res) res.insertAdjacentHTML('afterbegin', rend(html`<p class="muted" role="status">Checking again without ${genus ? 'the genus ' : ''}${name}…</p>`));
+    try { ID.shot.result = await idAsk(ID.shot.blob, null, ID.shot.more, ID.shot.ex); ID.shot.plantnet = ID.shot.result.plantnet || null; idPaint(ID.shot.result, ID.shot.url); idSay(`Not ${name}. Checked again.`); }
+    catch (e) { toast(e.message, true); }
+    const f = document.querySelector('#id-splist li'); if (f) { f.setAttribute('tabindex', '-1'); f.focus(); }
+  } else if (ctx === 'sev') {
+    const P = SEV.plants[+el.dataset.g]; if (!P) return;
+    P.ex = P.ex || { species: [], genera: [] }; (genus ? P.ex.genera : P.ex.species).push(name);
+    if (canChange()) api('POST', '/api/identify/reject', { name, genus }).catch(() => null);
+    await sevIdentify(+el.dataset.g, true);
+  } else if (ctx === 'plant') {                // the plant's page: the rejection sticks to the plant
+    const code = el.dataset.g; if (!code) return;
+    await guard(async () => { await api('POST', '/api/identify/reject', { name, genus, plant: code }); await plantIdentify(code); });
+  } else if (ctx === 'new') {
+    NEWID.ex = NEWID.ex || { species: [], genera: [] }; (genus ? NEWID.ex.genera : NEWID.ex.species).push(name);
+    if (canChange()) api('POST', '/api/identify/reject', { name, genus }).catch(() => null);
+    const b = document.getElementById('newfill-btn'); if (b) acts.newfill(b);
+  }
 }
 // 1.39.0: another picture of the same plant, from a file or the camera: all of them are checked together
 async function idAddShot(blob, url) {
@@ -174,6 +202,19 @@ async function idAddShot(blob, url) {
     idPaint(ID.shot.result, ID.shot.url);
     await idPopup(ID.shot.result);
   } catch (e) { toast(e.message, true); }
+}
+// 1.40.0: a plant's page: its own photos through the one identifier, with its own "Not this" list; "Use this name" renames the plant
+let PLANTID = null;
+async function plantIdentify(code, plantnet) {
+  const box = document.getElementById('plant-id'); if (!box) return;
+  box.innerHTML = rend(html`<p class="muted" role="status">Checking its photos${ID.keys && ID.keys.plantnet ? ' with this computer and Pl@ntNet' : ''}…</p>`);
+  try {
+    if (!ID.keys) { try { ID.keys = await api('GET', '/api/identify/settings'); } catch (e) { /* fine */ } }
+    const r = await api('POST', '/api/plants/' + enc(code) + '/identify', { plantnet: plantnet || 'auto' }); PLANTID = { code, r };
+    box.innerHTML = rend(html`<h3>What its photos say it could be</h3>${idNamesPanel(r, { src: 'plant', id: 'plant-splist', use: 'plantuse', reject: 'plant', code })}
+      ${ID.keys && ID.keys.plantnet && !r.plantnet ? html`<p class="row"><button class="btn small ghost" type="button" data-act="plantask" data-code="${code}">Ask Pl@ntNet as well</button></p>` : ''}`);
+    const h = box.querySelector('h3'); if (h) { h.setAttribute('tabindex', '-1'); h.focus(); }
+  } catch (e) { box.innerHTML = rend(html`<div class="notice bad" role="alert">${e.message}</div>`); }
 }
 async function idMoreFile(input) {
   const f = input.files && input.files[0]; input.value = '';
@@ -280,8 +321,21 @@ function spLinks(s) {
     <a href="https://powo.science.kew.org/results?q=${q}" target="_blank" rel="noopener noreferrer">Kew (POWO)</a>
     <a href="https://en.wikipedia.org/wiki/${enc(s.scientific_name.replace(/ /g, '_'))}" target="_blank" rel="noopener noreferrer">Wikipedia</a></span>`;
 }
-function spCard(s, i, src, withAdd) {
+// 1.40.0: one result panel for Identify, Add a plant and Add several: the merged names (this computer and Pl@ntNet), the likeliest
+// genus and family, "Not this" on every name (ctx says which page re-asks), and either "Add as a new plant" or a "Use this name" choice.
+function idNamesPanel(r, o) {
+  const sp = r.species || [], fold = sp.length > 5, id = o.id || 'id-splist';
+  const src = r.sources || ['this computer'];
+  return html`${r.plantnet && r.plantnet.error ? html`<p class="notice bad">Pl@ntNet: ${r.plantnet.error}</p>` : ''}${r.plantnet && r.plantnet.note && !(r.plantnet.species || []).length ? html`<p class="hint">${r.plantnet.note}</p>` : ''}
+    ${r.genera && r.genera[0] ? html`<p class="id-sum">Most likely genus: ${r.genera.slice(0, 3).map((g, i) => html`${i ? ', then ' : ''}<i>${g.genus}</i> (${pct(g.probability)})`)}${r.families && r.families[0] ? html`; family ${r.families.slice(0, 2).map((f, i) => html`${i ? ' or ' : ''}${f.family} (${pct(f.probability)})`)}` : ''}. ${sp.length ? 'When none of the names fits, the genus is the safer answer. ' : ''}From ${src.join(' and ')}${r.pictures > 1 ? ` (from ${r.pictures} pictures together)` : ''}.</p>` : ''}
+    ${sp.length ? html`<ol class="id-sps ${fold ? 'id-fold' : ''}" id="${id}">${sp.map((x, i) => spCard(x, i, o.src, o.add, o))}</ol>
+    ${fold ? html`<p><button class="btn small ghost" type="button" data-act="idmoresp" data-list="${id}" aria-controls="${id}" aria-expanded="false">Show ${sp.length - 5} more names</button></p>` : ''}` : html`<p class="muted">No name was found${(r.excluded && (r.excluded.species.length || r.excluded.genera.length)) ? ' that you have not said "Not this" to' : ''}.</p>`}
+    ${(r.excluded && (r.excluded.species.length || r.excluded.genera.length)) ? html`<p class="hint">Not this: ${[...r.excluded.genera.map(g => g + ' (the genus)'), ...r.excluded.species].join(', ')}.</p>` : ''}`;
+}
+function spCard(s, i, src, withAdd, o) {
+  o = o || {};
   const tags = [];
+  (s.sources || []).forEach(w => tags.push(html`<span class="tag tag-src">${w === 'Pl@ntNet' ? `Pl@ntNet${s.plantnet_probability != null ? ' ' + pct(s.plantnet_probability) : ''}` : 'This computer'}</span>`));
   if (inRegion(s)) tags.push(html`<span class="tag">Grows wild in ${LIB_STATE_WORD(regionState())}</span>`);
   else if (s.us_states && s.us_states.length) tags.push(html`<span class="tag">In ${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}</span>`);
   if (s.yours && s.yours.length) tags.push(html`<span class="tag tag-yours">You have this: ${s.yours.join(', ')}</span>`);
@@ -292,8 +346,12 @@ function spCard(s, i, src, withAdd) {
     <div class="muted">${[s.family, s.order].filter(Boolean).join(', ')}</div>
     ${s.why ? html`<div>${s.why}</div>` : ''}
     ${tags.length ? html`<div class="id-tags">${tags}</div>` : ''}
+    ${o.pick != null ? html`<label class="chk"><input type="radio" name="sevsp${o.pick}" data-f="sevpick" data-g="${o.pick}" value="${i}" ${o.picked === i ? raw('checked') : ''}>Use this name</label>` : ''}
     <div class="id-acts">${spLinks(s)}${withAdd ? s.kingdom === 'Fungi' ? html`<button class="btn small" type="button" data-act="idfind" data-src="${src}" data-i="${i}">Record a mushroom find</button>`
-      : html`<button class="btn small" type="button" data-act="idnew" data-src="${src}" data-i="${i}">Add as a new plant</button>` : ''}</div></li>`;
+      : html`<button class="btn small" type="button" data-act="idnew" data-src="${src}" data-i="${i}">Add as a new plant</button>` : ''}
+      ${o.use ? html`<button class="btn small" type="button" data-act="${o.use}" data-i="${i}">Use this name</button>` : ''}
+      ${o.reject ? html`<button class="btn small ghost" type="button" data-act="idnot" data-ctx="${o.reject}" data-g="${o.pick == null ? (o.code || '') : o.pick}" data-name="${s.scientific_name}" aria-label="Not this: ${s.scientific_name}">Not this</button>
+      <button class="btn small ghost" type="button" data-act="idnot" data-ctx="${o.reject}" data-g="${o.pick == null ? (o.code || '') : o.pick}" data-name="${s.genus || (s.scientific_name || '').split(' ')[0]}" data-genus="1" aria-label="Not this genus: ${s.genus || (s.scientific_name || '').split(' ')[0]}">Not this genus</button>` : ''}</div></li>`;
 }
 function idPaint(r, picUrl, live) {
   const res = document.getElementById('id-res'); if (!res) return;
@@ -303,13 +361,9 @@ function idPaint(r, picUrl, live) {
     ${top ? html`<h3>${c >= 0.5 && !r.likely_new ? 'Your plant' : 'Closest of your plants'}</h3>
       <p>${c >= 0.5 && !r.likely_new ? html`${sureWord(c)} <b>${top.code}, ${top.common_name}</b>: ${pct(c)} sure.` : html`Probably none of your plants: the closest is ${top.code}, ${top.common_name}, ${pct(c)} sure${r.likely_new ? ', and it looks different from all your photos' : ''}.`}</p>
       <ol class="id-ms ${c >= 0.5 && !r.likely_new ? 'id-sure' : ''}">${m.slice(0, 3).map((x, i) => idMatchCard(x, i === 0))}</ol>` : html`<p>There are no photos of your plants to compare with yet.</p>`}
-    ${r.plantnet ? html`<h3>Pl@ntNet says</h3>${r.plantnet.error ? html`<p class="notice bad">${r.plantnet.error}</p>` : r.plantnet.note ? html`<p>${r.plantnet.note}</p>` : ''}
-      ${(r.plantnet.species || []).length ? html`<p class="hint">This computer was not sure, so Pl@ntNet was asked first (Second opinions, below).</p><ol class="id-sps">${r.plantnet.species.map((s, i) => spCard(s, i, 'plantnet', !live && canChange()))}</ol>` : ''}` : ''}
     <h3>What it could be</h3>
     ${r.scope === 'fungi' ? fungiSafety(true) : ''}
-    ${r.genera && r.genera[0] ? html`<p>Most likely genus: ${r.genera.slice(0, 3).map((g, i) => html`${i ? ', then ' : ''}<i>${g.genus}</i> (${pct(g.probability)})`)}. When none of the names below fits, the genus is the safer answer. Names from: ${sc ? sc[1] : 'the species list'}${r.pictures > 1 ? `, from ${r.pictures} pictures together` : ''}.</p>` : ''}
-    <ol class="id-sps ${(r.species || []).length > 5 ? 'id-fold' : ''}" id="id-splist">${(r.species || []).map((s, i) => spCard(s, i, 'local', !live && canChange()))}</ol>
-    ${(r.species || []).length > 5 ? html`<p><button class="btn small ghost" type="button" data-act="idmoresp" aria-controls="id-splist" aria-expanded="false">Show ${(r.species || []).length - 5} more names</button></p>` : ''}
+    ${idNamesPanel(r, { src: 'local', add: !live && canChange(), reject: live ? null : 'id' })}
     ${live ? '' : html`<div class="row id-again"><label class="btn ghost small">Add another photo of the same plant<input type="file" accept="image/*" data-act="idmorefile" class="sr"></label>
       ${ID.stream ? html`<button class="btn ghost small" type="button" data-act="idsnapmore">Add a camera shot of it</button>` : ''}
       ${(ID.shot && ID.shot.moreUrls || []).map((u, i) => html`<img class="id-more-pic" src="${u}" alt="Extra picture ${i + 1}">`)}</div>`}
@@ -1337,13 +1391,29 @@ Object.assign(acts, {
 function spFrom(src, i) {
   const list = src === 'library' ? LIB.res : src === 'local' ? ID.shot && ID.shot.result && ID.shot.result.species : ID.shot && ID.shot[src] && ID.shot[src].species;
   const s = list && list[+i];
-  return s ? Object.assign({}, s, { src: src === 'library' ? 'the plant library' : src === 'local' ? 'Identify (this computer)' : src === 'plantnet' ? 'Pl@ntNet' : 'Claude' }) : null;
+  return s ? Object.assign({}, s, { src: src === 'library' ? 'the plant library' : src === 'local' ? (s.sources && s.sources.length ? 'Identify (' + s.sources.join(' and ') + ')' : 'Identify (this computer)') : src === 'plantnet' ? 'Pl@ntNet' : 'Claude' }) : null;
 }
 Object.assign(acts, {
   idcam: () => idCamToggle(),
   idsnap: () => idSnap(),
   idsnapmore: () => idSnapMore(),
-  idmoresp(el) { const l = document.getElementById('id-splist'); if (!l) return; const open = l.classList.toggle('id-fold'); el.setAttribute('aria-expanded', String(!open)); el.textContent = open ? `Show ${l.children.length - 5} more names` : 'Show fewer names'; if (!open) { const sixth = l.children[5]; if (sixth) { sixth.setAttribute('tabindex', '-1'); sixth.focus(); } } },
+  idnot: el => idNot(el),
+  plantid: el => plantIdentify(el.dataset.code),
+  plantask: el => plantIdentify(el.dataset.code, 'yes'),
+  async plantuse(el) {                  // rename the plant to the chosen name (the page's own fields; the old name stays in the history)
+    const s0 = PLANTID && (PLANTID.r.species || [])[+el.dataset.i]; if (!s0) return;
+    if (!(await needName())) return;
+    const name = (s0.common_name || '').split(',')[0].trim() || s0.scientific_name;
+    if (!(await confirmBox(`Name it ${name}?`, `${s0.scientific_name}${s0.family ? ', ' + s0.family : ''}. The common and scientific names, genus, family and ID confidence change; the old ones stay in the page history.`, 'Use this name'))) return;
+    await guard(async () => {
+      const p = await api('GET', '/api/plants/' + enc(PLANTID.code));
+      const fields = { common_name: name, scientific_name: s0.scientific_name, genus: (s0.scientific_name || '').split(' ')[0], family: s0.family || p.family, id_confidence: Math.round((s0.probability || 0) * 100),
+        id_basis: `Suggested by ${(s0.sources || ['the picture checker on this computer']).map(w => w === 'this computer' ? 'the picture checker on this computer' : w).join(' and ')} from the plant's photos. Check it.` };
+      await api('PUT', '/api/plants/' + enc(PLANTID.code), { base_version: p.version, fields, note: 'Named from its photos' });
+      toast(`${PLANTID.code} is now ${name}`); await reloadPlant();
+    });
+  },
+  idmoresp(el) { const l = document.getElementById(el.dataset.list || 'id-splist'); if (!l) return; const open = l.classList.toggle('id-fold'); el.setAttribute('aria-expanded', String(!open)); el.textContent = open ? `Show ${l.children.length - 5} more names` : 'Show fewer names'; if (!open) { const sixth = l.children[5]; if (sixth) { sixth.setAttribute('tabindex', '-1'); sixth.focus(); } } },
   idopen: el => { idStop(); go('#/plant/' + enc(el.dataset.code)); },
   idask: el => idAskOutside(el.dataset.who),
   idnew: el => { const s = spFrom(el.dataset.src, el.dataset.i); if (s) idNewPlant(s, el.dataset.src !== 'library'); },

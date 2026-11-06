@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.40.0 (2026-11-05)
+- **One identifier** behind Identify, Add a plant and Add several plants: every photo of the plant is checked together, Pl@ntNet is part of the answer whenever its key is saved (always with "Ask Pl@ntNet on its own", or when this computer is unsure), and the two lists are merged into one, each name saying who said so and how sure. The likeliest **family** joins the likeliest genus.
+- **Not this** and **Not this genus** on every name, on all three pages: the name leaves the list, the photos are checked again without it, and the choice is logged.
+- **Check the name from its photos** on a plant's page (Plant identification): all its photos through the same identifier, **Use this name** renames the plant (the old names stay in its history), and a "Not this" there sticks to that plant for good.
+- **Add several plants:** once you have sorted the photos, each plant's photos are checked together (that is what should have turned six guesses into two); **Check the photos again** and **Ask Pl@ntNet about this plant** on each plant.
+- **Add a plant:** "Fill in the names from the first photo" now uses all the photos on the form, shows the full list with **Use this name** on each, and the same Not this buttons.
+- The name a plant gets says which checker suggested it ("Suggested by the picture checker on this computer and Pl@ntNet from 3 photos").
 ## 1.39.2 (2026-11-05)
 - **Corrections to the 13 new indoor plants** (batch B9): a few of their values were not from the app's own lists ("Indoors all year" as a winter plan, and some leaf-type, pot-size and pet-safety words), so filters and counts could miss them; and their sources now come only from checked links. Anything you edited on those pages since installing 1.39.1 is left alone.
 - If you have not installed 1.39.1 yet, install this one instead; it has everything 1.39.1 had.

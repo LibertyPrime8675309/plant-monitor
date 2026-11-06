@@ -640,8 +640,8 @@ async function route() {
     if (myQuick.off) QUICK = null;
     if (parts[0] === 'plant' && parts[1] && parts[2] === 'edit') view = await viewEdit(decodeURIComponent(parts[1]));
     else if (parts[0] === 'plant' && parts[1]) view = await viewPlant(decodeURIComponent(parts[1]));
-    else if (parts[0] === 'new' && parts[1] === 'several') view = viewSeveral();
-    else if (parts[0] === 'new') view = viewForm(null);
+    else if (parts[0] === 'new' && parts[1] === 'several') view = await viewSeveral();
+    else if (parts[0] === 'new') { if (!ID.keys) { try { ID.keys = await api('GET', '/api/identify/settings'); } catch (e) { /* no Pl@ntNet then */ } } view = viewForm(null); }
     else if (parts[0] === 'winter') view = await viewWinter();
     else if (parts[0] === 'weather') view = await viewWeather(qs.get('sec'));
     else if (parts[0] === 'sensors') view = await viewSensors();     // 1.35.0

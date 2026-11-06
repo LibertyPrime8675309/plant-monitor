@@ -589,6 +589,8 @@ async function viewPlant(code) {
           ${lines(p.id_alternatives).length ? html`<h3>Other possibilities</h3>${ul(p.id_alternatives)}` : ''}
           ${lines(p.id_improve).length ? html`<div class="ask"><h3 style="margin-top:0">To reach 100%, send</h3>${ul(p.id_improve)}
             <button class="btn small noprint" type="button" data-act="copyreq">Copy this as a request for Claude</button></div>` : ''}
+          ${(p.photos || []).length && canChange() ? html`<p class="row noprint"><button class="btn small ghost" type="button" data-act="plantid" data-code="${p.code}">Check the name from its ${p.photos.length === 1 ? 'photo' : p.photos.length + ' photos'}</button></p>
+            <div id="plant-id" aria-live="polite"></div>` : ''}
         </section>
 
         <section class="blk" id="about"><h2>About this plant</h2>${aboutBlock(p)}</section>

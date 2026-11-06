@@ -363,17 +363,36 @@ def several_photo():
     keep.save(os.path.join(PENDING_DIR, name), 'JPEG', quality=84, optimize=True)
     small = im.copy(); small.thumbnail((1024, 1024)); b = io.BytesIO(); small.save(b, 'JPEG', quality=88)
     out = {'file': name, 'taken': taken, 'name': (f.filename or '')[:120], 'species': [], 'matches': [], 'error': None}
-    try:
-        body, ct = multipart({}, [('image', 'picture.jpg', b.getvalue(), 'image/jpeg')])
-        r = vision_call('/identify?scope=' + vscope(c, request.args.get('scope', 'common')), body, ct, timeout=90)
-        out['species'] = [{k: x.get(k) for k in ('scientific_name', 'common_name', 'family', 'genus', 'kind', 'probability')} | {'pets': pets_word(x.get('scientific_name'))}
-                          for x in (r.get('species') or [])[:3]]
-        out['matches'] = [plant_brief(c, m['code']) | {'confidence': m.get('confidence')} for m in (r.get('matches') or [])[:3]
-                          if m.get('confidence') and m['confidence'] >= 0.6 and plant_brief(c, m['code'])]
+    try:                                            # 1.40.0: the same identifier as the Identify page (one picture here; the plant's photos together after sorting)
+        r = identify_pictures(c, [b.getvalue()], vscope(c, request.args.get('scope', 'common')), plantnet='no', n=5)
+        out['species'] = [sev_species(x) for x in r.get('species') or []]
+        out['matches'] = [m for m in r.get('matches') or [] if m.get('confidence') and m['confidence'] >= 0.6][:3]
         out['likely_new'] = r.get('likely_new')
     except Exception as e:
         out['error'] = getattr(e, 'description', None) or 'The picture checker could not look at it.'
     return jsonify(out)
+
+def sev_species(x):
+    return {k: x.get(k) for k in ('scientific_name', 'common_name', 'family', 'genus', 'order', 'kind', 'probability', 'sources', 'plantnet_probability', 'basis_words', 'yours', 'yours_genus', 'us_states', 'in_texas', 'kingdom')} | {'pets': pets_word(x.get('scientific_name'))}
+
+@app.route('/api/plants/several/identify', methods=['POST'])
+def several_identify():
+    """1.40.0: {photos: [pending file names], exclude: [names], exclude_genera: [genera], plantnet: 'auto'|'yes'|'no'} -> the names for one
+    plant from all its photos together, Pl@ntNet included when its key is saved, with the likeliest genus and family."""
+    c = db()
+    b = request.get_json(silent=True) or {}
+    pics = []
+    for ph in (b.get('photos') or [])[:6]:
+        if not re.match(r'^up_[0-9a-f]{16}\.jpg$', str(ph)): abort(400, 'That photo is not waiting here')
+        path = os.path.join(PENDING_DIR, ph)
+        if not os.path.exists(path): abort(400, 'A photo is no longer waiting here (they are kept for two days). Add the photos again.')
+        with open(path, 'rb') as f: pics.append(f.read())
+    if not pics: abort(400, 'Choose at least one photo')
+    r = identify_pictures(c, pics, vscope(c, request.args.get('scope', 'common')), exclude=b.get('exclude') or [], exclude_genera=b.get('exclude_genera') or [],
+                          plantnet=b.get('plantnet') or 'auto', n=10)
+    r['species'] = [sev_species(x) for x in r['species']]
+    r['matches'] = [m for m in r['matches'] if m.get('confidence') and m['confidence'] >= 0.6][:3]
+    return jsonify(r)
 
 @app.route('/api/plants/several', methods=['POST'])
 def several_create():
@@ -426,6 +445,24 @@ def several_create():
         except OSError: pass
     c.commit()
     return jsonify(codes=made), 201
+
+@app.route('/api/plants/<code>/identify', methods=['POST'])
+def plant_identify(code):
+    """1.40.0: the names for a plant from its own photos (newest six, main photo first), with the plant's own "Not this" list applied.
+    {plantnet: 'auto'|'yes'|'no'}"""
+    c = db()
+    r = plant_row(c, code)
+    b = request.get_json(silent=True) or {}
+    files = [x[0] for x in c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC, id DESC LIMIT 6', (r['id'],))]
+    pics = []
+    for f in files:
+        path = os.path.join(PHOTO_DIR, f)
+        if os.path.exists(path):
+            with open(path, 'rb') as fh: pics.append(fh.read())
+    if not pics: abort(400, 'This plant has no photos to check')
+    out = identify_pictures(c, pics, vscope(c, request.args.get('scope', 'common')), plant_code=code, plantnet=b.get('plantnet') or 'auto', n=10)
+    out['matches'] = [m for m in out['matches'] if m['code'] != code]          # its own photos are not a find
+    return jsonify(out)
 
 @app.route('/api/plants/<code>', methods=['PUT'])
 def update_plant(code):

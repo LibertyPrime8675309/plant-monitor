@@ -44,7 +44,7 @@ def identify():
     basis = {'Monstera deliciosa': ['house', 'looks'], 'Lupinus texensis': ['state'], 'Agave americana': ['own_gen']}
     return jsonify(model='bioclip-2.5-vith14 (test)', likely_new=c == 'blue', scope=request.args.get('scope', 'common'), seconds=0.1, pictures=n_pics, prior=True,
                    matches=[{'code': k, 'score': s, 'photo': None, 'confidence': cf} for k, s, cf in m],
-                   species=[x | {'probability': p, 'basis': basis.get(x['scientific_name'], [])} for x, p in zip(sp, (.41, .22, .09))] + extra,
+                   species=([x | {'probability': p, 'basis': basis.get(x['scientific_name'], [])} for x, p in zip(sp, (.41, .22, .09))] + extra)[:int(request.args.get('n', 10))],
                    genera=[{'genus': sp[0]['genus'], 'probability': .5}, {'genus': sp[1]['genus'], 'probability': .2}, {'genus': 'Testia', 'probability': .1}])
 
 @app.get('/names')

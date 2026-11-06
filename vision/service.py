@@ -343,7 +343,8 @@ def identify():
             if why: cand[i] += bonus; basis[i] = why
     order = sorted(cand, key=lambda i: -cand[i])
     sc = np.array([cand[i] for i in order]); p = np.exp(sc - sc.max()); p /= p.sum()
-    for k in range(min(10, len(order))):
+    n_out = max(3, min(40, int(request.args.get('n', 10))))      # 1.40.0: the app asks for more when some names are excluded
+    for k in range(min(n_out, len(order))):
         i = order[k]
         out['species'].append(species_dict(i) | {'probability': round(float(p[k]), 3), 'basis': basis.get(i, [])})
     gen = {}                                      # the genus is right more often than the species: add up the top 50

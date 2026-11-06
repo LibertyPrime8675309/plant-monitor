@@ -92,28 +92,112 @@ def mark_owned(c, items, key='scientific_name'):
         know_mark(c, items, key)                  # 1.23.0: Texas status, near home, pets, hardy here
     return items
 
-@app.route('/api/identify', methods=['POST'])
-def identify():
-    """A picture (field 'image') in; the closest plants in the record and the likeliest species out (from this computer)."""
-    c = db()
-    scope = vscope(c, request.args.get('scope', 'common'))
-    pics = pictures_bytes(1024)
+# ---------------------------------------------------------------- 1.40.0: one identifier for Identify, Add a plant and Add several
+# identify_pictures() is the one path: every picture of the plant goes to the picture checker together (prior and look-alikes in
+# the vision service), Pl@ntNet is asked when a key is saved (always, or only when this computer is unsure, by the setting),
+# the two lists are merged into one, names you said "Not this" to are left out, and the likeliest genus and family come with it.
+def sp_key(name):
+    m = re.match(r'^\s*([A-Z][a-z]+)(?:\s+([a-z][a-z\-]+))?', name or '')
+    return (m.group(1) + ' ' + (m.group(2) or '')).strip().lower() if m else (name or '').strip().lower()
+
+def rejections(c, plant_code=None):
+    """{'species': {keys}, 'genera': {lower genus}} said "Not this" for this plant, plus the ones said with no plant (session-wide picks the client sends itself)."""
+    sp, gn, ssp, sgn = set(), set(), set(), set()
+    q = 'SELECT name, genus FROM id_rejections WHERE plant_code=?' if plant_code else 'SELECT name, genus FROM id_rejections WHERE 0'
+    for name, g in c.execute(q, (plant_code,) if plant_code else ()):
+        if g: gn.add(name.strip().lower()); sgn.add(name.strip().capitalize())
+        else: sp.add(sp_key(name)); ssp.add(name.strip())
+    return {'species': sp, 'genera': gn, 'shown_species': ssp, 'shown_genera': sgn}
+
+def identify_pictures(c, pics, scope, exclude=None, exclude_genera=None, plant_code=None, plantnet='auto', n=10):
+    rej = rejections(c, plant_code)
+    ex_sp = rej['species'] | {sp_key(x) for x in (exclude or [])}
+    ex_gn = rej['genera'] | {x.strip().lower() for x in (exclude_genera or [])}
+    shown = {'species': sorted({x.strip() for x in (exclude or [])} | rej['shown_species']), 'genera': sorted({x.strip().capitalize() for x in (exclude_genera or [])} | rej['shown_genera'])}
     body, ct = multipart({}, [('image', 'picture.jpg', pics[0], 'image/jpeg')] + [('images', f'picture{i + 2}.jpg', b, 'image/jpeg') for i, b in enumerate(pics[1:])])
-    out = vision_call('/identify?scope=' + scope, body, ct, timeout=120)
+    out = vision_call('/identify?scope=' + scope + '&n=' + str(min(40, n + len(ex_sp) + 10)), body, ct, timeout=120)
     matches = []
     for m in out.get('matches', []):
         b = plant_brief(c, m['code'])
         if b: matches.append(b | {'score': m['score'], 'confidence': m.get('confidence'), 'matched_photo': m.get('photo')})
     out['matches'] = matches
-    mark_owned(c, out.get('species', []))
-    for x in out.get('species', []): x['basis_words'] = [BASIS_WORDS.get(w, w) for w in (x.get('basis') or [])]
-    # 1.39.0: Pl@ntNet as the first opinion when this computer is unsure, if the owner turned that on and saved a key
-    sure_match = matches and (matches[0].get('confidence') or 0) >= 0.5 and not out.get('likely_new')
-    top_p = (out.get('species') or [{}])[0].get('probability') or 0
-    if setting(c, 'plantnet_auto', '') == '1' and setting(c, 'plantnet_key', '') and not sure_match and top_p < 0.5 and request.args.get('plantnet', '1') != '0':
-        try: out['plantnet'] = plantnet_ask(c, pics[0])
-        except Exception as e: out['plantnet'] = {'species': [], 'error': getattr(e, 'description', None) or str(e)}
-    return jsonify(out)
+    keep = lambda x: sp_key(x.get('scientific_name')) not in ex_sp and (x.get('genus') or sp_key(x.get('scientific_name')).split(' ')[0]).lower() not in ex_gn
+    local = [x | {'sources': ['this computer']} for x in out.get('species', []) if keep(x)]
+    sure_match = bool(matches) and (matches[0].get('confidence') or 0) >= 0.5 and not out.get('likely_new')
+    top_p = (local or [{}])[0].get('probability') or 0
+    pn = None
+    key = setting(c, 'plantnet_key', '')
+    want = plantnet == 'yes' or (plantnet == 'auto' and setting(c, 'plantnet_auto', '') == '1' and not sure_match and top_p < 0.5)
+    if key and want and plantnet != 'no':
+        try: pn = plantnet_ask(c, pics[0], more=pics[1:])
+        except Exception as e: pn = {'species': [], 'error': getattr(e, 'description', None) or str(e)}
+    merged = []
+    if pn and pn.get('species'):
+        # one list: a name both agree on adds up; Pl@ntNet's score counts for more, as it names species better than the zero-shot checker
+        by = {sp_key(x['scientific_name']): dict(x) for x in local}
+        for x in pn['species']:
+            if not keep(x): continue
+            k = sp_key(x['scientific_name'])
+            if k in by: by[k]['score'] = by[k].get('probability', 0) + 1.3 * (x.get('probability') or 0); by[k]['sources'] = ['this computer', 'Pl@ntNet']; by[k]['plantnet_probability'] = x.get('probability')
+            else: by[k] = dict(x) | {'score': 1.3 * (x.get('probability') or 0), 'sources': ['Pl@ntNet'], 'plantnet_probability': x.get('probability'), 'basis': [], 'local_probability': None}
+        for k, x in by.items():
+            if 'score' not in x: x['score'] = x.get('probability', 0)
+            x.setdefault('local_probability', x.get('probability') if 'Pl@ntNet' not in x['sources'] or len(x['sources']) == 2 else None)
+        merged = sorted(by.values(), key=lambda x: -x['score'])
+        tot = sum(x['score'] for x in merged) or 1
+        for x in merged: x['probability'] = round(x['score'] / tot, 3)
+    else:
+        merged = local
+    merged = merged[:n]
+    mark_owned(c, merged)
+    for x in merged: x['basis_words'] = [BASIS_WORDS.get(w, w) for w in (x.get('basis') or [])]
+    out['species'] = merged
+    out['plantnet'] = pn if pn is not None else None
+    out['sources'] = ['this computer'] + (['Pl@ntNet'] if pn and pn.get('species') else [])
+    # the genus and the family, added up over the merged names: often right when no species is
+    gen, fam = {}, {}
+    for x in merged:
+        g = x.get('genus') or sp_key(x.get('scientific_name')).split(' ')[0].capitalize()
+        gen[g] = gen.get(g, 0) + x['probability']
+        if x.get('family'): fam[x['family']] = fam.get(x['family'], 0) + x['probability']
+    out['genera'] = [{'genus': g, 'probability': round(q, 3)} for g, q in sorted(gen.items(), key=lambda kv: -kv[1])[:5]]
+    out['families'] = [{'family': f, 'probability': round(q, 3)} for f, q in sorted(fam.items(), key=lambda kv: -kv[1])[:3]]
+    out['excluded'] = shown
+    out['pictures'] = len(pics)
+    if pn is None: out.pop('plantnet', None)
+    return out
+
+def id_args():
+    """The common request arguments of the identification routes."""
+    a = request.args
+    ex = [x for x in (a.get('exclude') or '').split('|') if x.strip()]
+    exg = [x for x in (a.get('exclude_genera') or '').split('|') if x.strip()]
+    return dict(exclude=ex, exclude_genera=exg, plant_code=a.get('plant') or None, plantnet=a.get('plantnet', 'auto'), n=max(3, min(25, int(a.get('n', 10)))))
+
+@app.route('/api/identify', methods=['POST'])
+def identify():
+    """Pictures (field 'image', more as 'images') in; the closest plants in the record and the likeliest species out.
+    ?exclude=Name|Name, ?exclude_genera=Genus, ?plant=P-001 (its own "Not this" list), ?plantnet=auto|yes|no, ?n=10."""
+    c = db()
+    scope = vscope(c, request.args.get('scope', 'common'))
+    return jsonify(identify_pictures(c, pictures_bytes(1024), scope, **id_args()))
+
+@app.route('/api/identify/reject', methods=['POST'])
+def identify_reject():
+    """1.40.0: "Not this": {name, genus: bool, plant: code or null}. With a plant, the name never comes back for that plant; without one, the
+    client keeps the list for the session and sends it as ?exclude=. Either way the rejection is logged."""
+    c = db()
+    b = request.get_json(silent=True) or {}
+    name = str(b.get('name') or '').strip()[:120]
+    if not name: abort(400, 'Which name?')
+    code = str(b.get('plant') or '').strip() or None
+    if code: plant_row(c, code)
+    genus = 1 if b.get('genus') else 0
+    c.execute('INSERT INTO id_rejections(plant_code,name,genus,rejected_by,rejected_at) VALUES(?,?,?,?,?)', (code, name, genus, editor(), now()))
+    audit_only(c, 'library', 'identify', name, None, editor(), f'Not this: {"genus " if genus else ""}{name}' + (f' for {code}' if code else ''), None, code)
+    c.commit()
+    return jsonify(ok=True, name=name, genus=bool(genus), plant=code)
+
 BASIS_WORDS = {'own_sp': 'a species you have', 'own_gen': 'a genus you have', 'house': 'a houseplant', 'state': 'grows in this state', 'looks': 'looks like your photos'}
 
 @app.route('/api/identify/status')
@@ -1217,11 +1301,12 @@ def identify_plantnet():
     """Second opinion from Pl@ntNet (free key: 500 pictures a day). Pl@ntNet does not keep the pictures, by its terms."""
     return jsonify(plantnet_ask(db(), picture_bytes(1280)))
 
-def plantnet_ask(c, pic):
-    """Pl@ntNet's answer for one picture (JPEG bytes), as a dict; aborts with a readable reason when it cannot answer."""
+def plantnet_ask(c, pic, more=()):
+    """Pl@ntNet's answer for one picture (JPEG bytes; up to four more of the same plant), as a dict; aborts with a readable reason when it cannot answer."""
     key = setting(c, 'plantnet_key', '')
     if not key: abort(400, 'Pl@ntNet is not set up. The owner can save a key on the Identify page, under "Second opinions".')
-    body, ct = multipart({'organs': 'auto'}, [('images', 'picture.jpg', pic, 'image/jpeg')])
+    files = [('images', 'picture.jpg', pic, 'image/jpeg')] + [('images', f'picture{i + 2}.jpg', b, 'image/jpeg') for i, b in enumerate(list(more)[:4])]
+    body, ct = multipart({'organs': 'auto'}, files)
     url = PLANTNET_URL + '?' + urllib.parse.urlencode({'api-key': key, 'lang': 'en', 'nb-results': 5, 'include-related-images': 'false'})
     st, j = outside_call(url, body, {'Content-Type': ct})
     if st == 404: return {'species': [], 'note': 'Pl@ntNet did not recognise a plant in that picture.', 'source': 'Pl@ntNet'}

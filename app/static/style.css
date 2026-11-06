@@ -1136,6 +1136,9 @@ html:not([data-narrow="1"]) .more-f .filters>label:first-child{grid-column:auto}
 .id-again{align-items:center}
 .id-more-pic{width:3rem;height:3rem;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
 .tag-why{background:var(--sheet);border:1px solid var(--line)}
+.tag-src{background:var(--ink);color:var(--paper)}   /* 1.40.0: which checker said so */
+.id-sum{margin:.3rem 0 .6rem}
+.sev-names .id-sps{padding-left:1.2em}
 .id-sp{margin:0 0 1rem;padding:.6rem .8rem;border-left:4px solid var(--line);background:var(--sheet)}
 .id-sp .sci{font-family:var(--serif);font-size:1.2rem;font-weight:600}
 .id-p{float:right;font-size:1.1rem;margin-left:.6rem}
@@ -1630,7 +1633,7 @@ html[data-role=viewer] :is([data-act=snsedit],[data-act=snsrm]){display:none!imp
 .cal-steps li{margin:.4rem 0}
 .cal-now{font-size:1.15em}
 html[data-role=viewer] :is([data-act=snscal],[data-act=calstep]){display:none!important}
-html[data-role=viewer] :is([data-act=offiduse],[data-act=newfill],[data-act=ltedit]){display:none!important}   /* 1.38.0 */
+html[data-role=viewer] :is([data-act=offiduse],[data-act=newfill],[data-act=ltedit],[data-act=plantid],[data-act=plantuse],[data-act=plantask]){display:none!important}   /* 1.38.0 */
 .off-pics{display:inline-flex;gap:.3rem;margin-left:.5rem;vertical-align:middle}
 .off-pics img{width:3rem;height:3rem;object-fit:cover;border-radius:4px;border:1px solid var(--line)}
 /* 1.36.0: the soil moisture chart on a plant's timeline, and the calendar badges */

@@ -243,6 +243,9 @@ CREATE TABLE IF NOT EXISTS plant_groups(
   rule TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '', created_by TEXT NOT NULL, created_at TEXT NOT NULL, updated_by TEXT, updated_at TEXT);
 CREATE TABLE IF NOT EXISTS group_members(
   group_id INTEGER NOT NULL, plant_id INTEGER NOT NULL, added_by TEXT, added_at TEXT, PRIMARY KEY(group_id, plant_id));
+CREATE TABLE IF NOT EXISTS id_rejections(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, plant_code TEXT, name TEXT NOT NULL, genus INTEGER NOT NULL DEFAULT 0,
+  rejected_by TEXT NOT NULL, rejected_at TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS bulk_changes(
   id INTEGER PRIMARY KEY AUTOINCREMENT, group_id INTEGER, what TEXT NOT NULL, changes TEXT NOT NULL,
   done_by TEXT NOT NULL, done_at TEXT NOT NULL, undone_by TEXT, undone_at TEXT);

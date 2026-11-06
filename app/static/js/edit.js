@@ -192,7 +192,7 @@ function viewForm(p) {
       ${isNew ? html`<fieldset><legend>Photos</legend><div class="field-grid">
         <label class="f wide">Photos<small>Optional. Take them now or choose them from your photos; the first one becomes the main photo. With a photo, the common name can wait: a stand-in name is used until the photo is checked.</small><input type="file" name="__photos" accept="image/*" multiple data-f="newphotos"></label>
         <p class="row wide"><button class="btn ghost" type="button" data-act="newfill" id="newfill-btn" disabled>Fill in the names from the first photo</button></p>
-        <p id="newfill-st" class="hint wide" role="status" aria-live="polite">Choose a photo, then the picture checker on this computer can suggest the names.</p></div></fieldset>` : ''}
+        <div id="newfill-st" class="hint wide" role="status" aria-live="polite">Choose a photo, then the names can be filled in from it${ID.keys && ID.keys.plantnet ? ' (this computer and Pl@ntNet)' : ''}.</div></div></fieldset>` : ''}
       ${GROUPS.map(([title, names]) => html`<fieldset><legend>${title}</legend><div class="field-grid">${names.map(n => fieldInput(F[n], p ? p[n] : NEWFILL && NEWFILL[n] ? NEWFILL[n] : (n === 'winter_plan' ? 'Move indoors' : n === 'health_rating' ? 'Fair' : '')))}</div></fieldset>`)}
       ${isNew ? '' : html`<fieldset><legend>Change note</legend><label class="f">What did you change, and why?<small>Optional. It appears in the page history.</small><input type="text" name="__note" maxlength="300"></label></fieldset>`}
       <div id="form-err"></div>
@@ -208,14 +208,16 @@ function addModeRow(cur) {
     <a class="btn ${cur === 'one' ? '' : 'ghost'}" href="#/new" ${cur === 'one' ? raw('aria-current="page"') : ''}>One plant</a>
     <a class="btn ${cur === 'several' ? '' : 'ghost'}" href="#/new/several" ${cur === 'several' ? raw('aria-current="page"') : ''}>Several plants from photos</a></nav>`;
 }
+let NEWID = { r: null, ex: null };              // 1.40.0: the names found for the Add a plant form's photos, and the ones said "Not this" to
 const SEV = { step: 'pick', photos: [], order: [], plants: [], home: '', site: 'Outdoors', busy: false, done: null };
 const SEV_FIELDS = [['common_name', 'Common name', 'text'], ['scientific_name', 'Scientific name', 'text'], ['plant_type', 'Plant type', 'text'],
   ['family', 'Family', 'text'], ['genus', 'Genus', 'text'], ['pet_safety', 'Safety for pets', 'pets'], ['id_confidence', 'ID confidence (%)', 'int'],
   ['location', 'Spot (where exactly)', 'text'], ['notes', 'Notes', 'long']];
 const SEV_REL = [['same', 'Same plant as the photo above'], ['new', 'A different plant'], ['all', 'Shows all of them (a wide shot: it goes on every plant)'], ['out', 'Leave this photo out']];
 function sevDefaultHome() { const cur = META.place, h = HOMES().find(x => String(x.id) === String(cur && cur.id)); return h && !h.is_home ? String(h.id) : ''; }
-function viewSeveral() {
+async function viewSeveral() {
   if (SEV.step === 'pick' && !SEV.photos.length) { SEV.home = sevDefaultHome(); }
+  if (!ID.keys) { try { ID.keys = await api('GET', '/api/identify/settings'); } catch (e) { /* no Pl@ntNet button then */ } }
   return { title: 'Add several plants', html: html`<p class="crumb"><a href="#/plants">All plants</a></p><h1>Add a plant</h1>${addModeRow('several')}
     <div id="sev">${sevHtml()}</div>` };
 }
@@ -259,10 +261,12 @@ function sevPlantHtml(P, gi, N) {
     ${(P.matches || []).length ? html`<p class="notice" role="note"><strong>This may be a plant you already have:</strong> ${P.matches.map((m, k) => html`${k ? ', ' : ''}<a href="#/plant/${enc(m.code)}" target="_blank" rel="noopener">${m.code} ${m.common_name}</a> (${Math.round(m.confidence * 100)}% sure)`)}. If it is, untick "Add this plant" and add the photos on its page instead.</p>` : ''}
     <ul class="sev-pics">${pics.map(ph => sevPicHtml(ph))}</ul>
     ${shared ? html`<p class="hint">Plus ${shared === 1 ? 'the wide shot' : `the ${shared} wide shots`} marked "Shows all of them".</p>` : ''}
-    ${sp.length ? html`<fieldset class="sev-names"><legend>What the picture checker thinks it is</legend>${sp.map((x, k) => html`<label class="chk"><input type="radio" name="sevsp${gi}" data-f="sevpick" data-g="${gi}" value="${k}" ${P.pick === k ? raw('checked') : ''}>
-        <span><strong>${x.common_name || x.scientific_name}</strong> <i>${x.common_name ? x.scientific_name : ''}</i>: ${Math.round((x.probability || 0) * 100)}% likely</span></label>`)}
-      <label class="chk"><input type="radio" name="sevsp${gi}" data-f="sevpick" data-g="${gi}" value="-1" ${P.pick === -1 ? raw('checked') : ''}><span>None of these: I will type the names</span></label></fieldset>`
-      : html`<p class="muted">The picture checker had no suggestion for this plant. Type its names below.</p>`}
+    <fieldset class="sev-names"><legend>What it could be</legend>
+      ${P.busy ? html`<p class="muted" role="status">Checking ${pics.length === 1 ? 'its photo' : `its ${pics.length} photos together`}…</p>` : P.iderr ? html`<p class="notice bad">${P.iderr}</p>` : ''}
+      ${P.id ? idNamesPanel(P.id, { src: 'sev', id: `sev-names-${gi}`, pick: gi, picked: P.pick, reject: 'sev' }) : sp.length ? html`<p class="hint">First guess from each photo on its own; the photos are being checked together.</p>` : ''}
+      <label class="chk"><input type="radio" name="sevsp${gi}" data-f="sevpick" data-g="${gi}" value="-1" ${P.pick === -1 ? raw('checked') : ''}><span>None of these: I will type the names</span></label>
+      <p class="row noprint"><button class="btn small ghost" type="button" data-act="sevrecheck" data-g="${gi}" ${P.busy ? raw('disabled') : ''}>Check the photos again</button>
+        ${ID.keys && ID.keys.plantnet && !(P.id && P.id.plantnet) ? html`<button class="btn small ghost" type="button" data-act="sevask" data-g="${gi}" ${P.busy ? raw('disabled') : ''}>Ask Pl@ntNet about this plant</button>` : ''}</p></fieldset>
     <div class="field-grid">${SEV_FIELDS.map(([k, label, kind]) => {
       const v = f[k] == null ? '' : f[k], at = raw(`data-f="sevfield" data-g="${gi}" data-k="${k}"`);
       if (kind === 'pets') return html`<label class="f">${label}<select ${at}><option value="">Not set</option>${(META.enums.pet_safety || []).map(o => html`<option ${o === v ? raw('selected') : ''}>${o}</option>`)}</select></label>`;
@@ -317,6 +321,28 @@ function sevPlants(n) {        // one entry per plant, with the species of its p
     SEV.plants.push(P);
   }
 }
+// 1.40.0: each plant's photos are checked together with the one identifier (this computer, Pl@ntNet when set up, "Not this" left out)
+async function sevIdentify(gi, force, plantnet) {
+  const P = SEV.plants[gi]; if (!P) return;
+  const files = SEV.photos.filter(p => p.group === gi).map(p => p.file);
+  const key = files.join('|') + '#' + JSON.stringify(P.ex || null) + (plantnet || '');
+  if (!files.length || (!force && P.idkey === key)) return;
+  P.idkey = key; P.busy = true; P.iderr = null; sevDrawPlant(gi);
+  try {
+    const r = await api('POST', '/api/plants/several/identify?scope=' + enc(idScope()), { photos: files, exclude: P.ex ? P.ex.species : [], exclude_genera: P.ex ? P.ex.genera : [], plantnet: plantnet || 'auto' });
+    if (P.idkey !== key) return;
+    P.id = r; P.species = r.species || []; P.matches = r.matches || [];
+    if (!P.typed.has('common_name')) { P.pick = P.species.length ? 0 : -1; sevFill(P); }
+  } catch (e) { P.iderr = e.message; }
+  P.busy = false; sevDrawPlant(gi);
+}
+async function sevIdentifyAll() { for (let gi = 0; gi < SEV.plants.length; gi++) await sevIdentify(gi); }
+function sevDrawPlant(gi) {
+  const old = document.getElementById('sev-p' + gi); if (!old) return;
+  const had = document.activeElement && old.contains(document.activeElement) ? document.activeElement.getAttribute('data-k') : null;
+  old.outerHTML = rend(sevPlantHtml(SEV.plants[gi], gi, SEV.plants.length));
+  if (had) { const el = document.querySelector(`#sev-p${gi} [data-k="${had}"]`); if (el) el.focus(); }
+}
 function sevDraw(focusSel) {
   const box = document.getElementById('sev'); if (!box) return;
   box.innerHTML = rend(sevHtml()); buildSideNav();
@@ -350,7 +376,8 @@ async function sevGo(form) {
   if (!SEV.photos.length) { sevDraw(); return; }
   sevFirstGuess(); SEV.step = 'review'; sevDraw('#sev-p0 legend');
   const lg = document.querySelector('#sev-p0'); if (lg) lg.scrollIntoView({ block: 'start' });
-  toast(`${SEV.photos.length} photos checked: ${SEV.plants.length} plant${SEV.plants.length === 1 ? '' : 's'}. Check them before adding.`);
+  toast(`${SEV.photos.length} photos checked: ${SEV.plants.length} plant${SEV.plants.length === 1 ? '' : 's'}. Each plant's photos are now checked together.`);
+  sevIdentifyAll();
 }
 async function viewEdit(code) { return viewForm(await api('GET', '/api/plants/' + enc(code))); }
 async function submitForm(form) {
