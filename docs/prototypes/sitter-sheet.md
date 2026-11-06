@@ -48,9 +48,11 @@ Nothing. The sheet only reads what is already there: no new tables or columns, a
 
 ## How it is built
 - `app/static/sitter.html` and `app/static/sitter.js` make a page of their own (`/sitter.html`, or `/sitter.html#group=3` from a group page), so the printout carries nothing but the sheet. Same `style.css` and Display settings, and no inline scripts.
-- `server.py` has one new read-only route, `GET /api/sitter?from=&to=[&group=]`, in its own block after `/api/water`. It runs `water_report()` and repeats each plant's interval from its next check across the dates, takes the cold nights from `frost_report()` and the forecast highs and lows. It refuses dates in the past, a last day before the first, and more than 42 days, in plain words.
-- `app.js` has one new block after `viewToday()`: a `MutationObserver` adds the link when Today or a group page draws, so `route()` and `viewToday()` are unchanged.
+- `app/plantdb/sitter.py` (loaded last in `server.py`'s module list) has one read-only route, `GET /api/sitter?from=&to=[&group=]`. It runs `water_report()` and repeats each plant's interval from its next check across the dates, takes the cold nights from `frost_report()` and the forecast highs and lows. It refuses dates in the past, a last day before the first, and more than 42 days, in plain words.
+- `js/main.js` has one new block after the care card links: a `MutationObserver` adds the link when Today or a group page draws, so `route()` and `viewToday()` are unchanged.
+- `sw.js` saves `sitter.html` and `sitter.js` with the app, and keeps a page of its own (`sitter.html`, `card.html`) under its own name: before, opening one replaced the saved app with that page, so offline the app would have opened as the print page.
 - `style.css` has one new block, headed "prototype proto/sitter-sheet", before the 1.9.0 block.
+- **Rebuilt on 1.42.0 (November 6, 2026):** the branch was made before 1.32.0 split `app.js` and `server.py` into modules; main was merged in and the sheet moved to the new files. It works as before. The check is in `run_checks.py` (`sitter`).
 - Choices are stored in localStorage `plantdb.sitter`.
 - Test: `dev/test/sitter_check.py` (start the mock server with `MOCK_BASE_F=40` for cold nights). It covers the API (one entry per day, the repeat interval, groups, refusals), both links, labels on every choice, the choices and remembering them, no sideways scrolling in light and dark at laptop, phone and largest-text sizes, the shorter plant list, and the printout (black on white, large print, choices left off, and each day starting a new page only when that choice is ticked). It saves PDFs to `dev/tmp/shots/sitter-print.pdf` and `sitter-print-pageday.pdf`.
 
