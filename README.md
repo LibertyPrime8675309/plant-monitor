@@ -264,7 +264,7 @@ Remove the line from `.env` and run `docker compose up -d` to close it again.
 
 ## Display settings and low vision
 
-Press the **Display** button (bottom right of every page; it stays on screen) to change how everything looks. The **Debug** button beside it is described under "Audit log" below. Changes apply at once and are remembered in that browser (each computer or phone keeps its own).
+Press the **Display** button (from 1.42.0 at the bottom of the Navigation menu; on a page with no menu, bottom right) to change how everything looks. The **Debug** button beside it is described under "Audit log" below. Changes apply at once and are remembered in that browser (each computer or phone keeps its own).
 
 - **Text and button size**: Standard, Comfortable (the new default, a little bigger than before), Large, Larger, Largest. Buttons, bars, charts and spacing scale together.
 - **Spacing**: Normal or Roomy (more space between lines, letters and words).
@@ -279,7 +279,7 @@ On a computer (from 1.26.1) the menu bar at the top uses the whole width of the 
 
 On a phone the menu bar at the top scrolls away with the page (scroll back to the top to reach it), and every page fits the width of the screen at every text size. From 1.26.0:
 - The list of pages folds behind one **Pages** button, which names the page you're on (for example "Pages: Groups"). Press it to show every page; choosing one, or pressing Escape, folds the list again.
-- **Sections**, **Debug** and **Display** share one bar along the bottom of the screen. With the largest text there isn't room for all three in one row, so Sections takes the top row and Debug and Display share the second.
+- **Navigation** and **Debug** share one bar along the bottom of the screen (from 1.42.0 Display is inside the Navigation menu).
 - On a computer with large text (or a small window such as a tablet held sideways), the page links fold behind the same **Pages** button once they would take more than two rows, or the top bar more than a fifth of the window. If the top bar is still that tall, it scrolls away with the page, as on a phone.
 - Tables too wide for the screen become one box per row: the row's name (a day, a plant, a backup) at the top, then each value next to its column's name, two or more to a line when they fit. The long table on the Weather page still scrolls sideways.
 - The same happens on a tablet or a small window whenever the text is large enough that the page switches to one column.
@@ -314,11 +314,13 @@ Keyboard shortcuts work on every page, except while you are typing in a box. **D
 | **L** | Choose the location for the weather |
 | **?** | List the shortcuts |
 
-### Section menu ("On this page")
+### Section menu ("Navigation", called "On this page" before 1.42.0)
+
+**From 1.42.0** the menu is called **Navigation**, and the **Display** button sits at its bottom (always in view while the menu is open). On a page with no sections, which has no menu, Display stays in the bottom-right corner. Every section in the menu has a **Hide** / **Show** button by its title that folds the section shut down to its title; the menu or a section button that goes to a folded section opens it again. What you fold is remembered on that device for that page (plant pages share one memory, so folding Temperature on one plant folds it on all of them). Sections that already fold by pressing their own title are left as they are.
 
 Every page has a menu down the side listing its sections (for example on the Weather page: Tracked history, All logged weather data, Location and updates). Choose one to jump straight to it; the section you are reading is highlighted. On plant pages it scrolls the details half, like the section buttons. From 1.27.3 the section you choose stays highlighted until you scroll yourself (even a short last section that cannot reach the top of the window), and it gets a thick outline for a couple of seconds so you can find it.
 
-- **Hide** folds the menu away; the **Sections** button at the edge of the screen brings it back.
+- **Hide** folds the menu away; the **Navigation** button (called Sections before 1.42.0) at the edge of the screen brings it back.
 - **Move to the right / Move to the left** swaps its side.
 - The same choices, plus **Page width: Use the full width of the window** (more room for charts and tables on a wide screen), are in **Display**. They are remembered on that computer.
 - On phones, narrow windows and very large text the menu starts folded, the Sections button sits at the bottom left, and the menu closes after you choose a section.
@@ -1384,6 +1386,10 @@ How much light a plant gets is its **daily light (DLI)**, in mol/m² a day: the 
   - Above the list: **Search plants**, **Show** (all, fits this setting, fits or nearly fits, not in a spot yet, ticked, lives inside, coming inside) and **Sort** (name, code, most light needed first, best fit first). It says how many are showing and how many are ticked.
   - Under the light at the leaves, how much room the ticked pots take against what the light covers, and for a plant that does not fit, one of your other spots that would suit it.
 - **Add plants (from 1.41.0)** on each spot opens it at the search box, showing the plants not in a spot yet. A plant that does not suit its spot says which of your spots would.
+- **The top of the page (from 1.42.0)** stays in view as you scroll: the title, the short description and a table: **Inside**, **Coming in**, **Assigned light spot**, **No assigned light spot** and the **7-day mol/m² average** outdoors in the open. **Hide the summary** folds the description and table, leaving the title; the app remembers which you chose. On a phone it scrolls with the page.
+- **Add a light** sits by the Your lights title and **Set up a spot** by the Your light spots title (1.42.0; the "This winter" box is gone, its numbers are in the table).
+- **Your light spots (from 1.42.0)** fold one by one. Shut, each still shows its name, where it is, its mol/m² per day and how many plants (and how many are not in their range). Open it for the light, the setting and its plants, two to a row on a wide screen (one on a phone), each with its code and its range per day ("6–12 mol/m² per day") on lines of their own. **Open every spot** and **Close every spot** are above them; the app remembers which you left open.
+- **Rooms and shelves (from 1.42.0):** each room's title has **New Shelf**, **Rename** and **Remove room**; each shelf has its own **Rename** and **Remove**, and removing a shelf (even the last one) leaves the room. **New Room** at the bottom, and New Shelf, open the **Build-A-Room** window. After a change the page stays where you were.
 - **Set up all suggested spots (from 1.41.0)** sets up the whole suggested layout in one go, named "Bright light 1" and so on. Rename, move or change each one afterwards.
 - **No light left for these** lists the plants your lights cannot cover, with the reason.
 - **Easing them in.** Under a spot, "Easing them in from outdoor light" gives a first and second week brighter and longer than the spot's own setting, so plants used to the sun do not drop their leaves all at once.
