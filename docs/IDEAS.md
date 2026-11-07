@@ -5,6 +5,7 @@ One line each, most wanted first. A prototyping session takes the top one that i
 
 
 ## Done
+1.45.0 (November 7, 2026, pull request #65): Frost dates (the usual first and last 36°F, freeze and hard freeze from the weather history, on Weather, the Cold-night checklist, Back outside and Today).
 1.43.0 and 1.44.0 (November 6 and 7, 2026, pull requests #41, #44, #47 and #58): Plant-sitter sheet, Health walk-through, Search by voice (on this computer, with Whisper; Speak a note too) and Turn the pots.
 1.34.0 to 1.36.0 (November 4 and 5, 2026, pull requests #51, #52 and #53): Summer heat (the AHS heat zone from the weather history, and a verdict per plant on About this plant) and Your sensors (the sensor dashboard).
 1.19.0 (October 28, 2026, pull requests #23 and #26): Undo right after a quick care button, and large-print care cards for a plant or a whole group.

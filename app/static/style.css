@@ -1871,6 +1871,24 @@ ul.lt-plants.lt-two{grid-template-columns:repeat(auto-fit,minmax(max(min(100%,19
 .lt-room-head .row{margin:0}
 .lt-top .rd-page .hint{display:none}     /* the shortcut hint is on every other page; here the title row stays one line */
 
+/* ---- prototype (proto/frost-dates): frost dates on the Weather page and the Cold-night checklist ---- */
+.fd-dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:.4rem 1.2rem;margin:.4rem 0 .8rem}
+.fd-dl>div{border-left:4px solid var(--line);padding:.2rem 0 .2rem .7rem} .fd-dl dt{font-weight:600} .fd-dl dd{margin:0} .fd-dl dd .hint{display:block}
+.fd-groups{list-style:none;padding:0;margin:.6rem 0} .fd-g{border-top:1px solid var(--line);padding:.6rem 0} .fd-g:first-child{border-top:0}
+.fd-h{margin:0 0 .2rem;font-size:1.05em} .fd-g p{margin:.2rem 0} .fd-names{overflow-wrap:anywhere}
+/* Ethan's answers of November 6: one plant a line with its photo (sized in em, so it grows with the Display setting), a fold
+   for long groups, Back outside and a line on Today */
+.fd-plants{list-style:none;padding:0;margin:.4rem 0}
+.fd-p{display:flex;align-items:center;gap:.7rem;padding:.3rem 0;min-width:0}
+.fd-p img,.fd-nophoto{flex:0 0 3em;width:3em;height:3em;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:var(--line-2,var(--line))}
+.fd-pt{display:flex;flex-direction:column;min-width:0;overflow-wrap:anywhere}
+.fd-pt .nm{font-weight:600}
+.fd-more{margin:.2rem 0}
+.fd-more>summary{cursor:pointer;padding:.4rem 0;font-weight:600;text-decoration:underline;text-underline-offset:.15em}
+.fd-more>summary:focus-visible{outline:var(--ring) solid var(--focus);outline-offset:2px}
+.fd-today,.fd-now{overflow-wrap:anywhere}
+.fd-today a{margin-left:.3rem}
+.fd-away{font-weight:600}
 /* prototype proto/voice-search: a "Search by voice" button beside each search box. While it listens, the button is filled and says
    "Listening" (in words, not colour alone), and the line under it says what was heard. Display can hide them (data-vsearch="0"). */
 .vs-wrap{display:flex;flex-direction:column;gap:.3rem;min-width:0;align-self:end}

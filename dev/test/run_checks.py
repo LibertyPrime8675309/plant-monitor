@@ -12,7 +12,7 @@ import os, subprocess, sys, time, urllib.request
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 LOGS = os.path.join(ROOT, 'dev', 'tmp', 'logs'); DATA = os.path.join(ROOT, 'dev', 'tmp', 'data')
 # (name, server): 'fresh' = a new data folder; '40' = fresh, with cold nights; 'share' = the server the check before it used
-ORDER = [('frost', '40'), ('care', 'fresh'), ('read', 'share'), ('timeline', 'share'), ('copy', 'share'), ('photocheck', 'share'), ('jumprow', 'share'),
+ORDER = [('frost', '40'), ('frostdates', 'fresh'), ('care', 'fresh'), ('read', 'share'), ('timeline', 'share'), ('copy', 'share'), ('photocheck', 'share'), ('jumprow', 'share'),
          ('prep', 'fresh'), ('audit', 'fresh'), ('fertloc', 'fresh'), ('access', 'fresh'), ('lights', 'fresh'), ('details', 'fresh'), ('swipe', 'fresh'),
          ('calendar', '40'), ('outside', 'share'), ('groups', 'fresh'), ('newplant', 'fresh'), ('identify', 'fresh'), ('header', 'fresh'), ('undo', 'fresh'),
          ('card', 'fresh'), ('sitter', 'fresh'), ('photos', 'fresh'), ('water', 'fresh'), ('library', 'fresh'), ('filters', 'fresh'), ('fungi', 'fresh'), ('wishlist', 'fresh'),
