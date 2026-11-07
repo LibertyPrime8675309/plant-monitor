@@ -34,6 +34,8 @@ st = {p['code']: p for p in T()['plants']}
 check(st[a]['state'] == 'ok' and st[a]['due_on'] == (today + timedelta(days=14)).isoformat(), 'a pot turned today is next due in 14 days')
 check(st[b2]['state'] == 'due' and st[c3]['state'] == 'soon', 'one turned 15 days ago is due; one turned 13 days ago is due tomorrow')
 check(any(e['kind'] == 'turn' for e in call('GET', f'/api/care?plant={a}')), 'a turn is a care log entry of kind "turn"')
+one = call('GET', f'/api/turning?plant={a}')
+check([p['code'] for p in one['plants']] == [a] and one['plants'][0]['state'] == st[a]['state'], '?plant= gives just that plant, for its own page')
 call('PUT', '/api/turning', {'every': 7})
 st = {p['code']: p for p in T()['plants']}
 check(T()['every'] == 7 and st[c3]['state'] == 'due', 'every 7 days: the one turned 13 days ago is now due too')

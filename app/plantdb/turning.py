@@ -39,10 +39,12 @@ def turn_auto(r, overhead):
     if r['code'] in overhead: return False, f'Under a grow light from above ({overhead[r["code"]]})'
     return True, ('By a window indoors' if site == 'Indoors' else 'On the covered porch: light from the open side')
 
-def turn_report(c):
+def turn_report(c, code=None):
+    """code: just that plant (its own page), so the page does not wait on the whole list."""
     today = local_today(c)
     every, choice, overhead = turn_every(c), turn_choices(c), turn_overhead(c)
     at, at_args = plants_at(c, location(c))
+    if code: at, at_args = ' AND code=?', [code]
     rows = c.execute("SELECT * FROM plants WHERE status='active'" + at + ' ORDER BY code', at_args).fetchall()
     last = dict(c.execute("SELECT plant_code, MAX(done_on) FROM care_log WHERE kind='turn' GROUP BY plant_code"))
     areas = dict(c.execute('SELECT id, name FROM areas'))
@@ -77,7 +79,7 @@ def turn_report(c):
 def turning():
     """GET: the pots to turn. PUT {every: 7|10|14|21|30} and/or {plant: CODE, on: true|false} changes the reminders (not for viewers)."""
     c = db()
-    if request.method == 'GET': return jsonify(turn_report(c))
+    if request.method == 'GET': return jsonify(turn_report(c, request.args.get('plant') or None))
     b = request.get_json(silent=True) or {}
     who = editor()
     if 'every' in b:

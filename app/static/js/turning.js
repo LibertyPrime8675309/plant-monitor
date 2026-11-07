@@ -118,7 +118,7 @@ Object.assign(changeActs, {
     await careBase();
     if (!CUR) return;
     const code = CUR.p.code, name = CUR.p.common_name;
-    let T; try { T = await api('GET', '/api/turning'); } catch (e) { return; }      // offline with nothing saved: leave it out
+    let T; try { T = await api('GET', '/api/turning?plant=' + enc(code)); } catch (e) { return; }      // offline with nothing saved: leave it out
     if (!CUR || CUR.p.code !== code) return;
     const btns = document.querySelector('.quick-btns'); if (!btns) return;
     const old = document.getElementById('tn-plant'); if (old) old.remove();
