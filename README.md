@@ -1393,6 +1393,15 @@ After you press **Watered** or **Still moist** (on the Today page or a plant pag
 
 Undo removes only the entries that press made, so the rest of the care log is untouched. For "Watered all" it removes all of them and says how many. If someone else already removed the entry, it says "Nothing to undo". The change log records it as "Undone right after it was logged". To remove an older entry, use the care log on the plant's page.
 
+## Frost dates (from 1.45.0)
+
+How long have you got before the first freeze, and when is the last one usually over? The app answers from Round Rock's own weather history (Load history on the Weather page), not a general table. "Usual" is the middle date of the winters that had such a night; plan for the earliest date in the fall and the latest in the spring.
+
+- **Weather page, Frost dates in Round Rock, TX:** this winter so far; the usual first and last **frost possible (36°F)**, **freeze (32°F)** and **hard freeze (28°F)**, each with the earliest and latest seen; and a table, one row per winter (first 36°F night, first and last freeze, how many freezing nights and hard freezes, the coldest night). On a phone the rows become boxes.
+- **Cold-night checklist, When cold nights usually come:** your plants outside grouped by the temperature that damages them, earliest first, with when that night usually comes. One plant a line with its photo and a link; a long group shows 5 and a **Show the other N plants** button.
+- **Back outside, When the cold nights usually end:** the usual last hard freeze, freeze and 36°F night, with the earliest and latest, and from January to June how many days to go.
+- **Today:** in October and November, until the first freeze, "No freeze yet. The usual first freeze is N days away"; in February and March, "The usual last freeze (date) is N days away", with a link to Back outside. Nothing shows without 3 whole winters of history.
+
 ## Turn the pots (from 1.44.0)
 
 A plant by a window grows toward the light and leans. A quarter turn every week or two, always the same way round, keeps it straight and full. **Care → Turn the pots** reminds you, the way watering reminders do.

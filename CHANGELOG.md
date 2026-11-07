@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.45.0 (2026-11-07)
+- **Frost dates** (prototype #65, with your four answers), from Round Rock's own weather history:
+  - **On the Weather page,** the usual first and last frost-possible night (36°F), freeze (32°F) and hard freeze (28°F), with the earliest and latest seen and a table of past winters. On a clear, still night, frost can form in low spots even when the weather station reads 36°F.
+  - **On the cold-night checklist,** a new part, "When cold nights usually come": your outside plants grouped by the temperature that damages them, one plant per line with its photo. Long groups show 5 plants and a button to show the rest.
+  - **On Back outside,** a new part, "When the cold nights usually end": the usual last hard freeze, freeze and 36°F night, with how many days to go in spring.
+  - **On Today,** "No freeze yet. The usual first freeze is N days away" in October and November, and the days left until the usual last freeze in February and March.
+- **The T8 strip request is answered:** you have one strip, the 25 W one already on its card. It no longer shows in your requests.
+
 ## 1.44.0 (2026-11-07)
 - **Search by voice, on your own computer** (prototype #47, now part of the app). A **Search by voice** button sits beside every search box (and the **V** key). Say a plant, a code ("P 36") or "open" and a page ("open weather", "open coming inside").
   - **Your voice stays on your computer.** It goes to a new speech service that runs Whisper on the PC, not to Google or Microsoft. It works in Brave, Firefox, Chrome, Edge and Safari.
