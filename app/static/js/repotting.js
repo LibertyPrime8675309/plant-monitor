@@ -181,11 +181,14 @@ Object.assign(formActs, {
 {
   const careBase = loadCarePlant;
   loadCarePlant = async function () {
+    // asked for alongside the care part, not after it, so redrawing a plant's care (a tick on the checklist) takes no longer
+    const code0 = CUR && CUR.p.code;
+    const ask = code0 ? api('GET', '/api/repotting?plant=' + enc(code0)).catch(() => null) : null;
     await careBase();
-    if (!CUR) return;
+    if (!CUR || !ask) return;
     const code = CUR.p.code, name = CUR.p.common_name;
-    let R; try { R = await api('GET', '/api/repotting?plant=' + enc(code)); } catch (e) { return; }
-    if (!CUR || CUR.p.code !== code) return;
+    const R = await ask; if (!R) return;
+    if (!CUR || CUR.p.code !== code || code !== code0) return;
     const btns = document.querySelector('.quick-btns'); if (!btns) return;
     const old = document.getElementById('rp-plant'); if (old) old.remove();
     const p = R.plants[0], out = R.left_out[0];
