@@ -49,8 +49,9 @@ with sync_playwright() as p:
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.add_init_script("localStorage.setItem('plantdb.editor','Repot Test')")
     pg.goto(BASE + '/#/repotting'); pg.wait_for_selector('#rp-due')
-    check(pg.locator('#main-nav a[aria-current=page]').inner_text().strip().startswith('Care') and pg.locator('#sub-nav a[aria-current=page]').inner_text().strip() == 'Repotting',
-          'the page is under Care, as "Repotting"')
+    check(pg.locator('#main-nav a[aria-current=page]').inner_text().strip().startswith('Today') and pg.locator('#sub-nav a[aria-current=page]').inner_text().strip() == 'Repotting',
+          'the page is in the Today row, as "Repotting"')
+    check(pg.evaluate("document.documentElement.dataset.toptall") != '1', 'the top bar stays short on a laptop (so the Grow lights summary still stays at the top)')
     check(f'Due in spring {nxt}' in pg.inner_text('#rp-due h2') and pg.locator(f'#rp-due .job[data-code="{fast}"]').count() == 1, 'the fast grower is under "Due in spring"')
     check(pg.locator('#rp-bulk-year, form.rp-bulk label:has(select[name=year])').count() >= 1, 'the year for "Save for all" has a real label')
     pg.screenshot(path=os.path.join(OUT, 'repotting-1-laptop.png'), full_page=True)

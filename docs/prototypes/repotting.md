@@ -3,7 +3,7 @@
 ## What it does and why
 A plant in a pot slowly fills it with roots and wears out its soil. Most potted plants want a pot one size bigger, or fresh soil, every one to three years, and the best time is spring, as they start to grow. With about 80 plants it is hard to remember which ones were repotted when. The app already lets you log "Repotted" in a plant's care log, but nothing uses it yet. This turns those entries into a plan for the spring.
 
-- **A new page, Repotting** (Care → Repotting, just before Fertilizer). It has:
+- **A new page, Repotting** (Today → Repotting, beside the Health walk-through). It has:
   - one line saying how many plants are due, and whether it is repotting season now (March to May) or when it starts;
   - **Due in spring 2027** (or **Due this spring** in season), with **Repotted today** and **Change** for each plant;
   - **Not recorded yet**: plants with no repotting in the log. **When was it repotted?** on each one, and **Save for all** to give every plant in the list the same rough year in one go;
@@ -60,7 +60,7 @@ Then open http://127.0.0.1:8080/#/repotting. The focused check is `python3 dev/t
 
 ## How it is built
 - `app/plantdb/repotting.py`: `repot_auto()` (how often, from the growth rate), `repot_season()`, the pure `repot_plan()` (unit tested), `repot_report()`, and `GET/PUT /api/repotting`. A PUT is refused for viewers automatically.
-- `app/static/js/repotting.js`: the page, the window, Save for all (a form, so moving through the year list with the arrow keys saves nothing), a wrapper round `viewToday()` for the Today section and one round `loadCarePlant()` for the line on a plant's page, so `care.js` is not edited. It adds itself to the Care row of the menu.
+- `app/static/js/repotting.js`: the page, the window, Save for all (a form, so moving through the year list with the arrow keys saves nothing), a wrapper round `viewToday()` for the Today section and one round `loadCarePlant()` for the line on a plant's page, so `care.js` is not edited. It adds itself to the Today row of the top bar (not Care: a ninth page there makes that row wrap to two lines on a laptop, and the taller bar stops the Grow lights summary staying at the top).
 - Small additions, each placed so it merges cleanly with the other open pull requests (frost dates and the 1.44.0 release): its own lines in `server.py` and `sw.js` (not the shared lists), the script in `index.html`, one route line in `core.js`, a CSS block at the end of `style.css` (including the viewer rule), and `repotting` in `run_checks.py`.
 
 ## Open questions for Ethan
@@ -68,3 +68,4 @@ Then open http://127.0.0.1:8080/#/repotting. The focused check is `python3 dev/t
 2. **Are any of your plants in the ground** rather than in pots (the Yard plants, the grape vine)? I can leave out plants in the ground if there is a way to tell, or you can switch them off one by one with **No reminders**.
 3. **Is March to May the right season** for you in Round Rock? Some people also repot in early fall (September and October).
 4. **Do you remember roughly when most plants were last repotted?** If most were done in the same year, **Save for all** fills that in for all of them at once, and you can fix the odd one afterwards.
+5. **Where should Repotting go in the top bar?** It is in the Today row, beside the Health walk-through. In the Care row it would make that row wrap to a second line on a laptop. If you would rather have it under Care, I can take out a page from that row or let the row wrap.

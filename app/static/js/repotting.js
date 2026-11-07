@@ -4,12 +4,11 @@
 
 // ---------- repotting plan ----------
 // Which plants are due for a bigger pot or fresh soil this spring, from the "Repotted" entries in the care log and how fast each
-// plant grows. The page #/repotting (Care) lists them; a plant's own page gets a line under its care buttons; Today gets a section
+// plant grows. The page #/repotting (in the Today row) lists them; a plant's own page gets a line under its care buttons; Today gets a section
 // in repotting season (March to May) and the four weeks before it. A repot is a care log entry of kind 'repot'.
-if (!SECTIONS.some(s => s[0] === 'care' && s[2].some(x => x[0] === 'repotting'))) {
-  const care = SECTIONS.find(s => s[0] === 'care');
-  if (care) { const i = care[2].findIndex(x => x[0] === 'fertilizer'); care[2].splice(i < 0 ? care[2].length : i, 0, ['repotting', 'Repotting', '#/repotting']); }
-}
+// It goes in the Today row of the top bar, beside the Health walk-through: one more page in the Care row makes that row wrap to a
+// second line on a laptop, and the taller bar stops the Grow lights summary staying at the top (lights check)
+if (!SECTIONS[0][2].some(x => x[0] === 'repotting')) SECTIONS[0][2].push(['repotting', 'Repotting', '#/repotting']);
 const RP_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const rpPl = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 const rpRow = p => ({ code: p.code, common_name: p.name, photo: p.photo });
