@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.43.0 (2026-11-06)
+- **A plant-sitter sheet to print when you go away** (prototype #41, now part of the app). **Going away? Make a plant-sitter sheet** on Today, or **Plant-sitter sheet for this group** on a group's page, makes a large-print plan for whoever looks after your plants.
+  - You choose your first and last days away (up to 6 weeks) and which plants.
+  - **Day by day**, it lists each plant to check for water, in walking order (outdoors first, then the porch, indoors and the garage), each with a tick box and the day's high and low.
+  - **Cold nights in the forecast**, with the plants to bring in or cover and the temperature that harms or kills each one.
+  - **A short plant list at the end:** where each plant is, how often to check it and the first line of its watering notes.
+  - **Printing choices:** each day on its own page, and the plant list at the end. A **note for the sitter** (how to reach you, where the watering can is) prints at the top.
+  - **Before you go** (on screen only) lists the plants to water before you leave. The printout is always black on white and large print, and the app remembers your choices.
+- **Offline, the app opens as itself again** after you have opened a print page (care cards or the sitter sheet). Before, it could open as the print page.
+- **Display** now names the side menu **Navigation** in its choices (two spots still said "On this page" and "Sections button" after 1.42.0).
+- **GitHub's automatic checks work again** (they had not run in full since 1.32.0). Nothing changes in the app for this.
+
 ## 1.42.0 (2026-11-05)
 - **Every section can be folded shut, on every page** (Ethan, November 5). Each section in the side menu has a **Hide** / **Show** button by its title. What you fold is remembered on that device for that page; plant pages share one memory, so folding Temperature on one plant folds it on all of them. Choosing a folded section in the menu opens it.
 - **The side menu is called Navigation** (it was "On this page"), and its button on the edge of the screen says Navigation (it said Sections). **Display** has moved to the bottom of the Navigation menu. On a page with no sections, which has no menu, it stays in the corner.
