@@ -40,15 +40,11 @@ call('PUT', '/api/stores/roundrockgc/details', {'carries': ['amend', 'pots'], 'h
 # a request, so "Needed from you" has a row
 r = call('GET', '/api/requests?open=1')[1]
 
-FAKE_SPEECH = """
-window.SpeechRecognition = window.webkitSpeechRecognition = class { constructor() { window.__rec = this; } start() { this.on = true; } stop() { this.on = false; if (this.onend) this.onend(); }
-  say(parts) { const results = parts.map(([t, f]) => Object.assign([{ transcript: t }], { isFinal: f })); this.onresult({ resultIndex: 0, results }); } };
-"""
 with sync_playwright() as p:
     b = p.chromium.launch()
     pg = b.new_page(viewport={'width': 1280, 'height': 900})
     pg.on('pageerror', lambda e: errs.append(str(e)))
-    pg.add_init_script("localStorage.setItem('plantdb.editor','Pages Test');localStorage.removeItem('plantdb.filters');localStorage.removeItem('plantdb.shoplist');localStorage.removeItem('plantdb.frosthide');" + FAKE_SPEECH)
+    pg.add_init_script("localStorage.setItem('plantdb.editor','Pages Test');localStorage.removeItem('plantdb.filters');localStorage.removeItem('plantdb.shoplist');localStorage.removeItem('plantdb.frosthide');")
 
     # ---- Today is the page the app opens on
     pg.goto(LOCAL + '/'); pg.wait_for_timeout(3000)
@@ -110,24 +106,14 @@ with sync_playwright() as p:
         ph.screenshot(path=f'{OUT}/pages-phone-{tag}.png', full_page=True)
     ph.close()
 
-    # ---- dictation
+    # ---- dictation (1.44.0: the recording and the local speech service are checked in voice_check.py)
     pg.goto(LOCAL + '/#/plant/P-012/edit'); pg.wait_for_timeout(3000)
     btn = pg.locator('label:has(textarea[name=notes]) + .spk-btn')
     check(btn.count() == 1 and btn.get_attribute('aria-label') == 'Speak into Notes' and not btn.is_visible(), 'a Speak button belongs to the Notes box, out of the way until the box is used')
-    pg.fill('textarea[name=notes]', 'Old note.'); pg.focus('textarea[name=notes]'); pg.wait_for_timeout(300)
+    pg.focus('textarea[name=notes]'); pg.wait_for_timeout(300)
     check(btn.is_visible(), 'it shows when the box has the focus')
-    btn.click(); pg.wait_for_timeout(300)
-    check(btn.inner_text() == 'Listening… press to stop' and btn.get_attribute('aria-pressed') == 'true' and pg.evaluate('window.__rec.on'), 'pressing it starts listening')
-    pg.evaluate("window.__rec.say([['the leaves look', false]])")
-    check(pg.input_value('textarea[name=notes]') == 'Old note. The leaves look', 'words appear as they are recognised, after what was there')
-    pg.evaluate("window.__rec.say([['the leaves look better today', true]])"); pg.evaluate("window.__rec.say([['new pot next week', true]])")
-    check(pg.input_value('textarea[name=notes]') == 'Old note. The leaves look better today new pot next week', 'final words stay and the next ones follow')
-    btn.click(); pg.wait_for_timeout(300)
-    check(btn.inner_text() == 'Speak' and not pg.evaluate('window.__rec.on'), 'pressing it again stops')
     pg.focus('input[name=common_name]'); pg.wait_for_timeout(500)
     check(not btn.is_visible(), 'and it goes out of the way again')
-    pg.click('form[data-form=edit] button[type=submit]'); pg.wait_for_timeout(2500)
-    check(call('GET', '/api/plants/P-012')[1]['notes'].endswith('new pot next week'), 'what was said is saved with the plant')
 
     # ---- room and shelf labels
     pg.goto(LOCAL + '/#/labels'); pg.wait_for_timeout(3000)
