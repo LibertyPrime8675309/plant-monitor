@@ -15,7 +15,7 @@ LOGS = os.path.join(ROOT, 'dev', 'tmp', 'logs'); DATA = os.path.join(ROOT, 'dev'
 ORDER = [('frost', '40'), ('care', 'fresh'), ('read', 'share'), ('timeline', 'share'), ('copy', 'share'), ('photocheck', 'share'), ('jumprow', 'share'),
          ('prep', 'fresh'), ('audit', 'fresh'), ('fertloc', 'fresh'), ('access', 'fresh'), ('lights', 'fresh'), ('details', 'fresh'), ('swipe', 'fresh'),
          ('calendar', '40'), ('outside', 'share'), ('groups', 'fresh'), ('newplant', 'fresh'), ('identify', 'fresh'), ('header', 'fresh'), ('undo', 'fresh'),
-         ('card', 'fresh'), ('photos', 'fresh'), ('water', 'fresh'), ('library', 'fresh'), ('filters', 'fresh'), ('fungi', 'fresh'), ('wishlist', 'fresh'),
+         ('card', 'fresh'), ('sitter', 'fresh'), ('photos', 'fresh'), ('water', 'fresh'), ('library', 'fresh'), ('filters', 'fresh'), ('fungi', 'fresh'), ('wishlist', 'fresh'),
          ('know', 'fresh'), ('facts', 'fresh'), ('shops', 'fresh'), ('layout', 'fresh'), ('dialog', 'fresh'), ('offline', 'fresh'), ('sectionmenu', 'fresh'),
          ('homes', 'fresh'), ('places', 'fresh'), ('several', 'fresh'), ('where', 'fresh'), ('pots', 'fresh'), ('prefs', 'fresh'), ('shopping', 'fresh'),
          ('quickwins', 'fresh'), ('jobs', 'fresh'), ('reach', 'fresh'), ('pages', 'fresh'), ('sensors', 'fresh'), ('finish', 'fresh'), ('share', 'fresh'), ('phone', 'share'), ('turning', 'fresh'), ('smoke', 'fresh')]

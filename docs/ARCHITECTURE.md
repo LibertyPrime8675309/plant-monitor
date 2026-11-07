@@ -201,6 +201,7 @@
     - `NEWFILL` pre-fills the Add a plant form (and attaches `__pic` after saving). It is cleared on any other route.
     - Change buttons are in the viewer CSS block.
   - **Tests:** `dev/test/mock_vision.py` is a fake service (decides by picture colour, and also fakes Pl@ntNet and Claude), started by `mock_server.py` unless `MOCK_VISION=real`. `dev/test/identify_check.py` uses a fake red camera (`.y4m`).
+- **Plant-sitter sheet (1.43.0, prototype #41):** `app/static/sitter.html` + `sitter.js`, a page of its own like the care cards, served by `GET /api/sitter` (`app/plantdb/sitter.py`, reusing `water_report`, `frost_report`, `group_codes`). The links on Today and group pages are added by a MutationObserver in `js/main.js`. `sw.js` `shellKey()` saves `.html` pages under their own path, so opening a print page offline no longer replaces the saved app shell. Check: `dev/test/sitter_check.py`.
 - **Care cards (1.19.0, 1.20.0):** a page of its own, `app/static/card.html` + `card.js` (no app.js; the printout carries only the cards).
   - URLs: `/card.html?plant=P-006` (or several, comma-separated), `?group=<id>`, `?all=1` (every active plant, from the Labels page).
   - Options are kept in localStorage `plantdb.card2`: `size` (`card` = 4 x 6 inch, the default, or `page`), `notes`, `photo`, `qr` and `pets` (on by default).

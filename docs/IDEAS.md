@@ -4,6 +4,8 @@ One line each, most wanted first. A prototyping session takes the top one that i
 
 - Turn the pots: a reminder to give each pot by a window a quarter turn every week or two so it grows straight, with a page under Care and a section on Today. (suggested by Claude) (in progress: proto/turn-pots)
 
+- Plant-sitter sheet: a printable, large-print day-by-day plan for someone looking after the plants while Ethan is away (which plants to check for water each day, where they are, how to tell, and cold nights in the forecast), from the same reminders as Today. (suggested by Claude) (in progress: proto/sitter-sheet)
+
 ## Done
 1.34.0 to 1.36.0 (November 4 and 5, 2026, pull requests #51, #52 and #53): Summer heat (the AHS heat zone from the weather history, and a verdict per plant on About this plant) and Your sensors (the sensor dashboard).
 1.19.0 (October 28, 2026, pull requests #23 and #26): Undo right after a quick care button, and large-print care cards for a plant or a whole group.
