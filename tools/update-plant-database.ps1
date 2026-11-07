@@ -346,11 +346,18 @@ if ($code -ne 0) { Say 'Could not download the newest base image (is the interne
 # 1.18.0: the picture checker (container plant-vision, for Identify and Library) downloads about 1 GB of packages when it is built.
 # If only that fails, start the rest of the app without it, so an internet hiccup never keeps the app itself from updating.
 $script:Services = @()
+# Search by voice (container plant-speech) is the same: if only it fails, the app and the picture checker start without it.
 if ($code -ne 0) {
-    $c2 = Native { docker compose build plants }
-    if ($c2 -eq 0) {
-        $script:Services = @('plants', 'tailscale'); $code = 0
-        Say 'Could not build the picture checker for Identify and Library (see the messages above). Starting the rest of Plant record without it. Run the updater again later to try again.' 'Yellow'
+    $c3 = Native { docker compose build plants vision }
+    if ($c3 -eq 0) {
+        $script:Services = @('plants', 'vision', 'tailscale'); $code = 0
+        Say 'Could not build the speech service for Search by voice (see the messages above). Starting the rest of Plant record without it. Run the updater again later to try again.' 'Yellow'
+    } else {
+        $c2 = Native { docker compose build plants }
+        if ($c2 -eq 0) {
+            $script:Services = @('plants', 'tailscale'); $code = 0
+            Say 'Could not build the picture checker for Identify and Library, or the speech service for Search by voice (see the messages above). Starting the rest of Plant record without them. Run the updater again later to try again.' 'Yellow'
+        }
     }
 }
 if ($code -eq 0) {
@@ -384,11 +391,11 @@ if ($now -eq $newVersion -and -not (Test-Path (JoinAll $AppFolder @('tailscale',
 }
 
 # ---- 7. tidy up old images -----------------------------------------------------------------------
-# 1.19.1: every older plant-database and plant-database-vision image, not only the last version's app image. (Until 1.19.1 the
+# 1.19.1: every older plant-database, plant-database-vision (and plant-database-speech) image, not only the last version's app image. (Until 1.19.1 the
 # image name was kept in $old, the same name the Native helper used inside, so Docker was asked to delete an image called "Stop".)
 if ($installed -and $installed -ne $newVersion -and $now -eq $newVersion) {
     $oldImages = @((Native-Text { docker image ls --format '{{.Repository}}:{{.Tag}}' }) -split "`r?`n" | ForEach-Object { $_.Trim() } |
-        Where-Object { $_ -match '^plant-database(-vision)?:\d+\.\d+\.\d+$' -and $_ -notmatch (':' + [regex]::Escape($newVersion) + '$') } | Sort-Object -Unique)
+        Where-Object { $_ -match '^plant-database(-vision|-speech)?:\d+\.\d+\.\d+$' -and $_ -notmatch (':' + [regex]::Escape($newVersion) + '$') } | Sort-Object -Unique)
     if ($oldImages.Count) {
         $doRemove = $RemoveOldImage
         if (-not $doRemove -and -not $Yes) {

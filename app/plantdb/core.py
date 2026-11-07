@@ -682,7 +682,7 @@ def owner_name(c):
 
 OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people')        # any request (the people list shows everyone's login)
 OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/areas', '/api/shops', '/api/problems', '/api/backups/restore', '/api/jobs')   # changes only
-VIEWER_POSTS = ('/api/identify', '/api/me/prefs')   # 1.18.0: asks this computer what a picture shows; 1.29.0: your own settings. Neither changes the plants
+VIEWER_POSTS = ('/api/identify', '/api/me/prefs', '/api/voice')   # 1.18.0: asks this computer what a picture shows; 1.29.0: your own settings; search by voice: words from a recording. None changes the plants
 VIEWER_PREFIXES = ('/api/push/',)                   # 1.33.0: your own devices and notification choices
 
 def role_refusal(u):
@@ -850,7 +850,7 @@ def headers(resp):
     resp = offline_remember(resp)
     if via_tailscale():                              # always HTTPS (Tailscale Serve), so browsers can be told to stay on HTTPS
         resp.headers['Strict-Transport-Security'] = 'max-age=31536000'
-    resp.headers['Permissions-Policy'] = 'geolocation=(self), microphone=(), payment=(), usb=(), camera=(self)'   # 1.22.0: location for mushroom finds
+    resp.headers['Permissions-Policy'] = 'geolocation=(self), microphone=(self), payment=(), usb=(), camera=(self)'   # 1.22.0: location for mushroom finds; microphone for search by voice
     resp.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
     resp.headers['X-Content-Type-Options'] = 'nosniff'
     resp.headers['X-Frame-Options'] = 'DENY'

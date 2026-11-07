@@ -19,6 +19,22 @@
   new MutationObserver(add).observe(main, { childList: true, subtree: true });
 })();
 
+// ---------- prototype proto/sitter-sheet: a link to the plant-sitter sheet (sitter.html), added when Today or a group page draws ----------
+(function sitterLink() {
+  const main = document.getElementById('app'); if (!main) return;
+  const add = () => {
+    const h = location.hash.split('?')[0]; let after, href = '/sitter.html', m;
+    if (['', '#', '#/', '#/today'].includes(h) && main.querySelector('h1') && main.querySelector('h1').textContent.trim() === 'Today') after = main.querySelector('h1 ~ .verdict-box');
+    else if ((m = h.match(/^#\/group\/(\d+)$/)) && main.querySelector('#g-plants li.job')) { after = main.querySelector('h1 ~ .row.noprint'); href += '#group=' + m[1]; }
+    if (!after || main.querySelector('.ps-link')) return;
+    const p = document.createElement('p'); p.className = 'ps-link noprint';
+    const a = document.createElement('a'); a.className = 'btn ghost'; a.href = href;
+    a.textContent = h.startsWith('#/group/') ? 'Plant-sitter sheet for this group' : 'Going away? Make a plant-sitter sheet';
+    p.appendChild(a); after.after(p);
+  };
+  new MutationObserver(add).observe(main, { childList: true, subtree: true });
+})();
+
 route();
 offStart();
 wxPoll();                      // shows the progress box on every page while a history load runs

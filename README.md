@@ -947,6 +947,41 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
 
+## Search by voice (prototype, proto/voice-search)
+
+Every search box has a **Search by voice** button beside it: on the Plants page, the Previous / Next filters on plant pages, the Search window (the magnifier in the top bar), Identify, the Library, Mushrooms, the Audit log, the light spot window and "Find a plant" in group windows. Press it and say what you're looking for; press it again to stop, or just pause: it stops by itself after about a second and a half of quiet (or after 15 seconds).
+
+- **Your voice stays on this computer.** The recording goes to Plant record, which passes it to its own speech service (the container `plant-speech`, running OpenAI's Whisper on the processor). Nothing goes to Google, Microsoft or anyone else, and the recording is not saved.
+- **While it listens** the button is filled in and says **Listening. Press to stop**. Then it says **Working out what you said…** for a moment.
+- **The line under the button says what it heard** and how many plants match, for example *Heard "monstera". 4 plants match.* It is also said aloud in your Read aloud voice (see Display, below).
+- **Codes are tidied up.** "P 36", "pea zero three six" and "P036" all become **P-036**; "F 2" becomes the mushroom find **F-002**. Extra words are dropped: "show me the monstera plants" searches for **monstera**.
+- **"Open …" opens something** ("go to …" and "take me to …" work too), in this order:
+  1. a plant code opens that plant ("open P 6"); a mushroom code opens Mushrooms, searched for that find;
+  2. otherwise a page name opens the page: "open weather", "open Today", "open grow lights", "open coming inside", "open display settings";
+  3. otherwise the one plant whose name matches ("open pink princess"). If several match, the list is filtered and the line asks you to say one of their codes.
+- **The V key** starts listening, like the other shortcuts (it is in the list you get with **?**). On a page with no search box it opens the Search window and listens there.
+- **Display settings → Keyboard and voice → Search by voice:** show the buttons and say what was heard aloud (the usual); show them without speaking (best with a screen reader, which reads the line out already); or hide them, which turns the V key off too. Under it, a line says whether the speech service is ready.
+- **Viewers can use it too**, because it only searches.
+- **On a phone or tablet**, open Plant record through its **https** Tailscale address: browsers only allow the microphone on a secure address (or on http://localhost on this computer). The first time, the browser asks whether Plant record may use the microphone. Choose Allow.
+
+### The speech service
+
+The first start after installing downloads the Whisper model (small.en, about 465 MB) into `data/speech`; the Identify page and Display show how far it has got. Until then the buttons say "The speech service is getting ready". A short phrase takes about a second on your computer. It uses less than 1 GB of memory, and no processor time when idle. To stop it, start it again, or see what it's doing, from the `plant-database` folder:
+
+Windows (cmd.exe):
+
+```
+docker compose stop speech
+docker compose start speech
+docker compose logs --tail 30 speech
+```
+
+Windows (PowerShell): the same commands.
+
+bash: the same commands.
+
+To keep it stopped for good, put the line `PLANTDB_SPEECH=0` in the `.env` file next to `docker-compose.yml`. `PLANTDB_SPEECH_MODEL=base.en` there chooses a smaller, quicker model (`tiny.en`, `base.en`, `small.en` or `medium.en`; see `speech/README.md`). Deleting `data/speech` is safe: the model downloads again.
+
 ## One identifier (from 1.40.0)
 
 Identify, **Add a plant** and **Several plants from photos** now share one identification path, so they give the same answer for the same photos:
@@ -1357,6 +1392,17 @@ Changes to finds are in the Audit log under "Mushroom finds", and the finds and 
 After you press **Watered** or **Still moist** (on the Today page or a plant page), **Watered all**, or save **Log other care**, the message at the bottom says what was saved and has **Undo** and **Close** buttons. It stays for 30 seconds, and says how long is left. The countdown pauses while the pointer or the keyboard focus is on the message. With a keyboard, press **U** while it shows (Display settings can turn keyboard shortcuts off).
 
 Undo removes only the entries that press made, so the rest of the care log is untouched. For "Watered all" it removes all of them and says how many. If someone else already removed the entry, it says "Nothing to undo". The change log records it as "Undone right after it was logged". To remove an older entry, use the care log on the plant's page.
+
+## Plant-sitter sheet (from 1.43.0)
+
+A large-print plan to print for whoever looks after your plants while you are away.
+
+- **Where:** on **Today**, **Going away? Make a plant-sitter sheet**; on a group's page, **Plant-sitter sheet for this group**.
+- **Choices above the sheet** (remembered in that browser): **First day** and **Last day** (up to 6 weeks), **Which plants** (all, or one of your groups), **Printing** (**Each day on its own page**, off to start with; **The plant list at the end**, on to start with) and a **Note for the sitter**, printed at the top (how to reach you, where the watering can is).
+- **Before you go** (on screen only): the plants due before your first day away, or with no watering logged. The sheet assumes you water these the day before you leave.
+- **On the sheet:** the dates, your note and four short instructions; **Cold nights in the forecast**, with each plant outside to bring in or cover, the low each night and the temperature that harms or kills it; **Day by day**, each day's high and low and a tick box for every plant to check, in walking order (outdoors, then the porch, indoors and the garage); and **The plants**, one short entry each: where it is, how often to check it and the first line of its watering notes.
+- It uses the same watering reminders as Today (each plant's "check every N days", the recent weather and your care log), carried forward over the days you are away.
+- **Print** opens the browser's print window; choose "Save as PDF" there to email it. The printout is always black on white, about 15.5 point and up. People who can only view the app can make it too.
 
 ## Large-print care cards (from 1.19.0)
 
