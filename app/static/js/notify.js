@@ -118,56 +118,111 @@ document.addEventListener('keydown', e => {
 });
 
 // ---------- 1.34.0: speak a note. A Speak button after every text box that takes several lines; what you say is written into it ----------
-// Uses the browser's own speech recognition (Chrome, Edge and Safari have it; the words go to the browser maker's service, as with
-// voice typing on a phone). Firefox does not have it, and the button then does not appear.
-const speechApi = () => window.SpeechRecognition || window.webkitSpeechRecognition || null;
-let DICT = null;                                  // the recognition running now: { rec, ta, btn, base }
+// 1.44.0: what you say goes to the speech service on this computer (Whisper, as Search by voice does; voice.js), not to Google or
+// Microsoft. It records until you press the button again, pause for about 3 seconds, or reach a minute, then adds the words to the box.
+// Every browser with a microphone recorder has it (Chrome, Edge, Brave, Firefox, Safari).
+const DICT_QUIET_MS = 3000, DICT_MAX_MS = 60000, DICT_NOTHING_MS = 10000;
+let DICT = null;                                  // the recording now: { rec, stream, ctx, tick, ta, btn, base, cancel }
 function addSpeakButtons(root) {
-  if (!speechApi()) return;
+  if (!vsCan()) return;
   (root || document).querySelectorAll('textarea:not([data-speak])').forEach(ta => {
     ta.dataset.speak = '1';
     if (ta.readOnly || ta.disabled || ta.closest('[hidden]')) return;
     const lab = ta.closest('label'), name = (lab ? lab.childNodes[0].textContent : ta.getAttribute('aria-label') || 'this box').trim();
     const b = document.createElement('button');
     b.type = 'button'; b.className = 'btn small ghost spk-btn noprint'; b.dataset.act = 'dictate'; b.setAttribute('aria-pressed', 'false');
-    b.setAttribute('aria-label', `Speak into ${name}`); b.title = 'Dictate: what you say is added to the box'; b.textContent = 'Speak';
+    b.setAttribute('aria-label', `Speak into ${name}`); b.title = 'Dictate: what you say is added to the box (turned into words on this computer)'; b.textContent = 'Speak';
     (lab || ta).insertAdjacentElement('afterend', b);
     b.spkTarget = ta;
   });
 }
-function dictateStop() {
-  if (!DICT) return;
-  const { rec, btn, ta, base } = DICT; DICT = null;
-  try { rec.onend = null; rec.stop(); } catch (e) { /* already stopped */ }
-  btn.textContent = 'Speak'; btn.setAttribute('aria-pressed', 'false'); btn.classList.remove('spk-on');
-  if (ta.value !== base) ta.dispatchEvent(new Event('change', { bubbles: true }));
+function dictLook(btn, word, on) { btn.textContent = word; btn.setAttribute('aria-pressed', on ? 'true' : 'false'); btn.classList.toggle('spk-on', !!on); }
+function dictRelease(d) {
+  clearInterval(d.tick); clearTimeout(d.tick);
+  if (d.stream) d.stream.getTracks().forEach(t => t.stop());
+  if (d.ctx) { try { d.ctx.close(); } catch (e) { /* closed */ } }
+  d.stream = d.ctx = null;
 }
-function dictateStart(btn) {
-  const Api = speechApi(), ta = btn.spkTarget; if (!Api || !ta) return;
-  dictateStop();
-  const rec = new Api(); rec.lang = navigator.language || 'en-US'; rec.continuous = true; rec.interimResults = true;
-  const base = ta.value; let fixed = '';
-  DICT = { rec, btn, ta, base };
-  btn.textContent = 'Listening… press to stop'; btn.setAttribute('aria-pressed', 'true'); btn.classList.add('spk-on');
-  const cap = t => t.charAt(0).toUpperCase() + t.slice(1);            // a new sentence starts with a capital letter
-  const join = (a, b) => { a = (a || '').replace(/\s+$/, ''); b = (b || '').trim(); if (!b) return a; if (!a) return cap(b); return a + ' ' + (/[.!?]$/.test(a) ? cap(b) : b); };
-  rec.onresult = ev => {
-    let interim = '';
-    for (let i = ev.resultIndex; i < ev.results.length; i++) { const r = ev.results[i]; if (r.isFinal) fixed = join(fixed, r[0].transcript); else interim += r[0].transcript; }
-    ta.value = join(base, join(fixed, interim).trim());
-    ta.dispatchEvent(new Event('input', { bubbles: true }));
+function dictateStop(cancel) {
+  if (!DICT) return;
+  const d = DICT; d.cancel = !!cancel;
+  if (d.rec && d.rec.state !== 'inactive') { try { d.rec.stop(); } catch (e) { /* stopped already */ } }
+  else { dictRelease(d); DICT = null; dictLook(d.btn, 'Speak', false); }
+}
+const dictCap = t => t.charAt(0).toUpperCase() + t.slice(1);            // a new sentence starts with a capital letter
+const dictJoin = (a, b) => { a = (a || '').replace(/\s+$/, ''); b = (b || '').trim(); if (!b) return a; if (!a) return dictCap(b); return a + (/[.!?]$/.test(a) ? ' ' + dictCap(b) : /[,;:]$/.test(a) ? ' ' + b : '. ' + dictCap(b)); };
+async function dictateStart(btn) {
+  const ta = btn.spkTarget; if (!ta || !vsCan()) return;
+  if (DICT && DICT.busy) return;
+  if (DICT) dictateStop(true);
+  if (typeof VS !== 'undefined' && VS.rec) vsStop(true);            // one microphone at a time
+  stopReading(true);
+  let ctx = null; try { const AC = window.AudioContext || window.webkitAudioContext; ctx = new AC(); if (ctx.state === 'suspended') ctx.resume(); } catch (e) { ctx = null; }
+  const drop = () => { if (ctx) { try { ctx.close(); } catch (e) { /* closed */ } } };
+  const st = await vsStatus(true);
+  if (st.state !== 'ready') { drop(); toast(vsStatusText(st), true); return; }
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
+  catch (e) { drop(); toast(micErrText(e), true); return; }
+  const mime = vsMime(), rec = mime ? new MediaRecorder(stream, { mimeType: mime, audioBitsPerSecond: 32000 }) : new MediaRecorder(stream);
+  const chunks = [], t0 = Date.now(), d = { rec, stream, ctx: null, tick: 0, ta, btn, base: ta.value, cancel: false, busy: false };
+  let heard = 0, quietSince = 0, floor = 0, n = 0;
+  DICT = d;
+  rec.ondataavailable = e => { if (e.data && e.data.size) chunks.push(e.data); };
+  rec.onstop = () => {
+    dictRelease(d);
+    if (d.cancel) { if (DICT === d) DICT = null; dictLook(btn, 'Speak', false); return; }
+    if (heard < 2) { if (DICT === d) DICT = null; dictLook(btn, 'Speak', false); toast('I did not hear anything. Press Speak and try again.', true); return; }
+    dictSend(d, new Blob(chunks, { type: rec.mimeType || mime || 'audio/webm' }));
   };
-  rec.onerror = ev => { if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') toast('The browser did not allow the microphone. Allow it for this site and try again.', true); else if (ev.error !== 'aborted' && ev.error !== 'no-speech') toast('Dictation stopped: ' + ev.error, true); dictateStop(); };
-  rec.onend = () => { if (DICT && DICT.rec === rec) dictateStop(); };
-  try { rec.start(); } catch (e) { toast('Dictation could not start: ' + e.message, true); dictateStop(); }
+  try {                                           // the sound meter: speech is anything well above the room's own noise
+    if (!ctx) throw new Error('no audio context');
+    const src = ctx.createMediaStreamSource(stream), an = ctx.createAnalyser();
+    an.fftSize = 1024; src.connect(an); d.ctx = ctx;
+    const buf = new Float32Array(an.fftSize);
+    d.tick = setInterval(() => {
+      const ms = Date.now() - t0;
+      if (ctx.state !== 'running') { if (ms > 1000) heard = Math.max(heard, 2); if (ms >= DICT_MAX_MS) dictateStop(false); return; }    // no meter: until pressed, or a minute
+      an.getFloatTimeDomainData(buf);
+      let s = 0; for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i];
+      const rms = Math.sqrt(s / buf.length);
+      if (++n <= 3) { floor = Math.max(floor, rms); return; }
+      const loud = rms > Math.max(0.015, floor * 3);
+      if (loud) { heard++; quietSince = 0; } else if (heard >= 2 && !quietSince) quietSince = Date.now();
+      if ((heard >= 2 && quietSince && Date.now() - quietSince >= DICT_QUIET_MS) || ms >= DICT_MAX_MS || (heard < 2 && ms >= DICT_NOTHING_MS)) dictateStop(false);
+    }, 100);
+  } catch (e) { drop(); heard = 2; d.tick = setTimeout(() => dictateStop(false), DICT_MAX_MS); }
+  rec.start(250);
+  dictLook(btn, 'Listening… press to stop', true);
+}
+async function dictSend(d, blob) {
+  d.busy = true; dictLook(d.btn, 'Working out what you said…', false); d.btn.setAttribute('aria-busy', 'true');
+  const fd = new FormData(), ext = /mp4|aac/.test(blob.type) ? 'm4a' : /ogg/.test(blob.type) ? 'ogg' : 'webm';
+  fd.append('audio', blob, 'note.' + ext); fd.append('mode', 'note');
+  let r, j;
+  try {
+    let who = 'Unknown'; try { who = cleanName(viaTS() ? ME().name : getName()) || 'Unknown'; } catch (e) { /* no name yet */ }
+    r = await fetch('/api/voice', { method: 'POST', body: fd, headers: { 'X-Editor': who }, credentials: 'same-origin' });
+    j = await r.json().catch(() => ({}));
+  } catch (e) { j = { error: navigator.onLine ? 'Cannot reach the plant server. Check that the container is running.' : 'You are offline. Speak needs the plant server.' }; r = { ok: false }; }
+  d.busy = false; d.btn.removeAttribute('aria-busy'); if (DICT === d) DICT = null; dictLook(d.btn, 'Speak', false);
+  if (!r.ok) { toast(j.error || `Speak did not work (${r.status}).`, true); return; }
+  const said = (j.text || '').trim();
+  if (!said) { toast('I could not make out any words. Press Speak and try again.', true); return; }
+  const ta = d.ta; if (!ta.isConnected) return;
+  ta.value = dictJoin(ta.value, said);
+  ta.dispatchEvent(new Event('input', { bubbles: true })); ta.dispatchEvent(new Event('change', { bubbles: true }));
+  toast('Added: ' + said);
+  ta.focus(); try { ta.setSelectionRange(ta.value.length, ta.value.length); } catch (e) { /* not a text box */ }
 }
 Object.assign(acts, {
-  dictate(el) { if (DICT && DICT.btn === el) dictateStop(); else dictateStart(el); },
+  dictate(el) { if (DICT && DICT.btn === el) { if (!DICT.busy) dictateStop(false); } else dictateStart(el); },
 });
-if (speechApi()) {
+document.addEventListener('DOMContentLoaded', () => {        // voice.js (vsCan, vsStatus, vsMime) loads after this file
+  if (!vsCan()) return;
   new MutationObserver(muts => { for (const m of muts) for (const n of m.addedNodes) if (n.nodeType === 1 && (n.tagName === 'TEXTAREA' || n.querySelector('textarea'))) addSpeakButtons(n.parentNode || n); }).observe(document.body, { childList: true, subtree: true });
   addSpeakButtons();
-  window.addEventListener('hashchange', dictateStop);
+  window.addEventListener('hashchange', () => dictateStop(true));
   // the button shows while the box or the button itself has the focus (and while listening), so forms do not fill up with buttons
   const btnOf = ta => { const n = (ta.closest('label') || ta).nextElementSibling; return n && n.classList.contains('spk-btn') ? n : null; };
   document.addEventListener('focusin', e => {
@@ -178,4 +233,4 @@ if (speechApi()) {
     const t = e.target; const b = t.tagName === 'TEXTAREA' ? btnOf(t) : t.classList && t.classList.contains('spk-btn') ? t : null;
     if (b) setTimeout(() => { const f = document.activeElement; if (f !== b && f !== b.spkTarget && !(DICT && DICT.btn === b)) b.classList.remove('spk-show'); }, 150);
   });
-}
+});

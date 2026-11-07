@@ -947,7 +947,7 @@ If the computer is busy or short of memory, BioCLIP 2 is about half the size. It
 
 To go back, delete that line from `.env` and run `docker compose up -d` again.
 
-## Search by voice (prototype, proto/voice-search)
+## Search by voice (from 1.44.0)
 
 Every search box has a **Search by voice** button beside it: on the Plants page, the Previous / Next filters on plant pages, the Search window (the magnifier in the top bar), Identify, the Library, Mushrooms, the Audit log, the light spot window and "Find a plant" in group windows. Press it and say what you're looking for; press it again to stop, or just pause: it stops by itself after about a second and a half of quiet (or after 15 seconds).
 
@@ -1162,7 +1162,7 @@ On **Shopping**, press **Shopping list for a store visit** (`#/shopping/list`). 
 
 ### Speak a note
 
-Every box that takes several lines of text (notes, change notes, answers) has a **Speak** button that appears when you are in the box. Press it, say what you want, and the words are written after what is already there; press it again to stop. It uses the browser's own voice typing (Chrome, Edge and Safari have it; the first time, the browser asks to use the microphone). Firefox has no voice typing, so the button does not appear there.
+Every box that takes several lines of text (notes, change notes, answers) has a **Speak** button that appears when you are in the box. Press it and say what you want. From 1.44.0 it records until you press it again, pause for about 3 seconds, or reach a minute; it then says **Working out what you said…** and adds the words after what is already there, as a new sentence. Your voice goes to the speech service on your own computer (the same one as Search by voice, below), not to Google or Microsoft, so it works in Brave and Firefox too. If the speech service is still getting ready, Speak says so.
 
 ### Room, area and shelf labels
 
@@ -1392,6 +1392,26 @@ Changes to finds are in the Audit log under "Mushroom finds", and the finds and 
 After you press **Watered** or **Still moist** (on the Today page or a plant page), **Watered all**, or save **Log other care**, the message at the bottom says what was saved and has **Undo** and **Close** buttons. It stays for 30 seconds, and says how long is left. The countdown pauses while the pointer or the keyboard focus is on the message. With a keyboard, press **U** while it shows (Display settings can turn keyboard shortcuts off).
 
 Undo removes only the entries that press made, so the rest of the care log is untouched. For "Watered all" it removes all of them and says how many. If someone else already removed the entry, it says "Nothing to undo". The change log records it as "Undone right after it was logged". To remove an older entry, use the care log on the plant's page.
+
+## Turn the pots (from 1.44.0)
+
+A plant by a window grows toward the light and leans. A quarter turn every week or two, always the same way round, keeps it straight and full. **Care → Turn the pots** reminds you, the way watering reminders do.
+
+- **Remind me to turn each pot every** 7, 10, 14 (the usual), 21 or 30 days.
+- **Due today**, with a **Turned** button for each plant and **Turned all**; **Not turned yet** (folded), with **I turned all … today**; **Coming up**; and **Left out**, with the reason and **Remind me**.
+- **Which plants:** those Indoors or on the Covered porch. Left out: plants out in the open, in the garage or shed, and plants under a grow light that shines down from above. A plant just brought inside starts under Not turned yet, not as due.
+- **On Today:** a **Turn the pots** section and a **Turn (2)** jump button.
+- **On a plant's page:** **Turned today** next to **Watered today**, with a line saying when it is next due. **Turned** saves "Turned the pot" in the care log, with the usual Undo message.
+
+## Health walk-through (from 1.44.0)
+
+Go round your plants one at a time, on the phone in the garden or at the computer, and say how each one looks today. **Today → Health walk-through** (and a line on Today saying how many are due).
+
+- **Choose** which plants (the due ones or all), where, which group, and the order (longest since looked over, worst health first, or by code).
+- **One plant at a time:** its photo, where it is, its rating now and when it was last looked over. **Take a photo** adds a photo to the plant. **How does it look now?** has four big buttons (Good, Fair, Poor, Critical), with the current one already chosen, and a box for a short note. **Looks the same: save and go on**, or **Save "Poor" and go on**; **Skip this plant**; **Back**; **Stop and see what you've done**.
+- **What is saved:** a "Looked over" entry in the care log; a new rating on the plant (in its change log and timeline); and your note at the end of the plant's Health summary, with the date.
+- **How often plants are due:** every 14 days, or every 7 for plants in Poor or Critical health (both can be changed at the bottom of the page). A group can have its own number (on the group's page, **Days between looks for this group**), and it wins even for Poor or Critical plants, so cacti can be looked at once a month. A plant in several such groups goes by the shortest.
+- With no connection, saves and photos wait on the device and are sent when the connection is back.
 
 ## Plant-sitter sheet (from 1.43.0)
 
