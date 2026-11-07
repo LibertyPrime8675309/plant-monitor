@@ -3,13 +3,13 @@ stand-in: a tone that "speaks" when the test says, so the real recording, the qu
 speech service (dev/test/mock_speech.py, started by mock_server.py) says what the test tells it the recording said. A stand-in
 speech synthesiser records what the app says aloud.
 Start the app first (dev/test/mock_server.py), then:  python3 dev/test/voice_check.py [base-url]
-(MOCK_SPEECH_PORT and PLANTDB_TS_PORT name the fake speech service's and the Tailscale stand-in's ports when not 8093 and 8081.)
+(MOCK_SPEECH_PORT and PLANTDB_TS_PORT name the fake speech service's and the Tailscale stand-in's ports when not 8094 and 8081.)
 Screenshots go to dev/tmp/shots/voice-*.png."""
 import json, os, sys, time, urllib.request
 from playwright.sync_api import sync_playwright
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
 TS = 'http://127.0.0.1:' + os.environ.get('PLANTDB_TS_PORT', '8081')
-SPEECH = 'http://127.0.0.1:' + os.environ.get('MOCK_SPEECH_PORT', '8093')
+SPEECH = 'http://127.0.0.1:' + os.environ.get('MOCK_SPEECH_PORT', '8094')
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
 FAKE_MIC = """
 (() => {

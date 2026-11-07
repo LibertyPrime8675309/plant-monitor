@@ -1,7 +1,7 @@
 """A fake speech service (speech/service.py) for tests. It cannot hear: a test tells it what the next recording "says" with
 POST /mock/say {"text": ...}, and can switch its state with POST /mock/state {"state": "ready" | "setting up" | "off"}.
 GET /mock/last shows the last recording it got (size, type) and the prompt the app sent. mock_server.py starts it on
-127.0.0.1:8093 (MOCK_SPEECH_PORT)."""
+127.0.0.1:8094 (MOCK_SPEECH_PORT; 8093 is outside_check.py's own server)."""
 from flask import Flask, jsonify, request
 app = Flask(__name__)
 STATE = {'state': 'ready', 'say': 'monstera', 'last': None}
