@@ -651,6 +651,7 @@ async function route() {
     else if (parts[0] === 'settings') view = viewSettings();
     else if (parts[0] === 'where') view = await viewWhere();
     else if (parts[0] === 'pots') view = await viewPots();
+    else if (parts[0] === 'repotting') view = await viewRepotting();     // prototype proto/repotting (js/repotting.js)
     else if (parts[0] === 'today' || !parts.length) view = await viewToday();     // 1.34.0: Today is the page the app opens on
     else if (parts[0] === 'plants') view = await viewGallery(qs);
     else if (parts[0] === 'fertilizer') view = await viewFertilizer();

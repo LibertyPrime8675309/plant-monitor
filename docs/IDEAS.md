@@ -7,6 +7,8 @@ One line each, most wanted first. A prototyping session takes the top one that i
 
 - Plant-sitter sheet: a printable, large-print day-by-day plan for someone looking after the plants while Ethan is away (which plants to check for water each day, where they are, how to tell, and cold nights in the forecast), from the same reminders as Today. (suggested by Claude) (in progress: proto/sitter-sheet)
 
+- Repotting plan: which plants are due for a bigger pot or fresh soil this spring, from the last "Repotted" in the care log and how fast each plant grows, with a quick way to say roughly when each was last repotted, a line on each plant's page and a section on Today in repotting season. (suggested by Claude) (in progress: proto/repotting)
+
 ## Done
 1.34.0 to 1.36.0 (November 4 and 5, 2026, pull requests #51, #52 and #53): Summer heat (the AHS heat zone from the weather history, and a verdict per plant on About this plant) and Your sensors (the sensor dashboard).
 1.19.0 (October 28, 2026, pull requests #23 and #26): Undo right after a quick care button, and large-print care cards for a plant or a whole group.

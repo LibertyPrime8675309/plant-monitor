@@ -11,6 +11,11 @@ def patch(name, value):
     for m in MODULES: vars(m)[name] = value
     globals()[name] = value
 
+# prototype proto/repotting: added on its own line rather than to the list above, so it merges cleanly with other open prototypes
+# (linking again only fills in names a module does not have yet)
+from plantdb import repotting
+MODULES.append(repotting); globals().update(core.link(MODULES))
+
 init_db()
 if os.environ.get('PLANTDB_BACKUPS', '1') == '1' and not MIRROR:
     threading.Thread(target=backup_loop, daemon=True).start()

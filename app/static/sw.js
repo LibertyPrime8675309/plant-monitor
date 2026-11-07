@@ -9,6 +9,7 @@ const SHELL = 'plantdb-shell-' + VERSION, API = 'plantdb-api', PICS = 'plantdb-p
 const SHELL_FILES = ['/', '/js/core.js', '/js/gallery.js', '/js/plant.js', '/js/care.js', '/js/edit.js', '/js/weather.js', '/js/ui.js', '/js/lights.js', '/js/events.js', '/js/discover.js', '/js/offline.js', '/js/notify.js', '/js/sensors.js', '/js/review.js', '/js/turning.js', '/js/checkup.js', '/js/voice.js', '/js/main.js', '/style.css', '/prefs.js', '/card.html', '/card.js', '/sitter.html', '/sitter.js', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
 const NO_SAVE = /^\/api\/(people|backups|ingest|weather\/job|backups\/job|audit|library\/prefetch|library\/local|offline\/|identify\/settings|calendar\/settings|me$)/;
 const WAIT_MS = 5000;
+SHELL_FILES.push('/js/repotting.js');      // prototype proto/repotting (on its own line so it merges cleanly with other prototypes)
 let downUntil = 0;                           // after the server fails to answer, use saved copies at once for a while (weak signal)
 const quick = () => Date.now() < downUntil;   // 1.38.0: navigator.onLine is not trusted here: on phones it can stay wrong after a VPN comes back
 const wentDown = () => { downUntil = Date.now() + 30000; };
