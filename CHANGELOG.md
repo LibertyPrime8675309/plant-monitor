@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.44.0 (2026-11-07)
+- **Search by voice, on your own computer** (prototype #47, now part of the app). A **Search by voice** button sits beside every search box (and the **V** key). Say a plant, a code ("P 36") or "open" and a page ("open weather", "open coming inside").
+  - **Your voice stays on your computer.** It goes to a new speech service that runs Whisper on the PC, not to Google or Microsoft. It works in Brave, Firefox, Chrome, Edge and Safari.
+  - **The first time it starts** the speech service downloads its English model, about 465 MB. Until then the button says it is still getting ready. Its state shows on Identify and in Display.
+  - It stops by itself when you pause, shows **Working out what you said…**, and the line under the button says what it heard and how many plants match. That line is also read aloud in your Read aloud voice.
+  - **Display → Keyboard and voice → Search by voice:** show the buttons and speak, show them quietly, or hide them (which also turns off V).
+  - On a phone, the microphone only works when the app is opened through its https Tailscale address.
+- **Speak a note uses the same speech service** (it used the browser's recogniser, which sends your voice to Google or Microsoft). It records until you press it again, pause for about 3 seconds, or reach a minute, then adds the words to the box as a new sentence.
+- **Turn the pots** (prototype #58). **Care → Turn the pots** reminds you to give each pot by a window a quarter turn, every 14 days to start with. It covers plants indoors and on the covered porch. **Turned** and **Turned all** sit on the page and on Today, and **Turned today** sits next to Watered today on each plant's page.
+- **Health walk-through** (prototype #44). **Today → Health walk-through** takes you round your plants one at a time to say how each one looks. You can take a photo and add a short note, which goes into the plant's Health summary. Plants are due every 14 days, or every 7 when Poor or Critical, and a group's own number wins over both.
+- **The updater builds the new speech service** with the rest. If only that build fails, Plant record and the picture checker still start, and the updater says so.
+
 ## 1.43.0 (2026-11-06)
 - **A plant-sitter sheet to print when you go away** (prototype #41, now part of the app). **Going away? Make a plant-sitter sheet** on Today, or **Plant-sitter sheet for this group** on a group's page, makes a large-print plan for whoever looks after your plants.
   - You choose your first and last days away (up to 6 weeks) and which plants.

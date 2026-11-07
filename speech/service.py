@@ -18,8 +18,8 @@ from flask import Flask, request, jsonify
 CACHE = os.environ.get('SPEECH_CACHE', '/cache')
 MODEL = os.environ.get('SPEECH_MODEL', 'small.en')
 THREADS = int(os.environ.get('SPEECH_THREADS') or 0) or (os.cpu_count() or 4)
-MAX_BYTES = 3 * 1024 * 1024            # the app sends at most about 2 MB (20 seconds); a little room on top
-MAX_SECONDS = 30
+MAX_BYTES = 3 * 1024 * 1024            # the app sends at most 2 MB (search: 15 seconds; a spoken note: a minute, about 240 KB)
+MAX_SECONDS = 75                        # 1.44.0: a spoken note can run to a minute
 os.environ.setdefault('HF_HOME', os.path.join(CACHE, 'hf'))
 os.environ.setdefault('HF_HUB_DISABLE_XET', '1')
 SIZES = {'tiny.en': 75e6, 'base.en': 145e6, 'small.en': 484e6, 'medium.en': 1530e6}   # roughly, for the download progress

@@ -62,9 +62,9 @@ u = S.bo_usual({}, 40)
 check(u is None, 'no history: no usual dates')
 
 # ---- the page
-srv = make_server('127.0.0.1', 8093, S.app, threaded=True)
+srv = make_server('127.0.0.1', 8096, S.app, threaded=True)
 threading.Thread(target=srv.serve_forever, daemon=True).start()
-BASE = 'http://127.0.0.1:8093'
+BASE = 'http://127.0.0.1:8096'   # 1.44.0: 8093 is the stand-in speech service
 with sync_playwright() as p:
     b = p.chromium.launch()
     for size, (w, h, text) in {'laptop': (1280, 900, ''), 'phone': (390, 844, '160')}.items():

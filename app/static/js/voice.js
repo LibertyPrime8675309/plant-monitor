@@ -128,6 +128,13 @@ function vsStop(cancel) {
   if (VS.rec && VS.rec.state !== 'inactive') { try { VS.rec.stop(); } catch (e) { /* stopped already */ } }
   else { vsRelease(); VS.rec = null; vsLook('Search by voice'); }
 }
+function micErrText(e) {                         // why the microphone did not start, in plain words (also the Speak buttons, 1.44.0)
+  const n = e && e.name;
+  return n === 'NotAllowedError' || n === 'SecurityError' ? (window.isSecureContext ? 'The browser is not allowed to use the microphone. Allow it in the site settings (the icon at the left of the address bar), then try again.'
+      : 'The browser only lets a page use the microphone over a secure connection. Open Plant record through its https Tailscale address (or http://localhost on this computer).')
+    : n === 'NotFoundError' || n === 'OverconstrainedError' ? 'No microphone was found. Check that one is plugged in and turned on.'
+    : 'The microphone could not be started: ' + (e && e.message || n) + '.';
+}
 function vsMime() {
   const all = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus', 'audio/aac'];
   return all.find(t => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) || '';
@@ -149,11 +156,7 @@ async function vsStart(btn) {
   try { stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true } }); }
   catch (e) {
     drop();
-    const n = e && e.name;
-    vsSay(n === 'NotAllowedError' || n === 'SecurityError' ? (window.isSecureContext ? 'The browser is not allowed to use the microphone. Allow it in the site settings (the icon at the left of the address bar), then try again.'
-      : 'The browser only lets a page use the microphone over a secure connection. Open Plant record through its https Tailscale address (or http://localhost on this computer).')
-      : n === 'NotFoundError' || n === 'OverconstrainedError' ? 'No microphone was found. Check that one is plugged in and turned on.'
-      : 'The microphone could not be started: ' + (e && e.message || n) + '.', true, true);
+    vsSay(micErrText(e), true, true);
     return;
   }
   const mime = vsMime(), rec = mime ? new MediaRecorder(stream, { mimeType: mime, audioBitsPerSecond: 32000 }) : new MediaRecorder(stream);
