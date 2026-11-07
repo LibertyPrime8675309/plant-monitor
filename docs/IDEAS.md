@@ -31,3 +31,6 @@ Merged into 1.8.0 (October 23, 2026):
 
 Asked for by Ethan and built in 1.9.0:
 - Getting plants ready to come inside: ten pest methods rated per plant, with steps, logging, second-round reminders and keep-apart dates.
+
+## Suggested by Claude, waiting for review
+- Health walk-through: go round the plants one at a time on a phone, with big buttons to say each one looks the same or has a new health rating, and a list of plants not looked over for two weeks. (suggested by Claude) (in progress: proto/health-walk)

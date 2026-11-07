@@ -675,6 +675,7 @@ async function route() {
     else if (parts[0] === 'offline') view = await viewOffline();
     else if (parts[0] === 'decisions') view = await viewDecisions();
     else if (parts[0] === 'around') view = await viewAround();
+    else if (parts[0] === 'checkup') view = await viewCheckup(parts[1]);            // prototype proto/health-walk (js/checkup.js)
     else if (parts[0] === 'fungi' && !parts[1]) view = await viewFungi();
     else if (parts[0] === 'fungi' && parts[1] === 'safety') view = viewFungiSafety();
     else if (parts[0] === 'fungi' && parts[1] === 'new') view = await viewFindForm(null);

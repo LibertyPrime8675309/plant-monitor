@@ -1367,6 +1367,45 @@ html[data-photofit=whole] .sheet .mat img,html[data-photofit=auto] .sheet .mat i
 .sp-acts{margin-top:1rem}
 html[data-role=viewer] [data-act=spnew]{display:none!important}
 .lib-card .tags .tag,.species .tags .tag{white-space:normal}
+/* ---------- prototype proto/health-walk: health walk-through (#/checkup), rebuilt for 1.42.0 ---------- */
+.ck-today{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;border:2px solid var(--line);background:var(--sheet);padding:.6rem .9rem;margin:.4rem 0 1rem}
+.ck-today span{flex:1 1 16rem}
+.ck-count{font-weight:700;margin:.2rem 0 .6rem}
+.ck-big{min-height:3.25rem;padding:.6rem 1.4rem;font-size:1.1em}
+.ck-due{padding-left:1.2rem}
+.ck-due li,.ck-list li{margin:.4rem 0;line-height:1.5}
+.ck-meta{color:var(--ink-2)}
+.ck-prog p{margin:.2rem 0}
+.ck-prog progress{width:100%;height:1rem;accent-color:var(--cyan)}
+.ck-card{display:grid;grid-template-columns:minmax(0,22rem) minmax(0,1fr);gap:1rem 1.6rem;align-items:start;border:2px solid var(--line);background:var(--sheet);padding:1rem;margin:.8rem 0 1.2rem}
+.ck-photo img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;background:var(--line)}
+.ck-nophoto{display:flex;align-items:center;justify-content:center;aspect-ratio:1;border:2px dashed var(--line);color:var(--ink-2);font-weight:700}
+/* the plant's name on the walk-through card: a heading that is not a page section (no Show or hide, not in Navigation) */
+.ck-title{font-family:var(--serif);font-size:1.7rem;font-weight:600;line-height:1.2;letter-spacing:-.005em;margin:0 0 .4rem;overflow-wrap:anywhere}
+.ck-title:focus{outline:none}
+.ck-title:focus-visible{outline:var(--ring) solid var(--focus);outline-offset:3px}
+.ck-body p{margin:.35rem 0}
+.ck-notes{margin:.6rem 0}
+.ck-notes summary{cursor:pointer;font-weight:700;padding:.3rem 0}
+.ck-form{margin-top:.9rem}
+.ck-form .opt-group{margin-bottom:.8rem}
+.ck-health span{min-width:7rem;min-height:3.25rem}
+.ck-form textarea{width:100%}
+.ck-acts{display:flex;flex-wrap:wrap;gap:.6rem;margin:.8rem 0}
+.ck-nav{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1rem;padding-top:.8rem;border-top:2px solid var(--line-2,var(--line))}
+.ck-nav .btn[disabled]{opacity:1;color:var(--ink-2);border-color:var(--line);cursor:default}
+.ck-photo-btn{position:relative;width:100%;margin-top:.6rem;cursor:pointer}
+.ck-photo-btn:focus-within{outline:var(--ring) solid var(--focus);outline-offset:2px}
+.ck-photo .ck-meta{margin:.3rem 0 0}
+.ck-group{max-width:30rem;margin:0 0 1.3rem}
+.ck-group select{width:100%}
+.ck-set{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.4rem 1.2rem}
+.ck-set .f{flex:1 1 16rem;max-width:26rem}
+.ck-set input[type=number]{display:block;margin-top:.3rem;width:8rem;max-width:100%}
+.ck-set p{margin:0 0 .3rem}
+.ck-setup button[disabled]{opacity:1;background:var(--sheet);color:var(--ink-2);border-color:var(--line);cursor:default}
+@media (max-width:640px){.ck-card{grid-template-columns:minmax(0,1fr);padding:.7rem}.ck-photo img,.ck-nophoto{aspect-ratio:4/3;max-height:38vh}.ck-acts .btn,.ck-nav .btn{flex:1 1 12rem}.ck-health label{flex:1 1 40%}}
+html[data-role=viewer] :is(form[data-form=ckstart] button[type=submit], form[data-form=cksave], form[data-form=ckset], form[data-form=ckgroupset], [data-act=ckgroupwalk], .ck-photo-btn){display:none!important}
 /* 1.22.0: mushroom finds */
 .mu-safe{margin:0 0 1.4rem}
 .mu-safe ul{margin:.5rem 0 0;padding-left:1.3em}
