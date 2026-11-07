@@ -24,11 +24,13 @@ function displayDialog() {
   G.photofit = group('photofit', 'Photos on the Plants page', [['auto', 'Show wide photos whole, fill the card with tall ones'], ['fill', 'Fill the card (wide photos lose their sides)'], ['whole', 'Always show the whole photo']], 'A wide photo cut down to fit a tall card loses its sides. Shown whole, it has a plain band above and below.');
   G.swipe = group('swipe', 'Swipe between plants', [['1', 'On'], ['0', 'Off']], 'On a phone or tablet, swipe left on a plant page for the next plant, or right for the previous one. Start away from the edges of the screen, which your phone uses for Back.');
   G.keys = group('keys', 'Keyboard shortcuts', [['1', 'On'], ['0', 'Off']], 'R reads the page aloud, [ and ] go to the previous and next plant, ? lists them all.');
+  G.vsearch = typeof vsCan === 'function' && vsCan() ? html`${group('vsearch', 'Search by voice', [['1', 'Show the buttons, and say what was heard aloud'], ['quiet', 'Show the buttons, but do not speak'], ['0', 'Hide the buttons (the V key is off too)']],
+    'A Search by voice button sits beside each search box. What you say is turned into words on this computer, and is not saved. If you use a screen reader, choose "do not speak": it reads the line under the button out already.')}<p class="hint" id="vs-dv-st" role="status"></p>` : html`<p class="muted">This browser cannot record from a microphone here. Open Plant record through its https Tailscale address, or in a newer browser.</p>`;
   const SH = window.PlantSync ? window.PlantSync.shared() : {};
   const share = part => html`<fieldset class="opt-group dv-share"><legend>Where these apply</legend><label class="chk"><input type="checkbox" data-dvshare="${part}" ${SH[part] ? raw('checked') : ''}>Use these on every device I sign in on</label>
     <p class="hint">Off (the usual): only this device. On: any phone, tablet or computer where you sign in and tick this too gets them.</p></fieldset>`;
   const SECS = [['Text and colours', html`${G.size}${G.space}${G.contrast}${G.theme}${share('text')}`], ['Page layout', html`${G.width}${G.lines}${G.layout}${G.navside}${G.navopen}${share('layout')}`],
-    ['Reading aloud', html`${speak}${share('read')}`], ['Photos and touch', html`${G.photofit}${G.swipe}${share('photos')}`], ['Keyboard', html`${G.keys}${share('keys')}`]];
+    ['Reading aloud', html`${speak}${share('read')}`], ['Photos and touch', html`${G.photofit}${G.swipe}${share('photos')}`], ['Keyboard and voice', html`${G.keys}${G.vsearch}${share('keys')}`]];
   const keep = DVSCROLL; DVSCROLL = 0;
   modal(html`<form method="dialog" class="dv-form">
     <div class="dv-head"><div class="dv-title"><h2 id="dv-title">Display settings</h2>
@@ -296,7 +298,7 @@ function shortcutsDialog() {
     <table class="tbl"><tbody>
       ${k('R', 'Read this page aloud (press again, or Escape, to stop)')}${k('Escape', 'Stop reading')}
       ${k('[', 'Previous plant (on a plant page)')}${k(']', 'Next plant (on a plant page)')}
-      ${k('E', 'Edit this plant (on a plant page)')}${k('/', 'Search: the plant filter on the Plants page, everything else elsewhere')}
+      ${k('E', 'Edit this plant (on a plant page)')}${k('/', 'Search: the plant filter on the Plants page, everything else elsewhere')}${typeof vsOn === 'function' && vsOn() ? k('V', 'Search by voice (speak into the microphone; say "open" and a page or plant to go there)') : ''}
       ${k('H', 'Go to the Plants page')}${k('M', 'Open or fold the section menu')}${k('L', 'Choose the location for the weather')}${k('U', 'Undo the care you just logged, while its message is showing')}${k('?', 'Show this list')}
     </tbody></table>
     <div class="row"><button class="btn" value="ok" autofocus>Close</button></div></form>`);

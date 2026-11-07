@@ -2,6 +2,7 @@
 
 One line each, most wanted first. A prototyping session takes the top one that is not already in progress, and marks it "(in progress: proto/<branch>)".
 
+- Search by voice: a button beside every search box (and the V key) that fills the box from what you say, tidies spoken plant codes and opens a plant or page with "open ...", turned into words on this computer by its own Whisper service. (suggested by Claude) (in progress: proto/voice-search)
 - Turn the pots: a reminder to give each pot by a window a quarter turn every week or two so it grows straight, with a page under Care and a section on Today. (suggested by Claude) (in progress: proto/turn-pots)
 
 - Plant-sitter sheet: a printable, large-print day-by-day plan for someone looking after the plants while Ethan is away (which plants to check for water each day, where they are, how to tell, and cold nights in the forecast), from the same reminders as Today. (suggested by Claude) (in progress: proto/sitter-sheet)

@@ -3,6 +3,7 @@
   var D = { size: '115', space: 'normal', contrast: 'normal', layout: 'split', theme: 'auto', navside: 'left', navopen: '1', width: 'normal',
             readbtns: '1', rate: '1', voice: 'auto', keys: '1',   // 1.8.0: read aloud, reading speed and voice, keyboard shortcuts
             swipe: '1',                                           // 1.14.1: swipe between plants
+            vsearch: '1',                                         // search by voice: '1' buttons and say what was heard, 'quiet' buttons only, '0' hidden
             photofit: 'auto',                                     // 1.21.0: Plants page photos: auto (wide ones whole), fill, whole
             lines: 'full' };                                      // 1.26.0: line length: full (use the width) or short (about 70 characters)
   var p = {};
@@ -18,6 +19,7 @@
     r.setAttribute('data-navpref', x.navopen);
     r.setAttribute('data-width', x.width);
     r.setAttribute('data-readbtns', x.readbtns);
+    r.setAttribute('data-vsearch', x.vsearch);
     r.setAttribute('data-photofit', x.photofit);
     r.setAttribute('data-lines', x.lines);
     if (x.theme === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', x.theme);
@@ -43,7 +45,7 @@
   var KEYS = ['plantdb.filters', 'plantdb.library', 'plantdb.fungi', 'plantdb.ltlights', 'plantdb.auditf', 'plantdb.calview', 'plantdb.wxchart',
               'plantdb.wxhide', 'plantdb.wxper', 'plantdb.idscope', 'plantdb.place', 'plantdb.frosthide', 'plantdb.shopping', 'plantdb.shoplist'];   // 1.30.0: Shopping's home and kind; 1.34.0: the shopping list's extras
   var PARTS = { text: ['size', 'space', 'contrast', 'theme'], layout: ['width', 'lines', 'layout', 'navside', 'navopen'], read: ['readbtns', 'rate', 'voice'],
-                photos: ['photofit', 'swipe'], keys: ['keys'] };
+                photos: ['photofit', 'swipe'], keys: ['keys', 'vsearch'] };
   var LS = window.localStorage, setI = Storage.prototype.setItem, remI = Storage.prototype.removeItem, queue = {}, timer = 0, applying = false;
   function shared() { try { return JSON.parse(LS.getItem('plantdb.dshare') || '{}') || {}; } catch (e) { return {}; } }
   function send() {
