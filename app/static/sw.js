@@ -6,7 +6,7 @@
    Changes made while offline are not handled here: the page keeps them in its outbox and sends them when it is back online. */
 const VERSION = '__VERSION__';
 const SHELL = 'plantdb-shell-' + VERSION, API = 'plantdb-api', PICS = 'plantdb-photos', LIBPICS = 'plantdb-library-photos';
-const SHELL_FILES = ['/', '/js/core.js', '/js/gallery.js', '/js/plant.js', '/js/care.js', '/js/edit.js', '/js/weather.js', '/js/ui.js', '/js/lights.js', '/js/events.js', '/js/discover.js', '/js/offline.js', '/js/notify.js', '/js/sensors.js', '/js/review.js', '/js/checkup.js', '/js/main.js', '/style.css', '/prefs.js', '/card.html', '/card.js', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
+const SHELL_FILES = ['/', '/js/core.js', '/js/gallery.js', '/js/plant.js', '/js/care.js', '/js/edit.js', '/js/weather.js', '/js/ui.js', '/js/lights.js', '/js/events.js', '/js/discover.js', '/js/offline.js', '/js/notify.js', '/js/sensors.js', '/js/review.js', '/js/checkup.js', '/js/main.js', '/style.css', '/prefs.js', '/card.html', '/card.js', '/sitter.html', '/sitter.js', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
 const NO_SAVE = /^\/api\/(people|backups|ingest|weather\/job|backups\/job|audit|library\/prefetch|library\/local|offline\/|identify\/settings|calendar\/settings|me$)/;
 const WAIT_MS = 5000;
 let downUntil = 0;                           // after the server fails to answer, use saved copies at once for a while (weak signal)
@@ -56,14 +56,17 @@ async function picture(req, name) {
   try { const r = await fetch(req); if (r.ok) c.put(req, r.clone()); return r; }
   catch (e) { return new Response('', { status: 504 }); }
 }
+// a page of its own (card.html, sitter.html) is kept under its own name; only the app itself is kept as '/', so opening a
+// print page no longer replaces the saved app with it (proto/sitter-sheet, rebuilt on 1.42.0)
+const shellKey = req => req.mode === 'navigate' && !/\.html$/.test(new URL(req.url).pathname) ? '/' : (req.mode === 'navigate' ? new URL(req.url).pathname : req);
 async function shell(req) {
   const c = await caches.open(SHELL);
   try {
     const r = await tryNet(req);
-    if (r.ok) c.put(req.mode === 'navigate' ? '/' : req, r.clone());
+    if (r.ok) c.put(shellKey(req), r.clone());
     return r;
   } catch (e) {
-    return (await c.match(req.mode === 'navigate' ? '/' : req, { ignoreSearch: true })) || new Response('Offline, and the app is not saved on this device yet.', { status: 503 });
+    return (await c.match(shellKey(req), { ignoreSearch: true })) || new Response('Offline, and the app is not saved on this device yet.', { status: 503 });
   }
 }
 // 1.37.0: the share sheet ("Share → Plants") posts the pictures here; keep them in a cache and open the page that adds them
