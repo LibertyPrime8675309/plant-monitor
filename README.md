@@ -1358,6 +1358,17 @@ After you press **Watered** or **Still moist** (on the Today page or a plant pag
 
 Undo removes only the entries that press made, so the rest of the care log is untouched. For "Watered all" it removes all of them and says how many. If someone else already removed the entry, it says "Nothing to undo". The change log records it as "Undone right after it was logged". To remove an older entry, use the care log on the plant's page.
 
+## Plant-sitter sheet (from 1.43.0)
+
+A large-print plan to print for whoever looks after your plants while you are away.
+
+- **Where:** on **Today**, **Going away? Make a plant-sitter sheet**; on a group's page, **Plant-sitter sheet for this group**.
+- **Choices above the sheet** (remembered in that browser): **First day** and **Last day** (up to 6 weeks), **Which plants** (all, or one of your groups), **Printing** (**Each day on its own page**, off to start with; **The plant list at the end**, on to start with) and a **Note for the sitter**, printed at the top (how to reach you, where the watering can is).
+- **Before you go** (on screen only): the plants due before your first day away, or with no watering logged. The sheet assumes you water these the day before you leave.
+- **On the sheet:** the dates, your note and four short instructions; **Cold nights in the forecast**, with each plant outside to bring in or cover, the low each night and the temperature that harms or kills it; **Day by day**, each day's high and low and a tick box for every plant to check, in walking order (outdoors, then the porch, indoors and the garage); and **The plants**, one short entry each: where it is, how often to check it and the first line of its watering notes.
+- It uses the same watering reminders as Today (each plant's "check every N days", the recent weather and your care log), carried forward over the days you are away.
+- **Print** opens the browser's print window; choose "Save as PDF" there to email it. The printout is always black on white, about 15.5 point and up. People who can only view the app can make it too.
+
 ## Large-print care cards (from 1.19.0)
 
 A printable card with a plant's needs in big type, to tape to a pot or shelf or keep beside the plants indoors, and read without opening the app.

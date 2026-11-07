@@ -42,7 +42,11 @@ with sync_playwright() as pw:
     check(pg.locator('select[data-act=preptrait][data-k=leaf_type]').input_value() == 'Large leaves', 'leaf type filled in (Large leaves)')
     check(pg.locator('#prep-box .pm').count() == 10, 'all 10 methods are there')
     v0 = call('GET', '/api/plants/P-065')['version']
+    def settle(js):          # wait for the redraw on a slow machine (GitHub), up to 6 s; the checks below still decide
+        try: pg.wait_for_function(js, timeout=6000)
+        except Exception: pass
     pg.select_option('select[data-act=preptrait][data-k=pot_size]', 'Large: too big to soak'); pg.wait_for_timeout(900)
+    settle("(document.querySelector('#pm-soak .pr-badge') || {}).innerText && document.querySelector('#pm-soak .pr-badge').innerText.includes('Use with care')")
     check('Use with care' in pg.locator('#pm-soak .pr-badge').inner_text(), 'large pot: soaking becomes "Use with care"')
     check(pg.evaluate("document.activeElement && document.activeElement.dataset.k") == 'pot_size', 'focus stays on the pot size menu')
     pg.locator('input[data-act=preppest][value=Scale]').check(); pg.wait_for_timeout(900)
@@ -56,9 +60,11 @@ with sync_playwright() as pw:
     st = pg.locator('#prep-box .pr-top [data-act=prepstart]')
     check(st.count() == 1 and 'Not started' in pg.locator('#prep-box .pr-status').inner_text(), 'a plant not started has a Start the checklist button')
     st.click(); pg.wait_for_timeout(1200)
+    settle("(document.querySelector('#prep-box .pr-status') || {innerText: ''}).innerText.includes('In progress') && document.activeElement.id === 'pm-inspect-tick'")
     check('In progress' in pg.locator('#prep-box .pr-status').inner_text() and pg.evaluate("document.activeElement.id") == 'pm-inspect-tick',
           'Start: In progress, and focus moves to the first tick box')
     pg.locator('#prep-box .pr-top [data-act=prepundo][data-k=start]').click(); pg.wait_for_timeout(1200)
+    settle("(document.querySelector('#prep-box .pr-status') || {innerText: ''}).innerText.includes('Not started')")
     check('Not started' in pg.locator('#prep-box .pr-status').inner_text(), 'Undo the start puts it back')
     # 1.41.1: every step is a tick box; the ones not recommended are marked but can be ticked
     check(pg.locator('#prep-box input[data-act=preptick]').count() == 10 and pg.locator('#prep-box details.pm-rest').count() == 0, 'all 10 steps have a tick box, none hidden away')

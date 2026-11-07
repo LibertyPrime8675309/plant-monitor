@@ -11,8 +11,8 @@ function displayDialog() {
   G.space = group('space', 'Spacing', [['normal', 'Normal'], ['roomy', 'Roomy']], 'Roomy adds space between lines, letters and words.');
   G.contrast = group('contrast', 'Contrast', [['normal', 'Normal'], ['high', 'High']], 'High contrast uses black and white, stronger lines and heavier outlines.');
   G.theme = group('theme', 'Colours', [['auto', 'Match my device'], ['light', 'Light'], ['dark', 'Dark']]);
-  G.navside = group('navside', 'Section menu side', [['left', 'Left'], ['right', 'Right']], 'The "On this page" menu lists the sections of the page you are on.');
-  G.navopen = group('navopen', 'Section menu', [['1', 'Open'], ['0', 'Folded away (the Sections button opens it)']], 'On narrow windows and phones it starts folded and covers the page while open.');
+  G.navside = group('navside', 'Navigation menu side', [['left', 'Left'], ['right', 'Right']], 'The Navigation menu lists the sections of the page you are on. Display is at its bottom.');
+  G.navopen = group('navopen', 'Navigation menu', [['1', 'Open'], ['0', 'Folded away (the Navigation button opens it)']], 'On narrow windows and phones it starts folded and covers the page while open.');
   G.width = group('width', 'Page width', [['normal', 'Normal'], ['wide', 'Use the full width of the window']], 'Full width gives charts and tables more room on a wide screen.');
   G.lines = group('lines', 'Line length', [['full', 'Use the full width'], ['short', 'Shorter lines (about 70 letters)']], 'Full width fits more on the screen. Shorter lines can be easier to follow from one line to the next.');
   G.layout = group('layout', 'Plant pages', [['split', 'Photos and details side by side'], ['single', 'One column']], 'Side by side lets each half scroll on its own: scroll with the pointer over the half you want to move. One column stacks the photos above the details.');
