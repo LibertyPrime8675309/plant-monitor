@@ -3,10 +3,12 @@
 One line each, most wanted first. A prototyping session takes the top one that is not already in progress, and marks it "(in progress: proto/<branch>)".
 
 - Search by voice: a button beside every search box (and the V key) that fills the box from what you say, tidies spoken plant codes and opens a plant or page with "open ...", turned into words on this computer by its own Whisper service. (suggested by Claude) (in progress: proto/voice-search)
-- Summer heat: an AHS heat-zone style "days above 86°F" count from the weather history, next to the USDA zone on About this plant, for plants that struggle in Texas summers.
-- Sensor dashboard for the DIY plant monitor (soil moisture, temperature, light) once hardware is posting to `/api/readings`.
+- Turn the pots: a reminder to give each pot by a window a quarter turn every week or two so it grows straight, with a page under Care and a section on Today. (suggested by Claude) (in progress: proto/turn-pots)
+
+- Plant-sitter sheet: a printable, large-print day-by-day plan for someone looking after the plants while Ethan is away (which plants to check for water each day, where they are, how to tell, and cold nights in the forecast), from the same reminders as Today. (suggested by Claude) (in progress: proto/sitter-sheet)
 
 ## Done
+1.34.0 to 1.36.0 (November 4 and 5, 2026, pull requests #51, #52 and #53): Summer heat (the AHS heat zone from the weather history, and a verdict per plant on About this plant) and Your sensors (the sensor dashboard).
 1.19.0 (October 28, 2026, pull requests #23 and #26): Undo right after a quick care button, and large-print care cards for a plant or a whole group.
 1.18.0 and 1.18.1 (October 26 to 28, 2026, pull request #25): Identify a plant with the camera (BioCLIP 2.5 on Ethan's PC, with Pl@ntNet and Claude as second opinions) and the plant library; the top menu fixed for iPads.
 1.16.2 and 1.17.x (October 26, 2026, pull requests #22 and #24): Show, Location and eight more filters on the Plants page, and Safety for pets.
@@ -30,3 +32,6 @@ Merged into 1.8.0 (October 23, 2026):
 
 Asked for by Ethan and built in 1.9.0:
 - Getting plants ready to come inside: ten pest methods rated per plant, with steps, logging, second-round reminders and keep-apart dates.
+
+## Suggested by Claude, waiting for review
+- Health walk-through: go round the plants one at a time on a phone, with big buttons to say each one looks the same or has a new health rating, and a list of plants not looked over for two weeks. (suggested by Claude) (in progress: proto/health-walk)

@@ -3,8 +3,8 @@ database, helpers, people, security), then one module per feature. Everything is
 still gives S.app, S.init_db, S.light_verdict and the rest, as before 1.32.0."""
 import os, sys, threading
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from plantdb import core, where, weather, plants, care, fert, groups, lights, library, fungi, shopping, audit, offline, frost, backups, jobs, push, search, copies, heat, sensors, review, mirror, voice
-MODULES = [core, where, weather, plants, care, fert, groups, lights, library, fungi, shopping, audit, offline, frost, backups, jobs, push, search, copies, heat, sensors, review, mirror, voice]
+from plantdb import core, where, weather, plants, care, fert, groups, lights, library, fungi, shopping, audit, offline, frost, backups, jobs, push, search, copies, heat, sensors, review, mirror, sitter, turning, checkup, voice
+MODULES = [core, where, weather, plants, care, fert, groups, lights, library, fungi, shopping, audit, offline, frost, backups, jobs, push, search, copies, heat, sensors, review, mirror, sitter, turning, checkup, voice]
 globals().update(core.link(MODULES))
 def patch(name, value):
     """For tests: replace a function (http_json, say) in every module at once, since each holds its own link to it."""
