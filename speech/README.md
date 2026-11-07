@@ -41,5 +41,5 @@ PyAV 19 removed, and decoding fails with it.
 
 ## Tests
 
-`dev/test/mock_speech.py` is a stand-in the mock server starts on port 8093: a test tells it what the next recording "says".
+`dev/test/mock_speech.py` is a stand-in the mock server starts on port 8094: a test tells it what the next recording "says".
 `dev/test/voice_check.py` drives real recordings from a stand-in microphone; `dev/test/unit/test_voice.py` covers `/api/voice`.

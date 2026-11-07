@@ -9,7 +9,7 @@ os.environ['PLANTDB_WEATHER']='0'
 # 1.18.0: the picture checker. Without MOCK_VISION=real, a fake one (dev/test/mock_vision.py) answers on 127.0.0.1:8090,
 # started here, and stands in for Pl@ntNet and Claude too. With MOCK_VISION=real, run vision/service.py on 8090 yourself.
 os.environ.setdefault('PLANTDB_VISION_URL', 'http://127.0.0.1:' + os.environ.get('MOCK_VISION_PORT', '8090'))
-os.environ.setdefault('PLANTDB_SPEECH_URL', 'http://127.0.0.1:' + os.environ.get('MOCK_SPEECH_PORT', '8093'))   # search by voice
+os.environ.setdefault('PLANTDB_SPEECH_URL', 'http://127.0.0.1:' + os.environ.get('MOCK_SPEECH_PORT', '8094'))   # search by voice
 os.environ.setdefault('PLANTDB_PLANTNET_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/plantnet')
 os.environ.setdefault('PLANTDB_CLAUDE_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/claude')
 os.environ.setdefault('PLANTDB_EBAY_API', os.environ['PLANTDB_VISION_URL'] + '/mock/ebay')      # 1.27.0: wishlist shops
@@ -80,7 +80,7 @@ if os.environ.get('MOCK_SPEECH', 'fake') == 'fake':          # search by voice: 
     from werkzeug.serving import make_server
     _sspec = importlib.util.spec_from_file_location('mock_speech', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'mock_speech.py'))
     _ms = importlib.util.module_from_spec(_sspec); _sspec.loader.exec_module(_ms)
-    _sport = int(os.environ.get('MOCK_SPEECH_PORT', '8093'))
+    _sport = int(os.environ.get('MOCK_SPEECH_PORT', '8094'))
     with socket.socket() as _s: _sbusy = _s.connect_ex(('127.0.0.1', _sport)) == 0
     if _sbusy: print(f'mock speech not started: port {_sport} is in use')
     else:
