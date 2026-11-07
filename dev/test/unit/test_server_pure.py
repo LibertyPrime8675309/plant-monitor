@@ -122,5 +122,9 @@ def test_frost_dates_needs_three_whole_winters():
     r = S.frost_dates(c, L)
     assert r['ready'] and r['winters'] == 3 and r['freeze']['first']['usual'].startswith('Dec') and r['freeze']['last']['usual'].startswith(('Feb', 'Mar'))
     assert r['hard']['first']['usual_day'] > r['freeze']['first']['usual_day'] and r['frost_free_days'] > 250
+    # Ethan's answers of November 6: frost possible at 36°F (sooner than a freeze, later in spring), and days to the usual last nights
+    assert r['possible']['first']['usual_day'] < r['freeze']['first']['usual_day'] and r['possible']['last']['usual_day'] > r['freeze']['last']['usual_day']
+    assert set(r['days_to_last']) == {'freeze', 'hard', 'possible'} and r['days_to_last']['possible'] > r['days_to_last']['freeze'] > r['days_to_last']['hard']
+    assert all('first_possible' in w for w in r['per_winter']) and 1 <= r['month'] <= 12
     assert [w['winter'] for w in r['per_winter']][0] == f'{start - 1} to {start}'
     c.execute('DELETE FROM weather_daily WHERE loc_id=?', (lid,)); c.commit(); S.PLACE_LOWS.clear()

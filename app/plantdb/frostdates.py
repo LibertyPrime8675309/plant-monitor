@@ -1,11 +1,14 @@
 """Prototype (proto/frost-dates): frost dates where the plants are, from the place's own weather history.
 For each whole winter (July to June) it finds the first and last night at or below a temperature, then gives the usual
 (middle) date, the earliest and latest seen, and how many winters never got that cold. The Weather page shows it for a
-freeze (32°F) and a hard freeze (28°F); the Cold-night checklist shows it for each damage temperature of the plants
-that are outside. It reads weather_daily only and changes nothing."""
+freeze (32°F), a hard freeze (28°F) and, from Ethan's answer of November 6, "frost possible" (36°F: frost can form in low
+spots on a clear, still night); the Cold-night checklist shows it for each damage temperature of the plants that are outside
+(one plant a line, with its photo); Back outside shows when the cold nights usually end; Today has a line in October and
+November (the usual first freeze) and February and March (the usual last). It reads weather_daily only and changes nothing."""
 from .core import *   # noqa: F401,F403
+from .lights import plant_photo
 
-FREEZE_F, HARD_FREEZE_F = 32, 28
+FREEZE_F, HARD_FREEZE_F, FROST_POSSIBLE_F = 32, 28, 36
 FROST_SEASON_MIN_DAYS = 330          # a winter counts once this many of its days have a low
 FROST_SEASON_MIN = 3                 # whole winters needed before dates are given (like the winter and summer zones)
 PLACE_LOWS = {}
@@ -76,35 +79,41 @@ def frost_dates(c, L):
            'since': f'{min(whole)}' if whole else None, 'ready': len(whole) >= FROST_SEASON_MIN}
     # this winter so far (from July 1), whether or not there is enough history for the usual dates
     cur = by.get(now_s, [])
-    cur_freeze = cold_nights(cur, FREEZE_F)
+    cur_freeze, cur_possible = cold_nights(cur, FREEZE_F), cold_nights(cur, FROST_POSSIBLE_F)
     coldest = min(cur, key=lambda x: x[1]) if cur else None
+    night = lambda x: {'date': x[0].isoformat(), 'low': round(x[1])}
     out['now'] = {'winter': f'{now_s} to {now_s + 1}', 'nights': len(cur),
-                  'first_freeze': {'date': cur_freeze[0][0].isoformat(), 'low': round(cur_freeze[0][1])} if cur_freeze else None,
-                  'freezes': len(cur_freeze), 'coldest': {'date': coldest[0].isoformat(), 'low': round(coldest[1])} if coldest else None}
+                  'first_freeze': night(cur_freeze[0]) if cur_freeze else None, 'last_freeze': night(cur_freeze[-1]) if cur_freeze else None,
+                  'freezes': len(cur_freeze), 'coldest': night(coldest) if coldest else None,
+                  'first_possible': night(cur_possible[0]) if cur_possible else None, 'possibles': len(cur_possible)}
+    out['month'] = today.month
     if not out['ready']: return out
-    fr, hard = season_stats(whole, FREEZE_F), season_stats(whole, HARD_FREEZE_F)
-    out['freeze'], out['hard'] = fr, hard
+    fr, hard, poss = season_stats(whole, FREEZE_F), season_stats(whole, HARD_FREEZE_F), season_stats(whole, FROST_POSSIBLE_F)
+    out['freeze'], out['hard'], out['possible'] = fr, hard, poss
     # frost-free days: from the last freeze of one winter to the first of the next, the middle over the years with both
     gaps = []
     for s in sorted(whole):
         a, b = cold_nights(whole[s], FREEZE_F), cold_nights(whole.get(s + 1, []), FREEZE_F)
         if a and b and s + 1 in whole: gaps.append((b[0][0] - a[-1][0]).days)
     out['frost_free_days'] = round(middle(gaps)) if gaps else None
-    if fr['first']:
-        until = fr['first']['usual_day'] - season_day(today)
-        out['days_to_usual'] = until
+    day = season_day(today)
+    if fr['first']: out['days_to_usual'] = fr['first']['usual_day'] - day           # the usual first freeze (fall), from today
+    # spring: days to the usual last night at or below each temperature (negative once it has passed)
+    out['days_to_last'] = {k: S['last']['usual_day'] - day for k, S in (('freeze', fr), ('hard', hard), ('possible', poss)) if S['last']}
     out['per_winter'] = []
     for s in sorted(whole, reverse=True)[:10]:
-        v = whole[s]; f = cold_nights(v, FREEZE_F); lo = min(v, key=lambda x: x[1])
+        v = whole[s]; f = cold_nights(v, FREEZE_F); lo = min(v, key=lambda x: x[1]); f36 = cold_nights(v, FROST_POSSIBLE_F)
         out['per_winter'].append({'winter': f'{s} to {s + 1}', 'first': f[0][0].isoformat() if f else None, 'last': f[-1][0].isoformat() if f else None,
+                                  'first_possible': f36[0][0].isoformat() if f36 else None, 'last_possible': f36[-1][0].isoformat() if f36 else None,
                                   'freezes': len(f), 'hard': len(cold_nights(v, HARD_FREEZE_F)), 'coldest': round(lo[1]), 'coldest_on': lo[0].isoformat()})
     # the plants outside, grouped by the temperature that damages them (the frost alert counts a night below it)
     at, at_args = plants_at(c, L)
     groups = {}
-    for r in c.execute("SELECT code, common_name, temp_damage_below, winter_plan, site FROM plants WHERE status='active' AND temp_damage_below IS NOT NULL"
+    for r in c.execute("SELECT id, code, common_name, temp_damage_below, winter_plan, site FROM plants WHERE status='active' AND temp_damage_below IS NOT NULL"
                        + at + " ORDER BY code", at_args):
         if (r['site'] or 'Outdoors') in INSIDE_SITES: continue
-        groups.setdefault(r['temp_damage_below'], []).append({'code': r['code'], 'name': r['common_name'], 'plan': r['winter_plan'], 'site': r['site'] or 'Outdoors'})
+        groups.setdefault(r['temp_damage_below'], []).append({'code': r['code'], 'name': r['common_name'], 'plan': r['winter_plan'], 'site': r['site'] or 'Outdoors',
+                                                              'photo': plant_photo(c, r['id'])})
     out['plants'] = []
     for t, ps in groups.items():
         st = season_stats(whole, t, strict=True)

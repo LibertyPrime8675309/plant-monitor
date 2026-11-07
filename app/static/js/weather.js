@@ -863,6 +863,7 @@ async function viewOutside() {
       return html`<section class="blk" id="bo-${id}"><h2>${title} (${g.length})</h2><p class="muted">${sub}</p><ul class="fz-list">${g.map(boRow)}</ul></section>`; })}
     ${(() => { const g = ps.filter(p => !p.level); return g.length && B.nights.length ? html`<section class="blk" id="bo-unknown"><h2>Cannot be checked (${g.length})</h2>
       <p class="muted">These have no damage point or ideal low on their page.</p><ul class="fz-list">${g.map(boRow)}</ul></section>` : ''; })()}
+    <section class="blk" id="bo-frostdates"><h2>When the cold nights usually end</h2><div class="fd-box" data-fd="outside"><p class="muted">Working out the frost dates…</p></div></section>
     ${B.nights.length ? html`<section class="blk"><h2>The next 7 nights</h2><div class="tbl-wrap"><table class="tbl bo-tbl"><caption class="sr">Forecast lows</caption>
       <thead><tr><th>Day</th><th class="num">Low</th></tr></thead><tbody>
       ${B.nights.map(x => html`<tr><th scope="row">${fzDay(x.date)}</th><td class="num">${x.low}°F</td></tr>`)}</tbody></table></div>
