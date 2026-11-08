@@ -5,7 +5,7 @@
  "lights_update": [
   {
    "key": "disk-light",
-   "note": "model number and ratings from the label on its back (Ethan, November 7)",
+   "note": "model number, ratings and the 5000 K setting from its label and Ethan (November 7)",
    "set": {
     "model": [
      null,
@@ -17,7 +17,11 @@
     ],
     "notes": [
      "",
-     "Made by ETI Solid State Lighting for Commercial Electric (the label on its back, photographed November 7, 2026). The colour is chosen with a switch on the fixture: 2700, 3000, 3500, 4000 or 5000 K. Of those, 5000 K gives plants the most useful light; this card assumes 3000 K until you say which it is set to."
+     "Made by ETI Solid State Lighting for Commercial Electric (the label on its back, photographed November 7, 2026). The colour is chosen with a switch on the fixture: 2700, 3000, 3500, 4000 or 5000 K. Ethan has it on 5000 K, the best of the five for plants."
+    ],
+    "kelvin": [
+     3000,
+     5000
     ]
    }
   }
@@ -25,7 +29,7 @@
  "requests_done": [
   {
    "key": "lights-model-disk",
-   "answer": "Ethan photographed the label on November 7: ETI Solid State Lighting model A01062304A, sold as Commercial Electric. 9.7 W, 800 lm, 90 CRI, colour selectable from 2700 to 5000 K. The label confirms the figures already on its card."
+   "answer": "Ethan photographed the label on November 7: ETI Solid State Lighting model A01062304A, sold as Commercial Electric. 9.7 W, 800 lm, 90 CRI, colour selectable from 2700 to 5000 K. The label confirms the figures already on its card. Ethan has it switched to 5000 K."
   }
  ]
 }

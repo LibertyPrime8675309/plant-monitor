@@ -7,7 +7,7 @@
   - **On Back outside,** a new part, "When the cold nights usually end": the usual last hard freeze, freeze and 36°F night, with how many days to go in spring.
   - **On Today,** "No freeze yet. The usual first freeze is N days away" in October and November, and the days left until the usual last freeze in February and March.
 - **The T8 strip request is answered:** you have one strip, the 25 W one already on its card. It no longer shows in your requests.
-- **The disk light request is answered too:** its label says it is ETI Solid State Lighting model A01062304A (sold as Commercial Electric), 9.7 W, 800 lm, 90 CRI, with the colour chosen on the fixture from 2700 to 5000 K. The model and a note are on its card; the figures it already had were right.
+- **The disk light request is answered too:** its label says it is ETI Solid State Lighting model A01062304A (sold as Commercial Electric), 9.7 W, 800 lm, 90 CRI, with the colour chosen on the fixture from 2700 to 5000 K. The model, your 5000 K setting and a note are on its card; the other figures it already had were right.
 
 ## 1.44.0 (2026-11-07)
 - **Search by voice, on your own computer** (prototype #47, now part of the app). A **Search by voice** button sits beside every search box (and the **V** key). Say a plant, a code ("P 36") or "open" and a page ("open weather", "open coming inside").
