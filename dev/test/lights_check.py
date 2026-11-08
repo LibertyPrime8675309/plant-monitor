@@ -132,7 +132,8 @@ d7 = {L['key']: L for L in j7['lights']}
 check(d7['disk-light']['fixture'].startswith('New, still in its box') and 'E26' in d7['sansi-gooseneck']['notes'], "the disk light and gooseneck carry his answers")
 st, rq2 = call('GET', '/api/requests')
 done = {r['rkey']: r for r in rq2 if r.get('rkey')}
-check(all(done[k]['done'] for k in ('lights-disk', 'lights-spots', 'lights-sockets', 'lights-lamps', 'lights-models')) and not done['lights-model-disk']['done'], 'answered questions are closed (lamps from batch A6, model numbers from batch B7), the disk light\'s model is still open')
+check(all(done[k]['done'] for k in ('lights-disk', 'lights-spots', 'lights-sockets', 'lights-lamps', 'lights-models', 'lights-model-disk', 'lights-t8-set')), 'answered questions are closed (lamps from batch A6, model numbers from batch B7, the disk light and the T8 strip from batches C2 and C1)')
+check(d7['disk-light']['specs']['model'] == 'A01062304A' and d7['disk-light']['specs']['kelvin'] == 5000, "the disk light's card has its model and 5000 K (batch C2)")
 check(d7['sansi-80w']['fixture'].startswith('Suggested: the bare socket on the long') and 'clamp-on' in d7['sansi-30w']['fixture'] and 'Five bare sockets are left spare' in d7['sansi-10w']['fixture'],
       'each bulb has a suggested lamp or socket from his answer (batch A6)')
 # 1.41.1: a room itself has a negative id; renaming and removing it said "Request failed (405)"

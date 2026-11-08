@@ -1,0 +1,35 @@
+{
+ "id": "C2",
+ "created": "2026-11-07",
+ "author": "Claude (Ethan's photo of the disk light's label, Nov 2026)",
+ "lights_update": [
+  {
+   "key": "disk-light",
+   "note": "model number, ratings and the 5000 K setting from its label and Ethan (November 7)",
+   "set": {
+    "model": [
+     null,
+     "A01062304A"
+    ],
+    "power": [
+     "Wired in or on a lamp cord (120 V)",
+     "Wired in (120 V AC, 60 Hz, 9.7 W). Rated for damp rooms and for air up to 45 °C (113 °F)."
+    ],
+    "notes": [
+     "",
+     "Made by ETI Solid State Lighting for Commercial Electric (the label on its back, photographed November 7, 2026). The colour is chosen with a switch on the fixture: 2700, 3000, 3500, 4000 or 5000 K. Ethan has it on 5000 K, the best of the five for plants."
+    ],
+    "kelvin": [
+     3000,
+     5000
+    ]
+   }
+  }
+ ],
+ "requests_done": [
+  {
+   "key": "lights-model-disk",
+   "answer": "Ethan photographed the label on November 7: ETI Solid State Lighting model A01062304A, sold as Commercial Electric. 9.7 W, 800 lm, 90 CRI, colour selectable from 2700 to 5000 K. The label confirms the figures already on its card. Ethan has it switched to 5000 K."
+  }
+ ]
+}
