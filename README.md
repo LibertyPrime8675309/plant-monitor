@@ -271,6 +271,16 @@ Remove the line from `.env` and run `docker compose up -d` to close it again.
   - A line starting with `PLANTDB_NOT_WRITABLE` means the app can't write to its data folder, even as root. Check that the `plant-database` folder isn't read-only (in File Explorer, right-click it, then **Properties**), then run the updater again.
   - If that doesn't help, send the log to Claude. Your plants and photos aren't changed.
 
+## Units: °F or °C, inches or centimetres (from 1.47.0)
+
+The record keeps every temperature in °F and every size in inches underneath, and shows them in the units you choose. In **Display settings, Units**:
+
+- **Where you are** sets all three at once: United States (°F, inches), Canada (°C, inches, millimetres of rain) or Everywhere else (°C, centimetres, millimetres).
+- **Temperature**, **Lengths** and **Rain and water** can then each be changed by hand, and that choice stands until you pick a region again.
+- Unlike the other Display parts, units follow you: they are saved with your sign-in and apply on every device, and in push messages, the calendar and the plant-sitter sheet.
+
+Everything you type is taken in your unit too: a plant's temperatures on its edit page, the manual conditions, a light spot's distance from the leaves, and pot and tray sizes. The app converts them back and stores whole °F and inches, so a plant's page never changes for anyone else. Notes written with °F in them ("keep warm, 70 to 80°F") read in your unit as well. Two things stay in inches whatever you choose, because they are copied from product listings: the "Light at distances" box on a grow light's card, and the pot-size words (Small, Medium, Large).
+
 ## Display settings and low vision
 
 Press the **Display** button (from 1.42.0 at the bottom of the Navigation menu; on a page with no menu, bottom right) to change how everything looks. The **Debug** button beside it is described under "Audit log" below. Changes apply at once and are remembered in that browser (each computer or phone keeps its own).
@@ -295,7 +305,7 @@ On a phone the menu bar at the top scrolls away with the page (scroll back to th
 
 ### Pop-up windows (from 1.25.0)
 
-- **Display settings** is divided into parts: Text and colours, Page layout, Reading aloud, Photos and touch, and Keyboard.
+- **Display settings** is divided into parts: Text and colours, Page layout, Units, Reading aloud, Photos and touch, and Keyboard and voice.
   - On a computer, the parts are listed on the left. Press one to jump to it; the part you're looking at is highlighted.
   - On a phone, or an upright tablet, the window covers the screen and the parts are a row of buttons above the settings.
   - **Done** and **Reset to defaults** are at the top and stay there while you scroll. Reset to defaults keeps the window open.
