@@ -37,7 +37,8 @@ def checkup():
         try: d = datetime.strptime(ts, '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc).astimezone(tz).date().isoformat()
         except (TypeError, ValueError): continue
         if d > last.get(code, ''): last[code] = d
-    rows = c.execute("SELECT * FROM plants WHERE status='active' ORDER BY code").fetchall()
+    at, at_args = plants_at(c, location(c))                                      # 1.48.0: only the plants at the home in use
+    rows = c.execute("SELECT * FROM plants WHERE status='active'" + at + " ORDER BY code", at_args).fetchall()
     spots = plant_spots(c)
     groups, member = [], {}
     for g in c.execute('SELECT * FROM plant_groups ORDER BY name COLLATE NOCASE').fetchall():

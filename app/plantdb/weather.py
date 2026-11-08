@@ -78,10 +78,12 @@ def migrate_places(c):
                    st('forecast'), st('weather_status'), st('wx_detail_since'), now()))
     c.commit()
 
-LOC_COLS = ('id', 'name', 'lat', 'lon', 'tz', 'enabled', 'is_home', 'device', 'detail_since', 'note', 'created_at', 'plants_here')
+LOC_COLS = ('id', 'name', 'lat', 'lon', 'tz', 'enabled', 'is_home', 'device', 'detail_since', 'note', 'created_at', 'plants_here', 'country', 'units', 'season')   # 1.48.0: the last three make a home a site
 def loc_dict(r):
     d = {k: (r[k] if k in r.keys() else 0) for k in LOC_COLS}
     d['enabled'], d['is_home'], d['plants_here'] = bool(d['enabled']), bool(d['is_home']), bool(d['plants_here']) or bool(d['is_home'])
+    for k in ('country', 'units'): d[k] = d[k] or ''
+    d['season'] = d['season'] if d['season'] in SEASONS else 'temperate'
     return d
 
 def loc_get(c, loc_id=None):
@@ -737,10 +739,27 @@ def places():
     pid = cur.lastrowid
     c.execute('UPDATE locations SET device=? WHERE id=?', (f'place-{pid}', pid))
     if b.get('plants_here'): c.execute('UPDATE locations SET plants_here=1 WHERE id=?', (pid,))
+    site_fields(c, pid, b)                                 # 1.48.0: country (from the search), units, season
     audit_only(c, 'setting', 'weather_place', None, json.dumps(P), editor(), f'Weather place added: {P["name"]}')
     c.commit()
     started = start_job('auto-first', None, [(pid, P['name'])])          # fetch its last 3 months and forecast straight away
     return jsonify(place=loc_get(c, pid), started=started), 201
+
+def site_fields(c, pid, b):
+    """1.48.0 (PLAN.md step 4b): what makes a home a site. country: a two-letter code ('US'); units: a region key from UNIT_REGIONS
+    (the default for people who have not chosen their own); season: temperate, mild or tropical (SEASONS)."""
+    if 'country' in b:
+        cc = str(b.get('country') or '').strip().upper()
+        if cc and not re.fullmatch(r'[A-Z]{2}', cc): abort(400, 'Country is a two-letter code, such as US or GB')
+        c.execute('UPDATE locations SET country=? WHERE id=?', (cc, pid))
+    if 'units' in b:
+        u = str(b.get('units') or '').strip()
+        if u and u not in UNIT_REGIONS: abort(400, 'Units must be one of: ' + ', '.join(UNIT_REGIONS))
+        c.execute('UPDATE locations SET units=? WHERE id=?', ('' if u == 'us' else u, pid))
+    if 'season' in b:
+        se = str(b.get('season') or 'temperate').strip()
+        if se not in SEASONS: abort(400, 'Season must be one of: ' + ', '.join(SEASONS))
+        c.execute('UPDATE locations SET season=? WHERE id=?', (se, pid))
 
 @app.route('/api/places/<int:pid>', methods=['PUT', 'DELETE'])
 def place_one(pid):
@@ -769,6 +788,7 @@ def place_one(pid):
         if not b['plants_here'] and c.execute("SELECT COUNT(*) FROM plants WHERE home_id=? AND status='active'", (pid,)).fetchone()[0]:
             abort(409, 'Some plants are at this home. Move them to another home first.')
         c.execute('UPDATE locations SET plants_here=? WHERE id=?', (1 if b['plants_here'] else 0, pid))
+    site_fields(c, pid, b)                                 # 1.48.0: country, units, season
     if 'detail_years' in b and b['detail_years'] not in (None, ''):
         try: dy = int(b['detail_years'])
         except (TypeError, ValueError): abort(400, 'Years of detail must be a whole number')
@@ -792,7 +812,8 @@ def place_search():
     for r in data.get('results') or []:
         label = ', '.join(x for x in (r.get('name'), r.get('admin1'), r.get('country')) if x)
         out.append({'label': label, 'name': ', '.join(x for x in (r.get('name'), r.get('admin1_code') or r.get('admin1')) if x) if r.get('country_code') == 'US' else ', '.join(x for x in (r.get('name'), r.get('country')) if x),
-                    'lat': r.get('latitude'), 'lon': r.get('longitude'), 'tz': r.get('timezone'), 'elevation_m': r.get('elevation'), 'population': r.get('population')})
+                    'lat': r.get('latitude'), 'lon': r.get('longitude'), 'tz': r.get('timezone'), 'elevation_m': r.get('elevation'), 'population': r.get('population'),
+                    'country': r.get('country_code') or ''})     # 1.48.0: kept on the place
     return jsonify(out)
 
 @app.route('/api/weather/settings', methods=['PUT'])

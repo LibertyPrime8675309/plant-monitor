@@ -238,6 +238,10 @@ const homeById = id => HOMES().find(h => String(h.id) === String(id)) || null;
 const mainHome = () => HOMES().find(h => h.is_home) || HOMES()[0] || { id: '', name: 'Home' };
 const plantHome = p => (p && p.home_id && homeById(p.home_id)) || mainHome();
 const homeOk = p => !G.home || !homeById(G.home) || String(plantHome(p).id) === String(G.home);
+// 1.48.0 (PLAN.md step 4b): the home whose plants the page shows: the place in use when plants live there, else the main home
+// (the same rule as plants_at() on the server), and whether a plant is one of them
+const placeHomeId = () => (META && META.place && META.place.plants_here && homeById(META.place.id)) ? META.place.id : mainHome().id;
+const atPlace = p => HOMES().length < 2 || String(plantHome(p).id) === String(placeHomeId());
 function homeFilter() {
   if (HOMES().length < 2) return '';
   return html`<label>Home<select data-f="home"><option value="">All homes</option>${HOMES().map(h => html`<option value="${h.id}" ${String(G.home) === String(h.id) ? raw('selected') : ''}>${h.name}</option>`)}</select></label>`;

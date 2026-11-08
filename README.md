@@ -1323,6 +1323,18 @@ Plants can live at more than one home: Round Rock, and Nevada City in California
 - **The Weather page's Places table** has a **Plants** column, and **Plants live here** or **No plants live here** for each place. A home with plants in it can't be removed or turned back into a weather-only place until its plants are moved.
 - Hourly updates and backups still use the main home.
 
+### A home is a site (from 1.48.0)
+
+Each home now carries three settings, on **Weather → Homes and places**, in its Plants column (the owner changes them):
+
+- **Country** (a two-letter code, filled in from the search when you add a place).
+- **Units there**: what people see who have not chosen units of their own in Display. Your own choice always wins.
+- **Seasons**: a winter with frost (the usual), a cool season where frost is rare, or wet and dry seasons with no frost. At a home with no frost, the Care section has no Winter plan, Cold-night checklist, Coming inside or Back outside, and Today has no cold-night, coming-inside or frost-dates blocks; the Care button opens the first page that applies there.
+
+Today follows the home chosen with the Location button for everything now: water, feed, Needed from you, coming inside, turning, the health walk-through and the frost blocks all list only that home's plants. The Plants page keeps its own Home filter.
+
+**Editors at some homes only.** In the people list (Settings → people and names), an editor's row lists your homes with a tick box each. Untick a home and that person can still see everything, but cannot change plants at that home (their pages, care log, photos, requests). The owner is never limited. Lights, pots, groups and places are shared between homes and are not limited this way.
+
 ### Add several plants at once
 
 **Add a plant** now starts with two buttons: **One plant** (the form, as before) and **Several plants from photos**.

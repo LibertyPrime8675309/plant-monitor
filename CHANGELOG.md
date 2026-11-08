@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.48.0 (2026-11-08)
+Step 4b of the plan: a home is a site. Nothing changes until you set something on Homes and places.
+- **Each home has a country, its own units and its seasons** (Weather → Homes and places, in the Plants column). Units there are what people see who have not chosen their own in Display. Seasons: a winter with frost, a cool season where frost is rare, or wet and dry seasons with no frost.
+- **At a home with no frost,** Care has no Winter plan, Cold-night checklist, Coming inside or Back outside, and Today has no cold-night, coming-inside or frost blocks. Your plants' pages keep their winter plans.
+- **Today follows the home you are looking at** for everything: feed, Needed from you and the health walk-through now list only that home's plants, like water, frost and turning already did.
+- **Editors can be limited to some homes.** In the people list, untick a home for an editor and they can still see everything but cannot change plants there. You are never limited.
+- The updater no longer prints a "Building the new version" heading before downloading the containers.
+
 ## 1.47.0 (2026-11-08)
 Step 4a of the plan: units.
 - **°F or °C, inches or centimetres, your choice.** Display settings has a new part, **Units**. "Where you are" sets everything at once (United States; Canada; Everywhere else), and Temperature, Lengths and Rain and water can each be changed by hand after that. The choice follows you to every device you sign in on, and into push messages and the calendar.
