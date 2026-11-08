@@ -1,6 +1,7 @@
 """Offline use on phones and tablets, and changes sent later.
 Split out of server.py in 1.32.0; the names it uses from other modules are linked by server.py (see plantdb/core.py, link())."""
 from .core import *   # noqa: F401,F403
+import hashlib
 # ---------------------------------------------------------------- 1.24.0: offline use on phones and tablets, and sending changes later
 # The page (app.js) keeps changes made without a connection in an outbox on the device, and sends each one later as the request it
 # would have made, with X-Offline-Op (a unique id for that change), X-Offline-Made (when it was made) and X-Offline-Device. The
@@ -191,6 +192,23 @@ def service_worker():
     with open(os.path.join(app.static_folder, 'sw.js'), encoding='utf-8') as f:
         js = f.read().replace('__VERSION__', APP_VERSION).replace('__SHELL_JS__', json.dumps(['/js/%s.js' % n for n in script_names()]))
     return Response(js, mimetype='application/javascript', headers={'Cache-Control': 'no-cache', 'Service-Worker-Allowed': '/'})
+
+CSS_BUILT = {}
+@app.route('/style.css')
+def stylesheet():
+    """1.46.0 (PLAN.md step 2): one stylesheet in the browser, many files in git. static/css/00-core.css comes first, then every other
+    file there in name order (one per feature: checkup.css, turning.css, ...), so two features never edit the same file. Built once per
+    process and again if a file changes (so a dev server picks up edits)."""
+    folder = os.path.join(app.static_folder, 'css')
+    files = sorted(f for f in os.listdir(folder) if f.endswith('.css'))
+    stamp = tuple((f, os.path.getmtime(os.path.join(folder, f))) for f in files)
+    if CSS_BUILT.get('stamp') != stamp:
+        parts = []
+        for f in files:
+            with open(os.path.join(folder, f), encoding='utf-8') as fh: parts.append('/* ==== %s ==== */\n' % f + fh.read().rstrip('\n') + '\n')
+        CSS_BUILT.update(stamp=stamp, css='\n'.join(parts), etag='"%s"' % hashlib.md5(''.join(parts).encode('utf-8')).hexdigest()[:16])
+    if request.headers.get('If-None-Match') == CSS_BUILT['etag']: return Response(status=304, headers={'ETag': CSS_BUILT['etag']})
+    return Response(CSS_BUILT['css'], mimetype='text/css', headers={'Cache-Control': 'no-cache', 'ETag': CSS_BUILT['etag']})
 
 @app.route('/')
 def index():

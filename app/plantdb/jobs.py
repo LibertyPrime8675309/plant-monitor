@@ -102,8 +102,8 @@ def health_api():
     """Version, the database, the last backup and its copies, the last weather update and store check, problems, the data
     folder's size and the free space on its disk. Worked out at most once a minute."""
     c = db()
-    hit = HEALTH.get('at')
-    if hit and time.time() - hit < 60: return jsonify(HEALTH['data'])
+    hit = HEALTH_CACHE.get("at")
+    if hit and time.time() - hit < 60: return jsonify(HEALTH_CACHE["data"])
     sched = {x['kind']: x for x in jobs_schedule(c)}
     st = json.loads(setting(c, 'backup_copy_status', '{}') or '{}')
     try: du = shutil.disk_usage(DATA_DIR); free = du.free; total = du.total
@@ -118,6 +118,6 @@ def health_api():
            'problems': c.execute('SELECT COUNT(*) FROM problems WHERE cleared_at IS NULL').fetchone()[0],
            'sensors': c.execute("SELECT COUNT(DISTINCT device) FROM readings WHERE source='sensor'").fetchone()[0],
            'readings': c.execute('SELECT COUNT(*) FROM readings').fetchone()[0], 'runs_as': runs_as(), 'at': now()}
-    HEALTH.update(at=time.time(), data=out)
+    HEALTH_CACHE.update(at=time.time(), data=out)
     return jsonify(out)
-HEALTH = {}
+HEALTH_CACHE = {}        # the Health of the app card, kept a minute (was named HEALTH, which core uses for the ratings list)

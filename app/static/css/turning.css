@@ -1,0 +1,3 @@
+/* Turn the pots (#/turning, js/turning.js) */
+.tn-every{margin:.6rem 0 1rem} .tn-every .f{max-width:28rem}
+html[data-role=viewer] :is([data-act=turned], [data-act=turnedall], [data-act=turnset], .tn-every){display:none!important}

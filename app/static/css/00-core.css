@@ -8,7 +8,6 @@
 @font-face{font-family:"Atkinson Hyperlegible";font-weight:700;font-style:normal;font-display:swap;src:url(/fonts/atkinson-hyperlegible-latin-700-normal.woff2) format("woff2")}
 @font-face{font-family:"Atkinson Hyperlegible";font-weight:700;font-style:italic;font-display:swap;src:url(/fonts/atkinson-hyperlegible-latin-700-italic.woff2) format("woff2")}
 
-
 /* Tokens. Everything is sized in rem so the Display settings (text size) scale the whole page, not only the text. */
 :root{
   --paper:#f3f6f4; --sheet:#fff; --ink:#15222b; --ink-2:#3f5059; --line:#b9c7c1; --line-2:#dde5e1;
@@ -1367,45 +1366,6 @@ html[data-photofit=whole] .sheet .mat img,html[data-photofit=auto] .sheet .mat i
 .sp-acts{margin-top:1rem}
 html[data-role=viewer] [data-act=spnew]{display:none!important}
 .lib-card .tags .tag,.species .tags .tag{white-space:normal}
-/* ---------- prototype proto/health-walk: health walk-through (#/checkup), rebuilt for 1.42.0 ---------- */
-.ck-today{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;border:2px solid var(--line);background:var(--sheet);padding:.6rem .9rem;margin:.4rem 0 1rem}
-.ck-today span{flex:1 1 16rem}
-.ck-count{font-weight:700;margin:.2rem 0 .6rem}
-.ck-big{min-height:3.25rem;padding:.6rem 1.4rem;font-size:1.1em}
-.ck-due{padding-left:1.2rem}
-.ck-due li,.ck-list li{margin:.4rem 0;line-height:1.5}
-.ck-meta{color:var(--ink-2)}
-.ck-prog p{margin:.2rem 0}
-.ck-prog progress{width:100%;height:1rem;accent-color:var(--cyan)}
-.ck-card{display:grid;grid-template-columns:minmax(0,22rem) minmax(0,1fr);gap:1rem 1.6rem;align-items:start;border:2px solid var(--line);background:var(--sheet);padding:1rem;margin:.8rem 0 1.2rem}
-.ck-photo img{display:block;width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;background:var(--line)}
-.ck-nophoto{display:flex;align-items:center;justify-content:center;aspect-ratio:1;border:2px dashed var(--line);color:var(--ink-2);font-weight:700}
-/* the plant's name on the walk-through card: a heading that is not a page section (no Show or hide, not in Navigation) */
-.ck-title{font-family:var(--serif);font-size:1.7rem;font-weight:600;line-height:1.2;letter-spacing:-.005em;margin:0 0 .4rem;overflow-wrap:anywhere}
-.ck-title:focus{outline:none}
-.ck-title:focus-visible{outline:var(--ring) solid var(--focus);outline-offset:3px}
-.ck-body p{margin:.35rem 0}
-.ck-notes{margin:.6rem 0}
-.ck-notes summary{cursor:pointer;font-weight:700;padding:.3rem 0}
-.ck-form{margin-top:.9rem}
-.ck-form .opt-group{margin-bottom:.8rem}
-.ck-health span{min-width:7rem;min-height:3.25rem}
-.ck-form textarea{width:100%}
-.ck-acts{display:flex;flex-wrap:wrap;gap:.6rem;margin:.8rem 0}
-.ck-nav{display:flex;flex-wrap:wrap;gap:.6rem;margin-top:1rem;padding-top:.8rem;border-top:2px solid var(--line-2,var(--line))}
-.ck-nav .btn[disabled]{opacity:1;color:var(--ink-2);border-color:var(--line);cursor:default}
-.ck-photo-btn{position:relative;width:100%;margin-top:.6rem;cursor:pointer}
-.ck-photo-btn:focus-within{outline:var(--ring) solid var(--focus);outline-offset:2px}
-.ck-photo .ck-meta{margin:.3rem 0 0}
-.ck-group{max-width:30rem;margin:0 0 1.3rem}
-.ck-group select{width:100%}
-.ck-set{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.4rem 1.2rem}
-.ck-set .f{flex:1 1 16rem;max-width:26rem}
-.ck-set input[type=number]{display:block;margin-top:.3rem;width:8rem;max-width:100%}
-.ck-set p{margin:0 0 .3rem}
-.ck-setup button[disabled]{opacity:1;background:var(--sheet);color:var(--ink-2);border-color:var(--line);cursor:default}
-@media (max-width:640px){.ck-card{grid-template-columns:minmax(0,1fr);padding:.7rem}.ck-photo img,.ck-nophoto{aspect-ratio:4/3;max-height:38vh}.ck-acts .btn,.ck-nav .btn{flex:1 1 12rem}.ck-health label{flex:1 1 40%}}
-html[data-role=viewer] :is(form[data-form=ckstart] button[type=submit], form[data-form=cksave], form[data-form=ckset], form[data-form=ckgroupset], [data-act=ckgroupwalk], .ck-photo-btn){display:none!important}
 /* 1.22.0: mushroom finds */
 .mu-safe{margin:0 0 1.4rem}
 .mu-safe ul{margin:.5rem 0 0;padding-left:1.3em}
@@ -1747,33 +1707,6 @@ html:is([data-narrow="1"],[data-topcompact="1"]) :is(.srch-btn .srch-l,.place-bt
 .spk-btn.spk-on::before{background:currentColor;animation:spk-pulse 1s infinite alternate}
 @keyframes spk-pulse{from{transform:scale(.7)}to{transform:scale(1.15)}}
 @media (prefers-reduced-motion:reduce){.spk-btn.spk-on::before{animation:none}}
-/* 1.35.0: your sensors. Every state is a word in a tag with its own mark (✓ ↓ ↑ !), so colour is never the only signal */
-.sns-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,22rem),1fr));gap:1rem;margin:.8rem 0}
-.sns-card{border:var(--bw) solid var(--line);background:var(--sheet);padding:.9rem 1rem;min-width:0}
-.sns-card h3{margin:0 0 .3rem;overflow-wrap:anywhere}
-.sns-card h3 .hint{display:inline-block;max-width:100%;overflow-wrap:anywhere}
-.sns-card.sns-alert{border-left:.45rem solid var(--madder)}
-.sns-card.sns-off{border-style:dashed}
-.sns-look{margin:.2rem 0;color:var(--madder)}
-.sns-heard{margin:.3rem 0;color:var(--ink-2)}
-.sns-card .notice{margin:.5rem 0}
-.sns-dl{display:grid;gap:.7rem;margin:.7rem 0}
-.sns-m{border-top:1px solid var(--line-2);padding-top:.55rem;min-width:0}
-.sns-m dt{font-weight:700}
-.sns-m dd{margin:.15rem 0 0;display:flex;flex-direction:column;gap:.25rem;min-width:0}
-.sns-top{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
-.sns-big{font-size:1.9rem;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
-.sns-spark{flex:none;color:var(--ink);max-width:100%;height:auto}
-.sns-band{fill:currentColor;opacity:.12}
-.sns-judge{margin:0}
-.sns-judge .tag{margin-right:.35rem}
-.sns-ok{color:var(--moss)}
-.sns-low,.sns-high{color:var(--ochre)}
-.sns-bad{background:var(--madder);border-color:var(--madder);color:var(--on-bad)}
-.sns-plant:empty{display:none}
-.sns-plant{margin:.4rem 0 1rem}
-.sns-plant .sns-card{max-width:40rem}
-html[data-role=viewer] :is([data-act=snsedit],[data-act=snsrm]){display:none!important}
 /* 1.36.0: summer heat under About this plant, and the counts on the Weather page */
 .heat-counts li{margin:.3rem 0}
 .v-hot{border-left-color:var(--ochre)}
@@ -1809,9 +1742,6 @@ html[data-role=viewer] :is([data-act=offiduse],[data-act=newfill],[data-act=lted
 .mirror-note{border-left-color:var(--ochre)}
 @media print{.rv-grid{display:block}.rv-card{break-inside:avoid;margin-bottom:.8rem}}
 
-/* ---- prototype (proto/turn-pots): turn the pots ---- */
-.tn-every{margin:.6rem 0 1rem} .tn-every .f{max-width:28rem}
-html[data-role=viewer] :is([data-act=turned], [data-act=turnedall], [data-act=turnset], .tn-every){display:none!important}
 html[data-narrow="1"] .mi-head .pr-badge{white-space:normal;max-width:100%;display:inline-block;border-radius:8px}
 
 /* ---- 1.42.0: every section can be folded shut (Show or hide) ---- */
@@ -1870,38 +1800,3 @@ ul.lt-plants.lt-two{grid-template-columns:repeat(auto-fit,minmax(max(min(100%,19
 .lt-room-head h3{margin:0}
 .lt-room-head .row{margin:0}
 .lt-top .rd-page .hint{display:none}     /* the shortcut hint is on every other page; here the title row stays one line */
-
-/* ---- prototype (proto/frost-dates): frost dates on the Weather page and the Cold-night checklist ---- */
-.fd-dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:.4rem 1.2rem;margin:.4rem 0 .8rem}
-.fd-dl>div{border-left:4px solid var(--line);padding:.2rem 0 .2rem .7rem} .fd-dl dt{font-weight:600} .fd-dl dd{margin:0} .fd-dl dd .hint{display:block}
-.fd-groups{list-style:none;padding:0;margin:.6rem 0} .fd-g{border-top:1px solid var(--line);padding:.6rem 0} .fd-g:first-child{border-top:0}
-.fd-h{margin:0 0 .2rem;font-size:1.05em} .fd-g p{margin:.2rem 0} .fd-names{overflow-wrap:anywhere}
-/* Ethan's answers of November 6: one plant a line with its photo (sized in em, so it grows with the Display setting), a fold
-   for long groups, Back outside and a line on Today */
-.fd-plants{list-style:none;padding:0;margin:.4rem 0}
-.fd-p{display:flex;align-items:center;gap:.7rem;padding:.3rem 0;min-width:0}
-.fd-p img,.fd-nophoto{flex:0 0 3em;width:3em;height:3em;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:var(--line-2,var(--line))}
-.fd-pt{display:flex;flex-direction:column;min-width:0;overflow-wrap:anywhere}
-.fd-pt .nm{font-weight:600}
-.fd-more{margin:.2rem 0}
-.fd-more>summary{cursor:pointer;padding:.4rem 0;font-weight:600;text-decoration:underline;text-underline-offset:.15em}
-.fd-more>summary:focus-visible{outline:var(--ring) solid var(--focus);outline-offset:2px}
-.fd-today,.fd-now{overflow-wrap:anywhere}
-.fd-today a{margin-left:.3rem}
-.fd-away{font-weight:600}
-/* prototype proto/voice-search: a "Search by voice" button beside each search box. While it listens, the button is filled and says
-   "Listening" (in words, not colour alone), and the line under it says what was heard. Display can hide them (data-vsearch="0"). */
-.vs-wrap{display:flex;flex-direction:column;gap:.3rem;min-width:0;align-self:end}
-html[data-vsearch="0"] .vs-wrap{display:none!important}
-.vs-btn{gap:.5rem;justify-content:flex-start;max-width:100%;text-align:left}
-.vs-mic{width:1.3em;height:1.3em;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.vs-btn.vs-on{background:var(--cyan);color:var(--cyan-ink);outline:3px solid var(--ink);outline-offset:2px}
-.vs-btn.vs-on .vs-mic{fill:currentColor}
-.vs-msg{margin:0;font-weight:400;overflow-wrap:anywhere}
-.vs-msg:empty{display:none}
-.aud-filters .vs-wrap{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:center}
-.tick-find+.vs-wrap{flex:1 1 12rem}
-.srch-dlg .vs-wrap{margin:-.2rem 0 .6rem;align-self:start}
-.vs-btn .vs-word{min-width:0;overflow-wrap:anywhere}
-html[data-narrow="1"] .filters .vs-wrap{grid-column:1/-1}
-html[data-narrow="1"] .filters .vs-btn{width:100%}
