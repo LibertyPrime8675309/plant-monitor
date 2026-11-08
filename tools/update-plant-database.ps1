@@ -327,7 +327,7 @@ function Start-App {
     }
     return $r.code
 }
-Step 'Building the new version with the newest security fixes'
+# 1.48.0: the "Building the new version" heading that used to be here is gone; the containers are downloaded (below), not built
 # 1.12.0 (or Claude) wrote docker-compose.override.yml to run the app as root when its own user could not write to the data folder.
 # Since 1.12.1 the app decides that by itself each time it starts, so that file is no longer needed. Only our own file is removed.
 $override = Join-Path $AppFolder 'docker-compose.override.yml'

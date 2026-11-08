@@ -51,11 +51,17 @@ const UNIT_REGIONS = { us: { temp: 'f', len: 'in', rain: 'in' }, ca: { temp: 'c'
 const UNIT_WORDS = { region: { us: 'United States (°F, inches)', ca: 'Canada (°C, inches, mm of rain)', metric: 'Everywhere else (°C, cm, mm)' },
   temp: { f: 'Fahrenheit (°F)', c: 'Celsius (°C)' }, len: { in: 'Inches', cm: 'Centimetres' }, rain: { in: 'Inches', mm: 'Millimetres' } };
 function unitsRaw() { try { return JSON.parse(localStorage.getItem('plantdb.units') || '{}') || {}; } catch (e) { return {}; } }
-function unitsGet() { const u = unitsRaw(), base = UNIT_REGIONS[u.region] || UNIT_REGIONS.us; return { region: u.region || 'us', temp: u.temp || base.temp, len: u.len || base.len, rain: u.rain || base.rain }; }
+function unitsGet() {
+  const u = unitsRaw();
+  const site = (typeof META !== 'undefined' && META && META.place && META.place.units) || 'us';      // 1.48.0: no choice of your own: the site's default
+  const region = UNIT_REGIONS[u.region] ? u.region : (UNIT_REGIONS[site] ? site : 'us'), base = UNIT_REGIONS[region];
+  return { region, own: !!UNIT_REGIONS[u.region], temp: u.temp || base.temp, len: u.len || base.len, rain: u.rain || base.rain };
+}
 function unitsSet(changes) {              // {region} resets the three; {temp|len|rain} overrides one
   const u = unitsRaw();
-  if ('region' in changes) { for (const k of ['region', 'temp', 'len', 'rain']) delete u[k]; if (changes.region && changes.region !== 'us') u.region = changes.region; }
-  for (const k of ['temp', 'len', 'rain']) if (k in changes && changes[k]) { if (changes[k] === (UNIT_REGIONS[u.region] || UNIT_REGIONS.us)[k]) delete u[k]; else u[k] = changes[k]; }
+  if ('region' in changes) { for (const k of ['region', 'temp', 'len', 'rain']) delete u[k]; if (UNIT_REGIONS[changes.region]) u.region = changes.region; }   // 1.48.0: 'us' is kept too, since the site's default may be metric
+  const base = UNIT_REGIONS[u.region] || UNIT_REGIONS[unitsGet().region] || UNIT_REGIONS.us;
+  for (const k of ['temp', 'len', 'rain']) if (k in changes && changes[k]) { if (changes[k] === base[k]) delete u[k]; else u[k] = changes[k]; }
   try { if (Object.keys(u).length) localStorage.setItem('plantdb.units', JSON.stringify(u)); else localStorage.removeItem('plantdb.units'); } catch (e) { /* this visit only */ }
   document.dispatchEvent(new Event('units'));
   return u;
@@ -516,7 +522,8 @@ function peopleRows(P) {
   const self = ME().login;
   return html`<ul class="people">${P.people.map(p => html`<li><span><strong>${p.name}</strong>${p.login === self ? ' (you)' : ''}<br><span class="hint">${p.login}. Last here ${when(p.last_seen)}.</span></span>
     <label class="f">What ${p.name} can do<select data-f="prole" data-login="${p.login}">${P.roles.map(r => html`<option value="${r.key}" ${r.key === p.role ? raw('selected') : ''}>${r.label}</option>`)}</select></label>
-    ${P.homes && P.homes.length > 1 ? html`<label class="f">Starts on<select data-f="phome" data-login="${p.login}">${P.homes.map(h => html`<option value="${h.id}" ${(p.home_id || P.main_home) === h.id ? raw('selected') : ''}>${h.name}</option>`)}</select></label>` : ''}
+    ${P.homes && P.homes.length > 1 ? html`<label class="f">Starts on<select data-f="phome" data-login="${p.login}">${P.homes.map(h => html`<option value="${h.id}" ${(p.home_id || P.main_home) === h.id ? raw('selected') : ''}>${h.name}</option>`)}</select></label>
+      ${p.role === 'editor' ? html`<fieldset class="f p-homes"><legend>Can change plants at</legend>${P.homes.map(h => html`<label class="chk"><input type="checkbox" data-f="pedithome" data-login="${p.login}" value="${h.id}" ${!(p.edit_homes || []).length || p.edit_homes.includes(h.id) ? raw('checked') : ''}>${h.name}</label>`)}<small>All ticked: every home. Untick a home to keep its plants as they are.</small></fieldset>` : ''}` : ''}
     ${p.login === self ? '' : html`<button class="btn small danger" type="button" data-act="pdel" data-login="${p.login}" data-name="${p.name}" aria-label="Remove ${p.name} from the people list">Remove</button>`}</li>`)}</ul>`;
 }
 function peoplePaint(P) { const b = document.getElementById('people-box'); if (b) b.innerHTML = rend(peopleRows(P)); }
@@ -735,7 +742,7 @@ async function route() {
     const tData = performance.now(), keepY = fresh ? window.scrollY : 0;
     myTiming.drawn = true; app.removeAttribute('aria-busy');
     app.innerHTML = rend(view.html);
-    if (parts[0] !== 'frost' && parts[0] !== 'plant' && parts[0] !== 'today' && parts.length) app.insertAdjacentHTML('afterbegin', rend(frostBanner()));   // plant pages have their own note; Today has its own section
+    if (parts[0] !== 'frost' && parts[0] !== 'plant' && parts[0] !== 'today' && parts.length && coldSeason()) app.insertAdjacentHTML('afterbegin', rend(frostBanner()));   // 1.48.0: no frost banner at a tropical home   // plant pages have their own note; Today has its own section
     if (((OFF.saved && OFF.saved !== 'none') || !navigator.onLine || OFF.reach === 'no') && parts[0] !== 'offline') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice off-note noprint" role="note"><strong>Offline.</strong> This is what this device saved${OFF.saved && OFF.saved !== 'none' ? ' on ' + when(OFF.saved) : ''}. Changes you make are kept here and sent when the plant server can be reached. <button class="btn small ghost" type="button" data-act="offtry">Try to connect now</button> <a href="#/offline">Offline page</a></p>`));
     await offNotice(parts);
     if (my !== token) return;
@@ -779,15 +786,25 @@ const SECTIONS = [
   ['discover', 'Discover', [['identify', 'Identify', '#/identify'], ['library', 'Library', '#/library'], ['around', 'Around home', '#/around'], ['wishlist', 'Wishlist', '#/wishlist'], ['shopping', 'Shopping', '#/shopping']]],
   ['settings', 'Settings', [['settings', 'Settings', '#/settings'], ['offline', 'Offline use', '#/offline'], ['decisions', 'Offline decisions', '#/decisions'], ['backups', 'Backups', '#/backups'], ['history', 'Audit log', '#/history']]],
 ];
+// 1.48.0 (PLAN.md step 4b): the cold-season pages belong to a home with a winter. At a tropical home (Homes and places, Seasons) they
+// are left out of the top bar, and Today leaves out its cold blocks (care.js). The pages still open by address, so nothing breaks.
+const COLD_PAGES = ['winter', 'frost', 'inside', 'outside'];
+const coldSeason = () => !(typeof META !== 'undefined' && META && META.place && META.place.season === 'tropical');
+const secPages = sec => coldSeason() ? sec[2] : sec[2].filter(p => !COLD_PAGES.includes(p[0]));
 const secOf = nav => (SECTIONS.find(x => x[2].some(p => p[0] === nav)) || SECTIONS[1]);
 function navMark(nav) {
   const sec = secOf(nav);
-  document.querySelectorAll('#main-nav a[data-sec]').forEach(a => { if (a.dataset.sec === sec[0]) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
+  document.querySelectorAll('#main-nav a[data-sec]').forEach(a => {
+    if (a.dataset.sec === sec[0]) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+    const S2 = SECTIONS.find(x => x[0] === a.dataset.sec), first = S2 && secPages(S2)[0];       // 1.48.0: a section opens on its first page that applies here
+    if (first) a.setAttribute('href', first[2]);
+  });
   const sub = document.getElementById('sub-nav');
   if (sub) {
-    sub.hidden = sec[2].length < 2;
+    const pages = secPages(sec);
+    sub.hidden = pages.length < 2;
     sub.setAttribute('aria-label', `${sec[1]} pages`);
-    sub.innerHTML = rend(html`${sec[2].map(([k, label, href]) => html`<a href="${href}" data-nav="${k}" ${k === nav ? raw('aria-current="page"') : ''}>${label}</a>`)}`);
+    sub.innerHTML = rend(html`${pages.map(([k, label, href]) => html`<a href="${href}" data-nav="${k}" ${k === nav ? raw('aria-current="page"') : ''}>${label}</a>`)}`);
   }
   WLBADGE = 0;                                     // the wishlist count goes on the new links
 }

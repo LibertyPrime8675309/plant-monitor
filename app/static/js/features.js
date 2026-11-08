@@ -9,8 +9,9 @@
                         section: 'care', label: 'Turn the pots', href: '#/turning', after: 'outside' } }
            The router opens view() for #/turning; the page joins the top bar's Care section after Back outside, and navMark()
            marks it. A page that is already in SECTIONS (sensors) gives only view and nav.
-   today:  [{ id: 'today-turn', order: 65, load: async () => data or null, html: d => html, jump: d => 'Turn (3)' or '' }]
-           A block on Today. load() runs alongside the page's own data; null or a failure leaves the block out. Blocks draw in
+   today:  [{ id: 'today-turn', order: 65, load: async () => data or null, html: d => html, jump: d => 'Turn (3)' or '', cold: false }]
+           A block on Today. load() runs alongside the page's own data; null or a failure leaves the block out. cold: true marks a
+           block that belongs to a home with a winter: Today leaves it out at a tropical home (1.48.0). Blocks draw in
            order: the page's own are 10 cold night, 20 sensors, 30 water, 40 feed, 50 shopping, 60 coming inside, 70 needed
            from you, 80 quiet today; lines under the summary box are 1 to 9. jump() names a button in the summary's row.
    adds:   [{ id: 'tn-plant', match: parts => parts[0] === 'plant', anchor: '.quick-btns', where: 'afterend',

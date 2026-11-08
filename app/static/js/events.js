@@ -419,7 +419,7 @@ const acts = {
   },
   async placepick(el) {
     const r = (PLACE_RESULTS || [])[+el.dataset.i]; if (!r) return;
-    await addPlace({ name: r.name, lat: r.lat, lon: r.lon, tz: r.tz });
+    await addPlace({ name: r.name, lat: r.lat, lon: r.lon, tz: r.tz, country: r.country || '' });     // 1.48.0: the country comes with the search result
   },
   wxpanel() {
     const p = document.getElementById('wx-panel'), b = document.getElementById('wx-panelbtn'); if (!p) return;
@@ -607,6 +607,17 @@ const acts = {
 document.addEventListener('change', e => { const el = e.target; if (el.dataset && el.dataset.dvshare && window.PlantSync) { window.PlantSync.share(el.dataset.dvshare, el.checked);
   toast(el.checked ? 'These settings now follow you to other devices' : 'These settings now stay on this device'); } }, true);
 const changeActs = {
+  // 1.48.0: a home's country, units default or seasons (Homes and places)
+  async placesite(el) {
+    const k = el.dataset.k, v = el.value.trim();
+    await guard(async () => {
+      await api('PUT', '/api/places/' + el.dataset.id, { [k]: v });
+      META = await api('GET', '/api/meta');
+      toast(k === 'country' ? 'Country saved' : k === 'units' ? 'Units for this home saved' : 'Seasons saved');
+      if (k !== 'country') { ROUTE_FRESH = true; await route(); }        // units and seasons change what pages show
+      const n = document.querySelector(`[data-act=placesite][data-id="${el.dataset.id}"][data-k="${k}"]`); if (n) n.focus({ preventScroll: true });
+    });
+  },
   // 1.47.0: units in Display. A new region resets the three; one unit changed by hand stands until the region changes.
   async unitset(el) {
     const raw = unitsSet({ [el.dataset.u]: el.value });

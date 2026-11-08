@@ -460,6 +460,16 @@ async function loadWxCharts() {
 }
 
 // ---------- places ----------
+// 1.48.0 (PLAN.md step 4b): a home is a site: its country, the units people there see unless they chose their own, and what kind of
+// year it has (the cold-season pages are left out at a tropical home). Owner only, like the rest of a place's settings.
+const SEASON_WORDS = { temperate: 'A winter with frost', mild: 'A cool season, frost rare', tropical: 'Wet and dry seasons, no frost' };
+function siteCells(p) {
+  if (ME().role !== 'owner') return html`<div class="hint">${p.country ? p.country + '. ' : ''}${UNIT_WORDS.region[p.units || 'us']}. ${SEASON_WORDS[p.season || 'temperate']}.</div>`;
+  return html`<div class="site-set">
+    <label class="f">Country<input type="text" maxlength="2" size="3" value="${p.country || ''}" data-act="placesite" data-id="${p.id}" data-k="country" aria-label="${'Country code for ' + p.name}"></label>
+    <label class="f">Units there<select data-act="placesite" data-id="${p.id}" data-k="units" aria-label="${'Units at ' + p.name}">${Object.entries(UNIT_WORDS.region).map(([v, l]) => html`<option value="${v}" ${(p.units || 'us') === v ? raw('selected') : ''}>${l}</option>`)}</select></label>
+    <label class="f">Seasons<select data-act="placesite" data-id="${p.id}" data-k="season" aria-label="${'Seasons at ' + p.name}">${Object.entries(SEASON_WORDS).map(([v, l]) => html`<option value="${v}" ${(p.season || 'temperate') === v ? raw('selected') : ''}>${l}</option>`)}</select></label></div>`;
+}
 function placesBlock(W) {
   const P = W.places || [];
   return html`<p>Track the weather for as many places as you like. Each place keeps its own hourly readings, daily summaries, forecast and update log. The <strong>Location</strong> button at the top of every page chooses the place this browser uses for weather, frost warnings, watering and the Winter plan. The home place is the one a browser starts with, and the one hourly updates and backups use.</p>
@@ -469,7 +479,7 @@ function placesBlock(W) {
       <td>${p.count ? `${num(p.count)} hourly readings from ${dayLong((p.first || '').slice(0, 10))}` : 'Nothing yet'}${p.daily_count ? html`<div class="hint">${num(p.daily_count)} daily summaries</div>` : ''}</td>
       <td>${p.last_update ? html`${when(p.last_update)}${p.last_ok === false ? html`<div class="bad-text"><strong>Failed:</strong> ${p.last_error}</div>` : ''}` : 'Not yet'}</td>
       <td>${p.enabled ? 'On' : 'Off'}</td>
-      <td>${p.plants_here ? `Plants live here: ${num(p.plant_count || 0)}` : 'No plants (weather only)'}</td>
+      <td>${p.plants_here ? html`Plants live here: ${num(p.plant_count || 0)}${siteCells(p)}` : 'No plants (weather only)'}</td>
       <td><div class="row" style="gap:.4rem">
         ${String(p.id) === String(W.location.id) ? '' : html`<button class="btn small" type="button" data-act="placeshow" data-id="${p.id}">Use this place</button>`}
         ${p.is_home ? '' : html`<button class="btn small ghost" type="button" data-act="placehome" data-id="${p.id}">Make main home</button>`}
@@ -905,7 +915,7 @@ async function boMove(el, site) {
 // the Today page: in spring, a short note when plants inside can go back out (1.46.0: a registered Today block, order 4, under the summary)
 addFeature({
   name: 'outside',
-  today: { id: 'bo-today', order: 4,
+  today: { id: 'bo-today', order: 4, cold: true,          // 1.48.0: left out at a tropical home
     load: async () => { const B = await loadOutside(); const go = B.season === 'spring' ? B.counts.ready + B.counts.safe : 0, due = (B.porch || []).filter(p => p.is_due).length; return go || due ? { go, due } : null; },
     html: ({ go, due }) => html`<div id="bo-today">${html`<p class="notice ok noprint">${go ? html`<strong>${go === 1 ? '1 plant inside can' : `${go} plants inside can`} go back outside.</strong>
       The nights in the forecast are warm enough for ${go === 1 ? 'it' : 'them'}. ` : ''}${due ? html`<strong>${due === 1 ? '1 plant on the porch is' : `${due} plants on the porch are`} ready for ${due === 1 ? 'its' : 'their'} summer spot.</strong> ${due === 1 ? 'It has' : 'They have'} had a week out of full sun. ` : ''}<a href="#/outside">Open the Back outside list</a></p>`}</div>` },

@@ -109,7 +109,7 @@ addFeature({
     then: box => { box.dataset.fdDone = '1'; if (typeof fitTables === 'function') fitTables(); },      // data-fd-done: filled (the checks wait for it)
   },
   today: {
-    id: 'fd-today', order: 5,
+    id: 'fd-today', order: 5, cold: true,                  // 1.48.0: left out at a tropical home
     load: () => api('GET', '/api/frost/dates?x=1' + locQS()),
     html: D => { const line = fdTodayLine(D); return line ? html`<p class="notice ok fd-today" id="fd-today">${line}</p>` : ''; },
   },

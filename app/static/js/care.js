@@ -294,19 +294,21 @@ function todayPrep(PR, t) {
     ${!again.length && !free.length ? html`<p class="notice ok">No sprays due and nobody to move today.</p>` : ''}</section>`;
 }
 async function viewToday() {
-  const [W, reqs, , PR, WA, J, SN, EXT] = await Promise.all([api('GET', '/api/water'), api('GET', '/api/requests?open=1'), loadFertData(true), api('GET', '/api/prep').catch(() => null),
+  const [W, reqsAll, , PR, WA, J, SN, EXT] = await Promise.all([api('GET', '/api/water'), api('GET', '/api/requests?open=1'), loadFertData(true), api('GET', '/api/prep').catch(() => null),
     api('GET', '/api/wishlist/alerts').catch(() => ({ alerts: [] })), api('GET', '/api/jobs').catch(() => null), api('GET', '/api/sensors/summary').catch(() => null),   // 1.35.0: sensors
     featTodayLoad()]);                                                                  // 1.46.0: the blocks feature modules registered (features.js)
   const by = Object.fromEntries(FERT.plants.map(p => [p.code, p])), t = todayStr();
   const ws = W.plants.filter(w => by[w.code]);
   const due = ws.filter(w => w.state === 'due').sort((a, b) => b.overdue - a.overdue), soon = ws.filter(w => w.state === 'soon'), unk = ws.filter(w => w.state === 'unknown');
-  const feed = FERT.plants.map(p => ({ p, st: fertState(p, entriesFor(p.code), t, fertCtx()) })).filter(r => r.st.state === 'due');
-  const needs = FERT.plants.filter(needsYou);
+  const here = FERT.plants.filter(atPlace);                                      // 1.48.0: Today is about the home you are looking at
+  const feed = here.map(p => ({ p, st: fertState(p, entriesFor(p.code), t, fertCtx()) })).filter(r => r.st.state === 'due');
+  const needs = here.filter(needsYou), reqs = reqsAll.filter(q => !q.plant_code || !by[q.plant_code] || atPlace(by[q.plant_code]));
   const wbtn = w => html`<button class="btn small" type="button" data-act="care" data-kind="water" data-code="${w.code}" data-name="${by[w.code].common_name}">Watered</button>
     <button class="btn small ghost" type="button" data-act="care" data-kind="check" data-code="${w.code}" data-name="${by[w.code].common_name}">Still moist</button>`;
   const n = (k, one, many) => k + ' ' + (k === 1 ? one : many);
   // 1.34.0: Today is the page the app opens on. One line says what needs you, with a button to jump to each part
-  const F = FROST, cold = F && F.first ? F.worst.counts.danger + F.worst.counts.damage + F.worst.counts.watch : 0;
+  const winter = coldSeason();                                                  // 1.48.0: a tropical home has no cold night, coming inside or frost blocks
+  const F = FROST, cold = winter && F && F.first ? F.worst.counts.danger + F.worst.counts.damage + F.worst.counts.watch : 0;
   const prepN = PR && PR.plants ? PR.plants.reduce((k, p) => k + p.methods.filter(m => m.next_due && m.next_due <= t).length + (p.status === 'apart' && p.keep_until && p.keep_until <= t ? 1 : 0), 0) : 0;
   const snN = SN ? SN.look + SN.quiet : 0;
   const bits = [cold ? `a cold night ${fzDay(F.first.date, true)}` : '', snN ? n(snN, 'sensor to look at', 'sensors to look at') : '', n(due.length, 'plant to water', 'plants to water'), n(feed.length, 'to feed', 'to feed'),
@@ -340,14 +342,14 @@ async function viewToday() {
         <ul class="jobs">${feed.map(r => jobRow(r.p, fertWords(r.p, r.st, t), html`<button class="btn small" type="button" data-act="fertlog" data-code="${r.p.code}">Log feeding</button>`))}</ul>`
         : html`<p class="notice ok">No plant is due for fertilizer today. The Fertilizer page has the calendar.</p>`}</section>` },
     WA.alerts.length ? { order: 50, id: 'today-wish', jump: `Shopping (${WA.alerts.length})`, html: html`<section class="blk wl-alerts" id="today-wish"><h2>Shopping alerts (${WA.alerts.length})</h2>${wlAlertsHtml(WA.alerts.slice(0, 6), true)}<p><a class="btn small ghost" href="#/shopping/list">Shopping list for a store visit</a></p></section>` } : null,
-    PR && PR.plants.length ? { order: 60, id: 'today-inside', html: todayPrep(PR, t) } : null,
+    winter && PR && PR.plants.length ? { order: 60, id: 'today-inside', html: todayPrep(PR, t) } : null,
     { order: 70, id: 'today-needs', jump: `Needed from you (${needs.length})`, html: html`<section class="blk" id="today-needs"><h2>Needed from you (${needs.length})</h2>
       ${reqs.length ? html`<ul class="jobs">${reqs.slice(0, 8).map(q => { const p = by[q.plant_code] || { code: q.plant_code || '', common_name: q.plant_code || 'General' };
         return jobRow(p, linkify(q.text), p.code ? html`<a class="btn small ghost" href="#/plant/${enc(p.code)}">Answer on its page</a>` : ''); })}</ul>
         ${reqs.length > 8 ? html`<p class="hint">Showing 8 of ${reqs.length} open requests.</p>` : ''}` : ''}
       <p><button class="btn small ghost" type="button" data-act="todayneeds">Show all plants that need something from you</button></p></section>` },
     quiet.length ? { order: 80, id: 'today-quiet', html: html`<section class="blk" id="today-quiet"><h2>Quiet today</h2><p class="muted">${quiet.map((q, i) => html`${i ? ' ' : ''}${q}`)}</p></section>` } : null,
-    ...EXT.map(({ b, d }) => ({ order: b.order, id: b.id, jump: b.jump ? b.jump(d) : '', html: b.html(d) })),
+    ...EXT.filter(({ b }) => winter || !b.cold).map(({ b, d }) => ({ order: b.order, id: b.id, jump: b.jump ? b.jump(d) : '', html: b.html(d) })),
   ].filter(Boolean).sort((a, b) => a.order - b.order);
   const jumps = blocks.filter(b => b.jump && b.id);
   return {

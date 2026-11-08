@@ -525,6 +525,14 @@ document.addEventListener('change', e => {
       .catch(e => { if (m) m.textContent = e.message; });
     return;
   }
+  if (el.dataset && el.dataset.f === 'pedithome') {    // 1.48.0: the homes an editor may change plants at
+    const m = document.getElementById('who-msg'), login = el.dataset.login;
+    const ids = [...document.querySelectorAll(`input[data-f=pedithome][data-login="${CSS.escape(login)}"]:checked`)].map(i => +i.value);
+    if (!ids.length) { el.checked = true; if (m) m.textContent = 'Leave at least one home ticked.'; return; }
+    api('PUT', '/api/people', { login, edit_homes: ids }).then(r => { peoplePaint(r); if (m) m.textContent = 'Saved: which homes this person can change plants at.'; })
+      .catch(e => { if (m) m.textContent = e.message; api('GET', '/api/people').then(peoplePaint).catch(() => {}); });
+    return;
+  }
   if (el.dataset && el.dataset.f === 'prole') {
     const m = document.getElementById('who-msg'), login = el.dataset.login, label = el.options[el.selectedIndex].text;
     api('PUT', '/api/people', { login, role: el.value }).then(r => { peoplePaint(r); if (r.me) { META.me = r.me; paintWho(); } if (m) m.textContent = `Saved: ${label}.`; })

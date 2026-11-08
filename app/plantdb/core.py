@@ -298,6 +298,12 @@ def init_db():
         if n not in have: c.execute(f"ALTER TABLE plants ADD COLUMN {n} {SQLTYPE.get(k, 'TEXT')}")
     if 'extra' not in {r[1] for r in c.execute('PRAGMA table_info(readings)')}: c.execute('ALTER TABLE readings ADD COLUMN extra TEXT')
     if 'plants_here' not in {r[1] for r in c.execute('PRAGMA table_info(locations)')}: c.execute('ALTER TABLE locations ADD COLUMN plants_here INTEGER NOT NULL DEFAULT 0')   # 1.28.0: homes
+    lcols = {r[1] for r in c.execute('PRAGMA table_info(locations)')}          # 1.48.0 (PLAN.md step 4b): a home is a site
+    if 'country' not in lcols: c.execute("ALTER TABLE locations ADD COLUMN country TEXT NOT NULL DEFAULT ''")      # ISO code, 'US'
+    if 'units' not in lcols: c.execute("ALTER TABLE locations ADD COLUMN units TEXT NOT NULL DEFAULT ''")          # a region key (UNIT_REGIONS) or '' for US
+    if 'season' not in lcols: c.execute("ALTER TABLE locations ADD COLUMN season TEXT NOT NULL DEFAULT 'temperate'")   # temperate | mild | tropical
+    if 'edit_homes' not in {r[1] for r in c.execute('PRAGMA table_info(people)')}: c.execute("ALTER TABLE people ADD COLUMN edit_homes TEXT NOT NULL DEFAULT ''")   # 1.48.0: an editor limited to some homes (JSON list of ids; '' = all)
+    c.execute("UPDATE locations SET country='US' WHERE country='' AND lat BETWEEN 24 AND 50 AND lon BETWEEN -125 AND -66")   # 1.48.0: a first guess for places in the lower 48; editable on Homes and places
     if 'place_id' not in {r[1] for r in c.execute('PRAGMA table_info(light_spots)')}: c.execute('ALTER TABLE light_spots ADD COLUMN place_id INTEGER')   # 1.13.1
     migrate_places(c)
     where_seed(c)                                       # 1.29.0: areas and spots for every home
@@ -674,7 +680,7 @@ def ts_user():
     elif time.time() - SEEN.get(login, 0) > 600:
         c.execute('UPDATE people SET last_seen=? WHERE login=?', (t, login)); c.commit()
         SEEN[login] = time.time()
-    return {'via': 'tailscale', 'login': r['login'], 'name': r['name'], 'role': r['role'] if r['role'] in ROLES else 'viewer'}
+    return {'via': 'tailscale', 'login': r['login'], 'name': r['name'], 'role': r['role'] if r['role'] in ROLES else 'viewer', 'edit_homes': edit_homes_of(r)}   # 1.48.0: the homes an editor may change plants at
 
 def owner_name(c):
     r = c.execute("SELECT name FROM people WHERE role='owner' ORDER BY first_seen LIMIT 1").fetchone()
@@ -684,6 +690,47 @@ OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people')        # any r
 OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/areas', '/api/shops', '/api/problems', '/api/backups/restore', '/api/jobs')   # changes only
 VIEWER_POSTS = ('/api/identify', '/api/me/prefs', '/api/voice')   # 1.18.0: asks this computer what a picture shows; 1.29.0: your own settings; search by voice: words from a recording. None changes the plants
 VIEWER_PREFIXES = ('/api/push/',)                   # 1.33.0: your own devices and notification choices
+
+def edit_homes_of(r):
+    """1.48.0: the home ids an editor is limited to, as a list; [] means every home."""
+    try: v = json.loads(r['edit_homes'] or '[]') if r is not None and 'edit_homes' in r.keys() else []
+    except Exception: v = []
+    return [int(x) for x in v] if isinstance(v, list) else []
+
+def plant_home_of(c, code):
+    """The home a plant lives at (the main home's id when its home_id is empty), or None for an unknown code."""
+    r = c.execute("SELECT home_id FROM plants WHERE code=?", (str(code or '').strip().upper(),)).fetchone()
+    if r is None: return None
+    return int(r[0]) if r[0] else home_place(c)['id']
+
+def home_refusal(u, c):
+    """1.48.0 (PLAN.md step 4b): an editor limited to some homes may change plants only at those homes. The request's plant comes
+    from its path (/api/plants/<code>...) or its body (plant, plants, plant_code); a change of a care-log entry follows its plant.
+    Changes that belong to no plant (lights, pots, groups, places) are not limited."""
+    allowed = u.get('edit_homes') or []
+    if not allowed or u['role'] != 'editor' or request.method in ('GET', 'HEAD', 'OPTIONS'): return None
+    codes = []
+    m = re.match(r'^/api/plants/([^/]+)', request.path)
+    if m and m.group(1) != 'several': codes.append(m.group(1))
+    m = re.match(r'^/api/care/(\d+)$', request.path)
+    if m:
+        r = c.execute('SELECT plant_code FROM care_log WHERE id=?', (int(m.group(1)),)).fetchone()
+        if r: codes.append(r[0])
+    b = request.get_json(silent=True) if request.is_json else None
+    if isinstance(b, dict):
+        for k in ('plant', 'plant_code', 'code'):
+            if b.get(k): codes.append(str(b[k]))
+        if isinstance(b.get('plants'), list): codes += [str(x) for x in b['plants']]
+        if isinstance(b.get('codes'), list): codes += [str(x) for x in b['codes']]
+    if request.form:
+        for k in ('plant', 'code'):
+            if request.form.get(k): codes.append(request.form.get(k))
+    for code in codes:
+        h = plant_home_of(c, code)
+        if h is not None and h not in allowed:
+            names = {x['id']: x['name'] for x in homes(c)}
+            return f"You can change plants at {', '.join(names.get(x, str(x)) for x in allowed)} only. {code} is at {names.get(h, 'another home')}."
+    return None
 
 def role_refusal(u):
     """Why this person may not make this request, or None. The server decides; the page only hides what would be refused."""
@@ -695,18 +742,23 @@ def role_refusal(u):
         return f'Only {owner_name(db())} can do this.'
     if role == 'viewer' and change and path not in VIEWER_POSTS and not path.startswith(VIEWER_PREFIXES):
         return f'You can look at everything, but changes are turned off for you. Ask {owner_name(db())} if you would like to edit.'
+    if role == 'editor' and change: return home_refusal(u, db())          # 1.48.0: an editor limited to some homes
     return None
 
 def me_dict(c):
     u = getattr(g, 'user', None) or {'via': 'local', 'login': None, 'name': '', 'role': 'owner'}
     return {'via': u['via'], 'login': u['login'], 'name': u['name'] if u['via'] == 'tailscale' else '', 'role': u['role'],
-            'role_word': ROLE_WORD[u['role']], 'owner_name': owner_name(c)}
+            'role_word': ROLE_WORD[u['role']], 'owner_name': owner_name(c), 'edit_homes': u.get('edit_homes') or []}
 
 # ---------- units (1.47.0, PLAN.md step 4a) ----------
 # Everything is stored and sent in °F and inches. A person's units come from their 'units' setting (user_prefs, saved by the Display
 # window on any of their devices): a region sets temperature, length and rain at once, and each can be changed by hand. The front end
 # converts what it shows; these helpers convert the sentences the server writes itself (push messages, the calendar, spray notes).
 UNIT_REGIONS = {'us': {'temp': 'f', 'len': 'in', 'rain': 'in'}, 'ca': {'temp': 'c', 'len': 'in', 'rain': 'mm'}, 'metric': {'temp': 'c', 'len': 'cm', 'rain': 'mm'}}
+# 1.48.0: what kind of year a site has. temperate: a winter with frost (the cold-season pages apply); mild: a cool season where
+# frost is rare (the pages stay, since one night can still bite); tropical: wet and dry seasons and no frost (the cold-season pages
+# and Today's cold blocks are left out there).
+SEASONS = {'temperate': 'A winter with frost', 'mild': 'A cool season, frost rare', 'tropical': 'Wet and dry seasons, no frost'}
 
 def units_for(c, login=None):
     """{'temp': 'f'|'c', 'len': 'in'|'cm', 'rain': 'in'|'mm'} for a sign-in (the request's own when login is None)."""
@@ -715,7 +767,11 @@ def units_for(c, login=None):
     try: u = json.loads(r[0]) if r and r[0] else {}
     except Exception: u = {}
     if not isinstance(u, dict): u = {}
-    base = UNIT_REGIONS.get(u.get('region'), UNIT_REGIONS['us'])
+    region = u.get('region')
+    if region not in UNIT_REGIONS:                       # 1.48.0: no choice of their own: the site's default (the place in use, else the main home)
+        try: region = (location(c) if has_request_context() else home_place(c)).get('units') or 'us'
+        except Exception: region = 'us'
+    base = UNIT_REGIONS.get(region, UNIT_REGIONS['us'])
     return {k: (u.get(k) if u.get(k) in ('f', 'c', 'in', 'cm', 'mm') else base[k]) for k in ('temp', 'len', 'rain')}
 
 def units():
@@ -826,8 +882,20 @@ def people():
                 except (TypeError, ValueError): abort(400, 'Choose one of your homes')
                 if hid not in {h['id'] for h in homes(c)}: abort(400, 'Choose one of your homes')
                 if hid == home_place(c)['id']: hid = None
+        eh = r['edit_homes'] if r else ''                 # 1.48.0: the homes an editor may change plants at ('' = all of them)
+        if 'edit_homes' in b:
+            ids = b['edit_homes'] or []
+            if not isinstance(ids, list): abort(400, 'edit_homes is a list of home ids')
+            try: ids = sorted({int(x) for x in ids})
+            except (TypeError, ValueError): abort(400, 'edit_homes is a list of home ids')
+            allh = {h['id'] for h in homes(c)}
+            if any(x not in allh for x in ids): abort(400, 'Choose from your homes')
+            eh = json.dumps(ids) if ids and len(ids) < len(allh) else ''
         if r:
-            c.execute('UPDATE people SET name=?, role=?, home_id=? WHERE login=?', (name, role, hid, login))
+            c.execute('UPDATE people SET name=?, role=?, home_id=?, edit_homes=? WHERE login=?', (name, role, hid, eh, login))
+            if (r['edit_homes'] or '') != eh:
+                H = {h['id']: h['name'] for h in homes(c)}
+                audit_only(c, 'setting', 'person', r['edit_homes'] or 'all homes', eh or 'all homes', editor(), f"{name} may edit plants at: {', '.join(H.get(x, str(x)) for x in json.loads(eh)) if eh else 'every home'}")
             if (r['name'], r['role']) != (name, role):
                 audit_only(c, 'setting', 'person', f"{r['name']}: {r['role']}", f"{name}: {role}", editor(), f"{name} ({login}) is now: {ROLE_WORD[role]}")
             if r['home_id'] != hid:
@@ -836,7 +904,7 @@ def people():
                 c.execute("DELETE FROM user_prefs WHERE login=? AND key IN ('place', 'place_given')", (login,))   # so the new home is used on their next visit
         else:
             t = now()
-            c.execute('INSERT INTO people(login,name,role,home_id,first_seen,last_seen) VALUES(?,?,?,?,?,?)', (login, name, role, hid, t, t))
+            c.execute('INSERT INTO people(login,name,role,home_id,edit_homes,first_seen,last_seen) VALUES(?,?,?,?,?,?,?)', (login, name, role, hid, eh, t, t))
             audit_only(c, 'setting', 'person', None, f"{name}: {role}", editor(), f"{name} ({login}) added: {ROLE_WORD[role]}")
         c.commit()
     elif request.method == 'DELETE':
@@ -848,7 +916,7 @@ def people():
         c.execute('DELETE FROM people WHERE login=?', (login,))
         audit_only(c, 'setting', 'person', f"{r['name']}: {r['role']}", None, editor(), f"{r['name']} ({login}) removed from the list of people")
         c.commit()
-    rows = [dict(r) | {'role_word': ROLE_WORD.get(r['role'], r['role'])} for r in c.execute("SELECT * FROM people ORDER BY CASE role WHEN 'owner' THEN 0 WHEN 'editor' THEN 1 ELSE 2 END, name")]
+    rows = [dict(r) | {'role_word': ROLE_WORD.get(r['role'], r['role']), 'edit_homes': edit_homes_of(r)} for r in c.execute("SELECT * FROM people ORDER BY CASE role WHEN 'owner' THEN 0 WHEN 'editor' THEN 1 ELSE 2 END, name")]
     return jsonify(people=rows, roles=[{'key': k, 'label': ROLE_WORD[k]} for k in ROLES], me=me_dict(c), homes=[{'id': h['id'], 'name': h['name']} for h in homes(c)], main_home=home_place(c)['id'])
 
 # ---------------------------------------------------------------- security
