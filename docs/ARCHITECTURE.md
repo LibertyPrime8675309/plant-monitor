@@ -313,4 +313,4 @@
 
 ## Known constraints
 - Files saved to Ethan's computer from a chat must be under 30 MB. From 1.8.0 the release zip carries no plant photos; they ship in photo packs (one per upgrade batch, split if over 28 MB), and only new packs are sent with a release. See `tools/make-release.py` and the updater.
-- The tests run in a sandbox without Docker Hub, so the Docker image itself is only built on Ethan's PC.
+- Claude's sandbox cannot reach Docker Hub, so it never builds an image. GitHub does (`.github/workflows/images.yml`, November 2026): every pull request builds the app, vision and speech images, and a push to main publishes them to `ghcr.io` under the repository, tagged with VERSION. Until the updater pulls them (PLAN.md step 3), Ethan's PC still builds its own.

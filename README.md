@@ -124,6 +124,10 @@ pwsh -File ./update-plant-database.ps1
 
 Options: `-Yes` (do not ask), `-Force` (re-apply the newest zip anyway), `-RemoveOldImage`, `-SkipBackup` (not recommended), `-Password <text>` (only if you set `PLANTDB_PASSWORD`), `-Url http://localhost:8080`.
 
+### Built on GitHub first (from November 2026)
+
+Every change to the app on GitHub now builds all three container images (the app, the picture checker and the speech service) on GitHub's own machines before it can be merged, so a broken Dockerfile is caught there rather than on your PC. The images are also kept in GitHub's registry under the repository (`ghcr.io/libertyprime8675309/plant-database`, `...-vision`, `...-speech`, tagged with the version). The updater still builds on your PC for now; `docs/PLAN.md` step 3 switches it to pulling the ready-built images.
+
 ## Version
 
 The `VERSION` file holds this package's version, and `CHANGELOG.md` lists what changed in each one. Keep each zip you receive (the file name carries the version and build time) as your archive; they all collect in `versions_plant-database`.
