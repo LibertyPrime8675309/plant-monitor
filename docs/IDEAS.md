@@ -2,6 +2,8 @@
 
 One line each, most wanted first. A prototyping session takes the top one that is not already in progress, and marks it "(in progress: proto/<branch>)".
 
+**Building work comes first (November 7, 2026).** `PLAN.md` sets out seven steps that take the app from one house to many sites. Steps 1 to 3 (the shape, a registry for features, images built on GitHub) come before any new feature, including the repotting plan and new requests made in the meantime; only fixes to what has shipped go out until they are done. Prototyping sessions pause until `PLAN.md` says step 3 is done.
+
 
 
 ## Done

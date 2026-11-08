@@ -1,6 +1,6 @@
 # Plant record (plant-monitor): rules for Claude and other agents
 
-This is Ethan's home plant database: a Flask + SQLite web app ("Plant record") that runs in Docker Desktop on his Windows PC and tracks about 80 potted plants in Round Rock, Texas, along with the local weather. Read `docs/ARCHITECTURE.md` before changing code, and `docs/PROTOTYPING.md` before starting a prototype.
+This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that runs in Docker Desktop on his Windows PC. It is being built to manage large plant collections at several sites around the world, to hold the knowledge about them, and to identify and log plants and mushrooms better over time. Today it has one site, Ethan's house in Round Rock, Texas, with about 80 potted plants and the local weather. `docs/PLAN.md` is the agreed order of work (November 2026): its first three steps come before any new feature. Read `docs/ARCHITECTURE.md` before changing code, and `docs/PROTOTYPING.md` before starting a prototype.
 
 ## Who it is for
 - Ethan is visually impaired. Accessibility is a requirement:
@@ -45,7 +45,7 @@ This is Ethan's home plant database: a Flask + SQLite web app ("Plant record") t
 - Keep the front end dependency-free (vanilla JS in `app/static/js/*.js`, loaded in order; one CSS file) and compatible with the strict Content Security Policy: **no inline scripts or inline event handlers**. Actions use `data-act` / `data-f` / `data-form` attributes, handled by delegation in `static/js/events.js`.
 - **Test before shipping:**
   1. `python3 -m pytest dev/test/unit -q` (seconds).
-  2. `python3 dev/test/run_checks.py` runs every browser check and the smoke test on a fresh mock server each (fake weather, no internet; about 90 minutes), or `run_checks.py lights shops` for a few. Look at the screenshots in `dev/tmp/shots/`. GitHub runs the same on every pull request (`.github/workflows/checks.yml`).
+  2. `python3 dev/test/run_checks.py` runs every browser check and the smoke test on a fresh mock server each (fake weather, no internet; about 90 minutes), or `run_checks.py lights shops` for a few. Look at the screenshots in `dev/tmp/shots/`. GitHub runs the same on every pull request (`.github/workflows/checks.yml`), and builds the three container images (`images.yml`). **Merge a pull request only when both are green.** The repository is public (November 7, 2026) and a branch rule on main requires the `unit`, `browser (n/4)` and `build (...)` checks, so a merge with a red check is refused.
   3. For upgrades, also test on a copy of a database that has the previous version's batches applied.
 - Docker Hub is not reachable from Claude's sandbox. `docker compose config` works, a real image build does not, so say so when a change touches the Dockerfile.
 
