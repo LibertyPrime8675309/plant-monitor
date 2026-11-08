@@ -1,8 +1,8 @@
 /* Plant record front end: frost dates (prototype, proto/frost-dates). One of the files loaded in order by index.html; they share one scope.
    Plain JavaScript, no inline handlers (the server's content policy forbids them). Read only: nothing here changes data.
    The Weather page, the Cold-night checklist and Back outside each carry a placeholder <div class="fd-box" data-fd="weather|frost|outside">;
-   a MutationObserver on #app fills it from GET /api/frost/dates when the page draws, and adds a line to Today in October and November
-   (the usual first freeze) and in February and March (the usual last freeze).
+   this module registers (features.js, 1.46.0) an add that fills it from GET /api/frost/dates when the page draws, and a Today block
+   with a line in October and November (the usual first freeze) and in February and March (the usual last freeze).
    Ethan's answers of November 6: a "frost possible" line at 36°F; one plant a line with its photo on the checklist; the same numbers
    on Back outside; the line on Today. */
 'use strict';
@@ -80,15 +80,6 @@ function fdOutside(D) {
     <p><a class="btn small ghost" href="#/weather?sec=wx-frostdates">All the frost dates (Weather page)</a></p>`;
 }
 
-async function fdFill(box) {
-  box.dataset.fdDone = '1';
-  try {
-    const D = await api('GET', '/api/frost/dates?x=1' + (box.dataset.fd === 'weather' ? locQS() : ''));
-    box.innerHTML = rend(box.dataset.fd === 'weather' ? fdWeather(D) : box.dataset.fd === 'outside' ? fdOutside(D) : fdPlants(D));
-    if (typeof fitTables === 'function') fitTables();
-  } catch (e) { box.innerHTML = rend(html`<p class="muted">Frost dates could not be worked out: ${e.message}</p>`); }
-}
-
 // Today: a line in October and November while no freeze has come yet, and in February and March up to three weeks after the usual
 // last freeze. Only with enough history (3 whole winters). Added when the page draws, after the summary at the top.
 function fdTodayLine(D) {
@@ -102,20 +93,24 @@ function fdTodayLine(D) {
       <a href="#/outside?sec=bo-frostdates">Back outside</a>`;
   return '';
 }
-// the summary's jump buttons (.td-jumps) are only on Today; marking them means each drawing of the page asks once
-function fdToday(main) {
-  const top = main.querySelector('.td-jumps:not([data-fd-asked])'); if (!top) return;
-  top.dataset.fdAsked = '1';
-  api('GET', '/api/frost/dates?x=1' + locQS()).then(D => {
-    if (!top.isConnected || main.querySelector('.fd-today')) return;
-    const line = fdTodayLine(D); if (!line) return;
-    const p = document.createElement('p'); p.className = 'notice ok fd-today';
-    p.innerHTML = rend(line);
-    (top.closest('.verdict-box') || top).after(p);
-  }).catch(() => {});
-}
-(function frostDatesFill() {
-  const main = document.getElementById('app'); if (!main) return;
-  new MutationObserver(() => { for (const b of main.querySelectorAll('.fd-box[data-fd]:not([data-fd-done])')) fdFill(b); fdToday(main); })
-    .observe(main, { childList: true, subtree: true });
-})();
+// 1.46.0: what this module adds, said once (features.js) instead of watching the page for changes:
+//  - the frost-dates boxes the Weather page, the Cold-night checklist and Back outside leave for it (.fd-box[data-fd]);
+//  - the Today line, under the summary at the top (order 5).
+addFeature({
+  name: 'frostdates',
+  adds: {
+    id: null, where: 'inside',
+    match: parts => ['weather', 'frost', 'outside'].includes(parts[0]),
+    anchor: '.fd-box[data-fd]',
+    load: (parts, box) => api('GET', '/api/frost/dates?x=1' + (box.dataset.fd === 'weather' ? locQS() : '')),
+    failed: e => ({ error: e.message }),
+    html: (D, parts, box) => D.error ? html`<p class="muted">Frost dates could not be worked out: ${D.error}</p>`
+      : box.dataset.fd === 'weather' ? fdWeather(D) : box.dataset.fd === 'outside' ? fdOutside(D) : fdPlants(D),
+    then: box => { box.dataset.fdDone = '1'; if (typeof fitTables === 'function') fitTables(); },      // data-fd-done: filled (the checks wait for it)
+  },
+  today: {
+    id: 'fd-today', order: 5,
+    load: () => api('GET', '/api/frost/dates?x=1' + locQS()),
+    html: D => { const line = fdTodayLine(D); return line ? html`<p class="notice ok fd-today" id="fd-today">${line}</p>` : ''; },
+  },
+});

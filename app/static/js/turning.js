@@ -89,51 +89,48 @@ Object.assign(changeActs, {
     const s = document.querySelector('select[data-act=turnevery]'); if (s) s.focus();
   },
 });
-// Today: a "Turn the pots" section before Needed from you, and a jump button. viewToday (care.js) is wrapped rather than edited,
-// so this prototype stays in its own file.
-{
-  const todayBase = viewToday;
-  viewToday = async function () {
-    const [V, T] = await Promise.all([todayBase(), api('GET', '/api/turning').catch(() => null)]);
-    if (!T || !T.plants.length) return V;
-    const after = V.after, n = T.counts.due;
-    V.after = () => {
-      if (after) after();
-      const needs = document.getElementById('today-needs'); if (!needs || document.getElementById('today-turn')) return;
-      needs.insertAdjacentHTML('beforebegin', rend(html`<section class="blk" id="today-turn"><h2>Turn the pots (${n})</h2>${tnDueBlock(T, false)}
-        <p><a class="btn small ghost" href="#/turning">All pots and how often</a></p></section>`));
-      const jumps = document.querySelector('.td-jumps'), last = jumps && jumps.lastElementChild;
-      if (last) last.insertAdjacentHTML('beforebegin', rend(html`<a class="btn small ghost" href="#today-turn" data-act="jumpsec" data-sec="today-turn">Turn (${n})</a>`));
-    };
-    return V;
-  };
-}
-
-// On a plant's own page (Ethan, November 6): a "Turned today" button beside "Watered today" for a pot on the list, with a line
-// saying when it is due. A plant left out (switched off, or under a light from above) says why, with Remind me. Plants out in
-// the open get nothing. loadCarePlant (care.js) is wrapped rather than edited, so this prototype stays in its own file.
-{
-  const careBase = loadCarePlant;
-  loadCarePlant = async function () {
-    await careBase();
-    if (!CUR) return;
-    const code = CUR.p.code, name = CUR.p.common_name;
-    let T; try { T = await api('GET', '/api/turning?plant=' + enc(code)); } catch (e) { return; }      // offline with nothing saved: leave it out
-    if (!CUR || CUR.p.code !== code) return;
-    const btns = document.querySelector('.quick-btns'); if (!btns) return;
-    const old = document.getElementById('tn-plant'); if (old) old.remove();
-    const oldB = document.getElementById('tn-plant-btn'); if (oldB) oldB.remove();
-    const p = T.plants.find(x => x.code === code), out = T.left_out.find(x => x.code === code);
-    const where = btns.parentElement;
-    if (p) {
-      const done = p.last === T.today;
-      const wb = btns.querySelector('[data-act=care][data-kind=water]');
+// 1.46.0: what this module adds, said once (features.js) instead of wrapping viewToday and loadCarePlant:
+//  - the page #/turning under Care, after Back outside;
+//  - a "Turn the pots" block on Today (order 65: after Coming inside, before Needed from you) with a jump button;
+//  - on a plant's own page (Ethan, November 6), a "Turned today" button beside "Watered today" for a pot on the list, with a line
+//    saying when it is due. A plant left out (switched off, or under a light from above) says why, with Remind me. Plants out in
+//    the open get nothing. It draws again whenever the care part of the page does (care: true).
+addFeature({
+  name: 'turning',
+  care: { turn: 'Turned the pot' },
+  pages: { turning: { view: viewTurning, nav: 'turning', section: 'care', label: 'Turn the pots', href: '#/turning', after: 'outside' } },
+  today: {
+    id: 'today-turn', order: 65,
+    load: async () => { const T = await api('GET', '/api/turning'); return T.plants.length ? T : null; },
+    jump: T => `Turn (${T.counts.due})`,
+    html: T => html`<section class="blk" id="today-turn"><h2>Turn the pots (${T.counts.due})</h2>${tnDueBlock(T, false)}
+      <p><a class="btn small ghost" href="#/turning">All pots and how often</a></p></section>`,
+  },
+  adds: {
+    id: 'tn-plant', care: true,
+    match: parts => parts[0] === 'plant' && parts[1] && parts[2] !== 'edit',
+    anchor: main => { const b = main.querySelector('.quick-btns'); return b && b.parentElement; }, where: 'beforeend',
+    load: async parts => {
+      if (!CUR || CUR.p.code !== parts[1]) return null;
+      const T = await api('GET', '/api/turning');                // offline with nothing saved: leave it out
+      const code = parts[1], p = T.plants.find(x => x.code === code), out = T.left_out.find(x => x.code === code);
+      return p || out ? { T, p, out, code, name: CUR.p.common_name } : null;
+    },
+    html: ({ T, p, out, code, name }) => {
+      if (p) {
+        const done = p.last === T.today;
+        return html`<p class="hint" id="tn-plant">Turn the pot: ${done ? 'turned today; next turn ' + relDay(p.due_on) + '. To take it back, use Undo in the message, or Remove in the care log.' : tnWords(p)} <a href="#/turning">All pots</a></p>`;
+      }
+      return html`<p class="hint" id="tn-plant">Turn the pot: no reminders for this plant. ${out.why}.
+        <button class="btn small ghost" type="button" data-act="turnset" data-code="${code}" data-on="1" aria-label="${'Remind me to turn ' + name}">Remind me</button></p>`;
+    },
+    then: (el, { T, p, code, name }) => {                        // the button goes beside Watered today, not under the line
+      const oldB = document.getElementById('tn-plant-btn'); if (oldB) oldB.remove();
+      if (!p) return;
+      const btns = document.querySelector('.quick-btns'); if (!btns) return;
+      const done = p.last === T.today, wb = btns.querySelector('[data-act=care][data-kind=water]');
       (wb || btns.firstElementChild).insertAdjacentHTML('afterend', rend(html`<button class="btn ghost${done ? ' done-today' : ''}" type="button" id="tn-plant-btn" data-act="turned" data-code="${code}" data-name="${name}"
         aria-describedby="tn-plant" ${done ? raw('disabled') : ''}>${done ? '✓ Turned today' : 'Turned today'}</button>`));
-      where.insertAdjacentHTML('beforeend', rend(html`<p class="hint" id="tn-plant">Turn the pot: ${done ? 'turned today; next turn ' + relDay(p.due_on) + '. To take it back, use Undo in the message, or Remove in the care log.' : tnWords(p)} <a href="#/turning">All pots</a></p>`));
-    } else if (out) {
-      where.insertAdjacentHTML('beforeend', rend(html`<p class="hint" id="tn-plant">Turn the pot: no reminders for this plant. ${out.why}.
-        <button class="btn small ghost" type="button" data-act="turnset" data-code="${code}" data-on="1" aria-label="${'Remind me to turn ' + name}">Remind me</button></p>`));
-    }
-  };
-}
+    },
+  },
+});

@@ -891,16 +891,11 @@ async function boMove(el, site) {
     (next || document.querySelector('main h1')).focus({ preventScroll: true });
   });
 }
-// the Today page: in spring, a short note when plants inside can go back out
-new MutationObserver(() => {
-  if (!/^#\/today\b/.test(location.hash)) return;
-  const h = document.querySelector('#app h1');
-  if (!h || document.getElementById('bo-today')) return;
-  h.insertAdjacentHTML('afterend', '<div id="bo-today"></div>');
-  loadOutside().then(B => {
-    const box = document.getElementById('bo-today'), go = B.season === 'spring' ? B.counts.ready + B.counts.safe : 0, due = (B.porch || []).filter(p => p.is_due).length;
-    if (!box || (!go && !due)) return;
-    box.innerHTML = rend(html`<p class="notice ok noprint">${go ? html`<strong>${go === 1 ? '1 plant inside can' : `${go} plants inside can`} go back outside.</strong>
-      The nights in the forecast are warm enough for ${go === 1 ? 'it' : 'them'}. ` : ''}${due ? html`<strong>${due === 1 ? '1 plant on the porch is' : `${due} plants on the porch are`} ready for ${due === 1 ? 'its' : 'their'} summer spot.</strong> ${due === 1 ? 'It has' : 'They have'} had a week out of full sun. ` : ''}<a href="#/outside">Open the Back outside list</a></p>`);
-  }).catch(() => { /* no note if it cannot be worked out */ });
-}).observe(document.getElementById('app'), { childList: true });
+// the Today page: in spring, a short note when plants inside can go back out (1.46.0: a registered Today block, order 4, under the summary)
+addFeature({
+  name: 'outside',
+  today: { id: 'bo-today', order: 4,
+    load: async () => { const B = await loadOutside(); const go = B.season === 'spring' ? B.counts.ready + B.counts.safe : 0, due = (B.porch || []).filter(p => p.is_due).length; return go || due ? { go, due } : null; },
+    html: ({ go, due }) => html`<div id="bo-today">${html`<p class="notice ok noprint">${go ? html`<strong>${go === 1 ? '1 plant inside can' : `${go} plants inside can`} go back outside.</strong>
+      The nights in the forecast are warm enough for ${go === 1 ? 'it' : 'them'}. ` : ''}${due ? html`<strong>${due === 1 ? '1 plant on the porch is' : `${due} plants on the porch are`} ready for ${due === 1 ? 'its' : 'their'} summer spot.</strong> ${due === 1 ? 'It has' : 'They have'} had a week out of full sun. ` : ''}<a href="#/outside">Open the Back outside list</a></p>`}</div>` },
+});

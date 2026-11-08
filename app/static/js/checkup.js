@@ -198,8 +198,8 @@ Object.assign(formActs, {
     const v = form.elements.days.value.trim();
     await api('PUT', '/api/checkup/groups/' + enc(form.dataset.id), { days: v === '' ? null : v });
     toast(v === '' ? 'Saved: this group uses the usual number of days' : `Saved: this group is due every ${v} days`);
-    const s = document.getElementById('g-walk'); if (s) s.remove();          // drawn again with the new number
-    ckGroupBox();
+    await featAdds(['group', form.dataset.id]);                                // the section draws again with the new number
+    const f = document.querySelector('#g-walk input[name=days]'); if (f) f.focus();
   },
   async cksave(form) {
     if (!(await needName())) return;
@@ -231,40 +231,28 @@ Object.assign(formActs, {
     }
   },
 });
-// the Today page gets a line about the walk-through, added when the page draws (no changes to viewToday)
-(function ckTodayLink() {
-  const main = document.getElementById('app'); if (!main) return;
-  let busy = false;
-  new MutationObserver(() => {
-    if (location.hash !== '#/today' || busy || main.querySelector('.ck-today')) return;
-    const at = main.querySelector('#today-water'); if (!at) return;
-    busy = true;
-    api('GET', '/api/checkup').then(D => {
-      busy = false;
-      if (location.hash !== '#/today' || main.querySelector('.ck-today')) return;
-      const at2 = main.querySelector('#today-water'); if (!at2) return;
-      const due = D.plants.filter(p => p.due).length;
-      const p = document.createElement('p'); p.className = 'ck-today noprint';
-      p.innerHTML = rend(html`<span>${due ? `${ckN(due, 'plant is', 'plants are')} due to be looked over.` : 'Every plant has been looked over recently.'}</span>
-        <a class="btn ghost" href="#/checkup">Health walk-through</a>`);
-      at2.before(p);
-    }).catch(() => { busy = false; });
-  }).observe(main, { childList: true, subtree: true });
-})();
-// group pages get a "Health walk-through" section after "What suits all of them": the group's own number of days, and a start button
-let CK_GBUSY = false;
-function ckGroupBox() {
-  const main = document.getElementById('app'), m = location.hash.match(/^#\/group\/(\d+)$/);
-  if (!main || !m || CK_GBUSY || main.querySelector('#g-walk')) return;
-  const at = main.querySelector('#g-fit'); if (!at) return;
-  CK_GBUSY = true;
-  api('GET', '/api/checkup').then(D => {
-    CK_GBUSY = false;
-    if (location.hash !== '#/group/' + m[1] || main.querySelector('#g-walk')) return;
-    const g = D.groups.find(x => String(x.id) === m[1]), at2 = main.querySelector('#g-fit'); if (!g || !at2) return;
-    const mine = D.plants.filter(p => p.groups.includes(g.id)), due = mine.filter(p => p.due).length;
-    const s = document.createElement('section'); s.className = 'blk'; s.id = 'g-walk';
-    s.innerHTML = rend(html`<h2>Health walk-through</h2>
+// 1.46.0: what this module adds, said once (features.js) instead of watching the page for changes:
+//  - the page #/checkup (and #/checkup/<group>), marked under Today;
+//  - a line on Today just before Water (order 29) saying how many plants are due to be looked over;
+//  - on a group's page, a "Health walk-through" section after "What suits all of them": the group's own number of days, and a start button.
+addFeature({
+  name: 'checkup',
+  pages: { checkup: { view: parts => viewCheckup(parts[1]), nav: 'today' } },
+  today: {
+    id: 'ck-today', order: 29,
+    load: () => api('GET', '/api/checkup'),
+    html: D => { const due = D.plants.filter(p => p.due).length;
+      return html`<p class="ck-today noprint" id="ck-today"><span>${due ? `${ckN(due, 'plant is', 'plants are')} due to be looked over.` : 'Every plant has been looked over recently.'}</span>
+        <a class="btn ghost" href="#/checkup">Health walk-through</a></p>`; },
+  },
+  adds: {
+    id: 'g-walk',
+    match: parts => parts[0] === 'group' && !!parts[1],
+    anchor: '#g-fit', where: 'afterend',
+    load: async parts => { const D = await api('GET', '/api/checkup'); const g = D.groups.find(x => String(x.id) === parts[1]); return g ? { D, g } : null; },
+    html: ({ D, g }) => {
+      const mine = D.plants.filter(p => p.groups.includes(g.id)), due = mine.filter(p => p.due).length;
+      return html`<section class="blk" id="g-walk"><h2>Health walk-through</h2>
       <p>${g.days ? `Plants in this group are due to be looked over every ${ckN(g.days, 'day', 'days')}, even when their health is Poor or Critical.`
           : `This group uses the usual number of days (${D.due_days}), and ${ckN(D.poor_days, 'day', 'days')} for plants in Poor or Critical health.`}
         ${mine.length ? (due ? `${due} of its ${ckN(mine.length, 'plant', 'plants')} ${due === 1 ? 'is' : 'are'} due now.` : 'None of its plants are due now.') : ''}</p>
@@ -272,13 +260,7 @@ function ckGroupBox() {
         <label class="f">Days between looks for this group<small>Leave it empty to use the usual ${D.due_days}. The number you give decides for every plant in the group, even ones in Poor or Critical health, so it can be longer than ${D.poor_days} (cacti every 30 days, say). A plant in several groups goes by the shortest.</small>
           <input type="number" name="days" min="1" max="365" step="1" inputmode="numeric" value="${g.days || ''}"></label>
         <p><button class="btn" type="submit">Save for this group</button></p></form>` : ''}
-      ${due ? html`<p><button class="btn ghost" type="button" data-act="ckgroupwalk" data-id="${g.id}">Walk through the ${ckN(due, 'due plant', 'due plants')} in this group</button></p>` : ''}`);
-    at2.after(s);
-    buildSideNav(); addFoldButtons(); navLayout(); addReadButtons();      // 1.42.0: in Navigation, with Show or hide
-  }).catch(() => { CK_GBUSY = false; });
-}
-(function ckGroupWatch() {
-  const main = document.getElementById('app'); if (!main) return;
-  new MutationObserver(() => { if (/^#\/group\/\d+$/.test(location.hash)) ckGroupBox(); }).observe(main, { childList: true, subtree: true });
-})();
-
+      ${due ? html`<p><button class="btn ghost" type="button" data-act="ckgroupwalk" data-id="${g.id}">Walk through the ${ckN(due, 'due plant', 'due plants')} in this group</button></p>` : ''}</section>`;
+    },
+  },
+});

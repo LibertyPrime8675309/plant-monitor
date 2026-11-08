@@ -181,12 +181,21 @@ def library_offline_index():
                     'kn': x.get('know') or {}, 'p': ph['url'] if isinstance(ph, dict) else None})
     return jsonify(scope='areas', species=out, made=now(), areas=[r[0] for r in c.execute('SELECT name FROM lib_areas ORDER BY name')])
 
+def script_names():
+    """1.46.0: the app's scripts in load order, from static/js/manifest.json (PLAN.md step 2: a new feature module is one line there)."""
+    with open(os.path.join(app.static_folder, 'js', 'manifest.json'), encoding='utf-8') as f: return json.load(f)['scripts']
+
 @app.route('/sw.js')
 def service_worker():
-    """1.24.0: the service worker, with the version in it so every update replaces the saved copy of the app."""
-    with open(os.path.join(app.static_folder, 'sw.js'), encoding='utf-8') as f: js = f.read().replace('__VERSION__', APP_VERSION)
+    """1.24.0: the service worker, with the version in it so every update replaces the saved copy of the app. 1.46.0: and the script list."""
+    with open(os.path.join(app.static_folder, 'sw.js'), encoding='utf-8') as f:
+        js = f.read().replace('__VERSION__', APP_VERSION).replace('__SHELL_JS__', json.dumps(['/js/%s.js' % n for n in script_names()]))
     return Response(js, mimetype='application/javascript', headers={'Cache-Control': 'no-cache', 'Service-Worker-Allowed': '/'})
 
 @app.route('/')
 def index():
-    return send_from_directory(app.static_folder, 'index.html')
+    """1.46.0: index.html with its script tags written from the manifest (the file itself holds a marker where they go)."""
+    with open(os.path.join(app.static_folder, 'index.html'), encoding='utf-8') as f: page = f.read()
+    tags = '\n'.join('<script src="/js/%s.js"></script>' % n for n in script_names())
+    page = re.sub(r'<!--scripts:[^>]*-->', tags, page, count=1)
+    return Response(page, mimetype='text/html', headers={'Cache-Control': 'no-cache'})

@@ -613,7 +613,7 @@ async function route() {
   if (parts[0] !== 'new') NEWFILL = null;
   if (parts[0] !== 'fungi' || parts[1] !== 'new') MUFILL = null;
   const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' || parts[0] === 'sensors' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' || parts[0] === 'species' || parts[0] === 'wishlist' || parts[0] === 'around' ? 'library' : parts[0] === 'fungi' ? 'fungi' : parts[0] === 'offline' || parts[0] === 'decisions' ? 'offline' : parts[0] === 'today' || !parts.length ? 'today' : 'plants';
-  navMark(parts[0] === 'weather' && qs.get('sec') === 'places' ? 'places' : ['sensors', 'pots', 'where', 'settings', 'new', 'wishlist', 'frost', 'inside', 'outside', 'around', 'decisions', 'review', 'turning'].includes(parts[0]) ? parts[0] : parts[0] === 'share' ? 'photos' : parts[0] === 'shopping' || parts[0] === 'store' ? 'shopping' : nav);
+  navMark(parts[0] === 'weather' && qs.get('sec') === 'places' ? 'places' : FEAT.pages[parts[0]] ? (FEAT.pages[parts[0]].nav || parts[0]) : ['pots', 'where', 'settings', 'new', 'wishlist', 'frost', 'inside', 'outside', 'around', 'decisions', 'review'].includes(parts[0]) ? parts[0] : parts[0] === 'share' ? 'photos' : parts[0] === 'shopping' || parts[0] === 'store' ? 'shopping' : nav);   // 1.46.0: registered pages (features.js) say which link is theirs
   pagesMenu(false);
   wlBadge();
   // 1.30.0: the screen changes at once. If the page is not ready in a moment, its name shows with "Loading"; a page opened before
@@ -644,9 +644,7 @@ async function route() {
     else if (parts[0] === 'new') { if (!ID.keys) { try { ID.keys = await api('GET', '/api/identify/settings'); } catch (e) { /* no Pl@ntNet then */ } } view = viewForm(null); }
     else if (parts[0] === 'winter') view = await viewWinter();
     else if (parts[0] === 'weather') view = await viewWeather(qs.get('sec'));
-    else if (parts[0] === 'sensors') view = await viewSensors();     // 1.35.0
     else if (parts[0] === 'review') view = await viewReview(qs);     // 1.37.0
-    else if (parts[0] === 'turning') view = await viewTurning();     // prototype: turn the pots
     else if (parts[0] === 'share') view = await viewShare();           // 1.37.0
     else if (parts[0] === 'settings') view = viewSettings();
     else if (parts[0] === 'where') view = await viewWhere();
@@ -675,12 +673,12 @@ async function route() {
     else if (parts[0] === 'offline') view = await viewOffline();
     else if (parts[0] === 'decisions') view = await viewDecisions();
     else if (parts[0] === 'around') view = await viewAround();
-    else if (parts[0] === 'checkup') view = await viewCheckup(parts[1]);            // prototype proto/health-walk (js/checkup.js)
     else if (parts[0] === 'fungi' && !parts[1]) view = await viewFungi();
     else if (parts[0] === 'fungi' && parts[1] === 'safety') view = viewFungiSafety();
     else if (parts[0] === 'fungi' && parts[1] === 'new') view = await viewFindForm(null);
     else if (parts[0] === 'fungi' && parts[2] === 'edit') view = await viewFindForm(decodeURIComponent(parts[1]));
     else if (parts[0] === 'fungi') view = await viewFind(decodeURIComponent(parts[1]));
+    else if (FEAT.pages[parts[0]]) view = await FEAT.pages[parts[0]].view(parts, qs);   // 1.46.0: pages a feature module registered (features.js)
     else view = await viewGallery();
     if (QUICK === myQuick) QUICK = null;
     if (my !== token) return;
@@ -695,6 +693,7 @@ async function route() {
     else if (ME().role === 'viewer') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice vw-note noprint" role="note"><strong>View only.</strong> You can look at everything here, but changes are turned off. Ask ${ME().owner_name} if you would like to edit.</p>`));
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
     if (view.after) view.after();
+    featAdds(parts);                              // 1.46.0: what feature modules add to this page once it is on screen (features.js); they rebuild Navigation when done
     if (parts[0] === 'weather' && qs.get('sec') === 'places') setTimeout(() => { const t = document.getElementById('sec-places'); if (t) { scrollToSection(t); navFlash(t); } }, 300);   // 1.29.0: Homes and places
     else if (qs.get('sec')) { const go2 = () => { const t = document.getElementById(qs.get('sec')); if (t) { scrollToSection(t); navFlash(t); } }; setTimeout(go2, 300); setTimeout(go2, 1500); }   // 1.36.0: #/plant/P-001?sec=inside opens the page at that section
     buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); setTimeout(() => { buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); }, 1200);
@@ -725,7 +724,7 @@ function navOpen() { const P = window.PlantPrefs.get(), r = document.documentEle
 const SECTIONS = [
   ['today', 'Today', [['today', 'Today', '#/']]],
   ['plants', 'Plants', [['plants', 'All plants', '#/plants'], ['groups', 'Groups', '#/groups'], ['new', 'Add plants', '#/new'], ['fungi', 'Mushrooms', '#/fungi'], ['where', 'Rooms and spots', '#/where'], ['photos', 'Photos', '#/photos'], ['labels', 'Labels', '#/labels'], ['review', 'Year in review', '#/review']]],   // 1.37.0: the year in review
-  ['care', 'Care', [['winter', 'Winter plan', '#/winter'], ['frost', 'Cold-night checklist', '#/frost'], ['inside', 'Coming inside', '#/inside'], ['outside', 'Back outside', '#/outside'], ['turning', 'Turn the pots', '#/turning'], ['fertilizer', 'Fertilizer', '#/fertilizer'], ['lights', 'Grow lights', '#/lights'], ['pots', 'Pots and trays', '#/pots']]],   // 1.36.0: every page in its section's row
+  ['care', 'Care', [['winter', 'Winter plan', '#/winter'], ['frost', 'Cold-night checklist', '#/frost'], ['inside', 'Coming inside', '#/inside'], ['outside', 'Back outside', '#/outside'], ['fertilizer', 'Fertilizer', '#/fertilizer'], ['lights', 'Grow lights', '#/lights'], ['pots', 'Pots and trays', '#/pots']]],   // 1.36.0: every page in its section's row
   ['weather', 'Weather', [['weather', 'Weather', '#/weather'], ['sensors', 'Sensors', '#/sensors'], ['places', 'Homes and places', '#/weather?sec=places']]],
   ['discover', 'Discover', [['identify', 'Identify', '#/identify'], ['library', 'Library', '#/library'], ['around', 'Around home', '#/around'], ['wishlist', 'Wishlist', '#/wishlist'], ['shopping', 'Shopping', '#/shopping']]],
   ['settings', 'Settings', [['settings', 'Settings', '#/settings'], ['offline', 'Offline use', '#/offline'], ['decisions', 'Offline decisions', '#/decisions'], ['backups', 'Backups', '#/backups'], ['history', 'Audit log', '#/history']]],

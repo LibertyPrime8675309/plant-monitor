@@ -1,0 +1,25 @@
+{
+ "_": "The app's scripts, in the order the page loads them (they share one scope, so order matters: core first, features next, main last). The server writes them into index.html and the service worker's shell list from here. A new feature module: add its name here and that is all (1.46.0, PLAN.md step 2).",
+ "scripts": [
+  "core",
+  "features",
+  "gallery",
+  "plant",
+  "care",
+  "edit",
+  "weather",
+  "frostdates",
+  "ui",
+  "lights",
+  "events",
+  "discover",
+  "offline",
+  "notify",
+  "voice",
+  "sensors",
+  "review",
+  "checkup",
+  "turning",
+  "main"
+ ]
+}
