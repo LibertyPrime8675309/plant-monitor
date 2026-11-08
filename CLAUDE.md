@@ -1,6 +1,6 @@
 # Plant record (plant-monitor): rules for Claude and other agents
 
-This is Ethan's home plant database: a Flask + SQLite web app ("Plant record") that runs in Docker Desktop on his Windows PC and tracks about 80 potted plants in Round Rock, Texas, along with the local weather. Read `docs/ARCHITECTURE.md` before changing code, and `docs/PROTOTYPING.md` before starting a prototype.
+This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that runs in Docker Desktop on his Windows PC. It is being built to manage large plant collections at several sites around the world, to hold the knowledge about them, and to identify and log plants and mushrooms better over time. Today it has one site, Ethan's house in Round Rock, Texas, with about 80 potted plants and the local weather. `docs/PLAN.md` is the agreed order of work (November 2026): its first three steps come before any new feature. Read `docs/ARCHITECTURE.md` before changing code, and `docs/PROTOTYPING.md` before starting a prototype.
 
 ## Who it is for
 - Ethan is visually impaired. Accessibility is a requirement:

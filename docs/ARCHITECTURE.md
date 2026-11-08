@@ -306,6 +306,11 @@
 - `style.css`: colour tokens on `:root`, overridden for dark mode and high contrast. Additions are appended in blocks headed with the version that added them.
 - **Charts:** hand-drawn SVG using a palette checked for colour-blind readers (see the CHANGELOG for 1.5.0).
 
+## Sites (decided November 7, 2026; built in `PLAN.md` step 4)
+- The app is **one app with many sites**, not one copy per site that syncs. A site is a `locations` row (name, latitude, longitude, time zone; weather is already kept per `loc_id`) grown into the unit that plants, people, weather, frost and seasons hang off. Until step 4 ships, everything is site 1 (Ethan's house) and plants carry no site column.
+- When sites arrive: `plants.site_id` (backfilled to 1 in place by `init_db()`), roles per site with the owner over all of them, a current-site helper that every per-site page reads, a units default per site with a per-person override, and a grow-season kind per site (temperate with a winter, tropical wet and dry, no cold season) that decides whether Coming inside, Back outside and the cold-night checklist exist there.
+- The mirror (1.37.0) stays the read-only copy elsewhere; it is not sync and is not meant to become it. Sync between SQLite copies is the one thing this decision rules out; it is revisited only if a site must work with no connection.
+
 ## Known constraints
 - Files saved to Ethan's computer from a chat must be under 30 MB. From 1.8.0 the release zip carries no plant photos; they ship in photo packs (one per upgrade batch, split if over 28 MB), and only new packs are sent with a release. See `tools/make-release.py` and the updater.
 - The tests run in a sandbox without Docker Hub, so the Docker image itself is only built on Ethan's PC.

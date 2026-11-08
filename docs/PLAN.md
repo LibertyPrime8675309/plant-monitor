@@ -1,0 +1,156 @@
+# Plan: from one house to many sites
+
+Agreed with Ethan on November 7, 2026 (the review copy is the doc "Plant record: plan for many sites" in his Plants project).
+
+Seven steps take Plant record from an app for one house in Round Rock to a product for plant collections at several sites, with Ethan's house as the first site. The first three steps change how the app is built and shipped, not what it does, and they come before any new feature, including the repotting plan (#70) and anything new Ethan asks for while they are under way. Small fixes to what has already shipped still go out. Sizes are Claude's working days; releases are what Ethan installs.
+
+## Decisions (Ethan, November 7, 2026)
+
+| Question | Answer |
+| --- | --- |
+| Shape | One app with many sites. |
+| Order | Steps 1, 2 and 3 before any new feature, including the repotting plan and new requests made in the meantime. |
+| Units | A site default with a per-person override. A person picks a region (which sets every unit) and can still change each unit by hand. |
+| Identify default | Ask each time which mode to use, unless the person has set a default in their settings; then do not ask. |
+| Images | Yes: updates pull ready-built images from GitHub's registry instead of building on the PC. |
+| Who accepts knowledge edits | Any editor. |
+| Release day | The first day of the month. |
+| Where the plan lives | Here, `docs/PLAN.md`, with `docs/IDEAS.md` pointing at it. |
+
+## The order at a glance
+
+Steps 1 to 3 come first and in that order; 4 to 6 then run one at a time, 4 before 5 because Identify's "new find" mode needs the site's country. Step 7 is a habit, not a build.
+
+| Step | What changes | Size | Releases | Needs first | Touches |
+| --- | --- | --- | --- | --- | --- |
+| 1. Decide the shape | A decision (made: one app, many sites) and a section in the architecture notes | Half a day | None | Done | `docs/ARCHITECTURE.md`, `CLAUDE.md` |
+| 2. A registry for features | Modules register their Today and plant-page sections, care kinds and routes instead of wrapping functions or watching the page | 3 to 4 days | One minor (1.46.0) | 1.45.0 merged | `care.js`, `core.js`, `events.js`, `turning.js`, `checkup.js`, `sitter.js`, `frostdates.js`, `sensors.js`, `server.py`, `index.html`, `sw.js`, `style.css`, both docs, the checks |
+| 3. Images built on GitHub | Every pull request builds the app, vision and speech images; merges wait for green; images published to GitHub's registry so the updater pulls | 1.5 days | None for the workflow (`.github/` is not in the zip); one patch for the updater | Nothing | `.github/workflows`, `docker-compose.yml`, the updater, `tools/make-release.py`, README; a branch rule on GitHub |
+| 4. Sites and units | Units per site and per person; plants belong to a site; weather, frost, seasons and roles per site | 8 to 10 days | Two minors (units, then sites) | Steps 1 and 2 | `core.py` schema, `weather.py`, `frost.py`, `frostdates.py`, `care.py`, `heat.py`, `lights.py`, `where.py`, `push.py`, `prefs.js`, `plant.js`, `weather.js`, `edit.js`, `index.html`, a new check |
+| 5. Identify: two modes and a scoreboard | A baseline measured on Ethan's PC; "one of my plants" and "a new find" modes; country data instead of USDA; confirmed photos feed the look-alike step; mushroom fields | 10 to 12 days plus runs on the PC | Two minors and one patch | Step 3; step 4 for the site's country | `vision/service.py`, the vision lists, `library.py`, `fungi.py`, `discover.js`, `plant.js`, `dev/vision/*`, a GPU option in `docker-compose.yml` |
+| 6. Knowledge with provenance | One fact per row with source, date and confidence; editors add and correct; any editor reviews; export | 6 to 8 days | Two minors | Step 2; step 4 helps | `library.py`, `fungi.py`, `core.py` schema, `library.js`, `review.js`, the batch tooling in `dev/seed_src`, docs |
+| 7. Release rhythm | A minor release on the first of each month, patches only for breakage; install by pulling images | Ongoing | None | Step 3 | `tools/make-release.py`, the updater, `CHANGELOG.md` |
+
+About six to eight weeks of Claude's time if done one after another, delivered as six or seven releases over two or three months.
+
+## Step 1: decide the shape (done)
+
+One app with many sites, each with its own weather, seasons and people, rather than one copy of the app per site that syncs with the others.
+
+**What exists.** The database already has a `locations` table (name, latitude, longitude, time zone, a device, a forecast) and keeps daily weather per location, because the sensors and the second home were built on it. Plants do not point at a location: they have a site word (Indoors, Outdoors and so on) and a place within the house. Roles (owner, editor, viewer) are for the whole app, not per place. The mirror (1.37.0) is a read-only second copy fed from backups, the nearest thing to sync the app has.
+
+**Why one app.** It reuses what is there, keeps one database to back up and one place for the knowledge base, and the mirror already covers "a read-only copy somewhere else". One copy per site that syncs would need change tracking and conflict rules on every table (SQLite has no merge), which is months, not weeks. If a site ever needs to work with no connection at all, that is the point to revisit, and one app does not make it harder.
+
+**Touches.** `docs/ARCHITECTURE.md` (the "Sites" section), `CLAUDE.md` (the first paragraph).
+
+## Step 2: a registry for features
+
+New features should declare what they add; today they take it. `turning.js` replaces `viewToday` and `loadCarePlant` with wrapped copies; `checkup.js`, `frostdates.js` and `sensors.js` each run a MutationObserver that watches the whole page redraw and inserts their part when they spot it. Each works alone. Together they are why four prototypes merged in one week conflicted on the same lines every time, and why the Today page's order depends on which script loaded last.
+
+**Front end.** One `features.js`, loaded after `core.js`, with a small `addFeature({...})` call that a module makes once:
+
+- `today`: a section (id, title, where it goes relative to the standard sections, a render function that returns HTML, the data it needs), so `viewToday` in `care.js` builds the page from a list instead of being wrapped. The jump buttons at the top come from the same list.
+- `plant`: the same for a plant's page (a line under the quick buttons, a block in the care part), so `loadCarePlant` calls the registered parts after it draws.
+- `care_kinds`: the word for the care log and the quick button, so `CARE_WORD` is filled from registrations.
+- `nav` and `sections`: the route and the `SECTIONS` entry, so `core.js` stops listing every page by hand.
+
+The five modules above move onto it and lose their wrappers and observers; `sitter.js` keeps its own page but registers its route. Fold state, Read aloud and the Navigation menu already work from section headings, so they need nothing new.
+
+**Server.** `server.py` imports 27 modules by name in one line that every prototype edits. `plantdb/__init__.py` finds the modules itself (every `.py` in the folder, `core` first, the rest in a fixed order each module states as `ORDER = 40`). The same for `index.html`'s script list and `sw.js`'s shell list: one generated list from a manifest, so a new module is one new file plus one line in the manifest.
+
+**Styles.** `style.css` is 1,907 lines in one file, which is what the content policy and the "one CSS file" rule want, but it is where every merge collides. Keep one URL and one file in the browser, built at container start from `static/css/*.css` (core first, then one file per feature). The rule stays true for the browser and false for git, which is where it hurts.
+
+**Cost.** Three to four days, one minor release (1.46.0), no visible change except that the Today page keeps a fixed order. The browser checks for today, plant, turning, checkup, sitter, frostdates and sensors cover the risk; the full set runs before shipping. `docs/PROTOTYPING.md` is rewritten around "register, don't wrap", which also makes each future prototype smaller.
+
+**Touches.** `care.js`, `core.js`, `events.js`, `turning.js`, `checkup.js`, `sitter.js`, `frostdates.js`, `sensors.js`, new `features.js`, `server.py`, `plantdb/__init__.py`, `index.html`, `sw.js`, `style.css` split into `static/css/`, `start.py` (builds the CSS), `docs/ARCHITECTURE.md`, `docs/PROTOTYPING.md`, the unit test that checks the module list, `run_checks.py`.
+
+## Step 3: build the images on GitHub
+
+Ethan's PC should never be the first place a Dockerfile fails. Claude cannot build images in its sandbox (Docker Hub is not reachable), so 1.44.0's speech service and 1.18.0's picture checker both shipped with a Dockerfile nobody had built. GitHub's runners can reach Docker Hub, and the checks already run there on every pull request.
+
+- A second workflow, `images.yml`, builds the app, vision and speech images on every pull request and on main, with a layer cache so a rebuild takes minutes rather than the 20 the vision image takes cold. It does not start the models; it proves the images build.
+- A branch rule so main only takes a pull request whose checks and image builds are green. Claude sets it through the GitHub API if the token allows; otherwise it is two clicks in the repository settings, with steps given.
+- Publish the built images to GitHub's registry (ghcr.io) under Ethan's account (private by default). The updater pulls a ready image instead of building one, turning a ten-minute install with a large download of Python wheels into a two-minute pull. `docker-compose.yml` gets image names, the updater gets a pull step, and the release zip shrinks to the compose file, the updater, the seed batches and the docs. Photo packs stay as they are.
+
+**Cost.** One day for the workflow and the branch rule, half a day for publishing and the updater change (one patch release for the updater). The README gets a note under "Updating".
+
+**Touches.** `.github/workflows/images.yml` (new), `.github/workflows/checks.yml` (job names), `docker-compose.yml`, `tools/Update Plant Database.cmd`, `tools/update-plant-database.ps1`, `tools/make-release.py`, `README.md`.
+
+## Step 4: sites and units
+
+Two releases: units first, because it is self-contained and useful on its own, then sites, which is the real change.
+
+**4a. Units (one minor, 3 to 4 days).** The front end writes °F in 96 places (37 in `weather.js`, 33 in `plant.js`, 14 in `frostdates.js`) and the server in 31 more, in sentences it sends to the page, to push notifications and to the sitter sheet. Lengths are inches throughout: pot sizes, distance from a light, rainfall.
+
+- The database and the weather pipeline keep working in °F and inches; nothing stored changes, so no batch and no migration.
+- One pair of formatters, `fmtTemp()` and `fmtLen()` in `core.js` and `temp_text()` / `len_text()` in `core.py`, replace every hand-written unit. Every call site changes, which is the bulk of the work and why it is its own release.
+- In Display, a person picks a region (United States; metric; United Kingdom, which mixes them) that sets every unit at once, and can then change each unit by hand (temperature, length, volume, rainfall). Saved in `/api/me/prefs`; a viewer can set it. Each site has a default region that applies to anyone who has not chosen.
+- The pot-size list stays as it is (4 in, 6 in and so on) but shows its metric equivalent. New pots can be entered either way.
+
+**4b. Sites (one minor, 5 to 6 days).** A site is a `locations` row grown up: it gains a country, a units default and a grow-season setting (temperate with a winter, tropical wet and dry, no cold season). Plants get a `site_id` (existing plants all land on site 1, which is what the first install does). People get roles per site, with the owner still over all of them.
+
+- Today, All plants, Coming inside, Back outside, Grow lights, Weather and Frost show the site the person chose, remembered per person, with a site switch in the Navigation menu. One person at one site never sees another site's chores unless they ask.
+- Weather already runs per location; frost dates, the cold-night checklist, the heat page and the watering model read the plant's site instead of location 1. A site with no frost season gets no Coming inside page at all; a tropical site gets wet-season notes instead, which is new content and a smaller follow-up.
+- Winter plans (Move indoors, Hardy outside, Let it go) become "cold-season plans" and only apply where the site has a cold season; the enum and the batches are untouched, so existing records stay as they are.
+- The sitter sheet, the push messages and the sensors already know a location; they switch to the plant's site.
+- A new browser check, `sites`, creates a second site and walks the pages for both.
+
+**Cost.** Eight to ten days in all; two minor releases; an in-place upgrade that adds columns and backfills site 1, which `init_db()` already knows how to do. This is the step most likely to turn up small things on pages nobody thought of, so a full browser run and a day of Ethan's use come before it goes further.
+
+**Touches.** `core.py` (schema, roles per site, the current-site helper), `weather.py`, `frost.py`, `frostdates.py`, `heat.py`, `care.py`, `lights.py`, `where.py`, `push.py`, `sitter.py`, `sensors.py`; `core.js`, `prefs.js`, `plant.js`, `weather.js`, `edit.js`, `care.js`, `lights.js`, `ui.js` (Display), `index.html`; `dev/test/sites_check.py` (new), `mock_server.py`; README, ARCHITECTURE, CHANGELOG.
+
+## Step 5: Identify in two modes, with a scoreboard
+
+"Ever improving" needs a number first. The picture checker has been changed several times (the prior over Ethan's own species, houseplant genera and Texas plants; the look-alike step; the confidence fit) without an accuracy figure before or after, because `dev/vision/prior_test.py` and `eval_photos.py` need the model and have not been run on Ethan's PC.
+
+**5a. Baseline (no release, an hour of the PC's time).** Run the two scripts against Ethan's own photos, which have known answers, and record top-1 and top-5 accuracy in `dev/vision/README.md`. Every later change to the checker reports the same two numbers in its CHANGELOG entry, and a change that lowers them does not ship. Commands are given for cmd.exe, PowerShell and bash.
+
+**5b. Two modes (one minor, 4 to 5 days).** The current prior is right for "which of my plants is this?" and wrong for "what is this, in a wood in another country?".
+
+- "One of my plants": the checker as it is.
+- "A new find": no lift for the person's own species or for houseplants; instead a lift for species recorded in the site's country, from GBIF occurrence counts cached in `data/vision` the way the USDA state list is now.
+- Every page that identifies asks which mode to use, with the last answer offered first. A person can set a default per page in Display ("Don't ask on Identify: always a new find"), and then it does not ask there.
+- The vision service takes a `scope` and a `country` with each request; the app sends them from the page and the site (step 4b; until then, the country is a setting).
+
+**5c. The loop (one minor, 4 to 5 days).** The checker learns from what people confirm.
+
+- Every accepted identification keeps its photo's embedding with the name in `data/vision`, and the look-alike step searches those first. Ethan's 80 plants become 80 known examples; a second site adds its own.
+- A rejection (`id_rejections` exists) lowers that name for photos that look like the rejected one, instead of only hiding it.
+- Library pages get a "Confirm this is right" and "This is wrong" pair, so other people's confirmations count too, and the audit log says who.
+
+**5d. Mushrooms (one patch, 1 to 2 days).** A photo is a weak lead for a fungus. The find record gets the fields a person uses to check a lead: substrate (wood, soil, dung, a named tree), habitat, cap, gills or pores, stem, spore print colour, smell, bruising. Plain fields with pick-lists, shown on the find's page and in its export. The rule that nothing in the app says a mushroom is edible or safe stays, and the field help text says so.
+
+**Hardware.** Ethan's Radeon RX 7900 XTX can run BioCLIP through ROCm, which would make a batch identification of a whole folder of finds seconds instead of minutes. It is a second vision image (`vision/Dockerfile.rocm`) and a compose profile, not a change to the app, and it can wait until the CPU path feels slow.
+
+**Touches.** `vision/service.py`, `vision/requirements.txt`, a GBIF fetcher beside `fetch_usda()`, `library.py`, `fungi.py` (schema and fields), `core.py` (schema), `discover.js`, `plant.js`, `gallery.js` (Add several), the fungi pages in `discover.js`, `prefs.js`, `dev/vision/*`, `docker-compose.yml` (GPU profile), `dev/test/identify_check.py` and `mushrooms_check.py`, README, ARCHITECTURE.
+
+## Step 6: knowledge with provenance
+
+A knowledge repository is only as good as its sources, and today most of the app's knowledge has one: Claude. Plant facts arrive in upgrade batches written from Ethan's photos and the care profiles in `dev/seed_src`, with sources listed in one text file. The `species_facts` table is a step in the right direction, but it stores each species as one blob with one origin, so a fact cannot be corrected on its own, and nobody but Claude can add one.
+
+**6a. Facts as rows (one minor, 3 to 4 days).** A `facts` table with one row per fact: species key, field (light, water, hardiness, toxicity, soil, origin, and so on), value, source (a link or a book), source kind (reference, trial, grower, own observation), who noted it, when, a confidence (certain, likely, unsure) and a status (accepted, proposed, retired).
+
+- The Library page shows the accepted value per field with its source, and the history behind it when the field is opened.
+- A plant's card reads from the species' accepted facts unless the plant has its own value, which is what `{field: [old, new]}` already protects.
+- Existing `species_facts` blobs and the batch files are loaded into rows once, in place, with source "batch B4" and so on. Nothing anyone typed changes.
+
+**6b. Editing and review (one minor, 3 to 4 days).** Editors propose a fact or a correction from the Library or from a plant's page; any editor accepts or rejects it from a review queue (nobody accepts their own), and the audit log keeps who did what. Mushroom species notes (`species_notes`) join the same table with their own fields, under the same "never edible or safe" rule, enforced by the field list rather than by wording.
+
+- An export (`/api/facts/export`, JSON and CSV) so the knowledge can move to another install or be shared, and an import that only adds proposed rows, never accepted ones.
+- Batches keep working for the data Claude prepares, but they become one source among several.
+
+**Cost.** Six to eight days, two minor releases, one in-place migration. The seed tooling in `dev/seed_src` gets a small rewrite so new batches write facts as rows directly.
+
+**Touches.** `core.py` (schema), `library.py`, `fungi.py`, `audit.py`, `review.js` or a new `facts.js`, `plant.js` (the card), `events.js`, `style.css` (viewer block for the propose buttons), `dev/seed_src/*.py`, the batch format note in `app/seed/batches`, `dev/test/library_check.py`, README, ARCHITECTURE.
+
+## Step 7: release rhythm
+
+Eight releases in three days suits one user who installs them himself. With people at other sites it means several people updating weekly, and a change list written for them. This step is a habit, and most of it starts after step 3.
+
+- One minor release a month, on the first day of the month; patch releases only for something broken. Prototypes still arrive as pull requests whenever they are ready, and merge when their checks and image builds are green; they wait for the month's release to ship.
+- The CHANGELOG entry stays written for the people who use the app, with a line per site when a change only touches one kind of site.
+- Install by pulling the images (step 3), so an update is a two-minute pull and restart rather than a build.
+- A "What's new" line on Today after an update, read from the CHANGELOG, so nobody has to go looking.
+- Backups before every update stay; a restore test once a quarter (the backups page has a restore) gets a reminder in the app.
+
+**Touches.** `tools/make-release.py`, the two updater scripts, `docker-compose.yml`, `CHANGELOG.md`, a small Today line through the registry from step 2, README.
