@@ -75,8 +75,11 @@ function ckSetupHtml(D) {
         A plant in several such groups goes by the shortest of them. Plants in no group with its own number go by the Poor or Critical number when their health is Poor or Critical.</p></section>`;
 }
 function ckPhotoHtml(p) {
-  return p.photo ? html`<a href="${photoUrl(p.photo)}" target="_blank" rel="noopener"><img src="${thumbUrl(p.photo)}" alt="${(p.newphoto ? 'New photo of ' : 'Photo of ') + p.name}"></a>${p.newphoto ? html`<p class="ck-meta">The photo you just took.</p>` : ''}`
-    : html`<div class="ck-nophoto">No photo yet</div>`;
+  // 1.47.0: every photo of the plant as a row of small ones under the big one; pressing one shows it big (Ethan, November 8)
+  const others = (p.photos || []).filter(f => f !== p.photo);
+  const strip = others.length ? html`<div class="ck-strip" role="group" aria-label="${'Other photos of ' + p.name}">${others.map((f, i) => html`<button type="button" class="ck-thumb" data-act="ckpick" data-file="${f}" aria-label="${'Show photo ' + (i + 2) + ' of ' + (others.length + 1)}"><img src="${thumbUrl(f)}" alt="" loading="lazy"></button>`)}</div>` : '';
+  return p.photo ? html`<a href="${photoUrl(p.photo)}" target="_blank" rel="noopener"><img src="${thumbUrl(p.photo)}" alt="${(p.newphoto ? 'New photo of ' : 'Photo of ') + p.name}"></a>${p.newphoto ? html`<p class="ck-meta">The photo you just took.</p>` : ''}${strip}`
+    : html`<div class="ck-nophoto">No photo yet</div>${strip}`;
 }
 function ckCardHtml() {
   const p = CK.list[CK.i], n = CK.list.length, prev = CK.done[p.code];
@@ -147,6 +150,11 @@ function ckSummaryLine(was, now, note) {
   return `${d} (health walk-through): ${/[.!?]$/.test(t) ? t : t + '.'}`;
 }
 Object.assign(acts, {
+  ckpick(el) {                                      // 1.47.0: a small photo becomes the big one (the taken-just-now note goes)
+    const p = CK.list && CK.list[CK.i]; if (!p) return;
+    p.photo = el.dataset.file; p.newphoto = false;
+    const box = document.getElementById('ck-pic'); if (box) { box.innerHTML = rend(ckPhotoHtml(p)); const a = box.querySelector('a'); if (a) a.focus({ preventScroll: true }); }
+  },
   ckskip() { if (!CK.list) return; const p = CK.list[CK.i]; ckNext(CK.done[p.code] && CK.done[p.code].kind !== 'skip' ? null : { kind: 'skip', text: 'skipped' }); },
   ckback() { if (!CK.list || !CK.i) return; CK.i = Math.min(CK.i, CK.list.length) - 1; CK.stopped = false; CK.focus = true; go('#/checkup/walk'); },
   ckstop() { CK.stopped = true; CK.focus = true; go('#/checkup/walk'); },
@@ -171,7 +179,7 @@ Object.assign(changeActs, {
       const r = await api('POST', '/api/plants/' + enc(p.code) + '/photos', undefined, fd);
       if (r && r.version) p.version = r.version;                        // adding a photo raises the page version
       const ph = r && r.photos ? r.photos.slice().sort((a, b) => b.id - a.id)[0] : null;
-      if (ph) { p.photo = ph.file; p.newphoto = true; }
+      if (ph) { p.photo = ph.file; p.newphoto = true; p.photos = [ph.file].concat((p.photos || []).filter(f => f !== ph.file)); }
       p.pics = (p.pics || 0) + files.length;
       const box = document.getElementById('ck-pic'); if (box) box.innerHTML = rend(ckPhotoHtml(p));
       if (!(r && r.offline)) toast(`Photo added to ${p.code}`);
@@ -237,7 +245,7 @@ Object.assign(formActs, {
 //  - on a group's page, a "Health walk-through" section after "What suits all of them": the group's own number of days, and a start button.
 addFeature({
   name: 'checkup',
-  pages: { checkup: { view: parts => viewCheckup(parts[1]), nav: 'today' } },
+  pages: { checkup: { view: parts => viewCheckup(parts[1]), nav: 'today', label: 'Health walk-through' } },     // label: found by Search (no top-bar entry: it lives under Today)
   today: {
     id: 'ck-today', order: 29,
     load: () => api('GET', '/api/checkup'),

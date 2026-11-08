@@ -15,7 +15,7 @@
   <div class="ps-tools noprint">
     <p class="crumb"><a href="/#/today">Back to Today</a></p>
     <h1>Plant-sitter sheet</h1>
-    <p>A printable plan for someone looking after your plants while you are away: which plants to check for water each day, where they are, how to tell if they need it, and any cold nights in the forecast.</p>
+    <p>A printable plan for someone looking after your plants while you are away: which plants to check for water each day, with a photo, where each one is, how to tell if it needs water, and any cold nights in the forecast.</p>
     <form id="ps-opts" class="ps-opts">
       <fieldset class="opt-group"><legend>When you are away</legend>
         <div class="ps-dates">
@@ -30,7 +30,7 @@
       </fieldset>
       <fieldset class="opt-group"><legend>Printing</legend>
         <label class="pc-opt"><input type="checkbox" name="pageday"> Each day on its own page (a long day can run onto a second page)</label>
-        <label class="pc-opt"><input type="checkbox" name="list" checked> The plant list at the end: one line each, where it is and how to water it</label>
+        <label class="pc-opt"><input type="checkbox" name="photos" checked> A photo of each plant beside its name, so the sitter knows which pot it is</label>
       </fieldset>
       <fieldset class="opt-group"><legend>Note for the sitter</legend>
         <label class="ps-field ps-wide"><span>Printed at the top, for example how to reach you and where the watering can is</span>
@@ -38,7 +38,9 @@
         <p class="hint">Kept in this browser only.</p>
       </fieldset>
       <p class="row"><button class="btn" type="button" id="ps-print">Print</button>
+        <a class="btn ghost" id="ps-open" href="/sitter.html" target="_blank" rel="noopener" hidden>Open in the browser to print</a>
         <span class="hint" id="ps-count" aria-live="polite"></span></p>
+      <p class="hint" id="ps-print-note" hidden>This is the app saved to your home screen, which cannot print by itself on an iPhone or iPad. The button above opens this sheet in Safari, where Print works (the share button, then Print).</p>
       <p class="hint">The printout is always black on white, whatever your Display settings. Below is how it will look.</p>
     </form>
   </div>

@@ -40,7 +40,7 @@ function vsClean(said) {
   if (one) t = one[1].toUpperCase() + '-' + one[2].padStart(3, '0');
   return { q: t, open, phrase };
 }
-// pages by name: every page in the top bar's lists (PAGES_LIST, from SECTIONS), plus the short names people say
+// pages by name: every page in the top bar's lists and every registered page (pagesList(), notify.js), plus the short names people say
 const VS_PAGE_NAMES = { home: '#/', 'today': '#/', 'plants': '#/plants', 'plant list': '#/plants', 'my plants': '#/plants', 'add a plant': '#/new',
   'add plant': '#/new', 'new plant': '#/new', 'add several plants': '#/new?several=1', 'rooms': '#/where', 'spots': '#/where', 'winter': '#/winter',
   'cold nights': '#/frost', 'cold night': '#/frost', 'frost': '#/frost', 'frost checklist': '#/frost', 'lights': '#/lights', 'grow light': '#/lights',
@@ -52,7 +52,7 @@ const vsNorm = s => String(s || '').toLowerCase().replace(/[-–—]/g, ' ').rep
   .replace(/^(?:the|my) /, '').replace(/ (?:page|screen|tab)$/, '').trim();
 function vsPage(words) {
   const n = vsNorm(words); if (!n) return null;
-  const list = (typeof PAGES_LIST !== 'undefined' ? PAGES_LIST : []).map(([label, href]) => [vsNorm(label), href]);
+  const list = (typeof pagesList === 'function' ? pagesList() : []).map(([label, href]) => [vsNorm(label), href]);
   const hit = list.find(([l]) => l === n) || list.find(([l]) => l === n + 's' || l + 's' === n);
   if (hit) return hit[1];
   return VS_PAGE_NAMES[n] || null;

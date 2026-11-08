@@ -7,6 +7,12 @@ Step 4a of the plan: units.
 - What you type is taken in your units too (a plant's temperatures, the manual conditions, a light spot's distance, pot sizes) and stored as whole °F and inches underneath, so nothing changes for anyone who reads in the other unit.
 - Two boxes stay in inches because they are copied from product listings: a grow light's "Light at distances" and the pot-size words.
 
+Also, from your notes on 1.46.0 (November 8):
+- **Search finds every page**, including Turn the pots and the health walk-through, by typing or by voice.
+- **Plant-sitter sheet:** each plant's line now carries its photo, where it is and how to tell if it needs water, so there is no separate list at the end (the "plant list at the end" choice is gone; "A photo of each plant" takes its place). From the app on an iPad or iPhone home screen, the Print button becomes "Open in the browser to print", because that kind of app cannot print on iOS. Temperatures and rain on the sheet are in your units.
+- **Health walk-through:** every photo of the plant is under the big one; press one to see it big. On a narrow window (an iPad upright with large text) the card is one column, so the questions are no longer squeezed beside the photo.
+- **P-036:** no smell when a leaf is crushed rules out a chrysanthemum and points to a hydrangea cutting; its page says so and the request is closed.
+
 ## 1.46.0 (2026-11-08)
 The first building release of the plan (`docs/PLAN.md`, steps 2 and 3). Nothing new to use; two things you will notice:
 - **Updates are quicker.** The updater now downloads the release's three containers ready-built from GitHub (they are built there for every change, before it can be merged) instead of building them on your PC. An update takes a couple of minutes rather than ten or more. If GitHub cannot be reached, it builds them on your PC as before. The images are now named `ghcr.io/libertyprime8675309/plant-database:<version>` (and `-vision`, `-speech`) in Docker Desktop. **A release has to be merged on GitHub before you install it**, or the updater falls back to building.

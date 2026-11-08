@@ -37,3 +37,13 @@
 .ck-setup button[disabled]{opacity:1;background:var(--sheet);color:var(--ink-2);border-color:var(--line);cursor:default}
 @media (max-width:640px){.ck-card{grid-template-columns:minmax(0,1fr);padding:.7rem}.ck-photo img,.ck-nophoto{aspect-ratio:4/3;max-height:38vh}.ck-acts .btn,.ck-nav .btn{flex:1 1 12rem}.ck-health label{flex:1 1 40%}}
 html[data-role=viewer] :is(form[data-form=ckstart] button[type=submit], form[data-form=cksave], form[data-form=ckset], form[data-form=ckgroupset], [data-act=ckgroupwalk], .ck-photo-btn){display:none!important}
+/* 1.47.0 (Ethan's iPad screenshots, November 8): the photo column takes at most two fifths of the card, so the questions keep room
+   at large text sizes; on a narrow window (an iPad held upright with large text, a phone) the card is one column */
+.ck-card{grid-template-columns:minmax(0,min(22rem,40%)) minmax(0,1fr)}
+html[data-narrow="1"] .ck-card{grid-template-columns:minmax(0,1fr)}
+html[data-narrow="1"] .ck-photo img,html[data-narrow="1"] .ck-nophoto{aspect-ratio:4/3;max-height:34vh}
+/* every photo of the plant, small, under the big one; press one to see it big */
+.ck-strip{display:flex;flex-wrap:wrap;gap:.4rem;margin:.5rem 0 0}
+.ck-thumb{padding:0;border:2px solid var(--line);border-radius:6px;background:var(--sheet);width:4.2rem;height:4.2rem;overflow:hidden;cursor:pointer}
+.ck-thumb img{display:block;width:100%;height:100%;object-fit:cover;aspect-ratio:auto;border-radius:0;background:var(--line)}
+.ck-thumb:focus-visible{outline:3px solid var(--focus);outline-offset:2px}

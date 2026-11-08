@@ -1,0 +1,11 @@
+/* Plant-sitter sheet (sitter.html, sitter.js): additions from 1.47.0. The sheet's base styles are in 00-core.css (.ps-*). */
+/* a photo beside each plant on the sheet, so the sitter knows which pot it is (Ethan, November 8) */
+.ps-pic{flex:none;width:4.2rem;height:4.2rem;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:var(--sheet-2,var(--sheet))}
+.ps-nopic{border:1px dashed var(--line)}
+.ps-how1{display:block;font-size:.95em}
+.ps-list li{break-inside:avoid}
+html[data-narrow="1"] .ps-pic{width:3.4rem;height:3.4rem}
+@media print{
+  .ps-pic{width:2.6cm;height:2.6cm;border-color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .ps-nopic{display:none}
+}

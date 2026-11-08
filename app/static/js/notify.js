@@ -80,7 +80,13 @@ document.addEventListener('change', e => {
 
 // ---------- 1.33.0: search everywhere (the magnifier in the top bar, or the / key away from the Plants page: see the shortcuts in ui.js) ----------
 // 1.36.0: the pages are the sections' own lists (core.js SECTIONS), so a page added there is found here too, plus the pages inside Shopping
-const PAGES_LIST = SECTIONS.flatMap(sec => sec[2].map(([k, label, href]) => [label, href])).concat([['Shopping list for a store visit', '#/shopping/list'], ['Stores', '#/shopping/stores']]);
+// 1.47.0: worked out when searching, not when this file loads, so pages that feature modules register later (Turn the pots, the
+// health walk-through) are found too
+const pagesList = () => {
+  const L = SECTIONS.flatMap(sec => sec[2].map(([k, label, href]) => [label, href])).concat([['Shopping list for a store visit', '#/shopping/list'], ['Stores', '#/shopping/stores']]);
+  for (const [key, p] of Object.entries(FEAT.pages)) { const href = p.href || '#/' + key; if (p.label && !L.some(x => x[1] === href)) L.push([p.label, href]); }
+  return L;
+};
 let SRCH = { t: 0, q: '', seq: 0 };
 function searchDialog() {
   modal(html`<form method="dialog" class="srch-dlg" role="search"><h2>Search</h2>
@@ -93,7 +99,7 @@ function searchDialog() {
 async function searchRun(q) {
   const box = document.getElementById('srch-res'); if (!box) return;
   q = q.trim(); SRCH.q = q; const seq = ++SRCH.seq;
-  const pages = q.length >= 2 ? PAGES_LIST.filter(([n]) => n.toLowerCase().includes(q.toLowerCase())).map(([n, h]) => ({ title: n, sub: 'page', href: h })) : [];
+  const pages = q.length >= 2 ? pagesList().filter(([n]) => n.toLowerCase().includes(q.toLowerCase())).map(([n, h]) => ({ title: n, sub: 'page', href: h })) : [];
   let groups = [];
   if (q.length >= 2) { try { groups = (await api('GET', '/api/search?q=' + enc(q))).groups; } catch (e) { groups = [{ kind: 'err', word: 'Could not search', items: [{ title: e.message, sub: '', href: '' }] }]; } }
   if (seq !== SRCH.seq || !document.getElementById('srch-res')) return;
