@@ -1,0 +1,35 @@
+{
+ "id": "C3",
+ "created": "2026-11-08",
+ "author": "Claude (Ethan's answer about P-036's smell, Nov 2026)",
+ "updates": [
+  {
+   "code": "P-036",
+   "note": "no smell when a leaf is crushed (Ethan, November 8): chrysanthemum ruled out, hydrangea cutting most likely",
+   "set": {
+    "id_basis": [
+     "Thin, woody brown stems with opposite pairs of light-green leaves that narrow to the base and are coarsely toothed toward the tip. It was taken for stevia, but the leaves have no sweetness at all (taste test, October 23), so it is not stevia. The stems are round (Ethan, November 3), so it is not in the mint family (salvia and mint have square stems). That leaves a hydrangea cutting, a eupatorium or ageratina, or a chrysanthemum cutting.",
+     "Thin, woody brown stems with opposite pairs of light-green leaves that narrow to the base and are coarsely toothed toward the tip. It was taken for stevia, but the leaves have no sweetness at all (taste test, October 23), so it is not stevia. The stems are round (Ethan, November 3), so it is not in the mint family (salvia and mint have square stems). A crushed leaf has no smell at all (Ethan, November 8), which rules out a chrysanthemum (sharp and herby) and makes the boneset group (usually scented) unlikely. A hydrangea cutting fits best: woody opposite stems, toothed leaves with no scent. A flower would settle it."
+    ],
+    "id_alternatives": [
+     "Hydrangea cutting\nEupatorium or Ageratina (boneset, snakeroot)\nChrysanthemum cutting",
+     "Hydrangea cutting (most likely)\nAnother young deciduous shrub cutting (viburnum, rose of Sharon)\nEupatorium or Ageratina (boneset, snakeroot), less likely with no scent"
+    ],
+    "id_improve": [
+     "Crush a leaf: does it smell of anything (sharp and herby like a chrysanthemum, or nothing)?\nA flower\nWhere the cutting or seed came from",
+     "A flower\nWhere the cutting or seed came from\nWhether the leaves drop in winter (a hydrangea's do)"
+    ],
+    "id_confidence": [
+     25,
+     30
+    ]
+   }
+  }
+ ],
+ "requests_done": [
+  {
+   "key": "p036-smell",
+   "answer": "No distinct smell (Ethan, November 8). That rules out a chrysanthemum and points to a hydrangea cutting; its page says so."
+  }
+ ]
+}

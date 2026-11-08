@@ -33,7 +33,18 @@ function xLabel(t, span) {
   if (span > 100) return d.toLocaleDateString([], { month: 'short', year: '2-digit' });
   return span <= 9 ? d.toLocaleDateString([], { weekday: 'short', day: 'numeric' }) : d.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
+// 1.47.0: a temperature chart is drawn in the person's unit (Display, Units). The data stays in °F; the values, lines and bands are
+// converted here, once, for any chart whose unit is °F
+function tempChart(spec) {
+  if (spec.unit !== '°F' || unitsGet().temp !== 'c') return spec;
+  const lab = t => String(t).replace(/(-?\d+(?:\.\d+)?)\s?°F/g, (m, n) => tF(+n)).replace(/°F/g, '°C');
+  return { ...spec, unit: '°C', title: lab(spec.title),
+    series: spec.series.map(x => ({ ...x, pts: x.pts.map(pt => [pt[0], tNum(pt[1], 1)]) })),
+    refs: (spec.refs || []).map(r => ({ ...r, v: tNum(r.v, 1), label: lab(r.label) })),
+    bands: (spec.bands || []).map(b => ({ ...b, lo: tNum(b.lo, 1), hi: tNum(b.hi, 1), label: lab(b.label) })) };
+}
 function chartCard(id, spec) {
+  spec = tempChart(spec);
   CHARTS[id] = spec;
   const rows = [...new Set(spec.series.flatMap(s => s.pts.map(p => p[0])))].sort((a, b) => b - a).slice(0, 400);
   const look = spec.series.map(s => new Map(s.pts.map(p => [p[0], p[1]])));
@@ -122,11 +133,11 @@ function seasonExpected(ref) {     // the written reference where it applies (Ro
 // 1.34.0: the USDA hardiness zone (winter) and the AHS heat zone (summer) side by side, both from the place's own weather history
 function climateBlock(W, H, P) {
   const Z = META && String(META.place.id) === String(W.location.id) ? META.zone : null;
-  const winter = Z && Z.zone ? html`<p>The last ${Z.years} winters averaged a coldest night of <strong>${Z.winter_low}°F</strong>, which is <strong>USDA hardiness zone ${Z.zone}</strong> (how cold a usual winter gets, the zone on plant tags).${Z.map_note ? ' ' + Z.map_note : ''} <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>`
+  const winter = Z && Z.zone ? html`<p>The last ${Z.years} winters averaged a coldest night of <strong>${tF(Z.winter_low)}</strong>, which is <strong>USDA hardiness zone ${Z.zone}</strong> (how cold a usual winter gets, the zone on plant tags).${Z.map_note ? ' ' + Z.map_note : ''} <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>`
     : Z && Z.map_zone ? html`<p>Zone ${Z.map_zone} on the 2023 USDA map. The winter zone from your own weather history appears after 3 whole years of it.</p>`
     : html`<p class="muted">The winter zone from this place's weather history appears after 3 whole years of it.</p>`;
   if (!H) return html`${winter}<p class="muted">Summer heat could not be worked out.</p>`;
-  const summer = H.zone ? html`<p>A usual year here has <strong>${H.over86} days above ${H.line}°F</strong>, which is <strong>AHS heat zone ${H.zone}</strong> of 12 (1 = cool summers, 12 = very hot), and its hottest day reaches about <strong>${H.hottest}°F</strong>. ${H.months.length ? `Hot days come ${H.months.length === 1 ? 'in ' + H.months[0].month : 'from ' + H.months[0].month + ' to ' + H.months[H.months.length - 1].month} (about ${H.months.map(m => `${m.days} in ${m.month}`).join(', ')}).` : ''}
+  const summer = H.zone ? html`<p>A usual year here has <strong>${H.over86} days above ${tF(H.line)}</strong>, which is <strong>AHS heat zone ${H.zone}</strong> of 12 (1 = cool summers, 12 = very hot), and its hottest day reaches about <strong>${tF(H.hottest)}</strong>. ${H.months.length ? `Hot days come ${H.months.length === 1 ? 'in ' + H.months[0].month : 'from ' + H.months[0].month + ' to ' + H.months[H.months.length - 1].month} (about ${H.months.map(m => `${m.days} in ${m.month}`).join(', ')}).` : ''}
       From ${H.years} whole years of weather (${H.since} on). Many plant tags give a heat zone range next to the hardiness zones; this is the number to compare it with.</p>`
     : html`<p class="muted">The summer heat zone appears after 3 whole years of weather history here${H.years ? ` (${H.years} so far)` : ''}.</p>`;
   const rows = (H.per_year || []).filter(y => !y.partial || y.over86);
@@ -139,8 +150,8 @@ function climateBlock(W, H, P) {
       <p class="hint">Each link opens the Plants page with the "Summer here" filter set. Each plant's page has the details under About this plant.</p>` : '';
   return html`${winter}${summer}${plantsPart}
     ${rows.length ? html`<div class="tbl-wrap"><table class="tbl heat-tbl"><caption class="sr">Hot days each year in ${H.place}</caption>
-      <thead><tr><th scope="col">Year</th><th scope="col">Days above ${H.line}°F</th><th scope="col">Hottest day</th></tr></thead>
-      <tbody>${rows.map(y => html`<tr><th scope="row">${y.year}${y.partial ? ' (so far)' : ''}</th><td>${y.over86}</td><td>${y.hottest}°F</td></tr>`)}</tbody></table></div>` : ''}`;
+      <thead><tr><th scope="col">Year</th><th scope="col">Days above ${tF(H.line)}</th><th scope="col">Hottest day</th></tr></thead>
+      <tbody>${rows.map(y => html`<tr><th scope="row">${y.year}${y.partial ? ' (so far)' : ''}</th><td>${y.over86}</td><td>${tF(y.hottest)}</td></tr>`)}</tbody></table></div>` : ''}`;
 }
 function seasonTable(ref, monthly) {
   const obs = Object.fromEntries((monthly || []).map(x => [x.month, x]));
@@ -149,8 +160,8 @@ function seasonTable(ref, monthly) {
   return html`<div class="tbl-wrap"><table class="tbl"><caption class="sr">Expected weather compared with the weather tracked so far this season</caption>
     <thead><tr><th>Month</th><th>Expected low and high</th><th>Tracked low and high</th><th>Expected freezing nights</th><th>Tracked freezing nights</th><th>Expected humidity</th><th>Tracked humidity</th></tr></thead><tbody>
     ${keys.map(([mo, key]) => { const e = exp[mo] || {}, o = obs[key];
-      return html`<tr><th scope="row">${mo}</th><td>${e.low != null ? e.low + ' to ' + e.high + '°F' : ''}</td>
-        <td>${o ? html`${o.low} to ${o.high}°F<div class="hint">${o.days} days tracked</div>` : html`<span class="muted">Not tracked yet</span>`}</td>
+      return html`<tr><th scope="row">${mo}</th><td>${e.low != null ? tF(e.low, false) + ' to ' + tF(e.high) : ''}</td>
+        <td>${o ? html`${tF(o.low, false)} to ${tF(o.high)}<div class="hint">${o.days} days tracked</div>` : html`<span class="muted">Not tracked yet</span>`}</td>
         <td>${e.freeze_nights != null ? e.freeze_nights + ' on average' : ''}</td><td>${o ? o.freeze_nights + (o.days < 28 ? ' so far' : '') : ''}</td>
         <td>${e.rh != null ? (e.rh_pm != null ? e.rh + '% morning, ' + e.rh_pm + '% afternoon' : e.rh + '% average') : ''}</td><td>${o && o.rh != null ? Math.round(o.rh) + '% average' : ''}</td></tr>`; })}</tbody></table></div>
     ${E.src === 'history' ? html`<p class="hint">Expected values for ${placeName()} are averages from its weather history since ${(E.since || '').slice(0, 4)} (${E.years} years or more of every month).</p>`
@@ -163,13 +174,13 @@ function forecastBlock(W, plants) {
   const coldest = days.reduce((a, b) => (b.low < a.low ? b : a));
   const rs = risk(coldest.low);
   const dName = d => new Date(d + 'T12:00:00').toLocaleDateString([], { weekday: 'long', month: 'short', day: 'numeric' });
-  return html`<p class="${coldest.low <= 32 ? 'notice bad' : coldest.low <= 38 ? 'notice' : 'notice ok'}" role="status"><strong>Coldest night in the forecast: ${coldest.low}°F on ${dName(coldest.date)}.</strong>
+  return html`<p class="${coldest.low <= 32 ? 'notice bad' : coldest.low <= 38 ? 'notice' : 'notice ok'}" role="status"><strong>Coldest night in the forecast: ${tF(coldest.low)} on ${dName(coldest.date)}.</strong>
       ${coldest.low <= 32 ? ' That is a freeze.' : coldest.low <= 38 ? ' Frost is possible in low spots.' : ' No frost expected.'}
       ${rs.length ? ` ${rs.length} of ${plants.filter(p => !isInside(p)).length} plants outside would be damaged by that if they were left outside uncovered.` : ' None of your plants would be damaged by that.'}</p>
     <div class="tbl-wrap"><table class="tbl fc-table"><caption class="sr">Daily forecast</caption><thead><tr><th>Day</th><th class="num">Low</th><th class="num">High</th><th class="num">Humidity</th><th class="num">Daylight</th><th>Plants that would be damaged</th></tr></thead><tbody>
     ${days.map(d => { const r = risk(d.low); return html`<tr><th scope="row">${dName(d.date)}${d.hours < 20 ? html`<div class="hint">rest of the day</div>` : ''}</th>
-      <td class="num ${d.low <= 32 ? 'cold' : ''}">${d.low}°F${d.low <= 32 ? ' (freeze)' : ''}</td><td class="num">${d.high}°F</td><td class="num">${d.rh == null ? '' : d.rh + '%'}</td><td class="num">${d.dli} mol/m²</td>
-      <td>${r.length ? html`<details><summary>${r.length} plants</summary><ul>${r.map(p => html`<li><a href="#/plant/${enc(p.code)}">${p.common_name}</a>, damage below ${p.temp_damage_below}°F (${p.winter_plan})</li>`)}</ul></details>` : 'None'}</td></tr>`; })}</tbody></table></div>
+      <td class="num ${d.low <= 32 ? 'cold' : ''}">${tF(d.low)}${d.low <= 32 ? ' (freeze)' : ''}</td><td class="num">${tF(d.high)}</td><td class="num">${d.rh == null ? '' : d.rh + '%'}</td><td class="num">${d.dli} mol/m²</td>
+      <td>${r.length ? html`<details><summary>${r.length} plants</summary><ul>${r.map(p => html`<li><a href="#/plant/${enc(p.code)}">${p.common_name}</a>, damage below ${tF(p.temp_damage_below)} (${p.winter_plan})</li>`)}</ul></details>` : 'None'}</td></tr>`; })}</tbody></table></div>
     <p class="hint">Forecast from Open-Meteo, updated ${W.forecast.fetched_at ? when(W.forecast.fetched_at) : ''}. "Damaged" uses each plant's "damage below" temperature. A night's low can happen at dawn on the next calendar day.</p>`;
 }
 
@@ -205,7 +216,7 @@ async function viewWeather(sec) {
       <p class="hint">Every value saved so far, as a table. The first three columns (temperature, humidity, plant light) go back as far as your history does. The other measurements are kept hourly ${W.weather.detail_since ? 'from ' + dayLong(W.weather.detail_since) : 'once collected'} and as daily summaries for all of it.</p>
       ${wtControls()}<div id="wx-table"><p class="loading">Loading table</p></div></section>
     <section class="blk"><h2>Expected and tracked this season in ${W.location.name}</h2>${seasonTable(ref, monthly)}
-      <p class="hint">${ref.applies !== false ? `Expected values are 30-year averages for ${W.location.name}. ` : ''}Tracked values come from the readings above: the average of each day's low and high, and how many nights fell to 32°F or below. Days with fewer than 12 readings are skipped.</p></section>
+      <p class="hint">${ref.applies !== false ? `Expected values are 30-year averages for ${W.location.name}. ` : ''}Tracked values come from the readings above: the average of each day's low and high, and how many nights fell to ${tF(32)} or below. Days with fewer than 12 readings are skipped.</p></section>
     <section class="blk" id="wx-climate"><h2>Your climate: winter cold and summer heat in ${W.location.name}</h2>${climateBlock(W, heat, heatP)}</section>
     <section class="blk" id="wx-frostdates"><h2>Frost dates in ${W.location.name}</h2><div class="fd-box" data-fd="weather"><p class="muted">Working out the frost dates…</p></div></section>
     ${ing ? html`<section class="blk" id="sensor"><h2>Connect your sensor</h2><p><a class="btn small ghost" href="#/sensors">Your sensors: newest values and alerts</a></p>
@@ -681,11 +692,11 @@ function frostBanner(inPage) {
   const W = F.worst, real = W.level !== 'watch', c = W.counts, sameNight = F.first.date === W.date;
   const parts = [c.danger ? `${c.danger} could die` : '', c.damage ? `${c.damage} would be damaged` : '', c.watch ? `${c.watch} ${c.watch === 1 ? 'is a close call' : 'are close calls'}` : ''].filter(Boolean);
   const list = parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0];
-  const title = `${!real ? 'Cold night ahead' : W.low <= 36 ? 'Frost warning' : 'Cold warning'} for ${placeShort()}: down to ${W.low}°F ${fzDay(W.date, true)}`;
+  const title = `${!real ? 'Cold night ahead' : W.low <= 36 ? 'Frost warning' : 'Cold warning'} for ${placeShort()}: down to ${tF(W.low)} ${fzDay(W.date, true)}`;
   // 1.34.0: on Today the warning is part of the page (a section with a heading, never hidden); elsewhere it is the banner above the page
   return html`<${inPage ? 'div' : 'section'} class="fz-banner ${real ? 'bad' : ''} noprint" ${inPage ? '' : raw('aria-labelledby="fz-h"')}>
     ${inPage ? html`<h2 class="fz-title">${title}</h2>` : html`<p class="fz-title" id="fz-h">${title}</p>`}
-    <p>Of your ${F.outdoor} plants outside, ${list} that night.${sameNight ? '' : ` The first cold night is ${fzDay(F.first.date, true)}, at ${F.first.low}°F.`}
+    <p>Of your ${F.outdoor} plants outside, ${list} that night.${sameNight ? '' : ` The first cold night is ${fzDay(F.first.date, true)}, at ${tF(F.first.low)}.`}
       Bring them in or cover them <strong>${fzActBy(F.first.date)}</strong>.</p>
     <p class="row"><a class="btn" href="#/frost">Open the cold-night checklist</a>
       ${inPage ? '' : html`<button class="btn ghost" type="button" data-act="frosthide">Hide until the forecast changes</button>`}</p></${inPage ? 'div' : 'section'}>`;
@@ -697,13 +708,13 @@ const FZ_DO = {
   'Seasonal die-back': 'The top growth may die back. Mulch or wrap the pot, or move it to shelter to protect the roots.',
   'Annual': 'An annual: the cold will likely end its season. Bring it in only if you want to keep it going.',
 };
-const fzNight = z => `${fzDay(z.date)}, ${z.low}°F (${FZ_WORD[z.level].toLowerCase()})`;
+const fzNight = z => `${fzDay(z.date)}, ${tF(z.low)} (${FZ_WORD[z.level].toLowerCase()})`;
 function fzRow(p) {
   const d = p.done, many = p.nights.length > 1;
   return html`<li class="fz-row ${d ? 'is-done' : ''}" data-code="${p.code}">
     ${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy" width="72" height="72">` : html`<span class="fz-nophoto" aria-hidden="true"></span>`}
     <div class="fz-txt"><a class="nm" href="#/plant/${enc(p.code)}">${p.name}</a> <span class="muted">${p.code}</span>
-      <div><span class="fz-lv fz-${p.level}">${FZ_WORD[p.level]}</span> Damaged below ${p.damage}°F${p.lethal != null ? `, dies below ${p.lethal}°F` : ''}.${p.site === 'Covered porch' ? ' On the covered porch, which helps a little but not in a freeze.' : ''}</div>
+      <div><span class="fz-lv fz-${p.level}">${FZ_WORD[p.level]}</span> Damaged below ${tF(p.damage)}${p.lethal != null ? `, dies below ${tF(p.lethal)}` : ''}.${p.site === 'Covered porch' ? ' On the covered porch, which helps a little but not in a freeze.' : ''}</div>
       <div>Next cold night: ${fzNight(p.next)}.${many && p.worst.date !== p.next.date ? ` Coldest: ${fzNight(p.worst)}.` : ''}${many ? ` Cold on ${p.nights.length} of the next 7 nights.` : ''}</div>
       <div class="hint">${FZ_DO[p.plan] || FZ_DO['Protect outside']}</div>
       ${d ? html`<div class="fz-done">✔ Covered for ${fzDay(p.next.date, true)}, marked by ${d.by} ${when(d.at)}. It comes back on the list for the next cold night.</div>` : ''}</div>
@@ -714,7 +725,7 @@ function fzRow(p) {
 const FZ_GROUPS = [
   ['in', 'Bring inside', 'Plants whose winter plan is Move indoors.', p => p.plan === 'Move indoors'],
   ['cover', 'Cover or move to shelter', 'Plants that stay outside but would be hurt.', p => p.plan !== 'Move indoors' && p.level !== 'watch'],
-  ['watch', 'Close calls', 'Within 3°F of their damage point. Worth covering if the night is clear and still.', p => p.plan !== 'Move indoors' && p.level === 'watch'],
+  ['watch', 'Close calls', () => `Within ${tD(3)} of their damage point. Worth covering if the night is clear and still.`, p => p.plan !== 'Move indoors' && p.level === 'watch'],
 ];
 async function viewFrost() {
   const F = await loadFrost(true);
@@ -724,7 +735,7 @@ async function viewFrost() {
     title: 'Cold-night checklist',
     html: html`<p class="crumb"><a href="#/winter">Winter plan</a></p><h1>Cold-night checklist</h1>
     <p class="muted">Plants that are outside and would be hurt by a night in the 7-day forecast for ${F.place}. "Could die" and "Damaged" use each plant's own temperatures;
-      "Close call" means within ${F.margin}°F of its damage point, because forecasts often miss a clear, still night by a few degrees.
+      "Close call" means within ${tD(F.margin)} of its damage point, because forecasts often miss a clear, still night by a few degrees.
       Plants set to Indoors or Garage or shed are left out, so a plant leaves this list when you press Moved indoors.</p>
     <p>Before a plant comes inside, check it for pests: <a href="#/inside">Getting plants ready to come inside</a>.</p>
     ${canChange() ? html`<p class="row noprint"><button class="btn ghost small" type="button" data-act="buywatch" data-kind="frost" data-name="Frost cloth" data-search="frost cloth; frost blanket; plant cover" data-src="frost">Watch the stores for frost cloth</button></p>` : ''}
@@ -732,10 +743,10 @@ async function viewFrost() {
     ${F.nights.length && !F.plants.length ? html`<p class="notice ok">No cold nights in the next 7 days for any plant that is outside.</p>` : ''}
     ${F.nights.length ? html`<section class="blk"><h2>The next 7 nights</h2><div class="tbl-wrap"><table class="tbl fz-tbl"><caption class="sr">Plants at risk each night</caption>
       <thead><tr><th>Day</th><th class="num">Low</th><th class="num">Could die</th><th class="num">Damaged</th><th class="num">Close calls</th><th class="num">Covered</th></tr></thead><tbody>
-      ${F.nights.map(n => html`<tr><th scope="row">${fzDay(n.date)}</th><td class="num">${n.low}°F${n.low <= 32 ? ' (freeze)' : ''}</td>
+      ${F.nights.map(n => html`<tr><th scope="row">${fzDay(n.date)}</th><td class="num">${tF(n.low)}${n.low <= 32 ? ' (freeze)' : ''}</td>
         <td class="num">${n.counts.danger || '–'}</td><td class="num">${n.counts.damage || '–'}</td><td class="num">${n.counts.watch || '–'}</td><td class="num">${n.level ? ticked(n) : '–'}</td></tr>`)}
       </tbody></table></div><p class="hint">Forecast updated ${F.fetched_at ? when(F.fetched_at) : 'not yet'}. The low is usually reached just before dawn, so act the evening before.</p></section>` : ''}
-    ${FZ_GROUPS.map(([id, title, sub, test]) => { const g = (F.plants || []).filter(test); if (!g.length) return '';
+    ${FZ_GROUPS.map(([id, title, sub0, test]) => { const g = (F.plants || []).filter(test), sub = typeof sub0 === 'function' ? sub0() : sub0; if (!g.length) return '';   // 1.47.0: a sub written as a function reads in the person's unit
       const open = g.filter(p => !p.done);
       return html`<section class="blk" id="fz-${id}"><h2>${title} (${g.length})</h2><p class="muted">${sub} Most urgent first.</p>
         ${open.length > 1 ? html`<p>${id === 'in' ? html`<button class="btn small ghost" type="button" data-act="frostallin" data-group="${id}">Moved all ${open.length} indoors</button>`
@@ -754,8 +765,8 @@ function frostNote(p) {
   const x = FROST && (FROST.plants || []).find(q => q.code === p.code);
   if (!x || x.level === 'watch') return '';
   const w = x.worst;
-  return html`<p class="notice bad noprint fz-note"><strong>Frost risk:</strong> ${fzDay(w.date)} is forecast to drop to ${w.low}°F,
-    below this plant's ${w.level === 'danger' ? `lowest survivable temperature (${x.lethal}°F)` : `damage point (${x.damage}°F)`}.
+  return html`<p class="notice bad noprint fz-note"><strong>Frost risk:</strong> ${fzDay(w.date)} is forecast to drop to ${tF(w.low)},
+    below this plant's ${w.level === 'danger' ? `lowest survivable temperature (${tF(x.lethal)})` : `damage point (${tF(x.damage)})`}.
     ${FZ_DO[p.winter_plan] || ''} <a href="#/frost">Open the cold-night checklist</a></p>`;
 }
 
@@ -774,7 +785,7 @@ async function viewWinter() {
       const g = list.filter(p => p.winter_plan === pl && !isInside(p)).sort((a, b) => (b.temp_damage_below ?? -99) - (a.temp_damage_below ?? -99));
       if (!g.length) return '';
       return html`<div><h3>${pl} (${g.length})</h3><ul class="todo winter-list">${g.map(p => html`<li>${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : html`<span></span>`}
-        <span><a class="nm" href="#/plant/${enc(p.code)}">${p.common_name}</a><br><span class="muted">${p.code}${p.temp_damage_below != null ? ', damage below ' + p.temp_damage_below + '°F' : ''}${p.site && p.site !== 'Outdoors' ? ', ' + p.site.toLowerCase() : ''}</span>
+        <span><a class="nm" href="#/plant/${enc(p.code)}">${p.common_name}</a><br><span class="muted">${p.code}${p.temp_damage_below != null ? ', damage below ' + tF(p.temp_damage_below) : ''}${p.site && p.site !== 'Outdoors' ? ', ' + p.site.toLowerCase() : ''}</span>
         <br><button class="btn small noprint" type="button" data-act="movein" data-code="${p.code}" data-name="${p.common_name}">Moved indoors</button></span></li>`)}</ul></div>`;
     })}</div>
     ${(() => { const ins = list.filter(isInside).sort((a, b) => a.code.localeCompare(b.code)); return ins.length ? html`<h3 id="inside-list">Already inside (${ins.length})</h3>
@@ -800,7 +811,7 @@ async function loadOutside(force) {
 const BO_WORD = { ready: 'Ready', safe: 'Safe, but cool', early: 'Too early', wait: 'Not yet' };
 const BO_GROUPS = [
   ['ready', 'Ready to go back out', 'Every night in the forecast is at or above the low each of these likes.'],
-  ['safe', 'Safe to go out, but the nights are cool', 'No night in the forecast comes within 3°F of their damage point, but some nights are cooler than they like. Going out now is fine; they will grow slowly until the nights warm up.'],
+  ['safe', 'Safe to go out, but the nights are cool', `No night in the forecast comes within ${tD(3)} of their damage point, but some nights are cooler than they like. Going out now is fine; they will grow slowly until the nights warm up.`],
   ['early', 'A warm week, but it is early', 'The forecast is fine for these, but in most years colder nights still come after this date. Wait, or put them out and be ready to bring them back in.'],
   ['wait', 'Not yet', 'A night in the forecast is too cold for these.'],
 ];
@@ -808,17 +819,17 @@ const boMd = md => new Date('2001-' + md + 'T12:00:00').toLocaleDateString([], {
 function boUsual(p) {
   const u = p.usual;
   if (!u) return '';
-  if (p.why === 'autumn' && u.first) return `In most years the first night below ${p.safe_at}°F comes around ${boMd(u.first)}, so it would likely need to come back in soon.`;
+  if (p.why === 'autumn' && u.first) return `In most years the first night below ${tF(p.safe_at)} comes around ${boMd(u.first)}, so it would likely need to come back in soon.`;
   if (!u.safe) return '';
-  if (u.safe === '01-01') return `In the last ${u.spring_years} springs, no night went below ${p.safe_at}°F.`;
-  return `In most of the last ${u.spring_years} years, the nights stayed above ${p.safe_at}°F from ${boMd(u.safe)} on${u.safe_latest !== u.safe ? ` (in the latest year, from ${boMd(u.safe_latest)})` : ''}.`;
+  if (u.safe === '01-01') return `In the last ${u.spring_years} springs, no night went below ${tF(p.safe_at)}.`;
+  return `In most of the last ${u.spring_years} years, the nights stayed above ${tF(p.safe_at)} from ${boMd(u.safe)} on${u.safe_latest !== u.safe ? ` (in the latest year, from ${boMd(u.safe_latest)})` : ''}.`;
 }
 function boRow(p) {
   const lv = p.level, c = p.coldest;
-  const needs = p.damage != null ? `Damaged below ${p.damage}°F${p.like > p.safe_at ? `; likes nights of ${p.like}°F or more` : ''}.` : p.like != null ? `Likes nights of ${p.like}°F or more.` : 'No temperatures on its page yet, so it cannot be checked.';
+  const needs = p.damage != null ? `Damaged below ${tF(p.damage)}${p.like > p.safe_at ? `; likes nights of ${tF(p.like)} or more` : ''}.` : p.like != null ? `Likes nights of ${tF(p.like)} or more.` : 'No temperatures on its page yet, so it cannot be checked.';
   let fc = '';
-  if (lv === 'wait') fc = `Too cold ${fzDay(p.first_cold.date, true)}: ${p.first_cold.low}°F. It needs ${p.safe_at}°F or more to be safe${c.date !== p.first_cold.date ? `; the coldest night is ${fzDay(c.date, true)}, ${c.low}°F` : ''}.`;
-  else if (c) fc = `Coldest night in the forecast: ${fzDay(c.date, true)}, ${c.low}°F.${p.cool_nights ? ` ${p.cool_nights} of the next ${BO.nights.length} nights are below ${p.like}°F.` : ''}`;
+  if (lv === 'wait') fc = `Too cold ${fzDay(p.first_cold.date, true)}: ${tF(p.first_cold.low)}. It needs ${tF(p.safe_at)} or more to be safe${c.date !== p.first_cold.date ? `; the coldest night is ${fzDay(c.date, true)}, ${tF(c.low)}` : ''}.`;
+  else if (c) fc = `Coldest night in the forecast: ${fzDay(c.date, true)}, ${tF(c.low)}.${p.cool_nights ? ` ${p.cool_nights} of the next ${BO.nights.length} nights are below ${tF(p.like)}.` : ''}`;
   const usual = boUsual(p);
   const go = lv && lv !== 'wait';
   return html`<li class="fz-row bo-row" data-code="${p.code}">
@@ -848,7 +859,7 @@ async function viewOutside() {
     title: 'Back outside',
     html: html`<p class="crumb"><a href="#/winter">Winter plan</a></p><h1>Back outside</h1>
     <p class="muted">Plants that are inside now (Indoors, or Garage or shed), and whether the nights in the 7-day forecast for ${B.place} are warm enough for each to go back out.
-      Each plant is checked against its own temperatures: safe means no night within ${B.margin}°F of its damage point, and ready means every night is at or above the low it likes.</p>
+      Each plant is checked against its own temperatures: safe means no night within ${tD(B.margin)} of its damage point, and ready means every night is at or above the low it likes.</p>
     ${B.season === 'autumn' ? html`<p class="notice">It is autumn, so most plants that came inside should stay in until spring. This page is most useful from late winter: each plant shows as ready as soon as the nights are warm enough for it.</p>` : ''}
     ${!B.nights.length ? html`<p class="notice">No forecast yet. It is fetched a few seconds after the app starts, then every hour.</p>` : ''}
     ${!ps.length ? html`<p class="notice ok">No plants are inside. When you bring one in, press its Moved indoors button and it shows here.</p>` : ''}
@@ -866,7 +877,7 @@ async function viewOutside() {
     <section class="blk" id="bo-frostdates"><h2>When the cold nights usually end</h2><div class="fd-box" data-fd="outside"><p class="muted">Working out the frost dates…</p></div></section>
     ${B.nights.length ? html`<section class="blk"><h2>The next 7 nights</h2><div class="tbl-wrap"><table class="tbl bo-tbl"><caption class="sr">Forecast lows</caption>
       <thead><tr><th>Day</th><th class="num">Low</th></tr></thead><tbody>
-      ${B.nights.map(x => html`<tr><th scope="row">${fzDay(x.date)}</th><td class="num">${x.low}°F</td></tr>`)}</tbody></table></div>
+      ${B.nights.map(x => html`<tr><th scope="row">${fzDay(x.date)}</th><td class="num">${tF(x.low)}</td></tr>`)}</tbody></table></div>
       <p class="hint">Forecast updated ${B.fetched_at ? when(B.fetched_at) : 'not yet'}. The low is usually reached just before dawn.</p></section>` : ''}
     ${(B.porch || []).filter(p => !p.is_due).length ? html`<section class="blk" id="bo-porchwait"><h2>On the porch for now (${B.porch.filter(p => !p.is_due).length})</h2>
       <p class="muted">Getting used to the light, and out of full sun so the leaves do not scorch. A reminder comes after a week.</p>

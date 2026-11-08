@@ -39,7 +39,8 @@ def sitter_api():
         while d <= d1:
             days[d.isoformat()].append(w['code']); visits.append(d.isoformat())
             d += timedelta(days=w['every'])
-        plants.append({'code': r['code'], 'name': r['common_name'], 'scientific': r['scientific_name'], 'site': w['site'], 'spot': r['location'] or '',
+        ph = c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC, id LIMIT 1', (r['id'],)).fetchone()   # 1.47.0: a picture on the sheet, so the sitter knows which pot
+        plants.append({'code': r['code'], 'name': r['common_name'], 'scientific': r['scientific_name'], 'site': w['site'], 'spot': r['location'] or '', 'photo': ph[0] if ph else None,
                        'every': w['every'], 'why': w['why'], 'state': w['state'], 'next': w['next'], 'visits': visits,
                        'water_notes': r['water_notes'] or '', 'damage_below': r['temp_damage_below'], 'damage_above': r['temp_damage_above'],
                        'winter_plan': r['winter_plan'] or '', 'open_sky': w['site'] == 'Outdoors'})

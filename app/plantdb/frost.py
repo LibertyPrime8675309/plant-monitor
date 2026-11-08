@@ -230,15 +230,16 @@ def ics_events(c, o):
             stop = datetime.combine(d, datetime.min.time(), tz).replace(hour=8)
             if stop < datetime.now(tz): continue                 # that night is over
             k = len(at)
-            title = (f'Cold night, low {round(n["low"])}°F: protect {len(serious)} plant{"s" if len(serious) != 1 else ""}' if serious
-                     else f'Cold night, low {round(n["low"])}°F: {k} close call{"s" if k != 1 else ""}')
+            T = temp_text(round(n["low"]))                         # 1.47.0: in the units of the person the calendar belongs to
+            title = (f'Cold night, low {T}: protect {len(serious)} plant{"s" if len(serious) != 1 else ""}' if serious
+                     else f'Cold night, low {T}: {k} close call{"s" if k != 1 else ""}')
             lines = []
             for lv in ('danger', 'damage', 'watch'):
                 g = [x for x in at if x['level'] == lv]
                 if g: lines.append(words[lv] + ': ' + ', '.join(f'{x["name"]} ({x["code"]})' for x in g) + '.')
-            desc = (f'Forecast low of {round(n["low"])}°F before dawn on {d:%A}, {d:%B} {d.day}, in {F["place"]}. These plants are outside:\n\n' + '\n'.join(lines) +
+            desc = (f'Forecast low of {T} before dawn on {d:%A}, {d:%B} {d.day}, in {F["place"]}. These plants are outside:\n\n' + '\n'.join(lines) +
                     f'\n\nMove them in or cover them before dark, then tick them off on the cold-night checklist.'
-                    f' "Close call" means within {F["margin"]}°F of the plant\'s damage point. This comes from the forecast of {datetime.now(tz):%B} {datetime.now(tz).day}; forecasts change, so a subscribed calendar is the way to keep this current.')
+                    f' "Close call" means within {temp_diff_text(F["margin"])} of the plant\'s damage point. This comes from the forecast of {datetime.now(tz):%B} {datetime.now(tz).day}; forecasts change, so a subscribed calendar is the way to keep this current.')
             ev.append({'kind': 'cold', 'uid': f'cold-{n["date"]}', 'date': n['date'], 'title': title, 'desc': desc, 'level': n['level'] if serious else 'watch',
                        'start': start.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ'), 'end': stop.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ'),
                        'plants': [x['code'] for x in at], 'path': '#/frost'})

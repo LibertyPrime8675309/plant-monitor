@@ -9,7 +9,7 @@ const enc = encodeURIComponent;
 const $ = id => document.getElementById(id);
 const KEY = 'plantdb.sitter';
 
-let OPT = { from: '', to: '', group: '', list: true, pageday: false, note: '' };
+let OPT = { from: '', to: '', group: '', photos: true, pageday: false, note: '' };     // 1.47.0: photos instead of a list at the end (Ethan, November 8)
 try { Object.assign(OPT, JSON.parse(localStorage.getItem(KEY) || '{}') || {}); } catch (e) { /* storage blocked: defaults */ }
 const saveOpt = () => { try { localStorage.setItem(KEY, JSON.stringify(OPT)); } catch (e) { /* this visit only */ } };
 
@@ -38,18 +38,26 @@ function short(s) {
 }
 const where = p => p.spot && p.spot.toLowerCase().startsWith(p.site.toLowerCase()) ? p.spot : [p.site, p.spot].filter(Boolean).join(', ');
 const tick = '<span class="ps-box" aria-hidden="true"></span>';
+// 1.47.0: temperatures and rain in the units the person chose in Display (localStorage plantdb.units; core.js has the full version)
+const UREG = { us: { temp: 'f', rain: 'in' }, ca: { temp: 'c', rain: 'mm' }, metric: { temp: 'c', rain: 'mm' } };
+let U = { temp: 'f', rain: 'in' };
+try { const u = JSON.parse(localStorage.getItem('plantdb.units') || '{}') || {}, b = UREG[u.region] || UREG.us; U = { temp: u.temp || b.temp, rain: u.rain || b.rain }; } catch (e) { /* °F */ }
+const tF = f => f == null ? '' : U.temp === 'c' ? `${Number.isInteger(+f) ? Math.round((f - 32) * 5 / 9) : Math.round((f - 32) * 50 / 9) / 10}°C` : `${f}°F`;
+const rainF = x => U.rain === 'mm' ? `${Math.round(x * 25.4)} mm` : `${x} inch`;
+const thumb = f => f ? `/thumbs/${encodeURIComponent(f)}` : '';
 
 function sheet(D) {
   const by = Object.fromEntries(D.plants.map(p => [p.code, p]));
   const outside = D.plants.some(p => p.open_sky);
   const span = D.start === D.end ? dayName(D.start) : `${dayName(D.start)} to ${dayName(D.end)}`;
   const jobs = D.days.reduce((n, d) => n + d.plants.length, 0);
-  const item = (code, extra) => { const p = by[code];
-    return `<li>${tick}<span class="ps-what"><strong>${esc(p.name)}</strong> <span class="ps-code">${esc(p.code)}</span><span class="ps-where">${esc(where(p))}${extra ? '. ' + esc(extra) : ''}</span></span></li>`; };
+  // one entry per plant per day: its photo (so the sitter knows which pot), where it is, and how to tell if it needs water
+  const item = (code, extra) => { const p = by[code], how = p.water_notes ? short(p.water_notes) : '';
+    return `<li>${tick}${OPT.photos && p.photo ? `<img class="ps-pic" src="${thumb(p.photo)}" alt="" loading="lazy">` : OPT.photos ? '<span class="ps-pic ps-nopic" aria-hidden="true"></span>' : ''}<span class="ps-what"><strong>${esc(p.name)}</strong> <span class="ps-code">${esc(p.code)}</span><span class="ps-where">${esc(where(p))}${extra ? '. ' + esc(extra) : ''}</span>${how && !extra ? `<span class="ps-how1">${esc(how)}</span>` : ''}</span></li>`; };
   const intro = `<ul class="ps-how">
-      <li>On each day below, check the plants listed. The plant list at the end says where each one is and how to tell if it needs water.</li>
+      <li>On each day below, check the plants listed. Each line says where the plant is and how to tell if it needs water${OPT.photos ? ', with its photo' : ''}.</li>
       <li>Water only if it needs it. A plant that is still moist can wait.</li>
-      ${outside ? `<li>If at least ${D.rain_counts_in} inch of rain fell, the plants that are <strong>Outdoors</strong> (not on the porch) do not need watering that day.</li>` : ''}
+      ${outside ? `<li>If at least ${rainF(D.rain_counts_in)} of rain fell, the plants that are <strong>Outdoors</strong> (not on the porch) do not need watering that day.</li>` : ''}
       <li>Tick the box when it is done.</li></ul>`;
   const beyond = D.forecast_to && D.end > D.forecast_to;
   // one line per plant (not per night), so a cold spell does not fill pages: the nights it is at risk and its limit
@@ -59,20 +67,15 @@ function sheet(D) {
   const cold = coldCodes.length ? `<section class="ps-sec ps-cold" aria-labelledby="ps-cold-h"><h3 id="ps-cold-h">Cold nights in the forecast</h3>
       <p>Before dark on the nights listed, move these plants inside or cover them.</p>
       <ul class="ps-list">${coldCodes.map(c => { const { x, nights } = coldBy[c];
-        return item(c, `${nights.map(n => `${dayShort(n.date)} (${n.low}°F)`).join(', ')}. ${x.lethal != null && Math.min(...nights.map(n => n.low)) < x.lethal ? `Killed below ${x.lethal}°F` : `Harmed below ${x.damage}°F`}`); }).join('')}</ul>
+        return item(c, `${nights.map(n => `${dayShort(n.date)} (${tF(n.low)})`).join(', ')}. ${x.lethal != null && Math.min(...nights.map(n => n.low)) < x.lethal ? `Killed below ${tF(x.lethal)}` : `Harmed below ${tF(x.damage)}`}`); }).join('')}</ul>
       ${beyond ? `<p class="ps-note">The forecast only goes as far as ${esc(dayName(D.forecast_to))}. Check the weather for later nights.</p>` : ''}</section>`
     : beyond || !D.forecast_to ? `<section class="ps-sec ps-cold" aria-labelledby="ps-cold-h"><h3 id="ps-cold-h">Cold nights</h3>
       <p>${D.forecast_to && D.start <= D.forecast_to ? `No cold nights for these plants in the forecast up to ${esc(dayName(D.forecast_to))}.` : 'There is no forecast for these days yet.'}
       Check the weather. If a night near freezing is forecast, ask me what to bring in.</p></section>` : '';
   const days = `<section class="ps-sec ps-days" aria-labelledby="ps-days-h"><h3 id="ps-days-h">Day by day</h3>
-    ${D.days.map(d => `<div class="ps-day"><h4>${esc(dayName(d.date))}${d.high != null ? `<span class="ps-wx">Forecast: high ${esc(d.high)}°F, low ${esc(d.low)}°F</span>` : ''}</h4>
+    ${D.days.map(d => `<div class="ps-day"><h4>${esc(dayName(d.date))}${d.high != null ? `<span class="ps-wx">Forecast: high ${tF(d.high)}, low ${tF(d.low)}</span>` : ''}</h4>
       ${d.plants.length ? `<ul class="ps-list">${d.plants.map(c => item(c)).join('')}</ul>` : '<p class="ps-none">Nothing to check today.</p>'}</div>`).join('')}</section>`;
-  // the plant list, one short entry each, only for plants the sitter has something to do for (Ethan asked for it shorter)
-  const listed = D.plants.filter(p => p.visits.length || coldBy[p.code]);
-  const list = OPT.list && listed.length ? `<section class="ps-sec ps-plants" aria-labelledby="ps-pl-h"><h3 id="ps-pl-h">The plants</h3>
-    <p class="ps-note">Only the plants that need something while I'm away.</p>
-    <ul class="ps-pls">${listed.map(p => `<li><strong>${esc(p.name)}</strong> <span class="ps-code">${esc(p.code)}</span>. ${esc(where(p))}.
-      ${p.visits.length ? `Check about every ${esc(p.every)} ${p.every === 1 ? 'day' : 'days'}.` : ''} ${p.water_notes ? esc(short(p.water_notes)) : ''}</li>`).join('')}</ul></section>` : '';
+  const list = '';          // 1.47.0: the list at the end is gone; each day's lines carry the place and the watering words (Ethan, November 8)
   return { jobs, html: `<article class="ps-doc${OPT.pageday ? ' ps-pageday' : ''}" aria-labelledby="ps-title">
     <header class="ps-head"><h2 id="ps-title">Looking after the plants</h2><p class="ps-span">${esc(span)}</p>
       ${OPT.note.trim() ? `<p class="ps-msg">${esc(OPT.note.trim())}</p>` : ''}${intro}</header>
@@ -111,7 +114,7 @@ function paintOpts() {
   const f = $('ps-opts');
   f.from.value = OPT.from; f.to.value = OPT.to; f.group.value = OPT.group;
   if (f.group.value !== OPT.group) { OPT.group = ''; f.group.value = ''; }      // the group was removed
-  f.list.checked = !!OPT.list; f.pageday.checked = !!OPT.pageday; f.note.value = OPT.note || '';
+  f.photos.checked = !!OPT.photos; f.pageday.checked = !!OPT.pageday; f.note.value = OPT.note || '';
 }
 
 async function start() {
@@ -149,6 +152,10 @@ $('ps-note').addEventListener('input', () => {
   clearTimeout(noteTimer); noteTimer = setTimeout(load, 400);
 });
 $('ps-opts').addEventListener('submit', e => e.preventDefault());
+// 1.47.0: the app saved to an iPhone or iPad home screen (standalone) cannot print; a target=_blank link opens Safari, which can
+const standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
+if (standalone) { $('ps-open').hidden = false; $('ps-print-note').hidden = false; $('ps-print').hidden = true; }
+$('ps-open').addEventListener('click', () => { $('ps-open').href = location.pathname + location.hash; });
 $('ps-print').addEventListener('click', () => window.print());
 start().catch(e => { $('ps-sheet').innerHTML = `<div class="notice bad" role="alert"><strong>Could not make the sheet</strong><p>${esc(e.message)}</p></div>`; });
 })();

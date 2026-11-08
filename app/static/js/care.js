@@ -17,7 +17,7 @@ function waterWords(w) {
   if (!w) return '';
   if (w.state === 'unknown') return 'No watering logged yet. Press Watered when you water it, and reminders start from there.';
   const od = w.overdue, when = od > 0 ? `${od} day${od === 1 ? '' : 's'} overdue (due ${relDay(w.next)})` : od === 0 ? 'due today' : `next check ${relDay(w.next)}`;
-  const rain = w.last_rain && (!w.last_water || w.last_rain > w.last_water) ? ` Rain of ${w.rain_in} in ${relDay(w.last_rain)} was counted as a watering.` : '';
+  const rain = w.last_rain && (!w.last_water || w.last_rain > w.last_water) ? ` Rain of ${rainF(w.rain_in)} ${relDay(w.last_rain)} was counted as a watering.` : '';
   const chk = w.last_check && w.last_check >= (w.last_water || '') && w.last_check >= (w.last_rain || '') ? ` Checked ${relDay(w.last_check)}: still moist.` : '';
   return `${when[0].toUpperCase() + when.slice(1)}. ${w.last_water ? 'Last watered ' + relDay(w.last_water) + '.' : 'No watering logged yet.'}${rain}${chk} Check about every ${w.every} day${w.every === 1 ? '' : 's'}: it ${w.why === 'set on this page' ? 'is set on this page' : w.why}${w.weather ? '; ' + w.weather : ''}.`;
 }
@@ -48,7 +48,7 @@ async function loadCarePlant() {
   if (wb) { wb.disabled = done; wb.classList.toggle('done-today', done); wb.textContent = done ? '✓ Watered today' : 'Watered today'; }
   if (wn) wn.hidden = !done;
   box.innerHTML = rend(html`<div class="verdict-box v-${w && w.state === 'due' ? 'due' : 'wait'}" role="status"><h3>Watering</h3><p>${w ? waterWords(w) : ''}</p>
-      <p class="hint">Change the gap with "Check for water every (days)" in Edit this page. Rain of ${W.rain_counts_in} in or more counts as a watering for plants whose Location is Outdoors.</p></div>
+      <p class="hint">Change the gap with "Check for water every (days)" in Edit this page. Rain of ${rainF(W.rain_counts_in)} or more counts as a watering for plants whose Location is Outdoors.</p></div>
     <h3>Care log</h3>${log.length ? html`<ul class="care-log">${log.map(e => html`<li><strong>${CARE_WORD[e.kind] || e.kind}</strong> ${relDay(e.done_on)}${e.note ? ': ' + e.note : ''} <span class="muted">(${e.created_by})</span>
       ${e.pending ? html`<span class="muted">(not sent yet)</span>` : html`<button class="btn small ghost noprint" type="button" data-act="caredel" data-id="${e.id}" data-what="${(CARE_WORD[e.kind] || e.kind) + ' ' + relDay(e.done_on)}" aria-label="Remove: ${(CARE_WORD[e.kind] || e.kind)} ${relDay(e.done_on)}">Remove</button>`}</li>`)}</ul>`
       : html`<p class="muted">Nothing logged yet. Use the buttons near the top of the page.</p>`}`);
@@ -179,7 +179,7 @@ function prepChecklist(D, where) {
         ${done ? html`<p class="pm-done"><strong>Done ${m.done.map(relDay).join(' and ')}.</strong>${m.next_due ? html` Round ${m.done.length + 1} is due ${relDay(m.next_due)}.` : ''}</p>` : ''}
         <p class="pm-why">${m.reason}</p>
         ${done && !m.complete ? html`<p class="row pm-acts"><button class="btn small" type="button" data-act="prepdone" data-code="${D.code}" data-k="${m.key}" aria-label="${nm}: ${m.title.toLowerCase()}, round ${m.done.length + 1} done today">Round ${m.done.length + 1} done today</button></p>` : ''}
-        ${m.steps && m.steps.length ? html`<details class="pm-steps"><summary>How to do it</summary><ol>${m.steps.map(x => html`<li>${x}</li>`)}</ol></details>` : ''}</div></li>`; })}</ol>`;
+        ${m.steps && m.steps.length ? html`<details class="pm-steps"><summary>How to do it</summary><ol>${m.steps.map(x => html`<li>${tText(x)}</li>`)}</ol></details>` : ''}</div></li>`; })}</ol>`;
 }
 function prepRender() {
   const box = document.getElementById('prep-box'), D = PREP.data; if (!box || !D || box.dataset.code !== D.code) return;
@@ -269,7 +269,7 @@ async function viewInside() {
       <ul class="mi-plants">${list.map(fold)}</ul></section>`)}
     <section class="blk" id="in-methods"><h2>How to do each method</h2>
       <p class="hint">Not every method suits every plant: open a plant's plan to see which are best for it.</p>
-      ${D.methods.map((m, i) => html`<details class="pm-steps pm-ref"><summary>${i + 1}. ${m.title}</summary><ol>${m.steps.map(s => html`<li>${s}</li>`)}</ol></details>`)}</section>
+      ${D.methods.map((m, i) => html`<details class="pm-steps pm-ref"><summary>${i + 1}. ${m.title}</summary><ol>${m.steps.map(s => html`<li>${tText(s)}</li>`)}</ol></details>`)}</section>
     <section class="blk" id="in-apart"><h2>Keeping them apart</h2>
       <p>Pests often show up a week or two after the first treatment, when eggs hatch. So keep the plants that came in away from your long-term houseplants for ${D.keep_apart_days} days, and for 2 weeks after the last treatment if you found pests.</p>
       <ul><li>Give any plant where you found pests its own "hospital" spot until two weekly checks come up clean.</li>
@@ -354,7 +354,7 @@ async function viewToday() {
     title: 'Today',
     html: html`<h1>Today</h1><p class="muted">${longDay(t)}. Everything that needs you, most urgent first. <a href="#/plants">All plants</a> is one click away.</p>
     <div class="verdict-box" role="status"><p><strong>${line.charAt(0).toUpperCase() + line.slice(1)}.</strong>
-      ${W.avg_high != null ? `Highs have been about ${W.avg_high}°F lately.` : ''} ${Object.keys(W.rain).length ? `Rain counted as watering for plants out in the open: ${Object.entries(W.rain).slice(-3).map(([d, i]) => relDay(d) + ', ' + i + ' in').join('; ')}.` : ''}</p>
+      ${W.avg_high != null ? `Highs have been about ${tF(W.avg_high)} lately.` : ''} ${Object.keys(W.rain).length ? `Rain counted as watering for plants out in the open: ${Object.entries(W.rain).slice(-3).map(([d, i]) => relDay(d) + ', ' + rainF(i)).join('; ')}.` : ''}</p>
       <p class="row td-jumps">${jumps.map(b => html`<a class="btn small ghost" href="#${b.id}" data-act="jumpsec" data-sec="${b.id}">${b.jump}</a>`)}</p></div>
     ${blocks.map(b => b.html)}`,
     after: () => document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === 'today') a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }),
@@ -550,7 +550,7 @@ function holdReason(p, ds, ctx) {
   const lim = has(p.temp_damage_below) ? +p.temp_damage_below : 35;
   const fc = ((ctx && ctx.forecast) || []).filter(d => d.date >= ds && d.date <= addDays(ds, 2));
   const cold = fc.filter(d => d.low <= lim).sort((a, b) => a.low - b.low)[0];
-  if (cold) return `A cold night is forecast (${cold.low}°F on ${midDay(cold.date)}), at or below the damage point for this plant (${lim}°F). Wait until it passes.`;
+  if (cold) return `A cold night is forecast (${tF(cold.low)} on ${midDay(cold.date)}), at or below the damage point for this plant (${tF(lim)}). Wait until it passes.`;
   return null;
 }
 function fertState(p, entries, ds, ctx) {

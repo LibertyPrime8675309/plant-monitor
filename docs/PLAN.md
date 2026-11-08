@@ -80,7 +80,7 @@ Ethan's PC should never be the first place a Dockerfile fails. Claude cannot bui
 
 Two releases: units first, because it is self-contained and useful on its own, then sites, which is the real change.
 
-**4a. Units (one minor, 3 to 4 days).** The front end writes °F in 96 places (37 in `weather.js`, 33 in `plant.js`, 14 in `frostdates.js`) and the server in 31 more, in sentences it sends to the page, to push notifications and to the sitter sheet. Lengths are inches throughout: pot sizes, distance from a light, rainfall.
+**4a. Units (one minor, 3 to 4 days; done in 1.47.0).** The front end writes °F in 96 places (37 in `weather.js`, 33 in `plant.js`, 14 in `frostdates.js`) and the server in 31 more, in sentences it sends to the page, to push notifications and to the sitter sheet. Lengths are inches throughout: pot sizes, distance from a light, rainfall.
 
 - The database and the weather pipeline keep working in °F and inches; nothing stored changes, so no batch and no migration.
 - One pair of formatters, `fmtTemp()` and `fmtLen()` in `core.js` and `temp_text()` / `len_text()` in `core.py`, replace every hand-written unit. Every call site changes, which is the bulk of the work and why it is its own release.

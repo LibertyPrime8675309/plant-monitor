@@ -271,6 +271,16 @@ Remove the line from `.env` and run `docker compose up -d` to close it again.
   - A line starting with `PLANTDB_NOT_WRITABLE` means the app can't write to its data folder, even as root. Check that the `plant-database` folder isn't read-only (in File Explorer, right-click it, then **Properties**), then run the updater again.
   - If that doesn't help, send the log to Claude. Your plants and photos aren't changed.
 
+## Units: °F or °C, inches or centimetres (from 1.47.0)
+
+The record keeps every temperature in °F and every size in inches underneath, and shows them in the units you choose. In **Display settings, Units**:
+
+- **Where you are** sets all three at once: United States (°F, inches), Canada (°C, inches, millimetres of rain) or Everywhere else (°C, centimetres, millimetres).
+- **Temperature**, **Lengths** and **Rain and water** can then each be changed by hand, and that choice stands until you pick a region again.
+- Unlike the other Display parts, units follow you: they are saved with your sign-in and apply on every device, and in push messages, the calendar and the plant-sitter sheet.
+
+Everything you type is taken in your unit too: a plant's temperatures on its edit page, the manual conditions, a light spot's distance from the leaves, and pot and tray sizes. The app converts them back and stores whole °F and inches, so a plant's page never changes for anyone else. Notes written with °F in them ("keep warm, 70 to 80°F") read in your unit as well. Two things stay in inches whatever you choose, because they are copied from product listings: the "Light at distances" box on a grow light's card, and the pot-size words (Small, Medium, Large).
+
 ## Display settings and low vision
 
 Press the **Display** button (from 1.42.0 at the bottom of the Navigation menu; on a page with no menu, bottom right) to change how everything looks. The **Debug** button beside it is described under "Audit log" below. Changes apply at once and are remembered in that browser (each computer or phone keeps its own).
@@ -295,7 +305,7 @@ On a phone the menu bar at the top scrolls away with the page (scroll back to th
 
 ### Pop-up windows (from 1.25.0)
 
-- **Display settings** is divided into parts: Text and colours, Page layout, Reading aloud, Photos and touch, and Keyboard.
+- **Display settings** is divided into parts: Text and colours, Page layout, Units, Reading aloud, Photos and touch, and Keyboard and voice.
   - On a computer, the parts are listed on the left. Press one to jump to it; the part you're looking at is highlighted.
   - On a phone, or an upright tablet, the window covers the screen and the parts are a row of buttons above the settings.
   - **Done** and **Reset to defaults** are at the top and stay there while you scroll. Reset to defaults keeps the window open.
@@ -1426,21 +1436,25 @@ A plant by a window grows toward the light and leans. A quarter turn every week 
 Go round your plants one at a time, on the phone in the garden or at the computer, and say how each one looks today. **Today → Health walk-through** (and a line on Today saying how many are due).
 
 - **Choose** which plants (the due ones or all), where, which group, and the order (longest since looked over, worst health first, or by code).
-- **One plant at a time:** its photo, where it is, its rating now and when it was last looked over. **Take a photo** adds a photo to the plant. **How does it look now?** has four big buttons (Good, Fair, Poor, Critical), with the current one already chosen, and a box for a short note. **Looks the same: save and go on**, or **Save "Poor" and go on**; **Skip this plant**; **Back**; **Stop and see what you've done**.
+- **One plant at a time:** its photo (from 1.47.0, every photo of the plant is under it as a row of small ones; press one to see it big), where it is, its rating now and when it was last looked over. **Take a photo** adds a photo to the plant. **How does it look now?** has four big buttons (Good, Fair, Poor, Critical), with the current one already chosen, and a box for a short note. **Looks the same: save and go on**, or **Save "Poor" and go on**; **Skip this plant**; **Back**; **Stop and see what you've done**.
 - **What is saved:** a "Looked over" entry in the care log; a new rating on the plant (in its change log and timeline); and your note at the end of the plant's Health summary, with the date.
 - **How often plants are due:** every 14 days, or every 7 for plants in Poor or Critical health (both can be changed at the bottom of the page). A group can have its own number (on the group's page, **Days between looks for this group**), and it wins even for Poor or Critical plants, so cacti can be looked at once a month. A plant in several such groups goes by the shortest.
 - With no connection, saves and photos wait on the device and are sent when the connection is back.
+- On a narrow window (an iPad held upright with large text, a phone) the card is one column: the photo, then the questions (1.47.0).
+- On an iPhone or iPad, a tap made while the page is still gliding after a scroll only stops the glide; that is how iOS works, and the second tap is the one that presses the button.
 
 ## Plant-sitter sheet (from 1.43.0)
 
 A large-print plan to print for whoever looks after your plants while you are away.
 
 - **Where:** on **Today**, **Going away? Make a plant-sitter sheet**; on a group's page, **Plant-sitter sheet for this group**.
-- **Choices above the sheet** (remembered in that browser): **First day** and **Last day** (up to 6 weeks), **Which plants** (all, or one of your groups), **Printing** (**Each day on its own page**, off to start with; **The plant list at the end**, on to start with) and a **Note for the sitter**, printed at the top (how to reach you, where the watering can is).
+- **Choices above the sheet** (remembered in that browser): **First day** and **Last day** (up to 6 weeks), **Which plants** (all, or one of your groups), **Printing** (**Each day on its own page**, off to start with; **A photo of each plant beside its name**, on to start with, from 1.47.0), and a **Note for the sitter** printed at the top.
 - **Before you go** (on screen only): the plants due before your first day away, or with no watering logged. The sheet assumes you water these the day before you leave.
 - **On the sheet:** the dates, your note and four short instructions; **Cold nights in the forecast**, with each plant outside to bring in or cover, the low each night and the temperature that harms or kills it; **Day by day**, each day's high and low and a tick box for every plant to check, in walking order (outdoors, then the porch, indoors and the garage); and **The plants**, one short entry each: where it is, how often to check it and the first line of its watering notes.
+- Each plant's line on a day carries a tick box, its photo, its name and code, where it is, and the first sentence of its watering notes, so the sitter can find the pot and judge it without looking anything up (1.47.0; the separate plant list at the end is gone). Temperatures and rain are in your units.
 - It uses the same watering reminders as Today (each plant's "check every N days", the recent weather and your care log), carried forward over the days you are away.
 - **Print** opens the browser's print window; choose "Save as PDF" there to email it. The printout is always black on white, about 15.5 point and up. People who can only view the app can make it too.
+- From the app saved to an iPhone or iPad home screen, printing is not possible (iOS gives such apps no print window), so the button there reads **Open in the browser to print** and opens the sheet in Safari (1.47.0).
 
 ## Large-print care cards (from 1.19.0)
 

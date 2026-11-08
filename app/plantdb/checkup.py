@@ -48,6 +48,7 @@ def checkup():
     out = []
     for r in rows:
         ph = c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC, id LIMIT 1', (r['id'],)).fetchone()
+        pics = [x[0] for x in c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC, id DESC LIMIT 12', (r['id'],))]   # 1.47.0: all of them, newest first after the main one (Ethan, November 8)
         lk = last.get(r['code'])
         days = (today - date.fromisoformat(lk)).days if lk else None
         every, why = usual, 'the usual'
@@ -55,7 +56,7 @@ def checkup():
         if set_by: every, why = set_by[0][0], 'the group ' + set_by[0][1]          # the group's own number decides, even for Poor or Critical
         elif (r['health_rating'] or '') in ('Poor', 'Critical') and poor < every: every, why = poor, 'its health is ' + r['health_rating']
         out.append({'code': r['code'], 'name': r['common_name'], 'site': r['site'] or 'Outdoors', 'location': r['location'] or '',
-                    'health': r['health_rating'] or '', 'summary': (r['health_summary'] or '').strip(), 'photo': ph[0] if ph else None,
+                    'health': r['health_rating'] or '', 'summary': (r['health_summary'] or '').strip(), 'photo': ph[0] if ph else None, 'photos': pics,
                     'version': r['version'], 'last_looked': lk, 'days': days, 'every': every, 'every_why': why,
                     'groups': member.get(r['code'], []), 'due': days is None or days >= every})
     return jsonify(today=today.isoformat(), due_days=usual, poor_days=poor, health=HEALTH, sites=SITES, groups=groups, plants=out)

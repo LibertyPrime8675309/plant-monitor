@@ -26,11 +26,15 @@ function displayDialog() {
   G.keys = group('keys', 'Keyboard shortcuts', [['1', 'On'], ['0', 'Off']], 'R reads the page aloud, [ and ] go to the previous and next plant, ? lists them all.');
   G.vsearch = typeof vsCan === 'function' && vsCan() ? html`${group('vsearch', 'Search by voice', [['1', 'Show the buttons, and say what was heard aloud'], ['quiet', 'Show the buttons, but do not speak'], ['0', 'Hide the buttons (the V key is off too)']],
     'A Search by voice button sits beside each search box. What you say is turned into words on this computer, and is not saved. If you use a screen reader, choose "do not speak": it reads the line under the button out already.')}<p class="hint" id="vs-dv-st" role="status"></p>` : html`<p class="muted">This browser cannot record from a microphone here. Open Plant record through its https Tailscale address, or in a newer browser.</p>`;
+  // 1.47.0 (PLAN.md step 4a): units. A region sets all three; each can then be changed by hand. These follow you to every device.
+  const U = unitsGet(), usel = (k, title, hint) => html`<label class="f">${title}<select data-act="unitset" data-u="${k}" id="pref-u-${k}">${Object.entries(UNIT_WORDS[k]).map(([v, l]) => html`<option value="${v}" ${U[k] === v ? raw('selected') : ''}>${l}</option>`)}</select>${hint ? html`<small>${hint}</small>` : ''}</label>`;
+  G.units = html`<fieldset class="opt-group"><legend>Units</legend>${usel('region', 'Where you are', 'Sets the three below at once.')}${usel('temp', 'Temperature')}${usel('len', 'Lengths (pots, distances)')}${usel('rain', 'Rain and water')}
+    <p class="hint">The record keeps everything in °F and inches underneath; this changes what you see and type, on every page and in push messages. Unlike the other parts of Display, units apply on every device you sign in on.</p></fieldset>`;
   const SH = window.PlantSync ? window.PlantSync.shared() : {};
   const share = part => html`<fieldset class="opt-group dv-share"><legend>Where these apply</legend><label class="chk"><input type="checkbox" data-dvshare="${part}" ${SH[part] ? raw('checked') : ''}>Use these on every device I sign in on</label>
     <p class="hint">Off (the usual): only this device. On: any phone, tablet or computer where you sign in and tick this too gets them.</p></fieldset>`;
   const SECS = [['Text and colours', html`${G.size}${G.space}${G.contrast}${G.theme}${share('text')}`], ['Page layout', html`${G.width}${G.lines}${G.layout}${G.navside}${G.navopen}${share('layout')}`],
-    ['Reading aloud', html`${speak}${share('read')}`], ['Photos and touch', html`${G.photofit}${G.swipe}${share('photos')}`], ['Keyboard and voice', html`${G.keys}${G.vsearch}${share('keys')}`]];
+    ['Units', G.units], ['Reading aloud', html`${speak}${share('read')}`], ['Photos and touch', html`${G.photofit}${G.swipe}${share('photos')}`], ['Keyboard and voice', html`${G.keys}${G.vsearch}${share('keys')}`]];
   const keep = DVSCROLL; DVSCROLL = 0;
   modal(html`<form method="dialog" class="dv-form">
     <div class="dv-head"><div class="dv-title"><h2 id="dv-title">Display settings</h2>
@@ -233,7 +237,7 @@ function readableText(root) {
 }
 function speakable(t) {
   return t.replace(/\bP-(\d)(\d)(\d)\b/g, 'P $1 $2 $3')
-    .replace(/(-?\d+(?:\.\d+)?)\s?°F/g, '$1 degrees').replace(/°/g, ' degrees').replace(/(\d)\s?F\b/g, '$1 degrees')
+    .replace(/(-?\d+(?:\.\d+)?)\s?°[FC]/g, '$1 degrees').replace(/°/g, ' degrees').replace(/(\d)\s?F\b/g, '$1 degrees')
     .replace(/(?:u|µ)mol\/m(?:2|²)\/s/g, 'micromoles per square metre per second').replace(/mol\/m(?:2|²)/g, 'moles per square metre')
     .replace(/\/day\b/g, ' a day').replace(/(\d)\s?h\b/g, '$1 hours').replace(/\bRH\b/g, 'relative humidity').replace(/~\s?/g, 'about ')
     .replace(/(\d)\s?-\s?(\d)/g, '$1 to $2').replace(/(\d)\s?in\b/g, '$1 inches').replace(/[✔✖■▲▶◀←→–—]/g, ' ').replace(/\s+/g, ' ')
@@ -338,7 +342,7 @@ async function condDialog() {
       ${radio('sensor', 'My sensor', W && W.sensor.count ? 'The newest reading it sent.' : 'No sensor has sent a reading yet. See Weather, Connect your sensor.')}
       ${radio('weather', 'Online weather', 'Open sky for ' + (W ? W.location.name : 'your area') + '. Plants under a roof or in shade get less light than this.')}</fieldset>
     <div id="manual-fields" ${c.mode === 'manual' ? '' : raw('hidden')}><div class="field-grid">
-      <label class="f">Temperature (°F)<input type="number" step="any" name="t" value="${has(c.temp_f) && c.mode === 'manual' ? c.temp_f : ''}"></label>
+      <label class="f">Temperature (${tU()})<input type="number" step="any" name="t" value="${has(c.temp_f) && c.mode === 'manual' ? tNum(c.temp_f, 1) : ''}"></label>
       <label class="f">Humidity (%)<input type="number" step="any" name="h" min="0" max="100" value="${has(c.humidity) && c.mode === 'manual' ? c.humidity : ''}"></label>
       <label class="f">Light<input type="number" step="any" name="l" min="0" value="${has(c.par) && c.mode === 'manual' ? c.par : ''}"></label>
       <label class="f">Light is in<select name="lu"><option value="par">PAR (µmol/m²/s)</option><option value="lux">lux</option></select></label></div>
@@ -349,7 +353,7 @@ async function condDialog() {
   const body = { mode };
   if (mode === 'manual') {
     const v = n => dlg.querySelector('[name=' + n + ']').value;
-    body.temp_f = v('t'); body.humidity = v('h');
+    body.temp_f = v('t') === '' ? '' : tIn(v('t')); body.humidity = v('h');       // 1.47.0: typed in the person's unit, kept in °F
     if (dlg.querySelector('[name=lu]').value === 'lux') body.lux = v('l'); else body.par = v('l');
   }
   await guard(async () => { COND = await api('PUT', '/api/current', body); toast('Current conditions saved'); await route(); });
