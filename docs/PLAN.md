@@ -99,6 +99,10 @@ Two releases: units first, because it is self-contained and useful on its own, t
 
 **Touches.** `core.py` (schema, roles per site, the current-site helper), `weather.py`, `frost.py`, `frostdates.py`, `heat.py`, `care.py`, `lights.py`, `where.py`, `push.py`, `sitter.py`, `sensors.py`; `core.js`, `prefs.js`, `plant.js`, `weather.js`, `edit.js`, `care.js`, `lights.js`, `ui.js` (Display), `index.html`; `dev/test/sites_check.py` (new), `mock_server.py`; README, ARCHITECTURE, CHANGELOG.
 
+## Step 4c: the plant-sitter sheet by link (added November 8, 2026; after 4b)
+
+Ethan's sitters are outside his Tailnet, so the sheet needs one page reachable from the public internet without exposing anything else. Through Tailscale Funnel (already half set up for the calendar): a **Share by link** button on the sitter page (owner or editor) makes `https://<tailnet host>/share/<long random token>`; that path serves only the sheet for its dates and group, lets the holder tick each box (ticks are saved against the token and shown to Ethan), and stops working the day after the last day away. Nothing else is reachable through it; `guard()` lets `/share/` through the way it lets `/cal/` through, and the token is checked there. Finishing step 3 of the Funnel test is the prerequisite. About 2 to 3 days, one minor release. Touches `sitter.py` (tokens, ticks), `sitter.html`/`sitter.js` (the share button and the read-only, tick-only mode), `core.py` (`guard()`), the Funnel configuration in `tailscale/`, README, a `share` browser check.
+
 ## Step 5: Identify in two modes, with a scoreboard
 
 "Ever improving" needs a number first. The picture checker has been changed several times (the prior over Ethan's own species, houseplant genera and Texas plants; the look-alike step; the confidence fit) without an accuracy figure before or after, because `dev/vision/prior_test.py` and `eval_photos.py` need the model and have not been run on Ethan's PC.
