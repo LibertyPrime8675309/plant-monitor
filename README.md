@@ -6,24 +6,24 @@ A web app for your outdoor plants: one page per plant with photos, names, temper
 
 ## Start it
 
-You need Docker Desktop running. Open a terminal in this folder (the one containing `docker-compose.yml`).
+You need Docker Desktop running. Open a terminal in this folder (the one containing `docker-compose.yml`). From 1.46.0 this downloads the ready-built containers from GitHub (a couple of minutes the first time); add `--build` to build them from this folder instead.
 
 Windows (cmd.exe):
 
 ```
-docker compose up -d --build
+docker compose up -d
 ```
 
 Windows (PowerShell):
 
 ```
-docker compose up -d --build
+docker compose up -d
 ```
 
 macOS / Linux (bash):
 
 ```
-docker compose up -d --build
+docker compose up -d
 ```
 
 Then open <http://localhost:8080>.
@@ -47,24 +47,27 @@ Windows (PowerShell) and macOS / Linux (bash): the same commands.
 
 ### Upgrading from an earlier version
 
-Replace the old folder's contents with this one, but **keep your existing `data\` folder** (it holds your database and photos). Then, in the folder:
+Replace the old folder's contents with this one, but **keep your existing `data\` folder** (it holds your database and photos). Then, in the folder (from 1.46.0 this downloads the release's containers from GitHub; add `--build` to build them here instead):
 
 Windows (cmd.exe):
 
 ```
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 Windows (PowerShell):
 
 ```
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 macOS / Linux (bash):
 
 ```
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
 On the first start the app adds anything new (from the first version: 26 plants, P-041 to P-066, and their photos; from 1.6.0: 11 plants, P-067 to P-077, and new photos for three existing pages; from 1.2.0: the new environment fields filled in on every plant page, see below) and each upgrade batch runs once. Version 1.2.0 also adds a new table for weather and sensor readings; the app creates it by itself. Version 1.3.0 adds a database index (the first start after upgrading takes a few seconds longer while it is built, more if you loaded many years of history) and two tables for daily weather and the update log. If you had already loaded years of history, press **Load history** once more with the same start date to fill in the extra measurements and the daily summaries; it only fetches what is missing. Anything you edited on P-040 stays as you left it: if the upgrade wants to change a field you already changed, it leaves that field alone and records a note in the change log. Back up `data\` first if you want a safety copy (see "Your data and backups").
@@ -83,7 +86,7 @@ Double-click **Update Plant Database.cmd**. It:
 4. makes a backup through the app (it appears on the Backups page as "Before update"). If the running app is older than 1.7.0, it stops the app and copies `data\plants.db` into `backups\` instead.
 5. unzips the release and copies it over the `plant-database` folder. **`data` and `backups` are never touched.**
 6. adds plant photos from any photo packs the release needs (see below).
-7. runs `docker compose up -d --build` and waits until the new version answers.
+7. downloads the release's ready-built containers from GitHub (from 1.46.0; it builds them on your PC only if GitHub cannot be reached), runs `docker compose up -d` and waits until the new version answers.
 8. lists the Docker images that older versions left behind (the app's and, from 1.18.0, the picture checker's, about 2 GB each) and offers to delete them to free disk space. With `-RemoveOldImage` it deletes them without asking.
 
 #### Photo packs (from 1.8.0)
@@ -126,7 +129,9 @@ Options: `-Yes` (do not ask), `-Force` (re-apply the newest zip anyway), `-Remov
 
 ### Built on GitHub first (from November 2026)
 
-Every change to the app on GitHub now builds all three container images (the app, the picture checker and the speech service) on GitHub's own machines before it can be merged, so a broken Dockerfile is caught there rather than on your PC. The images are also kept in GitHub's registry under the repository (`ghcr.io/libertyprime8675309/plant-database`, `...-vision`, `...-speech`, tagged with the version). The repository and the images are public, so no sign-in is needed to pull them. The updater still builds on your PC for now; `docs/PLAN.md` step 3 switches it to pulling the ready-built images.
+Every change to the app on GitHub builds all three container images (the app, the picture checker and the speech service) on GitHub's own machines before it can be merged, so a broken Dockerfile is caught there rather than on your PC. The images are kept in GitHub's registry under the repository (`ghcr.io/libertyprime8675309/plant-database`, `...-vision`, `...-speech`, tagged with the version); the repository and the images are public, so no sign-in is needed.
+
+**From 1.46.0 the updater downloads those ready-built images instead of building them on your PC.** An update takes a couple of minutes rather than ten or more, and nothing is compiled on your computer. If GitHub cannot be reached, the updater builds the images from the folder as before, which still works offline from GitHub as long as Docker Hub can be reached for the base image.
 
 ## Version
 
@@ -135,7 +140,7 @@ The `VERSION` file holds this package's version, and `CHANGELOG.md` lists what c
 ### Which version is running?
 
 - **In the app**: the version shows next to "Plant record" at the top of every page (for example `v1.6.2`), and at the top of the **Display** settings.
-- **In Docker Desktop**: open **Containers**; the **Image** column for `plant-database` shows `plant-database:1.6.2`. The **Images** list shows one entry per version you have built.
+- **In Docker Desktop**: open **Containers**; the **Image** column for `plant-database` shows the version, for example `ghcr.io/libertyprime8675309/plant-database:1.46.0` (before 1.46.0 the images were built on your PC and named `plant-database:1.6.2`). The **Images** list shows one entry per version you have had.
 - **From a terminal** (in the project folder):
 
 Windows (cmd.exe):
@@ -166,8 +171,8 @@ Each update leaves the previous version's images behind until the updater delete
 Windows (cmd.exe):
 
 ```
-docker image ls --filter "reference=plant-database*"
-docker image rm plant-database:1.18.1 plant-database-vision:1.18.1
+docker image ls --filter "reference=*plant-database*"
+docker image rm ghcr.io/libertyprime8675309/plant-database:1.46.0 ghcr.io/libertyprime8675309/plant-database-vision:1.46.0
 ```
 
 Windows (PowerShell) and bash: the same commands. Never delete the images for the version that is running.

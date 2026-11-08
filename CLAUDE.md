@@ -20,11 +20,11 @@ This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that r
   - Packs never change once made, so send Ethan only the packs for batches that are new in that release.
   - The updater adds any photos his folder is missing from packs saved next to the release zip.
   - `--full` builds the old single zip with everything.
-  - He installs it with the updater: `tools/Update Plant Database.cmd` / `update-plant-database.ps1`. It unzips over his folder, keeps `data/` and `backups/`, makes a backup first and runs `docker compose up -d --build`.
+  - He installs it with the updater: `tools/Update Plant Database.cmd` / `update-plant-database.ps1`. It unzips over his folder, keeps `data/` and `backups/`, makes a backup first, pulls the release's images from ghcr.io (from 1.46.0; `images.yml` publishes them on every push to main, so **a release's version must be on main before he installs it**) and runs `docker compose up -d`. Building on his PC is only the fallback.
   - Zips go in `C:\Users\Ethan\Documents\Claude\Plants\versions_plant-database` (from 1.12.2; the updater moves any zip saved in `Plants` there). Save releases and photo packs straight into that folder. Files saved to his computer from a chat must be under 30 MB.
 - **Versions:** bump the patch number for fixes and small additions, the minor number for new features. Update all of these together:
   - `VERSION`
-  - the three places in `docker-compose.yml` (build arg, image tag, label)
+  - the five version strings in `docker-compose.yml` (build arg, label, and the three ghcr.io image tags)
   - the top entry of `CHANGELOG.md` (written for Ethan, not for developers)
   - the README section for anything he uses
 - **Requests to Ethan:** keep reminding him of what Claude is waiting on (open requests in the app and the "Still to photograph" list) at the end of replies, until he provides it.
@@ -42,7 +42,7 @@ This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that r
   - Never publish 8081, and never trust `Tailscale-User-*` headers on any other port.
   - The container starts as root and `app/start.py` picks the user (10001 if it can write to the data folders, else root). Don't add `USER` to the Dockerfile, and keep gunicorn settings in `app/gunicorn.conf.py`.
 - **Mushrooms (from 1.22.0):** nothing in the app may say or suggest that a wild mushroom is edible or safe; IDs are always "leads, not proof". Front-end names for finds use the `mu` prefix (`fz` belongs to the frost checklist).
-- Keep the front end dependency-free (vanilla JS in `app/static/js/*.js`, loaded in order; one CSS file) and compatible with the strict Content Security Policy: **no inline scripts or inline event handlers**. Actions use `data-act` / `data-f` / `data-form` attributes, handled by delegation in `static/js/events.js`.
+- Keep the front end dependency-free (vanilla JS in `app/static/js/*.js`, loaded in the order `js/manifest.json` gives; one stylesheet in the browser, built by the server from `static/css/00-core.css` plus one file per feature) and compatible with the strict Content Security Policy: **no inline scripts or inline event handlers**. Actions use `data-act` / `data-f` / `data-form` attributes, handled by delegation in `static/js/events.js`. A feature module says what it adds with one `addFeature()` call (`static/js/features.js`: pages, Today blocks, additions to pages, care kinds); never wrap `viewToday` or `loadCarePlant`, and never watch the page with a MutationObserver to insert something.
 - **Test before shipping:**
   1. `python3 -m pytest dev/test/unit -q` (seconds).
   2. `python3 dev/test/run_checks.py` runs every browser check and the smoke test on a fresh mock server each (fake weather, no internet; about 90 minutes), or `run_checks.py lights shops` for a few. Look at the screenshots in `dev/tmp/shots/`. GitHub runs the same on every pull request (`.github/workflows/checks.yml`), and builds the three container images (`images.yml`). **Merge a pull request only when both are green.** The repository is public (November 7, 2026) and a branch rule on main requires the `unit`, `browser (n/4)` and `build (...)` checks, so a merge with a red check is refused.

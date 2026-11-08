@@ -23,9 +23,9 @@ Steps 1 to 3 come first and in that order; 4 to 6 then run one at a time, 4 befo
 
 | Step | What changes | Size | Releases | Needs first | Touches |
 | --- | --- | --- | --- | --- | --- |
-| 1. Decide the shape | A decision (made: one app, many sites) and a section in the architecture notes | Half a day | None | Done | `docs/ARCHITECTURE.md`, `CLAUDE.md` |
-| 2. A registry for features | Modules register their Today and plant-page sections, care kinds and routes instead of wrapping functions or watching the page | 3 to 4 days | One minor (1.46.0) | 1.45.0 merged | `care.js`, `core.js`, `events.js`, `turning.js`, `checkup.js`, `sitter.js`, `frostdates.js`, `sensors.js`, `server.py`, `index.html`, `sw.js`, `style.css`, both docs, the checks |
-| 3. Images built on GitHub | Every pull request builds the app, vision and speech images; merges wait for green; images published to GitHub's registry so the updater pulls | 1.5 days | None for the workflow (`.github/` is not in the zip); one patch for the updater | Nothing | `.github/workflows`, `docker-compose.yml`, the updater, `tools/make-release.py`, README; a branch rule on GitHub |
+| 1. Decide the shape | A decision (made: one app, many sites) and a section in the architecture notes | Half a day | None | Done (PR #72) | `docs/ARCHITECTURE.md`, `CLAUDE.md` |
+| 2. A registry for features | Modules register their Today and plant-page sections, care kinds and routes instead of wrapping functions or watching the page | 3 to 4 days | One minor (1.46.0) | Done in 1.46.0 | `care.js`, `core.js`, `events.js`, `turning.js`, `checkup.js`, `sitter.js`, `frostdates.js`, `sensors.js`, `server.py`, `index.html`, `sw.js`, `style.css`, both docs, the checks |
+| 3. Images built on GitHub | Every pull request builds the app, vision and speech images; merges wait for green; images published to GitHub's registry so the updater pulls | 1.5 days | None for the workflow (`.github/` is not in the zip); the updater change shipped in 1.46.0 | Done (PR #72 and 1.46.0) | `.github/workflows`, `docker-compose.yml`, the updater, `tools/make-release.py`, README; a branch rule on GitHub |
 | 4. Sites and units | Units per site and per person; plants belong to a site; weather, frost, seasons and roles per site | 8 to 10 days | Two minors (units, then sites) | Steps 1 and 2 | `core.py` schema, `weather.py`, `frost.py`, `frostdates.py`, `care.py`, `heat.py`, `lights.py`, `where.py`, `push.py`, `prefs.js`, `plant.js`, `weather.js`, `edit.js`, `index.html`, a new check |
 | 5. Identify: two modes and a scoreboard | A baseline measured on Ethan's PC; "one of my plants" and "a new find" modes; country data instead of USDA; confirmed photos feed the look-alike step; mushroom fields | 10 to 12 days plus runs on the PC | Two minors and one patch | Step 3; step 4 for the site's country | `vision/service.py`, the vision lists, `library.py`, `fungi.py`, `discover.js`, `plant.js`, `dev/vision/*`, a GPU option in `docker-compose.yml` |
 | 6. Knowledge with provenance | One fact per row with source, date and confidence; editors add and correct; any editor reviews; export | 6 to 8 days | Two minors | Step 2; step 4 helps | `library.py`, `fungi.py`, `core.py` schema, `library.js`, `review.js`, the batch tooling in `dev/seed_src`, docs |
@@ -43,7 +43,7 @@ One app with many sites, each with its own weather, seasons and people, rather t
 
 **Touches.** `docs/ARCHITECTURE.md` (the "Sites" section), `CLAUDE.md` (the first paragraph).
 
-## Step 2: a registry for features
+## Step 2: a registry for features (done in 1.46.0)
 
 New features should declare what they add; today they take it. `turning.js` replaces `viewToday` and `loadCarePlant` with wrapped copies; `checkup.js`, `frostdates.js` and `sensors.js` each run a MutationObserver that watches the whole page redraw and inserts their part when they spot it. Each works alone. Together they are why four prototypes merged in one week conflicted on the same lines every time, and why the Today page's order depends on which script loaded last.
 
@@ -64,13 +64,13 @@ The five modules above move onto it and lose their wrappers and observers; `sitt
 
 **Touches.** `care.js`, `core.js`, `events.js`, `turning.js`, `checkup.js`, `sitter.js`, `frostdates.js`, `sensors.js`, new `features.js`, `server.py`, `plantdb/__init__.py`, `index.html`, `sw.js`, `style.css` split into `static/css/`, `start.py` (builds the CSS), `docs/ARCHITECTURE.md`, `docs/PROTOTYPING.md`, the unit test that checks the module list, `run_checks.py`.
 
-## Step 3: build the images on GitHub
+## Step 3: build the images on GitHub (done: workflow in PR #72, updater in 1.46.0)
 
 Ethan's PC should never be the first place a Dockerfile fails. Claude cannot build images in its sandbox (Docker Hub is not reachable), so 1.44.0's speech service and 1.18.0's picture checker both shipped with a Dockerfile nobody had built. GitHub's runners can reach Docker Hub, and the checks already run there on every pull request.
 
 - A second workflow, `images.yml`, builds the app, vision and speech images on every pull request and on main, with a layer cache so a rebuild takes minutes rather than the 20 the vision image takes cold. It does not start the models; it proves the images build.
 - A branch rule so main only takes a pull request whose checks and image builds are green. Claude's GitHub access cannot write repository settings, so Ethan sets it (steps given in the chat on November 7, 2026).
-- Publish the built images to GitHub's registry (ghcr.io) under the repository (public, like the repository since November 7, 2026). The updater pulls a ready image instead of building one, turning a ten-minute install with a large download of Python wheels into a two-minute pull. `docker-compose.yml` gets image names, the updater gets a pull step, and the release zip shrinks to the compose file, the updater, the seed batches and the docs. Photo packs stay as they are.
+- Publish the built images to GitHub's registry (ghcr.io) under the repository (public, like the repository since November 7, 2026). Done. One consequence: a release must be merged to main (which publishes its images) before Ethan installs it; the updater builds locally if the images are not there yet. The mirror (`mirror/docker-compose.yml`) still builds its own image and could pull the same one later. The updater pulls a ready image instead of building one, turning a ten-minute install with a large download of Python wheels into a two-minute pull. `docker-compose.yml` gets image names, the updater gets a pull step, and the release zip shrinks to the compose file, the updater, the seed batches and the docs. Photo packs stay as they are.
 
 **Cost.** One day for the workflow and the branch rule, half a day for publishing and the updater change (one patch release for the updater). The README gets a note under "Updating".
 

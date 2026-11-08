@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.46.0 (2026-11-08)
+The first building release of the plan (`docs/PLAN.md`, steps 2 and 3). Nothing new to use; two things you will notice:
+- **Updates are quicker.** The updater now downloads the release's three containers ready-built from GitHub (they are built there for every change, before it can be merged) instead of building them on your PC. An update takes a couple of minutes rather than ten or more. If GitHub cannot be reached, it builds them on your PC as before. The images are now named `ghcr.io/libertyprime8675309/plant-database:<version>` (and `-vision`, `-speech`) in Docker Desktop. **A release has to be merged on GitHub before you install it**, or the updater falls back to building.
+- **Today keeps a fixed order.** The spring note, the frost-dates line, the plant-sitter link, the cold night, sensors, the health walk line, water, feed, shopping alerts, coming inside, turn the pots, needed from you and quiet today always come in that order, whatever happens to load first. Before, parts added by newer features landed wherever they could.
+- Under the hood, for anyone adding features: a module now says what it adds (a page, a block on Today, something on a plant's page, a care kind) with one `addFeature()` call, and the server and the page find the modules, scripts and stylesheets by themselves. See `docs/ARCHITECTURE.md`, "The feature registry", and `docs/PROTOTYPING.md`. The six features that used to insert themselves by watching the page (turn the pots, health walk-through, frost dates, sensors, the care-card and plant-sitter links, the spring note) moved onto it. The stylesheet is one file in the browser and several in git.
+- The "Health of the app" card on Settings and the health ratings list no longer share a name in the code (a latent mix-up, never visible).
+
 ## 1.45.0 (2026-11-07)
 - **Frost dates** (prototype #65, with your four answers), from Round Rock's own weather history:
   - **On the Weather page,** the usual first and last frost-possible night (36°F), freeze (32°F) and hard freeze (28°F), with the earliest and latest seen and a table of past winters. On a clear, still night, frost can form in low spots even when the weather station reads 36°F.

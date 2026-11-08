@@ -69,14 +69,6 @@ async function viewSensors() {
       <p class="hint">Fields a reading can carry: <code>temp_f</code> or <code>temp_c</code>, <code>humidity</code>, <code>par</code> or <code>lux</code>, <code>soil_moisture</code> (0 to 100), <code>soil_temp_f</code> or <code>soil_temp_c</code>, <code>soil_ph</code>, <code>weight_g</code>, and a <code>note</code>.</p></section>`,
   };
 }
-async function snsFillPlant(box, code) {
-  box.dataset.done = '1';
-  try {
-    const L = (await api('GET', '/api/sensors?plant=' + enc(code))).sensors;
-    box.innerHTML = L.length ? rend(L.map(s => snsCard(s, true))) : '';
-    L.forEach(s => { if (!SNS.list.some(x => x.device === s.device)) SNS.list.push(s); });
-  } catch (e) { box.innerHTML = ''; }
-}
 async function snsDialog(dev) {
   const s = SNS.list.find(x => x.device === dev); if (!s) return;
   let plants = [];
@@ -136,15 +128,18 @@ Object.assign(acts, {
     await guard(async () => { await api('DELETE', '/api/sensors/' + enc(el.dataset.dev)); toast('Sensor forgotten'); route(); });
   },
 });
-// on a plant page the sensor in its pot shows under Water and soil
-(function sensorOnPlant() {
-  const main = document.getElementById('app'); if (!main) return;
-  new MutationObserver(() => {
-    const m = location.hash.match(/^#\/plant\/([^/?]+)$/); if (!m) return;
-    const soil = main.querySelector('section#soil > h2');
-    if (soil && !main.querySelector('#sns-plant')) {
-      soil.insertAdjacentHTML('afterend', '<div id="sns-plant" class="sns-plant"></div>');
-      snsFillPlant(main.querySelector('#sns-plant'), decodeURIComponent(m[1]));
-    }
-  }).observe(main, { childList: true, subtree: true });
-})();
+// 1.46.0: what this module adds, said once (features.js) instead of watching the page for changes:
+//  - the page #/sensors (already in the top bar's Weather section);
+//  - on a plant's page, the sensor in its pot, under the "Water and soil" title.
+addFeature({
+  name: 'sensors',
+  pages: { sensors: { view: viewSensors, nav: 'sensors' } },
+  adds: {
+    id: 'sns-plant',
+    match: parts => parts[0] === 'plant' && !!parts[1] && parts[2] !== 'edit',
+    anchor: 'section#soil > h2', where: 'afterend',
+    load: async parts => { const L = (await api('GET', '/api/sensors?plant=' + enc(parts[1]))).sensors; return L.length ? L : null; },
+    html: L => html`<div id="sns-plant" class="sns-plant">${L.map(s => snsCard(s, true))}</div>`,
+    then: (el, L) => L.forEach(s => { if (!SNS.list.some(x => x.device === s.device)) SNS.list.push(s); }),
+  },
+});

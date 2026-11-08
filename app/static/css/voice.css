@@ -1,0 +1,17 @@
+/* Search by voice (js/voice.js): a button beside each search box */
+/* prototype proto/voice-search: a "Search by voice" button beside each search box. While it listens, the button is filled and says
+   "Listening" (in words, not colour alone), and the line under it says what was heard. Display can hide them (data-vsearch="0"). */
+.vs-wrap{display:flex;flex-direction:column;gap:.3rem;min-width:0;align-self:end}
+html[data-vsearch="0"] .vs-wrap{display:none!important}
+.vs-btn{gap:.5rem;justify-content:flex-start;max-width:100%;text-align:left}
+.vs-mic{width:1.3em;height:1.3em;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.vs-btn.vs-on{background:var(--cyan);color:var(--cyan-ink);outline:3px solid var(--ink);outline-offset:2px}
+.vs-btn.vs-on .vs-mic{fill:currentColor}
+.vs-msg{margin:0;font-weight:400;overflow-wrap:anywhere}
+.vs-msg:empty{display:none}
+.aud-filters .vs-wrap{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:center}
+.tick-find+.vs-wrap{flex:1 1 12rem}
+.srch-dlg .vs-wrap{margin:-.2rem 0 .6rem;align-self:start}
+.vs-btn .vs-word{min-width:0;overflow-wrap:anywhere}
+html[data-narrow="1"] .filters .vs-wrap{grid-column:1/-1}
+html[data-narrow="1"] .filters .vs-btn{width:100%}
