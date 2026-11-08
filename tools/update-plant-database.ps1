@@ -341,11 +341,19 @@ if (Test-Path $override) {
 $tsState = JoinAll $AppFolder @('tailscale', 'state')
 if (-not (Test-Path $tsState)) { New-Item -ItemType Directory -Path $tsState -Force | Out-Null }      # 1.12.0: the Tailscale sign-in lives here
 Push-Location $AppFolder
-$code = Native { docker compose build --pull }
-if ($code -ne 0) { Say 'Could not download the newest base image (is the internet down?). Building with the one already on this computer.' 'Yellow'; $code = Native { docker compose build } }
+# 1.46.0 (PLAN.md step 3): the three images are built on GitHub for every release and pulled from there (ghcr.io), which takes a
+# couple of minutes instead of the ten or more a build took. Building from this folder is the fallback when the pull fails (no
+# internet to GitHub, or a version that was never published).
+$script:Services = @()
+Step 'Downloading the ready-built containers from GitHub'
+$code = Native { docker compose pull }                           # the three app images from ghcr.io, and the Tailscale image
+if ($code -ne 0) {
+    Say 'Could not download the ready-built containers from GitHub (is the internet down?). Building them on this computer instead; this takes longer.' 'Yellow'
+    $code = Native { docker compose build --pull }
+    if ($code -ne 0) { Say 'Could not download the newest base image either. Building with the one already on this computer.' 'Yellow'; $code = Native { docker compose build } }
+}
 # 1.18.0: the picture checker (container plant-vision, for Identify and Library) downloads about 1 GB of packages when it is built.
 # If only that fails, start the rest of the app without it, so an internet hiccup never keeps the app itself from updating.
-$script:Services = @()
 # Search by voice (container plant-speech) is the same: if only it fails, the app and the picture checker start without it.
 if ($code -ne 0) {
     $c3 = Native { docker compose build plants vision }
@@ -360,13 +368,9 @@ if ($code -ne 0) {
         }
     }
 }
-if ($code -eq 0) {
-    $pc = Native { docker compose pull --ignore-buildable }      # the Tailscale container's image; the app itself is built above
-    if ($pc -ne 0) { Say 'Could not download the newest Tailscale container. The one already on this computer is used.' 'Yellow' }
-    $code = Start-App
-}
+if ($code -eq 0) { $code = Start-App }
 Pop-Location
-if ($code -ne 0) { Say ("docker compose failed (code {0}). The new files are in place; fix the error above and run 'docker compose up -d --build' in the plant-database folder." -f $code) 'Red'; exit 1 }
+if ($code -ne 0) { Say ("docker compose failed (code {0}). The new files are in place; fix the error above and run 'docker compose up -d' in the plant-database folder." -f $code) 'Red'; exit 1 }
 
 Step 'Waiting for the app to answer'
 $now = Wait-Version
@@ -395,7 +399,7 @@ if ($now -eq $newVersion -and -not (Test-Path (JoinAll $AppFolder @('tailscale',
 # image name was kept in $old, the same name the Native helper used inside, so Docker was asked to delete an image called "Stop".)
 if ($installed -and $installed -ne $newVersion -and $now -eq $newVersion) {
     $oldImages = @((Native-Text { docker image ls --format '{{.Repository}}:{{.Tag}}' }) -split "`r?`n" | ForEach-Object { $_.Trim() } |
-        Where-Object { $_ -match '^plant-database(-vision|-speech)?:\d+\.\d+\.\d+$' -and $_ -notmatch (':' + [regex]::Escape($newVersion) + '$') } | Sort-Object -Unique)
+        Where-Object { $_ -match '^(ghcr\.io/[a-z0-9-]+/)?plant-database(-vision|-speech)?:\d+\.\d+\.\d+$' -and $_ -notmatch (':' + [regex]::Escape($newVersion) + '$') } | Sort-Object -Unique)   # 1.46.0: the images come from ghcr.io now; older locally built ones are matched too
     if ($oldImages.Count) {
         $doRemove = $RemoveOldImage
         if (-not $doRemove -and -not $Yes) {

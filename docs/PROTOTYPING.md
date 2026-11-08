@@ -22,10 +22,9 @@ This repository is set up so any Claude session can pick up the project and try 
 
 ## Keeping prototypes mergeable
 Several prototypes are usually open at once, and Ethan may merge them in any order. Each one should merge cleanly with `main` and with every other open `proto/` branch:
-- Add new code in its own block rather than editing shared code: a new section in `server.py`, a block of functions in `app.js`, and a CSS block headed with the version.
-- Put each new block somewhere different from the other open branches. Two branches that both add code right after the same function will conflict, even though neither changes it. `git diff main proto/<other> | grep "^@@"` shows where the others added theirs.
+- **Register, don't wrap (1.46.0, PLAN.md step 2).** A prototype is its own files: `app/plantdb/<name>.py` (found by the package by itself; give it `ORDER = 60` if it imports from another feature module), `app/static/js/<name>.js` (one line in `app/static/js/manifest.json`, before `main`), `app/static/css/<name>.css` (joined into the stylesheet by the server) and `dev/test/<name>_check.py` (one line in `run_checks.py`'s ORDER). What it adds to existing pages is said once with `addFeature()` at the end of its script (see ARCHITECTURE, "The feature registry"): a page, a block on Today with its order number, an addition to a plant's or a group's page, a care kind. Never wrap `viewToday` or `loadCarePlant`, never watch `#app` with a MutationObserver, never add lines to `route()`, `SECTIONS`, `server.py`, `index.html` or `sw.js`: the registry and the manifest do those.
+- The shared lines a prototype still touches are one line each in `manifest.json` and `run_checks.py`, and a CHANGELOG and README entry. Two prototypes that both add a line there merge with a one-line conflict at most; keep both sides.
 - Before opening the pull request, merge every open `proto/` branch into a throwaway local branch, run all the focused checks and the smoke test there, then delete the throwaway branch.
-- Prefer a hook that does not need changes elsewhere, such as a `MutationObserver` on `#app` that fills a placeholder `<div>` when a page draws, over adding lines to `route()` or `viewPlant()`.
 
 ## Ideas list
 Add ideas to `docs/IDEAS.md` with a line each; a prototype session can take the top one.
