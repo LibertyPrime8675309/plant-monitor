@@ -4,8 +4,7 @@
 # On a pull request each image is built and thrown away (the build itself is the test). On a push to main the images
 # are also pushed to GitHub's registry under this repository, tagged with the release number from VERSION and "latest":
 #   ghcr.io/<owner>/plant-database:<version>, ...-vision:<version>, ...-speech:<version>
-# The repository is private, so the packages are private too: a PC that pulls them needs "docker login ghcr.io" once
-# with a token that can read packages (see PLAN.md step 3 and the README once the updater pulls instead of building).
+# The repository and the packages are public (Ethan, November 7, 2026), so a PC pulls them with no login.
 # Layers are cached between runs (type=gha), so a run after a small change takes a few minutes, not the twenty the
 # picture checker's image takes cold.
 name: Images

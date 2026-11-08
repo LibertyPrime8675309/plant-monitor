@@ -12,7 +12,7 @@ Seven steps take Plant record from an app for one house in Round Rock to a produ
 | Order | Steps 1, 2 and 3 before any new feature, including the repotting plan and new requests made in the meantime. |
 | Units | A site default with a per-person override. A person picks a region (which sets every unit) and can still change each unit by hand. |
 | Identify default | Ask each time which mode to use, unless the person has set a default in their settings; then do not ask. |
-| Images | Yes: updates pull ready-built images from GitHub's registry instead of building on the PC. |
+| Images | Yes: updates pull ready-built images from GitHub's registry instead of building on the PC. The repository went public on November 7, 2026 (no paid plan), so the images are public and need no login, and GitHub's branch rule enforces green checks before a merge. |
 | Who accepts knowledge edits | Any editor. |
 | Release day | The first day of the month. |
 | Where the plan lives | Here, `docs/PLAN.md`, with `docs/IDEAS.md` pointing at it. |
@@ -69,8 +69,8 @@ The five modules above move onto it and lose their wrappers and observers; `sitt
 Ethan's PC should never be the first place a Dockerfile fails. Claude cannot build images in its sandbox (Docker Hub is not reachable), so 1.44.0's speech service and 1.18.0's picture checker both shipped with a Dockerfile nobody had built. GitHub's runners can reach Docker Hub, and the checks already run there on every pull request.
 
 - A second workflow, `images.yml`, builds the app, vision and speech images on every pull request and on main, with a layer cache so a rebuild takes minutes rather than the 20 the vision image takes cold. It does not start the models; it proves the images build.
-- A branch rule so main only takes a pull request whose checks and image builds are green. Claude sets it through the GitHub API if the token allows; otherwise it is two clicks in the repository settings, with steps given.
-- Publish the built images to GitHub's registry (ghcr.io) under Ethan's account (private by default). The updater pulls a ready image instead of building one, turning a ten-minute install with a large download of Python wheels into a two-minute pull. `docker-compose.yml` gets image names, the updater gets a pull step, and the release zip shrinks to the compose file, the updater, the seed batches and the docs. Photo packs stay as they are.
+- A branch rule so main only takes a pull request whose checks and image builds are green. Claude's GitHub access cannot write repository settings, so Ethan sets it (steps given in the chat on November 7, 2026).
+- Publish the built images to GitHub's registry (ghcr.io) under the repository (public, like the repository since November 7, 2026). The updater pulls a ready image instead of building one, turning a ten-minute install with a large download of Python wheels into a two-minute pull. `docker-compose.yml` gets image names, the updater gets a pull step, and the release zip shrinks to the compose file, the updater, the seed batches and the docs. Photo packs stay as they are.
 
 **Cost.** One day for the workflow and the branch rule, half a day for publishing and the updater change (one patch release for the updater). The README gets a note under "Updating".
 
