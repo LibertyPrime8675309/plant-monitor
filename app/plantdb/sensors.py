@@ -26,11 +26,12 @@ CREATE TABLE IF NOT EXISTS sensor_devices(device TEXT PRIMARY KEY, name TEXT NOT
   auto_water INTEGER NOT NULL DEFAULT 1, cal_dry REAL, cal_wet REAL, updated_by TEXT, updated_at TEXT);
 """
 
-def sensor_judge(key, v, lo, hi, p=None):
-    """In words: how a value compares with the plant's range. level is ok / low / high / bad (bad = in the damage range)."""
+def sensor_judge(key, v, lo, hi, p=None, u=None):
+    """In words: how a value compares with the plant's range. level is ok / low / high / bad (bad = in the damage range).
+    1.47.0: temperatures are written in the person's unit (u, or the request's)."""
     if v is None: return None
     unit = next((m[2] for m in SENSOR_METRICS if m[0] == key), ' mol/m²' if key == 'dli' else '')
-    fmt = lambda x: (f'{x:g}' if isinstance(x, (int, float)) else str(x)) + unit
+    fmt = (lambda x: temp_text(x, u)) if unit == '°F' else (lambda x: (f'{x:g}' if isinstance(x, (int, float)) else str(x)) + unit)
     if key == 'temp_f' and p is not None and p['temp_damage_below'] is not None and v < p['temp_damage_below']:
         return {'level': 'bad', 'word': 'Too cold', 'text': f"Below {fmt(p['temp_damage_below'])}, where damage starts. Move it somewhere warmer."}
     if lo is None and hi is None: return None
@@ -308,4 +309,7 @@ def push_sensors(c):
             if m['key'] == 'soil_moisture' and j['level'] == 'low' and push_once(c, f'sensor:{d}:dry:{today}'):
                 push_send(c, 'sensors', f'{s["plant"]["common_name"]} is dry', f'{s["name"]}: soil moisture {m["value"]:g}%. {j["text"]}', '#/sensors', tag='sensor-' + d)
             if j['level'] == 'bad' and push_once(c, f'sensor:{d}:cold:{today}'):
-                push_send(c, 'sensors', f'Too cold at {s["name"]}', f'{m["value"]:g}°F. {j["text"]}', '#/sensors', tag='sensor-' + d)
+                pr = c.execute('SELECT * FROM plants WHERE id=?', (conf[d]['plant_id'],)).fetchone() if conf.get(d) and conf[d]['plant_id'] else None
+                rng = m['range'] or [None, None]
+                push_send(c, 'sensors', lambda u, s=s, m=m, pr=pr, rng=rng: (f'Too cold at {s["name"]}', f'{temp_text(m["value"], u)}. {sensor_judge(m["key"], m["value"], rng[0], rng[1], pr, u)["text"]}'),
+                          None, '#/sensors', tag='sensor-' + d)        # 1.47.0: each person reads it in their own unit

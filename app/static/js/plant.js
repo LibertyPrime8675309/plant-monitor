@@ -73,12 +73,12 @@ const LIGHT_MARKS = [['F', 1800, 'Full sun at midday'], ['G', 400, 'Open shade o
 
 function tempVerdict(p, t) {
   const L = p.temp_lethal_below, D = p.temp_damage_below, IL = p.temp_ideal_low, IH = p.temp_ideal_high, HA = p.temp_damage_above;
-  if (t < L) return ['fatal', `Likely fatal. This plant dies below ${L}°F, so it must be inside or well covered.`];
-  if (t < D) return ['damage', `Damage likely. Leaves and stems are hurt below ${D}°F, so protect it or bring it in.`];
-  if (t < IL) return ['cool', `Cooler than ideal, but no damage expected. Comfortable starts at ${IL}°F.`];
+  if (t < L) return ['fatal', `Likely fatal. This plant dies below ${tF(L)}, so it must be inside or well covered.`];
+  if (t < D) return ['damage', `Damage likely. Leaves and stems are hurt below ${tF(D)}, so protect it or bring it in.`];
+  if (t < IL) return ['cool', `Cooler than ideal, but no damage expected. Comfortable starts at ${tF(IL)}.`];
   if (t <= IH) return ['ok', 'Comfortable.'];
-  if (has(HA) && t >= HA) return ['damage', `Too hot. Leaves are likely to scorch at ${HA}°F and above.`];
-  return ['hot', `Warmer than ideal (above ${IH}°F).`];
+  if (has(HA) && t >= HA) return ['damage', `Too hot. Leaves are likely to scorch at ${tF(HA)} and above.`];
+  return ['hot', `Warmer than ideal (above ${tF(IH)}).`];
 }
 function tempBlock(p, cur) {
   const v = [p.temp_lethal_below, p.temp_damage_below, p.temp_ideal_low, p.temp_ideal_high];
@@ -88,13 +88,13 @@ function tempBlock(p, cur) {
   const zones = [['z-fatal', l], ['z-damage', d - l], ['z-cool', il - d], ['z-ok', ih - il]];
   if (ha != null) { zones.push(['z-hot', ha - ih]); zones.push(['z-heat', 100 - ha]); } else zones.push(['z-hot', 100 - ih]);
   const t = cur && has(cur.temp_f) ? cur.temp_f : null;
-  const now = t == null ? null : { pos: posLin(t, 0, 100), label: t + '°F' };
-  const st = t == null ? '' : (() => { const [k, txt] = tempVerdict(p, t); return html`<p class="nowstate v-${k}"><strong>Now ${t}°F.</strong> ${txt}</p>`; })();
+  const now = t == null ? null : { pos: posLin(t, 0, 100), label: tF(t) };
+  const st = t == null ? '' : (() => { const [k, txt] = tempVerdict(p, t); return html`<p class="nowstate v-${k}"><strong>Now ${tF(t)}.</strong> ${txt}</p>`; })();
   return html`<p>Comfortable between <strong>${deg(p.temp_ideal_low)}</strong> and <strong>${deg(p.temp_ideal_high)}</strong>. Damage below ${deg(p.temp_damage_below)}. Dies below ${deg(p.temp_lethal_below)}.${has(p.temp_damage_above) ? html` Heat damage from ${deg(p.temp_damage_above)}.` : ''}</p>
     ${st}
-    ${strip(zones, tempMarks().map(m => [m[1], m[0]]), [0, 20, 40, 60, 80, 100].map(x => [x, x + '°']), now)}
+    ${strip(zones, tempMarks().map(m => [m[1], m[0]]), [0, 20, 40, 60, 80, 100].map(x => [x, tF(x, false) + '°']), now)}
     ${keyOf([['z-fatal', 'Likely fatal'], ['z-damage', 'Damage'], ['z-cool', 'Cool but safe'], ['z-ok', 'Comfortable'], ['z-hot', 'Too hot'], ...(ha != null ? [['z-heat', 'Heat damage']] : []), ...(now ? [['z-now', 'Now']] : [])])}
-    <ul class="verdicts">${tempMarks().map(m => { const [k, txt] = tempVerdict(p, m[1]); return html`<li class="v-${k}"><span class="k">${m[0]}</span><span><strong>${m[2]}, ${m[1]}°F.</strong> ${txt}</span></li>`; })}</ul>`;
+    <ul class="verdicts">${tempMarks().map(m => { const [k, txt] = tempVerdict(p, m[1]); return html`<li class="v-${k}"><span class="k">${m[0]}</span><span><strong>${m[2]}, ${tF(m[1])}.</strong> ${txt}</span></li>`; })}</ul>`;
 }
 function humBlock(p, cur) {
   const lo = p.humidity_low, hi = p.humidity_high;
@@ -135,9 +135,9 @@ function heatVerdict(p, H) {
   if (T == null || n == null) return '';
   const when = (H.hot_months || []).length ? `, mostly in ${heatMonths(H.hot_months)}` : '';
   const days = x => x < 1 ? 'Less than 1 day' : `About ${Math.round(x)} day${Math.round(x) === 1 ? '' : 's'}`;
-  if (H.level === 'fine') return html`<p class="nowstate v-ok"><strong>✓ Summer heat is fine for it here.</strong> A usual summer's hottest day, about ${H.hottest}°F, stays below the ${T}°F where its leaves start to scorch.${where}</p>`;
-  if (H.level === 'few') return html`<p class="nowstate v-hot"><strong>▲ A few days a summer are too hot for it.</strong> ${days(n)} a year reach ${T}°F or more, where its leaves can scorch${when}. Move it into afternoon shade when the forecast is that hot.${where}</p>`;
-  return html`<p class="nowstate v-damage"><strong>■ Summer heat is hard on it here.</strong> ${days(n)} a year reach ${T}°F or more, where its leaves can scorch${when}. Keep it in afternoon shade, or bring it inside, through those months.${where}</p>`;
+  if (H.level === 'fine') return html`<p class="nowstate v-ok"><strong>✓ Summer heat is fine for it here.</strong> A usual summer's hottest day, about ${tF(H.hottest)}, stays below the ${tF(T)} where its leaves start to scorch.${where}</p>`;
+  if (H.level === 'few') return html`<p class="nowstate v-hot"><strong>▲ A few days a summer are too hot for it.</strong> ${days(n)} a year reach ${tF(T)} or more, where its leaves can scorch${when}. Move it into afternoon shade when the forecast is that hot.${where}</p>`;
+  return html`<p class="nowstate v-damage"><strong>■ Summer heat is hard on it here.</strong> ${days(n)} a year reach ${tF(T)} or more, where its leaves can scorch${when}. Keep it in afternoon shade, or bring it inside, through those months.${where}</p>`;
 }
 function heatRange(p, H) {             // the AHS heat zones the plant is listed for, against the zone here
   const hi = has(p.heat_zone_high) ? +p.heat_zone_high : null, lo = has(p.heat_zone_low) ? +p.heat_zone_low : null;
@@ -155,21 +155,21 @@ function heatBlock(p, H) {
   const head = html`<h3>Summer heat (AHS heat zones)</h3>`;
   if (!H) return '';
   if (H.zone == null) return html`${head}<p class="muted">Not enough weather history yet. Once ${H.place} has 3 whole years of weather, this says how many hot days a usual year has and what that means for this plant. <a href="#/weather">Load the weather history on the Weather page</a>.</p>${heatRange(p, H)}`;
-  return html`${head}<p>Where you are: over the last ${H.years} years at ${H.place}, an average of ${H.over86} days a year went above ${H.line}°F, which is <strong>heat zone ${H.zone}</strong>
-      on the American Horticultural Society's scale of 1 (cool summers) to 12 (very hot). A usual year's hottest day is about ${H.hottest}°F. <a href="#/weather">The Weather page</a> has each year's count.</p>
+  return html`${head}<p>Where you are: over the last ${H.years} years at ${H.place}, an average of ${H.over86} days a year went above ${tF(H.line)}, which is <strong>heat zone ${H.zone}</strong>
+      on the American Horticultural Society's scale of 1 (cool summers) to 12 (very hot). A usual year's hottest day is about ${tF(H.hottest)}. <a href="#/weather">The Weather page</a> has each year's count.</p>
     ${heatVerdict(p, H)}${heatRange(p, H)}
-    <p class="hint">${H.line}°F is where many plants start to suffer from heat. The highs are air temperatures in the shade from the weather history; in full sun, leaves and dark pots get hotter.${has(p.temp_damage_above) ? '' : ' This plant has no "Heat damage above" temperature yet (Edit, under Temperature), so there is no verdict for it.'}</p>`;
+    <p class="hint">${tF(H.line)} is where many plants start to suffer from heat. The highs are air temperatures in the shade from the weather history; in full sun, leaves and dark pots get hotter.${has(p.temp_damage_above) ? '' : ' This plant has no "Heat damage above" temperature yet (Edit, under Temperature), so there is no verdict for it.'}</p>`;
 }
 function zoneHere(p) {
   const Z = META && META.zone, lo = zoneNum(p.zone_low), here = !Z ? null : Z.zone ? zoneNum(Z.zone) : zoneNum(String(Z.map_zone || '').split(' ')[0]);   // no weather history yet: the colder end of the map zone
-  const where = html`${Z && Z.zone ? html`<p>Where you are: the last ${Z.years} winters of weather at ${placeName()} averaged a coldest night of ${Z.winter_low}°F, which is <strong>zone ${Z.zone}</strong>.${Z.map_note ? ' ' + Z.map_note : ''} <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>`
+  const where = html`${Z && Z.zone ? html`<p>Where you are: the last ${Z.years} winters of weather at ${placeName()} averaged a coldest night of ${tF(Z.winter_low)}, which is <strong>zone ${Z.zone}</strong>.${Z.map_note ? ' ' + Z.map_note : ''} <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>`
     : Z && Z.map_zone ? html`<p>Where you are: zone ${Z.map_zone} on the 2023 USDA map. <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>` : ''}`;
   // 1.34.0: summer heat next to winter cold, from the same weather history; 1.36.0: the whole verdict for this plant (heatBlock)
   const summer = heatBlock(p, HEATV);
   if (lo == null || here == null) return html`${where}${summer}`;
   const ok = here >= lo, gap = Math.round((lo - here) * 2);
   return html`${where}<p class="nowstate ${ok ? 'v-ok' : 'v-cool'}"><strong>${ok ? '✓ Hardy here.' : '▼ Not hardy here.'}</strong> ${ok ? 'It can stay outside through a usual winter, though a rare hard freeze can still hurt it.'
-    : `A usual winter is about ${gap * 5}°F colder than it can take (${gap} half-zone${gap === 1 ? '' : 's'}), so it needs to come inside or be protected.`}</p>${summer}`;
+    : `A usual winter is about ${tD(gap * 5)} colder than it can take (${gap} half-zone${gap === 1 ? '' : 's'}), so it needs to come inside or be protected.`}</p>${summer}`;
 }
 function srcList(v) {
   return lines(v).map(x => { const i = x.lastIndexOf('|'), t = i > 0 ? x.slice(0, i).trim() : x.trim(), u = i > 0 ? x.slice(i + 1).trim() : '';
@@ -217,8 +217,9 @@ function lightBlock(p, cur) {
 function rangeGauge(title, lo, hi, mn, mx, unit, now, names, ticks) {
   if (!has(lo) || !has(hi)) return '';
   const a = posLin(lo, mn, mx), b = posLin(hi, mn, mx);
-  return html`<h3 class="gauge-title">${title}: ${lo} to ${hi}${unit}</h3>
-    ${strip([[names[0][0], a], ['z-ok', b - a], [names[1][0], 100 - b]], [], ticks.map(x => [posLin(x, mn, mx), x + unit]), now == null ? null : { pos: posLin(now, mn, mx), label: now + unit })}
+  const cv = unit === '°F' ? (v, u) => tF(v, u) : (v, u) => v + (u ? unit : '');     // 1.47.0: a temperature gauge reads in the person's unit
+  return html`<h3 class="gauge-title">${title}: ${cv(lo, false)} to ${cv(hi, true)}</h3>
+    ${strip([[names[0][0], a], ['z-ok', b - a], [names[1][0], 100 - b]], [], ticks.map(x => [posLin(x, mn, mx), cv(x, true)]), now == null ? null : { pos: posLin(now, mn, mx), label: cv(now, true) })}
     ${keyOf([[names[0][0], names[0][1]], ['z-ok', 'Comfortable'], [names[1][0], names[1][1]], ...(now != null ? [['z-now', 'Now']] : [])])}`;
 }
 function soilBlock(p, cur) {
@@ -241,27 +242,27 @@ function judge(p, cur) {
   const openSky = cur.mode === 'weather' ? 'This reading is for open sky. Under a roof or shade cloth the plant gets less.' : '';
   const IL = p.temp_ideal_low, IH = p.temp_ideal_high;
   if (has(T) && has(IL) && has(IH)) {
-    let level = 'ok', state = 'In range', detail = `${T}°F is inside the comfortable ${IL} to ${IH}°F.`, steps = [], tail = null;
+    let level = 'ok', state = 'In range', detail = `${tF(T)} is inside the comfortable ${tF(IL, false)} to ${tF(IH)}.`, steps = [], tail = null;
     if (has(p.temp_lethal_below) && T < p.temp_lethal_below) {
-      level = 'danger'; state = 'Far too cold: likely fatal'; detail = `${T}°F is ${r1(IL - T)}°F below the comfortable minimum of ${IL}°F, and below the ${p.temp_lethal_below}°F this plant dies at.`;
-      steps = ['Bring it inside or into a heated room right now.', `Aim for at least ${IL}°F. Warm it up gradually, not next to a heater.`, 'Do not water it until it is back above ' + IL + '°F, then water lightly.', 'Do not prune, repot or fertilize while it is stressed.', 'Check it in the morning for black or mushy leaves and stems. Trim them only after it has warmed up.'];
+      level = 'danger'; state = 'Far too cold: likely fatal'; detail = `${tF(T)} is ${tD(r1(IL - T))} below the comfortable minimum of ${tF(IL)}, and below the ${tF(p.temp_lethal_below)} this plant dies at.`;
+      steps = ['Bring it inside or into a heated room right now.', `Aim for at least ${tF(IL)}. Warm it up gradually, not next to a heater.`, 'Do not water it until it is back above ' + tF(IL) + ', then water lightly.', 'Do not prune, repot or fertilize while it is stressed.', 'Check it in the morning for black or mushy leaves and stems. Trim them only after it has warmed up.'];
       tail = winterTail(p, 4);
     } else if (has(p.temp_damage_below) && T < p.temp_damage_below) {
-      level = 'bad'; state = 'Too cold: damage likely'; detail = `${T}°F is ${r1(IL - T)}°F below the comfortable minimum of ${IL}°F. Leaves and stems are hurt below ${p.temp_damage_below}°F.`;
-      steps = ['Move it indoors, into the garage or under the porch roof now.', 'If it cannot move: cover it to the ground with frost cloth or a sheet over a frame. Plastic must not touch the leaves. Remove the cover once it is above 35°F.', 'Group pots against a south or east wall and pile mulch around the pots.', 'Water the day before a freeze, but not when the plant is already cold or the soil is frozen.', 'Hold off fertilizer until spring.'];
+      level = 'bad'; state = 'Too cold: damage likely'; detail = `${tF(T)} is ${tD(r1(IL - T))} below the comfortable minimum of ${tF(IL)}. Leaves and stems are hurt below ${tF(p.temp_damage_below)}.`;
+      steps = ['Move it indoors, into the garage or under the porch roof now.', `If it cannot move: cover it to the ground with frost cloth or a sheet over a frame. Plastic must not touch the leaves. Remove the cover once it is above ${tF(35)}.`, 'Group pots against a south or east wall and pile mulch around the pots.', 'Water the day before a freeze, but not when the plant is already cold or the soil is frozen.', 'Hold off fertilizer until spring.'];
       tail = winterTail(p, 4);
     } else if (T < IL) {
-      level = 'near'; state = 'A little cool'; detail = `${T}°F is ${r1(IL - T)}°F below the comfortable minimum of ${IL}°F. No damage is expected yet.`;
-      steps = ['Move it close to the house wall or under the porch roof for the night.', 'Keep the mix on the dry side. Cold, wet roots are the main risk at this temperature.', 'No fertilizer while it is cool.', `It is comfortable again from ${IL}°F.`];
+      level = 'near'; state = 'A little cool'; detail = `${tF(T)} is ${tD(r1(IL - T))} below the comfortable minimum of ${tF(IL)}. No damage is expected yet.`;
+      steps = ['Move it close to the house wall or under the porch roof for the night.', 'Keep the mix on the dry side. Cold, wet roots are the main risk at this temperature.', 'No fertilizer while it is cool.', `It is comfortable again from ${tF(IL)}.`];
       if (p.winter_triggers) tail = { title: 'When to act, from this page', items: lines(p.winter_triggers) };
     } else if (has(p.temp_damage_above) && T >= p.temp_damage_above) {
-      level = 'bad'; state = 'Too hot: heat damage likely'; detail = `${T}°F is ${r1(T - IH)}°F above the comfortable maximum of ${IH}°F. Leaves can scorch from ${p.temp_damage_above}°F.`;
+      level = 'bad'; state = 'Too hot: heat damage likely'; detail = `${tF(T)} is ${tD(r1(T - IH))} above the comfortable maximum of ${tF(IH)}. Leaves can scorch from ${tF(p.temp_damage_above)}.`;
       steps = ['Move it into shade now.', 'If the mix is dry, water slowly until it drains. If it is already wet, do not add water.', 'Use 50% shade cloth over the afternoon until temperatures fall.', 'Look for scorched, bleached or crispy leaves, and trim them only after it cools.', 'Move pots off hot concrete or metal.'];
     } else if (T > IH) {
-      level = 'near'; state = 'A little warm'; detail = `${T}°F is ${r1(T - IH)}°F above the comfortable maximum of ${IH}°F.`;
+      level = 'near'; state = 'A little warm'; detail = `${tF(T)} is ${tD(r1(T - IH))} above the comfortable maximum of ${tF(IH)}.`;
       steps = ['Give it shade in the afternoon: 30 to 50% shade cloth, or move it under the porch roof or a tree.', 'Water in the morning. Check the mix daily and water when the top inch is dry.', 'Do not fertilize, repot or prune in the heat.', 'Move pots off hot concrete or metal and out of reflected heat.'];
     }
-    out.push({ key: 'temp', label: 'Temperature', value: T + '°F', level, state, detail, steps, tail });
+    out.push({ key: 'temp', label: 'Temperature', value: tF(T), level, state, detail, steps, tail });
   }
   if (has(H) && has(p.humidity_low) && has(p.humidity_high)) {
     const lo = p.humidity_low, hi = p.humidity_high;
@@ -304,12 +305,12 @@ function judge(p, cur) {
     out.push({ key: 'soil', label: 'Soil moisture', value: SM + '%', level, state, detail, steps });
   }
   if (has(ST) && has(p.soil_temp_low) && has(p.soil_temp_high)) {
-    let level = 'ok', state = 'In range', detail = `${ST}°F is inside the comfortable ${p.soil_temp_low} to ${p.soil_temp_high}°F.`, steps = [];
-    if (ST < p.soil_temp_low) { level = ST < p.soil_temp_low - 10 ? 'bad' : 'near'; state = 'Roots too cool'; detail = `${ST}°F is ${p.soil_temp_low - ST}°F below ${p.soil_temp_low}°F.`;
+    let level = 'ok', state = 'In range', detail = `${tF(ST)} is inside the comfortable ${tF(p.soil_temp_low, false)} to ${tF(p.soil_temp_high)}.`, steps = [];
+    if (ST < p.soil_temp_low) { level = ST < p.soil_temp_low - 10 ? 'bad' : 'near'; state = 'Roots too cool'; detail = `${tF(ST)} is ${tD(p.soil_temp_low - ST)} below ${tF(p.soil_temp_low)}.`;
       steps = ['Lift the pot off cold ground or concrete onto feet or a board.', 'Wrap the pot in burlap or bubble wrap, or sink it into a larger pot of mulch.', 'Water only when the mix is dry; cold, wet roots rot.']; }
-    else if (ST > p.soil_temp_high) { level = ST > p.soil_temp_high + 10 ? 'bad' : 'near'; state = 'Roots too warm'; detail = `${ST}°F is ${ST - p.soil_temp_high}°F above ${p.soil_temp_high}°F.`;
+    else if (ST > p.soil_temp_high) { level = ST > p.soil_temp_high + 10 ? 'bad' : 'near'; state = 'Roots too warm'; detail = `${tF(ST)} is ${tD(ST - p.soil_temp_high)} above ${tF(p.soil_temp_high)}.`;
       steps = ['Shade the sides of the pot from the afternoon sun.', 'Stand the pot off hot concrete or metal, or double-pot it.', 'Water in the morning, and mulch the surface.']; }
-    out.push({ key: 'soiltemp', label: 'Root-zone temperature', value: ST + '°F', level, state, detail, steps });
+    out.push({ key: 'soiltemp', label: 'Root-zone temperature', value: tF(ST), level, state, detail, steps });
   }
   if (has(PH) && has(p.soil_ph_low) && has(p.soil_ph_high)) {
     let level = 'ok', state = 'In range', detail = `pH ${PH} is inside the comfortable ${p.soil_ph_low} to ${p.soil_ph_high}.`, steps = [];
@@ -331,8 +332,8 @@ function condCard(p, cur) {
   const any = cur && ['temp_f', 'humidity', 'par', 'soil_moisture', 'soil_temp_f', 'soil_ph'].some(k => has(cur[k]));
   return html`<section class="cond" id="sec-now" aria-labelledby="cond-h"><header><h2 id="cond-h">Current conditions</h2>
       <button class="btn small noprint" type="button" data-act="setcond">${any ? 'Change' : 'Set current conditions'}</button></header>
-    ${any ? html`<div class="vals">${cell('temp', 'Temperature', cur.temp_f, '°F')}${cell('hum', 'Humidity', cur.humidity, '%')}${cell('light', 'Light (PAR)', cur.par, '')}${cell('vpd', 'Air dryness (VPD)', cur.vpd, ' kPa')}
-        ${cell('soil', 'Soil moisture', cur.soil_moisture, '%')}${cell('soiltemp', 'Root-zone temp', cur.soil_temp_f, '°F')}${cell('ph', 'Soil pH', cur.soil_ph, '')}</div>
+    ${any ? html`<div class="vals">${cell('temp', 'Temperature', tNum(cur.temp_f), tU())}${cell('hum', 'Humidity', cur.humidity, '%')}${cell('light', 'Light (PAR)', cur.par, '')}${cell('vpd', 'Air dryness (VPD)', cur.vpd, ' kPa')}
+        ${cell('soil', 'Soil moisture', cur.soil_moisture, '%')}${cell('soiltemp', 'Root-zone temp', tNum(cur.soil_temp_f), tU())}${cell('ph', 'Soil pH', cur.soil_ph, '')}</div>
       <p class="src">${cur.label}${cur.as_of ? html`, updated ${ago(cur.age_minutes)}` : ''}.${cur.stale ? html` <strong>This reading is old.</strong>` : ''}${cur.dli_today != null ? html` Light so far today: ${cur.dli_today} mol/m².` : ''}
         ${cur.mode === 'weather' ? ' Light is for open sky; plants under a roof get less.' : ''}</p>
       ${p && isInside(p) && cur.mode === 'weather' ? html`<p class="src"><strong>This plant is ${p.site.toLowerCase()}</strong>, so these outdoor readings do not apply to it. Use Change to type in the indoor temperature and humidity, or a sensor near it.</p>` : ''}`

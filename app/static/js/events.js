@@ -607,6 +607,13 @@ const acts = {
 document.addEventListener('change', e => { const el = e.target; if (el.dataset && el.dataset.dvshare && window.PlantSync) { window.PlantSync.share(el.dataset.dvshare, el.checked);
   toast(el.checked ? 'These settings now follow you to other devices' : 'These settings now stay on this device'); } }, true);
 const changeActs = {
+  // 1.47.0: units in Display. A new region resets the three; one unit changed by hand stands until the region changes.
+  async unitset(el) {
+    const raw = unitsSet({ [el.dataset.u]: el.value });
+    const U = unitsGet(); for (const k of ['temp', 'len', 'rain']) { const o = document.getElementById('pref-u-' + k); if (o) o.value = U[k]; }
+    try { await api('PUT', '/api/me/prefs', { units: Object.keys(raw).length ? JSON.stringify(raw) : null }); } catch (e) { /* offline: prefs.js sends it later */ }   // at once, so the server's sentences change too
+    ROUTE_FRESH = true; route();                  // the page behind the window redraws in the new units, from fresh answers
+  },
   async ctphoto(el) {                 // 1.29.0: photos of a pot or tray
     if (!el.files.length || !(await needName())) return;
     const fd = new FormData(); [...el.files].forEach(f => fd.append('files', f));

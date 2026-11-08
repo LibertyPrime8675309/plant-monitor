@@ -26,8 +26,10 @@ async function loadCodes(force) {
   if (!force && Date.now() - PCODES_AT < 15000) return;
   try { const list = await api('GET', '/api/plants?status=all'); PCODES = new Map(list.map(p => [p.code, p])); PCODES_AT = Date.now(); } catch (e) { /* links just stay plain text */ }
 }
+// 1.47.0: notes written in °F ("keep warm (70 to 80°F)") read in the person's unit; the stored text is untouched
+const tText = s => unitsGet().temp === 'c' ? String(s).replace(/(-?\d+(?:\.\d+)?) (and|to|or) (-?\d+(?:\.\d+)?)\s?°F/g, (m, a, w, b) => `${tF(+a, false)} ${w} ${tF(+b)}`).replace(/(-?\d+(?:\.\d+)?)\s?°F/g, (m, n) => tF(+n)) : s;
 function linkify(text) {
-  const t = String(text == null ? '' : text);
+  const t = tText(String(text == null ? '' : text));        // 1.47.0: free text written in °F reads in the person's unit
   let out = '', last = 0;
   t.replace(/\bP-\d{3,4}\b/g, (m, i) => {
     out += esc(t.slice(last, i));
@@ -41,7 +43,55 @@ const lines = s => String(s || '').split('\n').map(x => x.trim()).filter(Boolean
 const paras = s => lines(s).length ? html`<p class="pl">${linkify(String(s).trim())}</p>` : '';
 const ul = s => lines(s).length ? html`<ul>${lines(s).map(x => html`<li>${linkify(x)}</li>`)}</ul>` : '';
 const ol = s => lines(s).length ? html`<ol>${lines(s).map(x => html`<li>${linkify(x)}</li>`)}</ol>` : '';
-const deg = n => (n == null || n === '') ? 'not set' : n + '°F';
+// ---------- units (1.47.0, PLAN.md step 4a) ----------
+// Everything is stored and sent in °F and inches (the weather, every plant's temperatures, pot sizes, rain). What a person sees is
+// in their own units: a region sets all of them at once, and each can then be changed by hand. Kept in localStorage 'plantdb.units'
+// and sent to the server with the other settings that follow you (prefs.js KEYS), so it holds on every device and in push messages.
+const UNIT_REGIONS = { us: { temp: 'f', len: 'in', rain: 'in' }, ca: { temp: 'c', len: 'in', rain: 'mm' }, metric: { temp: 'c', len: 'cm', rain: 'mm' } };
+const UNIT_WORDS = { region: { us: 'United States (°F, inches)', ca: 'Canada (°C, inches, mm of rain)', metric: 'Everywhere else (°C, cm, mm)' },
+  temp: { f: 'Fahrenheit (°F)', c: 'Celsius (°C)' }, len: { in: 'Inches', cm: 'Centimetres' }, rain: { in: 'Inches', mm: 'Millimetres' } };
+function unitsRaw() { try { return JSON.parse(localStorage.getItem('plantdb.units') || '{}') || {}; } catch (e) { return {}; } }
+function unitsGet() { const u = unitsRaw(), base = UNIT_REGIONS[u.region] || UNIT_REGIONS.us; return { region: u.region || 'us', temp: u.temp || base.temp, len: u.len || base.len, rain: u.rain || base.rain }; }
+function unitsSet(changes) {              // {region} resets the three; {temp|len|rain} overrides one
+  const u = unitsRaw();
+  if ('region' in changes) { for (const k of ['region', 'temp', 'len', 'rain']) delete u[k]; if (changes.region && changes.region !== 'us') u.region = changes.region; }
+  for (const k of ['temp', 'len', 'rain']) if (k in changes && changes[k]) { if (changes[k] === (UNIT_REGIONS[u.region] || UNIT_REGIONS.us)[k]) delete u[k]; else u[k] = changes[k]; }
+  try { if (Object.keys(u).length) localStorage.setItem('plantdb.units', JSON.stringify(u)); else localStorage.removeItem('plantdb.units'); } catch (e) { /* this visit only */ }
+  document.dispatchEvent(new Event('units'));
+  return u;
+}
+const tU = () => unitsGet().temp === 'c' ? '°C' : '°F';                                    // the temperature unit's sign
+const tNum = (f, dp) => {                                                                 // a °F value as a number in the person's unit
+  if (f == null || f === '' || isNaN(+f)) return f;
+  if (unitsGet().temp !== 'c') return +f;
+  const c = (+f - 32) * 5 / 9; return dp != null ? +c.toFixed(dp) : Number.isInteger(+f) ? Math.round(c) : +c.toFixed(1);
+};
+const tF = (f, unit = true) => (f == null || f === '' || isNaN(+f)) ? (f == null || f === '' ? '' : String(f)) : String(tNum(f)) + (unit ? tU() : '');
+const tD = (df, unit = true) => {                                                         // a difference in °F (3°F warmer): no offset
+  if (df == null || df === '' || isNaN(+df)) return '';
+  const v = unitsGet().temp === 'c' ? +(+df * 5 / 9).toFixed(Number.isInteger(+df) && +df % 9 === 0 ? 0 : 1) : +(+df).toFixed(1);
+  return String(v) + (unit ? tU() : '');
+};
+const tIn = v => (v == null || v === '' || isNaN(+v)) ? v : unitsGet().temp === 'c' ? r1(+v * 9 / 5 + 32) : +v;   // a value typed in the person's unit, back to °F
+const lenU = () => unitsGet().len === 'cm' ? 'cm' : 'in';
+const lenF = (inches, unit = true) => {                                                    // inches to the person's length unit ("6 in" / "15 cm")
+  if (inches == null || inches === '' || isNaN(+inches)) return inches == null ? '' : String(inches);
+  const v = unitsGet().len === 'cm' ? (+inches * 2.54 < 3 ? r1(+inches * 2.54) : Math.round(+inches * 2.54)) : +inches;
+  return String(v) + (unit ? ' ' + lenU() : '');
+};
+const lenIn = v => (v == null || v === '' || isNaN(+v)) ? v : unitsGet().len === 'cm' ? r1(+v / 2.54) : +v;        // a length typed in the person's unit, back to inches
+const areaF = (sqft, unit = true) => {                                                     // square feet to the person's unit ("12 sq ft" / "1.1 m²")
+  if (sqft == null || sqft === '' || isNaN(+sqft)) return sqft == null ? '' : String(sqft);
+  const m = unitsGet().len === 'cm'; const v = m ? r1(+sqft * 0.0929) : r1(+sqft);
+  return String(v) + (unit ? (m ? ' m²' : ' sq ft') : '');
+};
+const rainU = () => unitsGet().rain === 'mm' ? 'mm' : 'in';
+const rainF = (inches, unit = true) => {                                                   // inches of rain or water to the person's unit
+  if (inches == null || inches === '' || isNaN(+inches)) return inches == null ? '' : String(inches);
+  const v = unitsGet().rain === 'mm' ? (+inches * 25.4 < 1 ? r1(+inches * 25.4) : Math.round(+inches * 25.4)) : +(+inches).toFixed(2);
+  return String(v) + (unit ? ' ' + rainU() : '');
+};
+const deg = n => (n == null || n === '') ? 'not set' : tF(n);
 function when(ts) {
   if (!ts) return '';
   const d = new Date(ts);
@@ -265,7 +315,7 @@ async function viewPots() {
   const d = await api('GET', '/api/containers'); CT = d;
   const pots = d.items.filter(x => x.kind === 'pot'), trays = d.items.filter(x => x.kind === 'tray');
   return { title: 'Pots and trays', html: html`<h1>Pots and trays</h1>
-    <p>Your pots and catch trays, how many of each you have, and which plants use them. Type over any value to change it; it saves when you leave the box. Sizes are in inches. The square feet are worked out for you (a round one counts as the square around it), and the Grow lights page uses them: a plant takes up the floor of its catch tray, or of its pot when it has no tray.</p>
+    <p>Your pots and catch trays, how many of each you have, and which plants use them. Type over any value to change it; it saves when you leave the box. Sizes are in ${lenU() === 'cm' ? 'centimetres' : 'inches'}. The floor area is worked out for you (a round one counts as the square around it), and the Grow lights page uses them: a plant takes up the floor of its catch tray, or of its pot when it has no tray.</p>
     <section class="blk" id="ct-pots"><h2>Pots (${pots.length})</h2><div class="ct-list">${pots.map(ctCard)}</div>
       ${canChange() ? html`<p class="row"><button class="btn" type="button" data-act="ctadd" data-kind="pot">Add a pot</button></p>` : ''}</section>
     <section class="blk" id="ct-trays"><h2>Catch trays (${trays.length})</h2><div class="ct-list">${trays.map(ctCard)}</div>
@@ -274,7 +324,7 @@ async function viewPots() {
 let CT = null;
 function ctCard(x) {
   const can = canChange(), ro = can ? '' : raw('readonly'), dis = can ? '' : raw('disabled'), ed = k => raw(`data-ed="cont" data-id="${x.id}" data-k="${k}"`);
-  const num = (k, label) => html`<label class="f ct-num">${label}<input type="number" inputmode="decimal" min="0" max="240" step="any" value="${x[k] == null ? '' : x[k]}" ${ed(k)} ${ro}></label>`;
+  const num = (k, label) => html`<label class="f ct-num">${label.replace('(in)', '(' + lenU() + ')')}<input type="number" inputmode="decimal" min="0" max="${lenU() === 'cm' ? 600 : 240}" step="any" value="${x[k] == null ? '' : lenF(x[k], false)}" ${ed(k)} ${ro}></label>`;   // 1.47.0: sizes show and take the person's unit; kept in inches
   const other = x.material && !CT_MAT.includes(x.material);
   const over = x.in_use > x.qty;
   return html`<article class="ct-card" id="ct-${x.id}" data-cid="${x.id}">
@@ -288,7 +338,7 @@ function ctCard(x) {
         <label class="f">Shape<select ${ed('shape')} ${dis}>${[['circle', 'Circle'], ['square', 'Square'], ['rectangle', 'Rectangle']].map(([k, l]) => html`<option value="${k}" ${x.shape === k ? raw('selected') : ''}>${l}</option>`)}</select></label>
         ${x.shape === 'circle' ? num('dia_in', 'Across (in)') : x.shape === 'square' ? num('len_in', 'Side (in)') : html`${num('len_in', 'Length (in)')}${num('wid_in', 'Width (in)')}`}
         ${x.kind === 'pot' ? num('height_in', 'Height (in)') : num('height_in', 'Depth (in)')}
-        <p class="f ct-sq"><span class="ct-l">Floor it covers</span> <strong>${x.sqft == null ? 'Add the sizes' : `${x.sqft} sq ft`}</strong></p>
+        <p class="f ct-sq"><span class="ct-l">Floor it covers</span> <strong>${x.sqft == null ? 'Add the sizes' : areaF(x.sqft)}</strong></p>
         ${x.kind === 'pot' ? html`<label class="f">Drainage holes<select ${ed('drainage')} ${dis}><option value="" ${x.drainage == null ? raw('selected') : ''}>Not noted</option><option value="1" ${x.drainage === true ? raw('selected') : ''}>Yes</option><option value="0" ${x.drainage === false ? raw('selected') : ''}>No</option></select></label>` : ''}
         <label class="f">Material<select data-f="ctmat" data-id="${x.id}" ${dis}>${CT_MAT.map(m => html`<option ${m === x.material ? raw('selected') : ''}>${m}</option>`)}<option value="" ${!x.material ? raw('selected') : ''}>Not noted</option><option value="__other" ${other ? raw('selected') : ''}>Other (type it)</option></select></label>
         <label class="f" ${other ? '' : raw('hidden')} data-other="${x.id}">Other material<input type="text" maxlength="60" value="${other ? x.material : ''}" ${ed('material')} ${ro}></label>
@@ -317,13 +367,13 @@ function edLong(kind, id, k, label, v, can) {
     <label class="f wide" hidden>${label}<textarea rows="3" maxlength="2000" data-ed="${kind}" data-id="${id}" data-k="${k}">${v || ''}</textarea><small>Saves when you leave the box. Escape puts back what was there.</small></label></div>`;
 }
 const edVal = el => el.type === 'checkbox' ? (el.checked ? '1' : '0') : el.value;
-const edLabel = el => { const l = el.closest('label'); return ((l && l.childNodes[0] && l.childNodes[0].textContent) || el.getAttribute('aria-label') || el.dataset.k).trim().replace(/\s*\(in\)$/, ''); };
+const edLabel = el => { const l = el.closest('label'); return ((l && l.childNodes[0] && l.childNodes[0].textContent) || el.getAttribute('aria-label') || el.dataset.k).trim().replace(/\s*\((in|cm)\)$/, ''); };
 function edPut(el, v) { if (el.type === 'checkbox') el.checked = v === '1'; else el.value = v; }
 async function edSend(el, v) {
   const kind = el.dataset.ed, id = el.dataset.id, k = el.dataset.k;
   const val = el.type === 'checkbox' ? v === '1' : (el.type === 'number' && v !== '' ? +v : v);
   if (kind === 'light') { await api('PUT', '/api/lights/' + id, { [k]: val }); return null; }
-  if (kind === 'cont') { const x = await api('PUT', '/api/containers/' + id, { [k]: val }); META = await api('GET', '/api/meta'); return () => ctRedraw(x); }
+  if (kind === 'cont') { const x = await api('PUT', '/api/containers/' + id, { [k]: /_in$/.test(k) && val !== '' ? lenIn(val) : val }); META = await api('GET', '/api/meta'); return () => ctRedraw(x); }   // 1.47.0: a size typed in cm goes back to inches
   if (kind === 'area') { const r = await api('PUT', '/api/where/areas/' + id, { [k]: val }); if (META) META.where = r.homes; return null; }
   if (kind === 'spot') { const r = await api('PUT', '/api/where/spots/' + id, { [k]: val }); if (META) META.where = r.homes; return null; }
   if (kind === 'plant') {

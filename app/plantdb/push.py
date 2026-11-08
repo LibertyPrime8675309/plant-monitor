@@ -44,7 +44,8 @@ def push_send(c, kind, title, body, url='#/', home_id=None, logins=None, tag=Non
         if logins is not None and s['login'] not in logins: continue
         if not push_wants(c, s['login'], kind): continue
         if home_id is not None and push_home_of(c, s['login'], main) != home_id: continue
-        payload = {'title': title[:120], 'body': body[:300], 'url': url, 'tag': tag or kind, 'kind': kind}
+        t, b = (title(units_for(c, s['login'])) if callable(title) else (title, body))     # 1.47.0: a callable writes the words in that person's units
+        payload = {'title': t[:120], 'body': b[:300], 'url': url, 'tag': tag or kind, 'kind': kind}
         try:
             if PUSH_SEND['fn']: st = PUSH_SEND['fn'](dict(s), payload)
             else: st, _ = WP.send(dict(s), payload, priv, pub, PUSH_SUBJECT, urgency='high' if kind == 'cold' else 'normal')
@@ -79,10 +80,10 @@ def push_cold(c):
             word = {'danger': 'could die', 'damage': 'would be damaged', 'watch': 'are close calls'}.get(worst, 'are at risk')
             when_ = 'tonight' if d == (local.date() + timedelta(days=1)).isoformat() else midday_word(d)
             if push_once(c, f'cold:{H["id"]}:{d}:new', 9):
-                push_send(c, 'cold', f'Cold night {when_}: {n["low"]:.0f}°F at {H["name"].split(",")[0]}', f'{cnt} plant{"s" if cnt != 1 else ""} outside {word}. Open the cold-night checklist.', '#/frost', H['id'], tag=f'cold-{d}')
+                push_send(c, 'cold', lambda u, n=n, when_=when_, H=H, cnt=cnt, word=word: (f'Cold night {when_}: {temp_text(round(n["low"]), u)} at {H["name"].split(",")[0]}', f'{cnt} plant{"s" if cnt != 1 else ""} outside {word}. Open the cold-night checklist.'), None, '#/frost', H['id'], tag=f'cold-{d}')
             night_of = date.fromisoformat(d) - timedelta(days=1)       # the night of a date is the evening before it
             if local.date() == night_of and local.hour >= 15 and push_once(c, f'cold:{H["id"]}:{d}:eve', 3):
-                push_send(c, 'cold', f'Tonight: down to {n["low"]:.0f}°F at {H["name"].split(",")[0]}', f'{cnt} plant{"s" if cnt != 1 else ""} to bring in or cover this evening.', '#/frost', H['id'], tag=f'cold-{d}')
+                push_send(c, 'cold', lambda u, n=n, H=H, cnt=cnt: (f'Tonight: down to {temp_text(round(n["low"]), u)} at {H["name"].split(",")[0]}', f'{cnt} plant{"s" if cnt != 1 else ""} to bring in or cover this evening.'), None, '#/frost', H['id'], tag=f'cold-{d}')
 
 def midday_word(d):
     try: return date.fromisoformat(d).strftime('%A')

@@ -702,6 +702,60 @@ def me_dict(c):
     return {'via': u['via'], 'login': u['login'], 'name': u['name'] if u['via'] == 'tailscale' else '', 'role': u['role'],
             'role_word': ROLE_WORD[u['role']], 'owner_name': owner_name(c)}
 
+# ---------- units (1.47.0, PLAN.md step 4a) ----------
+# Everything is stored and sent in °F and inches. A person's units come from their 'units' setting (user_prefs, saved by the Display
+# window on any of their devices): a region sets temperature, length and rain at once, and each can be changed by hand. The front end
+# converts what it shows; these helpers convert the sentences the server writes itself (push messages, the calendar, spray notes).
+UNIT_REGIONS = {'us': {'temp': 'f', 'len': 'in', 'rain': 'in'}, 'ca': {'temp': 'c', 'len': 'in', 'rain': 'mm'}, 'metric': {'temp': 'c', 'len': 'cm', 'rain': 'mm'}}
+
+def units_for(c, login=None):
+    """{'temp': 'f'|'c', 'len': 'in'|'cm', 'rain': 'in'|'mm'} for a sign-in (the request's own when login is None)."""
+    login = login or prefs_login(c)
+    r = c.execute("SELECT value FROM user_prefs WHERE login=? AND key='units'", (login,)).fetchone()
+    try: u = json.loads(r[0]) if r and r[0] else {}
+    except Exception: u = {}
+    if not isinstance(u, dict): u = {}
+    base = UNIT_REGIONS.get(u.get('region'), UNIT_REGIONS['us'])
+    return {k: (u.get(k) if u.get(k) in ('f', 'c', 'in', 'cm', 'mm') else base[k]) for k in ('temp', 'len', 'rain')}
+
+def units():
+    """The units of the person making this request, read once per request."""
+    if not has_request_context(): return UNIT_REGIONS['us']
+    if not hasattr(g, 'units'): g.units = units_for(db())
+    return g.units
+
+def temp_text(f, u=None, unit=True):
+    """A °F value as the person sees it: 72 -> '72°F' or '22°C' (whole degrees for whole input, else one decimal)."""
+    if f is None or f == '': return ''
+    u = u or units(); f = float(f)
+    if u['temp'] == 'c':
+        v = (f - 32) * 5 / 9; v = round(v) if float(f).is_integer() else round(v, 1)
+    else: v = round(f) if float(f).is_integer() else round(f, 1)
+    return f'{v:g}' + ('°C' if u['temp'] == 'c' else '°F') if unit else f'{v:g}'
+
+def temp_diff_text(df, u=None, unit=True):
+    """A difference in °F ('within 3°F'): no offset, so 3°F is 1.7°C."""
+    u = u or units(); v = float(df) * 5 / 9 if u['temp'] == 'c' else float(df)
+    v = round(v) if abs(v - round(v)) < 0.05 else round(v, 1)
+    return f'{v:g}' + (('°C' if u['temp'] == 'c' else '°F') if unit else '')
+
+def rain_text(inches, u=None):
+    u = u or units(); x = float(inches)
+    if u['rain'] == 'mm': mm = x * 25.4; return (f'{round(mm, 1):g}' if mm < 1 else f'{round(mm):g}') + ' mm'
+    return f'{round(x, 2):g} in'
+
+def len_text(inches, u=None):
+    u = u or units(); x = float(inches)
+    if u['len'] == 'cm': cm = x * 2.54; return (f'{round(cm, 1):g}' if cm < 3 else f'{round(cm):g}') + ' cm'
+    return f'{round(x, 1):g} in'
+
+def temps_in_text(text, u=None):
+    """Converts the °F figures in a sentence written for Fahrenheit ('between 50 and 90°F', 'above 35°F') for a person who reads °C."""
+    u = u or units()
+    if u['temp'] != 'c' or not text: return text
+    text = re.sub(r'(-?\d+(?:\.\d+)?) (and|to|or) (-?\d+(?:\.\d+)?)°F', lambda m: f'{temp_text(m.group(1), u, False)} {m.group(2)} {temp_text(m.group(3), u)}', text)
+    return re.sub(r'(-?\d+(?:\.\d+)?)°F', lambda m: temp_text(m.group(1), u), text)
+
 # 1.29.0: settings that follow you: the Plants filters, the Library's choices, folded sections, the Location button, and the parts of
 # Display you choose to share between devices. Kept per Tailscale login; on this computer (localhost) they are the owner's.
 def prefs_login(c):

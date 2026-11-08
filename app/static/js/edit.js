@@ -35,7 +35,7 @@ async function histCal(kind) {
     cell(ds, c) {
       const d = c.data[ds];
       if (!d || d.status === 'none' || !d.source) return { cls: 's-none', badges: [], aria: 'No readings.' };
-      const lv = LEVELBD[d.status] || LEVELBD.info, val = m === 'light' ? (d.dli != null ? `${fmt(d.dli, 1)} mol/m²` : `${fmt(d.daytime_avg, 0)} PAR`) : `${fmt(d.avg, dec)}${unit}`;
+      const lv = LEVELBD[d.status] || LEVELBD.info, val = m === 'light' ? (d.dli != null ? `${fmt(d.dli, 1)} mol/m²` : `${fmt(d.daytime_avg, 0)} PAR`) : unit === '°F' ? tF(fmt(d.avg, dec)) : `${fmt(d.avg, dec)}${unit}`;   // 1.47.0: temperatures in the person's unit
       const badges = [{ cls: lv[0], text: lv[1] }, { cls: 'b-val', text: val }];
       if (d.fed && d.fed.length) badges.push({ cls: 'b-fed', text: '● Fed' });
       return { cls: lv[0], badges, aria: `${lv[1].replace(/^\S+ /, '')}, ${val}${d.fed && d.fed.length ? ', fertilizer applied' : ''}.` };
@@ -57,14 +57,14 @@ async function histDay(kind, ds) {
   ['sensor', 'manual', 'weather'].forEach(s => { const pts = (day.sources[s] || []).filter(x => x[col] != null).map(x => [Date.parse(x.t), x[col]]); if (pts.length && (S.source === 'auto' || S.source === s)) series.push({ name: names[s], cls: cls[s], pts, key: s }); });
   const main = d && d.source ? series.find(x => x.key === d.source) || series[0] : series[0];
   const vals = main ? main.pts.map(x => x[1]) : [], lo = d ? d.lo : day.ranges[HMAP_RANGE[m][0]], hi = d ? d.hi : day.ranges[HMAP_RANGE[m][1]];
-  const f = x => fmt(x, dec) + unit;
+  const f = x => unit === '°F' ? tF(fmt(x, dec)) : fmt(x, dec) + unit;        // 1.47.0: temperatures in the person's unit (the chart converts itself)
   const rangeTxt = has(lo) || has(hi) ? `${has(lo) ? 'from ' + (m === 'light' && d && d.judged_on === 'dli' ? fmt(lo, 1) + ' mol/m²/day' : f(lo)) : ''}${has(lo) && has(hi) ? ' ' : ''}${has(hi) ? 'to ' + (m === 'light' && d && d.judged_on === 'dli' ? fmt(hi, 1) + ' mol/m²/day' : f(hi)) : ''}` : '';
   const now = CUR.p, lvl = d && LEVELBD[d.status];
   const refs = [], bands = [];
   if (has(lo) && has(hi) && !(m === 'light' && d && d.judged_on === 'dli')) bands.push({ lo, hi, label: 'Comfortable range then' });
   else if (has(lo) && !(m === 'light' && d && d.judged_on === 'dli')) refs.push({ v: lo, label: 'Lowest comfortable' });
   else if (has(hi) && !(m === 'light' && d && d.judged_on === 'dli')) refs.push({ v: hi, label: 'Highest comfortable' });
-  if (m === 'temp' && has(day.ranges.temp_damage_below)) refs.push({ v: day.ranges.temp_damage_below, label: 'Damage below ' + day.ranges.temp_damage_below + '°F' });
+  if (m === 'temp' && has(day.ranges.temp_damage_below)) refs.push({ v: day.ranges.temp_damage_below, label: 'Damage below ' + day.ranges.temp_damage_below + '°F' });   // tempChart() converts this label with the chart
   const cur = HMAP_RANGE[m].map(k => now[k]);
   el.innerHTML = rend(html`<section class="day-card" aria-live="polite"><h3>${longDay(ds)}</h3>
     ${main ? html`<p class="verdict">${lvl ? html`<span class="${lvl[0] === 's-ok' ? 'st-ok' : lvl[0] === 's-near' ? 'st-near' : lvl[0] === 's-bad' ? 'st-bad' : lvl[0] === 's-danger' ? 'st-danger' : 'st-mute'}">${lvl[1]}</span>` : ''}</p>
@@ -118,12 +118,18 @@ const HINTS = {
   leaf_type: 'Decides which pest treatments suit it before it comes inside.', pot_size: 'Whether the pot can be soaked in a bucket or tub.', health_steps: 'One step per line, in order.', indoor_setup: 'One item per line.',
 };
 const rangeOf = n => (META.int_ranges && META.int_ranges[n]) || (META.num_ranges && META.num_ranges[n]) || [-60, 150];
+// 1.47.0: a plant's temperatures are kept in °F and shown and typed in the person's unit (Display, Units); submitForm() converts back
+const TEMP_FIELDS = ['temp_ideal_low', 'temp_ideal_high', 'temp_damage_below', 'temp_lethal_below', 'temp_damage_above', 'soil_temp_low', 'soil_temp_high'];
+const tempLabel = s => String(s).replace(/\((°?F)\)/, '(' + tU() + ')');
 function fieldInput(f, val) {
   const hint = HINTS[f.name] || (f.kind === 'list' ? 'One item per line.' : '');
   const wide = (f.kind === 'long' || f.kind === 'list') ? 'wide' : '';
   let v = val == null ? '' : val;          // let: the location defaults to Outdoors below (1.17.1 fixes "Add a plant", which stopped on it)
   let inp;
+  const isTemp = TEMP_FIELDS.includes(f.name);
+  if (isTemp) { f = { ...f, label: tempLabel(f.label) }; if (v !== '') v = tNum(v); }
   if (f.kind === 'long' || f.kind === 'list') inp = html`<textarea name="${f.name}" rows="${f.kind === 'list' ? 5 : 4}">${v}</textarea>`;
+  else if (f.kind === 'int' && isTemp) { const mm = rangeOf(f.name); inp = html`<input type="number" inputmode="decimal" step="${unitsGet().temp === 'c' ? '0.5' : '1'}" min="${tNum(mm[0])}" max="${tNum(mm[1])}" name="${f.name}" value="${v}">`; }
   else if (f.kind === 'int') { const mm = rangeOf(f.name); inp = html`<input type="number" inputmode="numeric" step="1" min="${mm[0]}" max="${mm[1]}" name="${f.name}" value="${v}">`; }
   else if (f.kind === 'num') { const mm = rangeOf(f.name); inp = html`<input type="number" inputmode="decimal" step="any" min="${mm[0]}" max="${mm[1]}" name="${f.name}" value="${v}">`; }
   else if (f.kind === 'area') return whereInputs(v, FORMP);          // 1.29.0: inside or outside, area or room, spot (all three)
@@ -383,7 +389,7 @@ async function viewEdit(code) { return viewForm(await api('GET', '/api/plants/' 
 async function submitForm(form) {
   if (!(await needName())) return;
   const fd = new FormData(form), fields = {};
-  META.fields.forEach(f => { const v = fd.get(f.name); if (v !== null) fields[f.name] = v; });   // 1.29.0: a field not on the form (Location now follows the area) is left out
+  META.fields.forEach(f => { let v = fd.get(f.name); if (v === null) return; if (TEMP_FIELDS.includes(f.name) && v !== '') v = String(Math.round(tIn(v))); fields[f.name] = v; });   // 1.29.0: a field not on the form (Location now follows the area) is left out; 1.47.0: temperatures typed in the person's unit go back to whole °F
   const err = document.getElementById('form-err'); err.innerHTML = '';
   const btn = form.querySelector('[type=submit]'); btn.disabled = true;
   try {

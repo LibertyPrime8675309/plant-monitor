@@ -40,7 +40,7 @@ def water_factor(avg_high, inside):
     if inside: return 1.5, 'indoors, where the mix dries more slowly'
     if avg_high is None: return 1.0, 'no recent weather'
     for limit, f, why in ((95, .6, 'very hot'), (85, .8, 'hot'), (70, 1.0, 'warm'), (55, 1.3, 'cool'), (-99, 1.6, 'cold')):
-        if avg_high >= limit: return f, f'{why} lately (highs about {avg_high}°F)'
+        if avg_high >= limit: return f, f'{why} lately (highs about {temp_text(avg_high)})'
     return 1.0, ''
 
 def water_report(c, codes=None):
@@ -362,9 +362,10 @@ def prep_weather(c):
         d = None
     if not d or d.get('high') is None: return {'high': None, 'low': None, 'spray': None}
     hi, lo = round(d['high']), round(d['low']) if d.get('low') is not None else None
-    if hi >= 90: note = f'Today reaches {hi}°F: spray early in the morning or in the evening, in the shade, or wait for a cooler day.'
-    elif hi < 55: note = f'Today only reaches {hi}°F: sprays work poorly in the cold, so wait for a day between 55 and 90°F if you can.'
-    else: note = f'Today ({lo}°F to {hi}°F) is fine for spraying in the shade.' if lo is not None else f'Today (up to {hi}°F) is fine for spraying in the shade.'
+    T = temp_text          # 1.47.0: in the person's unit
+    if hi >= 90: note = f'Today reaches {T(hi)}: spray early in the morning or in the evening, in the shade, or wait for a cooler day.'
+    elif hi < 55: note = f'Today only reaches {T(hi)}: sprays work poorly in the cold, so wait for a day between {T(55, unit=False)} and {T(90)} if you can.'
+    else: note = f'Today ({T(lo, unit=False)} to {T(hi)}) is fine for spraying in the shade.' if lo is not None else f'Today (up to {T(hi)}) is fine for spraying in the shade.'
     return {'high': hi, 'low': lo, 'spray': note}
 
 def prep_rate(r, pests, wx):
@@ -543,7 +544,7 @@ def prep_list():
         plants.append(p)
     counts = {k: sum(1 for p in plants if p['status'] == k) for k in PREP_STATUS}
     return jsonify(weather=wx, status_words=PREP_STATUS, counts=counts, plants=plants,
-                   methods=[{'key': m['key'], 'title': m['title'], 'steps': m['steps']} for m in PREP_METHODS],
+                   methods=[{'key': m['key'], 'title': m['title'], 'steps': [temps_in_text(x) for x in m['steps']]} for m in PREP_METHODS],   # 1.47.0: the °F in the steps read in the person's unit
                    keep_apart_days=KEEP_APART_DAYS)
 
 @app.route('/api/plants/<code>/prep')

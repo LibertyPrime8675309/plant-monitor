@@ -297,16 +297,17 @@ async function viewGroups() {
 }
 
 function fitItem(x) {
-  const u = x.unit === '°F' || x.unit === '%' ? x.unit : x.unit ? ' ' + x.unit : '';
+  const T = x.unit === '°F';                                                    // 1.47.0: temperatures read in the person's unit
+  const u = T ? tU() : x.unit === '%' ? x.unit : x.unit ? ' ' + x.unit : '', n = v => T ? tF(v, false) : v;
   let body;
-  if (x.key === 'cold') body = html`<p><strong>${x.value}${u}</strong>, because ${x.by.map(b => b.name).join(', ')} ${x.by.length === 1 ? 'is' : 'are'} damaged below that.</p>`;
+  if (x.key === 'cold') body = html`<p><strong>${n(x.value)}${u}</strong>, because ${x.by.map(b => b.name).join(', ')} ${x.by.length === 1 ? 'is' : 'are'} damaged below that.</p>`;
   else if (x.spread) body = html`<p><strong>Every ${x.lo === x.hi ? x.lo : x.lo + ' to ' + x.hi} ${x.unit}</strong>. ${x.lo === x.hi ? 'The same for all of them.' : 'Each plant keeps its own watering schedule.'}</p>`;
   else if (x.values) body = x.values.length === 1 ? html`<p><strong>The same for all ${x.n}:</strong> ${x.values[0].value}</p>`
     : html`<ul class="fit-vals">${x.values.map(v => html`<li><strong>${v.codes.length} plant${v.codes.length === 1 ? '' : 's'}:</strong> ${v.value}${v.codes.length < x.n ? html` <span class="muted">(${nameList(v.codes, 4)})</span>` : ''}</li>`)}</ul>`;
   else {
     const all = x.fits === x.n;
-    body = html`<p><strong>${x.lo} to ${x.hi}${u}</strong>: ${all ? html`<span aria-hidden="true">✓ </span>suits all ${x.n}.` : html`<span aria-hidden="true">▲ </span>suits ${x.fits} of ${x.n}.`}
-      ${x.odd.length ? html`Not right for ${x.odd.map((o, i) => html`${i ? '; ' : ''}<a href="#/plant/${enc(o.code)}">${o.name}</a> (${o.lo} to ${o.hi}${u})`)}.` : ''}
+    body = html`<p><strong>${n(x.lo)} to ${n(x.hi)}${u}</strong>: ${all ? html`<span aria-hidden="true">✓ </span>suits all ${x.n}.` : html`<span aria-hidden="true">▲ </span>suits ${x.fits} of ${x.n}.`}
+      ${x.odd.length ? html`Not right for ${x.odd.map((o, i) => html`${i ? '; ' : ''}<a href="#/plant/${enc(o.code)}">${o.name}</a> (${n(o.lo)} to ${n(o.hi)}${u})`)}.` : ''}
       ${x.missing ? html` <span class="muted">${x.missing} plant${x.missing === 1 ? ' has' : 's have'} no figures for this.</span>` : ''}</p>`;
   }
   return html`<div class="fit-item"><h3>${x.label}</h3>${body}</div>`;
@@ -460,10 +461,11 @@ async function groupSet(field) {
     <p class="hint">Next you see what each plant has now, and choose which plants to change.</p>
     <div class="row"><button class="btn" value="ok">Show each plant first</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`, 'wide');
   if (r !== 'ok') return;
-  const f = dlg.querySelector('form'), name = f.elements.field.value, val = f.elements[name].value;
+  const f = dlg.querySelector('form'), name = f.elements.field.value;
+  let val = f.elements[name].value; if (TEMP_FIELDS.includes(name) && val !== '') val = String(Math.round(tIn(val)));   // 1.47.0: typed in the person's unit, kept in °F
   const pv = await guard(() => api('POST', `/api/groups/${d.id}/preview`, { set: { [name]: val } }));
   if (!pv) return;
-  const show = v => v == null || v === '' ? html`<span class="muted">Not set</span>` : String(v);
+  const show = v => v == null || v === '' ? html`<span class="muted">Not set</span>` : TEMP_FIELDS.includes(name) ? tF(v) : String(v);
   const r2 = await modal(html`<form method="dialog"><h2>${F[name].label}: check each plant</h2>
     <p>New value: <strong>${show(pv.set[name])}</strong>. Plants already set to it are not ticked. ${pv.rows.some(x => x.differs.length) ? 'Plants marked "Different from the rest" have their own value now: tick them only if the new one suits them too.' : ''}</p>
     <div class="tbl-wrap"><table class="tbl gset-tbl"><thead><tr><th scope="col">Change?</th><th scope="col">Plant</th><th scope="col">Now</th></tr></thead><tbody>

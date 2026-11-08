@@ -7,7 +7,7 @@ let LT = null;                     // the last answer from /api/lights
 const LV_ICON = { too_dim: '▼▼', dim: '▼', good: '✓', bright: '▲', too_bright: '▲▲', unknown: '?' };
 function lvTag(v, word) { return html`<span class="lv lv-${v}"><span aria-hidden="true">${LV_ICON[v] || ''}</span> ${word}</span>`; }
 function ltSetting(s) {
-  return `${s.units > 1 ? s.units + ' side by side, ' : ''}${fmt(s.distance_in, 1)} in from the leaves, ${fmt(s.hours, 1)} hours a day${s.dim_pct < 100 ? `, at ${s.dim_pct}% brightness` : ''}`;
+  return `${s.units > 1 ? s.units + ' side by side, ' : ''}${lenF(s.distance_in)} from the leaves, ${fmt(s.hours, 1)} hours a day${s.dim_pct < 100 ? `, at ${s.dim_pct}% brightness` : ''}`;
 }
 function ltLight(id) { return LT && LT.lights.find(L => L.id === +id); }
 function ltRooms() {                 // [[room, [places in it]], ...] in the order they were added
@@ -55,7 +55,7 @@ function ltSteps(steps) {
   if (!steps || !steps.length) return '';
   return html`<details class="lt-steps"><summary>Easing them in from outdoor light</summary>
     <p class="hint">Plants used to the sun drop leaves if the light falls all at once. Start bright and long, then settle on the spot's setting.</p>
-    <ol>${steps.map(st => html`<li><strong>${st.when}:</strong> ${st.distance_in != null ? html`${fmt(st.distance_in, 1)} in from the leaves, ${fmt(st.hours, 1)} hours a day${st.dim_pct < 100 ? `, ${st.dim_pct}% brightness` : ''}, about ${st.dli} mol/m² a day. ` : ''}${st.text}</li>`)}</ol></details>`;
+    <ol>${steps.map(st => html`<li><strong>${st.when}:</strong> ${st.distance_in != null ? html`${lenF(st.distance_in)} from the leaves, ${fmt(st.hours, 1)} hours a day${st.dim_pct < 100 ? `, ${st.dim_pct}% brightness` : ''}, about ${st.dli} mol/m² a day. ` : ''}${st.text}</li>`)}</ol></details>`;
 }
 const ltRange = (lo, hi) => has(lo) ? `${fmt(lo, 1)}–${fmt(hi, 1)} mol/m² per day` : 'Light needs not set';
 function ltPlantLi(p, extra) {      // 1.42.0: the code and the range on lines of their own
@@ -68,8 +68,8 @@ document.addEventListener('toggle', e => { const d = e.target; if (d && d.classL
 function ltSpotBody(s, i, plan) {
   const L = ltLight(s.light_id);
   return html`<p><strong>${s.light}</strong>: ${ltSetting(s)}.</p>
-    <p>About <strong>${has(s.dli) ? s.dli : '?'} mol/m² a day</strong> at the leaves${has(s.ppfd) ? html` (${fmt(s.ppfd)} PAR while it is on)` : ''}${s.area_sqft ? html`, lighting about ${fmt(s.area_sqft, 1)} sq ft well` : ''}.
-      ${s.crowded ? html`<strong>Crowded:</strong> the pots take about ${fmt(s.room_needed_sqft, 1)} sq ft, so the plants at the edge get less.` : ''}</p>
+    <p>About <strong>${has(s.dli) ? s.dli : '?'} mol/m² a day</strong> at the leaves${has(s.ppfd) ? html` (${fmt(s.ppfd)} PAR while it is on)` : ''}${s.area_sqft ? html`, lighting about ${areaF(s.area_sqft)} well` : ''}.
+      ${s.crowded ? html`<strong>Crowded:</strong> the pots take about ${areaF(s.room_needed_sqft)}, so the plants at the edge get less.` : ''}</p>
     ${s.timer_note ? html`<p class="hint">${s.timer_note}</p>` : ''}
     ${ltSocketNote(L)}
     ${s.plants.length ? html`<ul class="lt-plants lt-two">${s.plants.map(p => ltPlantLi(p, p.better ? html`<span class="lt-better">It would suit <strong>${p.better.name}</strong> (about ${p.better.dli} mol/m² a day).</span>` : ''))}</ul>` : html`<p class="muted">No plants in this spot yet.</p>`}
@@ -110,7 +110,7 @@ function ltLightCard(L) {
     </dl>${edLong('light', L.id, 'notes', 'Notes', L.notes, canChange())}
     ${L.points.length ? html`<div class="tbl-wrap"><table class="tbl lt-ppfd"><caption>${S.estimated ? "Claude's estimates" : "Maker's figures"}: light under its centre</caption>
       <thead><tr><th scope="col">Distance</th><th scope="col" class="num">PAR (µmol/m²/s)</th><th scope="col" class="num">12 hours a day gives</th><th scope="col" class="num">Lights about</th></tr></thead>
-      <tbody>${L.points.map(p => html`<tr><th scope="row">${fmt(p.distance_in, 1)} in</th><td class="num">${fmt(p.ppfd, 1)}</td><td class="num">${fmt(p.ppfd * 12 * 0.0036, 1)} mol/m²</td><td class="num">${p.area_sqft ? fmt(p.area_sqft, 1) + ' sq ft' + (S.area_estimated && !S.estimated ? ' (estimate)' : '') : ''}</td></tr>`)}</tbody></table></div>` : ''}
+      <tbody>${L.points.map(p => html`<tr><th scope="row">${lenF(p.distance_in)}</th><td class="num">${fmt(p.ppfd, 1)}</td><td class="num">${fmt(p.ppfd * 12 * 0.0036, 1)} mol/m²</td><td class="num">${p.area_sqft ? areaF(p.area_sqft) + (S.area_estimated && !S.estimated ? ' (estimate)' : '') : ''}</td></tr>`)}</tbody></table></div>` : ''}
     ${S.ppfd_note ? html`<p class="hint">${S.ppfd_note}</p>` : ''}
     ${L.chart ? html`<p class="hint"><a href="${L.chart}" target="_blank" rel="noopener">Open the maker's chart</a> (picture). ${S.chart_alt || ''}</p>` : ''}
     ${S.url ? html`<p class="hint"><a href="${S.url}" target="_blank" rel="noopener noreferrer">Product page</a></p>` : ''}
@@ -164,7 +164,7 @@ const ltColour = k => k ? `${k}K ${k >= 5000 ? 'cool white' : k >= 3500 ? 'neutr
 function ltFree(l, x) { return l.count - l.in_use + (x && x.id && x.light_id === l.id ? (x.units0 || 0) : 0); }
 function ltOption(l, x, sel) {
   const S = l.specs, R = l.reach, free = ltFree(l, x);
-  const bits = [ltKind(S), S.watts ? fmt(S.watts, 1) + ' W' : '', R ? `up to ${fmt(R.ppfd_max)} PAR at ${fmt(R.near_in, 1)} in` : 'no light figures yet', free > 0 ? `${free} of ${l.count} free` : `none free (you have ${l.count})`].filter(Boolean);
+  const bits = [ltKind(S), S.watts ? fmt(S.watts, 1) + ' W' : '', R ? `up to ${fmt(R.ppfd_max)} PAR at ${lenF(R.near_in)}` : 'no light figures yet', free > 0 ? `${free} of ${l.count} free` : `none free (you have ${l.count})`].filter(Boolean);
   return html`<option value="${l.id}" ${sel ? raw('selected') : ''}>${l.name}: ${bits.join(', ')}</option>`;
 }
 function ltOptions(x, cur) {
@@ -180,7 +180,7 @@ function spotLightCard(L, x) {
       ${power ? html`<dt>Power and colour</dt><dd>${power}</dd>` : ''}
       <dt>Brightness</dt><dd>${S.dimming && S.dimming.length > 1 ? S.dimming.slice().sort((a, b) => a - b).map(v => v + '%').join(', ') : 'Full only'}</dd>
       <dt>Free</dt><dd>${free > 0 ? `${free} of the ${L.count} you have` : `None: all ${L.count} are in your spots`}</dd>
-      ${R ? html`<dt>Light at the leaves (PAR)</dt><dd>${R.one_point ? html`${fmt(R.ppfd_max)} at ${fmt(R.near_in, 1)} in${R.dim_min < 100 ? `, down to ${fmt(R.ppfd_min, 1)} on ${R.dim_min}%` : ''}` : html`From ${fmt(R.ppfd_max)} at ${fmt(R.near_in, 1)} in, down to ${fmt(R.ppfd_min, 1)} at ${fmt(R.far_in, 1)} in${R.dim_min < 100 ? ` on ${R.dim_min}%` : ''}`}</dd>
+      ${R ? html`<dt>Light at the leaves (PAR)</dt><dd>${R.one_point ? html`${fmt(R.ppfd_max)} at ${lenF(R.near_in)}${R.dim_min < 100 ? `, down to ${fmt(R.ppfd_min, 1)} on ${R.dim_min}%` : ''}` : html`From ${fmt(R.ppfd_max)} at ${lenF(R.near_in)}, down to ${fmt(R.ppfd_min, 1)} at ${fmt(R.far_in, 1)} in${R.dim_min < 100 ? ` on ${R.dim_min}%` : ''}`}</dd>
         <dt>Daily light (mol/m² a day)</dt><dd>${fmt(R.dli12[0], 1)} to ${fmt(R.dli12[1], 1)} on 12 hours; ${fmt(R.dli_any[0], 1)} to ${fmt(R.dli_any[1], 1)} from 8 to 16 hours</dd>`
       : html`<dt>Light figures</dt><dd>None yet. Add them with "Change the light figures" under Your lights.</dd>`}</dl>
     <p class="hint">${R ? (R.one_point ? `Measured at one distance only, so the figures are for ${fmt(R.near_in, 1)} in. ` : 'For one of this light, within the distances that were measured; not stretched past them. ') : ''}${R ? `At some setting it can give the daily light ${L.suits} of the ${need} plants here want.` : ''}${L.room_light ? ' This is a room light, not a grow light: it only suits plants that need little light.' : ''}</p>${ltSocketNote(L)}`;
@@ -217,7 +217,7 @@ async function spotDialog(x, opt) {
       <label class="f">Light<select name="light">${ltOptions(x, L && L.id)}</select><small>A to Z. Each says its type, power, its most light (PAR) and how many are free.</small></label>
       <section class="sp-light" id="sp-light" aria-label="About this light">${spotLightCard(L, x)}</section>
       <div class="field-grid three"><label class="f">How many of this light<input type="number" name="units" min="1" max="50" step="1" value="${x.units || 1}" required><small>Side by side over these plants.</small></label>
-        <label class="f">Distance from the leaves (inches)<input type="number" name="distance" min="1" max="120" step="0.5" value="${x.distance_in || 12}" required><small>From the light to the top leaves${L && L.specs.direction === 'side' ? ' (this light shines sideways)' : ''}.</small></label>
+        <label class="f">Distance from the leaves (${lenU() === 'cm' ? 'cm' : 'inches'})<input type="number" name="distance" min="1" max="${lenU() === 'cm' ? 300 : 120}" step="0.5" value="${lenF(x.distance_in || 12, false)}" required><small>From the light to the top leaves${L && L.specs.direction === 'side' ? ' (this light shines sideways)' : ''}.</small></label>
         <label class="f">Hours a day<input type="number" name="hours" min="1" max="24" step="0.5" value="${x.hours || 12}" required></label></div>
       <label class="f">Brightness<select name="dim">${spotDims(L, x.dim_pct || 100)}</select></label>
       <p class="row"><button class="btn ghost" type="button" data-act="spotbest">Best setting for the ticked plants</button></p>
@@ -240,7 +240,7 @@ async function spotDialog(x, opt) {
     spotFilter(); spotPreview(true);
     if ((await shown) !== 'ok') return;
     const f = dlg.querySelector('form'), v = k => f.elements[k].value;
-    const body = { name: v('name'), place: v('place'), light: v('light'), units: v('units'), distance: v('distance'), hours: v('hours'), dim: v('dim'), notes: v('notes'),
+    const body = { name: v('name'), place: v('place'), light: v('light'), units: v('units'), distance: lenIn(v('distance')), hours: v('hours'), dim: v('dim'), notes: v('notes'),     // 1.47.0: the distance is typed in the person's unit
       plants: [...f.querySelectorAll('input[name=plant]:checked')].map(i => i.value) };
     try {
       if (editing) await api('PUT', '/api/lights/spots/' + x.id, body); else await api('POST', '/api/lights/spots', body);
@@ -282,14 +282,14 @@ function spotPreview(now) {
       f.elements.dim.innerHTML = rend(html`${spotDims(L, 100)}`);
       const card = document.getElementById('sp-light'); if (card) card.innerHTML = rend(spotLightCard(L, SP.x));
     }
-    const q = new URLSearchParams({ light: f.elements.light.value, units: f.elements.units.value, distance: f.elements.distance.value, hours: f.elements.hours.value, dim: f.elements.dim.value,
+    const q = new URLSearchParams({ light: f.elements.light.value, units: f.elements.units.value, distance: lenIn(f.elements.distance.value), hours: f.elements.hours.value, dim: f.elements.dim.value,
       plants: [...f.querySelectorAll('input[name=plant]:checked')].map(i => i.value).join(','), spot: f.dataset.id || '' });
     try {
       const e = await api('GET', '/api/lights/preview?' + q.toString());
       SP.dli = e.dli; spotFilter();
       const ticked = e.plants.length, cover = e.area_sqft;
-      out.innerHTML = rend(html`<p><strong>About ${has(e.dli) ? e.dli : '?'} mol/m² a day</strong> at the leaves${has(e.ppfd) ? `, ${fmt(e.ppfd)} PAR while it is on` : ''}${cover ? `, lighting about ${fmt(cover, 1)} sq ft` : ''}.</p>
-        ${ticked ? html`<p>${ticked} plant${ticked === 1 ? '' : 's'} ticked; their pots take about ${fmt(e.room_needed_sqft, 1)} sq ft${cover ? ` of the ${fmt(cover, 1)} the light covers well` : ''}.${e.crowded ? ' Crowded: the plants at the edge get less.' : ''}</p>` : ''}
+      out.innerHTML = rend(html`<p><strong>About ${has(e.dli) ? e.dli : '?'} mol/m² a day</strong> at the leaves${has(e.ppfd) ? `, ${fmt(e.ppfd)} PAR while it is on` : ''}${cover ? `, lighting about ${areaF(cover)}` : ''}.</p>
+        ${ticked ? html`<p>${ticked} plant${ticked === 1 ? '' : 's'} ticked; their pots take about ${areaF(e.room_needed_sqft)}${cover ? ` of the ${fmt(cover, 1)} the light covers well` : ''}.${e.crowded ? ' Crowded: the plants at the edge get less.' : ''}</p>` : ''}
         ${e.timer_note ? html`<p class="hint">${e.timer_note}</p>` : ''}
         ${e.plants.length ? html`<ul class="sp-verdicts">${e.plants.map(p => html`<li>${lvTag(p.verdict, p.verdict_word)} ${p.name} <span class="muted">(needs ${has(p.lo) ? `${fmt(p.lo, 1)} to ${fmt(p.hi, 1)}` : 'not set'})</span>${p.better ? html`. It would suit <strong>${p.better.name}</strong> (about ${p.better.dli}).` : ''}</li>`)}</ul>` : ''}`);
     } catch (err) { out.innerHTML = rend(html`<p class="muted">${err.message}</p>`); }
@@ -302,7 +302,7 @@ async function spotBest() {
   if (!codes.length) { say.textContent = 'Tick the plants for this spot first.'; return; }
   try {
     const b = await api('GET', '/api/lights/best?' + new URLSearchParams({ light: f.elements.light.value, units: f.elements.units.value, plants: codes.join(',') }).toString());
-    f.elements.distance.value = b.distance_in; f.elements.hours.value = b.hours;
+    f.elements.distance.value = lenF(b.distance_in, false); f.elements.hours.value = b.hours;
     if ([...f.elements.dim.options].some(o => +o.value === b.dim_pct)) f.elements.dim.value = String(b.dim_pct);
     say.textContent = `Set to ${b.distance_in} in from the leaves, ${b.hours} hours a day${b.dim_pct < 100 ? `, ${b.dim_pct}% brightness` : ''}: about ${b.dli} mol/m² a day. ${b.good} of the ${b.of} ticked plants with light needs are in their range${b.good < b.of ? '. The list under it shows which are not, and a spot of yours that would suit them, if there is one' : ''}.`;
     spotPreview(true);
@@ -322,7 +322,7 @@ async function lightDialog(L) {
         <label class="f">Watts (each)<input type="number" name="watts" min="0" max="2000" step="any" value="${x.watts}"></label>
         <label class="f">Type<input type="text" name="kind" maxlength="40" value="${x.kind}"><small>For example bulb, strip or clamp light.</small></label></div>
       <label class="f">Where it is<input type="text" name="fixture" maxlength="600" value="${x.fixture}"><small>The room, shelf or lamp it is in, or the socket a bulb screws into.</small></label>
-      <label class="f">Light at distances (PPFD)<textarea name="points" rows="2" maxlength="400">${x.points}</textarea><small>From the box or listing: distance in inches and PAR, separated by commas, for example "12 in 719, 24 in 234". Add the area it lights in brackets if the maker gives it.</small></label>
+      <label class="f">Light at distances (PPFD)<textarea name="points" rows="2" maxlength="400">${x.points}</textarea><small>From the box or listing: distance in inches (always inches here, whatever your units) and PAR, separated by commas, for example "12 in 719, 24 in 234". Add the area it lights in brackets if the maker gives it.</small></label>
       <div class="field-grid"><label class="f">Timer<input type="text" name="timer" maxlength="120" value="${x.timer}"></label>
         <label class="f">Brightness steps (%)<input type="text" name="dimming" maxlength="40" value="${x.dimming}"><small>For example "25, 50, 75, 100", or "100" if it only has full.</small></label></div>
       <label class="f">Notes<input type="text" name="notes" maxlength="600" value="${x.notes}"></label>
