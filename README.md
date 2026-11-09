@@ -80,6 +80,7 @@ From 1.12.2, release zips and photo packs are kept in a folder of their own besi
 
 Double-click **Update Plant Database.cmd**. It:
 
+0. (from 1.55.0) asks GitHub for the newest release of Plant record. If it is newer than any zip in `versions_plant-database`, it downloads that release's zip there, and later any photo pack the release needs that you do not have. Nothing has to be saved into the folder by hand any more. If GitHub cannot be reached it says so and carries on with the zips already there; `-NoDownload` skips the question.
 1. moves any `plant-database-….zip` files from the Plants folder into `versions_plant-database`. It finds the newest `plant-database-vX.Y.Z-YYYYMMDD-HHMM.zip` there and says which version is installed and which is running. If that version is already installed and running, it stops and changes nothing.
 2. asks "Update to X? Type Y" (type `Y`, press Enter).
 3. makes sure Docker Desktop is running, and starts it if not.
@@ -125,7 +126,19 @@ macOS / Linux (bash), with PowerShell 7 (`pwsh`) installed:
 pwsh -File ./update-plant-database.ps1
 ```
 
-Options: `-Yes` (do not ask), `-Force` (re-apply the newest zip anyway), `-RemoveOldImage`, `-SkipBackup` (not recommended), `-Password <text>` (only if you set `PLANTDB_PASSWORD`), `-Url http://localhost:8080`.
+Options: `-Yes` (do not ask), `-Force` (re-apply the newest zip anyway), `-RemoveOldImage`, `-SkipBackup` (not recommended), `-Password <text>` (only if you set `PLANTDB_PASSWORD`), `-Url http://localhost:8080`, `-NoDownload` (from 1.55.0: do not ask GitHub, use only the zips already in the folder), `-Repo owner/name` (another GitHub repository to fetch releases from).
+
+### Releases, What's new and the restore test (from 1.55.0)
+
+A release is made by GitHub, not by hand. When a new version reaches the main branch, GitHub builds its containers, then publishes a **release** at `https://github.com/LibertyPrime8675309/plant-monitor/releases` with the release zip, every photo pack and the list of changes attached. The updater fetches from there (step 0 above), so updating is: double-click **Update Plant Database.cmd**, type `Y`.
+
+The rhythm from December 2026: one release with new features on the **first of each month**, and in between only small fixes for something broken. Changes that are ready earlier wait for the month's release.
+
+In the app:
+
+- **What's new.** After an update, Today starts with "New in <version>" and that version's changes from the list (the first line, with the rest folded under "The rest of what changed"). **Got it** puts it away; it is remembered for you (each person has their own), and "Every version's changes" opens the whole list as a plain page.
+- **An update is ready.** Twice a day the app asks GitHub whether a newer release exists. When one does, the owner sees "An update is ready: <version>" on Today, with a link to what changed, until it is installed. Only the owner sees it, because only the owner's PC can install it. The container can be told not to ask with `PLANTDB_UPDATES=0` in `docker-compose.yml`.
+- **Test a restore.** Backups are only as good as a restore, so once a quarter the owner's Today has "Test a restore" when none has been done for 90 days (or ever). Do it on the Backups page: **Back up now**, then **Restore** on that newest backup. The database from just before the restore is kept as another backup, so nothing is lost, and the reminder goes away for three months.
 
 ### Built on GitHub first (from November 2026)
 

@@ -1,0 +1,5 @@
+/* The release rhythm (js/releases.js, plantdb/releases.py; 1.55.0, PLAN.md step 7). One file per feature (1.46.0). */
+.rl-new p,.rl-update p{margin:.2rem 0}
+.rl-more{margin:.3rem 0}
+.rl-more ul{margin:.3rem 0 0 1.1rem;padding:0}
+.rl-more li{margin:.25rem 0}
