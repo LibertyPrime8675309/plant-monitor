@@ -30,7 +30,7 @@ Steps 1 to 3 come first and in that order; 4 to 6 then run one at a time, 4 befo
 | 4c. The sitter sheet by link | A link a sitter outside the Tailnet opens, with boxes that tick back | 2 to 3 days | One minor (1.49.0) | Done in 1.49.0 | `sitter.py`, `sitter-sheet.js`, `share.html`, `share.js`, `core.py` (`guard()`), README |
 | 5. Identify: two modes and a scoreboard | A baseline measured on Ethan's PC; "one of my plants" and "a new find" modes; country data instead of USDA; confirmed photos feed the look-alike step; mushroom fields | 10 to 12 days plus runs on the PC | Two minors and one patch | Step 3; step 4 for the site's country. All done: 5a Nov 8, 5b 1.51.0, 5d 1.51.1, 5c 1.52.0 | `vision/service.py`, the vision lists, `library.py`, `fungi.py`, `discover.js`, `plant.js`, `dev/vision/*`, a GPU option in `docker-compose.yml` |
 | 6. Knowledge with provenance | One fact per row with source, date and confidence; editors add and correct; any editor reviews; export | 6 to 8 days | Two minors | Step 2; step 4 helps. Done: 6a in 1.53.0, 6b in 1.54.0 | `library.py`, `fungi.py`, `core.py` schema, `library.js`, `review.js`, the batch tooling in `dev/seed_src`, docs |
-| 7. Release rhythm | A minor release on the first of each month, patches only for breakage; install by pulling images | Ongoing | None | Step 3 | `tools/make-release.py`, the updater, `CHANGELOG.md` |
+| 7. Release rhythm | A minor release on the first of each month, patches only for breakage; releases made by GitHub, fetched by the updater; What's new and a restore reminder on Today | Ongoing; the tooling done in 1.55.0 | One minor (1.55.0) | Step 3 | `.github/workflows/release.yml`, the updater, `releases.py`, `releases.js`, `CHANGELOG.md`, README |
 
 About six to eight weeks of Claude's time if done one after another, delivered as six or seven releases over two or three months.
 
@@ -165,3 +165,9 @@ Eight releases in three days suits one user who installs them himself. With peop
 - Backups before every update stay; a restore test once a quarter (the backups page has a restore) gets a reminder in the app.
 
 **Touches.** `tools/make-release.py`, the two updater scripts, `docker-compose.yml`, `CHANGELOG.md`, a small Today line through the registry from step 2, README.
+
+**Done in 1.55.0 (November 9, 2026).** The tooling for the habit:
+- A release is made by GitHub (`.github/workflows/release.yml`): when a push to main changes `VERSION` and no release `v<version>` exists yet, it waits for the Images workflow on the same push, runs `tools/make-release.py`, and publishes a GitHub Release with the release zip, every photo pack and the CHANGELOG entry as notes. Nothing is saved into the versions folder by hand any more.
+- The updater (`update-plant-database.ps1`) asks GitHub for the newest release first and downloads the release zip, and any photo pack it lacks, into `versions_plant-database` (`-NoDownload` to skip; `-Repo` for a fork). The rest is unchanged: backup, unzip, pull the images, restart.
+- `plantdb/releases.py` + `js/releases.js`: "What's new" on Today from the CHANGELOG (per-person "Got it"), "An update is ready" for the owner when GitHub has a newer release (checked twice a day; `PLANTDB_UPDATES=0` turns it off), "Test a restore" for the owner when no restore has been done for a quarter (a restore from Backups records `restore_tested_at`). `/api/whatsnew/all` is the whole CHANGELOG as a plain page.
+- The habit itself: from December 2026, one minor on the first of the month; patches only for breakage; pull requests merge when green and wait for the month's release.

@@ -1,0 +1,63 @@
+# PLAN.md step 7 (1.55.0): a release is made by GitHub, not by hand.
+# When a push to main carries a VERSION that has no release yet, this builds the release zip and the photo packs with
+# tools/make-release.py (the same files Claude used to save into Ethan's versions folder) and publishes a GitHub Release
+# "v<version>" with them attached and the CHANGELOG entry as its notes. The updater on a PC asks GitHub for the newest
+# release and downloads what it lacks (tools/update-plant-database.ps1), and the app tells the owner on Today when a
+# newer release is out (plantdb/releases.py). The images are published by images.yml on the same push.
+name: Release
+on:
+  push:
+    branches: [main]
+    paths: [VERSION]
+  workflow_dispatch:
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - id: ver
+        run: echo "version=$(tr -d '[:space:]' < VERSION)" >> "$GITHUB_OUTPUT"
+      - id: have
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "v${{ steps.ver.outputs.version }}" >/dev/null 2>&1; then echo "exists=1" >> "$GITHUB_OUTPUT"; else echo "exists=0" >> "$GITHUB_OUTPUT"; fi
+      # The updater pulls the release's images from ghcr.io, so the release waits for the Images workflow on the same push
+      # (up to 40 minutes); a release is never announced before its images exist.
+      - if: steps.have.outputs.exists == '0' && github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for i in $(seq 1 80); do
+            st=$(gh run list --workflow images.yml --commit "$GITHUB_SHA" --json status,conclusion --jq '.[0] | "\(.status) \(.conclusion)"' 2>/dev/null || echo "")
+            echo "images: ${st:-not started yet}"
+            case "$st" in
+              "completed success") exit 0 ;;
+              completed*) echo "the image build failed; no release until it is fixed" >&2; exit 1 ;;
+            esac
+            sleep 30
+          done
+          echo "gave up waiting for the image build" >&2; exit 1
+      - if: steps.have.outputs.exists == '0'
+        run: python3 tools/make-release.py
+      - if: steps.have.outputs.exists == '0'
+        run: |
+          python3 - <<'EOF'
+          import re
+          text = open('CHANGELOG.md', encoding='utf-8').read()
+          entries = re.split(r'^## ', text, flags=re.M)[1:]
+          want = open('VERSION').read().strip()
+          body = 'See CHANGELOG.md.'
+          for e in entries:
+              head, _, rest = e.partition('\n')
+              if head.startswith(want): body = rest.strip(); break
+          body += '\n\n**To install:** run `Update Plant Database.cmd` in your Plants folder; it downloads this release from here, makes a backup and installs it. The container images are on ghcr.io under this repository.'
+          open('dist/notes.md', 'w', encoding='utf-8').write(body)
+          EOF
+      - if: steps.have.outputs.exists == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ steps.ver.outputs.version }}" --title "Plant record ${{ steps.ver.outputs.version }}" --notes-file dist/notes.md dist/plant-database-v*.zip dist/plant-database-photos-*.zip

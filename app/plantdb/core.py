@@ -698,7 +698,7 @@ def owner_name(c):
 
 OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people')        # any request (the people list shows everyone's login)
 OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/areas', '/api/shops', '/api/problems', '/api/backups/restore', '/api/jobs')   # changes only
-VIEWER_POSTS = ('/api/identify', '/api/me/prefs', '/api/voice')   # 1.18.0: asks this computer what a picture shows; 1.29.0: your own settings; search by voice: words from a recording. None changes the plants
+VIEWER_POSTS = ('/api/identify', '/api/me/prefs', '/api/voice', '/api/whatsnew/seen')   # 1.55.0: "Got it" on What's new is the person's own setting   # 1.18.0: asks this computer what a picture shows; 1.29.0: your own settings; search by voice: words from a recording. None changes the plants
 VIEWER_PREFIXES = ('/api/push/',)                   # 1.33.0: your own devices and notification choices
 
 def edit_homes_of(r):
@@ -968,7 +968,7 @@ def guard():
         g.user = {'via': 'local', 'login': None, 'name': editor(), 'role': 'owner'}     # this computer (or the home network, if opened to it)
     if MIRROR:                       # 1.37.0: on the mirror everyone can only look
         g.user = dict(g.user, role='viewer', mirror=True)
-        if request.method not in ('GET', 'HEAD', 'OPTIONS') and request.path != '/api/me/prefs': abort(403, 'This is the read-only mirror. Make changes in the main app' + (f' at {MIRROR_MAIN}' if MIRROR_MAIN else '') + '.')
+        if request.method not in ('GET', 'HEAD', 'OPTIONS') and request.path not in ('/api/me/prefs', '/api/whatsnew/seen'): abort(403, 'This is the read-only mirror. Make changes in the main app' + (f' at {MIRROR_MAIN}' if MIRROR_MAIN else '') + '.')
     refusal = role_refusal(g.user)
     if refusal: abort(403, refusal)
     if request.method not in ('GET', 'HEAD', 'OPTIONS'):

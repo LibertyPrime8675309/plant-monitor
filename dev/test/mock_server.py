@@ -6,6 +6,7 @@ The forecast fills in after an update: POST /api/weather/refresh with an X-Edito
 import math
 import os, sys, time, urllib.parse
 os.environ['PLANTDB_WEATHER']='0'
+os.environ.setdefault('PLANTDB_UPDATES', '0')     # 1.55.0: no asking GitHub for the newest release from a test
 # 1.18.0: the picture checker. Without MOCK_VISION=real, a fake one (dev/test/mock_vision.py) answers on 127.0.0.1:8090,
 # started here, and stands in for Pl@ntNet and Claude too. With MOCK_VISION=real, run vision/service.py on 8090 yourself.
 os.environ.setdefault('PLANTDB_VISION_URL', 'http://127.0.0.1:' + os.environ.get('MOCK_VISION_PORT', '8090'))
