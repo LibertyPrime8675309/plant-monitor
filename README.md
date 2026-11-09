@@ -1444,6 +1444,17 @@ How long have you got before the first freeze, and when is the last one usually 
 - **Back outside, When the cold nights usually end:** the usual last hard freeze, freeze and 36°F night, with the earliest and latest, and from January to June how many days to go.
 - **Today:** in October and November, until the first freeze, "No freeze yet. The usual first freeze is N days away"; in February and March, "The usual last freeze (date) is N days away", with a link to Back outside. Nothing shows without 3 whole winters of history.
 
+## Repotting (from 1.50.0)
+
+A plant in a pot slowly fills it with roots and wears out its soil. Most want a pot one size bigger, or fresh soil, every one to three years, best done in spring (March to May) as they start to grow. **Today → Repotting** turns the "Repotted" entries in your care logs into a plan.
+
+- **How often** comes from each plant's growth rate (About this plant): fast growers every year, moderately fast every 18 months, moderate every 2 years, slow growers every 3 years; 2 years when the growth rate is empty. **Change** on any plant sets 12, 18, 24 or 36 months, or no reminders. Plants that grow in water are left out.
+- **The page:** one line saying how many plants are due and whether it is repotting season; **Due this spring** (or **Due in spring 2027**, out of season) with **Repotted today** and **Change** for each; **Not recorded yet**, with **When was it repotted?** for each plant and **Save for all** to give the whole list the same rough year; **Later**; **Signs a plant cannot wait for spring**, with short steps for when you repot; and **Left out**.
+- **When was it repotted?** takes Today, this year, last year, two years ago, three or more years ago, or an exact date. A year is saved as April 15 of that year with the note "Date estimated", so you can tell it was a guess. A plant due by the end of August goes in that year's spring; one due from September on waits for the next.
+- **On a plant's page:** a line under the care buttons ("Repotting: next due in spring 2028. Last repotted …") with **Change**.
+- **On Today:** a **Repot this spring** section and a **Repot (N)** jump button from four weeks before the season until the end of May; the rest of the year Today says nothing about it.
+- Each repotting is a "Repotted" entry in the care log, with the usual **Undo**. The plan follows the home you are looking at. The season is spring in the northern hemisphere for now; a home with no winter (1.48.0) still gets the March-to-May words.
+
 ## Turn the pots (from 1.44.0)
 
 A plant by a window grows toward the light and leans. A quarter turn every week or two, always the same way round, keeps it straight and full. **Care → Turn the pots** reminds you, the way watering reminders do.
