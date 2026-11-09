@@ -11,7 +11,7 @@ const regionName = () => (REGION() && REGION().name) || 'your state or country';
 const regionState = () => (REGION() && REGION().usda) || '';
 const inRegion = s => !!(regionState() && ((s.us_states || []).some(Boolean) ? s.us_states.includes(regionState()) : s.in_texas));   // offline rows carry only a yes or no
 const ID_SCOPES_ALL = [['common', 'Plants with a common name, and all US plants'], ['state', 'Plants of your state'], ['us', 'US plants'], ['world', 'All plants worldwide'], ['fungi', 'Fungi worldwide: mushrooms, lichens and moulds']];
-const ID = { stream: null, timer: null, busy: false, last: null, streak: 0, shot: null, paused: false, said: '', qr: null, mode: 'live', st: null, keys: null };
+const ID = { stream: null, timer: null, busy: false, last: null, streak: 0, shot: null, paused: false, said: '', qr: null, mode: null, modeByHand: false, st: null, keys: null };   // mode (5b): 'mine' or 'new', the way the next check runs
 function idScopes() { return ID_SCOPES_ALL.filter(x => x[0] !== 'state' || regionState()).map(x => x[0] === 'state' ? ['state', `${LIB_STATE_WORD(regionState())} plants`] : x); }
 let ID_SCOPES = ID_SCOPES_ALL;            // filled in by idScopes() once the place is known
 function idScope() { ID_SCOPES = idScopes(); try { let s = localStorage.getItem('plantdb.idscope'); if (s === 'texas') s = 'state'; if (ID_SCOPES.some(x => x[0] === s)) return s; } catch (e) { /* default */ } return 'common'; }
@@ -30,6 +30,7 @@ function idModeFor(page) { const v = idModePref()[page]; return v === 'mine' || 
 function idModeLast() { const v = idModePref().last; return v === 'new' ? 'new' : 'mine'; }
 // the question: a window with two big buttons (the last answer first) and a box to stop asking on this page. null = cancelled
 async function idPickMode(page) {
+  if (page === 'identify' && ID.modeByHand && ID.mode) return ID.mode;      // the choice on the page, made by hand this visit, wins
   const set = idModeFor(page); if (set !== 'ask') { ID.mode = set; return set; }
   const first = idModeLast(), order = first === 'new' ? ['new', 'mine'] : ['mine', 'new'];
   const r = await modal(html`<form method="dialog" class="idm-form"><h2>What are you looking at?</h2>
@@ -40,7 +41,7 @@ async function idPickMode(page) {
   const v = idModePref(); v.last = r;
   const keep = dlg.querySelector('[name=keep]'); if (keep && keep.checked) v[page] = r;
   idModeSave(v); ID.mode = r;
-  const sel = document.querySelector('[data-f=idmode]'); if (sel) sel.value = r;
+  const sel = document.querySelector('[data-act=idmode]'); if (sel) sel.value = r;
   return r;
 }
 // the line under a result saying which way it was checked, and whether the country's list is there yet
@@ -98,10 +99,10 @@ async function viewIdentify() {
       </div>
       <p class="hint">While the camera is on it checks about once a second, and also reads plant label QR codes. "Check this picture" holds the picture still and shows everything it found.</p>
       <label class="f id-scope">What you are looking at
-        <select data-f="idmode">${['mine', 'new'].map(m => html`<option value="${m}" ${(ID.mode || idModeLast()) === m ? raw('selected') : ''}>${ID_MODE_WORDS[m]}</option>`)}</select>
-        <small>${idModeFor('identify') === 'ask' ? 'Asked when the camera starts or a photo is chosen; change it here any time.' : `Set in Display settings to "${ID_MODE_WORDS[idModeFor('identify')]}" for this page.`}</small></label>
+        <select data-act="idmode">${['mine', 'new'].map(m => html`<option value="${m}" ${(idModeFor('identify') !== 'ask' ? idModeFor('identify') : ID.mode || idModeLast()) === m ? raw('selected') : ''}>${ID_MODE_WORDS[m]}</option>`)}</select>
+        <small>${idModeFor('identify') === 'ask' ? 'Asked when the camera starts or a photo is chosen; change it here any time.' : `Set in Display settings to "${ID_MODE_WORDS[idModeFor('identify')]}" for this page; a change here holds while you are on the page.`}</small></label>
       <label class="f id-scope">When it is not one of your plants, suggest names from
-        <select data-f="idscope">${ID_SCOPES.map(([k, l]) => html`<option value="${k}" ${k === sc ? raw('selected') : ''}>${l}</option>`)}</select></label>
+        <select data-act="idscope">${ID_SCOPES.map(([k, l]) => html`<option value="${k}" ${k === sc ? raw('selected') : ''}>${l}</option>`)}</select></label>
     </section>
     <section class="id-sec" aria-labelledby="h-idres"><h2 id="h-idres">What it found</h2><div id="id-res"><p class="muted">Start the camera or choose a photo.</p></div></section></div>
     <section class="id-sec" aria-labelledby="h-second"><h2 id="h-second">Second opinions</h2>
@@ -1473,7 +1474,8 @@ Object.assign(acts, {
   },
 });
 Object.assign(changeActs, { idfile: el => idFile(el), idmorefile: el => idMoreFile(el),
-  idmode: el => { ID.mode = el.value; const v = idModePref(); v.last = el.value; idModeSave(v); idSay(`Checking as ${ID_MODE_WORDS[el.value].toLowerCase()}.`); } });   // 5b
+  idmode: el => { ID.mode = el.value; ID.modeByHand = true; const v = idModePref(); v.last = el.value; idModeSave(v); idSay(`Checking as ${ID_MODE_WORDS[el.value].toLowerCase()}.`); },   // 5b
+  idscope: el => { try { localStorage.setItem('plantdb.idscope', el.value); } catch (e) { /* this visit only */ } } });   // 1.51.0: the list choice was never saved before (a select with no handler since 1.18.0)
 Object.assign(formActs, {
   async spnotes(form) {
     if (!SPCUR || !(await needName())) return;

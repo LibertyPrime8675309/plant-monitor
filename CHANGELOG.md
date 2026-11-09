@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.51.0 (2026-11-09)
+Step 5b of the plan: Identify in two modes.
+- **What are you looking at?** Every page that identifies (Identify, Add a plant, Add several plants, a plant's own page) asks first, with two big buttons: **One of my plants** (a plant in the record, a cutting or a new pot of one: the names you already have count, as before) or **A new find** (a plant met in a garden, a shop or the wild: nothing you have counts; the plants recorded in this home's country come first). Your last answer is offered first, so Enter repeats it.
+- **Stop being asked** by ticking **Do not ask again on this page** in the question, or in **Display settings → Identify**, one choice for each page. The choice follows you to every device you sign in on.
+- **The country's plants** come from GBIF, the world's occurrence records: the first time a country is asked for, its list is downloaded in the background (about a minute for the United States, 48,000 species) and the result says so. The country is the one set for the home on Weather → Homes and places. Each lifted name says why ("Lifted: recorded in this country"), and every result says how it was checked.
+- **Measured, not guessed:** the baseline you ran on November 8 (species first 40%, top 5 61% with the weighting) is in `dev/vision/README.md`, and `prior_test.py` has a "new find" row so the new mode can be measured the same way once the US list is on your PC.
+- Fixed: the **suggest names from** list on Identify was never saved, so it went back to the first choice on every visit.
+
 ## 1.49.0 (2026-11-09)
 Step 4c of the plan: the plant-sitter sheet by link.
 - **Send the sitter a link instead of a printout.** On the Plant-sitter sheet page, under the choices, **Share the sheet by link** → **Make a link**. The sitter opens it on their own phone with no Tailscale and no sign-in, sees the same sheet in large print (with its own Smaller text, Larger text, Dark, High contrast and Print buttons), and ticks a real check box on each line as they go. Each tick is saved at once.

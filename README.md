@@ -1037,7 +1037,18 @@ The picture checker (BioCLIP, on this computer) used to rank every species by th
 - **Several pictures of one plant:** after a result, **Add another photo of the same plant** (or **Add a camera shot of it**) checks them all together. Each picture is also looked at three ways (as it is, the whole picture letterboxed, and its middle).
 - **Pl@ntNet first when unsure:** under Second opinions, tick **Ask Pl@ntNet on its own whenever this computer is unsure**. With the Pl@ntNet key saved, a picture the computer is not sure about (no sure match among your plants, best name under 50%) goes to Pl@ntNet at once and its answer shows above the computer's own. Each costs one of Pl@ntNet's 500 free pictures a day.
 
-The weights were set by judgment, not measured on your photos. `dev/vision/prior_test.py` (run on the PC, where the model and photos are) says how often the right name comes first with and without them, so they can be tuned.
+The weights were measured on your photos on November 8, 2026 (`dev/vision/README.md`): with them the right species comes first for 40% of photos instead of 33%, and is in the top five for 61% instead of 54%.
+
+### Two ways to identify (from 1.51.0)
+
+The weighting above is right for "which of my plants is this?" and wrong for a plant met in a garden or the wild, so every page that identifies now asks **What are you looking at?** first:
+
+- **One of my plants:** a plant in the record, a cutting or a new pot of one. The names you already have, houseplants and your plants' photos count, as above.
+- **A new find:** a plant met in a garden, a shop or the wild. Nothing you have counts; instead the plants recorded in this home's country (from GBIF, the world's occurrence records) are lifted, the more often recorded the more. The country is the one set for the home on **Weather → Homes and places**. The first time a country is asked for, its list is downloaded (about a minute for the United States, 48,000 species) and the result says so; until it is there, no country is favoured.
+- The question offers your **last answer first**, so Enter repeats it. Tick **Do not ask again on this page** to make the answer the rule for that page, or set the rule in **Display settings → Identify**, one choice for each page (Identify, adding plants, a plant's own page). The rule follows you to every device you sign in on.
+- On Identify, **What you are looking at** above the camera shows the way in use and can be changed any time. Every result says how it was checked ("Checked as a new find. Plants recorded in US (48,696 species) come first.") and each lifted name says why ("Lifted: recorded in this country").
+- The checker is measured against the November 8 baseline (`dev/vision/README.md`); `prior_test.py` now has a "new find" row too, which needs the country's list from `data\vision`.
+- Also fixed: **suggest names from** on Identify (the species list) was never saved, so the list went back to the first choice on every visit.
 
 ## On the phone and offline (from 1.38.0)
 

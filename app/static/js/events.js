@@ -630,7 +630,7 @@ const changeActs = {
   idmodeset(el) {                     // 5b: Identify's question, per page, in Display
     const v = idModePref(); if (el.value === 'ask') delete v[el.dataset.page]; else v[el.dataset.page] = el.value;
     idModeSave(v);
-    const sel = document.querySelector('[data-f=idmode]'); if (sel && el.dataset.page === 'identify' && el.value !== 'ask') { sel.value = el.value; ID.mode = el.value; }
+    const sel = document.querySelector('[data-act=idmode]'); if (sel && el.dataset.page === 'identify' && el.value !== 'ask') { sel.value = el.value; ID.mode = el.value; }
   },
   async ctphoto(el) {                 // 1.29.0: photos of a pot or tray
     if (!el.files.length || !(await needName())) return;

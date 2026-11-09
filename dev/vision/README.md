@@ -7,7 +7,7 @@ Python with torch, open_clip_torch, numpy and pillow (any venv; not part of the 
 2. `fit_conf.py <out.npz>`: fits `CONF[model]` (logistic on margin and score) and prints how often each confidence band was right.
 3. `novel_test.py <out.npz> w0 w1 w2`: leaves each whole plant out, to set `NOVEL[model]` and see how often a plant that is not in the record would pop up.
 4. `species_test.py <out.npz> <names_dir> [usda_states.json]`: zero-shot species naming for photos whose plant has a clear "Genus species" name, per scope. `names_dir` is the service's cache folder for that model.
-5. `prior_test.py <out.npz> <names_dir> [usda_states.json]` (1.39.0): the same ranking with and without the service's prior (species and genera in the record, houseplant genera, Texas, look-alike photos of the record's own named plants, with the photo's own plant left out). Run on Ethan's PC on November 8, 2026 (inside the running vision container: the scripts copied into `data/vision/tests`, `docker exec -e PYTHONPATH=/svc plant-vision python3 /cache/tests/...`); the results are the baseline below.
+5. `prior_test.py <out.npz> <names_dir> [usda_states.json] [gbif-CC.json]` (1.39.0; 1.51.0 adds a "new find" row per list, the mode with no lift for the record's own plants and a lift for the species GBIF records in the country, from the `gbif-<CC>.json` the service keeps in `data/vision`): the same ranking with and without the service's prior (species and genera in the record, houseplant genera, Texas, look-alike photos of the record's own named plants, with the photo's own plant left out). Run on Ethan's PC on November 8, 2026 (inside the running vision container: the scripts copied into `data/vision/tests`, `docker exec -e PYTHONPATH=/svc plant-vision python3 /cache/tests/...`); the results are the baseline below.
 
 Results on 213 photos (October 26, 2026):
 
@@ -41,7 +41,7 @@ Windows (cmd.exe):
 mkdir data\vision\tests
 copy ..\plant-monitor\dev\vision\*.py data\vision\tests\
 docker exec -e PYTHONPATH=/svc plant-vision python3 /cache/tests/eval_photos.py /data /cache/eval.npz bioclip-2.5-vith14
-docker exec -e PYTHONPATH=/svc plant-vision python3 /cache/tests/prior_test.py /cache/eval.npz /cache/bioclip-2.5-vith14 /cache/usda_states.json
+docker exec -e PYTHONPATH=/svc plant-vision python3 /cache/tests/prior_test.py /cache/eval.npz /cache/bioclip-2.5-vith14 /cache/usda_states.json /cache/gbif-US.json
 ```
 
 Windows (PowerShell):
@@ -49,7 +49,7 @@ Windows (PowerShell):
 New-Item -ItemType Directory -Force data\vision\tests | Out-Null
 Copy-Item ..\plant-monitor\dev\vision\*.py data\vision\tests\
 docker exec -e PYTHONPATH=/svc plant-vision python3 /cache/tests/eval_photos.py /data /cache/eval.npz bioclip-2.5-vith14
-docker exec -e PYTHONPATH=/svc plant-vision python3 /cache/tests/prior_test.py /cache/eval.npz /cache/bioclip-2.5-vith14 /cache/usda_states.json
+docker exec -e PYTHONPATH=/svc plant-vision python3 /cache/tests/prior_test.py /cache/eval.npz /cache/bioclip-2.5-vith14 /cache/usda_states.json /cache/gbif-US.json
 ```
 
 bash:
@@ -57,7 +57,9 @@ bash:
 mkdir -p data/vision/tests
 cp ../plant-monitor/dev/vision/*.py data/vision/tests/
 docker exec -e PYTHONPATH=/svc plant-vision python3 /cache/tests/eval_photos.py /data /cache/eval.npz bioclip-2.5-vith14
-docker exec -e PYTHONPATH=/svc plant-vision python3 /cache/tests/prior_test.py /cache/eval.npz /cache/bioclip-2.5-vith14 /cache/usda_states.json
+docker exec -e PYTHONPATH=/svc plant-vision python3 /cache/tests/prior_test.py /cache/eval.npz /cache/bioclip-2.5-vith14 /cache/usda_states.json /cache/gbif-US.json
 ```
 
 The container's file system is read-only, so `docker cp` into it is refused; `data/vision` (mounted as `/cache`) is the writable place. `PYTHONPATH=/svc` lets the scripts import the service's own code. The first command takes 10 to 20 minutes.
+
+`/cache/gbif-US.json` exists once Identify has been used as "a new find" at a home whose country is US (1.51.0); leave the argument off before that. The "new find" row is the one to watch for step 5b: it is the mode a sitter or a visitor uses on a plant that is not in the record.

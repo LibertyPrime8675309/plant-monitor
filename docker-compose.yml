@@ -3,13 +3,13 @@ services:
     build:
       context: .
       args:
-        PLANTDB_VERSION: "1.49.0"
+        PLANTDB_VERSION: "1.51.0"
     # The tag is the release number, so Docker Desktop shows which version is running (Containers > Image column).
-    image: ghcr.io/libertyprime8675309/plant-database:1.49.0     # 1.46.0: built on GitHub for every release and pulled from there (PLAN.md step 3)
+    image: ghcr.io/libertyprime8675309/plant-database:1.51.0     # 1.46.0: built on GitHub for every release and pulled from there (PLAN.md step 3)
     pull_policy: missing            # pulled when this version is not on this computer; built from this folder only if the updater has to (no internet to GitHub)
     container_name: plant-database
     labels:
-      plantdb.version: "1.49.0"
+      plantdb.version: "1.51.0"
     ports:
       # Since 1.12: only this computer can open http://localhost:8080 (the updater and backups use it). Everyone else, at home
       # or away, comes in through Tailscale (the "tailscale" service below), signed in.
@@ -71,7 +71,7 @@ services:
     build:
       context: .
       dockerfile: vision/Dockerfile
-    image: ghcr.io/libertyprime8675309/plant-database-vision:1.49.0
+    image: ghcr.io/libertyprime8675309/plant-database-vision:1.51.0
     pull_policy: missing
     container_name: plant-vision
     volumes:
@@ -100,7 +100,7 @@ services:
     build:
       context: .
       dockerfile: speech/Dockerfile
-    image: ghcr.io/libertyprime8675309/plant-database-speech:1.49.0
+    image: ghcr.io/libertyprime8675309/plant-database-speech:1.51.0
     pull_policy: missing
     container_name: plant-speech
     volumes:
