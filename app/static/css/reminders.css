@@ -1,0 +1,20 @@
+/* Your own reminders (js/reminders.js, plantdb/reminders.py): prototype proto/reminders. One file per feature (1.46.0). */
+.rm-sum .btn{margin-top:.2rem}
+.rm-text{display:block;font-size:1.05em}
+.rm-when{margin-top:.15rem}
+.rm-late .rm-flag{font-weight:700;color:var(--madder)}
+.rm-none{display:block}
+.rm-plant{margin:.6rem 0 0}
+.rm-plant>.hint .btn{margin-left:.3rem}
+.rm-plist{margin:.2rem 0 .4rem}
+.rm-plist .job{grid-template-columns:minmax(0,1fr) auto;padding:.5rem 0}
+@media (max-width:640px){.rm-plist .job{grid-template-columns:minmax(0,1fr)}}
+.rm-done{list-style:none;padding:0;margin:.4rem 0 1rem}
+.rm-donerow{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem .8rem;padding:.45rem 0;border-bottom:1px solid var(--line-2,var(--line));overflow-wrap:anywhere}
+.rm-donerow>span{flex:1 1 18rem;min-width:0}
+.rm-dlg fieldset{border:1px solid var(--line);border-radius:8px;padding:.4rem .8rem .6rem;margin:0 0 .8rem;min-width:0}
+.rm-dlg legend{font-weight:600;padding:0 .3rem;overflow-wrap:anywhere}
+.rm-dlg .chk{display:flex;align-items:center;gap:.5rem;padding:.25rem 0;font-weight:400}
+.rm-dlg .f{max-width:100%}
+.rm-dlg select,.rm-dlg input[type=text]{max-width:100%}
+html[data-role=viewer] :is([data-act=rmnew], [data-act=rmdone], [data-act=rmlater], [data-act=rmedit], [data-act=rmundo]){display:none!important}
