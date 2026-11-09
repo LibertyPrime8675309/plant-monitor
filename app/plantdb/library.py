@@ -195,24 +195,80 @@ def identify():
     scope = vscope(c, request.args.get('scope', 'common'))
     return jsonify(identify_pictures(c, pictures_bytes(1024), scope, **id_args()))
 
+# ---- PLAN.md step 5c (1.52.0): the loop. What people confirm or reject becomes an example the checker learns from: a 'yes' example
+# lifts its name for pictures that look like it (the look-alike step searches the record's own photos and these), a 'no' example
+# lowers it. The picture is kept in data/photos as ex_<hex>.jpg and the row in id_examples; the checker reads both (service.py,
+# examples_rows) and keeps the fingerprints in its cache. The record's named plants and named mushroom finds count on their own.
+def example_save(c, kind, name, file, source, code=None):
+    c.execute('INSERT INTO id_examples(kind,name,file,source,plant_code,added_by,added_at) VALUES(?,?,?,?,?,?,?)', (kind, name, file, source, code, editor(), now()))
+
+def example_picture():
+    """The picture sent with a confirmation or rejection (field 'image'), saved as an example file; None when none was sent."""
+    f = request.files.get('image')
+    if not f: return None
+    from PIL import Image, ImageOps
+    try: im = ImageOps.exif_transpose(Image.open(f.stream)).convert('RGB')
+    except Exception: abort(400, 'That picture cannot be read (use JPG or PNG)')
+    im.thumbnail((1024, 1024))
+    name = f'ex_{uuid.uuid4().hex[:16]}.jpg'
+    os.makedirs(PHOTO_DIR, exist_ok=True)
+    im.save(os.path.join(PHOTO_DIR, name), 'JPEG', quality=84, optimize=True)
+    return name
+
+@app.route('/api/identify/confirm', methods=['POST'])
+def identify_confirm():
+    """5c: "This is right": the picture (field 'image') is a confirmed example of 'name' (form fields name, source). Editors and the
+    owner; the guard refuses viewers. Without a picture but with ?plant=, the plant's main photo is the example."""
+    c = db()
+    name = str(request.form.get('name') or request.args.get('name') or '').strip()[:120]
+    if not name or not re.match(r'^[A-Z][a-z]+ [a-z][a-z\-]+', name): abort(400, 'Which species? (Genus species)')
+    code = str(request.form.get('plant') or request.args.get('plant') or '').strip() or None
+    file = example_picture()
+    if not file and code:
+        r = plant_row(c, code)
+        ph = c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC, id LIMIT 1', (r['id'],)).fetchone()
+        if ph: file = ph[0]
+    if not file: abort(400, 'Send the picture that was checked')
+    example_save(c, 'yes', name, file, str(request.form.get('source') or 'identify')[:40], code)
+    audit_only(c, 'library', 'identify', None, name, editor(), f'Confirmed: this picture is {name}' + (f' ({code})' if code else ''), None, code)
+    c.commit()
+    n = c.execute("SELECT COUNT(*) FROM id_examples WHERE kind='yes' AND name=?", (name,)).fetchone()[0]
+    return jsonify(ok=True, name=name, file=file, examples=n)
+
 @app.route('/api/identify/reject', methods=['POST'])
 def identify_reject():
     """1.40.0: "Not this": {name, genus: bool, plant: code or null}. With a plant, the name never comes back for that plant; without one, the
-    client keeps the list for the session and sends it as ?exclude=. Either way the rejection is logged."""
+    client keeps the list for the session and sends it as ?exclude=. Either way the rejection is logged.
+    5c: sent as a form with the picture (field 'image'), the picture is kept as a 'no' example of the name, so the checker lowers that
+    name for pictures that look like it; with a plant and no picture, the plant's main photo is the example."""
     c = db()
-    b = request.get_json(silent=True) or {}
+    b = request.get_json(silent=True) or (request.form.to_dict() if request.form else {})
     name = str(b.get('name') or '').strip()[:120]
     if not name: abort(400, 'Which name?')
     code = str(b.get('plant') or '').strip() or None
     if code: plant_row(c, code)
-    genus = 1 if b.get('genus') else 0
+    genus = 1 if b.get('genus') in (True, 1, '1', 'true') else 0
     c.execute('INSERT INTO id_rejections(plant_code,name,genus,rejected_by,rejected_at) VALUES(?,?,?,?,?)', (code, name, genus, editor(), now()))
     audit_only(c, 'library', 'identify', name, None, editor(), f'Not this: {"genus " if genus else ""}{name}' + (f' for {code}' if code else ''), None, code)
+    if not genus and re.match(r'^[A-Z][a-z]+ [a-z][a-z\-]+', name):      # 5c: a species said no to becomes a 'no' example when there is a picture
+        file = example_picture()
+        if not file and code:
+            ph = c.execute('SELECT ph.file FROM photos ph JOIN plants p ON p.id=ph.plant_id WHERE p.code=? ORDER BY ph.is_primary DESC, ph.id LIMIT 1', (code,)).fetchone()
+            if ph: file = ph[0]
+        if file: example_save(c, 'no', name, file, 'identify', code)
     c.commit()
     return jsonify(ok=True, name=name, genus=bool(genus), plant=code)
 
-BASIS_WORDS = {'own_sp': 'a species you have', 'own_gen': 'a genus you have', 'house': 'a houseplant', 'state': 'grows in this state', 'looks': 'looks like your photos',
-               'country': 'recorded in this country'}       # 5b
+@app.route('/api/identify/examples')
+def identify_examples():
+    """5c: what the checker has learned: how many confirmed and rejected examples, by name (newest first)."""
+    c = db()
+    rows = c.execute("""SELECT name, SUM(kind='yes') AS yes, SUM(kind='no') AS no, MAX(added_at) AS last FROM id_examples GROUP BY name ORDER BY last DESC LIMIT 200""").fetchall()
+    return jsonify(examples=[dict(r) for r in rows], total=c.execute('SELECT COUNT(*) FROM id_examples').fetchone()[0])
+
+BASIS_WORDS = {'own_sp': 'a species you have', 'own_gen': 'a genus you have', 'house': 'a houseplant', 'state': 'grows in this state', 'looks': 'looks like your photos or a confirmed picture',
+               'country': 'recorded in this country',       # 5b
+               'unlike': 'lowered: looks like a picture that was not this'}       # 5c
 
 @app.route('/api/identify/status')
 def identify_status():

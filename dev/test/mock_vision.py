@@ -22,6 +22,7 @@ def colour():
 def status():
     cc = request.args.get('country', '').upper()
     return jsonify(STATE | {'country': ({'code': cc, 'state': 'ready' if COUNTRY_SEEN.count(cc) >= 3 else 'fetching', 'species': 48696 if COUNTRY_SEEN.count(cc) >= 3 else 0} if cc else None),
+                            'examples': {'yes': 2, 'no': 1},            # 5c
                             'step': 'Ready' if STATE['state'] == 'ready' else 'Downloading the species fingerprints', 'done': 3, 'total': 1024,
                             'photos': 215, 'species': 335884, 'model': 'bioclip-2.5-vith14 (test)',
                             'scopes': {k: {'label': k, 'count': n} for k, n in (('common', 32542), ('texas', 4606), ('us', 18168), ('world', 335884), ('fungi', 49210))}

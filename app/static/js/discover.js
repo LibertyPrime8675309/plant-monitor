@@ -62,7 +62,8 @@ const sureWord = c => c >= 0.9 ? 'Very likely' : c >= 0.75 ? 'Likely' : c >= 0.5
 const canChange = () => ME().role !== 'viewer';
 function idStatusText(st) {
   if (!st) return 'Checking the picture checker…';
-  if (st.state === 'ready') return `Ready. It compares pictures with ${st.photos} photos of your plants and ${Number(st.species || 0).toLocaleString()} plant species.`;
+  if (st.state === 'ready') return `Ready. It compares pictures with ${st.photos} photos of your plants and ${Number(st.species || 0).toLocaleString()} plant species.`
+    + (st.examples && (st.examples.yes || st.examples.no) ? ` It has also learned from ${st.examples.yes} confirmed ${st.examples.yes === 1 ? 'picture' : 'pictures'} and ${st.examples.no} said "Not this" to.` : '');   // 5c
   if (st.state === 'off') return st.step || 'The picture checker is not running.';
   if (st.state === 'error') return 'The picture checker could not start: ' + (st.error || st.step) + '. Restarting the app usually fixes it; see README, "Identify a plant".';
   return 'The picture checker is setting up: ' + st.step + (st.total ? ` (${st.done} of ${st.total})` : '') + '. The first start downloads about 5 GB and can take 20 to 40 minutes.';
@@ -213,13 +214,33 @@ async function idAsk(blob, scope, more, ex) {  // 1.39.0: more = other pictures 
   if (ex && ex.genera.length) q.exclude_genera = ex.genera.join('|');
   return api('POST', '/api/identify?' + new URLSearchParams(q).toString(), undefined, fd);
 }
+// 5c (1.52.0): "Not this" and "This is right" send the picture too, as a form: the checker keeps it as an example of what the
+// name does not (or does) look like. Without a picture (Add several, the plant form) the rejection is words only, as before.
+function idReject(name, genus, blob, plant) {
+  if (!blob) return api('POST', '/api/identify/reject', { name, genus, plant: plant || null });
+  const fd = new FormData(); fd.append('name', name); fd.append('genus', genus ? '1' : '0'); if (plant) fd.append('plant', plant); fd.append('image', blob, 'picture.jpg');
+  return api('POST', '/api/identify/reject', undefined, fd);
+}
+async function idConfirm(el) {
+  const name = el.dataset.name, src = el.dataset.ctx;
+  if (!(await needName())) return;
+  const fd = new FormData(); fd.append('name', name); fd.append('source', src);
+  if (src === 'id' && ID.shot && ID.shot.blob) fd.append('image', ID.shot.blob, 'picture.jpg');
+  else if (src === 'plant' && el.dataset.code) fd.append('plant', el.dataset.code);
+  else return;
+  await guard(async () => {
+    const r = await api('POST', '/api/identify/confirm', undefined, fd);
+    toast(`Saved: this picture is ${name}. The checker now has ${r.examples} ${r.examples === 1 ? 'example' : 'examples'} of it.`);
+    el.disabled = true; el.textContent = 'Confirmed';
+  });
+}
 // 1.40.0: "Not this": the name (or its genus) leaves the list, the pictures are checked again without it, and the choice is logged
 async function idNot(el) {
   const ctx = el.dataset.ctx, name = el.dataset.name, genus = el.dataset.genus === '1';
   if (ctx === 'id') {
     if (!ID.shot) return;
     ID.shot.ex = ID.shot.ex || { species: [], genera: [] }; (genus ? ID.shot.ex.genera : ID.shot.ex.species).push(name);
-    if (canChange()) api('POST', '/api/identify/reject', { name, genus }).catch(() => null);
+    if (canChange()) idReject(name, genus, ID.shot.blob).catch(() => null);          // 5c: with the picture, so the checker learns
     const res = document.getElementById('id-res'); if (res) res.insertAdjacentHTML('afterbegin', rend(html`<p class="muted" role="status">Checking again without ${genus ? 'the genus ' : ''}${name}…</p>`));
     try { ID.shot.result = await idAsk(ID.shot.blob, null, ID.shot.more, ID.shot.ex); ID.shot.plantnet = ID.shot.result.plantnet || null; idPaint(ID.shot.result, ID.shot.url); idSay(`Not ${name}. Checked again.`); }
     catch (e) { toast(e.message, true); }
@@ -389,7 +410,7 @@ function spCard(s, i, src, withAdd, o) {
   else if (s.us_states && s.us_states.length) tags.push(html`<span class="tag">In ${s.us_states.length} US state${s.us_states.length === 1 ? '' : 's'}</span>`);
   if (s.yours && s.yours.length) tags.push(html`<span class="tag tag-yours">You have this: ${s.yours.join(', ')}</span>`);
   else if (s.yours_genus && s.yours_genus.length) tags.push(html`<span class="tag">Same genus as ${s.yours_genus.slice(0, 4).join(', ')}</span>`);
-  (s.basis_words || []).filter(w => !/you have/.test(w) || !(s.yours && s.yours.length)).forEach(w => tags.push(html`<span class="tag tag-why">Lifted: ${w}</span>`));   // 1.39.0
+  (s.basis_words || []).filter(w => !/you have/.test(w) || !(s.yours && s.yours.length)).forEach(w => tags.push(html`<span class="tag tag-why">${/^lowered/.test(w) ? w.charAt(0).toUpperCase() + w.slice(1) : 'Lifted: ' + w}</span>`));   // 1.39.0; 5c: lowered too
   return html`<li class="id-sp"><div><i class="sci">${s.scientific_name}</i>${s.common_name ? html` <span>${s.common_name}</span>` : ''}
       ${s.probability != null ? html`<b class="id-p">${pct(s.probability)}</b>` : ''}</div>
     <div class="muted">${[s.family, s.order].filter(Boolean).join(', ')}</div>
@@ -399,6 +420,7 @@ function spCard(s, i, src, withAdd, o) {
     <div class="id-acts">${spLinks(s)}${withAdd ? s.kingdom === 'Fungi' ? html`<button class="btn small" type="button" data-act="idfind" data-src="${src}" data-i="${i}">Record a mushroom find</button>`
       : html`<button class="btn small" type="button" data-act="idnew" data-src="${src}" data-i="${i}">Add as a new plant</button>` : ''}
       ${o.use ? html`<button class="btn small" type="button" data-act="${o.use}" data-i="${i}">Use this name</button>` : ''}
+      ${(o.reject === 'id' || o.reject === 'plant') && canChange() && s.kingdom !== 'Fungi' && /^[A-Z][a-z]+ [a-z]/.test(s.scientific_name || '') ? html`<button class="btn small ghost" type="button" data-act="idright" data-ctx="${o.reject}" data-code="${o.code || ''}" data-name="${s.scientific_name}" aria-label="This is right: ${s.scientific_name}">This is right</button>` : ''}
       ${o.reject ? html`<button class="btn small ghost" type="button" data-act="idnot" data-ctx="${o.reject}" data-g="${o.pick == null ? (o.code || '') : o.pick}" data-name="${s.scientific_name}" aria-label="Not this: ${s.scientific_name}">Not this</button>
       <button class="btn small ghost" type="button" data-act="idnot" data-ctx="${o.reject}" data-g="${o.pick == null ? (o.code || '') : o.pick}" data-name="${s.genus || (s.scientific_name || '').split(' ')[0]}" data-genus="1" aria-label="Not this genus: ${s.genus || (s.scientific_name || '').split(' ')[0]}">Not this genus</button>` : ''}</div></li>`;
 }
@@ -1448,6 +1470,7 @@ Object.assign(acts, {
   idsnap: () => idSnap(),
   idsnapmore: () => idSnapMore(),
   idnot: el => idNot(el),
+  idright: el => idConfirm(el),          // 5c
   plantid: el => plantIdentify(el.dataset.code),
   plantask: el => plantIdentify(el.dataset.code, 'yes'),
   async plantuse(el) {                  // rename the plant to the chosen name (the page's own fields; the old name stays in the history)
