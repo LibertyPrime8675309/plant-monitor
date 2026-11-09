@@ -6,7 +6,7 @@
    Changes made while offline are not handled here: the page keeps them in its outbox and sends them when it is back online. */
 const VERSION = '__VERSION__';
 const SHELL = 'plantdb-shell-' + VERSION, API = 'plantdb-api', PICS = 'plantdb-photos', LIBPICS = 'plantdb-library-photos';
-const SHELL_FILES = ['/', ...__SHELL_JS__, '/style.css', '/prefs.js', '/card.html', '/card.js', '/sitter.html', '/sitter.js', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
+const SHELL_FILES = ['/', ...__SHELL_JS__, '/style.css', '/prefs.js', '/card.html', '/card.js', '/sitter.html', '/sitter-sheet.js', '/sitter.js', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
 const NO_SAVE = /^\/api\/(people|backups|ingest|weather\/job|backups\/job|audit|library\/prefetch|library\/local|offline\/|identify\/settings|calendar\/settings|me$)/;
 const WAIT_MS = 5000;
 let downUntil = 0;                           // after the server fails to answer, use saved copies at once for a while (weak signal)

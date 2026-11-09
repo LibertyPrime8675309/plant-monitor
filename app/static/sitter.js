@@ -3,8 +3,7 @@
    A page of its own so the printout carries nothing but the sheet. Plain JavaScript, no inline handlers (content policy). */
 (function () {
 'use strict';
-const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ESC[c]);
+const { sheet, dayName, esc, iso, addDays } = window.PlantSitterSheet;        // 1.49.0: the sheet itself is in sitter-sheet.js, shared with the sheet by link
 const enc = encodeURIComponent;
 const $ = id => document.getElementById(id);
 const KEY = 'plantdb.sitter';
@@ -15,72 +14,17 @@ const saveOpt = () => { try { localStorage.setItem(KEY, JSON.stringify(OPT)); } 
 
 let PLACE = null;
 try { PLACE = localStorage.getItem('plantdb.place') || null; } catch (e) { /* home place */ }
-async function get(url) {
+function headers(change, json) {
+  const h = {}; if (PLACE) h['X-Place'] = PLACE; if (json) h['Content-Type'] = 'application/json';
+  if (change) { let n = ''; try { n = (ME && ME.name) || localStorage.getItem('plantdb.editor') || ''; } catch (e) { /* none */ } h['X-Editor'] = n || 'Unknown'; }   // a change needs the name header (the CSRF guard)
+  return h;
+}
+async function get(url, init) {
   let r;
-  try { r = await fetch(url, { headers: PLACE ? { 'X-Place': PLACE } : {} }); } catch (e) { throw new Error('Cannot reach the plant server. Check that the container is running.'); }
+  try { r = await fetch(url, Object.assign({ headers: headers(init && init.method && init.method !== 'GET', init && init.body) }, init || {})); } catch (e) { throw new Error('Cannot reach the plant server. Check that the container is running.'); }
   let d = null; try { d = await r.json(); } catch (e) { /* not json */ }
   if (!r.ok) throw new Error((d && (d.error || d.message)) || ('Request failed (' + r.status + ')'));
   return d;
-}
-
-// dates as local days: '2026-11-07' -> 'Saturday, November 7'
-const asDate = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
-const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-const addDays = (s, n) => { const d = asDate(s); d.setDate(d.getDate() + n); return iso(d); };
-const dayName = s => asDate(s).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
-const dayShort = s => asDate(s).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-
-// the first sentence of a note
-function short(s) {
-  const t = String(s || '').replace(/\s+/g, ' ').trim();
-  const m = t.match(/^.+?[.!?](?=\s+[A-Z0-9"(]|$)/);
-  return m ? m[0] : t;
-}
-const where = p => p.spot && p.spot.toLowerCase().startsWith(p.site.toLowerCase()) ? p.spot : [p.site, p.spot].filter(Boolean).join(', ');
-const tick = '<span class="ps-box" aria-hidden="true"></span>';
-// 1.47.0: temperatures and rain in the units the person chose in Display (localStorage plantdb.units; core.js has the full version)
-const UREG = { us: { temp: 'f', rain: 'in' }, ca: { temp: 'c', rain: 'mm' }, metric: { temp: 'c', rain: 'mm' } };
-let U = { temp: 'f', rain: 'in' };
-try { const u = JSON.parse(localStorage.getItem('plantdb.units') || '{}') || {}, b = UREG[u.region] || UREG.us; U = { temp: u.temp || b.temp, rain: u.rain || b.rain }; } catch (e) { /* °F */ }
-const tF = f => f == null ? '' : U.temp === 'c' ? `${Number.isInteger(+f) ? Math.round((f - 32) * 5 / 9) : Math.round((f - 32) * 50 / 9) / 10}°C` : `${f}°F`;
-const rainF = x => U.rain === 'mm' ? `${Math.round(x * 25.4)} mm` : `${x} inch`;
-const thumb = f => f ? `/thumbs/${encodeURIComponent(f)}` : '';
-
-function sheet(D) {
-  const by = Object.fromEntries(D.plants.map(p => [p.code, p]));
-  const outside = D.plants.some(p => p.open_sky);
-  const span = D.start === D.end ? dayName(D.start) : `${dayName(D.start)} to ${dayName(D.end)}`;
-  const jobs = D.days.reduce((n, d) => n + d.plants.length, 0);
-  // one entry per plant per day: its photo (so the sitter knows which pot), where it is, and how to tell if it needs water
-  const item = (code, extra) => { const p = by[code], how = p.water_notes ? short(p.water_notes) : '';
-    return `<li>${tick}${OPT.photos && p.photo ? `<img class="ps-pic" src="${thumb(p.photo)}" alt="" loading="lazy">` : OPT.photos ? '<span class="ps-pic ps-nopic" aria-hidden="true"></span>' : ''}<span class="ps-what"><strong>${esc(p.name)}</strong> <span class="ps-code">${esc(p.code)}</span><span class="ps-where">${esc(where(p))}${extra ? '. ' + esc(extra) : ''}</span>${how && !extra ? `<span class="ps-how1">${esc(how)}</span>` : ''}</span></li>`; };
-  const intro = `<ul class="ps-how">
-      <li>On each day below, check the plants listed. Each line says where the plant is and how to tell if it needs water${OPT.photos ? ', with its photo' : ''}.</li>
-      <li>Water only if it needs it. A plant that is still moist can wait.</li>
-      ${outside ? `<li>If at least ${rainF(D.rain_counts_in)} of rain fell, the plants that are <strong>Outdoors</strong> (not on the porch) do not need watering that day.</li>` : ''}
-      <li>Tick the box when it is done.</li></ul>`;
-  const beyond = D.forecast_to && D.end > D.forecast_to;
-  // one line per plant (not per night), so a cold spell does not fill pages: the nights it is at risk and its limit
-  const coldBy = {};
-  for (const n of D.nights) for (const x of n.plants) (coldBy[x.code] = coldBy[x.code] || { x, nights: [] }).nights.push(n);
-  const coldCodes = D.plants.map(p => p.code).filter(c => coldBy[c]);
-  const cold = coldCodes.length ? `<section class="ps-sec ps-cold" aria-labelledby="ps-cold-h"><h3 id="ps-cold-h">Cold nights in the forecast</h3>
-      <p>Before dark on the nights listed, move these plants inside or cover them.</p>
-      <ul class="ps-list">${coldCodes.map(c => { const { x, nights } = coldBy[c];
-        return item(c, `${nights.map(n => `${dayShort(n.date)} (${tF(n.low)})`).join(', ')}. ${x.lethal != null && Math.min(...nights.map(n => n.low)) < x.lethal ? `Killed below ${tF(x.lethal)}` : `Harmed below ${tF(x.damage)}`}`); }).join('')}</ul>
-      ${beyond ? `<p class="ps-note">The forecast only goes as far as ${esc(dayName(D.forecast_to))}. Check the weather for later nights.</p>` : ''}</section>`
-    : beyond || !D.forecast_to ? `<section class="ps-sec ps-cold" aria-labelledby="ps-cold-h"><h3 id="ps-cold-h">Cold nights</h3>
-      <p>${D.forecast_to && D.start <= D.forecast_to ? `No cold nights for these plants in the forecast up to ${esc(dayName(D.forecast_to))}.` : 'There is no forecast for these days yet.'}
-      Check the weather. If a night near freezing is forecast, ask me what to bring in.</p></section>` : '';
-  const days = `<section class="ps-sec ps-days" aria-labelledby="ps-days-h"><h3 id="ps-days-h">Day by day</h3>
-    ${D.days.map(d => `<div class="ps-day"><h4>${esc(dayName(d.date))}${d.high != null ? `<span class="ps-wx">Forecast: high ${tF(d.high)}, low ${tF(d.low)}</span>` : ''}</h4>
-      ${d.plants.length ? `<ul class="ps-list">${d.plants.map(c => item(c)).join('')}</ul>` : '<p class="ps-none">Nothing to check today.</p>'}</div>`).join('')}</section>`;
-  const list = '';          // 1.47.0: the list at the end is gone; each day's lines carry the place and the watering words (Ethan, November 8)
-  return { jobs, html: `<article class="ps-doc${OPT.pageday ? ' ps-pageday' : ''}" aria-labelledby="ps-title">
-    <header class="ps-head"><h2 id="ps-title">Looking after the plants</h2><p class="ps-span">${esc(span)}</p>
-      ${OPT.note.trim() ? `<p class="ps-msg">${esc(OPT.note.trim())}</p>` : ''}${intro}</header>
-    ${cold}${days}${list}
-    <p class="ps-printed">Made ${esc(new Date().toLocaleDateString('en-US', { dateStyle: 'long' }))} from Plant record${D.group ? `, group "${esc(D.group.name)}"` : ''}.</p></article>` };
 }
 
 let busy = 0;
@@ -101,7 +45,11 @@ async function load() {
     $('ps-sheet').innerHTML = '<p class="notice">There are no plants in this group, so there is nothing to print.</p>';
     return;
   }
-  const S = sheet(D);
+  // 1.49.0: boxes the sitter ticked on the shared sheet for these days show on the printout too
+  let ticks = new Set();
+  try { const T = await get(`/api/sitter/ticks?from=${enc(OPT.from)}&to=${enc(OPT.to)}${OPT.group ? '&group=' + enc(OPT.group) : ''}`); ticks = new Set((T.ticks || []).map(t => `${t.day}|${t.plant_code}|${t.kind}`)); } catch (e) { /* no link yet */ }
+  if (my !== busy) return;
+  const S = sheet(D, OPT, { ticks });
   const before = D.before.length ? `<div class="notice ps-before noprint" role="note"><h2 class="ps-before-h">Before you go (not printed)</h2>
     <p>${D.before.length === 1 ? 'This plant is' : `These ${D.before.length} plants are`} due for water before ${esc(dayName(D.start))}, or ${D.before.length === 1 ? 'has' : 'have'} no watering logged yet. Check ${D.before.length === 1 ? 'it' : 'them'} before you leave. The days on the sheet assume you do, ${addDays(D.start, -1) === D.today ? 'today' : 'on ' + esc(dayName(addDays(D.start, -1)))}.</p>
     <ul class="ps-before-list">${D.before.map(c => { const p = D.plants.find(x => x.code === c); return `<li><a href="/#/plant/${enc(c)}">${esc(p.name)} <span class="ps-code">${esc(c)}</span></a></li>`; }).join('')}</ul></div>` : '';
@@ -152,10 +100,51 @@ $('ps-note').addEventListener('input', () => {
   clearTimeout(noteTimer); noteTimer = setTimeout(load, 400);
 });
 $('ps-opts').addEventListener('submit', e => e.preventDefault());
+// 1.49.0: the sheet by link. Editors and the owner make a link for the chosen days (and group); the sitter opens it anywhere.
+let ME = null;
+async function shareStart() {
+  try { ME = await get('/api/me'); } catch (e) { return; }
+  if (!ME || ME.role === 'viewer') return;
+  $('ps-share').hidden = false;
+  await paintLinks();
+}
+const when = s => s ? new Date(s).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '';
+async function paintLinks() {
+  let L; try { L = await get('/api/sitter/shares'); } catch (e) { $('ps-share-msg').textContent = e.message; return; }
+  $('ps-share-hint').hidden = !!L.public_base;
+  const live = (L.shares || []).filter(x => x.live);
+  $('ps-links').innerHTML = live.length ? `<ul class="ps-linklist">${live.map(x => `<li class="ps-linkrow" data-token="${esc(x.token)}">
+      <div class="ps-linkwhat"><strong>${esc(dayName(x.from))} to ${esc(dayName(x.to))}</strong>${x.group ? ' (one group)' : ''}
+        <span class="hint">${x.ticks ? `${x.ticks} ${x.ticks === 1 ? 'box' : 'boxes'} ticked` : 'Nothing ticked yet'}${x.last_seen ? `. Last opened ${esc(when(x.last_seen))}` : '. Not opened yet'}.</span></div>
+      <label class="ps-field ps-wide"><span>${x.url ? 'Link to send' : 'Link (works on your home network only until the public address is saved)'}</span>
+        <input type="text" class="ps-url" readonly value="${esc(x.url || x.local_url)}"></label>
+      <p class="row"><button class="btn" type="button" data-share="copy">Copy the link</button>
+        <a class="btn ghost" href="${esc(x.local_url)}" target="_blank" rel="noopener">Open it</a>
+        <button class="btn ghost" type="button" data-share="stop">Take the link down</button></p></li>`).join('')}</ul>` : '';
+}
+$('ps-mklink').addEventListener('click', async () => {
+  const m = $('ps-share-msg'); m.textContent = 'Making the link…';
+  try {
+    await get('/api/sitter/shares', { method: 'POST', body: JSON.stringify({ from: OPT.from, to: OPT.to, group: OPT.group || null, note: OPT.note || '', photos: !!OPT.photos }) });
+    m.textContent = 'Link made. Copy it and send it to the sitter.';
+    await paintLinks();
+  } catch (e) { m.textContent = 'Could not make the link: ' + e.message; }
+});
+$('ps-links').addEventListener('click', async e => {
+  const b = e.target.closest('[data-share]'); if (!b) return;
+  const row = b.closest('.ps-linkrow'), tok = row.dataset.token, m = $('ps-share-msg');
+  if (b.dataset.share === 'copy') {
+    const i = row.querySelector('.ps-url'); i.select();
+    try { await navigator.clipboard.writeText(i.value); m.textContent = 'Copied.'; } catch (err) { m.textContent = 'Could not copy. The link is selected: copy it yourself.'; }
+  } else if (b.dataset.share === 'stop') {
+    try { await get('/api/sitter/shares/' + enc(tok), { method: 'DELETE' }); m.textContent = 'The link is down. Anyone who opens it now sees that it was taken down.'; await paintLinks(); } catch (err) { m.textContent = err.message; }
+  }
+});
 // 1.47.0: the app saved to an iPhone or iPad home screen (standalone) cannot print; a target=_blank link opens Safari, which can
 const standalone = navigator.standalone === true || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
 if (standalone) { $('ps-open').hidden = false; $('ps-print-note').hidden = false; $('ps-print').hidden = true; }
 $('ps-open').addEventListener('click', () => { $('ps-open').href = location.pathname + location.hash; });
 $('ps-print').addEventListener('click', () => window.print());
+shareStart();
 start().catch(e => { $('ps-sheet').innerHTML = `<div class="notice bad" role="alert"><strong>Could not make the sheet</strong><p>${esc(e.message)}</p></div>`; });
 })();

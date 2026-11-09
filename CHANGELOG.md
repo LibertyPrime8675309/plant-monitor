@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.49.0 (2026-11-09)
+Step 4c of the plan: the plant-sitter sheet by link.
+- **Send the sitter a link instead of a printout.** On the Plant-sitter sheet page, under the choices, **Share the sheet by link** → **Make a link**. The sitter opens it on their own phone with no Tailscale and no sign-in, sees the same sheet in large print (with its own Smaller text, Larger text, Dark, High contrast and Print buttons), and ticks a real check box on each line as they go. Each tick is saved at once.
+- **You see the ticks.** Back on your sheet, a ticked line shows a filled box and "Ticked by the sitter", and the link's row says how many boxes are ticked and when the page was last opened.
+- **Links look after themselves.** A link stops working the day after your last day away, and **Take the link down** stops it at once; whoever opens it then reads "This sheet has been taken down" in plain words. Nothing but that sheet and its photos can be reached through a link.
+- **One more Funnel command** makes links work from outside your home network: `tailscale funnel --bg --https=8443 --set-path=/share http://127.0.0.1:8080/share` on the PC, the same way as the calendar. Until the public address is saved in the calendar window, the page says the link works at home only. The README has the steps for cmd.exe, PowerShell and bash.
+- Under the hood: the sheet's drawing code is now shared (`sitter-sheet.js`) between the page in the app and the sitter's page; two new tables, `sitter_shares` and `sitter_ticks`, are added to your database in place.
+
 ## 1.48.0 (2026-11-08)
 Step 4b of the plan: a home is a site. Nothing changes until you set something on Homes and places.
 - **Each home has a country, its own units and its seasons** (Weather → Homes and places, in the Plants column). Units there are what people see who have not chosen their own in Display. Seasons: a winter with frost, a cool season where frost is rare, or wet and dry seasons with no frost.

@@ -628,7 +628,7 @@ Feeding days and cold nights can go into Google, Outlook, Samsung or Apple calen
 
 ### Reaching the calendar from the internet with Tailscale Funnel
 
-Google Calendar, Outlook.com and iCloud fetch the link from the internet. Tailscale Funnel lets them reach the calendar link only (the `/cal/` path on port 8443), not the rest of Plant record. Anything you share in your tailnet on port 443 with Tailscale Serve stays private.
+Google Calendar, Outlook.com and iCloud fetch the link from the internet. Tailscale Funnel lets them reach the calendar link only (the `/cal/` path on port 8443), not the rest of Plant record. From 1.49.0 the plant-sitter sheet by link uses the same door for its `/share` path (see "Share the sheet by link"). Anything you share in your tailnet on port 443 with Tailscale Serve stays private.
 
 1. Turn on Funnel for the calendar, on the PC that runs Plant record. If Tailscale says Funnel or HTTPS is not turned on for your tailnet, open the link it shows, turn it on, and run the command again.
 
@@ -1467,6 +1467,36 @@ A large-print plan to print for whoever looks after your plants while you are aw
 - It uses the same watering reminders as Today (each plant's "check every N days", the recent weather and your care log), carried forward over the days you are away.
 - **Print** opens the browser's print window; choose "Save as PDF" there to email it. The printout is always black on white, about 15.5 point and up. People who can only view the app can make it too.
 - From the app saved to an iPhone or iPad home screen, printing is not possible (iOS gives such apps no print window), so the button there reads **Open in the browser to print** and opens the sheet in Safari (1.47.0).
+
+### Share the sheet by link (from 1.49.0)
+
+Instead of a printout, the sitter can open the sheet on their own phone and tick the boxes as they go. They need no Tailscale and no sign-in: the link itself is the key (a long random code, like the calendar link).
+
+- Under the choices, **Share the sheet by link** (editors and the owner; people who can only view do not see it). **Make a link** makes one for the days, plants and note chosen above. Press **Copy the link** and send it however you like (a text message, say); **Open it** shows you what the sitter will see.
+- The sitter's page has **Smaller text**, **Larger text**, **Dark**, **High contrast** and **Print** buttons, large print to start with, and a real check box on every line. Each tick is saved at once and shows on your own sheet (filled in, with "Ticked by the sitter" for a screen reader) and in the link's row: how many boxes are ticked and when the page was last opened.
+- The link stops working the day after your last day away. **Take the link down** stops it at once; whoever opens it then sees "This sheet has been taken down" in plain words. The ticks are kept.
+- Nothing else is reachable through a link: only that sheet, its photos and its own page files. A link for one group shows only that group's plants, and a link made while another place is chosen shows that place's plants.
+- **From outside your home network** the link needs Tailscale Funnel for the `/share` path, exactly like the calendar (see "Reaching the calendar from the internet with Tailscale Funnel" above). Until the public address is saved in the calendar window, the page says so and the link works at home only. Run this once on the PC that runs Plant record:
+
+  Windows (cmd.exe):
+
+  ```
+  tailscale funnel --bg --https=8443 --set-path=/share http://127.0.0.1:8080/share
+  ```
+
+  Windows (PowerShell):
+
+  ```
+  tailscale funnel --bg --https=8443 --set-path=/share http://127.0.0.1:8080/share
+  ```
+
+  macOS / Linux (bash):
+
+  ```
+  tailscale funnel --bg --https=8443 --set-path=/share http://127.0.0.1:8080/share
+  ```
+
+  `tailscale funnel status` should then list both `/cal` and `/share`. To stop sharing sheets from the internet: `tailscale funnel --https=8443 --set-path=/share off` (the same in all three shells).
 
 ## Large-print care cards (from 1.19.0)
 

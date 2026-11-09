@@ -35,7 +35,14 @@
       <fieldset class="opt-group"><legend>Note for the sitter</legend>
         <label class="ps-field ps-wide"><span>Printed at the top, for example how to reach you and where the watering can is</span>
           <textarea name="note" id="ps-note" rows="3" maxlength="1000"></textarea></label>
-        <p class="hint">Kept in this browser only.</p>
+        <p class="hint">Kept in this browser only. A link made below carries a copy of it.</p>
+      </fieldset>
+      <fieldset class="opt-group ps-share" id="ps-share" hidden><legend>Share the sheet by link</legend>
+        <p>Instead of a printout, the sitter can open this sheet on their phone and tick the boxes as they go. The link works without Tailscale, and stops working the day after your last day away. The ticks show up here on the sheet below.</p>
+        <p class="row"><button class="btn" type="button" id="ps-mklink">Make a link</button>
+          <span class="hint" id="ps-share-msg" aria-live="polite"></span></p>
+        <div id="ps-links" class="ps-links"></div>
+        <p class="hint" id="ps-share-hint" hidden>Links will only work from outside your home network once the <code>/share</code> path is published with Tailscale Funnel and the public address is saved in Calendar. The README says how (the same steps as the calendar link).</p>
       </fieldset>
       <p class="row"><button class="btn" type="button" id="ps-print">Print</button>
         <a class="btn ghost" id="ps-open" href="/sitter.html" target="_blank" rel="noopener" hidden>Open in the browser to print</a>
@@ -46,6 +53,7 @@
   </div>
   <div id="ps-sheet" class="ps-sheet"><p>Loading…</p></div>
 </main>
+<script src="/sitter-sheet.js"></script>
 <script src="/sitter.js"></script>
 </body>
 </html>
