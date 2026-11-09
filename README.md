@@ -1593,7 +1593,14 @@ Everything the app says about a species now has a source you can see. Open a spe
 - **A plant's page reads the species' facts** for any care field the plant leaves empty, and says so in a line under the identification ("Not set for this plant, so shown from *Ficus carica*'s facts: soil or potting mix, hours of light"), with a link to the species. A plant's own value always wins, and the edit form shows only what is really on the plant.
 - **Download every fact (CSV)** at the bottom of the section (`/api/facts/export.csv`; `/api/facts/export` for JSON), so the knowledge can be checked in a spreadsheet or moved to another install.
 - New upgrade batches can add facts as rows (`facts_add`), with the batch as their source.
-- Adding or correcting a fact from the page, with review by another editor, is step 6b of the plan.
+
+### Adding and correcting facts (from 1.54.0)
+
+- Anyone who can edit may press **Suggest a change** under a fact, or **Add a fact** at the bottom of the section. The form asks for the value, where it comes from (a link, a book and page, a grower, or your own observation), what kind of source that is, and how sure you are. It goes in as a **proposal**: it shows on the species page in a highlighted box, not as the value.
+- **Someone else accepts or rejects it**: another editor, or the owner (the owner may also accept their own). **Accept** makes it the value every page shows and moves the old value into the history; **Reject** asks for a reason, which is kept. Nobody but the owner can accept their own proposal, so every fact that shows was seen by two people.
+- **Facts to review** (Plants → Facts to review, and a block on Today while anything waits) lists every open proposal with the value it would replace. Each change is in the Audit log under "fact", with who proposed and who accepted.
+- **Mushrooms** have facts too (their description, where they grow, what they do), under the same rule as everywhere else: a proposal that says a mushroom is edible, safe, tasty or medicinal is refused, and there is no field for care values.
+- **Moving facts between installs:** send the JSON from `/api/facts/export` to `/api/facts/import` (editors and the owner); every row arrives as a proposal, never as an accepted fact, and duplicates are skipped.
 
 ## Uses, partners and propagation (from 1.27.0)
 

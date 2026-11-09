@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.54.0 (2026-11-09)
+Step 6b of the plan: anyone who can edit may add or correct a fact, and someone else checks it.
+- **Suggest a change** under any fact on a species page, or **Add a fact** at the bottom. Say what the value is, where it comes from and how sure you are. It shows as a proposal, in a highlighted box, until another editor or the owner presses **Accept** (it becomes the value shown; the old one goes into the history) or **Reject** (with a reason, kept). Nobody but the owner can accept their own.
+- **Facts to review** (Plants → Facts to review) lists every proposal waiting, with the value it would replace; Today shows editors a block while anything waits. The Audit log keeps who proposed and who accepted.
+- Mushrooms have facts the same way (description, where they grow, what they do); a proposal that says a mushroom is edible, safe or medicinal is refused.
+- Facts can move between installs: the export's JSON goes to `/api/facts/import` and arrives as proposals only.
+
 ## 1.53.0 (2026-11-09)
 Step 6a of the plan: every fact about a species now says where it came from.
 - **Facts and where they come from**, a new section on every species page: all the record knows about the species, in groups (temperature, light, water, soil, feeding, size, hardiness, origin and safety, pests, propagation, uses and partners, care sheet), each fact with its source, who noted it, when, and how sure it is. A fact that has changed shows its history.

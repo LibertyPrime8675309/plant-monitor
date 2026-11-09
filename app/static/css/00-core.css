@@ -1270,7 +1270,7 @@ html:not([data-narrow="1"]) .more-f .filters>label:first-child{grid-column:auto}
 .id-setkeys{border:var(--bw) solid var(--line);padding:.5rem .9rem;background:var(--sheet);max-width:46rem}
 .id-setkeys>summary{font-weight:700;cursor:pointer;padding:.3rem 0}
 .id-setkeys input[type=password]{width:100%;font:inherit;color:var(--ink);background:var(--sheet);border:var(--bw) solid var(--ink-2);padding:.55rem .7rem;margin-top:.35rem;min-height:2.75rem}
-html[data-role=viewer] :is([data-act=idnew], [data-act=idright], [data-act=idask], [data-act=idkeydel], form[data-form=idkeys], .id-setkeys, button[value^="addpic:"]){display:none!important}
+html[data-role=viewer] :is([data-act=idnew], [data-act=idright], [data-act=frpropose], [data-act=fradd], [data-act=fraccept], [data-act=frreject], [data-act=idask], [data-act=idkeydel], form[data-form=idkeys], .id-setkeys, button[value^="addpic:"]){display:none!important}
 button.linkish{font:inherit;color:var(--cyan);background:none;border:0;padding:.2rem 0;text-decoration:underline;text-underline-offset:.2em;cursor:pointer;min-height:2.75rem}
 .id-close{list-style:none;padding:0;margin:0 0 1rem}
 .id-close li{margin:0}

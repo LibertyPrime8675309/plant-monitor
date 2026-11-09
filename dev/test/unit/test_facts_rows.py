@@ -74,3 +74,60 @@ def test_a_batch_adds_rows_with_itself_as_the_source():
         r = c.execute("SELECT * FROM facts WHERE key='ficus carica' AND field='zone_notes' AND status='accepted'").fetchone()
         assert r['value'].startswith('Hardy to zone 7') and r['source'] == 'Texas A&M AgriLife fig guide' and r['source_kind'] == 'batch' and r['confidence'] == 'certain'
         c.rollback()
+
+# ---- 6b (1.54.0): proposing and reviewing
+def test_proposals_are_reviewed_by_someone_else_and_the_audit_log_says_who():
+    with S.app.test_client() as t:
+        TS = {'environ_overrides': {'SERVER_PORT': S.TS_PORT}}
+        E = {'Tailscale-User-Login': 'own@example.com', 'Tailscale-User-Name': 'Own', 'X-Editor': 'Own'}
+        A = {'Tailscale-User-Login': 'a@example.com', 'Tailscale-User-Name': 'Ann', 'X-Editor': 'Ann'}
+        B = {'Tailscale-User-Login': 'b@example.com', 'Tailscale-User-Name': 'Bob', 'X-Editor': 'Bob'}
+        for h in (E, A, B): t.get('/api/me', headers=h, **TS)
+        for who in ('a@example.com', 'b@example.com'): assert t.put('/api/people', json={'login': who, 'role': 'editor'}, headers=E, **TS).status_code == 200
+        body = {'name': 'Ficus carica', 'field': 'water_notes', 'value': 'Deep soak weekly in summer, rarely in winter.', 'source': 'Texas A&M fig guide', 'source_kind': 'reference', 'confidence': 'likely'}
+        r = t.post('/api/facts/rows', json=body, headers=A, **TS); assert r.status_code == 201, r.get_data(as_text=True)
+        rid = r.get_json()['id']
+        assert t.post('/api/facts/rows', json=body, headers=B, **TS).status_code == 409, 'already proposed'
+        assert t.post(f'/api/facts/rows/{rid}/accept', json={}, headers=A, **TS).status_code == 403, 'not your own'
+        q = t.get('/api/facts/queue', headers=B, **TS).get_json()
+        mine = next(x for x in q['queue'] if x['id'] == rid)
+        assert mine['can_accept'] and not mine['mine'] and mine['current'] and mine['current']['status'] == 'accepted'
+        rows = t.get('/api/facts/rows?name=Ficus%20carica', headers=A, **TS).get_json()
+        water = next(f for g in rows['groups'] for f in g['fields'] if f['field'] == 'water_notes')
+        assert water['accepted']['value'] != body['value'] and any(h['status'] == 'proposed' and h['mine'] for h in water['history']), 'a proposal is not the value, and the proposer sees it as hers'
+        old_value = water['accepted']['value']
+        assert t.post(f'/api/facts/rows/{rid}/accept', json={'note': 'Matches the county guide'}, headers=B, **TS).status_code == 200
+        with S.app.app_context():
+            c = S.db()
+            r2 = c.execute('SELECT * FROM facts WHERE id=?', (rid,)).fetchone()
+            assert r2['status'] == 'accepted' and r2['replaces'] and tuple(c.execute('SELECT status, value FROM facts WHERE id=?', (r2['replaces'],)).fetchone()) == ('retired', old_value)
+            assert S.facts_of(c, 'Ficus carica')['water_notes']['id'] == rid
+            notes = [x[0] for x in c.execute("SELECT note FROM audit_log WHERE action='fact' ORDER BY id DESC LIMIT 5")]
+            assert any(n.startswith('Accepted for ficus carica') and 'proposed by Ann' in n for n in notes) and any(n.startswith('Proposed for ficus carica') for n in notes)
+        # a rejection keeps the reason; a viewer can do none of it; the owner may accept his own
+        r = t.post('/api/facts/rows', json=dict(body, value='Water daily'), headers=A, **TS); rid2 = r.get_json()['id']
+        assert t.post(f'/api/facts/rows/{rid2}/reject', json={'note': 'Too much for a fig'}, headers=B, **TS).status_code == 200
+        with S.app.app_context():
+            r3 = S.db().execute('SELECT status, note FROM facts WHERE id=?', (rid2,)).fetchone(); assert r3[0] == 'rejected' and 'Too much for a fig' in r3[1]
+        Vh = {'Tailscale-User-Login': 'v@example.com', 'Tailscale-User-Name': 'Vee', 'X-Editor': 'Vee'}
+        t.get('/api/me', headers=Vh, **TS)
+        assert t.post('/api/facts/rows', json=body, headers=Vh, **TS).status_code == 403
+        r = t.post('/api/facts/rows', json=dict(body, field='zone_low', value='8'), headers=E, **TS); assert r.status_code == 201
+        assert t.post(f'/api/facts/rows/{r.get_json()["id"]}/accept', json={}, headers=E, **TS).status_code == 200
+
+def test_mushroom_facts_never_say_edible_and_import_only_proposes():
+    with S.app.test_client() as t:
+        H = {'X-Editor': 'Imp'}
+        r = t.post('/api/facts/rows', json={'name': 'Amanita muscaria', 'kind': 'fungus', 'field': 'about_summary', 'value': 'Edible after boiling, some say', 'source': 'a forum'}, headers=H)
+        assert r.status_code == 400 and 'edible' in r.get_json()['error']
+        assert t.post('/api/facts/rows', json={'name': 'Amanita muscaria', 'kind': 'fungus', 'field': 'temp_ideal_low', 'value': '60', 'source': 'x'}, headers=H).status_code == 400, 'no care values for a mushroom'
+        assert t.post('/api/facts/rows', json={'name': 'Amanita muscaria', 'kind': 'fungus', 'field': 'about_summary', 'value': 'The red-and-white toadstool of picture books, under birch and pine.', 'source': 'Texas Mushrooms, p. 40'}, headers=H).status_code == 201
+        X = t.get('/api/facts/export').get_json()
+        rows = [x for x in X['facts'] if x['status'] == 'accepted'][:3]
+        for x in rows: x['value'] = (x['value'] + ' (elsewhere)') if isinstance(x['value'], str) else x['value']
+        d = t.post('/api/facts/import', json={'facts': rows + rows[:1] + [{'key': 'x y', 'field': 'nope', 'value': '1'}, {'key': 'amanita muscaria', 'kind': 'fungus', 'field': 'about_summary', 'value': 'tasty', 'source': 'no'}]}, headers=H).get_json()
+        assert d['added'] >= 1 and d['skipped'] >= 3, d
+        with S.app.app_context():
+            c = S.db()
+            assert c.execute("SELECT COUNT(*) FROM facts WHERE note LIKE 'Imported by%' AND status<>'proposed'").fetchone()[0] == 0, 'import never accepts'
+            assert not c.execute("SELECT 1 FROM facts WHERE value='tasty'").fetchone()
