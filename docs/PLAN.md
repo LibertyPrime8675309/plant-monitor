@@ -107,7 +107,7 @@ Ethan's sitters are outside his Tailnet, so the sheet needs one page reachable f
 
 "Ever improving" needs a number first. The picture checker has been changed several times (the prior over Ethan's own species, houseplant genera and Texas plants; the look-alike step; the confidence fit) without an accuracy figure before or after, because `dev/vision/prior_test.py` and `eval_photos.py` need the model and have not been run on Ethan's PC.
 
-**5a. Baseline (no release, an hour of the PC's time).** Run the two scripts against Ethan's own photos, which have known answers, and record top-1 and top-5 accuracy in `dev/vision/README.md`. Every later change to the checker reports the same two numbers in its CHANGELOG entry, and a change that lowers them does not ship. Commands are given for cmd.exe, PowerShell and bash.
+**5a. Baseline (no release, an hour of the PC's time; done November 8, 2026, see `dev/vision/README.md`: species first 40% / top 5 61% on the common-or-US list with the prior, 33% / 54% without; the prior stays).** Run the two scripts against Ethan's own photos, which have known answers, and record top-1 and top-5 accuracy in `dev/vision/README.md`. Every later change to the checker reports the same two numbers in its CHANGELOG entry, and a change that lowers them does not ship. Commands are given for cmd.exe, PowerShell and bash.
 
 **5b. Two modes (one minor, 4 to 5 days).** The current prior is right for "which of my plants is this?" and wrong for "what is this, in a wood in another country?".
 
