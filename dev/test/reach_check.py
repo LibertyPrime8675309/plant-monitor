@@ -121,7 +121,12 @@ with sync_playwright() as p:
     pg.locator('#search-btn').click(); pg.wait_for_timeout(300); pg.keyboard.type('back'); pg.wait_for_timeout(1200)
     check('Pages' in pg.locator('#srch-res').inner_text() and 'Backups' in pg.locator('#srch-res').inner_text(), 'pages are found too')
     pg.screenshot(path=os.path.join(OUT, 'reach-2-search.png'))
-    pg.keyboard.press('Escape')
+    pg.keyboard.press('Escape'); pg.wait_for_timeout(500)
+    if pg.locator('dialog[open]').count(): pg.locator('dialog[open] button[value=cancel]').first.click(); pg.wait_for_timeout(500)
+    pg.locator('#search-btn').click(); pg.wait_for_timeout(300); pg.keyboard.type('sitter'); pg.wait_for_timeout(1200)   # 1.52.1: the sitter sheet is a page of its own
+    check('Plant-sitter sheet' in pg.locator('#srch-res').inner_text(), 'the plant-sitter sheet is found as a page')
+    pg.locator('#srch-res a', has_text='Plant-sitter sheet').click(); pg.wait_for_timeout(2500)
+    check(pg.url.endswith('/sitter.html') and pg.locator('.ps-doc').count() == 1, 'and opening it goes to the sheet')
     pg.goto(TS + '/#/backups'); pg.wait_for_timeout(2500)
     check('Second copy' in pg.locator('main').inner_text() and pg.locator('form[data-form=bkcopies]').count() == 1, 'the Backups page has the Second copy section')
     pg.screenshot(path=os.path.join(OUT, 'reach-3-copies.png'), full_page=True)

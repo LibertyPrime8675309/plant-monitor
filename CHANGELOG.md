@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.52.1 (2026-11-09)
+- Search finds the **Plant-sitter sheet** and the **Large-print care cards** pages (they are pages of their own, so they were missing from the list).
+
 ## 1.52.0 (2026-11-09)
 Step 5c of the plan: the picture checker learns from you.
 - **This is right** beside **Not this** on every name Identify offers. Press it and the picture is kept as a confirmed example of that species, and later pictures that look like it get that name lifted. On a plant's page it keeps the plant's main photo as the example.

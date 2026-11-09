@@ -583,7 +583,7 @@ async function guard(fn) {
 }
 
 // ---------- router ----------
-function go(h) { NAVCLICK = Date.now(); if (location.hash === h) route(); else location.hash = h; }
+function go(h) { if (h && !h.startsWith('#')) { location.href = h; return; } NAVCLICK = Date.now(); if (location.hash === h) route(); else location.hash = h; }   // 1.52.1: a page of its own (sitter.html) too
 window.addEventListener('hashchange', route);
 // 1.38.0: where you were on each page. Going back (the browser's Back button, or a "Back to" link pressed after a page you came from)
 // returns to the same place on the page; a link to a new page starts at the top. The position is noted when you leave the page.
