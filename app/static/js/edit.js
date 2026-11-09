@@ -335,7 +335,7 @@ async function sevIdentify(gi, force, plantnet) {
   if (!files.length || (!force && P.idkey === key)) return;
   P.idkey = key; P.busy = true; P.iderr = null; sevDrawPlant(gi);
   try {
-    const r = await api('POST', '/api/plants/several/identify?scope=' + enc(idScope()), { photos: files, exclude: P.ex ? P.ex.species : [], exclude_genera: P.ex ? P.ex.genera : [], plantnet: plantnet || 'auto' });
+    const r = await api('POST', '/api/plants/several/identify?scope=' + enc(idScope()) + '&mode=' + (SEV.mode || ID.mode || 'mine'), { photos: files, exclude: P.ex ? P.ex.species : [], exclude_genera: P.ex ? P.ex.genera : [], plantnet: plantnet || 'auto' });
     if (P.idkey !== key) return;
     P.id = r; P.species = r.species || []; P.matches = r.matches || [];
     if (!P.typed.has('common_name')) { P.pick = P.species.length ? 0 : -1; sevFill(P); }
@@ -369,13 +369,14 @@ async function sevPreview(file) {
 async function sevGo(form) {
   if (!(await needName())) return;
   const files = [...form.elements.files.files]; if (!files.length) { toast('Choose some photos first.', true); return; }
+  SEV.mode = await idPickMode('add'); if (!SEV.mode) return;          // 5b: one of my plants (a cutting, a new pot) or new finds
   SEV.busy = true; SEV.photos = [];
   form.querySelector('button[type=submit]').disabled = true;
   const prog = document.getElementById('sev-prog');
   for (let i = 0; i < files.length; i++) {
     if (prog) prog.textContent = `Checking photo ${i + 1} of ${files.length}…`;
     const fd = new FormData(); fd.append('image', files[i], files[i].name);
-    try { const r = await api('POST', '/api/plants/several/photo?scope=' + enc(idScope()), null, fd); SEV.photos.push({ ...r, ...(await sevPreview(files[i])) }); }
+    try { const r = await api('POST', '/api/plants/several/photo?scope=' + enc(idScope()) + '&mode=' + SEV.mode, null, fd); SEV.photos.push({ ...r, ...(await sevPreview(files[i])) }); }
     catch (e) { toast(`${files[i].name}: ${e.message}`, true); }
   }
   SEV.busy = false;

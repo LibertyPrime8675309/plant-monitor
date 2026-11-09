@@ -44,7 +44,7 @@
 (function () {
   var KEYS = ['plantdb.filters', 'plantdb.library', 'plantdb.fungi', 'plantdb.ltlights', 'plantdb.auditf', 'plantdb.calview', 'plantdb.wxchart',
               'plantdb.wxhide', 'plantdb.wxper', 'plantdb.idscope', 'plantdb.place', 'plantdb.frosthide', 'plantdb.shopping', 'plantdb.shoplist',
-              'plantdb.units'];                                      // 1.47.0: °F or °C, inches or cm   // 1.30.0: Shopping's home and kind; 1.34.0: the shopping list's extras
+              'plantdb.units', 'plantdb.idmode'];                    // 1.47.0: °F or °C, inches or cm; 1.51.0: Identify's two ways, per page   // 1.30.0: Shopping's home and kind; 1.34.0: the shopping list's extras
   var PARTS = { text: ['size', 'space', 'contrast', 'theme'], layout: ['width', 'lines', 'layout', 'navside', 'navopen'], read: ['readbtns', 'rate', 'voice'],
                 photos: ['photofit', 'swipe'], keys: ['keys', 'vsearch'] };
   var LS = window.localStorage, setI = Storage.prototype.setItem, remI = Storage.prototype.removeItem, queue = {}, timer = 0, applying = false;

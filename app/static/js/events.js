@@ -277,6 +277,8 @@ const acts = {
     el.disabled = true; if (st) st.innerHTML = rend(html`<p class="muted" role="status">Checking ${files.length === 1 ? 'the photo' : `the ${files.length} photos together`}…</p>`);
     try {
       if (!navigator.onLine || !(await offProbe())) { if (st) st.textContent = 'This needs a connection to the plant server. Save the plant now and the photo is checked when it can be reached; the names are then offered on the Offline page.'; return; }
+      if (!NEWID.mode) { NEWID.mode = await idPickMode('add'); if (!NEWID.mode) { if (st) st.textContent = ''; return; } }   // 5b: asked once per form
+      ID.mode = NEWID.mode;
       const r = await idAsk(files[0], null, files.slice(1, 6), NEWID.ex); NEWID.r = r;
       const sp = (r.species || []).filter(x => x.scientific_name), m = (r.matches || [])[0];
       if (!sp.length) { if (st) st.innerHTML = rend(html`<p>No name was found for this photo. Type the names yourself.</p>`); return; }
@@ -624,6 +626,11 @@ const changeActs = {
     const U = unitsGet(); for (const k of ['temp', 'len', 'rain']) { const o = document.getElementById('pref-u-' + k); if (o) o.value = U[k]; }
     try { await api('PUT', '/api/me/prefs', { units: Object.keys(raw).length ? JSON.stringify(raw) : null }); } catch (e) { /* offline: prefs.js sends it later */ }   // at once, so the server's sentences change too
     ROUTE_FRESH = true; route();                  // the page behind the window redraws in the new units, from fresh answers
+  },
+  idmodeset(el) {                     // 5b: Identify's question, per page, in Display
+    const v = idModePref(); if (el.value === 'ask') delete v[el.dataset.page]; else v[el.dataset.page] = el.value;
+    idModeSave(v);
+    const sel = document.querySelector('[data-act=idmode]'); if (sel && el.dataset.page === 'identify' && el.value !== 'ask') { sel.value = el.value; ID.mode = el.value; }
   },
   async ctphoto(el) {                 // 1.29.0: photos of a pot or tray
     if (!el.files.length || !(await needName())) return;

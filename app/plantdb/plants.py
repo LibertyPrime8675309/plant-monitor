@@ -364,7 +364,7 @@ def several_photo():
     small = im.copy(); small.thumbnail((1024, 1024)); b = io.BytesIO(); small.save(b, 'JPEG', quality=88)
     out = {'file': name, 'taken': taken, 'name': (f.filename or '')[:120], 'species': [], 'matches': [], 'error': None}
     try:                                            # 1.40.0: the same identifier as the Identify page (one picture here; the plant's photos together after sorting)
-        r = identify_pictures(c, [b.getvalue()], vscope(c, request.args.get('scope', 'common')), plantnet='no', n=5)
+        r = identify_pictures(c, [b.getvalue()], vscope(c, request.args.get('scope', 'common')), plantnet='no', n=5, mode=id_mode())
         out['species'] = [sev_species(x) for x in r.get('species') or []]
         out['matches'] = [m for m in r.get('matches') or [] if m.get('confidence') and m['confidence'] >= 0.6][:3]
         out['likely_new'] = r.get('likely_new')
@@ -389,7 +389,7 @@ def several_identify():
         with open(path, 'rb') as f: pics.append(f.read())
     if not pics: abort(400, 'Choose at least one photo')
     r = identify_pictures(c, pics, vscope(c, request.args.get('scope', 'common')), exclude=b.get('exclude') or [], exclude_genera=b.get('exclude_genera') or [],
-                          plantnet=b.get('plantnet') or 'auto', n=10)
+                          plantnet=b.get('plantnet') or 'auto', n=10, mode=id_mode())
     r['species'] = [sev_species(x) for x in r['species']]
     r['matches'] = [m for m in r['matches'] if m.get('confidence') and m['confidence'] >= 0.6][:3]
     return jsonify(r)
@@ -460,7 +460,7 @@ def plant_identify(code):
         if os.path.exists(path):
             with open(path, 'rb') as fh: pics.append(fh.read())
     if not pics: abort(400, 'This plant has no photos to check')
-    out = identify_pictures(c, pics, vscope(c, request.args.get('scope', 'common')), plant_code=code, plantnet=b.get('plantnet') or 'auto', n=10)
+    out = identify_pictures(c, pics, vscope(c, request.args.get('scope', 'common')), plant_code=code, plantnet=b.get('plantnet') or 'auto', n=10, mode=id_mode())
     out['matches'] = [m for m in out['matches'] if m['code'] != code]          # its own photos are not a find
     return jsonify(out)
 

@@ -47,7 +47,7 @@ def svc(tmp_path, monkeypatch):
             'Rosa gallica': {'Texas': ('rose', 'ROGA', 'Rosaceae')}, 'Bouteloua gracilis': {'Texas': ('blue grama', 'BOGR', 'Poaceae')}}
     has = np.ones(6, bool)
     m.NAMES.update(rows=rows, sp=sp, emb=emb, usda=usda, hay=[x.lower() for x in sp], by_sp={s: i for i, s in enumerate(sp)}, n_plants=6,
-                   masks={'world': has, 'us': np.array([s in usda for s in sp]), 'common': has, 'fungi': ~has})
+                   masks={'world': has, 'us': np.array([s in usda for s in sp]), 'texas': np.array([s in usda and 'Texas' in usda[s] for s in sp]), 'common': has, 'fungi': ~has})
     m.S.update(state='ready', step='Ready')
     # the record: one named plant (a pothos) with one photo, and a plant named only to the genus
     db = sqlite3.connect(os.path.join(tmp_path, 'plants.db'))
@@ -103,3 +103,37 @@ def test_several_pictures_are_averaged_and_views_are_made(svc):
     views = svc.views_of(wide)
     assert len(views) == 3 and views[1].size == (300, 300) and views[2].size == (180, 60)     # the whole picture letterboxed, and the middle 60%
     assert len(svc.views_of(Image.new('RGB', (100, 100)))) == 2                              # a square picture needs no letterbox
+
+# ---- PLAN.md step 5b (1.51.0): two modes, and the plants recorded in a country
+def test_a_new_find_drops_the_record_s_lifts_and_lifts_the_country_s_plants(svc, tmp_path):
+    import json
+    # no country yet: in 'new' mode the two greens are level again (no own_sp, house or looks), and the answer says so
+    r = ask(svc, {'image': (io.BytesIO(pic((45, 195, 45))), 'g.jpg')}, views=0, mode='new')
+    assert r['mode'] == 'new' and r['country'] is None
+    assert all('own_sp' not in s['basis'] and 'house' not in s['basis'] and 'looks' not in s['basis'] for s in r['species'])
+    assert abs(r['species'][0]['probability'] - r['species'][1]['probability']) < 0.3
+    assert r['matches'][0]['code'] == 'P-001', 'the match against the record\'s own photos still shows (it may be yours after all)'
+    # a country list in the cache: Monstera is recorded in that country often, the pothos never
+    json.dump({'Monstera deliciosa': 5000, 'Lupinus texensis': 12}, open(os.path.join(tmp_path, 'gbif-XX.json'), 'w'))
+    r = ask(svc, {'image': (io.BytesIO(pic((45, 195, 45))), 'g.jpg')}, views=0, mode='new', country='xx')
+    assert r['country'] == {'code': 'XX', 'state': 'ready', 'species': 2}
+    assert r['species'][0]['scientific_name'] == 'Monstera deliciosa' and r['species'][0]['basis'] == ['country']
+    assert r['species'][0]['probability'] > r['species'][1]['probability'] + 0.3
+    assert float(svc.COUNTRY['XX']['weight'][1]) == 1.0 and 0.3 < float(svc.COUNTRY['XX']['weight'][2]) < 0.4, 'the lift grows with how often a species is recorded'
+    # the same picture as one of my plants: the pothos wins as before
+    r = ask(svc, {'image': (io.BytesIO(pic((45, 195, 45))), 'g.jpg')}, views=0, mode='mine', country='xx')
+    assert r['species'][0]['scientific_name'] == 'Epipremnum aureum' and r['country'] is None
+    # a country with no list yet starts a download (which fails here, offline) and says so; a bad code is ignored
+    svc.country_fetch = lambda cc: svc.COUNTRY.__setitem__(cc, {'state': 'error', 'error': 'offline', 'mask': None, 'weight': None, 'species': 0})
+    r = ask(svc, {'image': (io.BytesIO(pic((45, 195, 45))), 'g.jpg')}, views=0, mode='new', country='zz')
+    assert r['country']['code'] == 'ZZ' and r['country']['state'] in ('fetching', 'error')
+    assert ask(svc, {'image': (io.BytesIO(pic((45, 195, 45))), 'g.jpg')}, views=0, mode='new', country='usa')['country'] is None
+    st = svc.app.test_client().get('/status?country=xx').get_json()
+    assert st['country'] == {'code': 'XX', 'state': 'ready', 'species': 2}
+
+def test_gbif_country_names_are_cut_to_genus_and_species():
+    spec = importlib.util.spec_from_file_location('gbif_country', os.path.join(ROOT, 'vision', 'gbif_country.py'))
+    g = importlib.util.module_from_spec(spec); spec.loader.exec_module(g)
+    assert g.canon('Quercus virginiana Mill.') == 'Quercus virginiana'
+    assert g.canon('Honckenya peploides subsp. diffusa (Hornem.) Hultén') == 'Honckenya peploides'
+    assert g.canon('Quercus L.') is None and g.canon('Quercus sp.') is None and g.canon('Salix × fragilis') is None and g.canon('') is None

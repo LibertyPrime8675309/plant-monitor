@@ -6,7 +6,8 @@ Screenshots: dev/tmp/shots/identify-*.png"""
 import io, json, os, sys, urllib.error, urllib.request
 from PIL import Image
 from playwright.sync_api import sync_playwright
-LOCAL, TS, VIS = 'http://127.0.0.1:8080', 'http://127.0.0.1:8081', 'http://127.0.0.1:8090'
+LOCAL = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
+TS, VIS = LOCAL.rsplit(':', 1)[0] + ':' + str(int(LOCAL.rsplit(':', 1)[1]) + 1), LOCAL.rsplit(':', 1)[0] + ':' + str(int(LOCAL.rsplit(':', 1)[1]) + 10)
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
 TMP = os.path.abspath(os.path.join(OUT, '..')); fails, errs = [], []
 def check(cond, what):
@@ -116,14 +117,14 @@ with sync_playwright() as p:
     pg = ctx.new_page()
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and '503' not in m.text and '502' not in m.text and '404' not in m.text else None)
-    pg.add_init_script("localStorage.setItem('plantdb.editor','Identify Test')")
+    pg.add_init_script("localStorage.setItem('plantdb.editor','Identify Test');localStorage.setItem('plantdb.idmode',JSON.stringify({identify:'mine',add:'mine',plant:'mine'}))")
     pg.goto(LOCAL + '/#/identify'); pg.wait_for_timeout(2500)
     check(pg.locator('#sub-nav a[href="#/identify"][aria-current=page]').count() == 1 and pg.locator('#sub-nav a[href="#/library"]').count() == 1, 'Identify and Library are in the top menu')
     check('setting up' in pg.inner_text('#id-st'), 'the page says the checker is still setting up')
     urllib.request.urlopen(urllib.request.Request(VIS + '/mock/state', data=b'{"state":"ready"}', headers={'Content-Type': 'application/json'}))
     pg.wait_for_timeout(6000)
     check('Ready' in pg.inner_text('#id-st'), 'and then that it is ready (it checks again by itself)')
-    check(pg.locator('select[data-f=idscope]').count() == 1 and pg.locator('label:has(select[data-f=idscope])').count() == 1, 'the species list choice has a real label')
+    check(pg.locator('select[data-act=idscope]').count() == 1 and pg.locator('label:has(select[data-act=idscope])').count() == 1, 'the species list choice has a real label')
     pg.click('#id-cam-btn'); pg.wait_for_timeout(1500)
     check(pg.locator('#id-cam-btn').inner_text() == 'Stop camera' and not pg.locator('#id-snap').is_disabled(), 'Start camera turns the camera on')
     pg.wait_for_selector('dialog[open] .id-pop', timeout=15000)
@@ -209,7 +210,7 @@ with sync_playwright() as p:
     check(pg.locator('form[data-form=idkeys] input[type=password]').count() == 2 and '…rstu' not in pg.inner_text('main') and 'rstu' in pg.inner_text('main'), 'the owner sees the key form, and only the end of each key')
     # phone width, biggest text
     ph = b.new_page(viewport={'width': 390, 'height': 844})
-    ph.add_init_script("localStorage.setItem('plantdb.editor','Identify Test');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
+    ph.add_init_script("localStorage.setItem('plantdb.editor','Identify Test');localStorage.setItem('plantdb.idmode',JSON.stringify({identify:'mine',add:'mine',plant:'mine'}));localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
     for u in ('/#/identify', '/#/library?q=agave&scope=world'):
         ph.goto(LOCAL + u); ph.wait_for_timeout(2500)
         check(ph.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), f'{u}: no sideways scrolling on a phone with the largest text')
@@ -217,6 +218,7 @@ with sync_playwright() as p:
     # someone who can only view
     vw = b.new_page(viewport={'width': 1280, 'height': 900}, extra_http_headers=V)
     vw.on('pageerror', lambda e: errs.append(str(e)))
+    vw.add_init_script("localStorage.setItem('plantdb.idmode',JSON.stringify({identify:'mine',add:'mine',plant:'mine'}))")   # 1.51.0: no "What are you looking at?" here
     vw.goto(TS + '/#/identify'); vw.wait_for_timeout(2500)
     check(vw.locator('form[data-form=idkeys]').count() == 0, 'a viewer does not get the key form')
     vw.set_input_files('input[data-act=idfile]', pic('red', os.path.join(TMP, 'red.png')) and os.path.join(TMP, 'red.png')); vw.wait_for_selector('dialog[open] .id-pop', timeout=10000)
@@ -234,7 +236,7 @@ with sync_playwright() as p:
     b = p.chromium.launch(args=['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream', '--use-file-for-fake-video-capture=' + y4g])
     gp = b.new_context(viewport={'width': 1280, 'height': 900}, permissions=['camera']).new_page()
     gp.on('pageerror', lambda e: errs.append(str(e)))
-    gp.add_init_script("localStorage.setItem('plantdb.editor','Identify Test')")
+    gp.add_init_script("localStorage.setItem('plantdb.editor','Identify Test');localStorage.setItem('plantdb.idmode',JSON.stringify({identify:'mine',add:'mine',plant:'mine'}))")
     gp.goto(LOCAL + '/#/identify'); gp.wait_for_timeout(2500); gp.click('#id-cam-btn')
     gp.wait_for_timeout(2500)
     check('Possibly P-049' in gp.inner_text('#id-live') and gp.locator('dialog[open]').count() == 0, 'while unsure, the camera says what it thinks below the picture, without a window yet')

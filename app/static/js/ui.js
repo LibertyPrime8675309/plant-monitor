@@ -30,11 +30,16 @@ function displayDialog() {
   const U = unitsGet(), usel = (k, title, hint) => html`<label class="f">${title}<select data-act="unitset" data-u="${k}" id="pref-u-${k}">${Object.entries(UNIT_WORDS[k]).map(([v, l]) => html`<option value="${v}" ${U[k] === v ? raw('selected') : ''}>${l}</option>`)}</select>${hint ? html`<small>${hint}</small>` : ''}</label>`;
   G.units = html`<fieldset class="opt-group"><legend>Units</legend>${usel('region', 'Where you are', U.own ? 'Sets the three below at once.' : `Following the home you are looking at (${placeName()}) until you choose. Sets the three below at once.`)}${usel('temp', 'Temperature')}${usel('len', 'Lengths (pots, distances)')}${usel('rain', 'Rain and water')}
     <p class="hint">The record keeps everything in °F and inches underneath; this changes what you see and type, on every page and in push messages. Unlike the other parts of Display, units apply on every device you sign in on.</p></fieldset>`;
+  // 5b (PLAN.md step 5): what Identify asks on each page, or the answer to use without asking. Follows you to every device.
+  const IM = idModePref(), imsel = (page, title) => html`<label class="f">${title}<select data-act="idmodeset" data-page="${page}" id="pref-im-${page}">
+    ${[['ask', 'Ask each time'], ['mine', 'One of my plants'], ['new', 'A new find']].map(([v, l]) => html`<option value="${v}" ${(IM[page] === 'mine' || IM[page] === 'new' ? IM[page] : 'ask') === v ? raw('selected') : ''}>${l}</option>`)}</select></label>`;
+  G.idmode = html`<fieldset class="opt-group"><legend>What you are looking at</legend>${imsel('identify', ID_MODE_PAGES.identify)}${imsel('add', ID_MODE_PAGES.add)}${imsel('plant', ID_MODE_PAGES.plant)}
+    <p class="hint">"One of my plants" puts the names you already have first (a cutting, a new pot of the same plant). "A new find" ignores what you have and puts the plants recorded in this home's country first. "Ask each time" offers your last answer first. These follow you to every device you sign in on.</p></fieldset>`;
   const SH = window.PlantSync ? window.PlantSync.shared() : {};
   const share = part => html`<fieldset class="opt-group dv-share"><legend>Where these apply</legend><label class="chk"><input type="checkbox" data-dvshare="${part}" ${SH[part] ? raw('checked') : ''}>Use these on every device I sign in on</label>
     <p class="hint">Off (the usual): only this device. On: any phone, tablet or computer where you sign in and tick this too gets them.</p></fieldset>`;
   const SECS = [['Text and colours', html`${G.size}${G.space}${G.contrast}${G.theme}${share('text')}`], ['Page layout', html`${G.width}${G.lines}${G.layout}${G.navside}${G.navopen}${share('layout')}`],
-    ['Units', G.units], ['Reading aloud', html`${speak}${share('read')}`], ['Photos and touch', html`${G.photofit}${G.swipe}${share('photos')}`], ['Keyboard and voice', html`${G.keys}${G.vsearch}${share('keys')}`]];
+    ['Units', G.units], ['Identify', G.idmode], ['Reading aloud', html`${speak}${share('read')}`], ['Photos and touch', html`${G.photofit}${G.swipe}${share('photos')}`], ['Keyboard and voice', html`${G.keys}${G.vsearch}${share('keys')}`]];
   const keep = DVSCROLL; DVSCROLL = 0;
   modal(html`<form method="dialog" class="dv-form">
     <div class="dv-head"><div class="dv-title"><h2 id="dv-title">Display settings</h2>

@@ -149,7 +149,7 @@ with sync_playwright() as p:
     pg.goto(LOCAL + '/#/fungi'); pg.wait_for_timeout(1000); pg.goto(LOCAL + '/#/fungi/new'); pg.wait_for_timeout(1200)
     check(pg.locator('#mu-scientific_name').input_value() == '', 'and a later new find starts empty')
     pg.goto(LOCAL + '/#/identify'); pg.wait_for_timeout(1500)
-    check(pg.locator('select[data-f=idscope] option[value=fungi]').count() == 1, 'Identify can look in the fungi list')
+    check(pg.locator('select[data-act=idscope] option[value=fungi]').count() == 1, 'Identify can look in the fungi list')
     # audit log
     st, a = call('GET', '/api/audit?kind=fungi')
     check(st == 200 and any(x['plant_code'] == 'F-001' and x['action_word'] == 'Mushroom find' for x in a), 'changes to finds are in the Audit log under "Mushroom finds"')

@@ -19,7 +19,7 @@ What it does
   houseplant genera, the state's plants, and the record's own photos that look like the picture (a new pot of a plant you
   have). Ten names come back, each with the reasons ('basis') for its lift. VISION_PRIOR=0 turns the prior off.
 Nothing leaves the computer except the downloads above."""
-import csv, html, io, json, os, re, sqlite3, threading, time, urllib.request
+import csv, html, io, json, math, os, re, sqlite3, threading, time, urllib.request
 import numpy as np
 from flask import Flask, request, jsonify, abort
 
@@ -99,6 +99,41 @@ def fetch_usda():
             w = (r.get('Scientific Name with Author') or '').split()
             if len(w) >= 2 and w[1][:1].islower(): where.setdefault(w[0] + ' ' + w[1], {})[st] = (r.get('State Common Name') or '', r.get('Symbol') or '', r.get('Family') or '')
     json.dump(where, open(p + '.tmp', 'w')); os.replace(p + '.tmp', p)
+
+# ---------------------------------------------------------------- PLAN.md step 5b: the plants recorded in a country (GBIF)
+# For "a new find" (mode=new): no lift for the record's own plants or for houseplants; instead a lift for species that GBIF has
+# occurrences of in the site's country. The list ({'Genus species': count}) is fetched once per country into gbif-<CC>.json,
+# in the background the first time a request names the country; until it is there the answer says so and no country lift applies.
+COUNTRY = {}      # CC -> {'state': 'fetching'|'ready'|'error', 'mask': bool array over NAMES rows, 'weight': float array, 'species': int}
+CLOCK = threading.Lock()
+def country_path(cc): return os.path.join(CACHE, f'gbif-{cc}.json')
+def country_fetch(cc):
+    try:
+        from gbif_country import fetch_country                 # beside this file (vision/gbif_country.py)
+        sp = fetch_country(cc, lambda m, n: print(f'[vision] {m}', flush=True))
+        json.dump(sp, open(country_path(cc) + '.tmp', 'w')); os.replace(country_path(cc) + '.tmp', country_path(cc))
+        country_load(cc)
+    except Exception as e:
+        print('[vision] country list failed', cc, repr(e), flush=True)
+        COUNTRY[cc] = {'state': 'error', 'error': f'{type(e).__name__}: {e}', 'mask': None, 'weight': None, 'species': 0}
+def country_load(cc):
+    counts = json.load(open(country_path(cc)))
+    mask = np.array([s in counts for s in NAMES['sp']])
+    # the lift grows with how often the species is recorded there: full at 1,000 records or more, a third at 10
+    w = np.array([min(1.0, math.log10(counts.get(s, 0) + 1) / 3) if s in counts else 0.0 for s in NAMES['sp']], dtype=np.float32)
+    COUNTRY[cc] = {'state': 'ready', 'mask': mask, 'weight': w, 'species': int(mask.sum())}
+def country(cc):
+    """The country's entry, starting the download if needed. None when the code is missing or not two letters."""
+    cc = (cc or '').strip().upper()
+    if not re.fullmatch(r'[A-Z]{2}', cc) or not NAMES: return None
+    with CLOCK:
+        if cc in COUNTRY: return COUNTRY[cc]
+        if os.path.exists(country_path(cc)):
+            try: country_load(cc); return COUNTRY[cc]
+            except Exception as e: print('[vision] country list unreadable', cc, repr(e), flush=True); os.remove(country_path(cc))
+        COUNTRY[cc] = {'state': 'fetching', 'mask': None, 'weight': None, 'species': 0}
+        threading.Thread(target=country_fetch, args=(cc,), daemon=True).start()
+        return COUNTRY[cc]
 
 def load_all():
     try:
@@ -246,7 +281,11 @@ NOVEL = {'bioclip-2.5-vith14': 0.65, 'bioclip-2': 0.75}
 # cosine, the gap between close candidates). 'own_sp': a species already named in the record; 'own_gen': its genus is;
 # 'house': a genus grown as a houseplant; 'state': grows in the place's state (only for a state list); 'looks': one of the
 # record's photos of a named plant looks like this picture (scaled by how close, up to the full value).
-PRIOR = {'own_sp': 1.5, 'own_gen': 1.0, 'house': 0.7, 'state': 0.3, 'looks': 3.0}
+PRIOR = {'own_sp': 1.5, 'own_gen': 1.0, 'house': 0.7, 'state': 0.3, 'looks': 3.0, 'country': 1.0}
+# PLAN.md step 5b: two modes. 'mine' (the default, as before): the lifts above, for "which of my plants is this?".
+# 'new': a plant met somewhere, not one of the record's: no lift for the record's own species and genera, houseplants or
+# look-alike photos; instead a lift for species GBIF records in the site's country (scaled by how often, see country_load).
+MODES = {'mine': ('own_sp', 'own_gen', 'house', 'state', 'looks'), 'new': ('state', 'country')}
 PRIOR_ON = os.environ.get('VISION_PRIOR', '1') != '0'
 HOUSE = set("""Adiantum Aechmea Aeonium Agave Aglaonema Alocasia Aloe Alpinia Anthurium Aphelandra Araucaria Ardisia Asparagus Aspidistra Asplenium
 Begonia Beaucarnea Billbergia Brassaia Bromelia Caladium Calathea Calliandra Carex Ceropegia Chamaedorea Chlorophytum Chrysalidocarpus Cissus Citrus
@@ -260,13 +299,21 @@ Stephanotis Strelitzia Streptocarpus Stromanthe Syngonium Tillandsia Tradescanti
 Opuntia Cereus Echinocactia Echinocereus Ferocactus Gymnocalycium Astrophytum Parodia Rebutia Cylindropuntia Stapelia Huernia Adenium Plumeria
 Dendrobium Cattleya Oncidium Paphiopedilum Vanda Cymbidium Lavandula Rosmarinus Salvia Ocimum Mentha Thymus Origanum Capsicum Solanum Fragaria""".split())
 
-def prior_why(i, scope):
-    why = []
-    if i in PHOTOS.get('own_sp', ()): why.append('own_sp')
-    elif NAMES['rows'][i][0][5] in PHOTOS.get('own_gen', ()): why.append('own_gen')
-    if NAMES['rows'][i][0][5] in HOUSE: why.append('house')
-    if isinstance(scope, str) and scope.startswith('state:') and NAMES['sp'][i] in NAMES['usda'] and scope[6:].replace(' ', '') in NAMES['usda'][NAMES['sp'][i]]: why.append('state')
+def prior_why(i, scope, mode='mine', C=None):
+    """The reasons a name is lifted, for this mode. C is the country entry (country()) or None."""
+    why, allowed = [], MODES.get(mode, MODES['mine'])
+    if 'own_sp' in allowed and i in PHOTOS.get('own_sp', ()): why.append('own_sp')
+    elif 'own_gen' in allowed and NAMES['rows'][i][0][5] in PHOTOS.get('own_gen', ()): why.append('own_gen')
+    if 'house' in allowed and NAMES['rows'][i][0][5] in HOUSE: why.append('house')
+    if 'state' in allowed and isinstance(scope, str) and scope.startswith('state:') and NAMES['sp'][i] in NAMES['usda'] and scope[6:].replace(' ', '') in NAMES['usda'][NAMES['sp'][i]]: why.append('state')
+    if 'country' in allowed and C and C.get('mask') is not None and C['mask'][i]: why.append('country')
     return why
+def prior_bonus(why, i, C=None):
+    b = 0.0
+    for w in why:
+        if w == 'country': b += PRIOR['country'] * float(C['weight'][i])
+        elif w != 'looks': b += PRIOR[w]
+    return b
 
 def confidence(score, margin):
     """How often the first choice was right, from tests on Ethan's own photos (October 2026): mostly the margin between
@@ -278,7 +325,8 @@ def confidence(score, margin):
 # ---------------------------------------------------------------- routes
 @app.get('/status')
 def status():
-    return jsonify(S | {'photos': len(PHOTOS['files']), 'species': int(NAMES['masks']['world'].sum()) if NAMES else 0,
+    cc = request.args.get('country'); C = country(cc) if S['state'] == 'ready' and cc else None
+    return jsonify(S | {'country': ({'code': cc.upper(), 'state': C['state'], 'species': C['species']} if C else None)} | {'photos': len(PHOTOS['files']), 'species': int(NAMES['masks']['world'].sum()) if NAMES else 0,
                         'prior': PRIOR_ON, 'named': len(PHOTOS.get('own_sp', ())), 'genera_known': len(PHOTOS.get('own_gen', ())),
                         'fungi': int(NAMES['masks']['fungi'].sum()) if NAMES else 0,
                         'scopes': {k: {'label': v, 'count': int(NAMES['masks'][k].sum()) if NAMES else 0} for k, v in SCOPES.items()}
@@ -317,6 +365,8 @@ def identify():
                                    'confidence': round(float(confidence(sc, sc - nxt)), 2) if j == 0 else None})
         if out['matches']: out['likely_new'] = out['matches'][0]['score'] < NOVEL.get(MODEL, 0.65)
     scope = request.args.get('scope', 'common')
+    mode = request.args.get('mode', 'mine'); mode = mode if mode in MODES else 'mine'       # 5b: 'mine' or 'new'
+    C = country(request.args.get('country')) if mode == 'new' else None
     mask = mask_for(scope, 'common')
     idx = np.where(mask)[0]
     logits = dot_rows(idx, v) * M['scale']
@@ -328,7 +378,7 @@ def identify():
     basis = {}
     if PRIOR_ON:
         looks = {}                                # species index -> best similarity with a photo of a named plant in the record
-        if P['emb'] is not None and len(P['files']) and P.get('sp'):
+        if 'looks' in MODES[mode] and P['emb'] is not None and len(P['files']) and P.get('sp'):
             sims = P['emb'] @ v
             for j in np.argsort(-sims)[:8]:
                 i, sim = P['sp'][j], float(sims[j])
@@ -336,9 +386,9 @@ def identify():
         for i in looks:
             if i not in cand: cand[i] = float(dot_rows(np.array([i]), v)[0]) * M['scale']
         for i in list(cand):
-            why = prior_why(i, scope)
+            why = prior_why(i, scope, mode, C)
             if i in looks: why.append('looks')
-            bonus = sum(PRIOR[w] for w in why if w != 'looks')
+            bonus = prior_bonus(why, i, C)
             if i in looks: bonus += PRIOR['looks'] * (looks[i] - NOVEL.get(MODEL, 0.65)) / (1 - NOVEL.get(MODEL, 0.65))
             if why: cand[i] += bonus; basis[i] = why
     order = sorted(cand, key=lambda i: -cand[i])
@@ -354,6 +404,8 @@ def identify():
     out['prior'] = PRIOR_ON
     out['seconds'] = round(time.time() - t0, 2)
     out['scope'] = scope
+    out['mode'] = mode                            # 5b
+    out['country'] = ({'code': request.args.get('country', '').upper(), 'state': C['state'], 'species': C['species']} | ({'error': C['error']} if C.get('error') else {})) if C else None
     return jsonify(out)
 
 def dot_rows(idx, v, chunk=40000):

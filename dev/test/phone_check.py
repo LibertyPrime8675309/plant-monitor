@@ -59,7 +59,7 @@ try:
         b = p.chromium.launch()
         ctx = b.new_context(viewport={'width': 400, 'height': 800}, is_mobile=True, has_touch=True)
         pg = ctx.new_page(); pg.on('pageerror', lambda e: errs.append(str(e)))
-        pg.add_init_script("localStorage.setItem('plantdb.editor','Phone Test')")
+        pg.add_init_script("localStorage.setItem('plantdb.editor','Phone Test');localStorage.setItem('plantdb.idmode',JSON.stringify({identify:'mine',add:'mine',plant:'mine'}))")
         pg.goto(B + '/#/'); pg.wait_for_timeout(4000)       # the first visit registers the service worker; these pages are then saved on the device
         pg.goto(B + '/#/plants'); pg.wait_for_timeout(3000)
         pg.goto(B + '/#/'); pg.wait_for_timeout(3000)
