@@ -137,3 +137,39 @@ def test_gbif_country_names_are_cut_to_genus_and_species():
     assert g.canon('Quercus virginiana Mill.') == 'Quercus virginiana'
     assert g.canon('Honckenya peploides subsp. diffusa (Hornem.) Hultén') == 'Honckenya peploides'
     assert g.canon('Quercus L.') is None and g.canon('Quercus sp.') is None and g.canon('Salix × fragilis') is None and g.canon('') is None
+
+# ---- PLAN.md step 5c (1.52.0): the loop. Confirmed pictures lift their name; rejected ones lower it; named mushroom finds count
+def test_confirmed_and_rejected_examples_change_the_ranking(svc, tmp_path):
+    import sqlite3
+    # a green picture, "a new find": pothos and monstera level (no record lifts)
+    g = lambda: {'image': (io.BytesIO(pic((45, 195, 45))), 'g.jpg')}
+    r0 = ask(svc, g(), views=0, mode='new')
+    assert abs(r0['species'][0]['probability'] - r0['species'][1]['probability']) < 0.3
+    # someone confirmed a green picture as Monstera: the example lifts it, in both modes
+    Image.new('RGB', (64, 64), (44, 196, 46)).save(os.path.join(tmp_path, 'photos', 'ex_1.jpg'))
+    db = sqlite3.connect(os.path.join(tmp_path, 'plants.db'))
+    db.executescript("CREATE TABLE id_examples(id INTEGER PRIMARY KEY, kind TEXT, name TEXT, file TEXT, source TEXT, plant_code TEXT, added_by TEXT, added_at TEXT);"
+                     "INSERT INTO id_examples VALUES(1,'yes','Monstera deliciosa','ex_1.jpg','identify',NULL,'Vee','2026-11-09T00:00:00Z');")
+    db.commit(); db.close()
+    assert svc.index_examples() == 1 and svc.EXAMPLES['n_yes'] == 1 and svc.EXAMPLES['sp'] == [1]
+    r1 = ask(svc, g(), views=0, mode='new')
+    assert r1['species'][0]['scientific_name'] == 'Monstera deliciosa' and r1['species'][0]['basis'] == ['looks']
+    assert r1['species'][0]['probability'] > r1['species'][1]['probability'] + 0.3
+    # then someone said "Not this" to Monstera with a green picture: the 'no' example cancels the lift (same amount), and says so
+    db = sqlite3.connect(os.path.join(tmp_path, 'plants.db'))
+    Image.new('RGB', (64, 64), (46, 194, 44)).save(os.path.join(tmp_path, 'photos', 'ex_2.jpg'))
+    db.execute("INSERT INTO id_examples VALUES(2,'no','Monstera deliciosa','ex_2.jpg','identify',NULL,'Vee','2026-11-09T00:01:00Z')"); db.commit(); db.close()
+    assert svc.index_examples() == 1 and svc.EXAMPLES['n_no'] == 1
+    r2 = ask(svc, g(), views=0, mode='new')
+    m = next(x for x in r2['species'] if x['scientific_name'] == 'Monstera deliciosa')
+    assert set(m['basis']) == {'looks', 'unlike'} and abs(r2['species'][0]['probability'] - r2['species'][1]['probability']) < 0.3
+    # a named mushroom find's photos count as confirmed examples; a guess does not
+    db = sqlite3.connect(os.path.join(tmp_path, 'plants.db'))
+    db.executescript("CREATE TABLE fungi_finds(id INTEGER PRIMARY KEY, scientific_name TEXT, id_status TEXT, status TEXT); CREATE TABLE fungi_photos(id INTEGER PRIMARY KEY, find_id INTEGER, file TEXT);"
+                     "INSERT INTO fungi_finds VALUES(1,'Rosa gallica','Fairly sure','active'),(2,'Lupinus texensis','A guess','active'); INSERT INTO fungi_photos VALUES(1,1,'f1.jpg'),(2,2,'f2.jpg');")
+    db.commit(); db.close()
+    for f in ('f1.jpg', 'f2.jpg'): Image.new('RGB', (64, 64), (210, 40, 40)).save(os.path.join(tmp_path, 'photos', f))
+    svc.index_examples()
+    assert svc.EXAMPLES['n_yes'] == 2 and 'f1.jpg' in svc.EXAMPLES['files'] and 'f2.jpg' not in svc.EXAMPLES['files']
+    st = svc.app.test_client().get('/status').get_json()
+    assert st['examples'] == {'yes': 2, 'no': 1}

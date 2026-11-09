@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.52.0 (2026-11-09)
+Step 5c of the plan: the picture checker learns from you.
+- **This is right** beside **Not this** on every name Identify offers. Press it and the picture is kept as a confirmed example of that species, and later pictures that look like it get that name lifted. On a plant's page it keeps the plant's main photo as the example.
+- **Not this** keeps the picture too, so a later look-alike has that name lowered ("Lowered: looks like a picture that was not this").
+- **Named mushroom finds** (fairly sure, or confirmed by an expert) now count as examples, like your named plants' photos always did.
+- The Identify page says how many confirmed and rejected pictures the checker has learned from; the Audit log says who confirmed or rejected what.
+
 ## 1.51.1 (2026-11-09)
 Step 5d of the plan: what you note about a mushroom.
 - **Two more boxes on a find:** what kind of place it grew in (lawn, under trees, a garden bed, a field, wet ground, indoors) and the stem (length, thickness, colour, hollow or solid).

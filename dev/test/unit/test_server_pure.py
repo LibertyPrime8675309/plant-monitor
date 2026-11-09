@@ -149,3 +149,27 @@ def test_mushroom_find_fields_pick_lists_and_export():
         assert csv_text.splitlines()[0].startswith('code,status,') and ',habitat,' in csv_text.splitlines()[0] and 'Little brown one' in csv_text
         j = c.get('/api/export.json').get_json()
         assert any(x['code'] == code for x in j['mushroom_finds']) and 'mushroom_photos' in j
+
+# ---- PLAN.md step 5c (1.52.0): confirmations and rejections with a picture become examples
+def test_confirm_and_reject_keep_examples():
+    import io, os, server as S
+    from PIL import Image
+    def png():
+        b = io.BytesIO(); Image.new('RGB', (40, 40), (20, 160, 40)).save(b, 'PNG'); b.seek(0); return b
+    with S.app.test_client() as c:
+        H = {'X-Editor': 'Loop Test'}
+        r = c.post('/api/identify/confirm', data={'name': 'Monstera deliciosa', 'source': 'identify', 'image': (png(), 'p.png')}, headers=H, content_type='multipart/form-data')
+        assert r.status_code == 200, r.get_data(as_text=True)
+        d = r.get_json(); assert d['examples'] == 1 and d['file'].startswith('ex_') and os.path.exists(os.path.join(S.PHOTO_DIR, d['file']))
+        assert c.post('/api/identify/confirm', data={'name': 'Monstera', 'image': (png(), 'p.png')}, headers=H, content_type='multipart/form-data').status_code == 400, 'a genus alone is not a species'
+        assert c.post('/api/identify/confirm', data={'name': 'Monstera deliciosa'}, headers=H).status_code == 400, 'no picture and no plant'
+        r = c.post('/api/identify/reject', data={'name': 'Epipremnum aureum', 'genus': '0', 'image': (png(), 'p.png')}, headers=H, content_type='multipart/form-data')
+        assert r.status_code == 200 and r.get_json()['name'] == 'Epipremnum aureum'
+        r = c.post('/api/identify/reject', json={'name': 'Ficus', 'genus': True}, headers=H); assert r.status_code == 200, 'words only still works'
+        ex = c.get('/api/identify/examples').get_json()
+        assert ex['total'] == 2 and {e['name']: (e['yes'], e['no']) for e in ex['examples']} == {'Monstera deliciosa': (1, 0), 'Epipremnum aureum': (0, 1)}
+        # viewers are refused
+        TS = {'environ_overrides': {'SERVER_PORT': S.TS_PORT}}
+        c.get('/api/me', headers={'Tailscale-User-Login': 'own2@example.com', 'Tailscale-User-Name': 'Own'}, **TS)
+        V = {'Tailscale-User-Login': 'v2@example.com', 'Tailscale-User-Name': 'Vee', 'X-Editor': 'Vee'}
+        assert c.post('/api/identify/confirm', data={'name': 'Monstera deliciosa', 'image': (png(), 'p.png')}, headers=V, content_type='multipart/form-data', **TS).status_code == 403

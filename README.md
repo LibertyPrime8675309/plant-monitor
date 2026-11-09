@@ -1050,6 +1050,13 @@ The weighting above is right for "which of my plants is this?" and wrong for a p
 - The checker is measured against the November 8 baseline (`dev/vision/README.md`); `prior_test.py` now has a "new find" row too, which needs the country's list from `data\vision`.
 - Also fixed: **suggest names from** on Identify (the species list) was never saved, so the list went back to the first choice on every visit.
 
+### The checker learns from you (from 1.52.0)
+
+- **This is right** sits beside **Not this** on every name Identify offers (editors and the owner). Press it and the picture is kept as a confirmed example of that species; from then on, a picture that looks like it lifts that name ("Lifted: looks like your photos or a confirmed picture"). On a plant's own page, **This is right** keeps the plant's main photo as the example.
+- **Not this** now keeps the picture too, as an example of what the name does *not* look like: a later picture that looks like it has that name lowered ("Lowered: looks like a picture that was not this"). Saying no to a whole genus is words only, as before.
+- Your named plants' photos always counted; now **named mushroom finds** (fairly sure or confirmed by an expert) count as examples as well.
+- The status line on Identify says how many confirmed and rejected pictures it has learned from. Every confirmation and rejection is in the Audit log with who made it. The pictures are kept in `data\photos` as `ex_….jpg` and go into backups with everything else.
+
 ## On the phone and offline (from 1.38.0)
 
 ### Watering offline

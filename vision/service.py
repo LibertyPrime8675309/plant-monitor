@@ -238,6 +238,8 @@ def index_photos():
                       sp=[species_index(n) for f, _, n in rows if f in known],          # 1.39.0: which species each photo is a confirmed example of
                       mtime=os.path.getmtime(os.path.join(DATA, 'plants.db')))
         own_names()
+    try: index_examples()                           # 5c: the examples people confirmed or rejected, and named mushroom finds
+    except Exception as e: print('[vision] examples index', e, flush=True)
     return len(new)
 
 def species_index(name):
@@ -245,6 +247,47 @@ def species_index(name):
     m = re.match(r"^\s*([A-Z][a-z]+)\s+([a-z][a-z\-]+)", name or '')
     if not m or m.group(2) in ('sp', 'spp', 'x', 'hybrid'): return -1
     return NAMES['by_sp'].get(m.group(1) + ' ' + m.group(2), -1) if NAMES else -1
+
+# ---------------------------------------------------------------- PLAN.md step 5c (1.52.0): the loop
+# Examples the checker learns from, beyond the record's own plant photos: what people confirmed ("This is right": kind 'yes') or
+# said no to ("Not this" with a picture: kind 'no') in the app (table id_examples), and the photos of named mushroom finds. A 'yes'
+# example lifts its species for pictures that look like it (the same look-alike step as the record's photos); a 'no' example lowers
+# it by the same amount. Fingerprints are kept in examples-<MODEL>.npz and made once per file.
+EXAMPLES = {'files': [], 'emb': None, 'sp': [], 'kind': [], 'n_yes': 0, 'n_no': 0}
+def examples_rows():
+    """[(file, species index, kind)] from id_examples and from named mushroom finds (kind 'yes'); only names the list knows."""
+    db = os.path.join(DATA, 'plants.db')
+    out = []
+    try:
+        c = sqlite3.connect(f'file:{db}?mode=ro', uri=True, timeout=10)
+        try:
+            if c.execute("SELECT 1 FROM sqlite_master WHERE name='id_examples'").fetchone():
+                for f, n, k in c.execute("SELECT file, name, kind FROM id_examples ORDER BY id"): out.append((f, species_index(n), k))
+            if c.execute("SELECT 1 FROM sqlite_master WHERE name='fungi_finds'").fetchone():
+                for f, n in c.execute("SELECT ph.file, ff.scientific_name FROM fungi_photos ph JOIN fungi_finds ff ON ff.id=ph.find_id WHERE ff.status='active' AND ff.scientific_name<>'' AND ff.id_status IN ('Fairly sure', 'Confirmed by an expert') ORDER BY ph.id"):
+                    out.append((f, species_index(n), 'yes'))
+        finally: c.close()
+    except Exception as e: print('[vision] examples', e, flush=True)
+    return [(f, i, k) for f, i, k in out if i >= 0]
+
+def index_examples():
+    from PIL import Image
+    path = os.path.join(CACHE, f'examples-{MODEL}.npz')
+    known = {}
+    if os.path.exists(path):
+        z = np.load(path, allow_pickle=False)
+        known = {f: e for f, e in zip(z['files'].tolist(), z['emb'])}
+    rows = examples_rows()
+    new = [f for f, _, _ in rows if f not in known and os.path.exists(os.path.join(DATA, 'photos', f))]
+    for f in new:
+        try: known[f] = embed(Image.open(os.path.join(DATA, 'photos', f)))
+        except Exception as e: print('[vision] skipped example', f, e, flush=True)
+    if new and known: np.savez(path + '.tmp.npz', files=np.array(list(known)), emb=np.stack(list(known.values()))); os.replace(path + '.tmp.npz', path)
+    rows = [(f, i, k) for f, i, k in rows if f in known]
+    with LOCK:
+        EXAMPLES.update(files=[f for f, _, _ in rows], emb=np.stack([known[f] for f, _, _ in rows]) if rows else None, sp=[i for _, i, _ in rows], kind=[k for _, _, k in rows],
+                        n_yes=sum(1 for _, _, k in rows if k == 'yes'), n_no=sum(1 for _, _, k in rows if k == 'no'))
+    return len(new)
 
 def own_names():
     """1.39.0: the species and genera already in the record (named plants), for the prior on what a new picture is."""
@@ -312,7 +355,7 @@ def prior_bonus(why, i, C=None):
     b = 0.0
     for w in why:
         if w == 'country': b += PRIOR['country'] * float(C['weight'][i])
-        elif w != 'looks': b += PRIOR[w]
+        elif w not in ('looks', 'unlike'): b += PRIOR[w]
     return b
 
 def confidence(score, margin):
@@ -326,7 +369,7 @@ def confidence(score, margin):
 @app.get('/status')
 def status():
     cc = request.args.get('country'); C = country(cc) if S['state'] == 'ready' and cc else None
-    return jsonify(S | {'country': ({'code': cc.upper(), 'state': C['state'], 'species': C['species']} if C else None)} | {'photos': len(PHOTOS['files']), 'species': int(NAMES['masks']['world'].sum()) if NAMES else 0,
+    return jsonify(S | {'country': ({'code': cc.upper(), 'state': C['state'], 'species': C['species']} if C else None), 'examples': {'yes': EXAMPLES['n_yes'], 'no': EXAMPLES['n_no']}} | {'photos': len(PHOTOS['files']), 'species': int(NAMES['masks']['world'].sum()) if NAMES else 0,
                         'prior': PRIOR_ON, 'named': len(PHOTOS.get('own_sp', ())), 'genera_known': len(PHOTOS.get('own_gen', ())),
                         'fungi': int(NAMES['masks']['fungi'].sum()) if NAMES else 0,
                         'scopes': {k: {'label': v, 'count': int(NAMES['masks'][k].sum()) if NAMES else 0} for k, v in SCOPES.items()}
@@ -377,19 +420,30 @@ def identify():
     cand = {int(idx[t]): float(logits[t]) for t in top}
     basis = {}
     if PRIOR_ON:
-        looks = {}                                # species index -> best similarity with a photo of a named plant in the record
+        looks, unlike = {}, {}                    # species index -> best similarity with a photo of a named plant in the record (or a confirmed example); with a rejected example
+        nov = NOVEL.get(MODEL, 0.65)
         if 'looks' in MODES[mode] and P['emb'] is not None and len(P['files']) and P.get('sp'):
             sims = P['emb'] @ v
             for j in np.argsort(-sims)[:8]:
                 i, sim = P['sp'][j], float(sims[j])
-                if i >= 0 and mask[i] and sim >= NOVEL.get(MODEL, 0.65): looks[i] = max(looks.get(i, 0), sim)
+                if i >= 0 and mask[i] and sim >= nov: looks[i] = max(looks.get(i, 0), sim)
+        E = EXAMPLES
+        if E['emb'] is not None and len(E['files']):   # 5c: what people confirmed ('yes') or said no to ('no'), in both modes
+            sims = E['emb'] @ v
+            for j in np.argsort(-sims)[:12]:
+                i, sim, kind = E['sp'][j], float(sims[j]), E['kind'][j]
+                if i < 0 or not mask[i] or sim < nov: continue
+                if kind == 'yes': looks[i] = max(looks.get(i, 0), sim)
+                else: unlike[i] = max(unlike.get(i, 0), sim)
         for i in looks:
             if i not in cand: cand[i] = float(dot_rows(np.array([i]), v)[0]) * M['scale']
         for i in list(cand):
             why = prior_why(i, scope, mode, C)
             if i in looks: why.append('looks')
+            if i in unlike: why.append('unlike')
             bonus = prior_bonus(why, i, C)
-            if i in looks: bonus += PRIOR['looks'] * (looks[i] - NOVEL.get(MODEL, 0.65)) / (1 - NOVEL.get(MODEL, 0.65))
+            if i in looks: bonus += PRIOR['looks'] * (looks[i] - nov) / (1 - nov)
+            if i in unlike: bonus -= PRIOR['looks'] * (unlike[i] - nov) / (1 - nov)
             if why: cand[i] += bonus; basis[i] = why
     order = sorted(cand, key=lambda i: -cand[i])
     sc = np.array([cand[i] for i in order]); p = np.exp(sc - sc.max()); p /= p.sum()
