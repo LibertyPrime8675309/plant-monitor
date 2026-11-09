@@ -3,7 +3,7 @@ facts for the species by group, each with its value, its source, how sure, who a
 care fields are shown from the species' facts and links to them; the groups fold; nothing breaks at phone width or for a viewer.
 Start the mock server with a fresh data folder (MOCK_TS=1), then:  python3 dev/test/factrows_check.py [base]
 Screenshots: dev/tmp/shots/factrows-*.png"""
-import json, os, sys, urllib.request
+import json, os, re, sys, urllib.request
 from playwright.sync_api import sync_playwright
 LOCAL = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
 TS = LOCAL.rsplit(':', 1)[0] + ':' + str(int(LOCAL.rsplit(':', 1)[1]) + 1)
@@ -26,7 +26,7 @@ with sync_playwright() as pw:
     b = pw.chromium.launch()
     pg = b.new_page(viewport={'width': 1280, 'height': 900})
     pg.on('pageerror', lambda e: errs.append(str(e)))
-    pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and '404' not in m.text and '502' not in m.text else None)
+    pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and not re.search(r'status of (404|50\d)', m.text) else None)   # the fakes answer 404/5xx for weather and outside lookups
     pg.add_init_script("localStorage.setItem('plantdb.editor','Rows Test')")
     pg.goto(LOCAL + '/#/species/Agave%20americana'); pg.wait_for_selector('#sp-facts-rows', timeout=15000); pg.wait_for_timeout(500)
     sec = pg.locator('#sp-facts-rows')
