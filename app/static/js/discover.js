@@ -1549,7 +1549,7 @@ async function viewFungi() {
     </div>
     <p id="mu-count" class="muted" aria-live="polite"></p>
     <div class="grid" id="mu-grid"></div>
-    <p><a class="btn ghost" href="#/around">Fungi found near home this month</a></p>
+    <p class="row"><a class="btn ghost" href="#/around">Fungi found near home this month</a><a class="btn ghost small noprint" href="/api/fungi.csv">Download the finds (CSV)</a></p>
     <p class="hint">Look up mushrooms by name in the <a href="#/library?scope=fungi">library</a> (Look in: Fungi worldwide), or take a picture with <a href="#/identify">Identify</a>.</p>`,
   };
 }
@@ -1568,11 +1568,16 @@ function muField(meta, f, v, plants) {
   if (f.kind === 'enum') return html`<label class="f">${f.label}<select name="${f.name}" id="${id}"><option value="">Not set</option>${meta.enums[f.name].map(o => html`<option ${o === v ? raw('selected') : ''}>${o}</option>`)}</select></label>`;
   if (f.kind === 'long') return html`<label class="f wide">${f.label}<textarea name="${f.name}" id="${id}" rows="4">${v || ''}</textarea></label>`;
   if (f.kind === 'date') return html`<label class="f">${f.label}<input type="date" name="${f.name}" id="${id}" value="${v || todayStr()}" max="${todayStr()}"></label>`;
-  const hint = { name: 'A common name, or your own description such as "small brown one by the oak"', cap_size: 'For example 2 inches', spore_print: 'For example white, cream, pink, brown, purple-brown, black' }[f.name];
-  return html`<label class="f">${f.label}${hint ? html`<small>${hint}</small>` : ''}<input type="text" name="${f.name}" id="${id}" value="${v || ''}"></label>`;
+  const hint = { name: 'A common name, or your own description such as "small brown one by the oak"', cap_size: 'For example 2 inches',
+    stem: 'Length and thickness, colour, hollow or solid, and how it meets the cap', spore_print: 'Pick the nearest, or type your own',
+    bruising: 'Cut the stem or press the cap, wait a minute', smell: 'Crush a bit of the cap' }[f.name];
+  // 5d: a 'pick' field offers the usual answers (what a field guide asks for) and takes anything else too
+  const picks = f.kind === 'pick' && meta.picks && meta.picks[f.name];
+  return html`<label class="f">${f.label}${hint ? html`<small>${hint}</small>` : ''}<input type="text" name="${f.name}" id="${id}" value="${v || ''}" ${picks ? raw(`list="${id}-list"`) : ''}></label>
+    ${picks ? html`<datalist id="${id}-list">${picks.map(o => html`<option value="${o}"></option>`)}</datalist>` : ''}`;
 }
 const MU_GROUPS = [['Name', ['name', 'scientific_name', 'id_status']], ['Where and when', ['found_on', 'place_kind', 'plant_code', 'place']],
-  ['What it grew on', ['substrate', 'near', 'abundance']], ['What it looks like', ['cap_size', 'cap_colour', 'underside', 'ring', 'volva', 'spore_print', 'bruising', 'smell']], ['Notes', ['notes']]];
+  ['What it grew on', ['substrate', 'habitat', 'near', 'abundance']], ['What it looks like', ['cap_size', 'cap_colour', 'underside', 'stem', 'ring', 'volva', 'spore_print', 'bruising', 'smell']], ['Notes', ['notes']]];   // 5d: habitat and stem
 let MUFILL = null;            // a new find started from a species page or from Identify
 async function viewFindForm(code) {
   const [meta, plants] = await Promise.all([code ? api('GET', '/api/fungi/' + enc(code)) : api('GET', '/api/fungi?status=none'), api('GET', '/api/plants')]);
@@ -1587,7 +1592,7 @@ async function viewFindForm(code) {
     <form data-form="musave" ${code ? raw(`data-code="${esc(code)}" data-ver="${meta.version}"`) : ''} autocomplete="off">
       ${code ? '' : html`<fieldset><legend>Photos</legend><label class="f">Photos of the cap, the underside, the stem and the base<small>On a phone you can take them or choose them from your photos. If the photos carry their location, it is offered for the find.</small>
         <input type="file" name="photos" accept="image/*" multiple></label></fieldset>`}
-      ${MU_GROUPS.map(([t, names]) => html`<fieldset><legend>${t}</legend><div class="field-grid">${names.map(n => muField(meta, F[n], v[n], plants))}</div>
+      ${MU_GROUPS.map(([t, names]) => html`<fieldset><legend>${t}</legend>${t === 'What it looks like' ? html`<p class="hint">These are what a field guide or an expert asks for to check a lead. Nothing recorded here, and nothing the app says, means a mushroom is safe to eat.</p>` : ''}<div class="field-grid">${names.map(n => muField(meta, F[n], v[n], plants))}</div>
         ${t === 'Where and when' ? html`<div class="mu-loc"><input type="hidden" name="lat" value="${v.lat == null ? '' : v.lat}"><input type="hidden" name="lon" value="${v.lon == null ? '' : v.lon}">
           <p id="mu-loc-txt" aria-live="polite">${v.lat != null ? html`Location saved: ${(+v.lat).toFixed(5)}, ${(+v.lon).toFixed(5)}.` : 'No map location saved.'}</p>
           <div class="row"><button class="btn ghost small" type="button" data-act="muhere">Use my location now</button><button class="btn ghost small" type="button" data-act="muclearloc">Clear the location</button></div>
@@ -1627,8 +1632,8 @@ async function viewFind(code) {
     <div class="mu-info"><section aria-labelledby="mu-where-h"><h2 id="mu-where-h">Where and when</h2><dl class="dl">${dl(['found_on', 'place_kind', 'plant_code', 'place'])}
       ${f.lat != null ? html`<dt>Map location</dt><dd>${(+f.lat).toFixed(5)}, ${(+f.lon).toFixed(5)} (<a href="https://www.openstreetmap.org/?mlat=${f.lat}&mlon=${f.lon}#map=18/${f.lat}/${f.lon}" target="_blank" rel="noopener noreferrer">open the map</a>)</dd>` : ''}</dl>
       ${f.lat == null && gps ? html`<p><button class="btn ghost" type="button" data-act="mugps" data-lat="${gps.gps_lat}" data-lon="${gps.gps_lon}">Save the location from the photo (${(+gps.gps_lat).toFixed(4)}, ${(+gps.gps_lon).toFixed(4)})</button></p>` : ''}</section>
-    <section aria-labelledby="mu-grew-h"><h2 id="mu-grew-h">What it grew on</h2>${['substrate', 'near', 'abundance'].some(show) ? html`<dl class="dl">${dl(['substrate', 'near', 'abundance'])}</dl>` : html`<p class="muted">Not noted yet.</p>`}</section>
-    <section aria-labelledby="mu-look-h"><h2 id="mu-look-h">What it looks like</h2>${['cap_size', 'cap_colour', 'underside', 'ring', 'volva', 'spore_print', 'bruising', 'smell'].some(show) ? html`<dl class="dl">${dl(['cap_size', 'cap_colour', 'underside', 'ring', 'volva', 'spore_print', 'bruising', 'smell'])}</dl>` : html`<p class="muted">Not noted yet. Edit the find to add the cap, the underside, the ring, the base and the spore print.</p>`}</section>
+    <section aria-labelledby="mu-grew-h"><h2 id="mu-grew-h">What it grew on</h2>${['substrate', 'habitat', 'near', 'abundance'].some(show) ? html`<dl class="dl">${dl(['substrate', 'habitat', 'near', 'abundance'])}</dl>` : html`<p class="muted">Not noted yet.</p>`}</section>
+    <section aria-labelledby="mu-look-h"><h2 id="mu-look-h">What it looks like</h2>${['cap_size', 'cap_colour', 'underside', 'stem', 'ring', 'volva', 'spore_print', 'bruising', 'smell'].some(show) ? html`<dl class="dl">${dl(['cap_size', 'cap_colour', 'underside', 'stem', 'ring', 'volva', 'spore_print', 'bruising', 'smell'])}</dl>` : html`<p class="muted">Not noted yet. Edit the find to add the cap, the underside, the ring, the base and the spore print.</p>`}</section>
     ${show('notes') ? html`<section aria-labelledby="mu-notes-h"><h2 id="mu-notes-h">Notes</h2><p class="pl">${f.notes}</p></section>` : ''}
     ${f.scientific_name && f.id_status !== 'Not identified yet' ? html`<section aria-labelledby="mu-facts-h"><h2 id="mu-facts-h">What it does, and growing it</h2><div class="facts-box" data-facts-name="${f.scientific_name}" data-facts-common="${f.name || ''}" data-facts-kind="fungus"><p class="loading">Loading</p></div></section>` : ''}</div>
     <div class="row noprint mu-acts"><a class="btn" href="#/fungi/${enc(f.code)}/edit">Edit this find</a>

@@ -268,6 +268,9 @@ def init_db():
         c.close(); return
     c.executescript(SCHEMA)
     c.executescript(FUNGI_SCHEMA)                 # 1.22.0: mushroom finds, library notes and the wishlist
+    fc = {r[1] for r in c.execute('PRAGMA table_info(fungi_finds)')}
+    for col in ('habitat', 'stem'):               # 1.51.1 (PLAN.md step 5d): the fields a person uses to check a mushroom lead
+        if col not in fc: c.execute(f'ALTER TABLE fungi_finds ADD COLUMN {col} TEXT')
     c.executescript(SYNC_SCHEMA)                  # 1.24.0: changes sent later from devices, and clashes to decide
     c.executescript(FACTS_SCHEMA)                 # 1.27.0: uses, partners, deterrents, propagation and breeding for each species
     c.executescript(SHOPS_SCHEMA)                 # 1.27.0: shops, what they have from the wishlist, and price alerts

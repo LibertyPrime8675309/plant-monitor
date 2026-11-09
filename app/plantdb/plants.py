@@ -757,7 +757,9 @@ def export_json():
             'audit_log': [dict(r) for r in c.execute('SELECT * FROM audit_log ORDER BY id')],
             'fertilizer_log': [dict(r) for r in c.execute('SELECT * FROM fertilizer_log ORDER BY applied_on, id')],
             'requests': [dict(r) for r in c.execute('SELECT * FROM requests ORDER BY id')],
-            'weather_places': [loc_dict(r) for r in c.execute('SELECT * FROM locations ORDER BY id')]}
+            'weather_places': [loc_dict(r) for r in c.execute('SELECT * FROM locations ORDER BY id')],
+            'mushroom_finds': [dict(r) for r in c.execute('SELECT * FROM fungi_finds ORDER BY id')],          # 5d (1.51.1)
+            'mushroom_photos': [dict(r) for r in c.execute('SELECT * FROM fungi_photos ORDER BY id')]}
     return Response(json.dumps(data, indent=1), mimetype='application/json', headers={'Content-Disposition': 'attachment; filename=plants-export.json'})
 
 def _csv_safe(v):

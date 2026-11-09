@@ -9,14 +9,21 @@ FUNGI_FIELDS = [
     ('name', 'text', 'Name'), ('scientific_name', 'text', 'Scientific name'), ('id_status', 'enum', 'How sure is the name?'),
     ('found_on', 'date', 'Found on'), ('place_kind', 'enum', 'Where'), ('plant_code', 'text', 'Which plant pot'),
     ('place', 'text', 'Where exactly'), ('lat', 'num', 'Latitude'), ('lon', 'num', 'Longitude'),
-    ('substrate', 'enum', 'Growing on'), ('near', 'text', 'Trees or plants nearby'), ('abundance', 'enum', 'How many'),
+    ('substrate', 'enum', 'Growing on'), ('habitat', 'enum', 'What kind of place'), ('near', 'text', 'Trees or plants nearby'), ('abundance', 'enum', 'How many'),
     ('cap_size', 'text', 'Cap width'), ('cap_colour', 'text', 'Cap colour and surface'), ('underside', 'enum', 'Under the cap'),
-    ('ring', 'enum', 'Ring on the stem'), ('volva', 'enum', 'Cup or sac at the base'), ('spore_print', 'text', 'Spore print colour'),
-    ('bruising', 'text', 'Colour change when cut or bruised'), ('smell', 'text', 'Smell'), ('notes', 'long', 'Notes')]
+    ('stem', 'text', 'Stem'), ('ring', 'enum', 'Ring on the stem'), ('volva', 'enum', 'Cup or sac at the base'), ('spore_print', 'pick', 'Spore print colour'),
+    ('bruising', 'pick', 'Colour change when cut or bruised'), ('smell', 'pick', 'Smell'), ('notes', 'long', 'Notes')]
+# 1.51.1 (PLAN.md step 5d): the fields a person uses to check a lead. 'pick' is a text box with the usual answers offered (a datalist):
+# the answer can be one of them or anything else. The lists are what field guides and identification keys ask for.
+FUNGI_PICKS = {
+    'spore_print': ['White', 'Cream', 'Yellow', 'Pink or salmon', 'Ochre or rusty brown', 'Dark brown', 'Purple-brown', 'Black', 'Green', 'Not taken yet'],
+    'bruising': ['No change', 'Blue or blue-green', 'Red, then black', 'Brown', 'Yellow', 'Pink or red', 'Not checked'],
+    'smell': ['Mushroomy or faint', 'Earthy', 'Anise or liquorice', 'Almond or marzipan', 'Flour or cucumber', 'Rotten or foul', 'Fishy', 'Chlorine or chemical', 'Sweet or fruity', 'Not checked']}
 FUNGI_ENUMS = {
     'id_status': ['Not identified yet', 'A guess', 'Fairly sure', 'Confirmed by an expert'],
     'place_kind': ['In the yard', 'In a plant pot', 'Somewhere else'],
     'substrate': ['Soil or grass', 'Mulch or wood chips', 'Dead wood or a stump', 'A living tree', 'Potting mix', 'Compost or dung', 'Leaf litter', 'Something else'],
+    'habitat': ['Lawn or grass', 'Under trees or in woodland', 'A garden bed or mulch', 'A field or pasture', 'A stream bank or wet ground', 'Indoors or in a greenhouse', 'Somewhere else'],   # 5d
     'abundance': ['Just one', 'A few', 'A cluster', 'A ring or arc', 'Many, scattered'],
     'underside': ['Gills', 'Pores (like a sponge)', 'Teeth or spines', 'Smooth or wrinkled', 'No cap (puffball, coral, crust, cup)', 'Not checked'],
     'ring': ['Yes', 'No', 'Not checked'], 'volva': ['Yes', 'No', 'Not checked (dig around the base to see)']}
@@ -111,7 +118,7 @@ def fungi_list():
     status = request.args.get('status', 'active')
     rows = c.execute('SELECT * FROM fungi_finds' + ('' if status == 'all' else ' WHERE status=?') + ' ORDER BY found_on DESC, id DESC',
                      () if status == 'all' else (status,)).fetchall()
-    return jsonify(finds=[find_dict(c, r, False) for r in rows], enums=FUNGI_ENUMS, fields=[{'name': n, 'kind': k, 'label': l} for n, k, l in FUNGI_FIELDS])
+    return jsonify(finds=[find_dict(c, r, False) for r in rows], enums=FUNGI_ENUMS, picks=FUNGI_PICKS, fields=[{'name': n, 'kind': k, 'label': l} for n, k, l in FUNGI_FIELDS])
 
 @app.route('/api/fungi/<code>', methods=['GET', 'PUT'])
 def fungi_one(code):
@@ -135,7 +142,7 @@ def fungi_one(code):
                 audit_only(c, 'fungi', n, None if o is None else str(o)[:500], None if v is None else str(v)[:500], who, f'{code}: {FUNGI_LABEL[n]} changed', None, code)
         if ch or nclash: c.commit()
         return jsonify(find_dict(c, find_row(c, code)) | {'changed': len(ch), 'conflicts': nclash})
-    return jsonify(find_dict(c, r) | {'enums': FUNGI_ENUMS, 'fields': [{'name': n, 'kind': k, 'label': l} for n, k, l in FUNGI_FIELDS]})
+    return jsonify(find_dict(c, r) | {'enums': FUNGI_ENUMS, 'picks': FUNGI_PICKS, 'fields': [{'name': n, 'kind': k, 'label': l} for n, k, l in FUNGI_FIELDS]})
 
 @app.route('/api/fungi/<code>/status', methods=['POST'])
 def fungi_status(code):
@@ -196,3 +203,15 @@ def fungi_photo(pid):
     c.execute('UPDATE fungi_finds SET version=version+1, updated_by=?, updated_at=? WHERE id=?', (who, now(), r['id']))
     c.commit()
     return jsonify(find_dict(c, find_row(c, r['code'])))
+
+@app.route('/api/fungi.csv')
+def fungi_csv():
+    """5d (1.51.1): every find's fields for a spreadsheet or to send to an expert; the photos' file names last."""
+    c = db()
+    out = io.StringIO(); w = csv.writer(out)
+    cols = ['code', 'status', 'created_by', 'created_at', 'updated_at'] + FUNGI_NAMES
+    w.writerow(cols + ['photos'])
+    for r in c.execute('SELECT * FROM fungi_finds ORDER BY found_on, id'):
+        files = [x[0] for x in c.execute('SELECT file FROM fungi_photos WHERE find_id=? ORDER BY id', (r['id'],))]
+        w.writerow([_csv_safe(r[k]) for k in cols] + [' '.join(files)])
+    return Response(out.getvalue(), mimetype='text/csv', headers={'Content-Disposition': 'attachment; filename=mushroom-finds.csv'})
