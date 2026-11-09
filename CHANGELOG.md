@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.51.1 (2026-11-09)
+Step 5d of the plan: what you note about a mushroom.
+- **Two more boxes on a find:** what kind of place it grew in (lawn, under trees, a garden bed, a field, wet ground, indoors) and the stem (length, thickness, colour, hollow or solid).
+- **The usual answers offered** for spore print colour, colour change when cut, and smell: pick one of what a field guide asks for, or type your own words as before.
+- The form says it plainly: nothing recorded here, and nothing the app says, means a mushroom is safe to eat.
+- **Download the finds (CSV)** on the Mushrooms page, and the finds are now in **Download all data (JSON)** too, so an expert can see everything you noted.
+
 ## 1.51.0 (2026-11-09)
 Step 5b of the plan: Identify in two modes.
 - **What are you looking at?** Every page that identifies (Identify, Add a plant, Add several plants, a plant's own page) asks first, with two big buttons: **One of my plants** (a plant in the record, a cutting or a new pot of one: the names you already have count, as before) or **A new find** (a plant met in a garden, a shop or the wild: nothing you have counts; the plants recorded in this home's country come first). Your last answer is offered first, so Enter repeats it.

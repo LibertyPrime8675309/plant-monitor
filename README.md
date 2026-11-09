@@ -1415,8 +1415,8 @@ Changes from a device are in the Audit log like any other, under the person's na
 
 - **Photos:** take photos of the cap from above, the underside (gills or pores), the whole stem and the very base. On a phone the button can open the camera. If a photo carries its location (most phone photos do, if location is on for the camera), the find gets that location.
 - **Where and when:** the date, and whether it was in the yard, in a plant pot (then pick which plant) or somewhere else, plus a description. **Use my location now** asks the phone or browser for where you are. Locations are seen by everyone you have given access to the app.
-- **What it grew on:** soil, mulch, dead wood, a living tree, potting mix and so on; trees nearby; how many.
-- **What it looks like:** cap width and colour, gills or pores, a ring on the stem, a cup or sac at the base, spore print colour, colour change when cut, smell.
+- **What it grew on:** soil, mulch, dead wood, a living tree, potting mix and so on; what kind of place (lawn, under trees, a garden bed, a field, wet ground, indoors; from 1.51.1); trees nearby; how many.
+- **What it looks like:** cap width and colour, gills or pores, the stem (length, thickness, colour, hollow or solid; from 1.51.1), a ring on the stem, a cup or sac at the base, spore print colour, colour change when cut, smell. From 1.51.1 the spore print, colour change and smell boxes offer the usual answers a field guide asks for (white, cream, pink, rusty brown, purple-brown, black; blue, red then black; anise, almond, flour, rotten, and so on) and still take your own words. The help text there says it plainly: nothing recorded, and nothing the app says, means a mushroom is safe to eat.
 - **Name:** a common name or your own description, the scientific name, and how sure the name is: not identified yet, a guess, fairly sure, or confirmed by an expert.
 
 Only the photos and the place really matter at first; you can fill in the rest any time with **Edit this find**.
@@ -1427,7 +1427,7 @@ Only the photos and the place really matter at first; you can fill in the rest a
 
 **Safety.** Every mushroom page has a short safety note, and **Read more** opens the full one. Never eat a wild mushroom because of an app, a photo, or this record. If a pet may have eaten one, call your vet or ASPCA Animal Poison Control at (888) 426-4435. If a person may have, call Poison Control at 1-800-222-1222 (or 911 if they are very ill).
 
-Changes to finds are in the Audit log under "Mushroom finds", and the finds and their photos are in your backups like everything else.
+Changes to finds are in the Audit log under "Mushroom finds", and the finds and their photos are in your backups like everything else. **Download the finds (CSV)** on the Mushrooms page gives every field for a spreadsheet or to send to an expert, and **Download all data (JSON)** on Settings now includes the finds and their photo records (1.51.1).
 
 ## Undo right after a care button (from 1.19.0)
 

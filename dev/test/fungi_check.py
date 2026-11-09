@@ -7,7 +7,8 @@ python3 dev/test/fungi_check.py      Screenshots: dev/tmp/shots/fungi-*.png"""
 import io, json, os, sys, urllib.request, urllib.error
 from PIL import Image
 from playwright.sync_api import sync_playwright
-LOCAL, TS = 'http://127.0.0.1:8080', 'http://127.0.0.1:8081'
+LOCAL = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
+TS = LOCAL.rsplit(':', 1)[0] + ':' + str(int(LOCAL.rsplit(':', 1)[1]) + 1)
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
 TMP = os.path.join(HERE, '..', 'tmp'); fails, errs = [], []
@@ -69,6 +70,12 @@ with sync_playwright() as p:
     pg.select_option('#mu-plant_code', 'P-001')
     pg.fill('#mu-name', 'Little yellow ones'); pg.select_option('#mu-substrate', 'Potting mix'); pg.select_option('#mu-underside', 'Gills')
     pg.fill('#mu-cap_colour', 'Bright yellow, powdery')
+    # 1.51.1 (PLAN.md step 5d): the fields that check a lead: a pick-list on spore print, bruising and smell (any words still allowed), habitat and stem
+    check(pg.locator('#mu-habitat option').count() >= 7 and pg.locator('#mu-stem').count() == 1, 'the form asks what kind of place and about the stem')
+    check(pg.locator('#mu-spore_print').get_attribute('list') == 'mu-spore_print-list' and pg.locator('#mu-spore_print-list option').count() >= 8
+          and pg.locator('#mu-smell-list option[value*=Almond]').count() == 1, 'spore print, bruising and smell offer the usual answers')
+    check('safe to eat' in pg.locator('fieldset:has(#mu-stem) .hint').first.inner_text(), 'the help text says nothing here means a mushroom is safe to eat')
+    pg.select_option('#mu-habitat', 'A garden bed or mulch'); pg.fill('#mu-stem', 'Thin and hollow'); pg.fill('#mu-spore_print', 'Rusty orange (my own words)')
     pg.set_input_files('form[data-form=musave] input[name=photos]', [p_gps, p_plain])
     pg.screenshot(path=os.path.join(OUT, 'fungi-1-form.png'), full_page=True)
     pg.click('form[data-form=musave] button[type=submit]'); pg.wait_for_timeout(3000)
@@ -76,6 +83,9 @@ with sync_playwright() as p:
     t = pg.inner_text('main')
     check('Little yellow ones' in t and 'P-001' in t and 'Potting mix' in t and 'Bright yellow, powdery' in t, 'its page shows what was entered, with a link to the plant')
     check('30.51000, -97.67000' in t and pg.locator('a[href*="openstreetmap.org"]').count() == 1, 'the location in the photo was saved with the find, with a map link')
+    check('A garden bed or mulch' in t and 'Thin and hollow' in t and 'Rusty orange (my own words)' in t, 'the find\'s page shows the place kind, the stem and the spore print in your own words')
+    csv_text = urllib.request.urlopen(LOCAL + '/api/fungi.csv').read().decode()
+    check(csv_text.splitlines()[0].startswith('code,') and 'Little yellow ones' in csv_text and 'habitat' in csv_text.splitlines()[0], 'the finds download as a CSV with every field')
     check('2 of 2' in pg.inner_text('#mu-gallery') or '1 of 2' in pg.inner_text('#mu-gallery'), 'both photos are there')
     check('Taken' in pg.inner_text('#mu-gallery') and 'Has a location' in pg.inner_text('#mu-gallery'), 'the photo says when it was taken and that it has a location')
     pg.screenshot(path=os.path.join(OUT, 'fungi-2-find.png'), full_page=True)

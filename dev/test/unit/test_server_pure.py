@@ -128,3 +128,24 @@ def test_frost_dates_needs_three_whole_winters():
     assert all('first_possible' in w for w in r['per_winter']) and 1 <= r['month'] <= 12
     assert [w['winter'] for w in r['per_winter']][0] == f'{start - 1} to {start}'
     c.execute('DELETE FROM weather_daily WHERE loc_id=?', (lid,)); c.commit(); S.PLACE_LOWS.clear()
+
+# ---- 1.51.1 (PLAN.md step 5d): the fields that check a mushroom lead, and the finds' export
+def test_mushroom_find_fields_pick_lists_and_export():
+    import server as S
+    with S.app.test_client() as c:
+        H = {'X-Editor': 'Fungi Test'}
+        m = c.get('/api/fungi?status=none').get_json()
+        names = [f['name'] for f in m['fields']]
+        assert 'habitat' in names and 'stem' in names and {f['name']: f['kind'] for f in m['fields']}['spore_print'] == 'pick'
+        assert 'Lawn or grass' in m['enums']['habitat'] and 'White' in m['picks']['spore_print'] and 'Not checked' in m['picks']['smell']
+        r = c.post('/api/fungi', json={'fields': {'name': 'Little brown one', 'found_on': '2026-11-08', 'habitat': 'Lawn or grass', 'stem': 'Thin, hollow, 2 inches',
+                                                   'spore_print': 'Lilac (my own word)', 'smell': 'Mushroomy or faint'}}, headers=H)
+        assert r.status_code in (200, 201), r.get_data(as_text=True)
+        code = r.get_json()['code']
+        f = c.get('/api/fungi/' + code).get_json()
+        assert f['habitat'] == 'Lawn or grass' and f['stem'] == 'Thin, hollow, 2 inches' and f['spore_print'] == 'Lilac (my own word)', 'a pick field takes any words'
+        assert c.post('/api/fungi', json={'fields': {'name': 'x', 'found_on': '2026-11-08', 'habitat': 'The moon'}}, headers=H).status_code == 400, 'an enum still refuses other answers'
+        csv_text = c.get('/api/fungi.csv').get_data(as_text=True)
+        assert csv_text.splitlines()[0].startswith('code,status,') and ',habitat,' in csv_text.splitlines()[0] and 'Little brown one' in csv_text
+        j = c.get('/api/export.json').get_json()
+        assert any(x['code'] == code for x in j['mushroom_finds']) and 'mushroom_photos' in j
