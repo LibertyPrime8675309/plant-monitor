@@ -36,4 +36,5 @@ Asked for by Ethan and built in 1.9.0:
 - Getting plants ready to come inside: ten pest methods rated per plant, with steps, logging, second-round reminders and keep-apart dates.
 
 ## Suggested by Claude, waiting for review
+- Your own reminders: a note to yourself with a date, for one plant or none ("Check the cutting for roots", "Buy potting mix"), on Today from its day until Done, optionally repeating. (suggested by Claude) (in progress: proto/reminders)
 - Health walk-through: go round the plants one at a time on a phone, with big buttons to say each one looks the same or has a new health rating, and a list of plants not looked over for two weeks. (suggested by Claude) (in progress: proto/health-walk)

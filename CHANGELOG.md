@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased: your own reminders (prototype proto/reminders)
+- **Today → Reminders:** notes to yourself with a date, for one plant or for none ("Check the cutting for roots", "Buy potting mix"). **Add a reminder** there, on Today, or on a plant's page under the care buttons.
+- A reminder shows on **Today** from its day until you press **Done**, and says "Late:" once its day has passed. **A week later** moves it on; **Change** edits or removes it.
+- A reminder can **repeat** (every week up to every year), counted from the day you press Done. **Not done yet** on the Reminders page puts one back.
+
 ## 1.52.1 (2026-11-09)
 - Search finds the **Plant-sitter sheet** and the **Large-print care cards** pages (they are pages of their own, so they were missing from the list).
 
