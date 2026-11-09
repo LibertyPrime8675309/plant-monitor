@@ -85,6 +85,7 @@ document.addEventListener('change', e => {
 const pagesList = () => {
   const L = SECTIONS.flatMap(sec => sec[2].map(([k, label, href]) => [label, href])).concat([['Shopping list for a store visit', '#/shopping/list'], ['Stores', '#/shopping/stores']]);
   for (const [key, p] of Object.entries(FEAT.pages)) { const href = p.href || '#/' + key; if (p.label && !L.some(x => x[1] === href)) L.push([p.label, href]); }
+  L.push(['Plant-sitter sheet', '/sitter.html'], ['Large-print care cards', '/card.html']);     // 1.52.1: the pages of their own, reached from Today and a plant's page
   return L;
 };
 let SRCH = { t: 0, q: '', seq: 0 };

@@ -7,6 +7,8 @@ Step 6a of the plan: every fact about a species now says where it came from.
 - **A plant's page fills in from the species** any care field left empty on the plant, and says so in a line with a link to the species' facts. The plant's own value always wins; the edit form shows only what is really on the plant.
 - **Download every fact (CSV)** from the section, or as JSON at `/api/facts/export`.
 - Adding and correcting facts from the page, with review by another editor, comes next (step 6b).
+## 1.52.1 (2026-11-09)
+- Search finds the **Plant-sitter sheet** and the **Large-print care cards** pages (they are pages of their own, so they were missing from the list).
 
 ## 1.52.0 (2026-11-09)
 Step 5c of the plan: the picture checker learns from you.
