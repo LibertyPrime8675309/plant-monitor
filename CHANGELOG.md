@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.50.0 (2026-11-09)
+The repotting plan (prototype #70, waiting since November 7 for the building work to finish; rebuilt the new way).
+- **Today → Repotting** says which plants are due for a bigger pot or fresh soil this spring, from the "Repotted" entries in the care log and how fast each plant grows (fast growers every year, slow ones every 3 years; **Change** on any plant for 12, 18, 24 or 36 months, or no reminders).
+- **Not recorded yet** lists the plants with no repotting logged. **When was it repotted?** takes a rough year (saved as April 15 of that year, marked as an estimate) or an exact date, and **Save for all** gives the whole list the same year in one go.
+- **Signs a plant cannot wait for spring** and short steps for when you repot, on the same page.
+- **On a plant's page**, a line under the care buttons with when it was last repotted and when it is next due. **On Today**, a **Repot this spring** section from four weeks before the season (March to May) until it ends; the rest of the year Today says nothing about it.
+- Plants that grow in water are left out, and the plan follows the home you are looking at.
+
 ## 1.49.0 (2026-11-09)
 Step 4c of the plan: the plant-sitter sheet by link.
 - **Send the sitter a link instead of a printout.** On the Plant-sitter sheet page, under the choices, **Share the sheet by link** → **Make a link**. The sitter opens it on their own phone with no Tailscale and no sign-in, sees the same sheet in large print (with its own Smaller text, Larger text, Dark, High contrast and Print buttons), and ticks a real check box on each line as they go. Each tick is saved at once.
