@@ -279,6 +279,7 @@ def init_db():
     for col in ('cal_dry', 'cal_wet'):
         if col not in sd: c.execute(f'ALTER TABLE sensor_devices ADD COLUMN {col} REAL')
     c.executescript(PUSH_SCHEMA)                  # 1.33.0: devices that get notifications
+    c.executescript(SITTER_SCHEMA)                # 1.49.0: plant-sitter sheets shared by link, and the sitter's ticks
     wl = {r[1] for r in c.execute('PRAGMA table_info(wishlist)')}
     for col, typ in (('max_price', 'REAL'), ('alert_stock', 'INTEGER NOT NULL DEFAULT 0'), ('search_words', "TEXT NOT NULL DEFAULT ''")):
         if col not in wl: c.execute(f'ALTER TABLE wishlist ADD COLUMN {col} {typ}')
@@ -944,6 +945,8 @@ def guard():
         return None
     if request.path.startswith('/cal/') and request.method in ('GET', 'HEAD'):
         return None                  # the subscribed calendar: calendar services cannot type a password, so its link carries a private token instead
+    if re.match(r'^/share/[A-Za-z0-9_-]{20,}(/|$)', request.path) and request.method in ('GET', 'HEAD', 'POST'):
+        return None                  # 1.49.0: the plant-sitter sheet by link: the long token in the link is the key (sitter.py checks it on every route there)
     if via_tailscale():
         g.user = ts_user()
         if g.user is None:
@@ -1019,6 +1022,7 @@ def gzip_answer(resp):
 @app.errorhandler(403)
 @app.errorhandler(404)
 @app.errorhandler(409)
+@app.errorhandler(410)                             # 1.49.0: a plant-sitter link taken down or past its days
 @app.errorhandler(413)
 @app.errorhandler(502)
 @app.errorhandler(503)

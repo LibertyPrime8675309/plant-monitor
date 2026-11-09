@@ -9,3 +9,29 @@ html[data-narrow="1"] .ps-pic{width:3.4rem;height:3.4rem}
   .ps-pic{width:2.6cm;height:2.6cm;border-color:#000;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   .ps-nopic{display:none}
 }
+/* 1.49.0: the sheet by link (share.html) and the ticks it sends back */
+.ps-box.ps-ticked{display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;line-height:1}
+.ps-tick{flex:none;width:2rem;height:2rem;margin:.05rem 0 0;accent-color:var(--ink)}
+.ps-tick:focus-visible{outline:3px solid var(--focus,var(--cyan));outline-offset:3px}
+.ps-done .ps-what{text-decoration:line-through;text-decoration-thickness:2px;color:var(--ink-2)}
+.ps-done .ps-what strong{color:var(--ink)}
+.ps-share p{margin:.3rem 0}
+.ps-linklist{list-style:none;padding:0;margin:.4rem 0 0;display:grid;gap:.8rem}
+.ps-linkrow{border:2px solid var(--line);border-radius:8px;padding:.6rem .8rem}
+.ps-linkrow .hint{display:block}
+.ps-url{width:100%;font-family:ui-monospace,monospace;font-size:.95em}
+.sh-main{padding-top:.6rem}
+.sh-tools{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin:0 0 1rem}
+.sh-tools .btn{min-height:2.8rem}
+.sh-foot{margin:1rem 0 0}
+.sh-sheet .ps-doc{border-width:1px}
+.sh-sheet .ps-list{gap:.6rem}
+.sh-sheet .ps-list li{padding:.3rem 0;border-bottom:1px solid var(--line)}
+.sh-sheet .ps-list li:last-child{border-bottom:0}
+html[data-touch="1"] .ps-tick{width:2.4rem;height:2.4rem}
+@media print{
+  .ps-tick{appearance:none;-webkit-appearance:none;width:1.3rem;height:1.3rem;border:2.5px solid #000;border-radius:3px;margin-top:.15rem;background:#fff}
+  .ps-tick:checked::before{content:"✓";display:block;text-align:center;font-weight:700;line-height:1.1}
+  .ps-done .ps-what{text-decoration:none;color:#000}
+  .ps-box.ps-ticked{color:#000}
+}
