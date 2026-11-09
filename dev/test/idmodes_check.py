@@ -73,8 +73,10 @@ with sync_playwright() as p:
     if pg.locator('dialog[open]').count(): pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
     # the country's list, once there (the fake checker has it after three asks), is named in the result
     pg.select_option('select[data-act=idmode]', 'new'); pg.wait_for_timeout(300)
-    pg.set_input_files('input[data-act=idfile]', green); pg.wait_for_timeout(1500)
-    if pg.locator('dialog[open]').count(): pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
+    for _ in range(3):                                                        # the fake checker's list is "ready" after a few asks
+        pg.set_input_files('input[data-act=idfile]', green); pg.wait_for_timeout(1500)
+        if pg.locator('dialog[open]').count(): pg.keyboard.press('Escape'); pg.wait_for_timeout(400)
+        if pg.locator('#id-res .id-mode-note').count() and 'species' in pg.locator('#id-res .id-mode-note').inner_text(): break
     note = pg.locator('#id-res .id-mode-note')
     check(note.count() == 1 and '48,696 species' in note.inner_text(), f'once the list is there the result says how many species the country has: "{note.inner_text() if note.count() else ""}"')
     # Display: the Identify part, with one choice per page; a rule made there stops the question on that page
