@@ -1,17 +1,17 @@
 # One-off (PLAN.md step 5b): asks GBIF what its country facet looks like, from a runner that can reach it. Removed before merging.
 name: gbif-probe
 on:
-  workflow_dispatch:
-    inputs:
-      country:
-        description: ISO country code
-        default: IS
+  push:
+    branches: [build/identify-modes]
+    paths: ['dev/vision/gbif_country.py', '.github/workflows/gbif-probe.yml']
+env:
+  CC: IS
 jobs:
   probe:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - run: python3 dev/vision/gbif_country.py ${{ inputs.country }} --probe
-      - run: python3 dev/vision/gbif_country.py ${{ inputs.country }} dev/tmp
-      - run: python3 -c "import json;d=json.load(open('dev/tmp/gbif-${{ inputs.country }}.json'));print(len(d));print(sorted(d.items(),key=lambda kv:-kv[1])[:15])"
+      - run: python3 dev/vision/gbif_country.py $CC --probe
+      - run: python3 dev/vision/gbif_country.py $CC dev/tmp
+      - run: python3 -c "import json;d=json.load(open('dev/tmp/gbif-$CC.json'));print(len(d));print(sorted(d.items(),key=lambda kv:-kv[1])[:15])"
