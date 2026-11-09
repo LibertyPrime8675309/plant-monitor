@@ -13,10 +13,14 @@ of a species' plants agree, each with the source it can be traced to (the batch 
 the app"). Nothing anyone typed changes: plant fields stay as they are, and a plant's own value always wins over the species'.
 A plant's page reads the species' accepted facts for fields the plant leaves empty (species_fill), marked as such.
 
-Step 6b adds proposing and reviewing; here the rows are read, exported, and added by batches (`facts_add`)."""
+Step 6b (1.54.0): editors propose a fact or a correction from a species page (a 'proposed' row); any other editor, or the owner,
+accepts it (it becomes the accepted row and retires the old one) or rejects it, from the page or the "Facts to review" queue;
+nobody but the owner accepts their own. The audit log keeps who did what. Mushroom species facts are the same rows with kind
+'fungus': the field list has no "edible" field and a proposal that says so is refused (FACTS_FUNGUS_NO). Import (the export's
+JSON) adds proposed rows only, never accepted ones."""
 import csv, io, json, os, re
 from .core import *   # noqa: F401,F403
-from .library import facts_keys, care_get, CARE_DIR
+from .library import facts_keys, care_get, CARE_DIR, FACTS_FUNGUS_NO
 
 KNOWLEDGE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS facts(
@@ -27,7 +31,7 @@ CREATE INDEX IF NOT EXISTS facts_key ON facts(key, field, status);
 """
 SOURCE_KINDS = ('reference', 'trial', 'grower', 'observation', 'claude', 'batch')
 CONFIDENCE = ('certain', 'likely', 'unsure')
-STATUS = ('accepted', 'proposed', 'retired')
+STATUS = ('accepted', 'proposed', 'retired', 'rejected')
 
 # The fields a species can have facts for: (field, kind, label, group). Plant fields (FIELDS) that describe the species rather than
 # one pot; then the sections of the species_facts blob (about_*) and of a Claude care sheet (sheet_*). Values are text; lists and
@@ -276,7 +280,12 @@ def facts_rows():
             acc = next((r for r in mine if r['status'] == 'accepted'), None)
             fields.append({'field': field, 'label': label, 'kind': kind, 'accepted': acc, 'history': [r for r in mine if r is not acc]})
         if fields: groups.append({'group': g, 'fields': fields})
-    return jsonify(keys=keys, groups=groups, total=len(rows), accepted=sum(1 for r in rows if r['status'] == 'accepted'))
+    role, who = me_role()
+    for gr in groups:
+        for fl in gr['fields']:
+            for h in fl['history']: h['mine'] = h['noted_by'] == who; h['can_accept'] = h['status'] == 'proposed' and role in ('owner', 'editor') and (role == 'owner' or not h['mine'])
+    return jsonify(keys=keys, groups=groups, total=len(rows), accepted=sum(1 for r in rows if r['status'] == 'accepted'), proposed=sum(1 for r in rows if r['status'] == 'proposed'),
+                   fields=[{'field': f[0], 'kind': f[1], 'label': f[2], 'group': f[3]} for f in FACT_FIELDS], source_kinds=SOURCE_KINDS, role=role)
 
 def _csv_cell(v): return json.dumps(v, ensure_ascii=False) if isinstance(v, (list, dict)) else ('' if v is None else str(v))
 
@@ -293,3 +302,118 @@ def facts_export():
         for r in rows: w.writerow([_csv_cell(r[k]) for k in cols])
         return Response(out.getvalue(), mimetype='text/csv', headers={'Content-Disposition': 'attachment; filename=plant-facts.csv'})
     return jsonify(version=APP_VERSION, exported_at=now(), facts=rows)
+
+# ---------------------------------------------------------------- 6b (1.54.0): proposing and reviewing
+def me_role():
+    u = getattr(g, 'user', None) or {}
+    return u.get('role') or 'owner', editor()
+
+def fact_key_for(b):
+    """The key a proposal is for: ?name=<scientific name> (a plant's facts_link key when ?code= is given) or a key as is."""
+    key = species_key(str(b.get('name') or ''))
+    if b.get('code'):
+        lk = db().execute('SELECT key FROM facts_link WHERE code=?', (b['code'],)).fetchone()
+        if lk: key = lk[0]
+    if not key and b.get('key'): key = str(b['key']).strip().lower()[:120]
+    return key
+
+@app.route('/api/facts/rows', methods=['POST'])
+def facts_propose():
+    """{name|key, code?, kind?, field, value, source, source_kind, confidence, note}: a proposed row (editors and the owner)."""
+    c = db(); b = request.get_json(silent=True) or {}
+    key = fact_key_for(b)
+    if not key: abort(400, 'Which species? Give its scientific name.')
+    field = str(b.get('field') or '')
+    f = FACT_BY_NAME.get(field)
+    if not f: abort(400, 'That is not a fact the record keeps.')
+    kind = 'fungus' if b.get('kind') == 'fungus' else 'plant'
+    if kind == 'fungus' and not field.startswith(('about_', 'sheet_')) and field not in ('native_range', 'danger_humans', 'danger_animals', 'conservation_status', 'invasive'):
+        abort(400, 'A mushroom\'s facts are its description, where it grows and what it does; not care values.')
+    text = fact_value_text(f[1], b.get('value'))
+    if not text: abort(400, 'What is the value?')
+    if kind == 'fungus' and FACTS_FUNGUS_NO.search(text): abort(400, 'Nothing in the record may say or suggest that a mushroom is edible, safe, tasty or medicinal.')
+    if f[1] in ('int', 'num'):
+        try: float(text)
+        except ValueError: abort(400, f'{f[2]} needs a number.')
+    source = str(b.get('source') or '').strip()
+    if not source: abort(400, 'Where does this come from? A link, a book, a grower, or your own observation.')
+    cur = c.execute("SELECT * FROM facts WHERE key=? AND field=? AND status='accepted'", (key, field)).fetchone()
+    if cur and cur['value'] == text: abort(409, 'That is already the accepted value.')
+    if c.execute("SELECT 1 FROM facts WHERE key=? AND field=? AND status='proposed' AND value=?", (key, field, text)).fetchone(): abort(409, 'That value is already proposed and waiting for review.')
+    role, who = me_role()
+    rid = fact_add(c, key, kind, field, text, source, b.get('source_kind', 'reference'), who, None, b.get('confidence', 'likely'), 'proposed', b.get('note', ''))
+    audit_only(c, 'fact', field, cur['value'] if cur else None, text, who, f'Proposed for {key}: {f[2]} = {text[:80]} ({source[:60]})')
+    c.commit()
+    return jsonify(ok=True, id=rid, status='proposed', queue=queue_count(c)), 201
+
+def queue_count(c): return c.execute("SELECT COUNT(*) FROM facts WHERE status='proposed'").fetchone()[0]
+
+@app.route('/api/facts/rows/<int:rid>/accept', methods=['POST'])
+def facts_accept(rid):
+    """Another editor, or the owner, accepts a proposal: it becomes the field's accepted row and the old one is retired."""
+    c = db()
+    r = c.execute('SELECT * FROM facts WHERE id=?', (rid,)).fetchone()
+    if not r or r['status'] != 'proposed': abort(404, 'That proposal is not waiting for review.')
+    role, who = me_role()
+    if role != 'owner' and r['noted_by'] == who: abort(403, 'Someone else has to accept your own proposal.')
+    old = c.execute("SELECT id, value FROM facts WHERE key=? AND field=? AND status='accepted'", (r['key'], r['field'])).fetchone()
+    if old: c.execute("UPDATE facts SET status='retired' WHERE id=?", (old['id'],))
+    note = (request.get_json(silent=True) or {}).get('note', '')
+    c.execute("UPDATE facts SET status='accepted', replaces=?, note=CASE WHEN ?<>'' THEN ? ELSE note END WHERE id=?", (old['id'] if old else None, str(note or ''), f"{r['note']} Accepted by {who}: {str(note or '')[:200]}".strip(), rid))
+    audit_only(c, 'fact', r['field'], old['value'] if old else None, r['value'], who, f'Accepted for {r["key"]}: {FACT_BY_NAME[r["field"]][2]} (proposed by {r["noted_by"]})')
+    c.commit()
+    return jsonify(ok=True, id=rid, status='accepted', queue=queue_count(c))
+
+@app.route('/api/facts/rows/<int:rid>/reject', methods=['POST'])
+def facts_reject(rid):
+    c = db()
+    r = c.execute('SELECT * FROM facts WHERE id=?', (rid,)).fetchone()
+    if not r or r['status'] != 'proposed': abort(404, 'That proposal is not waiting for review.')
+    role, who = me_role()
+    note = str((request.get_json(silent=True) or {}).get('note') or '')[:300]
+    c.execute("UPDATE facts SET status='rejected', note=? WHERE id=?", (f"{r['note']} Rejected by {who}: {note}".strip(), rid))
+    audit_only(c, 'fact', r['field'], None, r['value'], who, f'Rejected for {r["key"]}: {FACT_BY_NAME[r["field"]][2]} (proposed by {r["noted_by"]}){": " + note if note else ""}')
+    c.commit()
+    return jsonify(ok=True, id=rid, status='rejected', queue=queue_count(c))
+
+@app.route('/api/facts/queue')
+def facts_queue():
+    """Every proposal waiting for review, newest first, with the value it would replace and whether this person may accept it."""
+    c = db(); role, who = me_role()
+    out = []
+    for r in c.execute("SELECT * FROM facts WHERE status='proposed' ORDER BY id DESC LIMIT 200"):
+        d = fact_dict(r)
+        cur = None                                                                 # the value it would replace: the species' own, else the genus's
+        for k in [r['key']] + ([r['key'].split(' ')[0]] if ' ' in r['key'] else []):
+            cur = c.execute("SELECT * FROM facts WHERE key=? AND field=? AND status='accepted'", (k, r['field'])).fetchone()
+            if cur: break
+        d['current'] = fact_dict(cur) if cur else None
+        d['mine'] = r['noted_by'] == who
+        d['can_accept'] = role in ('owner', 'editor') and (role == 'owner' or not d['mine'])
+        out.append(d)
+    return jsonify(queue=out, count=len(out), role=role)
+
+@app.route('/api/facts/import', methods=['POST'])
+def facts_import():
+    """The export's JSON ({facts: [...]}) or a list of rows: each becomes a proposed row for review, never an accepted one; rows whose
+    value is already accepted or proposed for that field are skipped. Editors and the owner."""
+    c = db(); b = request.get_json(silent=True) or {}
+    rows = b.get('facts') if isinstance(b, dict) else b
+    if not isinstance(rows, list): abort(400, 'Send the JSON from /api/facts/export.')
+    role, who = me_role(); added = skipped = 0
+    for x in rows[:5000]:
+        if not isinstance(x, dict): continue
+        key = str(x.get('key') or '').strip().lower() or species_key(str(x.get('name') or ''))
+        f = FACT_BY_NAME.get(str(x.get('field') or ''))
+        if not key or not f: skipped += 1; continue
+        kind = 'fungus' if x.get('kind') == 'fungus' else 'plant'
+        text = fact_value_text(f[1], x.get('value'))
+        if not text or (kind == 'fungus' and FACTS_FUNGUS_NO.search(text)): skipped += 1; continue
+        if c.execute("SELECT 1 FROM facts WHERE key=? AND field=? AND value=? AND status IN ('accepted','proposed')", (key, f[0], text)).fetchone(): skipped += 1; continue
+        src = str(x.get('source') or '').strip() or f'Imported by {who}'
+        if fact_add(c, key, kind, f[0], text, src, x.get('source_kind', 'reference'), x.get('noted_by') or who, None, x.get('confidence', 'likely'), 'proposed',
+                    f'Imported by {who}' + (f'; noted by {x["noted_by"]} on {x["noted_at"]}' if x.get('noted_by') else '')): added += 1
+        else: skipped += 1
+    if added: audit_only(c, 'fact', 'import', None, str(added), who, f'Imported {added} facts for review ({skipped} skipped)')
+    c.commit()
+    return jsonify(ok=True, added=added, skipped=skipped, queue=queue_count(c))

@@ -14,3 +14,11 @@
 .fr-hist ul{margin:.3rem 0 0 1rem;padding:0}
 .fr-hist li{margin:.3rem 0}
 .fr-plant{border-left:4px solid var(--line);padding-left:.7rem;margin:0 0 1rem}
+/* 6b: proposals and the review queue */
+.fr-prop{margin:.4rem 0;padding:.5rem .8rem}
+.fr-prop p{margin:.2rem 0}
+.fr-acts{margin:.3rem 0 0}
+.fr-form textarea,.fr-form input[type=text]{width:100%}
+.fr-queue{list-style:none;padding:0;margin:1rem 0;display:grid;gap:1rem}
+.fr-qitem{border:2px solid var(--line);border-radius:8px;padding:.6rem .9rem}
+.fr-qitem h2{font-size:1.15em;margin:0 0 .3rem}

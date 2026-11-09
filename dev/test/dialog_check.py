@@ -30,9 +30,10 @@ with sync_playwright() as p:
     check(pg.locator('.dv-cols').first.evaluate("e => getComputedStyle(e).gridTemplateColumns.split(' ').length") >= 2, 'settings sit side by side')
     pg.screenshot(path=os.path.join(OUT, 'dialog-1-display.png'))
     pg.click('.dv-tab:has-text("Keyboard")')
-    try: pg.wait_for_function("document.querySelector('.dv-tab[aria-current=true]') && document.querySelector('.dv-tab[aria-current=true]').textContent.includes('Keyboard')", timeout=5000)
-    except Exception: pass
-    pg.wait_for_timeout(1500)                       # the smooth scroll settles (it is longer with seven parts, 1.51.0)
+    for _ in range(25):                             # the smooth scroll settles (longer with seven parts, 1.51.0); no wait_for_function: its eval trips the content policy
+        pg.wait_for_timeout(200)
+        if 'Keyboard' in (pg.locator('.dv-tab[aria-current=true]').inner_text() if pg.locator('.dv-tab[aria-current=true]').count() else ''): break
+    pg.wait_for_timeout(1500)
     check(pg.locator('.dv-tab:has-text("Keyboard")').get_attribute('aria-current') == 'true' and inside(pg, '#dv-s6 h3'), 'a part in the menu jumps to it and is marked as showing')
     check(inside(pg, '.dv-acts button[value=ok]') and inside(pg, '[data-act=prefreset]'), 'Done and Reset to defaults are still in view')
     pg.click('#dv-s0 .opts label:has-text("Larger")'); pg.wait_for_timeout(300)
