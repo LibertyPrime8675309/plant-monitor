@@ -109,13 +109,25 @@ def rejections(c, plant_code=None):
         else: sp.add(sp_key(name)); ssp.add(name.strip())
     return {'species': sp, 'genera': gn, 'shown_species': ssp, 'shown_genera': sgn}
 
-def identify_pictures(c, pics, scope, exclude=None, exclude_genera=None, plant_code=None, plantnet='auto', n=10):
+ID_MODES = ('mine', 'new')                 # PLAN.md step 5b: "one of my plants" (the record's own lifts) or "a new find" (the country's plants)
+def site_country(c):
+    """The two-letter country of the place in use (1.48.0), or '' when it is not set."""
+    cc = (location(c).get('country') or '').strip().upper()
+    return cc if re.fullmatch(r'[A-Z]{2}', cc) else ''
+
+def id_mode():
+    """?mode=mine|new on any route that identifies (5b); 'mine' when missing."""
+    m = request.args.get('mode', 'mine'); return m if m in ID_MODES else 'mine'
+
+def identify_pictures(c, pics, scope, exclude=None, exclude_genera=None, plant_code=None, plantnet='auto', n=10, mode='mine'):
     rej = rejections(c, plant_code)
     ex_sp = rej['species'] | {sp_key(x) for x in (exclude or [])}
     ex_gn = rej['genera'] | {x.strip().lower() for x in (exclude_genera or [])}
     shown = {'species': sorted({x.strip() for x in (exclude or [])} | rej['shown_species']), 'genera': sorted({x.strip().capitalize() for x in (exclude_genera or [])} | rej['shown_genera'])}
     body, ct = multipart({}, [('image', 'picture.jpg', pics[0], 'image/jpeg')] + [('images', f'picture{i + 2}.jpg', b, 'image/jpeg') for i, b in enumerate(pics[1:])])
-    out = vision_call('/identify?scope=' + scope + '&n=' + str(min(40, n + len(ex_sp) + 10)), body, ct, timeout=120)
+    q = {'scope': scope, 'n': min(40, n + len(ex_sp) + 10), 'mode': mode if mode in ID_MODES else 'mine'}
+    if q['mode'] == 'new' and site_country(c): q['country'] = site_country(c)
+    out = vision_call('/identify?' + urllib.parse.urlencode(q), body, ct, timeout=120)
     matches = []
     for m in out.get('matches', []):
         b = plant_brief(c, m['code'])
@@ -172,7 +184,8 @@ def id_args():
     a = request.args
     ex = [x for x in (a.get('exclude') or '').split('|') if x.strip()]
     exg = [x for x in (a.get('exclude_genera') or '').split('|') if x.strip()]
-    return dict(exclude=ex, exclude_genera=exg, plant_code=a.get('plant') or None, plantnet=a.get('plantnet', 'auto'), n=max(3, min(25, int(a.get('n', 10)))))
+    return dict(exclude=ex, exclude_genera=exg, plant_code=a.get('plant') or None, plantnet=a.get('plantnet', 'auto'), n=max(3, min(25, int(a.get('n', 10)))),
+                mode=id_mode())
 
 @app.route('/api/identify', methods=['POST'])
 def identify():
@@ -198,18 +211,21 @@ def identify_reject():
     c.commit()
     return jsonify(ok=True, name=name, genus=bool(genus), plant=code)
 
-BASIS_WORDS = {'own_sp': 'a species you have', 'own_gen': 'a genus you have', 'house': 'a houseplant', 'state': 'grows in this state', 'looks': 'looks like your photos'}
+BASIS_WORDS = {'own_sp': 'a species you have', 'own_gen': 'a genus you have', 'house': 'a houseplant', 'state': 'grows in this state', 'looks': 'looks like your photos',
+               'country': 'recorded in this country'}       # 5b
 
 @app.route('/api/identify/status')
 def identify_status():
     c = db(); vs = vscope(c, 'state')
-    try: st = vision_call('/status' + ('?' + urllib.parse.urlencode({'state': vs}) if vs.startswith('state:') else ''), timeout=5)
+    sq = ({'state': vs} if vs.startswith('state:') else {}) | ({'country': site_country(c)} if site_country(c) else {})
+    try: st = vision_call('/status' + ('?' + urllib.parse.urlencode(sq) if sq else ''), timeout=5)
     except Exception as e:
         st = {'state': 'off', 'step': getattr(e, 'description', 'The picture checker is not running.')}
     if isinstance(st.get('scopes'), dict):            # 1.28.0: 'state' is the place's own state
         st['scopes']['state'] = st['scopes'].get(vs) or ({'label': '', 'count': 0})
         st['scopes'].pop('texas', None); st['scopes'].pop(vs, None)
     st['region'] = place_region(c, location(c))
+    st['site_country'] = site_country(c)                      # 5b: '' means Homes and places has no country for this place yet
     st['plantnet'] = bool(setting(c, 'plantnet_key')); st['claude'] = bool(setting(c, 'claude_key'))
     return jsonify(st)
 

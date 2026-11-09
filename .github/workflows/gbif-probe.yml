@@ -3,7 +3,7 @@ name: gbif-probe
 on:
   push:
     branches: [build/identify-modes]
-    paths: ['dev/vision/gbif_country.py', '.github/workflows/gbif-probe.yml']
+    paths: ['vision/gbif_country.py', '.github/workflows/gbif-probe.yml']
 env:
   CC: US
 jobs:
@@ -12,6 +12,6 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - run: python3 dev/vision/gbif_country.py $CC --probe
-      - run: python3 dev/vision/gbif_country.py $CC dev/tmp
+      - run: python3 vision/gbif_country.py $CC --probe
+      - run: python3 vision/gbif_country.py $CC dev/tmp
       - run: python3 -c "import json;d=json.load(open('dev/tmp/gbif-$CC.json'));print(len(d));print(sorted(d.items(),key=lambda kv:-kv[1])[:15])"

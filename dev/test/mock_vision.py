@@ -20,11 +20,14 @@ def colour():
 
 @app.get('/status')
 def status():
-    return jsonify(STATE | {'step': 'Ready' if STATE['state'] == 'ready' else 'Downloading the species fingerprints', 'done': 3, 'total': 1024,
+    cc = request.args.get('country', '').upper()
+    return jsonify(STATE | {'country': ({'code': cc, 'state': 'ready' if COUNTRY_SEEN.count(cc) >= 3 else 'fetching', 'species': 48696 if COUNTRY_SEEN.count(cc) >= 3 else 0} if cc else None),
+                            'step': 'Ready' if STATE['state'] == 'ready' else 'Downloading the species fingerprints', 'done': 3, 'total': 1024,
                             'photos': 215, 'species': 335884, 'model': 'bioclip-2.5-vith14 (test)',
                             'scopes': {k: {'label': k, 'count': n} for k, n in (('common', 32542), ('texas', 4606), ('us', 18168), ('world', 335884), ('fungi', 49210))}
                                       | ({request.args['state']: {'label': request.args['state'][6:], 'count': 6105 if 'California' in request.args['state'] else 4606}} if request.args.get('state') else {}), 'fungi': 49210})
 
+COUNTRY_SEEN = []      # 5b: the country list "downloads" during the first two asks, then is ready
 @app.post('/mock/state')
 def set_state():
     STATE['state'] = request.get_json()['state']; return jsonify(STATE)
@@ -41,8 +44,12 @@ def identify():
     n_pics = len(request.files.getlist('images')) + (1 if 'image' in request.files else 0)      # 1.39.0: several pictures of one plant
     extra = [] if request.args.get('scope') == 'fungi' else [{'scientific_name': f'Testia species{i:02d}', 'common_name': f'Test plant {i:02d}' if i % 3 else '', 'genus': 'Testia', 'family': 'Testaceae', 'order': 'Testales',
                                                                'in_texas': False, 'us_states': [], 'usda_symbol': '', 'probability': round(.07 - i * .007, 3), 'basis': []} for i in range(1, 8)]
-    basis = {'Monstera deliciosa': ['house', 'looks'], 'Lupinus texensis': ['state'], 'Agave americana': ['own_gen']}
-    return jsonify(model='bioclip-2.5-vith14 (test)', likely_new=c == 'blue', scope=request.args.get('scope', 'common'), seconds=0.1, pictures=n_pics, prior=True,
+    mode = request.args.get('mode', 'mine')                     # 5b: 'new' lifts the country's plants instead of the record's own
+    basis = {'Monstera deliciosa': ['house', 'looks'], 'Lupinus texensis': ['state'], 'Agave americana': ['own_gen']} if mode != 'new' else {'Lupinus texensis': ['state', 'country'], 'Agave americana': ['country']}
+    cc = request.args.get('country', '').upper()
+    COUNTRY_SEEN.append(cc)
+    country = ({'code': cc, 'state': 'fetching' if len([x for x in COUNTRY_SEEN if x == cc]) < 3 else 'ready', 'species': 0 if len([x for x in COUNTRY_SEEN if x == cc]) < 3 else 48696} if cc else None) if mode == 'new' else None
+    return jsonify(model='bioclip-2.5-vith14 (test)', likely_new=c == 'blue', scope=request.args.get('scope', 'common'), seconds=0.1, pictures=n_pics, prior=True, mode=mode, country=country,
                    matches=[{'code': k, 'score': s, 'photo': None, 'confidence': cf} for k, s, cf in m],
                    species=([x | {'probability': p, 'basis': basis.get(x['scientific_name'], [])} for x, p in zip(sp, (.41, .22, .09))] + extra)[:int(request.args.get('n', 10))],
                    genera=[{'genus': sp[0]['genus'], 'probability': .5}, {'genus': sp[1]['genus'], 'probability': .2}, {'genus': 'Testia', 'probability': .1}])

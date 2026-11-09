@@ -1,6 +1,7 @@
 """PLAN.md step 5b: which plant species are recorded in a country, from GBIF occurrence counts, for the "a new find" lift.
-Writes <out>/gbif-<CC>.json: {"Genus species": occurrences, ...} for one ISO country code, the way the vision service does it
-on first use (vision/service.py, fetch_gbif). Usage: python3 gbif_country.py <CC> [out_dir] [--probe]
+fetch_country(cc) gives {"Genus species": occurrences, ...} for one ISO country code; the vision service (service.py, country())
+calls it the first time a request names a country and keeps the answer as gbif-<CC>.json in its cache folder.
+By hand: python3 gbif_country.py <CC> [out_dir] [--probe]
 --probe only prints the shape of GBIF's answer (used once from GitHub Actions to settle the request; the sandbox cannot reach GBIF)."""
 import json, os, re, sys, time, urllib.parse, urllib.request
 

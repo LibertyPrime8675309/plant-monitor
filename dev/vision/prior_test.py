@@ -1,17 +1,20 @@
 """1.39.0: does the prior help? For each of Ethan's photos whose plant has a clear 'Genus species' name, rank the species
 with and without the lifts the service applies (species and genera in the record, houseplant genera, Texas, look-alike photos
 of the record's own named plants, leaving the photo's own plant out), and compare where the right name lands.
-Usage: python3 prior_test.py <photos.npz from eval_photos.py> <names_dir with names.json + names.npy> [usda_states.json]
-The npz meta rows are (file, code, name, sci, genus), as eval_photos.py writes them."""
-import json, os, re, sys
+Usage: python3 prior_test.py <photos.npz from eval_photos.py> <names_dir with names.json + names.npy> [usda_states.json] [gbif-CC.json]
+The npz meta rows are (file, code, name, sci, genus), as eval_photos.py writes them.
+1.51.0 (PLAN.md step 5b): a third row per list, "new find": the mode for a plant met elsewhere, with no lift for the record's own
+plants or houseplants and a lift for species recorded in the country (the gbif-CC.json the service keeps; pass it to see it)."""
+import json, math, os, re, sys
 import numpy as np
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'vision'))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'vision'))   # service.py and gbif_country.py
 os.environ['PLANTDB_VISION'] = '0'
 import service as V                      # PRIOR, HOUSE and NOVEL as the service uses them
 
 z = np.load(sys.argv[1]); E = z['E'].astype(np.float32); meta = json.loads(str(z['meta']))
 rows = json.load(open(sys.argv[2] + '/names.json')); N = np.load(sys.argv[2] + '/names.npy').astype(np.float32)
 usda = json.load(open(sys.argv[3])) if len(sys.argv) > 3 else {}
+gbif = json.load(open(sys.argv[4])) if len(sys.argv) > 4 else {}          # {'Genus species': occurrences in the country}
 sp = [r[0][5] + ' ' + r[0][6] for r in rows]; gen = [r[0][5] for r in rows]
 by = {}
 for i, s in enumerate(sp): by.setdefault(s, i)
@@ -31,14 +34,20 @@ print(len(tests), 'photos with a known species;', len(own_sp), 'species and', le
 for nm, mask in masks.items():
     idx = np.where(mask)[0]; S = E @ N[idx].T * SCALE
     state = 'state:Texas' if nm == 'Texas' else 'common'
-    for prior in (False, True):
+    cweight = np.array([min(1.0, math.log10(gbif.get(x, 0) + 1) / 3) if x in gbif else 0.0 for x in sp]) if gbif else None
+    for prior in (False, True, 'new'):
         s1 = s5 = s10 = g1 = n = 0
         for k, want in tests:
             if not mask[want]: continue
             n += 1
             top = np.argsort(-S[k])[:80]
             cand = {int(idx[t]): float(S[k][t]) for t in top}
-            if prior:
+            if prior == 'new':                     # 5b: a new find: the country's plants lifted, nothing of the record's
+                for i in list(cand):
+                    b = V.PRIOR['state'] if state.startswith('state:') and sp[i] in usda and 'Texas' in usda[sp[i]] else 0.0
+                    if cweight is not None: b += V.PRIOR['country'] * float(cweight[i])
+                    cand[i] += b
+            elif prior:
                 others = np.array([j for j in range(len(meta)) if photo_code[j] != photo_code[k]])   # the photo's own plant left out: a new pot
                 sims = E[others] @ E[k]
                 looks = {}
@@ -59,4 +68,4 @@ for nm, mask in masks.items():
                     cand[i] += b
             order = sorted(cand, key=lambda i: -cand[i])
             s1 += order[0] == want; s5 += want in order[:5]; s10 += want in order[:10]; g1 += gen[order[0]] == gen[want]
-        print(f'{nm:13s} prior {"on " if prior else "off"} ({n} photos): species first {100*s1/n:.0f}%, top 5 {100*s5/n:.0f}%, top 10 {100*s10/n:.0f}%; genus first {100*g1/n:.0f}%')
+        print(f'{nm:13s} {"new find " if prior == "new" else "prior on " if prior else "prior off"} ({n} photos): species first {100*s1/n:.0f}%, top 5 {100*s5/n:.0f}%, top 10 {100*s10/n:.0f}%; genus first {100*g1/n:.0f}%')

@@ -15,6 +15,47 @@ const ID = { stream: null, timer: null, busy: false, last: null, streak: 0, shot
 function idScopes() { return ID_SCOPES_ALL.filter(x => x[0] !== 'state' || regionState()).map(x => x[0] === 'state' ? ['state', `${LIB_STATE_WORD(regionState())} plants`] : x); }
 let ID_SCOPES = ID_SCOPES_ALL;            // filled in by idScopes() once the place is known
 function idScope() { ID_SCOPES = idScopes(); try { let s = localStorage.getItem('plantdb.idscope'); if (s === 'texas') s = 'state'; if (ID_SCOPES.some(x => x[0] === s)) return s; } catch (e) { /* default */ } return 'common'; }
+// ---------- PLAN.md step 5b: two ways to identify ----------
+// 'mine': which of my plants is this? (the record's own species and genera, houseplants and look-alike photos are lifted).
+// 'new': a plant met somewhere: no lift for the record's own plants; species recorded in the home's country are lifted instead.
+// Every page that identifies asks first, offering the last answer first, unless Display says what to use on that page
+// (localStorage plantdb.idmode = { identify, add, plant: 'ask' | 'mine' | 'new', last }; synced to the server by prefs.js).
+const ID_MODE_WORDS = { mine: 'One of my plants', new: 'A new find' };
+const ID_MODE_HELP = { mine: 'A plant in the record, or a cutting or new pot of one: names you already have come first.',
+                       new: 'A plant met in a garden, a shop or the wild: plants recorded in this country come first, and what you have does not count.' };
+const ID_MODE_PAGES = { identify: 'On Identify', add: 'When adding plants', plant: 'On a plant\'s own page' };
+function idModePref() { try { const v = JSON.parse(localStorage.getItem('plantdb.idmode') || '{}') || {}; return typeof v === 'object' ? v : {}; } catch (e) { return {}; } }
+function idModeSave(v) { try { localStorage.setItem('plantdb.idmode', JSON.stringify(v)); } catch (e) { /* this visit only */ } }
+function idModeFor(page) { const v = idModePref()[page]; return v === 'mine' || v === 'new' ? v : 'ask'; }
+function idModeLast() { const v = idModePref().last; return v === 'new' ? 'new' : 'mine'; }
+// the question: a window with two big buttons (the last answer first) and a box to stop asking on this page. null = cancelled
+async function idPickMode(page) {
+  const set = idModeFor(page); if (set !== 'ask') { ID.mode = set; return set; }
+  const first = idModeLast(), order = first === 'new' ? ['new', 'mine'] : ['mine', 'new'];
+  const r = await modal(html`<form method="dialog" class="idm-form"><h2>What are you looking at?</h2>
+    <div class="idm-choices">${order.map((m, i) => html`<button class="btn idm-btn" value="${m}" ${i ? '' : raw('autofocus')}><strong>${ID_MODE_WORDS[m]}</strong><span>${ID_MODE_HELP[m]}</span></button>`)}</div>
+    <label class="chk"><input type="checkbox" name="keep">Do not ask again ${ID_MODE_PAGES[page].charAt(0).toLowerCase() + ID_MODE_PAGES[page].slice(1)}: always use the answer I choose now (change it in Display settings)</label>
+    <div class="row"><button class="btn ghost" value="cancel">Cancel</button></div></form>`, 'idm');
+  if (r !== 'mine' && r !== 'new') return null;
+  const v = idModePref(); v.last = r;
+  const keep = dlg.querySelector('[name=keep]'); if (keep && keep.checked) v[page] = r;
+  idModeSave(v); ID.mode = r;
+  const sel = document.querySelector('[data-f=idmode]'); if (sel) sel.value = r;
+  return r;
+}
+// the line under a result saying which way it was checked, and whether the country's list is there yet
+function idModeNote(r) {
+  if (!r || !r.mode) return '';
+  const C = r.country, cc = ID.st && ID.st.site_country;
+  let where = '';
+  if (r.mode === 'new') {
+    if (C && C.state === 'ready') where = ` Plants recorded in ${C.code} (${Number(C.species).toLocaleString()} species) come first.`;
+    else if (C && C.state === 'fetching') where = ` The list of plants recorded in ${C.code} is downloading (the first time only); until it is there, no country is favoured.`;
+    else if (C && C.state === 'error') where = ` The list of plants recorded in ${C.code} could not be downloaded; no country is favoured.`;
+    else if (!cc) where = ' This home has no country set (Weather → Homes and places), so no country is favoured.';
+  }
+  return html`<p class="hint id-mode-note">Checked as <strong>${ID_MODE_WORDS[r.mode].toLowerCase()}</strong>.${where}</p>`;
+}
 const pct = p => Math.round((p || 0) * 100) + '%';
 const sureWord = c => c >= 0.9 ? 'Very likely' : c >= 0.75 ? 'Likely' : c >= 0.5 ? 'Possibly' : 'Unsure';
 const canChange = () => ME().role !== 'viewer';
@@ -56,6 +97,9 @@ async function viewIdentify() {
         <label class="btn ghost id-file">Choose a photo<input type="file" accept="image/*" data-act="idfile"></label>
       </div>
       <p class="hint">While the camera is on it checks about once a second, and also reads plant label QR codes. "Check this picture" holds the picture still and shows everything it found.</p>
+      <label class="f id-scope">What you are looking at
+        <select data-f="idmode">${['mine', 'new'].map(m => html`<option value="${m}" ${(ID.mode || idModeLast()) === m ? raw('selected') : ''}>${ID_MODE_WORDS[m]}</option>`)}</select>
+        <small>${idModeFor('identify') === 'ask' ? 'Asked when the camera starts or a photo is chosen; change it here any time.' : `Set in Display settings to "${ID_MODE_WORDS[idModeFor('identify')]}" for this page.`}</small></label>
       <label class="f id-scope">When it is not one of your plants, suggest names from
         <select data-f="idscope">${ID_SCOPES.map(([k, l]) => html`<option value="${k}" ${k === sc ? raw('selected') : ''}>${l}</option>`)}</select></label>
     </section>
@@ -132,6 +176,7 @@ function idCamUi(on) {
 }
 async function idCamToggle() {
   if (ID.stream) { idStop(); idCamUi(false); idSay('The camera is off.'); return; }
+  if (!(await idPickMode('identify'))) return;                         // 5b: one of my plants, or a new find
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     toast(window.isSecureContext ? 'This browser cannot use the camera. Use "Use a photo instead".' : 'The browser only allows the camera on a secure address: use http://localhost:8080 on this computer, or the Tailscale address (https://plants...). Or use "Use a photo instead".', true);
     return;
@@ -162,7 +207,7 @@ const toBlob = c => new Promise(res => c.toBlob(res, 'image/jpeg', 0.86));
 async function idAsk(blob, scope, more, ex) {  // 1.39.0: more = other pictures of the same plant, checked together; 1.40.0: ex = {species: [], genera: []} said "Not this"
   const fd = new FormData(); fd.append('image', blob, 'picture.jpg');
   (more || []).forEach((b, i) => fd.append('images', b, `picture${i + 2}.jpg`));
-  const q = { scope: scope || idScope() };
+  const q = { scope: scope || idScope(), mode: ID.mode || 'mine' };     // 5b
   if (ex && ex.species.length) q.exclude = ex.species.join('|');
   if (ex && ex.genera.length) q.exclude_genera = ex.genera.join('|');
   return api('POST', '/api/identify?' + new URLSearchParams(q).toString(), undefined, fd);
@@ -207,11 +252,13 @@ async function idAddShot(blob, url) {
 let PLANTID = null;
 async function plantIdentify(code, plantnet) {
   const box = document.getElementById('plant-id'); if (!box) return;
+  if (!PLANTID || PLANTID.code !== code || !PLANTID.mode) { const m = await idPickMode('plant'); if (!m) return; PLANTID = { code, mode: m }; }   // 5b: asked once per plant
+  const mode = PLANTID.mode;
   box.innerHTML = rend(html`<p class="muted" role="status">Checking its photos${ID.keys && ID.keys.plantnet ? ' with this computer and Pl@ntNet' : ''}…</p>`);
   try {
     if (!ID.keys) { try { ID.keys = await api('GET', '/api/identify/settings'); } catch (e) { /* fine */ } }
-    const r = await api('POST', '/api/plants/' + enc(code) + '/identify', { plantnet: plantnet || 'auto' }); PLANTID = { code, r };
-    box.innerHTML = rend(html`<h3>What its photos say it could be</h3>${idNamesPanel(r, { src: 'plant', id: 'plant-splist', use: 'plantuse', reject: 'plant', code })}
+    const r = await api('POST', '/api/plants/' + enc(code) + '/identify?mode=' + mode, { plantnet: plantnet || 'auto' }); PLANTID = { code, r, mode };
+    box.innerHTML = rend(html`<h3>What its photos say it could be</h3>${idModeNote(r)}${idNamesPanel(r, { src: 'plant', id: 'plant-splist', use: 'plantuse', reject: 'plant', code })}
       ${ID.keys && ID.keys.plantnet && !r.plantnet ? html`<p class="row"><button class="btn small ghost" type="button" data-act="plantask" data-code="${code}">Ask Pl@ntNet as well</button></p>` : ''}`);
     const h = box.querySelector('h3'); if (h) { h.setAttribute('tabindex', '-1'); h.focus(); }
   } catch (e) { box.innerHTML = rend(html`<div class="notice bad" role="alert">${e.message}</div>`); }
@@ -302,6 +349,7 @@ async function idSnap() {
 async function idFile(input) {
   const f = input.files && input.files[0]; input.value = '';
   if (!f) return;
+  if (!(await idPickMode('identify'))) return;                         // 5b
   const res = document.getElementById('id-res'); if (res) res.innerHTML = rend(html`<p class="muted" role="status">Checking ${f.name}…</p>`);
   try {
     const url = await new Promise((ok, no) => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.onerror = no; fr.readAsDataURL(f); });
@@ -368,7 +416,8 @@ function idPaint(r, picUrl, live) {
       ${ID.stream ? html`<button class="btn ghost small" type="button" data-act="idsnapmore">Add a camera shot of it</button>` : ''}
       ${(ID.shot && ID.shot.moreUrls || []).map((u, i) => html`<img class="id-more-pic" src="${u}" alt="Extra picture ${i + 1}">`)}</div>`}
     ${live ? '' : html`<div id="id-more">${idMoreBtns()}</div>`}
-    <p class="hint">Checked in ${r.seconds} seconds by ${r.model} on this computer${r.prior ? ', weighted toward the plants you have, houseplants and the plants of your state' : ''}.</p>`);
+    ${idModeNote(r)}
+    <p class="hint">Checked in ${r.seconds} seconds by ${r.model} on this computer${r.prior ? (r.mode === 'new' ? ', weighted toward the plants of this country' : ', weighted toward the plants you have, houseplants and the plants of your state') : ''}.</p>`);
 }
 function idMoreBtns() {
   if (!canChange() || !ID.keys) return '';
@@ -1423,7 +1472,8 @@ Object.assign(acts, {
     await guard(async () => { await api('PUT', '/api/identify/settings', { [el.dataset.k]: '' }); toast('Key removed'); route(); });
   },
 });
-Object.assign(changeActs, { idfile: el => idFile(el), idmorefile: el => idMoreFile(el) });
+Object.assign(changeActs, { idfile: el => idFile(el), idmorefile: el => idMoreFile(el),
+  idmode: el => { ID.mode = el.value; const v = idModePref(); v.last = el.value; idModeSave(v); idSay(`Checking as ${ID_MODE_WORDS[el.value].toLowerCase()}.`); } });   // 5b
 Object.assign(formActs, {
   async spnotes(form) {
     if (!SPCUR || !(await needName())) return;

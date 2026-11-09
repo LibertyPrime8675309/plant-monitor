@@ -1,0 +1,9 @@
+/* Identify's two ways (PLAN.md step 5b, 1.51.0): the question window and the note under a result. One file per feature (1.46.0). */
+.idm-form h2{margin:0 0 .8rem}
+.idm-choices{display:grid;gap:.7rem;margin:0 0 1rem}
+.idm-btn{display:flex;flex-direction:column;align-items:flex-start;gap:.25rem;text-align:left;padding:.8rem 1rem;min-height:3.4rem;white-space:normal}
+.idm-btn strong{font-size:1.15em}
+.idm-btn span{font-weight:400;font-size:.95em;line-height:1.35}
+.idm-form .chk{display:flex;align-items:flex-start;gap:.6rem;margin:0 0 .8rem}
+.idm-form .chk input{flex:none;margin-top:.2rem}
+.id-mode-note{margin:.6rem 0 .2rem}
