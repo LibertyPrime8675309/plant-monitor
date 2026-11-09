@@ -5,7 +5,7 @@ on:
     branches: [build/identify-modes]
     paths: ['dev/vision/gbif_country.py', '.github/workflows/gbif-probe.yml']
 env:
-  CC: IS
+  CC: US
 jobs:
   probe:
     runs-on: ubuntu-latest
