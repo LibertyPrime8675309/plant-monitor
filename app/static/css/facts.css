@@ -1,0 +1,16 @@
+/* Knowledge with provenance (js/facts.js, plantdb/facts.py; 1.53.0, PLAN.md step 6a). One file per feature (1.46.0). */
+.fr-box{margin:0 0 1.2rem}
+.fr-group{border:2px solid var(--line);border-radius:8px;padding:.4rem .8rem;margin:.5rem 0}
+.fr-group summary{font-weight:700;cursor:pointer;padding:.3rem 0}
+.fr-dl{margin:.4rem 0 0}
+.fr-row{display:contents}
+.fr-dl dt{margin-top:.6rem}
+.fr-val{white-space:pre-wrap}
+.fr-src{margin:.2rem 0 0}
+.fr-dl dd{margin-bottom:.2rem}
+.fr-dl dd p{margin:.2rem 0 0}
+.fr-list{margin:.2rem 0 0 1.1rem;padding:0}
+.fr-hist{margin:.3rem 0 .2rem}
+.fr-hist ul{margin:.3rem 0 0 1rem;padding:0}
+.fr-hist li{margin:.3rem 0}
+.fr-plant{border-left:4px solid var(--line);padding-left:.7rem;margin:0 0 1rem}

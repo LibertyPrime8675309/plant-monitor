@@ -546,7 +546,7 @@ function plantEdHtml(p) {
     <p class="hint wide">Change any of these by typing or choosing; each saves when you leave it. Everything else is under "Edit this page".</p></div>`;
 }
 async function viewPlant(code) {
-  const [p, h, cur, st] = await Promise.all([api('GET', '/api/plants/' + enc(code)), api('GET', '/api/plants/' + enc(code) + '/history'), loadCond(), api('GET', '/api/settings').catch(() => ({}))]);
+  const [p, h, cur, st] = await Promise.all([api('GET', '/api/plants/' + enc(code) + '?fill=1'), api('GET', '/api/plants/' + enc(code) + '/history'), loadCond(), api('GET', '/api/settings').catch(() => ({}))]);   // 1.53.0: fill=1 reads the species' facts for empty fields
   CUR = { p, h, base: st.base_url || location.origin };
   HEATV = await loadHeat(p);                     // 1.36.0: the summer heat for this plant (cached for 10 minutes per place and temperature)
   SNSDAYS = await api('GET', '/api/sensors/days?days=60&plant=' + enc(code)).catch(() => null);   // 1.36.0: the soil moisture day by day, for the timeline and the calendar

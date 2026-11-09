@@ -286,6 +286,7 @@ def init_db():
         if col not in sd: c.execute(f'ALTER TABLE sensor_devices ADD COLUMN {col} REAL')
     c.executescript(PUSH_SCHEMA)                  # 1.33.0: devices that get notifications
     c.executescript(SITTER_SCHEMA)                # 1.49.0: plant-sitter sheets shared by link, and the sitter's ticks
+    c.executescript(KNOWLEDGE_SCHEMA)             # 1.53.0 (PLAN.md step 6a): one row per species fact, with its source (the facts table)
     wl = {r[1] for r in c.execute('PRAGMA table_info(wishlist)')}
     for col, typ in (('max_price', 'REAL'), ('alert_stock', 'INTEGER NOT NULL DEFAULT 0'), ('search_words', "TEXT NOT NULL DEFAULT ''")):
         if col not in wl: c.execute(f'ALTER TABLE wishlist ADD COLUMN {col} {typ}')
@@ -362,6 +363,7 @@ def init_db():
     c.execute("UPDATE plants SET site='Outdoors' WHERE site IS NULL OR site=''")   # 1.7.0: every existing plant starts out as Outdoors
     c.commit()
     repair_seed_photos(c)
+    facts_migrate(c)                                    # 1.53.0: the facts table, loaded once from what the record already knows
     c.execute("INSERT OR REPLACE INTO settings(key,value) VALUES('db_version',?)", (APP_VERSION,)); c.commit()
     c.close()
 
@@ -520,6 +522,7 @@ def apply_batches(c):
                     c.execute('UPDATE lights SET %s data=?, updated_by=?, updated_at=? WHERE id=?' % ''.join('%s=?, ' % k for k in cols),
                               (*cols.values(), json.dumps(d), who, ts, L['id']))
                     audit_only(c, 'light', 'light', None, ', '.join(done), who, 'Grow light updated (%s): %s, %s' % (label, L['name'], u.get('note') or ', '.join(done)))
+            facts_from_batch(c, b, who, ts)                 # 1.53.0: facts as rows, with this batch as their source
             for f in b.get('species_facts_add', []):       # 1.27.0: added once; a later batch or Claude never overwrites them
                 d = facts_clean(f['data'], f.get('kind', 'plant'))
                 c.execute('INSERT OR IGNORE INTO species_facts(key,name,kind,data,origin,written_by,written_at) VALUES(?,?,?,?,?,?,?)',

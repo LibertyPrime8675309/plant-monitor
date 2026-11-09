@@ -98,7 +98,9 @@ def list_plants():
 def get_plant(code):
     c = db()
     r = plant_row(c, code)
-    return jsonify(plant_dict(c, r) | {'requests': [dict(x) for x in c.execute('SELECT * FROM requests WHERE plant_code=? ORDER BY done, id', (r['code'],))]})
+    p = plant_dict(c, r)
+    if request.args.get('fill') == '1': species_fill(c, p)        # 1.53.0: the plant's page reads the species' facts for what the plant leaves empty (not the edit form)
+    return jsonify(p | {'requests': [dict(x) for x in c.execute('SELECT * FROM requests WHERE plant_code=? ORDER BY done, id', (r['code'],))]})
 
 # ---------------------------------------------------------------- requests: what Claude needs from you
 REQUEST_KINDS = ('check', 'question', 'photo', 'info')

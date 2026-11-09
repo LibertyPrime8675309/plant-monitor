@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.53.0 (2026-11-09)
+Step 6a of the plan: every fact about a species now says where it came from.
+- **Facts and where they come from**, a new section on every species page: all the record knows about the species, in groups (temperature, light, water, soil, feeding, size, hardiness, origin and safety, pests, propagation, uses and partners, care sheet), each fact with its source, who noted it, when, and how sure it is. A fact that has changed shows its history.
+- **Loaded once from what you already have:** the first time 1.53.0 starts it files about 2,800 facts from the uses and partners Claude wrote, from Claude's care sheets, and from the care values your plants agree on, each traced to the upgrade batch or the first plant list that set it, or to you if you changed it ("Edited in the app on P-003 by Ethan"). Nothing you typed changes, and your plants keep their own values.
+- **A plant's page fills in from the species** any care field left empty on the plant, and says so in a line with a link to the species' facts. The plant's own value always wins; the edit form shows only what is really on the plant.
+- **Download every fact (CSV)** from the section, or as JSON at `/api/facts/export`.
+- Adding and correcting facts from the page, with review by another editor, comes next (step 6b).
+
 ## 1.52.0 (2026-11-09)
 Step 5c of the plan: the picture checker learns from you.
 - **This is right** beside **Not this** on every name Identify offers. Press it and the picture is kept as a confirmed example of that species, and later pictures that look like it get that name lifted. On a plant's page it keeps the plant's main photo as the example.

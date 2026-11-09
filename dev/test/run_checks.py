@@ -14,7 +14,7 @@ LOGS = os.path.join(ROOT, 'dev', 'tmp', 'logs'); DATA = os.path.join(ROOT, 'dev'
 # (name, server): 'fresh' = a new data folder; '40' = fresh, with cold nights; 'share' = the server the check before it used
 ORDER = [('frost', '40'), ('frostdates', 'fresh'), ('care', 'fresh'), ('read', 'share'), ('timeline', 'share'), ('copy', 'share'), ('photocheck', 'share'), ('jumprow', 'share'),
          ('prep', 'fresh'), ('audit', 'fresh'), ('fertloc', 'fresh'), ('access', 'fresh'), ('lights', 'fresh'), ('details', 'fresh'), ('swipe', 'fresh'),
-         ('calendar', '40'), ('outside', 'share'), ('groups', 'fresh'), ('newplant', 'fresh'), ('identify', 'fresh'), ('idmodes', 'fresh'), ('idloop', 'fresh'), ('header', 'fresh'), ('undo', 'fresh'),
+         ('calendar', '40'), ('outside', 'share'), ('groups', 'fresh'), ('newplant', 'fresh'), ('identify', 'fresh'), ('idmodes', 'fresh'), ('idloop', 'fresh'), ('factrows', 'fresh'), ('header', 'fresh'), ('undo', 'fresh'),
          ('card', 'fresh'), ('sitter', 'fresh'), ('photos', 'fresh'), ('water', 'fresh'), ('library', 'fresh'), ('filters', 'fresh'), ('fungi', 'fresh'), ('wishlist', 'fresh'),
          ('know', 'fresh'), ('facts', 'fresh'), ('shops', 'fresh'), ('layout', 'fresh'), ('dialog', 'fresh'), ('offline', 'fresh'), ('sectionmenu', 'fresh'),
          ('homes', 'fresh'), ('sites', 'fresh'), ('places', 'fresh'), ('several', 'fresh'), ('where', 'fresh'), ('pots', 'fresh'), ('prefs', 'fresh'), ('shopping', 'fresh'),
