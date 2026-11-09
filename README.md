@@ -1585,6 +1585,16 @@ Every plant page has an **About this plant** section after Identification (also 
 
 If the identification is less than 85% sure, a note says the details are for the closest match. Change anything with **Edit**, under "About this plant". In the **Sources** field, put one source per line as `Title | https://link`, and it shows as a link.
 
+## Facts and where they come from (from 1.53.0)
+
+Everything the app says about a species now has a source you can see. Open a species page (from a plant's page, the Library or Search) and the section **Facts and where they come from** lists every fact the record holds for it, in groups (Temperature, Light, Water, Soil, Feeding, Size and growth, Hardiness, Origin and safety, Pests, Propagation, Uses and partners, Care sheet). Each fact shows its value, where it came from, who noted it, when, and how sure it is (certain, likely, unsure); a field that has changed shows its **History**.
+
+- **Where the first facts came from.** When 1.53.0 starts it reads what the record already knew and files it once, in place: the uses, partners and propagation Claude wrote for each species; Claude's care sheets from the Library; and, for every species in your record, the care values its plants agree on (temperatures, humidity, light, water, soil, feeding, size, hardiness, origin, safety, pests). Each care value is traced back to the upgrade batch or the first plant list that set it, or, if you changed it yourself, to you ("Edited in the app on P-003 by Ethan", your own observation). Nothing you typed is changed, and your plants' own values stay as they are.
+- **A plant's page reads the species' facts** for any care field the plant leaves empty, and says so in a line under the identification ("Not set for this plant, so shown from *Ficus carica*'s facts: soil or potting mix, hours of light"), with a link to the species. A plant's own value always wins, and the edit form shows only what is really on the plant.
+- **Download every fact (CSV)** at the bottom of the section (`/api/facts/export.csv`; `/api/facts/export` for JSON), so the knowledge can be checked in a spreadsheet or moved to another install.
+- New upgrade batches can add facts as rows (`facts_add`), with the batch as their source.
+- Adding or correcting a fact from the page, with review by another editor, is step 6b of the plan.
+
 ## Uses, partners and propagation (from 1.27.0)
 
 Every plant page has a section **Uses, partners and propagation** (the **Uses** button in the row of section buttons). Species pages in the Library have it too, and mushroom finds have **What it does, and growing it**.
