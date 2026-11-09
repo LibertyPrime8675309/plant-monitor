@@ -6,7 +6,8 @@ Screenshots: dev/tmp/shots/identify-*.png"""
 import io, json, os, sys, urllib.error, urllib.request
 from PIL import Image
 from playwright.sync_api import sync_playwright
-LOCAL, TS, VIS = 'http://127.0.0.1:8080', 'http://127.0.0.1:8081', 'http://127.0.0.1:8090'
+LOCAL = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
+TS, VIS = LOCAL.rsplit(':', 1)[0] + ':' + str(int(LOCAL.rsplit(':', 1)[1]) + 1), LOCAL.rsplit(':', 1)[0] + ':' + str(int(LOCAL.rsplit(':', 1)[1]) + 10)
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
 TMP = os.path.abspath(os.path.join(OUT, '..')); fails, errs = [], []
 def check(cond, what):
@@ -217,6 +218,7 @@ with sync_playwright() as p:
     # someone who can only view
     vw = b.new_page(viewport={'width': 1280, 'height': 900}, extra_http_headers=V)
     vw.on('pageerror', lambda e: errs.append(str(e)))
+    vw.add_init_script("localStorage.setItem('plantdb.idmode',JSON.stringify({identify:'mine',add:'mine',plant:'mine'}))")   # 1.51.0: no "What are you looking at?" here
     vw.goto(TS + '/#/identify'); vw.wait_for_timeout(2500)
     check(vw.locator('form[data-form=idkeys]').count() == 0, 'a viewer does not get the key form')
     vw.set_input_files('input[data-act=idfile]', pic('red', os.path.join(TMP, 'red.png')) and os.path.join(TMP, 'red.png')); vw.wait_for_selector('dialog[open] .id-pop', timeout=10000)

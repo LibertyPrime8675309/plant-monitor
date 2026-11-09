@@ -5,7 +5,7 @@ a fresh data folder (MOCK_TS=1), then:
 python3 dev/test/dialog_check.py      Screenshots: dev/tmp/shots/dialog-*.png"""
 import os, sys
 from playwright.sync_api import sync_playwright
-LOCAL = 'http://127.0.0.1:8080'
+LOCAL = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
 fails, errs = [], []
 def check(cond, what):
@@ -29,7 +29,10 @@ with sync_playwright() as p:
     check(tabs.count() == 7 and tabs.first.get_attribute('aria-current') == 'true', 'a menu of seven parts (Units joined in 1.47.0, Identify in 1.51.0), the first marked as showing')
     check(pg.locator('.dv-cols').first.evaluate("e => getComputedStyle(e).gridTemplateColumns.split(' ').length") >= 2, 'settings sit side by side')
     pg.screenshot(path=os.path.join(OUT, 'dialog-1-display.png'))
-    pg.click('.dv-tab:has-text("Keyboard")'); pg.wait_for_timeout(900)
+    pg.click('.dv-tab:has-text("Keyboard")')
+    try: pg.wait_for_function("document.querySelector('.dv-tab[aria-current=true]') && document.querySelector('.dv-tab[aria-current=true]').textContent.includes('Keyboard')", timeout=5000)
+    except Exception: pass
+    pg.wait_for_timeout(1500)                       # the smooth scroll settles (it is longer with seven parts, 1.51.0)
     check(pg.locator('.dv-tab:has-text("Keyboard")').get_attribute('aria-current') == 'true' and inside(pg, '#dv-s6 h3'), 'a part in the menu jumps to it and is marked as showing')
     check(inside(pg, '.dv-acts button[value=ok]') and inside(pg, '[data-act=prefreset]'), 'Done and Reset to defaults are still in view')
     pg.click('#dv-s0 .opts label:has-text("Larger")'); pg.wait_for_timeout(300)
