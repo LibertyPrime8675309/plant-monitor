@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased: how often you water (prototype proto/water-rhythm)
+- **Care → How often you water** compares each plant's watering reminder with how often your care log says you really water it: watered sooner than the reminder, later, about right, or not enough logged yet. Rain counts for plants outdoors, as it does for the reminder.
+- **Remind me every N days** makes the reminder match what you do, with Undo. It changes the plant's "Check for water every (days)", so the change is in its history.
+- **On a plant's page**, the Watering box says how often it has been watered, with the recent gaps and the same button.
+
 ## 1.55.0 (2026-11-09)
 Step 7 of the plan: releases on a rhythm, made by GitHub and fetched by the updater, with What's new on Today.
 - **Updating is now one step.** Double-click **Update Plant Database.cmd** and type `Y`. It asks GitHub for the newest release, downloads it (and any photo pack you are missing) into `versions_plant-database`, then backs up, installs and restarts as before. Nobody has to save a zip into the folder first. If GitHub cannot be reached it uses the zips already there; `-NoDownload` skips the question.

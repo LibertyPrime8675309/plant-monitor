@@ -37,3 +37,4 @@ Asked for by Ethan and built in 1.9.0:
 
 ## Suggested by Claude, waiting for review
 - Health walk-through: go round the plants one at a time on a phone, with big buttons to say each one looks the same or has a new health rating, and a list of plants not looked over for two weeks. (suggested by Claude) (in progress: proto/health-walk)
+- How often you water: compare each plant's watering reminder with the gaps between waterings in its care log, and make the reminder match with one button. (suggested by Claude) (in progress: proto/water-rhythm)

@@ -1485,6 +1485,16 @@ A plant by a window grows toward the light and leans. A quarter turn every week 
 - **On Today:** a **Turn the pots** section and a **Turn (2)** jump button.
 - **On a plant's page:** **Turned today** next to **Watered today**, with a line saying when it is next due. **Turned** saves "Turned the pot" in the care log, with the usual Undo message.
 
+## How often you water (prototype)
+
+The watering reminder guesses how often to check each plant from its soil moisture range and the weather. Your care log knows how often you really water. **Care → How often you water** puts the two side by side.
+
+- **Watered sooner than the reminder**, **Watered later than the reminder**, **About right** and **Not enough logged yet** (folded). Each plant says "Watered about every 5 days since Aug 22", what the reminder says, and how many times it was found still moist.
+- **About every** is the middle gap between waterings in the last 120 days, so one odd gap does not move it. A gap of more than 45 days is left out as a time nothing was logged. For a plant whose Location is Outdoors, a day with 0.25 in of rain or more counts as a watering, as it does for the reminder. A pattern needs at least 4 waterings.
+- **Remind me every N days** changes the plant's **Check for water every (days)** so the reminder comes round at about that gap in weather like today's (indoors, the app stretches the gap by half, so a 3-day reminder is a setting of 2). The message has **Undo**, and the change is in the plant's history and the Audit log.
+- **On a plant's page**, inside the Watering box: how often it was watered, the recent gaps, the same button, and **Let the app work out the gap** when the box has a number in it.
+- People who can only view see the comparison but not the buttons.
+
 ## Health walk-through (from 1.44.0)
 
 Go round your plants one at a time, on the phone in the garden or at the computer, and say how each one looks today. **Today → Health walk-through** (and a line on Today saying how many are due).
