@@ -3,7 +3,7 @@
 .fit{border:2px solid var(--line);border-left-width:.45rem;border-radius:8px;padding:.5rem .8rem .3rem;margin:.4rem 0 .8rem;background:var(--sheet)}
 .fit.fit-fits{border-left-color:var(--moss)} .fit.fit-nofit{border-left-color:var(--madder)} .fit.fit-unchecked{border-left-color:var(--ochre)}
 .fit-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:.3rem .7rem;margin:0 0 .3rem}
-.fit-tag{display:inline-block;white-space:nowrap;font-weight:700;padding:.05rem .45rem;border:2px solid currentColor;border-radius:4px}
+.fit-tag{display:inline-block;max-width:100%;overflow-wrap:anywhere;font-weight:700;padding:.05rem .45rem;border:2px solid currentColor;border-radius:4px}
 .fit-tag.fit-fits{color:var(--moss)} .fit-tag.fit-nofit{color:var(--madder)} .fit-tag.fit-unchecked{color:var(--ochre)}
 .fit-lines{margin:.2rem 0 .3rem;padding-left:1.2em} .fit-lines li{margin:.25rem 0;max-width:75ch;overflow-wrap:anywhere}
 .fit-checked{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem .7rem;margin:.3rem 0 .7rem}
