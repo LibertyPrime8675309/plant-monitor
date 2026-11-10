@@ -99,6 +99,8 @@ function ckCardHtml() {
         ${p.summary ? html`<details class="ck-notes"><summary>Health notes on its page</summary><p class="pl">${p.summary}</p></details>` : ''}
         ${canChange() ? html`<form data-form="cksave" class="ck-form">
           <fieldset class="opt-group"><legend>How does it look now?</legend><div class="opts ck-health">${opts.map(h => html`<label><input type="radio" name="health" value="${h}" data-act="ckpick" ${cur === h ? raw('checked') : ''}><span>${h}${h === p.health ? ' (as before)' : ''}</span></label>`)}</div></fieldset>
+          <label class="f ck-height">Taller than last time? Height now, with its pot (${lenU()}, optional)<input type="number" inputmode="decimal" min="0" step="any" name="height" value="${p.height_in == null ? '' : lenF(p.height_in, false)}">
+            <small>${p.height_in == null ? 'Not measured yet. ' : ''}From the surface the pot stands on to the top. The Grow lights page uses it to check it fits under a shelf or beside a light.</small></label>
           <label class="f">Anything you noticed? (optional)<small>It goes in the care log and at the end of its health notes, with today's date.</small><textarea name="note" rows="2" maxlength="400"></textarea></label>
           <div class="ck-acts"><button class="btn ck-big" type="submit" id="ck-save">${ckSaveWord(p, cur)}</button>
             <button class="btn ghost" type="button" data-act="ckskip">Skip this plant</button></div>
@@ -213,17 +215,21 @@ Object.assign(formActs, {
     if (!(await needName())) return;
     const p = CK.list[CK.i], nh = form.elements.health.value || p.health, note = form.elements.note.value.trim().slice(0, 400);
     const changed = !!nh && nh !== p.health;
+    const hv = form.elements.height ? form.elements.height.value.trim() : '', hNew = hv === '' ? null : lenIn(hv);      // 1.56.0 (PLAN.md step 8c): the monthly height nudge
+    const hChanged = hNew != null && (p.height_in == null || Math.abs(+hNew - +p.height_in) >= 0.05);
     const btn = form.querySelector('button[type=submit]'); if (btn) btn.disabled = true;
     try {
-      if (changed || note) {
+      if (changed || note || hChanged) {
         const fields = {};
+        if (hChanged) fields.height_in = String(hNew);
         if (changed) fields.health_rating = nh;
         if (note) fields.health_summary = (p.summary ? p.summary + '\n' : '') + ckSummaryLine(p.health, nh, note);
         const r = await api('PUT', '/api/plants/' + enc(p.code), { base_version: p.version, fields, note: 'Health walk-through' + (note ? ': ' + note : '') });
         if (r && r.version) p.version = r.version;
         if (r && r.health_summary != null) p.summary = r.health_summary;
+        if (hChanged) p.height_in = +hNew;
       }
-      const text = changed ? `health ${p.health || 'not set'} to ${nh}` : 'looks the same';
+      const text = (changed ? `health ${p.health || 'not set'} to ${nh}` : 'looks the same') + (hChanged ? `, ${lenF(hNew)} tall` : '');
       const cr = await api('POST', '/api/care', { plant: p.code, kind: 'looked', note: (changed ? `Health ${p.health || 'not set'} to ${nh}` : 'Looks the same') + (note ? '. ' + note : '') });
       if (!(cr && cr.offline)) toast(`Saved: ${p.code} ${text}`);   // offline (1.38.0), the save waits like other care, and the offline layer says so itself
       ckNext({ kind: changed ? 'changed' : 'same', now: nh, was: p.health, text: text + (note ? ` ("${note}")` : '') });

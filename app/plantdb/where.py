@@ -253,13 +253,14 @@ def where_list(c):
     cnt_a = {k: n for k, n in c.execute("SELECT area_id, COUNT(*) FROM plants WHERE status='active' GROUP BY area_id")}
     cnt_s = {k: n for k, n in c.execute("SELECT spot_id, COUNT(*) FROM plants WHERE status='active' AND spot_id IS NOT NULL GROUP BY spot_id")}
     lights_at = {k: n for k, n in c.execute('SELECT place_id, COUNT(*) FROM light_spots WHERE place_id IS NOT NULL GROUP BY place_id')}
+    pph = place_photo_map(c)                   # 1.56.0: the main photo of each room and shelf
     out = []
     for h in homes(c):
         hid = None if h['is_home'] else h['id']
         areas = c.execute('SELECT * FROM areas WHERE ' + ('home_id IS NULL' if hid is None else 'home_id=?') + ' ORDER BY side DESC, sort, id', (() if hid is None else (hid,))).fetchall()
         out.append({'home': place_brief(h), 'areas': [{'id': a['id'], 'side': a['side'], 'name': a['name'], 'sheltered': bool(a['sheltered']), 'site': site_of(a['side'], a['sheltered']),
-                    'plants': cnt_a.get(a['id'], 0), 'lights': lights_at.get(-a['id'], 0),
-                    'spots': [{'id': sp['id'], 'name': sp['name'], 'plants': cnt_s.get(sp['id'], 0), 'lights': lights_at.get(sp['id'], 0)}
+                    'plants': cnt_a.get(a['id'], 0), 'lights': lights_at.get(-a['id'], 0), 'photo': pph.get(-a['id']), 'sheet': sheet_words(sheet_of(a)),
+                    'spots': [{'id': sp['id'], 'name': sp['name'], 'plants': cnt_s.get(sp['id'], 0), 'lights': lights_at.get(sp['id'], 0), 'photo': pph.get(sp['id']), 'sheet': sheet_words(sheet_of(sp))}
                               for sp in c.execute('SELECT * FROM spots WHERE area_id=? ORDER BY sort, id', (a['id'],))]} for a in areas]})
     return out
 
@@ -271,6 +272,7 @@ def where_area_delete(c, aid, who):
     ids = [r[0] for r in c.execute('SELECT id FROM spots WHERE area_id=?', (aid,))]
     for sid in ids: c.execute('UPDATE light_spots SET place_id=NULL WHERE place_id=?', (sid,))
     c.execute('UPDATE light_spots SET place_id=NULL WHERE place_id=?', (-aid,))
+    place_photos_drop(c, 'area_id=?', aid)                 # 1.56.0: its photos and its shelves' photos
     c.execute('DELETE FROM spots WHERE area_id=?', (aid,)); c.execute('DELETE FROM areas WHERE id=?', (aid,))
     audit_only(c, 'where', 'area', a['name'], None, who, f'Area or room removed: {a["name"]}'); c.commit()
     return jsonify(ok=True)
@@ -280,10 +282,17 @@ def where_spot_delete(c, sid, who):
     if not sp: abort(404, 'That spot is not in the list')
     n = c.execute('SELECT COUNT(*) FROM plants WHERE spot_id=?', (sid,)).fetchone()[0]
     c.execute('UPDATE plants SET spot_id=NULL WHERE spot_id=?', (sid,)); c.execute('UPDATE light_spots SET place_id=? WHERE place_id=?', (-sp['area_id'], sid))
+    place_photos_drop(c, 'spot_id=?', sid)
     c.execute('DELETE FROM spots WHERE id=?', (sid,))
     audit_only(c, 'where', 'spot', f'{sp["area"]}, {sp["name"]}', None, who, f'Spot removed: {sp["area"]}, {sp["name"]}' + (f' ({n} plant{"s" if n != 1 else ""} there now just say {sp["area"]})' if n else ''))
     c.commit()
     return jsonify(ok=True, plants=n)
+
+def place_photos_drop(c, where, v):
+    for (f,) in c.execute(f'SELECT file FROM place_photos WHERE {where}', (v,)).fetchall():
+        try: os.remove(os.path.join(PHOTO_DIR, f))
+        except OSError: pass
+    c.execute(f'DELETE FROM place_photos WHERE {where}', (v,))
 
 def where_name(b, what):
     n = re.sub(r'\s+', ' ', str(b.get('name', ''))).strip()[:60]
@@ -394,6 +403,10 @@ def light_fields(b, old=None):
     if 'model' in b: d['model'] = str(b.get('model') or '').strip()[:80]       # 1.13.1: the maker's model number
     if 'timer' in b: d['timer'] = str(b.get('timer') or '').strip()[:120]
     if 'dimming' in b: d['dimming'] = sorted({int(x) for x in re.findall(r'\d+', str(b.get('dimming') or '')) if 0 < int(x) <= 100}) or [100]
+    if 'mount' in b:                   # 1.56.0 (PLAN.md step 8a): how it holds (fit.py)
+        m = mount_clean(b.get('mount'))
+        if m: d['mount'] = m
+        else: d.pop('mount', None)
     return name, count, str(b.get('fixture', '')).strip()[:600], str(b.get('notes', '')).strip()[:2000], d      # 1.29.0: longer, so batch text is never cut
 
 def light_text(name, count, fixture):

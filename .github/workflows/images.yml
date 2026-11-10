@@ -2,7 +2,8 @@
 # Claude's sandbox cannot reach Docker Hub, so until this workflow existed an image was only ever built on his PC.
 #
 # On a pull request each image is built and thrown away (the build itself is the test). On a push to main the images
-# are also pushed to GitHub's registry under this repository, tagged with the release number from VERSION and "latest":
+# are also pushed to GitHub's registry under this repository, tagged with the release number from VERSION and "latest"
+# (or, between releases, "main": see the ver step):
 #   ghcr.io/<owner>/plant-database:<version>, ...-vision:<version>, ...-speech:<version>
 # The repository and the packages are public (Ethan, November 7, 2026), so a PC pulls them with no login.
 # Layers are cached between runs (type=gha), so a run after a small change takes a few minutes, not the twenty the
@@ -31,9 +32,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          echo "version=$(tr -d '[:space:]' < VERSION)" >> "$GITHUB_OUTPUT"
-          echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"   # registry names are lower case
+          v=$(tr -d '[:space:]' < VERSION)
+          owner=${GITHUB_REPOSITORY_OWNER,,}                                 # registry names are lower case
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "owner=$owner" >> "$GITHUB_OUTPUT"
+          # 1.56.0 (the monthly rhythm, PLAN.md step 7): a push to main between releases carries the released VERSION. Its
+          # images must not replace that release's (a PC that pulls 1.55.0 must get 1.55.0), so once a release v<VERSION>
+          # exists, a push is tagged "main" and "main-<commit>" only. The push that changes VERSION is tagged with it and
+          # "latest", and release.yml then makes the release.
+          if gh release view "v$v" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "tags=ghcr.io/$owner/${{ matrix.name }}:main,ghcr.io/$owner/${{ matrix.name }}:main-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=ghcr.io/$owner/${{ matrix.name }}:$v,ghcr.io/$owner/${{ matrix.name }}:latest" >> "$GITHUB_OUTPUT"
+          fi
       - uses: docker/setup-buildx-action@v3
       - if: github.event_name == 'push'
         uses: docker/login-action@v3
@@ -47,9 +61,7 @@ jobs:
           file: ${{ matrix.dockerfile }}
           build-args: PLANTDB_VERSION=${{ steps.ver.outputs.version }}
           push: ${{ github.event_name == 'push' }}
-          tags: |
-            ghcr.io/${{ steps.ver.outputs.owner }}/${{ matrix.name }}:${{ steps.ver.outputs.version }}
-            ghcr.io/${{ steps.ver.outputs.owner }}/${{ matrix.name }}:latest
+          tags: ${{ steps.ver.outputs.tags }}
           labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,scope=${{ matrix.name }},mode=max

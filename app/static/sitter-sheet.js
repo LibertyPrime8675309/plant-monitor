@@ -68,11 +68,14 @@ function sheet(D, OPT, X) {
   const days = `<section class="ps-sec ps-days" aria-labelledby="ps-days-h"><h3 id="ps-days-h">Day by day</h3>
     ${D.days.map(d => `<div class="ps-day"><h4>${esc(dayName(d.date))}${d.high != null ? `<span class="ps-wx">Forecast: high ${tF(d.high)}, low ${tF(d.low)}</span>` : ''}</h4>
       ${d.plants.length ? `<ul class="ps-list">${d.plants.map(c => item(c, '', d.date, 'water')).join('')}</ul>` : '<p class="ps-none">Nothing to check today.</p>'}</div>`).join('')}</section>`;
+  // 1.56.0: a photo of each room or shelf the plants are on, so the sitter knows where to look
+  const places = OPT.photos && (D.places || []).length ? `<section class="ps-sec ps-places" aria-labelledby="ps-places-h"><h3 id="ps-places-h">Where the plants are</h3>
+    <ul class="ps-placelist">${D.places.map(pl => `<li><img src="${thumb(pl.photo)}" alt="${esc(pl.label)}" loading="lazy"><span>${esc(pl.label)}</span></li>`).join('')}</ul></section>` : '';
   const list = '';          // 1.47.0: the list at the end is gone; each day's lines carry the place and the watering words (Ethan, November 8)
   return { jobs, html: `<article class="ps-doc${OPT.pageday ? ' ps-pageday' : ''}" aria-labelledby="ps-title">
     <header class="ps-head"><h2 id="ps-title">Looking after the plants</h2><p class="ps-span">${esc(span)}</p>
       ${OPT.note.trim() ? `<p class="ps-msg">${esc(OPT.note.trim())}</p>` : ''}${intro}</header>
-    ${cold}${days}${list}
+    ${places}${cold}${days}${list}
     <p class="ps-printed">Made ${esc(new Date().toLocaleDateString('en-US', { dateStyle: 'long' }))} from Plant record${D.group ? `, group "${esc(D.group.name)}"` : ''}.</p></article>` };
 }
 window.PlantSitterSheet = { sheet, dayName, dayShort, esc, iso, addDays };

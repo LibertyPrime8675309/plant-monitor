@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.56.0 (coming December 1, 2026)
+Step 8 of the plan: lights that fit the room. The Grow lights page now checks that a light can be put where the plants are before it counts the light.
+- **How it holds.** Each light says how it holds (screws into a socket, stands on the floor, stands on a shelf, clamps to an edge, screws under a shelf), which way it points, and its sizes. Yours came filled in from their listings; change it with **How it holds** on the light's card.
+- **Measurements and photos** for each room and shelf under Rooms and shelves: levels, the height between them, width, depth, what is above, free room beside it, an edge to clamp to, an outlet. Fill in what you know. The side table came filled in.
+- **A plant's height**, with its pot, on its page and in the Health walk-through ("Taller than last time?").
+- **Fits, Does not fit or Not checked yet** at the top of each light spot, with a sentence for each reason: nothing above the side table for a strip, the T8 too long for the tall brown shelf, a plant too tall for its level, plants shaded by a sideways light, the tripod not pointing straight down. The same check runs as you set up a spot.
+- **A setup card** for each spot, to print or keep on the phone, and **Set up and checked**, which takes itself off when the spot changes. Today lists the spots still to check.
+- Photos of the shelves show on the plant-sitter sheet, so a sitter knows where to look.
+
 ## 1.55.0 (2026-11-09)
 Step 7 of the plan: releases on a rhythm, made by GitHub and fetched by the updater, with What's new on Today.
 - **Updating is now one step.** Double-click **Update Plant Database.cmd** and type `Y`. It asks GitHub for the newest release, downloads it (and any photo pack you are missing) into `versions_plant-database`, then backs up, installs and restarts as before. Nobody has to save a zip into the folder first. If GitHub cannot be reached it uses the zips already there; `-NoDownload` skips the question.

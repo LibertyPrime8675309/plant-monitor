@@ -540,6 +540,7 @@ function plantEdHtml(p) {
     ${txt('location', 'More about where', 200)}${txt('container', 'Container', 200)}
     ${sel('pot_id', 'Pot', [['', 'None chosen']].concat(conts('pot').map(x => [x.id, `${x.name} (${x.free} of ${x.qty} free)`])), p.pot_id || '')}
     ${sel('tray_id', 'Catch tray', [['', 'None chosen']].concat(conts('tray').map(x => [x.id, `${x.name} (${x.free} of ${x.qty} free)`])), p.tray_id || '')}
+    <label class="f">Height now, with its pot (${lenU()})<input type="number" inputmode="decimal" min="0" step="any" value="${p.height_in == null ? '' : lenF(p.height_in, false)}" ${ed('height_in')}></label>
     <label class="f">ID confidence (%)<input type="number" inputmode="numeric" min="0" max="100" step="1" value="${p.id_confidence == null ? '' : p.id_confidence}" ${ed('id_confidence')}></label>
     ${sel('winter_plan', 'Winter plan', (META.winter_plans || []).map(x => [x, x]), p.winter_plan)}
     ${sel('health_rating', 'Health', (META.health || []).map(x => [x, x]), p.health_rating)}
@@ -555,7 +556,7 @@ async function viewPlant(code) {
   const archived = p.status === 'archived';
   const pot = contById(p.pot_id), tray = contById(p.tray_id);
   const dl = [['Also known as', p.aliases], ['Plant type', p.plant_type], ['Home', HOMES().length > 1 ? plantHome(p).name : ''], ['Where', whereWords(p)], ['More about where', p.location], ['Container', p.container],
-    ['Pot', pot ? html`<a href="#/pots">${pot.name}</a> (${pot.size})` : ''], ['Catch tray', tray ? html`<a href="#/pots">${tray.name}</a> (${tray.size})` : '']].filter(x => x[1]);
+    ['Pot', pot ? html`<a href="#/pots">${pot.name}</a> (${pot.size})` : ''], ['Catch tray', tray ? html`<a href="#/pots">${tray.name}</a> (${tray.size})` : ''], ['Height now, with its pot', p.height_in == null ? '' : lenF(p.height_in)]].filter(x => x[1]);
   const single = document.documentElement.dataset.layout === 'single';
   return {
     title: p.common_name,

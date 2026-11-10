@@ -58,7 +58,7 @@ def checkup():
         elif (r['health_rating'] or '') in ('Poor', 'Critical') and poor < every: every, why = poor, 'its health is ' + r['health_rating']
         out.append({'code': r['code'], 'name': r['common_name'], 'site': r['site'] or 'Outdoors', 'location': r['location'] or '',
                     'health': r['health_rating'] or '', 'summary': (r['health_summary'] or '').strip(), 'photo': ph[0] if ph else None, 'photos': pics,
-                    'version': r['version'], 'last_looked': lk, 'days': days, 'every': every, 'every_why': why,
+                    'version': r['version'], 'height_in': r['height_in'], 'last_looked': lk, 'days': days, 'every': every, 'every_why': why,
                     'groups': member.get(r['code'], []), 'due': days is None or days >= every})
     return jsonify(today=today.isoformat(), due_days=usual, poor_days=poor, health=HEALTH, sites=SITES, groups=groups, plants=out)
 

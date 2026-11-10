@@ -72,10 +72,17 @@ def sitter_sheet(c, from_s, to_s, group_s, started=False):
         at = [{'code': x['code'], 'name': x['name'], 'level': x['level'], 'damage': x['damage'], 'lethal': x['lethal'], 'site': x['site']}
               for x in n['plants'] if x['code'] in want]
         if at: nights.append({'date': n['date'], 'low': n['low'], 'plants': at})
+    # 1.56.0 (PLAN.md step 8b): a photo of each room or shelf the plants on the sheet are on, so the sitter can find them
+    pph, places, seen = place_photo_map(c), [], set()
+    for p in plants:
+        r = rows[p['code']]
+        for pid in ((r['spot_id'],) if r['spot_id'] else ()) + ((-r['area_id'],) if r['area_id'] else ()):
+            if pid in seen or not pph.get(pid): continue
+            seen.add(pid); places.append({'label': place_label(c, pid), 'photo': pph[pid]}); break
     out_days = [{'date': d, 'high': (fc.get(d) or {}).get('high'), 'low': (fc.get(d) or {}).get('low'),
                  'plants': sorted(v, key=lambda k: walk[k])} for d, v in days.items()]
     return dict(today=today.isoformat(), start=d0.isoformat(), end=d1.isoformat(), group=group, days=out_days,
-                before=sorted(before, key=lambda k: walk[k]), plants=plants, nights=nights, rain_counts_in=RAIN_COUNTS_IN,
+                before=sorted(before, key=lambda k: walk[k]), plants=plants, nights=nights, rain_counts_in=RAIN_COUNTS_IN, places=places,
                 forecast_to=max(fc) if fc else None)
 
 # ---------------------------------------------------------------- 1.49.0: the sheet by link
@@ -201,7 +208,7 @@ def share_photo(token, name):
     c = db(); sitter_tables(c)
     r = share_row(c, token)
     D = share_sheet_data(c, r)
-    if os.path.basename(name) not in {p.get('photo') for p in D['plants'] if p.get('photo')}: abort(404)
+    if os.path.basename(name) not in {p.get('photo') for p in D['plants'] + D.get('places', []) if p.get('photo')}: abort(404)
     return thumb(os.path.basename(name))
 
 @app.route(SHARE_PATH + '/<token>/style.css')

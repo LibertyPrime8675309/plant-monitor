@@ -35,3 +35,7 @@ html[data-touch="1"] .ps-tick{width:2.4rem;height:2.4rem}
   .ps-done .ps-what{text-decoration:none;color:#000}
   .ps-box.ps-ticked{color:#000}
 }
+/* 1.56.0: where the plants are, a photo of each room or shelf */
+.ps-placelist{list-style:none;padding:0;margin:.3rem 0;display:flex;flex-wrap:wrap;gap:.8rem}
+.ps-placelist li{display:flex;flex-direction:column;gap:.25rem;max-width:11rem;break-inside:avoid}
+.ps-placelist img{width:11rem;max-width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
