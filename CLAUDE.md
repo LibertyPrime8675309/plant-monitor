@@ -28,7 +28,7 @@ This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that r
   - the five version strings in `docker-compose.yml` (build arg, label, and the three ghcr.io image tags)
   - the top entry of `CHANGELOG.md` (written for Ethan, not for developers)
   - the README section for anything he uses
-- **Requests to Ethan:** keep reminding him of what Claude is waiting on (open requests in the app and the "Still to photograph" list) at the end of replies, until he provides it.
+- **Requests to Ethan:** keep reminding him of what Claude is waiting on at the end of replies, until he provides it. Open requests in the app and the "Still to photograph" list are not in these reminders: he handles those in the app himself (November 10, 2026).
 
 ## Rules for changes
 - **Never touch his data.** `data/` (database and photos) and `backups/` never go into git or a release. A new version must upgrade an existing database in place, safely and idempotently (`init_db()` adds columns and tables; see ARCHITECTURE).

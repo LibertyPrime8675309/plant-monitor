@@ -1,4 +1,4 @@
-"""Batch C5 (PLAN.md step 9, 1.57.0): the amendments, each species' "mix it wants", and what Ethan's semi-hydro and bark pots are in.
+"""Batch C5 (PLAN.md step 9, 1.56.0): the amendments, each species' "mix it wants", and what Ethan's semi-hydro and bark pots are in.
 
 - amendments_add: Ethan's eight (November 10, 2026) and the ones Claude suggested that day, each with its grades and its
   properties on a relative scale (1 low to 5 very high for holding water and letting in air; months before it breaks down,
