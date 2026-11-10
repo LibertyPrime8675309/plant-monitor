@@ -2,7 +2,7 @@
    share one scope. Plain JavaScript, no inline handlers (the server's content policy forbids them).
 
    The watering reminder guesses a gap from the plant's soil moisture range and the weather. The care log knows what really happens.
-   This compares the two: the page #/rhythm (Care) lists the plants watered well before or well after their reminder, and a plant's
+   This compares the two: the page #/rhythm (in the Today section) lists the plants watered well before or well after their reminder, and a plant's
    own page says how often it has been watered, both with a button that makes the reminder match. Nothing new is stored: the button
    changes the plant's "Check for water every (days)" (PUT /api/rhythm), with Undo. */
 'use strict';
@@ -96,12 +96,13 @@ Object.assign(acts, {
   },
 });
 // What this module adds (features.js):
-//  - the page #/rhythm under Care, after Turn the pots;
+//  - the page #/rhythm in the Today section, after Repotting (the Care row is full: one more page there makes the top bar two rows
+//    tall on a laptop, and Grow lights then loses its sticky title);
 //  - on a plant's own page, a line inside the Watering box saying how often it has really been watered, with the button.
 //    It draws again whenever the care part does (care: true), so pressing "Watered today" updates it.
 addFeature({
   name: 'rhythm',
-  pages: { rhythm: { view: viewRhythm, nav: 'rhythm', section: 'care', label: 'How often you water', href: '#/rhythm', after: 'turning' } },
+  pages: { rhythm: { view: viewRhythm, nav: 'rhythm', section: 'today', label: 'How often you water', href: '#/rhythm', after: 'repotting' } },
   adds: {
     id: 'rh-plant', care: true,
     match: parts => parts[0] === 'plant' && parts[1] && parts[2] !== 'edit',

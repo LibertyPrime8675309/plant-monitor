@@ -1487,7 +1487,7 @@ A plant by a window grows toward the light and leans. A quarter turn every week 
 
 ## How often you water (prototype)
 
-The watering reminder guesses how often to check each plant from its soil moisture range and the weather. Your care log knows how often you really water. **Care → How often you water** puts the two side by side.
+The watering reminder guesses how often to check each plant from its soil moisture range and the weather. Your care log knows how often you really water. **Today → How often you water** puts the two side by side.
 
 - **Watered sooner than the reminder**, **Watered later than the reminder**, **About right** and **Not enough logged yet** (folded). Each plant says "Watered about every 5 days since Aug 22", what the reminder says, and how many times it was found still moist.
 - **About every** is the middle gap between waterings in the last 120 days, so one odd gap does not move it. A gap of more than 45 days is left out as a time nothing was logged. For a plant whose Location is Outdoors, a day with 0.25 in of rain or more counts as a watering, as it does for the reminder. A pattern needs at least 4 waterings.

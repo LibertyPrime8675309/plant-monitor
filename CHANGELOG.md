@@ -1,7 +1,7 @@
 # Changelog
 
 ## Unreleased: how often you water (prototype proto/water-rhythm)
-- **Care → How often you water** compares each plant's watering reminder with how often your care log says you really water it: watered sooner than the reminder, later, about right, or not enough logged yet. Rain counts for plants outdoors, as it does for the reminder.
+- **Today → How often you water** compares each plant's watering reminder with how often your care log says you really water it: watered sooner than the reminder, later, about right, or not enough logged yet. Rain counts for plants outdoors, as it does for the reminder.
 - **Remind me every N days** makes the reminder match what you do, with Undo. It changes the plant's "Check for water every (days)", so the change is in its history.
 - **On a plant's page**, the Watering box says how often it has been watered, with the recent gaps and the same button.
 

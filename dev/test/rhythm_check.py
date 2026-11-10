@@ -1,6 +1,6 @@
 """Checks the prototype "How often you water" (proto/water-rhythm): the gaps between waterings in the care log against the watering
 reminder, rain counted for plants out in the open, the button that makes the reminder match (with Undo), viewers refused, the page
-under Care and the line on a plant's page, at laptop and phone width, light and dark, with large text.
+in the Today section and the line on a plant's page, at laptop and phone width, light and dark, with large text.
 Start the mock server with a fresh data folder (MOCK_TS=1), then:  python3 dev/test/rhythm_check.py
 Screenshots: dev/tmp/shots/rhythm-*.png"""
 import json, os, sys, urllib.error, urllib.request
@@ -82,8 +82,12 @@ with sync_playwright() as p:
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.add_init_script("localStorage.setItem('plantdb.editor','Rhythm Test')")
     pg.goto(BASE + '/#/rhythm'); pg.wait_for_selector('#rh-often')
-    check(pg.locator('nav a[href="#/rhythm"], #app a[href="#/rhythm"], header a[href="#/rhythm"]').count() >= 1 or 'How often you water' in pg.content(),
-          'the page is in the Care section')
+    check(pg.evaluate("SECTIONS.find(s => s[0] === 'today')[2].some(p => p[0] === 'rhythm') && !SECTIONS.find(s => s[0] === 'care')[2].some(p => p[0] === 'rhythm')"),
+          'the page is in the Today section (the Care row is full)')
+    for path in ('/#/', '/#/lights'):         # a ninth page in the Care row made the bar two rows tall there, and Grow lights lost its sticky title
+        pg.goto(BASE + path); pg.wait_for_timeout(1500)
+        check(pg.evaluate("document.documentElement.dataset.toptall") == '0', f'{path}: the top bar stays short enough to stay at the top on a laptop')
+    pg.goto(BASE + '/#/rhythm'); pg.wait_for_selector('#rh-often')
     C = R()['counts']
     check(pg.inner_text('#rh-often h2') == f'Watered sooner than the reminder ({C["often"]})' and pg.inner_text('#rh-seldom h2') == f'Watered later than the reminder ({C["seldom"]})'
           and pg.locator(f'#rh-often .job[data-code="{a}"]').count() == 1 and pg.locator(f'#rh-seldom .job[data-code="{b}"]').count() == 1,

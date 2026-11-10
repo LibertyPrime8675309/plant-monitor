@@ -5,7 +5,7 @@ The watering reminder guesses how often to check each plant from its soil moistu
 
 Your care log already knows the answer: every "Watered today" has a date. This puts the two side by side and lets you make the reminder match with one button.
 
-- **A new page, How often you water** (Care → How often you water, after Turn the pots):
+- **A new page, How often you water** (Today → How often you water, beside Health walk-through and Repotting. It started under Care, but one more page there made the top bar two rows tall on a laptop, which turned off the sticky title on Grow lights):
   - one line saying how many plants are watered sooner than the reminder says, how many later, and how many about right;
   - **Watered sooner than the reminder**: the pot may dry faster than the app thinks, so a shorter reminder would suit it. Or it is being watered before it needs it, so the page suggests the finger test and "Checked: still moist" first;
   - **Watered later than the reminder**: if it was found still moist when the reminder came, a longer reminder suits it;
@@ -48,7 +48,7 @@ Then open http://127.0.0.1:8080/#/rhythm. A fresh test copy has no waterings log
 
 ## Open questions for Ethan
 1. **Rounding indoors.** The app stretches the gap by half for plants indoors and rounds, so an indoor reminder can be 3, 4, 6, 8 or 9 days but never exactly 5 or 7. The button says what you will really get ("Remind me every 6 days" for a plant you water every 5). Should the indoor stretch be dropped for a plant once you have set its gap by hand from this page, so the number you pick is the number you get?
-2. **Today.** Should Today get a short line ("3 plants are watered well before their reminder") with a link here, or is a page under Care enough?
+2. **Today.** Should Today get a short line ("3 plants are watered well before their reminder") with a link here, or is the page in the Today row enough? Or would you rather have it under Care, which needs the Care row tidied first (it is full)?
 3. **Whole groups.** Would a "Make all of these match" button on each list be useful, or do you prefer to decide plant by plant?
 4. **The window.** 120 days mixes summer and autumn. Would you rather it looked at the last 60 days, so the comparison follows the season?
 
