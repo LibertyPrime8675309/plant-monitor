@@ -120,7 +120,7 @@ def test_routes_tick_and_untick_and_photos():
         lights = c.get('/api/lights').get_json()
         t5 = next(L for L in lights['lights'] if L['key'] == 'barrina-t5')
         pl = next(p for p in lights['places'] if p['label'].endswith('Tall Brown Shelf'))
-        assert c.put(f'/api/places/{pl["id"]}', json={'sheet': SHELF}, headers=H).status_code == 200
+        assert c.put(f'/api/rooms/{pl["id"]}', json={'sheet': SHELF}, headers=H).status_code == 200
         r = c.post('/api/lights/spots', json={'name': 'Unit T5', 'light': t5['id'], 'distance': 4, 'hours': 12, 'place': pl['id'], 'level': 'lower', 'plants': []}, headers=H)
         sid = r.get_json()['id']
         sp = next(s for s in c.get('/api/lights').get_json()['spots'] if s['id'] == sid)
@@ -136,9 +136,9 @@ def test_routes_tick_and_untick_and_photos():
         assert sp['checked']['stale'] is False, 'the hours change nothing about how it is put together'
         assert c.delete(f'/api/lights/spots/{sid}/checked', headers=H).status_code == 200
         b = io.BytesIO(); Image.new('RGB', (40, 30), (1, 2, 3)).save(b, 'JPEG'); b.seek(0)
-        r = c.post(f'/api/places/{pl["id"]}/photos', data={'files': (b, 'shelf.jpg')}, headers=H, content_type='multipart/form-data')
+        r = c.post(f'/api/rooms/{pl["id"]}/photos', data={'files': (b, 'shelf.jpg')}, headers=H, content_type='multipart/form-data')
         assert r.status_code == 201 and r.get_json()['photos'][0]['is_primary']
         assert next(p for p in c.get('/api/lights').get_json()['places'] if p['id'] == pl['id'])['photo']
         ph = r.get_json()['photos'][0]['id']
-        assert c.delete(f'/api/places/photos/{ph}', headers=H).get_json()['photos'] == []
+        assert c.delete(f'/api/rooms/photos/{ph}', headers=H).get_json()['photos'] == []
         c.delete(f'/api/lights/spots/{sid}', headers=H)

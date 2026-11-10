@@ -42,12 +42,12 @@ check(status('PUT', f'/api/lights/{key["gooingtop-clip"]["id"]}', {'mount': {'ki
 # ---- 8b, 8c: the places, and the plants with heights
 place = {p['label'].split(', ')[-1]: p['id'] for p in LT['places']}
 side, tall = place['Side Table'], place['Tall Brown Shelf']
-P = call('GET', f'/api/places/{side}')
+P = call('GET', f'/api/rooms/{side}')
 check(P['sheet'].get('levels') == 1 and P['sheet'].get('top') == 'nothing' and 'nothing above the top' in P['words'], 'batch C4 says the side table is one level with nothing above it')
-check('Measurements to come' in call('GET', f'/api/places/{tall}')['sheet'].get('notes', ''), 'and notes for the brown shelves, whose measurements are still to come')
-call('PUT', f'/api/places/{tall}', {'sheet': {'levels': 4, 'gap_in': 13, 'width_in': 16, 'depth_in': 11, 'top': 'nothing', 'edge': 'yes', 'edge_in': 0.75, 'socket': 'yes'}})
-check('4 levels, 13 in between them' in call('GET', f'/api/places/{tall}')['words'], 'the tall brown shelf takes its measurements: 4 levels, 13 in apart, 16 in wide')
-check(status('PUT', f'/api/places/{tall}', {'sheet': {'levels': 0}}) == 400 and status('PUT', f'/api/places/{tall}', {'sheet': {'edge': 'maybe'}}) == 400, 'measurements out of range are refused')
+check('Measurements to come' in call('GET', f'/api/rooms/{tall}')['sheet'].get('notes', ''), 'and notes for the brown shelves, whose measurements are still to come')
+call('PUT', f'/api/rooms/{tall}', {'sheet': {'levels': 4, 'gap_in': 13, 'width_in': 16, 'depth_in': 11, 'top': 'nothing', 'edge': 'yes', 'edge_in': 0.75, 'socket': 'yes'}})
+check('4 levels, 13 in between them' in call('GET', f'/api/rooms/{tall}')['words'], 'the tall brown shelf takes its measurements: 4 levels, 13 in apart, 16 in wide')
+check(status('PUT', f'/api/rooms/{tall}', {'sheet': {'levels': 0}}) == 400 and status('PUT', f'/api/rooms/{tall}', {'sheet': {'edge': 'maybe'}}) == 400, 'measurements out of range are refused')
 cands = [c['code'] for c in LT['candidates']]
 big, small, mid, other, b1, b2, b3 = cands[:7]          # a plant is in one spot at a time, so each spot has its own
 for code, h in ((big, 16), (small, 8), (mid, 10), (b1, 8), (b2, 10), (b3, 16)): plant_set(code, {'height_in': str(h)})
@@ -198,7 +198,7 @@ check(any(pl['label'].endswith('Side Table') and pl['photo'] for pl in S.get('pl
 call('GET', '/api/me', base=TS, login='owner@example.com')
 call('PUT', '/api/people', {'login': 'viewer@example.com', 'role': 'viewer'}, base=TS, login='owner@example.com')
 check(status('POST', f'/api/lights/spots/{s_t8tall}/checked', {}, base=TS, login='viewer@example.com') == 403
-      and status('PUT', f'/api/places/{side}', {'sheet': {}}, base=TS, login='viewer@example.com') == 403, 'a viewer cannot tick a spot or change measurements')
+      and status('PUT', f'/api/rooms/{side}', {'sheet': {}}, base=TS, login='viewer@example.com') == 403, 'a viewer cannot tick a spot or change measurements')
 with sync_playwright() as p:
     br = p.chromium.launch()
     for name, vp, disp, base, login in (('viewer', {'width': 1280, 'height': 900}, {}, TS, 'viewer@example.com'),

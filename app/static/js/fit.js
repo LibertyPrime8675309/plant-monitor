@@ -75,9 +75,9 @@ function placePhotos(P) {
     : html`<p class="muted">No photo yet. A photo of each shelf helps when you fill in its measurements and set up a light.</p>`}
     ${can ? html`<label class="btn ghost small">Add photos<input type="file" accept="image/*" multiple class="sr" data-act="placephoto" data-id="${P.id}"></label>` : ''}</div>`;
 }
-async function placeDialog(pid) {
+async function roomSheetDialog(pid) {
   if (!(await needName())) return;
-  let P = await guard(() => api('GET', '/api/places/' + pid)); if (!P) return;
+  let P = await guard(() => api('GET', '/api/rooms/' + pid)); if (!P) return;
   const s = P.sheet || {}, can = canChange(), ro = can ? '' : raw('disabled');
   const fld = ([k, label, unit, hint]) => html`<label class="f">${label}${unit ? ` (${lenU()})` : ''}<input type="number" inputmode="decimal" min="0" step="any" name="${k}" value="${s[k] == null ? '' : unit ? lenF(s[k], false) : s[k]}" ${ro}>${hint ? html`<small>${hint}</small>` : ''}</label>`;
   const pick = (k, label, opts) => html`<label class="f">${label}<select name="${k}" ${ro}><option value="">Not known</option>${opts.map(([v, l]) => html`<option value="${v}" ${s[k] === v ? raw('selected') : ''}>${l}</option>`)}</select></label>`;
@@ -99,7 +99,7 @@ async function placeDialog(pid) {
     const lenField = /_in$/.test(el.name);
     sheet[el.name] = lenField ? lenIn(el.value) : el.value;
   });
-  await guard(async () => { await api('PUT', '/api/places/' + pid, { sheet }); toast('Measurements saved'); LT = null; route(); });
+  await guard(async () => { await api('PUT', '/api/rooms/' + pid, { sheet }); toast('Measurements saved'); LT = null; route(); });
 }
 async function placePhotoRedraw(P) { const box = document.getElementById('pd-photos'); if (box) box.outerHTML = rend(placePhotos(P)); }
 // ---- set up and checked
@@ -158,18 +158,18 @@ Object.assign(acts, {
     const L = ltLight(el.dataset.id); if (!L) return;
     await mountDialog(L);
   },
-  ltplace: el => placeDialog(+el.dataset.id),
+  ltplace: el => roomSheetDialog(+el.dataset.id),
   spotcheck: el => spotCheckDialog(el.dataset.id),
   spotuncheck: async el => { if (!(await needName())) return; await guard(async () => { await api('DELETE', `/api/lights/spots/${el.dataset.id}/checked`); toast('Tick taken off'); LT = null; route(); }); },
-  placephotodel: async el => { if (!(await needName())) return; const P = await guard(() => api('DELETE', '/api/places/photos/' + el.dataset.id)); if (P) { toast('Photo removed'); placePhotoRedraw(P); } },
-  placephotomain: async el => { if (!(await needName())) return; const P = await guard(() => api('PUT', '/api/places/photos/' + el.dataset.id, { primary: true })); if (P) { toast('Main photo changed'); placePhotoRedraw(P); } },
+  placephotodel: async el => { if (!(await needName())) return; const P = await guard(() => api('DELETE', '/api/rooms/photos/' + el.dataset.id)); if (P) { toast('Photo removed'); placePhotoRedraw(P); } },
+  placephotomain: async el => { if (!(await needName())) return; const P = await guard(() => api('PUT', '/api/rooms/photos/' + el.dataset.id, { primary: true })); if (P) { toast('Main photo changed'); placePhotoRedraw(P); } },
 });
 Object.assign(changeActs, {
   mountkind: () => mountKindShow(),
   async placephoto(el) {
     if (!el.files.length || !(await needName())) return;
     const fd = new FormData(); [...el.files].forEach(f => fd.append('files', f));
-    const P = await guard(() => api('POST', '/api/places/' + el.dataset.id + '/photos', null, fd));
+    const P = await guard(() => api('POST', '/api/rooms/' + el.dataset.id + '/photos', null, fd));
     if (P) { toast(el.files.length === 1 ? 'Photo added' : `${el.files.length} photos added`); placePhotoRedraw(P); }
   },
 });

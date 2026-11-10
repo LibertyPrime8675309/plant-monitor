@@ -321,7 +321,7 @@ def place_photo_map(c):
         out.setdefault(k, p['file'])
     return out
 
-@app.route('/api/places/<int(signed=True):pid>', methods=['GET', 'PUT'])
+@app.route('/api/rooms/<int(signed=True):pid>', methods=['GET', 'PUT'])
 def fit_place_one(pid):
     """A room (minus its id) or a shelf (its id): its measurements and photos. PUT {sheet: {...}} replaces the measurements."""
     c = db()
@@ -336,7 +336,7 @@ def fit_place_one(pid):
     c.commit()
     return jsonify(place_dict(c, pid))
 
-@app.route('/api/places/<int(signed=True):pid>/photos', methods=['POST'])
+@app.route('/api/rooms/<int(signed=True):pid>/photos', methods=['POST'])
 def fit_place_photos_add(pid):
     c = db(); who = editor()
     sp, room = place_rows(c, pid)
@@ -352,7 +352,7 @@ def fit_place_photos_add(pid):
     audit_only(c, 'where', 'place_photo', None, f'{len(files)} photo(s)', who, f'Photo added to {place_label(c, pid)}'); c.commit()
     return jsonify(place_dict(c, pid)), 201
 
-@app.route('/api/places/photos/<int:ph>', methods=['PUT', 'DELETE'])
+@app.route('/api/rooms/photos/<int:ph>', methods=['PUT', 'DELETE'])
 def fit_place_photo_one(ph):
     """DELETE removes a photo; PUT {primary: true} makes it the main one."""
     c = db(); who = editor()
