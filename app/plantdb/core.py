@@ -312,6 +312,8 @@ def init_db():
     c.executescript(SITTER_SCHEMA)                # 1.49.0: plant-sitter sheets shared by link, and the sitter's ticks
     c.executescript(KNOWLEDGE_SCHEMA)             # 1.53.0 (PLAN.md step 6a): one row per species fact, with its source (the facts table)
     c.executescript(MIXES_SCHEMA)                 # 1.57.0 (PLAN.md step 9): amendments, recipes, what is in each pot (mixes.py)
+    if 'status' not in {r[1] for r in c.execute('PRAGMA table_info(lights)')}:     # 1.58.0 (PLAN.md step 10b): owned, considering, no longer used
+        c.execute("ALTER TABLE lights ADD COLUMN status TEXT NOT NULL DEFAULT 'owned'")
     wl = {r[1] for r in c.execute('PRAGMA table_info(wishlist)')}
     for col, typ in (('max_price', 'REAL'), ('alert_stock', 'INTEGER NOT NULL DEFAULT 0'), ('search_words', "TEXT NOT NULL DEFAULT ''")):
         if col not in wl: c.execute(f'ALTER TABLE wishlist ADD COLUMN {col} {typ}')

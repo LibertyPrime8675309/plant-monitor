@@ -1353,9 +1353,27 @@ Every grow light holds itself in the room in its own way: a bulb screws into a l
 - **The setup card.** **Setup card** on a spot opens a page to print or keep on the phone: where, the light and how it holds, how far from the leaves, the hours, the fit, and the plants (for a sideways light, shortest nearest the light first).
 - **Set up and checked.** Once the light is up and the plants are under it, press **Set up and checked** (with a note of what you found, if anything). Changing the spot's light, place, level, distance or plants takes the tick off by itself ("Changed since it was checked"); the hours and brightness do not. Today lists the spots with plants that are not set up and checked yet.
 
+## Compare lights (in the February 1 release, 1.58.0)
+
+**Compare lights** puts your grow lights and the ones you are thinking of buying side by side. Open it with **Compare lights** at the top of Your lights on **Care → Grow lights**, or find it with Search.
+
+- **One distance for all.** Makers measure at different distances (one at 8 in, another at 12 in), so choose **Compare at** (6, 12, 18 or 24 in, in your units) and **Hours a day**. Every light's light (PAR), the area it lights and its daily light are worked out at that distance. A light whose maker did not measure that far, or that close, says "Beyond its chart" instead of a stretched guess.
+- **Worked-out columns**: light per watt and price per light, both marked rough (they treat the whole area as getting the centre's light). **Numbers from** says whether the figures are the maker's, Claude's estimate, or doubtful (a listing that contradicts itself, like the 4-head gooseneck and the 30 W bulb), so a guess is never quietly at the top.
+- **Search** by name, brand or kind. **Sort** with **Sort by** and **Order**, or with the column headings (they are buttons; press again to turn the order round). The sentence above the table says how it is sorted. Lights with a value not known always go last.
+- **Filters** (open the Filters box): owned or considering, which way it points, needs a socket, how it holds, colour range, at least so much PAR, can be dimmed, timer repeats every day. Each filter that is on shows as a button above the table; press it to remove that filter, or **Clear all filters**.
+- **Columns** chooses what the table shows; your choice follows you to any device you sign in on.
+- **Pick** two to four lights to see them side by side, one row for each thing.
+- On a phone, or with large text, each light is a card of label and value, so the page never scrolls sideways.
+
+Press a light's name for everything about it, and:
+
+- **Try it in a spot**: choose one of your light spots and see, for each plant there, how it does now and how it would do with this light, at the spot's distance, hours and brightness, and whether the light fits there.
+- **Add a light you are considering** (top of the page) takes what a listing gives: name, brand, link, price (with the date, since prices move), watts, the PAR chart (two or more distances), which way it points, colour, CRI, brightness steps and timer. It stays off Grow lights until you press **Bought it**, which asks how many and when, and moves it to Your lights with everything you entered, so there is nothing to type again.
+- **Change the listing details** adds a price or a link to any light, including ones you own. **No longer used** takes a light off Grow lights (it must not be in a spot) and keeps it here.
+
 ## What is in each pot (in the January 1 release, 1.57.0)
 
-**Potting mixes** holds what goes into your pots. Open it from **Care → Pots and trays** (the line under the title), or from **Potting mixes** in any plant's What it is in. It has no link of its own in the top bar, so the Care row stays on one line.
+**Potting mixes** holds what goes into your pots. Open it from **Care → Pots and trays** (the line under the title), or from **Potting mixes** in any plant's What it is in. It has no link of its own in the top bar, so the Care row stays on one line; Search finds it too.
 
 - **Recipes.** **New recipe** takes a name and its parts by volume, the way you scoop them: 3 parts orchid bark, 2 parts perlite, 1 part coir (halves are fine). Each part can have a grade (orchid bark small, medium or large). An additive such as slow-release fertilizer asks **How much** ("1 teaspoon a gallon") instead of parts. Each recipe shows the share of each part and an **estimate** of the whole mix: how much water it holds, how much air it lets in, and when it will want freshening (set by the part that breaks down first). It is an estimate because fine bits fill the gaps between coarse ones. Once three plants in a recipe have six or more waterings logged, the recipe says how many days they go between waterings.
 - **Amendments.** Grouped as parts of a mix, semi-hydro media and additives, each with its grades and how it behaves in words (holds water, lets in air, breaks down in, feeds the plant, pH, weight). The numbers behind the words are a rough guide for comparing them, not measurements: **Change** any that your pots disagree with, or **Add an amendment**.

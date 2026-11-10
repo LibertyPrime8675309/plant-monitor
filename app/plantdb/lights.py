@@ -128,7 +128,8 @@ def light_dict(r, used=0):
             'max_dli': dli_of(ppfd_at(pts, dmin), 16) if pts else None, 'reach': light_reach(d, pts),
             'room_light': 'room light' in (d.get('kind') or '').lower(),
             'photo': d.get('photo'), 'chart': d.get('chart'), 'updated_by': r['updated_by'] or r['created_by'], 'updated_at': r['updated_at'] or r['created_at'],
-            'mount': d.get('mount'), 'mount_words': mount_words(d.get('mount'))}      # 1.56.0 (PLAN.md step 8a): how it holds
+            'mount': d.get('mount'), 'mount_words': mount_words(d.get('mount')),      # 1.56.0 (PLAN.md step 8a): how it holds
+            'status': r['status'] if 'status' in r.keys() else 'owned'}               # 1.58.0 (PLAN.md step 10b)
 
 def light_reach(d, pts):
     """1.41.0: what one of this light can give, within the distances its maker (or Claude) measured: the most light (its
@@ -317,7 +318,7 @@ def lights_state(c):
     # 1.41.0: a plant that does not fit its spot is pointed at one of your other spots that would suit it
     for sp in out_spots:
         for p in sp['plants']: p['better'] = better_spot(out_spots, p, sp['id'])
-    lights_out = [light_dict(L, used.get(L['id'], 0)) for L in lights]
+    lights_out = [light_dict(L, used.get(L['id'], 0)) for L in lights if L['status'] == 'owned' or used.get(L['id'])]   # 1.58.0: others are on Compare lights
     for Ld in lights_out:      # how many of the plants that need a light this one could serve, at some setting within its range
         rg = Ld['reach']
         Ld['suits'] = sum(1 for x in cands if x['need'] and rg and x['need']['lo'] <= rg['dli_any'][1] and x['need']['hi'] >= rg['dli_any'][0]) if rg else 0

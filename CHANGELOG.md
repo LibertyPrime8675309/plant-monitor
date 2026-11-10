@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.58.0 (coming February 1, 2027)
+Step 10 of the plan: compare lights.
+- **Compare lights** (from Care → Grow lights, or Search): all your grow lights and the ones you are considering in one table, worked out at one distance you choose (6, 12, 18 or 24 in) and hours a day you choose, because makers measure at different distances. Light (PAR), area lit, daily light, light per watt, price per light, colour, CRI, red and blue, which way it points, brightness steps, timer, socket, how it holds, size and price. Where a maker's figures do not reach, it says "Beyond its chart" rather than guessing.
+- **Where the numbers come from** for each light: the maker's figures, Claude's estimate, or doubtful (the 4-head gooseneck and the 30 W bulb, whose listings contradict themselves).
+- Search, sort by any column (the headings are buttons), filters shown as buttons you press to remove, a **Columns** choice that follows you, and **Pick** two to four lights to see them side by side. On a phone or with large text, each light is a card.
+- **Add a light you are considering** from a listing, with its price and the date. **Try it in a spot** shows what each plant there would get from it against what it gets now, and whether it fits. **Bought it** moves it to Your lights without typing anything again. **No longer used** takes a light off Grow lights and keeps it on Compare lights.
+- Potting mixes (1.57.0) is now found by Search as well.
+
 ## 1.57.0 (coming January 1, 2027)
 Step 9 of the plan: what is in each pot.
 - **Potting mixes** (Care → Pots and trays → Potting mixes, or from any plant's page): your **recipes**, in parts by volume the way you scoop them ("3 orchid bark, 2 perlite, 1 coir"), each with the share of each part and an estimate of the whole mix: how much water it holds, how much air it lets in, and when it will want freshening. Once three plants in a recipe have six or more waterings logged, it also says how many days they go between waterings.
