@@ -214,7 +214,10 @@ def restore_backup(name, by, before=True):
         audit_only(c, 'backup', 'restore', None, name, by, f'Restored from {name} ({plants} plants, made {meta.get("created_at", "")[:10]} by version {meta.get("version", "?")}). The database from before is in {before}.')
         c.commit()
     finally: c.close()
-    return {'ok': True, 'before': before_name, 'plants': plants, 'photos_added': added, 'version': meta.get('version')}
+    try:                                                            # 1.55.0 (PLAN.md step 7): a restore is the quarterly restore test
+        c2 = sqlite3.connect(DB_PATH, timeout=30); c2.execute("INSERT OR REPLACE INTO settings(key,value) VALUES('restore_tested_at',?)", (now(),)); c2.commit(); c2.close()
+    except sqlite3.Error: pass
+    return {'ok': True, 'before': before_name, 'plants': plants, 'photos_added': added, 'version': meta.get('version'), 'restore_tested_at': now()}
 
 @app.route('/api/backups/restore', methods=['POST'])
 def backup_restore():

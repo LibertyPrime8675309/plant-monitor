@@ -9,6 +9,10 @@
       powershell -ExecutionPolicy Bypass -File .\update-plant-database.ps1
 
   What it does:
+    0. (1.55.0) Asks GitHub for the newest release of Plant record. If it is newer than any zip here, downloads its release zip
+       into versions_plant-database; photo packs it needs are downloaded the same way when they are missing. No sign-in: the
+       repository is public. -NoDownload skips this and uses only the zips already here (if GitHub cannot be reached, the
+       updater says so and carries on with what is here).
     1. Moves any plant-database-*.zip in this folder into versions_plant-database, then finds the newest
        plant-database-vX.Y.Z-*.zip there.
     2. Compares it with the version installed and the version running.
@@ -32,6 +36,8 @@
     -Password <text>  Only if you set PLANTDB_PASSWORD in docker-compose.yml.
     -Url <address>    Where the app answers (default http://localhost:8080, or the port saved as PLANTDB_PORT in plant-database\.env).
     -WaitSeconds <n>  How long to wait for the new version to answer (default 180).
+    -NoDownload       Do not ask GitHub; install only from the zips already in versions_plant-database.
+    -Repo <owner/name> The GitHub repository to fetch releases from (default LibertyPrime8675309/plant-monitor).
     -ZipFolder, -AppFolder, -VersionsFolder   Other locations, if you moved things (the folder holding plant-database,
                       the plant-database folder, and the folder for release zips and photo packs).
 
@@ -48,7 +54,9 @@ param(
     [switch]$SkipBackup,
     [switch]$RemoveOldImage,
     [int]$WaitSeconds = 180,
-    [string]$VersionsFolder = ''
+    [string]$VersionsFolder = '',
+    [switch]$NoDownload,
+    [string]$Repo = 'LibertyPrime8675309/plant-monitor'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -111,6 +119,49 @@ function Docker-Ready {
 
 Say ''
 Say ('Plant database updater, ' + (Get-Date -Format 'yyyy-MM-dd HH:mm')) 'Green'
+
+# ---- 0. the newest release on GitHub (1.55.0, PLAN.md step 7) ---------------------------------------
+# Releases are made by GitHub when a version reaches main (.github/workflows/release.yml): a release "v1.55.0" with the
+# release zip and the photo packs attached. Fetching them here means nobody has to save a zip into the folder by hand.
+$script:Release = $null
+function Fetch-Release {
+    try { [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12 } catch { }
+    $h = @{ 'Accept' = 'application/vnd.github+json'; 'User-Agent' = 'plant-database-updater' }
+    return Invoke-RestMethod -Uri ("https://api.github.com/repos/{0}/releases/latest" -f $Repo) -Headers $h -TimeoutSec 20
+}
+function Download-Asset([string]$name) {
+    if (-not $script:Release) { return $false }
+    $a = @($script:Release.assets | Where-Object { $_.name -eq $name }) | Select-Object -First 1
+    if (-not $a) { return $false }
+    $dest = Join-Path $VersionsFolder $name
+    Say ("Downloading {0} ({1:N1} MB) from GitHub..." -f $name, ($a.size / 1MB))
+    $__pp = $ProgressPreference; $ProgressPreference = 'SilentlyContinue'
+    try { Invoke-WebRequest -Uri $a.browser_download_url -OutFile ($dest + '.part') -Headers @{ 'User-Agent' = 'plant-database-updater' } -TimeoutSec 600 }
+    finally { $ProgressPreference = $__pp }
+    Move-Item ($dest + '.part') $dest -Force
+    return $true
+}
+if (-not (Test-Path $VersionsFolder)) { New-Item -ItemType Directory -Path $VersionsFolder -Force | Out-Null; Say ("Made the folder " + $VersionsFolder) }
+if (-not $NoDownload) {
+    Step ('Asking GitHub for the newest release (' + $Repo + ')')
+    try {
+        $script:Release = Fetch-Release
+        $tag = "$($script:Release.tag_name)".TrimStart('v')
+        $here = @(Get-ChildItem -Path $VersionsFolder -Filter 'plant-database-v*.zip' -File | ForEach-Object { if ($_.Name -match '^plant-database-v(\d+)\.(\d+)\.(\d+)-') { [version]("{0}.{1}.{2}" -f $Matches[1], $Matches[2], $Matches[3]) } } | Sort-Object | Select-Object -Last 1)
+        $newestHere = if ($here.Count) { $here[0] } else { [version]'0.0.0' }
+        if ($tag -match '^\d+\.\d+\.\d+$') {
+            Say ("Newest release on GitHub: {0} ({1})" -f $tag, "$($script:Release.published_at)".Substring(0, 10))
+            if ([version]$tag -gt $newestHere) {
+                $zipAsset = @($script:Release.assets | Where-Object { $_.name -match '^plant-database-v\d+\.\d+\.\d+-\d{8}-\d{4}\.zip$' }) | Select-Object -First 1
+                if ($zipAsset -and (Download-Asset $zipAsset.name)) { Say ("Saved {0} in versions_plant-database." -f $zipAsset.name) 'Green' }
+                else { Say 'That release has no zip attached yet (GitHub may still be building it). Using the zips already here.' 'Yellow' }
+            } else { Say ("Nothing newer than what is already here ({0})." -f $newestHere) }
+        } else { Say ("GitHub's newest release is not a version I understand: {0}" -f $script:Release.tag_name) 'Yellow' }
+    } catch {
+        $script:Release = $null
+        Say ("Could not reach GitHub ({0}). Using the zips already in versions_plant-database." -f $_.Exception.Message) 'Yellow'
+    }
+}
 
 # ---- 1. newest zip -------------------------------------------------------------------------------
 Step 'Looking for the newest release zip'
@@ -225,6 +276,11 @@ try {
     # photo packs this release needs (checked before anything is copied, so a missing pack changes nothing)
     $packs = @(Pending-Packs $src)
     $absent = @($packs | Where-Object { -not $_.Present })
+    if ($absent.Count -and $script:Release) {                      # 1.55.0: the release on GitHub carries the photo packs too
+        foreach ($a in $absent) { try { if (Download-Asset $a.Zip) { Say ("Saved {0} in versions_plant-database." -f $a.Zip) 'Green' } } catch { Say ("Could not download {0}: {1}" -f $a.Zip, $_.Exception.Message) 'Yellow' } }
+        $packs = @(Pending-Packs $src)
+        $absent = @($packs | Where-Object { -not $_.Present })
+    }
     if ($absent.Count) {
         Say 'This release needs plant photos that are not in the plant-database folder yet, and these photo packs are not in versions_plant-database:' 'Yellow'
         foreach ($a in $absent) { Say ("  {0}  ({1} photos)" -f $a.Zip, $a.Missing) 'Yellow' }

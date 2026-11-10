@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.55.0 (2026-11-09)
+Step 7 of the plan: releases on a rhythm, made by GitHub and fetched by the updater, with What's new on Today.
+- **Updating is now one step.** Double-click **Update Plant Database.cmd** and type `Y`. It asks GitHub for the newest release, downloads it (and any photo pack you are missing) into `versions_plant-database`, then backs up, installs and restarts as before. Nobody has to save a zip into the folder first. If GitHub cannot be reached it uses the zips already there; `-NoDownload` skips the question.
+- **Releases are made by GitHub.** When a new version reaches the main branch, GitHub builds its containers and then publishes a release with the zip, the photo packs and this list of changes at github.com/LibertyPrime8675309/plant-monitor/releases.
+- **What's new on Today.** After an update, Today starts with "New in <version>" and that version's changes, with the rest folded away. **Got it** puts it away for you (each person has their own); "Every version's changes" opens the whole list.
+- **An update is ready.** Twice a day the app asks GitHub whether a newer release exists, and tells the owner on Today when one does, with a link to what changed.
+- **Test a restore.** Once a quarter, Today reminds the owner to restore the newest backup from the Backups page, so a backup is known to work. Doing a restore resets the reminder for 90 days.
+- The rhythm from December: one release with new features on the first of each month, and small fixes in between only for something broken.
+
 ## 1.54.0 (2026-11-09)
 Step 6b of the plan: anyone who can edit may add or correct a fact, and someone else checks it.
 - **Suggest a change** under any fact on a species page, or **Add a fact** at the bottom. Say what the value is, where it comes from and how sure you are. It shows as a proposal, in a highlighted box, until another editor or the owner presses **Accept** (it becomes the value shown; the old one goes into the history) or **Reject** (with a reason, kept). Nobody but the owner can accept their own.

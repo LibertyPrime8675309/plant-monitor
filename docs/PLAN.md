@@ -30,7 +30,7 @@ Steps 1 to 3 come first and in that order; 4 to 6 then run one at a time, 4 befo
 | 4c. The sitter sheet by link | A link a sitter outside the Tailnet opens, with boxes that tick back | 2 to 3 days | One minor (1.49.0) | Done in 1.49.0 | `sitter.py`, `sitter-sheet.js`, `share.html`, `share.js`, `core.py` (`guard()`), README |
 | 5. Identify: two modes and a scoreboard | A baseline measured on Ethan's PC; "one of my plants" and "a new find" modes; country data instead of USDA; confirmed photos feed the look-alike step; mushroom fields | 10 to 12 days plus runs on the PC | Two minors and one patch | Step 3; step 4 for the site's country. All done: 5a Nov 8, 5b 1.51.0, 5d 1.51.1, 5c 1.52.0 | `vision/service.py`, the vision lists, `library.py`, `fungi.py`, `discover.js`, `plant.js`, `dev/vision/*`, a GPU option in `docker-compose.yml` |
 | 6. Knowledge with provenance | One fact per row with source, date and confidence; editors add and correct; any editor reviews; export | 6 to 8 days | Two minors | Step 2; step 4 helps. Done: 6a in 1.53.0, 6b in 1.54.0 | `library.py`, `fungi.py`, `core.py` schema, `library.js`, `review.js`, the batch tooling in `dev/seed_src`, docs |
-| 7. Release rhythm | A minor release on the first of each month, patches only for breakage; install by pulling images | Ongoing | None | Step 3 | `tools/make-release.py`, the updater, `CHANGELOG.md` |
+| 7. Release rhythm | A minor release on the first of each month, patches only for breakage; releases made by GitHub, fetched by the updater; What's new and a restore reminder on Today | Ongoing; the tooling done in 1.55.0 | One minor (1.55.0) | Step 3. Tooling done in 1.55.0 | `.github/workflows/release.yml`, the updater, `releases.py`, `releases.js`, `CHANGELOG.md`, README |
 | 8. Lights that fit the room (agreed) | A light model says how it holds, a room or shelf says what it offers and has photos, a plant has a height; a spot says fits / does not fit before PAR; a setup card and a "Set up and checked" tick | 6 to 7 days | One minor (the December 1 release) | Steps 2 and 4; agreed November 10, building waits for Ethan's measurements and fixtures | `lights.py`, `where.py`, `core.py` schema, `lights.js`, `where.js`, `plant.js`, `edit.js`, a batch for the light models, a new check |
 | 9. What is in each pot (agreed) | Amendments with their properties; recipes in parts; each pot's mix, layers and growing kind (soil, semi-hydro, water only); care that fits semi-hydro and water; watering intervals per recipe | 6 to 7 days | One minor (the January 1 release, or December if swapped with step 8) | Steps 2, 4 and 6; agreed November 10, building waits for Ethan's answers | new `mixes.py`, `mixes.js`, `care.py`, `repotting.py`, `facts.py`, `sitter.py`, `core.py` schema, `plant.js`, `edit.js`, a batch, a new check |
 | 10. Compare lights (agreed) | A table of every light, owned and considered, at a distance you pick: search, sort, filter; worked-out columns; candidates from a listing; try a candidate in a spot | 3 to 4 days | One minor (after step 9, the February 1 release) | Step 2; step 8 for the mount column | `lights.py`, `lights.js`, `css/lights.css`, `core.py` schema, a new check |
@@ -80,7 +80,7 @@ Ethan's PC should never be the first place a Dockerfile fails. Claude cannot bui
 
 **Touches.** `.github/workflows/images.yml` (new), `.github/workflows/checks.yml` (job names), `docker-compose.yml`, `tools/Update Plant Database.cmd`, `tools/update-plant-database.ps1`, `tools/make-release.py`, `README.md`.
 
-## Step 4: sites and units
+## Step 4: sites and units (done: 4a in 1.47.0, 4b in 1.48.0)
 
 Two releases: units first, because it is self-contained and useful on its own, then sites, which is the real change.
 
@@ -109,7 +109,7 @@ Ethan's sitters are outside his Tailnet, so the sheet needs one page reachable f
 
 Built as planned in 1.49.0, with two differences: the sitter's page is its own `share.html` (large print, its own text-size, dark and contrast buttons, no sign-in and no Display settings to sync) with the renderer shared through `static/sitter-sheet.js`, and the Funnel path is added with one more `tailscale funnel` command on the PC rather than a change in `tailscale/` (the PC's own Tailscale, not the container, publishes `/cal` and `/share`). The browser check is `sitlink` (`share` was already taken by the 1.37.0 shared-photos check).
 
-## Step 5: Identify in two modes, with a scoreboard
+## Step 5: Identify in two modes, with a scoreboard (done: 5a November 8, 5b in 1.51.0, 5c in 1.52.0, 5d in 1.51.1)
 
 "Ever improving" needs a number first. The picture checker has been changed several times (the prior over Ethan's own species, houseplant genera and Texas plants; the look-alike step; the confidence fit) without an accuracy figure before or after, because `dev/vision/prior_test.py` and `eval_photos.py` need the model and have not been run on Ethan's PC.
 
@@ -136,7 +136,7 @@ Built as planned in 1.49.0, with two differences: the sitter's page is its own `
 
 **Touches.** `vision/service.py`, `vision/requirements.txt`, a GBIF fetcher beside `fetch_usda()`, `library.py`, `fungi.py` (schema and fields), `core.py` (schema), `discover.js`, `plant.js`, `gallery.js` (Add several), the fungi pages in `discover.js`, `prefs.js`, `dev/vision/*`, `docker-compose.yml` (GPU profile), `dev/test/identify_check.py` and `mushrooms_check.py`, README, ARCHITECTURE.
 
-## Step 6: knowledge with provenance
+## Step 6: knowledge with provenance (done: 6a in 1.53.0, 6b in 1.54.0)
 
 A knowledge repository is only as good as its sources, and today most of the app's knowledge has one: Claude. Plant facts arrive in upgrade batches written from Ethan's photos and the care profiles in `dev/seed_src`, with sources listed in one text file. The `species_facts` table is a step in the right direction, but it stores each species as one blob with one origin, so a fact cannot be corrected on its own, and nobody but Claude can add one.
 
@@ -157,7 +157,7 @@ A knowledge repository is only as good as its sources, and today most of the app
 
 **Touches.** `core.py` (schema), `library.py`, `fungi.py`, `audit.py`, `review.js` or a new `facts.js`, `plant.js` (the card), `events.js`, `style.css` (viewer block for the propose buttons), `dev/seed_src/*.py`, the batch format note in `app/seed/batches`, `dev/test/library_check.py`, README, ARCHITECTURE.
 
-## Step 7: release rhythm
+## Step 7: release rhythm (tooling done in 1.55.0; the habit from December 1, 2026)
 
 Eight releases in three days suits one user who installs them himself. With people at other sites it means several people updating weekly, and a change list written for them. This step is a habit, and most of it starts after step 3.
 
@@ -168,6 +168,12 @@ Eight releases in three days suits one user who installs them himself. With peop
 - Backups before every update stay; a restore test once a quarter (the backups page has a restore) gets a reminder in the app.
 
 **Touches.** `tools/make-release.py`, the two updater scripts, `docker-compose.yml`, `CHANGELOG.md`, a small Today line through the registry from step 2, README.
+
+**Done in 1.55.0 (November 9, 2026).** The tooling for the habit:
+- A release is made by GitHub (`.github/workflows/release.yml`): when a push to main changes `VERSION` and no release `v<version>` exists yet, it waits for the Images workflow on the same push, runs `tools/make-release.py`, and publishes a GitHub Release with the release zip, every photo pack and the CHANGELOG entry as notes. Nothing is saved into the versions folder by hand any more.
+- The updater (`update-plant-database.ps1`) asks GitHub for the newest release first and downloads the release zip, and any photo pack it lacks, into `versions_plant-database` (`-NoDownload` to skip; `-Repo` for a fork). The rest is unchanged: backup, unzip, pull the images, restart.
+- `plantdb/releases.py` + `js/releases.js`: "What's new" on Today from the CHANGELOG (per-person "Got it"), "An update is ready" for the owner when GitHub has a newer release (checked twice a day; `PLANTDB_UPDATES=0` turns it off), "Test a restore" for the owner when no restore has been done for a quarter (a restore from Backups records `restore_tested_at`). `/api/whatsnew/all` is the whole CHANGELOG as a plain page.
+- The habit itself: from December 2026, one minor on the first of the month; patches only for breakage; pull requests merge when green and wait for the month's release.
 
 ## Step 8 (proposed November 9, agreed November 10, 2026): lights that fit the room
 
