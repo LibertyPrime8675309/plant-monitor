@@ -98,3 +98,15 @@ def test_the_watering_list_says_top_up_for_semi_hydro():
         assert soil['action'] == 'water'
         items = t.get('/api/mixes/care').get_json()['items']
         assert {x['kind'] for x in items} <= {'flush', 'rootcheck'}, 'top-ups are in the watering list, not twice'
+
+def test_a_new_plant_and_clearing_the_fields_need_no_answer():
+    with S.app.test_client() as t:
+        r = t.post('/api/plants', json={'fields': {'common_name': 'Unit fern', 'site': 'Outdoors'}}, headers=H)
+        assert r.status_code == 201, r.get_json()
+        code = r.get_json()['code']
+        assert t.get(f'/api/mixes/plant/{code}').get_json()['grow_kind'] == 'Soil mix', 'empty is a soil mix'
+        v = t.get(f'/api/plants/{code}').get_json()['version']
+        r = t.put(f'/api/plants/{code}', json={'base_version': v, 'fields': {'grow_kind': 'Semi-hydro'}}, headers=H)
+        assert r.status_code == 200 and t.get(f'/api/mixes/plant/{code}').get_json()['grow_kind'] == 'Semi-hydro'
+        r = t.put(f'/api/plants/{code}', json={'base_version': v + 1, 'fields': {'grow_kind': '', 'mix_wants': ''}}, headers=H)
+        assert r.status_code == 200, 'choosing "not set" again clears it'

@@ -1355,7 +1355,7 @@ Every grow light holds itself in the room in its own way: a bulb screws into a l
 
 ## What is in each pot (in the January 1 release, 1.57.0)
 
-**Care → Potting mixes** holds what goes into your pots.
+**Potting mixes** holds what goes into your pots. Open it from **Care → Pots and trays** (the line under the title), or from **Potting mixes** in any plant's What it is in. It has no link of its own in the top bar, so the Care row stays on one line.
 
 - **Recipes.** **New recipe** takes a name and its parts by volume, the way you scoop them: 3 parts orchid bark, 2 parts perlite, 1 part coir (halves are fine). Each part can have a grade (orchid bark small, medium or large). An additive such as slow-release fertilizer asks **How much** ("1 teaspoon a gallon") instead of parts. Each recipe shows the share of each part and an **estimate** of the whole mix: how much water it holds, how much air it lets in, and when it will want freshening (set by the part that breaks down first). It is an estimate because fine bits fill the gaps between coarse ones. Once three plants in a recipe have six or more waterings logged, the recipe says how many days they go between waterings.
 - **Amendments.** Grouped as parts of a mix, semi-hydro media and additives, each with its grades and how it behaves in words (holds water, lets in air, breaks down in, feeds the plant, pH, weight). The numbers behind the words are a rough guide for comparing them, not measurements: **Change** any that your pots disagree with, or **Add an amendment**.

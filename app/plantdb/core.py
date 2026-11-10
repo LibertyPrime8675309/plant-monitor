@@ -136,7 +136,7 @@ CREATE TABLE IF NOT EXISTS pot_mixes(
 CREATE INDEX IF NOT EXISTS pot_mixes_code ON pot_mixes(plant_code, mixed_on);
 '''
 ENUMS = {'grow_kind': GROW_KINDS, 'reservoir': RESERVOIRS, 'mix_wants': MIX_WANTS, 'winter_plan': WINTER_PLANS, 'site': SITES, 'health_rating': HEALTH, 'leaf_type': LEAF_TYPES, 'pot_size': POT_SIZES, 'fert_strength': FERT_STRENGTHS, 'pet_safety': PET_SAFETY}
-OPTIONAL_ENUMS = ('leaf_type', 'pot_size', 'fert_strength', 'pet_safety')        # may be left as "Not set"
+OPTIONAL_ENUMS = ('leaf_type', 'pot_size', 'fert_strength', 'pet_safety', 'grow_kind', 'reservoir', 'mix_wants')        # may be left as "Not set"
 FIELD_NAMES = [f[0] for f in FIELDS]
 FIELD_KIND = {f[0]: f[1] for f in FIELDS}
 FIELD_LABEL = {f[0]: f[2] for f in FIELDS}

@@ -33,7 +33,7 @@ async function viewMixes() {
   const can = canChange(), E = MXD.every;
   const byRole = r => MXD.amendments.filter(a => a.role === r);
   return { title: 'Potting mixes', html: html`<h1>Potting mixes</h1>
-    <p class="lede">What goes into your pots: recipes in parts by volume, the amendments they are made of, and how often semi-hydro and water-only plants are looked after. A plant's own page says what it is in now.</p>
+    <p class="lede">What goes into your pots: recipes in parts by volume, the amendments they are made of, and how often semi-hydro and water-only plants are looked after. A plant's own page says what it is in now; <a href="#/pots">Pots and trays</a> has the pots themselves.</p>
     <section class="blk" id="mx-recipes"><h2>Recipes (${MXD.recipes.length})</h2>
       ${can ? html`<p><button class="btn" type="button" data-act="mxrecipe">New recipe</button></p>` : ''}
       ${MXD.recipes.length ? html`<div class="mx-cards">${MXD.recipes.map(r => html`<article class="mx-card" data-id="${r.id}"><h3>${r.name}</h3>
@@ -134,7 +134,8 @@ function mxPlantHtml(S, p) {
     ${can ? html`<p class="row noprint"><button class="btn small" type="button" data-act="mxpot" data-code="${S.code}">What is it in now?</button>
       <button class="btn small ghost" type="button" data-act="mxpot" data-code="${S.code}" data-repot="1">Repotted: record the new mix</button>
       ${m && !m.recipe && m.parts.length ? html`<button class="btn small ghost" type="button" data-act="mxsaverecipe" data-code="${S.code}">Save as a recipe</button>` : ''}
-      <a class="btn small ghost" href="#/mixes">Potting mixes</a></p>` : ''}
+</p>` : ''}
+    <p class="noprint"><a href="#/mixes">Potting mixes</a>: recipes and amendments.</p>
     ${S.history.length ? html`<details><summary>Earlier (${S.history.length})</summary><ul>${S.history.map(h => html`<li>${dateF(h.mixed_on)}: ${h.recipe ? `${h.recipe}: ` : ''}${h.words || 'a layer only'}${h.top ? `; top layer ${mxLow(h.top.name)}` : ''}
       ${can ? html` <button class="btn ghost small" type="button" data-act="mxpotdel" data-id="${h.id}" data-code="${S.code}" aria-label="Remove the entry of ${dateF(h.mixed_on)}">Remove</button>` : ''}</li>`)}</ul></details>` : ''}
   </section>`;
@@ -170,8 +171,16 @@ async function mxPotDialog(code, repot) {
 addFeature({
   name: 'mixes',
   care: { topup: 'Topped up the reservoir', flush: 'Flushed', waterchange: 'Changed the water', rootcheck: 'Checked the roots' },
-  pages: { mixes: { view: viewMixes, nav: 'mixes', section: 'care', label: 'Potting mixes', href: '#/mixes', after: 'turning' } },
-  adds: {
+  // not a link of its own in the top bar: one more would wrap the Care row and stop Grow lights' title staying at the top.
+  // It belongs with Pots and trays (marked while it is open), which links to it, as does each plant's "What it is in".
+  pages: { mixes: { view: viewMixes, nav: 'pots' } },
+  adds: [{
+    id: 'mx-potslink',
+    match: parts => parts[0] === 'pots',
+    anchor: main => main.querySelector('h1 + p'), where: 'afterend',
+    load: async () => true,
+    html: () => html`<p class="mx-potslink" id="mx-potslink">What goes into the pots (recipes, amendments, and care for semi-hydro and water-only plants) is on <a href="#/mixes">Potting mixes</a>.</p>`,
+  }, {
     id: 'mx-plant', care: true,
     match: parts => parts[0] === 'plant' && parts[1] && parts[2] !== 'edit',
     anchor: main => { const b = main.querySelector('#care-plant'); return b && b.closest('section'); }, where: 'afterend',
@@ -182,7 +191,7 @@ addFeature({
       return { S, p: CUR.p };
     },
     html: ({ S, p }) => mxPlantHtml(S, p),
-  },
+  }],
   today: [{
     id: 'mx-hydro', order: 33,                                       // just after Water (30)
     load: async () => { const d = await api('GET', '/api/mixes/care'); return d.items.length ? d : null; },
