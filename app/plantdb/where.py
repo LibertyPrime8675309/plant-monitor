@@ -403,7 +403,7 @@ def light_fields(b, old=None):
     if 'model' in b: d['model'] = str(b.get('model') or '').strip()[:80]       # 1.13.1: the maker's model number
     if 'timer' in b: d['timer'] = str(b.get('timer') or '').strip()[:120]
     if 'dimming' in b: d['dimming'] = sorted({int(x) for x in re.findall(r'\d+', str(b.get('dimming') or '')) if 0 < int(x) <= 100}) or [100]
-    for k, n in (('brand', 60), ('url', 400), ('cri', 20)):          # 1.58.0 (PLAN.md step 10b): what a listing gives
+    for k, n in (('brand', 60), ('url', 400), ('cri', 20)):          # 1.56.0 (PLAN.md step 10b): what a listing gives
         if k in b:
             v = str(b.get(k) or '').strip()[:n]
             if k == 'url' and v and not re.match(r'^https?://', v): abort(400, 'The link must start with http:// or https://')
@@ -438,7 +438,7 @@ def light_add():
     """A light you have: {name, count, watts, points, kind, timer, dimming, fixture, notes}"""
     c = db()
     b = request.get_json(silent=True) or {}
-    status = str(b.get('status') or 'owned')                   # 1.58.0 (PLAN.md step 10b): a light you are considering has none yet
+    status = str(b.get('status') or 'owned')                   # 1.56.0 (PLAN.md step 10b): a light you are considering has none yet
     if status not in ('owned', 'considering'): abort(400, 'A new light is one you have or one you are considering')
     if status == 'considering': b = {**b, 'count': 0}
     name, count, fixture, notes, d = light_fields(b)

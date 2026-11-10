@@ -45,7 +45,7 @@ FACT_FIELDS = [
     ('light_summary', 'text', 'Light', 'Light'), ('light_hours', 'text', 'Hours of light', 'Light'), ('light_notes', 'long', 'Light notes', 'Light'),
     ('par_low', 'int', 'Light, low (PAR)', 'Light'), ('par_high', 'int', 'Light, high (PAR)', 'Light'), ('dli_low', 'num', 'Daily light, low (DLI)', 'Light'), ('dli_high', 'num', 'Daily light, high (DLI)', 'Light'),
     ('water_notes', 'long', 'Watering', 'Water'), ('soil_moisture_low', 'int', 'Soil moisture, low (%)', 'Water'), ('soil_moisture_high', 'int', 'Soil moisture, high (%)', 'Water'),
-    ('soil_medium', 'long', 'Soil or potting mix', 'Soil'), ('mix_wants', 'enum', 'Mix it wants', 'Soil'),     # 1.57.0 (PLAN.md step 9) ('soil_ph_low', 'num', 'Soil pH, low', 'Soil'), ('soil_ph_high', 'num', 'Soil pH, high', 'Soil'),
+    ('soil_medium', 'long', 'Soil or potting mix', 'Soil'), ('mix_wants', 'enum', 'Mix it wants', 'Soil'),     # 1.56.0 (PLAN.md step 9) ('soil_ph_low', 'num', 'Soil pH, low', 'Soil'), ('soil_ph_high', 'num', 'Soil pH, high', 'Soil'),
     ('soil_temp_low', 'int', 'Soil temperature, low (°F)', 'Soil'), ('soil_temp_high', 'int', 'Soil temperature, high (°F)', 'Soil'),
     ('fertilizer', 'text', 'Fertilizer', 'Feeding'), ('nutrients', 'long', 'Nutrients', 'Feeding'), ('npk_ratio', 'text', 'N-P-K ratio', 'Feeding'), ('fert_strength', 'enum', 'Fertilizer strength', 'Feeding'),
     ('fert_from_month', 'int', 'Feeding from (month)', 'Feeding'), ('fert_to_month', 'int', 'Feeding until (month)', 'Feeding'),

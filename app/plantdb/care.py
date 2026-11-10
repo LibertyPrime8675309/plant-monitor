@@ -53,7 +53,7 @@ def water_report(c, codes=None):
     for code, kind, d in c.execute("SELECT plant_code, CASE WHEN kind IN ('prep_soak','prep_repot') THEN 'water' ELSE kind END AS k, MAX(done_on) "
                                    "FROM care_log WHERE kind IN ('water','check','prep_soak','prep_repot','topup','flush','waterchange') GROUP BY plant_code, k"):     # a soak or a repot waters the plant
         last.setdefault(code, {})[kind] = d
-    hydro = hydro_every(c)                     # 1.57.0 (PLAN.md step 9): semi-hydro plants are topped up, water-only plants get fresh water
+    hydro = hydro_every(c)                     # 1.56.0 (PLAN.md step 9): semi-hydro plants are topped up, water-only plants get fresh water
     out = []
     for r in plants:
         gk = grow_kind(r)

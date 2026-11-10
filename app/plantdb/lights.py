@@ -129,7 +129,7 @@ def light_dict(r, used=0):
             'room_light': 'room light' in (d.get('kind') or '').lower(),
             'photo': d.get('photo'), 'chart': d.get('chart'), 'updated_by': r['updated_by'] or r['created_by'], 'updated_at': r['updated_at'] or r['created_at'],
             'mount': d.get('mount'), 'mount_words': mount_words(d.get('mount')),      # 1.56.0 (PLAN.md step 8a): how it holds
-            'status': r['status'] if 'status' in r.keys() else 'owned'}               # 1.58.0 (PLAN.md step 10b)
+            'status': r['status'] if 'status' in r.keys() else 'owned'}               # 1.56.0 (PLAN.md step 10b)
 
 def light_reach(d, pts):
     """1.41.0: what one of this light can give, within the distances its maker (or Claude) measured: the most light (its
@@ -318,11 +318,14 @@ def lights_state(c):
     # 1.41.0: a plant that does not fit its spot is pointed at one of your other spots that would suit it
     for sp in out_spots:
         for p in sp['plants']: p['better'] = better_spot(out_spots, p, sp['id'])
-    lights_out = [light_dict(L, used.get(L['id'], 0)) for L in lights if L['status'] == 'owned' or used.get(L['id'])]   # 1.58.0: others are on Compare lights
+    lights_out = [light_dict(L, used.get(L['id'], 0)) for L in lights if L['status'] == 'owned' or used.get(L['id'])]   # 1.56.0: others are on Compare lights
     for Ld in lights_out:      # how many of the plants that need a light this one could serve, at some setting within its range
         rg = Ld['reach']
         Ld['suits'] = sum(1 for x in cands if x['need'] and rg and x['need']['lo'] <= rg['dli_any'][1] and x['need']['hi'] >= rg['dli_any'][0]) if rg else 0
-    places = [p | {'spots': [s['id'] for s in out_spots if s['place_id'] == p['id']], 'photo': pphoto.get(p['id']), 'words': place_words(c, p['id'])} for p in light_places(c)]
+    def lv(pid):                                          # 1.56.0: how many levels, and each lower level's clear height, for the spot dialog
+        sp, room = place_rows(c, pid); sh = {**(sheet_of(room) if room is not None else {}), **(sheet_of(sp) if sp is not None else {})}
+        return {'levels': sh.get('levels'), 'gaps_in': sh.get('gaps_in') or ([sh['gap_in']] * (sh['levels'] - 1) if sh.get('gap_in') and sh.get('levels') else [])}
+    places = [p | {'spots': [s['id'] for s in out_spots if s['place_id'] == p['id']], 'photo': pphoto.get(p['id']), 'words': place_words(c, p['id']), **lv(p['id'])} for p in light_places(c)]
     return {'lights': lights_out, 'spots': out_spots, 'plan': plan, 'unplaced': unplaced, 'places': places,
             'candidates': cands, 'assigned': {code: sid for sid, codes in assign.items() for code in codes}, 'outdoor_dli': outdoor,
             'verdicts': LIGHT_VERDICT, 'mount_kinds': MOUNT_KINDS, 'points': POINTS, 'holders': {k: v[0] for k, v in HOLDERS.items()}}
@@ -435,7 +438,7 @@ def spot_fields(b, partial=False):
     try: place = int(place) if place not in (None, '', 'null') else None
     except (TypeError, ValueError): abort(400, 'Choose a room or shelf from the list')
     level = str(b.get('level') or '')
-    if level not in ('', 'top', 'lower'): abort(400, 'Choose the top level or a lower one')
+    if level not in ('', 'top', 'lower') and not re.fullmatch(r'L([1-9]|1[0-9])', level): abort(400, 'Choose which level: the top, or a level counted from the bottom')
     holder = str(b.get('holder') or '')
     if holder not in ('',) + tuple(HOLDERS): abort(400, 'Choose what the bulb screws into: a clamp lamp, a lamp with a base, or a socket on a cord')
     return {'name': name, 'units': units, 'distance_in': dist, 'hours': hours, 'dim_pct': dim, 'notes': str(b.get('notes', '')).strip()[:300], 'place_id': place,

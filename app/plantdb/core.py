@@ -111,11 +111,11 @@ FIELDS = [
     ('propagation', 'list', 'Propagation'), ('sources', 'list', 'Sources'),
     ('pet_safety', 'enum', 'Safety for pets'),                                                          # 1.17.0, for the pets filter
     ('height_in', 'num', 'Height now, with its pot (in)'),                                              # 1.56.0 (PLAN.md step 8c): for fitting it under a shelf or a light
-    ('grow_kind', 'enum', 'How it grows'),                                                               # 1.57.0 (PLAN.md step 9): soil mix, semi-hydro or water only
-    ('reservoir', 'enum', 'What holds its water'),                                                       # 1.57.0: drains freely, a tray, a catch pot, or the pot itself
-    ('mix_wants', 'enum', 'Mix it wants'),                                                               # 1.57.0: fast-draining, balanced or moisture-holding (also a species fact)
+    ('grow_kind', 'enum', 'How it grows'),                                                               # 1.56.0 (PLAN.md step 9): soil mix, semi-hydro or water only
+    ('reservoir', 'enum', 'What holds its water'),                                                       # 1.56.0: drains freely, a tray, a catch pot, or the pot itself
+    ('mix_wants', 'enum', 'Mix it wants'),                                                               # 1.56.0: fast-draining, balanced or moisture-holding (also a species fact)
 ]
-GROW_KINDS = ['Soil mix', 'Semi-hydro', 'Water only']                       # 1.57.0 (PLAN.md step 9); empty means a soil mix
+GROW_KINDS = ['Soil mix', 'Semi-hydro', 'Water only']                       # 1.56.0 (PLAN.md step 9); empty means a soil mix
 RESERVOIRS = ['Drains freely', 'A tray under it', 'A catch pot', 'The pot itself (no holes)']
 MIX_WANTS = ['Fast-draining', 'Balanced', 'Moisture-holding']
 MIXES_SCHEMA = '''
@@ -311,8 +311,8 @@ def init_db():
     c.executescript(PUSH_SCHEMA)                  # 1.33.0: devices that get notifications
     c.executescript(SITTER_SCHEMA)                # 1.49.0: plant-sitter sheets shared by link, and the sitter's ticks
     c.executescript(KNOWLEDGE_SCHEMA)             # 1.53.0 (PLAN.md step 6a): one row per species fact, with its source (the facts table)
-    c.executescript(MIXES_SCHEMA)                 # 1.57.0 (PLAN.md step 9): amendments, recipes, what is in each pot (mixes.py)
-    if 'status' not in {r[1] for r in c.execute('PRAGMA table_info(lights)')}:     # 1.58.0 (PLAN.md step 10b): owned, considering, no longer used
+    c.executescript(MIXES_SCHEMA)                 # 1.56.0 (PLAN.md step 9): amendments, recipes, what is in each pot (mixes.py)
+    if 'status' not in {r[1] for r in c.execute('PRAGMA table_info(lights)')}:     # 1.56.0 (PLAN.md step 10b): owned, considering, no longer used
         c.execute("ALTER TABLE lights ADD COLUMN status TEXT NOT NULL DEFAULT 'owned'")
     wl = {r[1] for r in c.execute('PRAGMA table_info(wishlist)')}
     for col, typ in (('max_price', 'REAL'), ('alert_stock', 'INTEGER NOT NULL DEFAULT 0'), ('search_words', "TEXT NOT NULL DEFAULT ''")):
@@ -543,12 +543,12 @@ def apply_batches(c):
                 if done:
                     c.execute('UPDATE shops SET ' + ', '.join(f'{k}=?' for k in done) + ' WHERE key=?', (*done.values(), r['key']))
                     audit_only(c, 'setting', 'shops', None, ', '.join(done), who, f'Store details added ({label}): {r["name"]}')
-            for a in b.get('amendments_add', []):              # 1.57.0 (PLAN.md step 9a): added once by key; Ethan's own changes stay
+            for a in b.get('amendments_add', []):              # 1.56.0 (PLAN.md step 9a): added once by key; Ethan's own changes stay
                 if c.execute('SELECT 1 FROM amendments WHERE key=? OR lower(name)=lower(?)', (a['key'], a['name'])).fetchone(): continue
                 c.execute('INSERT INTO amendments(key,name,role,grades,holds_water,airy,lasts_months,feeds,ph,weight,source,notes,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
                           (a['key'], a['name'], a.get('role', 'part'), json.dumps(a.get('grades') or []), a.get('holds_water'), a.get('airy'), a.get('lasts_months'),
                            a.get('feeds'), a.get('ph'), a.get('weight'), a.get('source', ''), a.get('notes', ''), who, ts))
-            for m in b.get('pot_mixes_add', []):               # 1.57.0 (9c): what a pot is in, only where nothing is recorded yet
+            for m in b.get('pot_mixes_add', []):               # 1.56.0 (9c): what a pot is in, only where nothing is recorded yet
                 r = c.execute('SELECT * FROM plants WHERE code=?', (m['code'],)).fetchone()
                 if not r:
                     audit_only(c, 'note', None, None, None, who, 'Batch %s could not find %s for its potting mix, so it was skipped' % (label, m['code'])); continue
@@ -569,6 +569,24 @@ def apply_batches(c):
                 if not row or (row['sheet'] or '') not in ('', '{}'): continue
                 c.execute(f"UPDATE {'spots' if ps.get('name') else 'areas'} SET sheet=? WHERE id=?", (json.dumps(ps['sheet']), row['id']))
                 audit_only(c, 'where', 'place_sheet', None, ps['room'] + (', ' + ps['name'] if ps.get('name') else ''), who, f"Measurements added ({label}): {ps['room']}{', ' + ps['name'] if ps.get('name') else ''}")
+            for ps in b.get('place_sheets_update', []):        # 1.56.0: measurements field by field, each only if it still holds the old value
+                q = "SELECT s.* FROM spots s JOIN areas a ON a.id=s.area_id WHERE a.side=? AND a.home_id IS NULL" + (' AND a.name=?' if ps.get('room') else '')
+                names = {n.lower() for n in [ps.get('name') or ''] + ps.get('aka', []) if n}
+                rows = [r for r in c.execute(q, (ps.get('side', 'in'),) + ((ps['room'],) if ps.get('room') else ())).fetchall()
+                        if r['name'].strip().lower() in names or (ps.get('contains') and ps['contains'].lower() in r['name'].lower())]
+                if len(rows) != 1: continue                     # not there, or more than one could be meant: leave it to Ethan
+                row = rows[0]
+                try: d = json.loads(row['sheet'] or '{}') or {}
+                except ValueError: d = {}
+                done = []
+                for f, (old, new) in ps['set'].items():
+                    if json.dumps(d.get(f)) != json.dumps(old): continue
+                    if new is None: d.pop(f, None)
+                    else: d[f] = new
+                    done.append(f)
+                if done:
+                    c.execute('UPDATE spots SET sheet=? WHERE id=?', (json.dumps(d), row['id']))
+                    audit_only(c, 'where', 'place_sheet', None, row['name'], who, f"Measurements added ({label}): {row['name']}")
             for u in b.get('lights_update', []):                # guarded, like plant updates: only if the light still holds the old value
                 L = c.execute('SELECT * FROM lights WHERE lkey=?', (u['key'],)).fetchone()
                 if not L: continue

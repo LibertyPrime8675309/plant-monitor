@@ -1,4 +1,4 @@
-"""What is in each pot (PLAN.md step 9, 1.57.0).
+"""What is in each pot (PLAN.md step 9, 1.56.0).
 
 A plant's care sheet says what mix its species wants, and the care log says when it was repotted; until now nothing said what
 went into the pot, or how the pot grows. Ethan has pots in soil mixes, pots in clay pebbles or perlite (semi-hydro) and, later,

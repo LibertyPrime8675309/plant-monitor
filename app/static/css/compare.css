@@ -1,4 +1,4 @@
-/* Compare lights (js/compare.js, plantdb/compare.py): PLAN.md step 10, 1.58.0. One file per feature (1.46.0). */
+/* Compare lights (js/compare.js, plantdb/compare.py): PLAN.md step 10, 1.56.0. One file per feature (1.46.0). */
 .cmp-controls{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.2rem 1rem;margin:.4rem 0}
 .cmp-controls .f{flex:0 1 12rem;min-width:0;margin-bottom:.5rem}
 .cmp-controls .f select,.cmp-controls .f input{max-width:100%}

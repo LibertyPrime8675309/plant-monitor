@@ -1,4 +1,4 @@
-"""Compare lights (PLAN.md step 10, 1.58.0).
+"""Compare lights (PLAN.md step 10, 1.56.0).
 
 Ethan is buying more grow lights (November 10, 2026) and wants the ones he has and the ones he is considering side by side, in a
 table he can search, sort and filter. Every light model already holds its maker's PPFD chart (lights.data['ppfd']), but makers

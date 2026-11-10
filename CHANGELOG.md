@@ -1,15 +1,20 @@
 # Changelog
 
-## 1.58.0 (coming February 1, 2027)
-Step 10 of the plan: compare lights.
-- **Compare lights** (from Care → Grow lights, or Search): all your grow lights and the ones you are considering in one table, worked out at one distance you choose (6, 12, 18 or 24 in) and hours a day you choose, because makers measure at different distances. Light (PAR), area lit, daily light, light per watt, price per light, colour, CRI, red and blue, which way it points, brightness steps, timer, socket, how it holds, size and price. Where a maker's figures do not reach, it says "Beyond its chart" rather than guessing.
-- **Where the numbers come from** for each light: the maker's figures, Claude's estimate, or doubtful (the 4-head gooseneck and the 30 W bulb, whose listings contradict themselves).
-- Search, sort by any column (the headings are buttons), filters shown as buttons you press to remove, a **Columns** choice that follows you, and **Pick** two to four lights to see them side by side. On a phone or with large text, each light is a card.
-- **Add a light you are considering** from a listing, with its price and the date. **Try it in a spot** shows what each plant there would get from it against what it gets now, and whether it fits. **Bought it** moves it to Your lights without typing anything again. **No longer used** takes a light off Grow lights and keeps it on Compare lights.
-- Potting mixes (1.57.0) is now found by Search as well.
+## 1.56.0 (2026-11-10)
+Three new parts, released early (they were planned for December, January and February) so you can use them while bringing plants inside for the winter.
 
-## 1.57.0 (coming January 1, 2027)
-Step 9 of the plan: what is in each pot.
+**Lights that fit the room** (step 8 of the plan):
+- **How it holds.** Each light says how it holds (screws into a socket, stands on the floor, stands on a shelf, clamps to an edge, screws under a shelf), which way it points, and its sizes. Yours came filled in from their listings; change it with **How it holds** on the light's card.
+- **Measurements and photos** for each room and shelf under Rooms and shelves: levels, the height between them, width, depth, what is above, free room beside it, an edge to clamp to, an outlet. Fill in what you know. The side table came filled in.
+- **A plant's height**, with its pot, on its page and in the Health walk-through ("Taller than last time?").
+- **Fits, Does not fit or Not checked yet** at the top of each light spot, with a sentence for each reason: nothing above the side table for a strip, the T8 too long for the tall brown shelf, a plant too tall for its level, plants shaded by a sideways light, the tripod not pointing straight down. The same check runs as you set up a spot.
+- **A setup card** for each spot, to print or keep on the phone, and **Set up and checked**, which takes itself off when the spot changes. Today lists the spots still to check.
+- Photos of the shelves show on the plant-sitter sheet, so a sitter knows where to look.
+- **Each level of a shelf can have its own height**: the tall brown shelf's levels are 23, 13 and 27 in from the bottom, and a light spot says which level it is on ("Level 2 from the bottom, 13 in clear"), so the fit check uses the right one.
+- **Measurements and photos** for every spot on Rooms and spots, outside ones too.
+- Your measurements are in: the tall brown shelf, short brown shelf, tall black shelf, hutch and side table (and the pallet shelf, where it is already a spot of its own).
+
+**What is in each pot** (step 9):
 - **Potting mixes** (Care → Pots and trays → Potting mixes, or from any plant's page): your **recipes**, in parts by volume the way you scoop them ("3 orchid bark, 2 perlite, 1 coir"), each with the share of each part and an estimate of the whole mix: how much water it holds, how much air it lets in, and when it will want freshening. Once three plants in a recipe have six or more waterings logged, it also says how many days they go between waterings.
 - **Amendments**: the eight you listed and fifteen more (sphagnum, peat, bagged potting mix, lava rock, calcined clay, grit, zeolite, rice hulls, tree fern, cork, compost, pon, and the additives slow-release fertilizer, dolomite lime and mycorrhizae), each with its grades and how it behaves in words. Change any that your pots disagree with, or add your own.
 - **What it is in**, a new section on each plant's page: how it grows (soil mix, semi-hydro or water only), what holds its water (it drains, a tray, a catch pot, or the pot itself), the mix its species wants, and what is in the pot now, with a top or bottom layer. **What is it in now?** records it for a plant not repotted lately; **Repotted: record the new mix** also logs Repotted; **Save as a recipe** turns a pot's mix into a recipe.
@@ -17,14 +22,12 @@ Step 9 of the plan: what is in each pot.
 - **Care that fits.** Semi-hydro pots are **topped up** and **flushed**, and water-only plants get **fresh water** and a **root check**, each with its own button and reminder (weekly; the root check monthly; change these at the bottom of Potting mixes). Today's Water list, the plant's watering button, the plant-sitter sheet and the morning notification say "Top up" or "Change the water" for them instead of "Water". Today lists the pots due a flush.
 - A warning on a plant's page when its soil mix does not suit what its species wants, and the repotting plan brings a pot forward when its mix is due for freshening.
 
-## 1.56.0 (coming December 1, 2026)
-Step 8 of the plan: lights that fit the room. The Grow lights page now checks that a light can be put where the plants are before it counts the light.
-- **How it holds.** Each light says how it holds (screws into a socket, stands on the floor, stands on a shelf, clamps to an edge, screws under a shelf), which way it points, and its sizes. Yours came filled in from their listings; change it with **How it holds** on the light's card.
-- **Measurements and photos** for each room and shelf under Rooms and shelves: levels, the height between them, width, depth, what is above, free room beside it, an edge to clamp to, an outlet. Fill in what you know. The side table came filled in.
-- **A plant's height**, with its pot, on its page and in the Health walk-through ("Taller than last time?").
-- **Fits, Does not fit or Not checked yet** at the top of each light spot, with a sentence for each reason: nothing above the side table for a strip, the T8 too long for the tall brown shelf, a plant too tall for its level, plants shaded by a sideways light, the tripod not pointing straight down. The same check runs as you set up a spot.
-- **A setup card** for each spot, to print or keep on the phone, and **Set up and checked**, which takes itself off when the spot changes. Today lists the spots still to check.
-- Photos of the shelves show on the plant-sitter sheet, so a sitter knows where to look.
+**Compare lights** (step 10):
+- **Compare lights** (from Care → Grow lights, or Search): all your grow lights and the ones you are considering in one table, worked out at one distance you choose (6, 12, 18 or 24 in) and hours a day you choose, because makers measure at different distances. Light (PAR), area lit, daily light, light per watt, price per light, colour, CRI, red and blue, which way it points, brightness steps, timer, socket, how it holds, size and price. Where a maker's figures do not reach, it says "Beyond its chart" rather than guessing.
+- **Where the numbers come from** for each light: the maker's figures, Claude's estimate, or doubtful (the 4-head gooseneck and the 30 W bulb, whose listings contradict themselves).
+- Search, sort by any column (the headings are buttons), filters shown as buttons you press to remove, a **Columns** choice that follows you, and **Pick** two to four lights to see them side by side. On a phone or with large text, each light is a card.
+- **Add a light you are considering** from a listing, with its price and the date. **Try it in a spot** shows what each plant there would get from it against what it gets now, and whether it fits. **Bought it** moves it to Your lights without typing anything again. **No longer used** takes a light off Grow lights and keeps it on Compare lights.
+- Potting mixes is found by Search too.
 
 ## 1.55.0 (2026-11-09)
 Step 7 of the plan: releases on a rhythm, made by GitHub and fetched by the updater, with What's new on Today.

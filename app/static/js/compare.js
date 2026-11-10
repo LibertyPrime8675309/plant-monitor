@@ -1,4 +1,4 @@
-/* Plant record front end: compare lights (1.58.0, PLAN.md step 10; plantdb/compare.py). One of the files loaded in order by
+/* Plant record front end: compare lights (1.56.0, PLAN.md step 10; plantdb/compare.py). One of the files loaded in order by
    index.html (js/manifest.json); they share one scope. Plain JavaScript, no inline handlers (the server's content policy forbids them).
 
    - The Compare lights page (#/compare, linked from Grow lights and found by Search): every light, owned and considered, worked
