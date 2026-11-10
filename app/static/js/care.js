@@ -13,7 +13,7 @@ function relDay(d) {
   if (n < -1 && n > -7) return name + ' (' + md + ')';
   return md;
 }
-const HYDRO_DO = { topup: ['Top up the reservoir', 'Last topped up', 'Topped up'], waterchange: ['Change the water', 'Water last changed', 'Changed the water'] };   // 1.57.0 (PLAN.md step 9)
+const HYDRO_DO = { topup: ['Top up the reservoir', 'Last topped up', 'Topped up'], waterchange: ['Change the water', 'Water last changed', 'Changed the water'] };   // 1.56.0 (PLAN.md step 9)
 function waterWords(w) {
   if (!w) return '';
   if (w.action && w.action !== 'water') {                                       // a semi-hydro or water-only plant: no "dry out" here
@@ -52,7 +52,7 @@ async function loadCarePlant() {
   // 1.21.0: once watered today, "Watered today" is switched off until tomorrow (Undo or Remove in the care log switch it back on)
   const wb = document.querySelector('.quick-btns [data-quickwater]'), wn = document.getElementById('water-done-note');
   const done = !!(w && w.last_water === W.today);
-  const hy = w && w.action && w.action !== 'water' ? HYDRO_DO[w.action] : null;        // 1.57.0: "Topped up today" or "Changed the water today" instead
+  const hy = w && w.action && w.action !== 'water' ? HYDRO_DO[w.action] : null;        // 1.56.0: "Topped up today" or "Changed the water today" instead
   const ck = document.querySelector('.quick-btns [data-act=care][data-kind=check]'); if (ck) ck.hidden = !!hy;
   if (wb) { if (hy) wb.dataset.kind = w.action; wb.disabled = done; wb.classList.toggle('done-today', done); wb.textContent = (done ? '✓ ' : '') + (hy ? hy[2] : 'Watered') + ' today'; }
   if (wn) wn.hidden = !done;
@@ -312,7 +312,7 @@ async function viewToday() {
   const here = FERT.plants.filter(atPlace);                                      // 1.48.0: Today is about the home you are looking at
   const feed = here.map(p => ({ p, st: fertState(p, entriesFor(p.code), t, fertCtx()) })).filter(r => r.st.state === 'due');
   const needs = here.filter(needsYou), reqs = reqsAll.filter(q => !q.plant_code || !by[q.plant_code] || atPlace(by[q.plant_code]));
-  const wbtn = w => w.action && w.action !== 'water'                            // 1.57.0: a semi-hydro pot is topped up, a water-only plant gets fresh water
+  const wbtn = w => w.action && w.action !== 'water'                            // 1.56.0: a semi-hydro pot is topped up, a water-only plant gets fresh water
     ? html`<button class="btn small" type="button" data-act="care" data-kind="${w.action}" data-code="${w.code}" data-name="${by[w.code].common_name}">${HYDRO_DO[w.action][2]}</button>`
     : html`<button class="btn small" type="button" data-act="care" data-kind="water" data-code="${w.code}" data-name="${by[w.code].common_name}">Watered</button>
     <button class="btn small ghost" type="button" data-act="care" data-kind="check" data-code="${w.code}" data-name="${by[w.code].common_name}">Still moist</button>`;

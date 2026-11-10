@@ -1,4 +1,4 @@
-/* Plant record front end: what is in each pot (1.57.0, PLAN.md step 9; plantdb/mixes.py). One of the files loaded in order by
+/* Plant record front end: what is in each pot (1.56.0, PLAN.md step 9; plantdb/mixes.py). One of the files loaded in order by
    index.html (js/manifest.json); they share one scope. Plain JavaScript, no inline handlers (the server's content policy forbids them).
 
    - The Potting mixes page (#/mixes): recipes in parts by volume with an estimated summary and, once there are enough waterings,

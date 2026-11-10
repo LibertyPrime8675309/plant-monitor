@@ -44,7 +44,9 @@ place = {p['label'].split(', ')[-1]: p['id'] for p in LT['places']}
 side, tall = place['Side Table'], place['Tall Brown Shelf']
 P = call('GET', f'/api/rooms/{side}')
 check(P['sheet'].get('levels') == 1 and P['sheet'].get('top') == 'nothing' and 'nothing above the top' in P['words'], 'batch C4 says the side table is one level with nothing above it')
-check('Measurements to come' in call('GET', f'/api/rooms/{tall}')['sheet'].get('notes', ''), 'and notes for the brown shelves, whose measurements are still to come')
+TB = call('GET', f'/api/rooms/{tall}')
+check(TB['sheet'].get('gaps_in') == [23, 13, 27] and TB['sheet'].get('width_in') == 22 and 'Measurements to come' not in TB['sheet'].get('notes', ''),
+      'batch C7: the tall brown shelf has its measurements, a height for each level (23, 13, 27 in from the bottom)')
 call('PUT', f'/api/rooms/{tall}', {'sheet': {'levels': 4, 'gap_in': 13, 'width_in': 16, 'depth_in': 11, 'top': 'nothing', 'edge': 'yes', 'edge_in': 0.75, 'socket': 'yes'}})
 check('4 levels, 13 in between them' in call('GET', f'/api/rooms/{tall}')['words'], 'the tall brown shelf takes its measurements: 4 levels, 13 in apart, 16 in wide')
 check(status('PUT', f'/api/rooms/{tall}', {'sheet': {'levels': 0}}) == 400 and status('PUT', f'/api/rooms/{tall}', {'sheet': {'edge': 'maybe'}}) == 400, 'measurements out of range are refused')

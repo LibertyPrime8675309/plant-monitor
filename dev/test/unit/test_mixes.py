@@ -1,4 +1,4 @@
-"""PLAN.md step 9 (1.57.0): what is in each pot. mix_summary() and mix_warning() are pure: parts by volume in, an estimate and a
+"""PLAN.md step 9 (1.56.0): what is in each pot. mix_summary() and mix_warning() are pure: parts by volume in, an estimate and a
 plain sentence out. The routes record a recipe and a pot, and the watering list, the sitter sheet and the repot plan use them.
 Ethan's answers of November 10, 2026: semi-hydro pots are topped up and flushed about weekly; water-only plants get fresh water
 weekly; his pots (P-032, P-092, P-094 to P-098) are recorded by batch C5."""

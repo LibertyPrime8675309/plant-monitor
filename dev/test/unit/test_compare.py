@@ -1,4 +1,4 @@
-"""PLAN.md step 10 (1.58.0): compare lights. compare_row() works each light out at one distance and never stretches a chart past
+"""PLAN.md step 10 (1.56.0): compare lights. compare_row() works each light out at one distance and never stretches a chart past
 its ends; the routes add a light being considered, buy it, retire it, and try it in a spot."""
 import json
 import server as S

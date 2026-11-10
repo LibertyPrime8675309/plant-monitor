@@ -1,4 +1,4 @@
-"""Checks Compare lights (PLAN.md step 10, 1.58.0; plantdb/compare.py, js/compare.js): reached from Grow lights; every light at one
+"""Checks Compare lights (PLAN.md step 10, 1.56.0; plantdb/compare.py, js/compare.js): reached from Grow lights; every light at one
 distance, with "beyond the maker's chart" instead of a stretched figure; sorting by a header button from the keyboard (aria-sort
 and the sentence above the table follow); a filter, its chip, and removing it with Enter; search; Columns; two to four lights
 picked side by side; adding a light being considered from a listing; trying it in a spot; Bought it, which puts it on Grow lights;

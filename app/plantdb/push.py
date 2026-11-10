@@ -104,7 +104,7 @@ def push_due(c):
         water = [p for p in W['plants'] if p['state'] == 'due']
         if not water and not feed: continue
         parts = []
-        if water:                                          # 1.57.0: semi-hydro pots are topped up, water-only plants get fresh water
+        if water:                                          # 1.56.0: semi-hydro pots are topped up, water-only plants get fresh water
             n = {a: sum(1 for p in water if p.get('action', 'water') == a) for a in ('water', 'topup', 'waterchange')}
             parts += [f'{n[a]} {w}' for a, w in (('water', 'to water'), ('topup', 'to top up'), ('waterchange', 'to give fresh water')) if n[a]]
         if feed: parts.append(f'{len(feed)} to feed')

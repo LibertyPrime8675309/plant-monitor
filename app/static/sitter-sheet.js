@@ -45,7 +45,7 @@ function sheet(D, OPT, X) {
   const span = D.start === D.end ? dayName(D.start) : `${dayName(D.start)} to ${dayName(D.end)}`;
   const jobs = D.days.reduce((n, d) => n + d.plants.length, 0);
   // one entry per plant per day: its photo (so the sitter knows which pot), where it is, and how to tell if it needs water
-  const item = (code, extra, day, kind) => { const p = by[code], how = p.action_words || (p.water_notes ? short(p.water_notes) : '');      // 1.57.0: semi-hydro and water-only pots say what to do
+  const item = (code, extra, day, kind) => { const p = by[code], how = p.action_words || (p.water_notes ? short(p.water_notes) : '');      // 1.56.0: semi-hydro and water-only pots say what to do
     return `<li${ticks.has(`${day || ''}|${code}|${kind || 'water'}`) ? ' class="ps-done"' : ''}>${tick(day || '', code, kind || 'water')}${OPT.photos && p.photo ? `<img class="ps-pic" src="${thumb(p.photo)}" alt="" loading="lazy">` : OPT.photos ? '<span class="ps-pic ps-nopic" aria-hidden="true"></span>' : ''}<span class="ps-what"><strong>${esc(p.name)}</strong> <span class="ps-code">${esc(p.code)}</span><span class="ps-where">${esc(where(p))}${extra ? '. ' + esc(extra) : ''}</span>${how && !extra ? `<span class="ps-how1">${esc(how)}</span>` : ''}</span></li>`; };
   const intro = `<ul class="ps-how">
       <li>On each day below, check the plants listed. Each line says where the plant is and how to tell if it needs water${OPT.photos ? ', with its photo' : ''}.</li>

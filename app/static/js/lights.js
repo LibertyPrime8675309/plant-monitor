@@ -206,6 +206,13 @@ function spotRow(c, x, others, inSpot) {
       <a href="#/plant/${enc(c.code)}" target="_blank" rel="noopener" aria-label="Open ${c.name}, ${c.code}, in a new tab">Open ${c.code}</a></span>
     <span class="sp-fit"></span></li>`;
 }
+// 1.56.0: the levels of the chosen shelf, counted from the bottom, each with its clear height when it is known
+function spotLevels(pid, cur) {
+  const pl = (LT && LT.places || []).find(p => String(p.id) === String(pid)), n = pl && pl.levels, o = (v, w) => html`<option value="${v}" ${v === (cur || '') ? raw('selected') : ''}>${w}</option>`;
+  if (!n || n < 2) return html`${o('', n === 1 ? 'Its one level' : 'One level, or not known')}${o('top', 'The top level')}${o('lower', 'A lower level (a shelf above it)')}`;
+  const lower = [...Array(n - 1).keys()].map(i => o('L' + (i + 1), `Level ${i + 1} from the bottom${pl.gaps_in[i] ? `, ${lenF(pl.gaps_in[i])} clear` : ''}`)).reverse();
+  return html`${o('', 'Not chosen yet')}${o('top', `The top level (level ${n})`)}${lower}${cur === 'lower' ? o('lower', 'A lower level (which one not said)') : ''}`;
+}
 async function spotDialog(x, opt) {
   if (!(await needName())) return;
   if (!LT) LT = await api('GET', '/api/lights');
@@ -219,7 +226,7 @@ async function spotDialog(x, opt) {
       <label class="f">Where<select name="place"><option value="">Not chosen yet</option>${ltRooms().map(([room, ps]) => html`<optgroup label="${room}">${ps.map(pl => html`<option value="${pl.id}" ${pl.id === x.place_id ? raw('selected') : ''}>${pl.label}</option>`)}</optgroup>`)}</select>
         <small>Add rooms and shelves under "Rooms and shelves" on this page.</small></label>
       <div class="field-grid">
-        <label class="f">Level<select name="level"><option value="">One level, or not known</option><option value="top" ${x.level === 'top' ? raw('selected') : ''}>The top level</option><option value="lower" ${x.level === 'lower' ? raw('selected') : ''}>A lower level (a shelf above it)</option></select>
+        <label class="f">Level<select name="level">${spotLevels(x.place_id, x.level)}</select>
           <small>On a shelf with several levels: which one these plants are on.</small></label>
         <label class="f" id="sp-holder-f" ${L && L.mount && L.mount.kind === 'socket' ? '' : raw('hidden')}>What the bulb screws into<select name="holder"><option value="">Not chosen yet</option>${Object.entries((LT && LT.holders) || {}).map(([k, l]) => html`<option value="${k}" ${x.holder === k ? raw('selected') : ''}>${l[0].toUpperCase() + l.slice(1)}</option>`)}</select></label></div>
       <label class="f">Light<select name="light">${ltOptions(x, L && L.id)}</select><small>A to Z. Each says its type, power, its most light (PAR) and how many are free.</small></label>
@@ -287,6 +294,9 @@ function spotPreview(now) {
   clearTimeout(SP && SP.t);
   const go = async () => {
     const f = dlg.querySelector('form[data-spot]'), out = document.getElementById('sp-prev'); if (!f || !out) return;
+    if (f.elements.place.value !== (SP.place ?? String(SP.x.place_id ?? ''))) {   // 1.56.0: a different shelf: its own levels
+      SP.place = f.elements.place.value; f.elements.level.innerHTML = rend(spotLevels(SP.place, f.elements.level.value));
+    }
     if (f.elements.light.value !== SP.light) {           // a different light: its own brightness steps and its card
       SP.light = f.elements.light.value; const L = ltLight(SP.light);
       f.elements.dim.innerHTML = rend(html`${spotDims(L, 100)}`);

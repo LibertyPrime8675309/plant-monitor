@@ -142,3 +142,35 @@ def test_routes_tick_and_untick_and_photos():
         ph = r.get_json()['photos'][0]['id']
         assert c.delete(f'/api/rooms/photos/{ph}', headers=H).get_json()['photos'] == []
         c.delete(f'/api/lights/spots/{sid}', headers=H)
+
+# 1.56.0: a shelf whose levels differ (Ethan's tall brown shelf, November 10: 23, 13 and 27 in from the bottom, open on top)
+BROWN = {'levels': 4, 'gaps_in': [23, 13, 27], 'width_in': 22, 'depth_in': 11, 'top': 'nothing'}
+
+def test_each_level_has_its_own_height():
+    tall = [P('P-1', 16, 'Tall one')]
+    r = fc(T5, BROWN, tall, level='L2', dist=None, place='Living Room, Tall Brown Shelf')
+    assert r['status'] == 'nofit' and r['clear_in'] == 13 and any('13 in clear' in x['text'] for x in r['lines']), 'level 2 has 13 in'
+    r = fc(T5, BROWN, tall, level='L1', dist=None, place='Living Room, Tall Brown Shelf')
+    assert r['status'] == 'fits' and r['clear_in'] == 23, 'level 1 has 23 in: room for it and a strip'
+    r = fc(T5, BROWN, tall, level='L4', dist=None, place='Living Room, Tall Brown Shelf')
+    assert r['status'] == 'nofit' and 'nothing above its top level' in r['lines'][0]['text'], 'level 4 of 4 is the top: open air'
+    r = fc(T5, BROWN, tall, level='lower', dist=None, place='Living Room, Tall Brown Shelf')
+    assert r['status'] == 'unchecked' and 'not all the same height' in r['lines'][0]['text'], '"a lower level" is not enough when they differ'
+    assert F.level_word('L3') == 'level 3 from the bottom' and F.level_gap({'gap_in': 11}, 'L2') == 11
+
+def test_heights_for_each_level_in_the_measurements():
+    assert F.sheet_clean({'levels': 4, 'gaps_in': '23, 13, 27'})['gaps_in'] == [23, 13, 27]
+    import pytest, werkzeug
+    with pytest.raises(werkzeug.exceptions.BadRequest): F.sheet_clean({'levels': 4, 'gaps_in': '23, 13'})
+    assert F.sheet_words(BROWN, U).startswith('4 levels, 23 in, 13 in and 27 in clear from the bottom up')
+
+def test_batch_c7_measured_the_shelves():
+    with S.app.test_client() as t:
+        sheets = {sp['name']: sp['sheet'] for h in t.get('/api/where').get_json()['homes'] for a in h['areas'] for sp in a['spots']}
+        # (the Tall Brown Shelf's are changed by an earlier test here; its batch values are checked in the batch file)
+        import json, os
+        b = json.load(open(os.path.join(os.path.dirname(S.__file__), 'seed', 'batches', 'batchC7.json')))
+        assert next(u for u in b['place_sheets_update'] if u.get('name') == 'Tall Brown Shelf')['set']['gaps_in'] == [None, [23, 13, 27]]
+        assert '44 in by 13 in' in sheets['Large Brown Hutch'] and '5 levels, 11 in between them' in sheets['Tall Black Shelf']
+        assert sheets['Side Table'].startswith('one level; 26 in by 9 in')
+        assert t.post('/api/lights/spots', json={'name': 'Bad level', 'light': 1, 'distance': 12, 'hours': 12, 'level': 'L99'}, headers={'X-Editor': 'Unit'}).status_code == 400

@@ -61,7 +61,7 @@ def sitter_sheet(c, from_s, to_s, group_s, started=False):
                        'every': w['every'], 'why': w['why'], 'state': w['state'], 'next': w['next'], 'visits': visits,
                        'water_notes': r['water_notes'] or '', 'damage_below': r['temp_damage_below'], 'damage_above': r['temp_damage_above'],
                        'winter_plan': r['winter_plan'] or '', 'open_sky': w['site'] == 'Outdoors' and w.get('action', 'water') == 'water',
-                       'action': w.get('action', 'water'),            # 1.57.0: a semi-hydro pot is topped up, a water-only one gets fresh water
+                       'action': w.get('action', 'water'),            # 1.56.0: a semi-hydro pot is topped up, a water-only one gets fresh water
                        'action_words': {'topup': 'Semi-hydro: top up the water to the line (it does not dry out between)', 'waterchange': 'In water only: pour out the old water and fill with fresh'}.get(w.get('action'), '')})
     order = {s: i for i, s in enumerate(SITES)}
     walk = {p['code']: (order.get(p['site'], 9), p['spot'].lower(), p['code']) for p in plants}     # one walk round: place, then spot

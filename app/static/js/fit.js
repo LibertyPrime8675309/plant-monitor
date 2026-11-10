@@ -86,6 +86,8 @@ async function roomSheetDialog(pid) {
     <h3>Measurements</h3><p class="hint">In ${lenU() === 'cm' ? 'centimetres' : 'inches'}. Fill in what you know; leave the rest empty. They let a light spot here say whether a light fits.</p>
     ${P.is_room ? html`<div class="field-grid three">${SHEET_ROOM.map(fld)}</div>${pick('socket', 'An outlet within reach', [['yes', 'Yes'], ['no', 'No']])}`
       : html`<div class="field-grid three">${SHEET_SHELF.map(fld)}</div>
+      <label class="f">Clear height of each level, from the bottom (${lenU()})<input type="text" inputmode="decimal" name="gaps_in" maxlength="80" value="${(s.gaps_in || []).map(x => lenF(x, false)).join(', ')}" ${ro}>
+        <small>When the levels differ: one height for each level that has another above it, bottom first, for example "23, 13, 27". Leave it empty when they are all the same.</small></label>
       <div class="field-grid three">${pick('top', 'Above the top level', [['nothing', 'Nothing: open space'], ['ceiling', 'The ceiling'], ['other', 'Something else (a cabinet, another shelf)']])}
         ${fld(['top_in', 'Clear height above the top level', 'len', 'To the ceiling or whatever is above it.'])}</div>
       <div class="field-grid three">${pick('edge', 'An edge to clamp to', [['yes', 'Yes'], ['no', 'No']])}${fld(['edge_in', 'How thick the edge is', 'len', ''])}
@@ -97,6 +99,7 @@ async function roomSheetDialog(pid) {
   [...f.elements].forEach(el => {
     if (!el.name || el.value === '') return;
     const lenField = /_in$/.test(el.name);
+    if (el.name === 'gaps_in') { sheet.gaps_in = (el.value.match(/\d+(?:\.\d+)?/g) || []).map(x => lenIn(x)); return; }
     sheet[el.name] = lenField ? lenIn(el.value) : el.value;
   });
   await guard(async () => { await api('PUT', '/api/rooms/' + pid, { sheet }); toast('Measurements saved'); LT = null; route(); });
@@ -125,7 +128,7 @@ async function viewLightCard(parts) {
   return { title: 'Setup card: ' + s.name, html: html`<p class="crumb noprint"><a href="#/lights">Grow lights</a></p>
     <article class="fit-card"><h1>Setup card: ${s.name}</h1>
       <div class="fit-card-top">${s.place_photo ? html`<img class="fit-card-photo" src="${thumbUrl(s.place_photo)}" alt="${s.place || ''}">` : ''}
-        <dl class="dl"><dt>Where</dt><dd>${s.place || 'Not chosen yet'}${s.level ? (s.level === 'top' ? ', top level' : ', a lower level') : ''}</dd>
+        <dl class="dl"><dt>Where</dt><dd>${s.place || 'Not chosen yet'}${s.level ? (s.level === 'top' ? ', top level' : s.level === 'lower' ? ', a lower level' : `, level ${s.level.slice(1)} from the bottom`) : ''}</dd>
           ${pl && pl.words ? html`<dt>Its measurements</dt><dd>${pl.words}</dd>` : ''}
           <dt>Light</dt><dd>${s.units > 1 ? `${s.units} × ` : ''}${s.light}</dd>
           ${L && L.mount_words ? html`<dt>How it holds</dt><dd>${L.mount_words}${holder ? ` Here it screws into ${holder}.` : ''}</dd>` : ''}

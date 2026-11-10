@@ -71,7 +71,7 @@ def repot_plan(today, rows, last, choice):
             p.update(why='Switched off by hand' if ch == 'off' else why, months=None)
             left_out.append(p); continue
         if ch is not None: p['why'] = f'Every {months} months, chosen by hand'
-        elif r.get('mix_months') and r['mix_months'] < months:      # 1.57.0 (PLAN.md step 9e): a mix that breaks down sooner brings it forward
+        elif r.get('mix_months') and r['mix_months'] < months:      # 1.56.0 (PLAN.md step 9e): a mix that breaks down sooner brings it forward
             months = r['mix_months']; p['why'] = f'Its mix wants freshening in about {months} months (the {(r.get("mix_by") or "mix").lower()} breaks down)'
         p['months'] = months
         if not p['last']:
@@ -87,7 +87,7 @@ def repot_plan(today, rows, last, choice):
             'counts': {'due': n('due'), 'never': n('never'), 'later': n('later'), 'left_out': len(left_out)}}
 
 def repot_mix(c, code):
-    """1.57.0: how long the plant's current mix lasts, for the plan: {mix_months, mix_by} (empty when not known)."""
+    """1.56.0: how long the plant's current mix lasts, for the plan: {mix_months, mix_by} (empty when not known)."""
     m = current_mix(c, code)
     if not m: return {}
     s = pot_dict(c, m)['summary']

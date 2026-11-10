@@ -1,4 +1,4 @@
-"""Checks what is in each pot (PLAN.md step 9, 1.57.0; plantdb/mixes.py, js/mixes.js): the Potting mixes page with the
+"""Checks what is in each pot (PLAN.md step 9, 1.56.0; plantdb/mixes.py, js/mixes.js): the Potting mixes page with the
 amendments from batch C5 in three groups and their properties in words; a new recipe in parts by volume through its dialog
 (an additive asks "How much" instead of parts) and its estimate; a plant's "What it is in" section (P-032 semi-hydro in LECA,
 P-094 with a sphagnum top layer); recording a repot from a recipe with a top layer, which logs Repotted; "How it grows"

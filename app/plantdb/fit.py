@@ -98,9 +98,33 @@ def sheet_clean(b):
         if v in (None, ''): continue
         if v not in opts: abort(400, f'Choose one of: {", ".join(opts)}')
         out[k] = v
+    g = b.get('gaps_in')                      # 1.56.0: a clear height for each lower level, from the bottom ("23, 13, 27")
+    if g not in (None, '', []):
+        nums = g if isinstance(g, list) else re.findall(r'\d+(?:\.\d+)?', str(g))
+        try: gs = [round(float(x), 1) for x in nums]
+        except (TypeError, ValueError): abort(400, 'The height of each level must be numbers')
+        if any(not 1 <= x <= 240 for x in gs): abort(400, 'The height of each level must be between 1 and 240')
+        lv = out.get('levels')
+        if lv and len(gs) != lv - 1: abort(400, f'A shelf with {lv} levels has {lv - 1} under another level: give {lv - 1} heights, from the bottom (the top level has open space or the "Above the top level" choice)')
+        if gs: out['gaps_in'] = gs
     n = str(b.get('notes') or '').strip()[:400]
     if n: out['notes'] = n
     return out
+
+def level_word(lvl):
+    """'top' / 'lower' / 'L2' -> 'the top level' / 'a lower level' / 'level 2 from the bottom'."""
+    if lvl == 'top': return 'the top level'
+    if lvl == 'lower': return 'a lower level'
+    if re.fullmatch(r'L\d{1,2}', lvl or ''): return f'level {lvl[1:]} from the bottom'
+    return ''
+
+def level_gap(s, lvl):
+    """Clear height over a lower level: its own (gaps_in, from the bottom) when known, else the shelf's one gap_in."""
+    gs = s.get('gaps_in') or []
+    if re.fullmatch(r'L\d{1,2}', lvl or ''):
+        i = int(lvl[1:]) - 1
+        if i < len(gs): return gs[i]
+    return s.get('gap_in')
 
 def sheet_of(row):
     try: d = json.loads(row['sheet'] or '{}') if row is not None and 'sheet' in row.keys() else {}
@@ -118,7 +142,10 @@ def sheet_words(s, u=None):
     """The measurements in one line, for a card."""
     if not s: return ''
     L = lambda x: len_text(x, u); bits = []
-    if s.get('levels'): bits.append('one level' if s['levels'] == 1 else f"{s['levels']} levels" + (f", {L(s['gap_in'])} between them" if s.get('gap_in') else ''))
+    if s.get('levels'):
+        gs = s.get('gaps_in') or []
+        each = (', ' + ', '.join(L(x) for x in gs[:-1]) + ' and ' + L(gs[-1]) if len(gs) > 1 else ', ' + L(gs[0])) + ' clear from the bottom up' if gs else ''
+        bits.append('one level' if s['levels'] == 1 else f"{s['levels']} levels" + (each or (f", {L(s['gap_in'])} between them" if s.get('gap_in') else '')))
     if s.get('width_in') or s.get('depth_in'): bits.append(' by '.join(L(x) for x in (s.get('width_in'), s.get('depth_in')) if x) + (' (width by depth)' if s.get('width_in') and s.get('depth_in') else ''))
     if s.get('top') == 'nothing': bits.append('nothing above the top')
     elif s.get('top') == 'ceiling': bits.append('the ceiling above the top' + (f", {L(s['top_in'])} clear" if s.get('top_in') else ''))
@@ -155,12 +182,15 @@ def fit_check(mount, light_name, place, spot_sheet, room_sheet, level, holder, d
     s = dict(room_sheet or {}); s.update({k: v for k, v in (spot_sheet or {}).items()})       # the shelf's own values first
     stack = (s.get('levels') or 1) > 1
     lvl = level if stack else 'top'
+    if re.fullmatch(r'L\d{1,2}', lvl or '') and int(lvl[1:]) >= (s.get('levels') or 1): lvl = 'top'     # its highest level is the top
+    uneven = len(set(s.get('gaps_in') or [])) > 1
+    named = lvl in ('top', 'lower') or bool(re.fullmatch(r'L\d{1,2}', lvl or ''))
     there = ('the ' + place.split(', ', 1)[1]) if place and ', ' in place else (place or 'this spot')     # "the Side Table", or a room's own name
     There = there[:1].upper() + there[1:]
 
     def above():
         """('shelf' | 'ceiling' | None, clear inches or None, known): what is over the plants at this level."""
-        if lvl == 'lower': return 'shelf', s.get('gap_in'), True
+        if lvl == 'lower' or lvl.startswith('L'): return 'shelf', level_gap(s, lvl) or (min(s['gaps_in']) if s.get('gaps_in') else None), True
         if lvl == 'top':
             if s.get('top') == 'nothing': return None, None, True
             if s.get('top') == 'ceiling': return 'ceiling', s.get('top_in') or (room_sheet or {}).get('ceiling_in'), True
@@ -171,7 +201,8 @@ def fit_check(mount, light_name, place, spot_sheet, room_sheet, level, holder, d
     if not mount: add('unchecked', f'Say how the {light_name} holds (on its card under Your lights, "How it holds").')
     elif not place: add('unchecked', 'Choose where this spot is, a room or a shelf, so the app can see whether the light fits there.')
     elif not any(k != 'notes' for k in s): add('unchecked', f'Add the measurements of {there} (Rooms and shelves on this page, "Measurements and photos").')
-    elif stack and lvl not in ('top', 'lower'): add('unchecked', f'{There} has {s["levels"]} levels. Say which one this spot is on, the top or a lower one.')
+    elif stack and not named: add('unchecked', f'{There} has {s["levels"]} levels. Say which one this spot is on.')
+    elif lvl == 'lower' and uneven: add('unchecked', f'The levels of {there} are not all the same height. Say which level this spot is on, counting from the bottom.')
     else:
         m = dict(mount); kind = m['kind']; how = ''
         if kind == 'socket':
@@ -247,7 +278,7 @@ def fit_check(mount, light_name, place, spot_sheet, room_sheet, level, holder, d
     kinds = {x['kind'] for x in lines}
     status = 'nofit' if kinds & {'nofit', 'tall'} else 'unchecked' if 'unchecked' in kinds else 'fits'
     clear_in = None
-    if mount and place and s and not (stack and lvl not in ('top', 'lower')):
+    if mount and place and s and not (stack and not named):
         wa, cl, _ = above(); clear_in = cl if wa else None
     return {'status': status, 'word': FIT_STATUS[status], 'lines': lines, 'clear_in': clear_in}
 

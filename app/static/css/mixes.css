@@ -1,4 +1,4 @@
-/* What is in each pot (js/mixes.js, plantdb/mixes.py): PLAN.md step 9, 1.57.0. One file per feature (1.46.0). */
+/* What is in each pot (js/mixes.js, plantdb/mixes.py): PLAN.md step 9, 1.56.0. One file per feature (1.46.0). */
 .mx-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(24rem,100%),1fr));gap:1rem;margin:.6rem 0}
 .mx-card{border:2px solid var(--line);border-radius:8px;padding:.6rem .9rem;background:var(--sheet);min-width:0}
 .mx-card h3{margin:.1rem 0 .4rem}
