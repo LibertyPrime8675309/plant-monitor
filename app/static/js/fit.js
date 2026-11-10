@@ -145,7 +145,7 @@ addFeature({
   name: 'fit',
   pages: { lightcard: { view: viewLightCard, nav: 'lights' } },
   today: [{
-    id: 'fit-unchecked', order: 67,
+    id: 'fit-unchecked', order: 74,
     load: async () => { const d = await api('GET', '/api/lights/unchecked'); return d.spots.length ? d : null; },
     jump: d => `Light spots (${d.spots.length})`,
     html: d => html`<section class="blk" id="fit-unchecked"><h2>Light spots to set up and check (${d.spots.length})</h2>
