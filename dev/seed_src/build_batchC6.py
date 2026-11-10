@@ -1,4 +1,4 @@
-"""Batch C6 (PLAN.md step 10, 1.58.0): what the Compare lights table needs that the light records did not say plainly.
+"""Batch C6 (PLAN.md step 10, 1.56.0): what the Compare lights table needs that the light records did not say plainly.
 
 - Doubtful figures (a listing that contradicts itself), so the table never ranks them first without saying so: the 4-head
   gooseneck's figures are with all four heads aimed at one spot and look generous next to SANSI's own 10 W bulb figures; the
