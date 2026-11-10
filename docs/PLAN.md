@@ -247,6 +247,18 @@ Today, the sitter sheet (and its link) and notifications use the right words ("T
 3. For water only: how often do you change the water now?
 4. Is it all right for Claude to fill each of your species' "mix it wants" from its care sheet, for you to correct?
 
+**Ethan's answers (November 10, 2026).**
+- No plant is water only yet. For water-only plants he empties the old water and adds new once a week, or sooner when the water looks off: so **Changed the water** defaults to weekly, with "the water looks off" as a reason to log it early.
+- He has no way to measure ppm, EC or pH yet (open to suggestions): so nutrient strength is recorded in words ("quarter strength") and ppm/EC/pH stay optional fields that appear only once a reading is entered. He is not feeding the plants at present, and flushes the semi-hydro pots about once a week: so **Flushed** defaults to weekly for semi-hydro, a top-up defaults to plain water, and the strength is asked only when he says he fed. Feeding stays with the app's existing feeding reminders, which treat a semi-hydro pot like any other plant.
+- Yes, Claude fills each species' "mix it wants" from its care sheet.
+- Pots, for the step 9 batch (growing kind, medium, layers; codes 092 to 098 are his own records, so the batch sets only the new step 9 fields and guards on their defaults):
+  - P-032 (moth orchid): now in a glass jar with LECA (was water): **semi-hydro**, medium clay pebbles, no drainage (the jar is the reservoir). Its `container` and `soil_medium` texts still say water; the batch updates them, guarded on the old text.
+  - P-094 and P-095: pot with drainage holes on a terracotta tray; medium clay pebbles with a sphagnum moss top layer: **semi-hydro** (the tray is the reservoir).
+  - P-092: pot with drainage holes in a catch pot; clay pebbles with a sphagnum moss top layer: **semi-hydro**.
+  - P-096: chunky mix, mostly orchid bark, in a plastic drainage pot inside a catch pot: **soil mix** (parts to be confirmed: "mostly orchid bark").
+  - P-097 and P-098: glass container with perlite: **semi-hydro**, medium perlite (perlite semi-hydro: no drainage, a reservoir at the bottom).
+- So the medium list needs perlite as a semi-hydro medium as well as a part, and a pot needs to say whether it drains (holes) and what holds its reservoir (the pot itself, a tray, a catch pot): 9c gains those two small fields.
+
 ## Step 10 (agreed November 10, 2026): compare lights
 
 **Why.** Ethan is buying more grow lights and wants to compare the ones in the database, and the ones he is considering, in a table he can search, sort and filter. Each light model already holds watts, lumens, colour temperature, CRI, the spectrum split, the maker's PPFD chart at several distances with the area lit, beam, which way it points, dimming steps, timer and size (`lights.data`, from batch A3 and later); `ppfd_at()` already interpolates a chart (log-log) and `/api/lights/preview` already works out the light at the leaves for a spot being set up.
