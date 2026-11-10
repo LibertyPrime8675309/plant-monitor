@@ -111,8 +111,31 @@ FIELDS = [
     ('propagation', 'list', 'Propagation'), ('sources', 'list', 'Sources'),
     ('pet_safety', 'enum', 'Safety for pets'),                                                          # 1.17.0, for the pets filter
     ('height_in', 'num', 'Height now, with its pot (in)'),                                              # 1.56.0 (PLAN.md step 8c): for fitting it under a shelf or a light
+    ('grow_kind', 'enum', 'How it grows'),                                                               # 1.57.0 (PLAN.md step 9): soil mix, semi-hydro or water only
+    ('reservoir', 'enum', 'What holds its water'),                                                       # 1.57.0: drains freely, a tray, a catch pot, or the pot itself
+    ('mix_wants', 'enum', 'Mix it wants'),                                                               # 1.57.0: fast-draining, balanced or moisture-holding (also a species fact)
 ]
-ENUMS = {'winter_plan': WINTER_PLANS, 'site': SITES, 'health_rating': HEALTH, 'leaf_type': LEAF_TYPES, 'pot_size': POT_SIZES, 'fert_strength': FERT_STRENGTHS, 'pet_safety': PET_SAFETY}
+GROW_KINDS = ['Soil mix', 'Semi-hydro', 'Water only']                       # 1.57.0 (PLAN.md step 9); empty means a soil mix
+RESERVOIRS = ['Drains freely', 'A tray under it', 'A catch pot', 'The pot itself (no holes)']
+MIX_WANTS = ['Fast-draining', 'Balanced', 'Moisture-holding']
+MIXES_SCHEMA = '''
+CREATE TABLE IF NOT EXISTS amendments(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT UNIQUE, name TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'part',
+  grades TEXT NOT NULL DEFAULT '[]', holds_water INTEGER, airy INTEGER, lasts_months INTEGER, feeds INTEGER, ph INTEGER, weight INTEGER,
+  source TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '', created_by TEXT, created_at TEXT, updated_by TEXT, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS mix_recipes(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, notes TEXT NOT NULL DEFAULT '',
+  created_by TEXT, created_at TEXT, updated_by TEXT, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS mix_parts(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, recipe_id INTEGER NOT NULL, amendment_id INTEGER NOT NULL, grade TEXT NOT NULL DEFAULT '',
+  parts REAL, amount TEXT NOT NULL DEFAULT '', sort INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS pot_mixes(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, plant_code TEXT NOT NULL, care_id INTEGER, mixed_on TEXT NOT NULL, recipe_id INTEGER,
+  parts TEXT NOT NULL DEFAULT '[]', top TEXT NOT NULL DEFAULT '', bottom TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '',
+  created_by TEXT, created_at TEXT);
+CREATE INDEX IF NOT EXISTS pot_mixes_code ON pot_mixes(plant_code, mixed_on);
+'''
+ENUMS = {'grow_kind': GROW_KINDS, 'reservoir': RESERVOIRS, 'mix_wants': MIX_WANTS, 'winter_plan': WINTER_PLANS, 'site': SITES, 'health_rating': HEALTH, 'leaf_type': LEAF_TYPES, 'pot_size': POT_SIZES, 'fert_strength': FERT_STRENGTHS, 'pet_safety': PET_SAFETY}
 OPTIONAL_ENUMS = ('leaf_type', 'pot_size', 'fert_strength', 'pet_safety')        # may be left as "Not set"
 FIELD_NAMES = [f[0] for f in FIELDS]
 FIELD_KIND = {f[0]: f[1] for f in FIELDS}
@@ -288,6 +311,7 @@ def init_db():
     c.executescript(PUSH_SCHEMA)                  # 1.33.0: devices that get notifications
     c.executescript(SITTER_SCHEMA)                # 1.49.0: plant-sitter sheets shared by link, and the sitter's ticks
     c.executescript(KNOWLEDGE_SCHEMA)             # 1.53.0 (PLAN.md step 6a): one row per species fact, with its source (the facts table)
+    c.executescript(MIXES_SCHEMA)                 # 1.57.0 (PLAN.md step 9): amendments, recipes, what is in each pot (mixes.py)
     wl = {r[1] for r in c.execute('PRAGMA table_info(wishlist)')}
     for col, typ in (('max_price', 'REAL'), ('alert_stock', 'INTEGER NOT NULL DEFAULT 0'), ('search_words', "TEXT NOT NULL DEFAULT ''")):
         if col not in wl: c.execute(f'ALTER TABLE wishlist ADD COLUMN {col} {typ}')
@@ -517,6 +541,24 @@ def apply_batches(c):
                 if done:
                     c.execute('UPDATE shops SET ' + ', '.join(f'{k}=?' for k in done) + ' WHERE key=?', (*done.values(), r['key']))
                     audit_only(c, 'setting', 'shops', None, ', '.join(done), who, f'Store details added ({label}): {r["name"]}')
+            for a in b.get('amendments_add', []):              # 1.57.0 (PLAN.md step 9a): added once by key; Ethan's own changes stay
+                if c.execute('SELECT 1 FROM amendments WHERE key=? OR lower(name)=lower(?)', (a['key'], a['name'])).fetchone(): continue
+                c.execute('INSERT INTO amendments(key,name,role,grades,holds_water,airy,lasts_months,feeds,ph,weight,source,notes,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                          (a['key'], a['name'], a.get('role', 'part'), json.dumps(a.get('grades') or []), a.get('holds_water'), a.get('airy'), a.get('lasts_months'),
+                           a.get('feeds'), a.get('ph'), a.get('weight'), a.get('source', ''), a.get('notes', ''), who, ts))
+            for m in b.get('pot_mixes_add', []):               # 1.57.0 (9c): what a pot is in, only where nothing is recorded yet
+                r = c.execute('SELECT * FROM plants WHERE code=?', (m['code'],)).fetchone()
+                if not r:
+                    audit_only(c, 'note', None, None, None, who, 'Batch %s could not find %s for its potting mix, so it was skipped' % (label, m['code'])); continue
+                if c.execute('SELECT 1 FROM pot_mixes WHERE plant_code=?', (m['code'],)).fetchone(): continue
+                am = {k: (i, n, ro) for i, k, n, ro in c.execute('SELECT id, key, name, role FROM amendments')}
+                parts = [{'amendment_id': am[x['key']][0], 'name': am[x['key']][1], 'role': am[x['key']][2], 'grade': x.get('grade', ''), 'parts': x.get('parts'), 'amount': x.get('amount', '')}
+                         for x in m.get('parts', []) if x['key'] in am]
+                lay = lambda L: json.dumps({'amendment_id': am[L['key']][0], 'name': am[L['key']][1], 'grade': L.get('grade', ''), 'depth_in': L.get('depth_in')}) if L and L.get('key') in am else ''
+                c.execute('INSERT INTO pot_mixes(plant_code,mixed_on,parts,top,bottom,notes,created_by,created_at) VALUES(?,?,?,?,?,?,?,?)',
+                          (m['code'], m.get('mixed_on') or ts[:10], json.dumps(parts), lay(m.get('top')), lay(m.get('bottom')), m.get('notes', ''), who, ts))
+                audit_only(c, 'mixes', 'pot_mix', None, ', '.join(f"{x['parts']:g} {x['name'].lower()}" for x in parts if x.get('parts')), who,
+                           'What it is in (batch %s)' % label, r['id'], r['code'])
             if b.get('place_sheets'): where_seed(c)              # 1.56.0 (PLAN.md step 8b): rooms and shelves are areas and spots by now
             for ps in b.get('place_sheets', []):               # a room's or shelf's measurements, only where none are set (Ethan's own stay)
                 a = c.execute("SELECT * FROM areas WHERE side='in' AND home_id IS NULL AND name=?", (ps['room'],)).fetchone()

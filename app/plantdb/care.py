@@ -51,10 +51,24 @@ def water_report(c, codes=None):
     plants = c.execute(q, at_args + list(codes or [])).fetchall()
     last = {}
     for code, kind, d in c.execute("SELECT plant_code, CASE WHEN kind IN ('prep_soak','prep_repot') THEN 'water' ELSE kind END AS k, MAX(done_on) "
-                                   "FROM care_log WHERE kind IN ('water','check','prep_soak','prep_repot') GROUP BY plant_code, k"):     # a soak or a repot waters the plant
+                                   "FROM care_log WHERE kind IN ('water','check','prep_soak','prep_repot','topup','flush','waterchange') GROUP BY plant_code, k"):     # a soak or a repot waters the plant
         last.setdefault(code, {})[kind] = d
+    hydro = hydro_every(c)                     # 1.57.0 (PLAN.md step 9): semi-hydro plants are topped up, water-only plants get fresh water
     out = []
     for r in plants:
+        gk = grow_kind(r)
+        if gk != 'Soil mix':
+            action = 'topup' if gk == 'Semi-hydro' else 'waterchange'
+            lw = max((d for k, d in last.get(r['code'], {}).items() if k in (('topup', 'flush', 'water') if action == 'topup' else ('waterchange', 'water'))), default=None)
+            every = int(r['water_every_days']) if r['water_every_days'] else hydro[action]
+            st = {'code': r['code'], 'every': every, 'base': every, 'why': 'set on this page' if r['water_every_days'] else ('a semi-hydro pot: top up the reservoir' if action == 'topup' else 'grows in water: pour out the old and add fresh'),
+                  'weather': '', 'site': r['site'] or 'Outdoors', 'last_water': lw, 'last_rain': None, 'rain_in': None, 'last_check': None,
+                  'action': action, 'action_word': CARE_KINDS[action], 'grow_kind': gk}
+            if not lw: st.update(state='unknown', next=None, overdue=None)
+            else:
+                nxt = date.fromisoformat(lw) + timedelta(days=every); od = (today - nxt).days
+                st.update(next=nxt.isoformat(), overdue=od, state='due' if od >= 0 else 'soon' if od == -1 else 'ok')
+            out.append(st); continue
         site = r['site'] or 'Outdoors'
         inside, open_sky = site in INSIDE_SITES, site == 'Outdoors'
         base, base_why = water_base_days(r)
@@ -64,7 +78,7 @@ def water_report(c, codes=None):
         lr = max((d for d in rain if open_sky and (not lw or d > lw)), default=None)
         start = max(x for x in (lw, lr) if x) if (lw or lr) else None
         st = {'code': r['code'], 'every': every, 'base': base, 'why': base_why, 'weather': f_why, 'site': site,
-              'last_water': lw, 'last_rain': lr, 'rain_in': rain.get(lr) if lr else None, 'last_check': lc}
+              'last_water': lw, 'last_rain': lr, 'rain_in': rain.get(lr) if lr else None, 'last_check': lc, 'action': 'water', 'action_word': 'Watered', 'grow_kind': 'Soil mix'}
         if not start:
             st.update(state='unknown', next=None, overdue=None)
         else:

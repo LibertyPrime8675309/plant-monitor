@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.57.0 (coming January 1, 2027)
+Step 9 of the plan: what is in each pot.
+- **Potting mixes** (Care → Potting mixes): your **recipes**, in parts by volume the way you scoop them ("3 orchid bark, 2 perlite, 1 coir"), each with the share of each part and an estimate of the whole mix: how much water it holds, how much air it lets in, and when it will want freshening. Once three plants in a recipe have six or more waterings logged, it also says how many days they go between waterings.
+- **Amendments**: the eight you listed and fifteen more (sphagnum, peat, bagged potting mix, lava rock, calcined clay, grit, zeolite, rice hulls, tree fern, cork, compost, pon, and the additives slow-release fertilizer, dolomite lime and mycorrhizae), each with its grades and how it behaves in words. Change any that your pots disagree with, or add your own.
+- **What it is in**, a new section on each plant's page: how it grows (soil mix, semi-hydro or water only), what holds its water (it drains, a tray, a catch pot, or the pot itself), the mix its species wants, and what is in the pot now, with a top or bottom layer. **What is it in now?** records it for a plant not repotted lately; **Repotted: record the new mix** also logs Repotted; **Save as a recipe** turns a pot's mix into a recipe.
+- **Your semi-hydro pots are recorded**: P-032 in clay pebbles in its glass jar, P-092, P-094 and P-095 in clay pebbles with a sphagnum top layer, P-097 and P-098 in perlite, and P-096 in mostly orchid bark (tell me the rest of that mix when you can).
+- **Care that fits.** Semi-hydro pots are **topped up** and **flushed**, and water-only plants get **fresh water** and a **root check**, each with its own button and reminder (weekly; the root check monthly; change these at the bottom of Potting mixes). Today's Water list, the plant's watering button, the plant-sitter sheet and the morning notification say "Top up" or "Change the water" for them instead of "Water". Today lists the pots due a flush.
+- A warning on a plant's page when its soil mix does not suit what its species wants, and the repotting plan brings a pot forward when its mix is due for freshening.
+
 ## 1.56.0 (coming December 1, 2026)
 Step 8 of the plan: lights that fit the room. The Grow lights page now checks that a light can be put where the plants are before it counts the light.
 - **How it holds.** Each light says how it holds (screws into a socket, stands on the floor, stands on a shelf, clamps to an edge, screws under a shelf), which way it points, and its sizes. Yours came filled in from their listings; change it with **How it holds** on the light's card.

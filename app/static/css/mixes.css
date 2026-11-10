@@ -1,0 +1,23 @@
+/* What is in each pot (js/mixes.js, plantdb/mixes.py): PLAN.md step 9, 1.57.0. One file per feature (1.46.0). */
+.mx-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(24rem,100%),1fr));gap:1rem;margin:.6rem 0}
+.mx-card{border:2px solid var(--line);border-radius:8px;padding:.6rem .9rem;background:var(--sheet);min-width:0}
+.mx-card h3{margin:.1rem 0 .4rem}
+.mx-card p{margin:.35rem 0;overflow-wrap:anywhere}
+.mx-shares{display:flex;flex-wrap:wrap;gap:.3rem .5rem}
+.mx-shares span{border:1px solid var(--line);border-radius:4px;padding:0 .4rem}
+.mx-ams{list-style:none;padding:0;margin:.3rem 0 1rem}
+.mx-ams li{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:.4rem 1rem;padding:.55rem 0;border-bottom:1px solid var(--line)}
+.mx-ams li>span:first-child{flex:1 1 22rem;min-width:0;max-width:75ch;overflow-wrap:anywhere}
+.mx-parts{padding-left:1.2em;margin:.4rem 0}
+.mx-part{display:flex;flex-wrap:wrap;align-items:flex-end;gap:0 .9rem;padding:.3rem 0;border-bottom:1px solid var(--line)}
+.mx-part .f{flex:1 1 11rem;min-width:0}
+.mx-part .f.mx-q{flex:0 1 7rem}
+.mx-part>.btn{margin-bottom:.8rem}
+.mx-layer{border:1px solid var(--line);border-radius:6px;margin:.6rem 0;padding:.2rem .8rem}
+.mx-layer legend{font-weight:700;padding:0 .3rem}
+.mx-hydro{padding-left:1.2em} .mx-hydro li{margin:.4rem 0;max-width:75ch}
+.mx-hydro .btn{margin-left:.4rem}
+#mx-every .field-grid{grid-template-columns:repeat(auto-fit,minmax(min(12rem,100%),1fr))}
+#mx-every .field-grid>p{grid-column:1/-1}
+html[data-role=viewer] :is([data-act=mxrecipe], [data-act=mxam], [data-act=mxrecipedel], [data-act=mxamdel], [data-act=mxpot], [data-act=mxpotdel], [data-act=mxsaverecipe]){display:none!important}
+.mx-fields select{max-width:100%}
