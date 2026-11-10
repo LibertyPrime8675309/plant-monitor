@@ -383,8 +383,8 @@ async function edSend(el, v) {
   if (kind === 'area') { const r = await api('PUT', '/api/where/areas/' + id, { [k]: val }); if (META) META.where = r.homes; return null; }
   if (kind === 'spot') { const r = await api('PUT', '/api/where/spots/' + id, { [k]: val }); if (META) META.where = r.homes; return null; }
   if (kind === 'plant') {
-    const box = el.closest('[data-pver]'), was = el.dataset.was;
-    const r = await api('PUT', '/api/plants/' + enc(id), { base_version: +box.dataset.pver, base_values: { [k]: was }, fields: { [k]: v } });
+    const box = el.closest('[data-pver]'), conv = x => k === 'height_in' && x !== '' && x != null ? String(lenIn(x)) : x, was = conv(el.dataset.was);    // 1.56.0: a height typed in cm is kept in inches
+    const r = await api('PUT', '/api/plants/' + enc(id), { base_version: +box.dataset.pver, base_values: { [k]: was }, fields: { [k]: conv(v) } });
     box.dataset.pver = r.version; if (CUR && CUR.p && CUR.p.code === id) CUR.p = r;
     if (r.conflicts) toast('Someone else changed this plant too. Their other changes are kept.');
     if (['home_id', 'area_id', 'spot_id', 'pot_id', 'tray_id', 'winter_plan', 'health_rating', 'common_name', 'scientific_name', 'id_confidence'].includes(k)) {

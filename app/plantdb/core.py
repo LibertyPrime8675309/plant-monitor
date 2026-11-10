@@ -110,6 +110,7 @@ FIELDS = [
     ('danger_humans', 'long', 'Dangers to people'), ('danger_animals', 'long', 'Dangers to pets and other animals'),
     ('propagation', 'list', 'Propagation'), ('sources', 'list', 'Sources'),
     ('pet_safety', 'enum', 'Safety for pets'),                                                          # 1.17.0, for the pets filter
+    ('height_in', 'num', 'Height now, with its pot (in)'),                                              # 1.56.0 (PLAN.md step 8c): for fitting it under a shelf or a light
 ]
 ENUMS = {'winter_plan': WINTER_PLANS, 'site': SITES, 'health_rating': HEALTH, 'leaf_type': LEAF_TYPES, 'pot_size': POT_SIZES, 'fert_strength': FERT_STRENGTHS, 'pet_safety': PET_SAFETY}
 OPTIONAL_ENUMS = ('leaf_type', 'pot_size', 'fert_strength', 'pet_safety')        # may be left as "Not set"
@@ -124,7 +125,7 @@ INT_RANGES = {'id_confidence': (0, 100), 'temp_ideal_low': (-60, 150), 'temp_ide
               'soil_moisture_low': (0, 100), 'soil_moisture_high': (0, 100), 'soil_temp_low': (-40, 150), 'soil_temp_high': (-40, 150),
               'fert_from_month': (1, 12), 'fert_to_month': (1, 12), 'fert_every_days': (1, 365),
               'water_every_days': (1, 60)}
-NUM_RANGES = {'vpd_low': (0, 6), 'vpd_high': (0, 6), 'dli_low': (0, 80), 'dli_high': (0, 80), 'soil_ph_low': (0, 14), 'soil_ph_high': (0, 14)}
+NUM_RANGES = {'height_in': (0.5, 600), 'vpd_low': (0, 6), 'vpd_high': (0, 6), 'dli_low': (0, 80), 'dli_high': (0, 80), 'soil_ph_low': (0, 14), 'soil_ph_high': (0, 14)}
 
 def now():
     return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -313,6 +314,14 @@ def init_db():
     if 'edit_homes' not in {r[1] for r in c.execute('PRAGMA table_info(people)')}: c.execute("ALTER TABLE people ADD COLUMN edit_homes TEXT NOT NULL DEFAULT ''")   # 1.48.0: an editor limited to some homes (JSON list of ids; '' = all)
     c.execute("UPDATE locations SET country='US' WHERE country='' AND lat BETWEEN 24 AND 50 AND lon BETWEEN -125 AND -66")   # 1.48.0: a first guess for places in the lower 48; editable on Homes and places
     if 'place_id' not in {r[1] for r in c.execute('PRAGMA table_info(light_spots)')}: c.execute('ALTER TABLE light_spots ADD COLUMN place_id INTEGER')   # 1.13.1
+    lsc = {r[1] for r in c.execute('PRAGMA table_info(light_spots)')}           # 1.56.0 (PLAN.md step 8): which level, what a bulb screws into, set up and checked
+    for col, typ in (('level', "TEXT NOT NULL DEFAULT ''"), ('holder', "TEXT NOT NULL DEFAULT ''"), ('checked_at', 'TEXT'), ('checked_by', 'TEXT'), ('checked_note', 'TEXT'), ('checked_sig', 'TEXT')):
+        if col not in lsc: c.execute(f'ALTER TABLE light_spots ADD COLUMN {col} {typ}')
+    for tbl in ('areas', 'spots'):                                               # 1.56.0: a room's or shelf's measurements (fit.py)
+        if 'sheet' not in {r[1] for r in c.execute(f'PRAGMA table_info({tbl})')}: c.execute(f"ALTER TABLE {tbl} ADD COLUMN sheet TEXT NOT NULL DEFAULT ''")
+    c.execute('''CREATE TABLE IF NOT EXISTS place_photos(
+      id INTEGER PRIMARY KEY AUTOINCREMENT, area_id INTEGER NOT NULL, spot_id INTEGER, file TEXT NOT NULL, caption TEXT NOT NULL DEFAULT '',
+      is_primary INTEGER NOT NULL DEFAULT 0, added_by TEXT, added_at TEXT NOT NULL)''')                    # 1.56.0: photos of rooms and shelves
     migrate_places(c)
     where_seed(c)                                       # 1.29.0: areas and spots for every home
     if not c.execute('SELECT 1 FROM weather_runs LIMIT 1').fetchone():       # readings gathered before runs were logged (version 1.2)
@@ -508,6 +517,14 @@ def apply_batches(c):
                 if done:
                     c.execute('UPDATE shops SET ' + ', '.join(f'{k}=?' for k in done) + ' WHERE key=?', (*done.values(), r['key']))
                     audit_only(c, 'setting', 'shops', None, ', '.join(done), who, f'Store details added ({label}): {r["name"]}')
+            if b.get('place_sheets'): where_seed(c)              # 1.56.0 (PLAN.md step 8b): rooms and shelves are areas and spots by now
+            for ps in b.get('place_sheets', []):               # a room's or shelf's measurements, only where none are set (Ethan's own stay)
+                a = c.execute("SELECT * FROM areas WHERE side='in' AND home_id IS NULL AND name=?", (ps['room'],)).fetchone()
+                if not a: continue
+                row = c.execute('SELECT * FROM spots WHERE area_id=? AND name=?', (a['id'], ps['name'])).fetchone() if ps.get('name') else a
+                if not row or (row['sheet'] or '') not in ('', '{}'): continue
+                c.execute(f"UPDATE {'spots' if ps.get('name') else 'areas'} SET sheet=? WHERE id=?", (json.dumps(ps['sheet']), row['id']))
+                audit_only(c, 'where', 'place_sheet', None, ps['room'] + (', ' + ps['name'] if ps.get('name') else ''), who, f"Measurements added ({label}): {ps['room']}{', ' + ps['name'] if ps.get('name') else ''}")
             for u in b.get('lights_update', []):                # guarded, like plant updates: only if the light still holds the old value
                 L = c.execute('SELECT * FROM lights WHERE lkey=?', (u['key'],)).fetchone()
                 if not L: continue

@@ -83,7 +83,7 @@ const HMAP_RANGE = { temp: ['temp_ideal_low', 'temp_ideal_high'], humidity: ['hu
 
 // ---------- edit and create ----------
 const GROUPS = [
-  ['Names and place', ['common_name', 'scientific_name', 'aliases', 'plant_type', 'home_id', 'area_id', 'spot_id', 'location', 'container', 'pot_id', 'tray_id']],
+  ['Names and place', ['common_name', 'scientific_name', 'aliases', 'plant_type', 'home_id', 'area_id', 'spot_id', 'location', 'container', 'pot_id', 'tray_id', 'height_in']],
   ['Identification', ['id_confidence', 'id_basis', 'id_alternatives', 'id_improve']],
   ['About this plant', ['growth_habit', 'kingdom', 'taxon_order', 'family', 'genus', 'height_ground', 'width_ground', 'height_pot', 'width_pot', 'growth_rate', 'lifespan',
     'zone_low', 'zone_high', 'zone_notes', 'heat_zone_high', 'heat_zone_low', 'heat_zone_source', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'pet_safety', 'propagation', 'sources']],
@@ -115,12 +115,14 @@ const HINTS = {
   zone_low: 'USDA zone, such as 9b or 10. The page compares it with the zone where you are.', zone_high: 'USDA zone, such as 11.',
   height_ground: 'For example 6 to 10 ft.', height_pot: 'For example 3 to 5 ft.', propagation: 'One method per line.',
   sources: 'One per line: a title, a | and the web address, for example "NC State Extension: Aloe vera | https://...".',
+  height_in: 'Today, from the surface the pot stands on to the top of the plant. The Grow lights page uses it to check the plant fits under a shelf or a light.',
   leaf_type: 'Decides which pest treatments suit it before it comes inside.', pot_size: 'Whether the pot can be soaked in a bucket or tub.', health_steps: 'One step per line, in order.', indoor_setup: 'One item per line.',
 };
 const rangeOf = n => (META.int_ranges && META.int_ranges[n]) || (META.num_ranges && META.num_ranges[n]) || [-60, 150];
 // 1.47.0: a plant's temperatures are kept in °F and shown and typed in the person's unit (Display, Units); submitForm() converts back
 const TEMP_FIELDS = ['temp_ideal_low', 'temp_ideal_high', 'temp_damage_below', 'temp_lethal_below', 'temp_damage_above', 'soil_temp_low', 'soil_temp_high'];
 const tempLabel = s => String(s).replace(/\((°?F)\)/, '(' + tU() + ')');
+const LEN_FIELDS = ['height_in'];                  // 1.56.0: kept in inches, shown and typed in the person's length unit
 function fieldInput(f, val) {
   const hint = HINTS[f.name] || (f.kind === 'list' ? 'One item per line.' : '');
   const wide = (f.kind === 'long' || f.kind === 'list') ? 'wide' : '';
@@ -128,6 +130,7 @@ function fieldInput(f, val) {
   let inp;
   const isTemp = TEMP_FIELDS.includes(f.name);
   if (isTemp) { f = { ...f, label: tempLabel(f.label) }; if (v !== '') v = tNum(v); }
+  if (LEN_FIELDS.includes(f.name)) { f = { ...f, label: String(f.label).replace('(in)', '(' + lenU() + ')') }; if (v !== '') v = lenF(v, false); }
   if (f.kind === 'long' || f.kind === 'list') inp = html`<textarea name="${f.name}" rows="${f.kind === 'list' ? 5 : 4}">${v}</textarea>`;
   else if (f.kind === 'int' && isTemp) { const mm = rangeOf(f.name); inp = html`<input type="number" inputmode="decimal" step="${unitsGet().temp === 'c' ? '0.5' : '1'}" min="${tNum(mm[0])}" max="${tNum(mm[1])}" name="${f.name}" value="${v}">`; }
   else if (f.kind === 'int') { const mm = rangeOf(f.name); inp = html`<input type="number" inputmode="numeric" step="1" min="${mm[0]}" max="${mm[1]}" name="${f.name}" value="${v}">`; }
@@ -390,7 +393,7 @@ async function viewEdit(code) { return viewForm(await api('GET', '/api/plants/' 
 async function submitForm(form) {
   if (!(await needName())) return;
   const fd = new FormData(form), fields = {};
-  META.fields.forEach(f => { let v = fd.get(f.name); if (v === null) return; if (TEMP_FIELDS.includes(f.name) && v !== '') v = String(Math.round(tIn(v))); fields[f.name] = v; });   // 1.29.0: a field not on the form (Location now follows the area) is left out; 1.47.0: temperatures typed in the person's unit go back to whole °F
+  META.fields.forEach(f => { let v = fd.get(f.name); if (v === null) return; if (TEMP_FIELDS.includes(f.name) && v !== '') v = String(Math.round(tIn(v))); if (LEN_FIELDS.includes(f.name) && v !== '') v = String(lenIn(v)); fields[f.name] = v; });   // 1.29.0: a field not on the form (Location now follows the area) is left out; 1.47.0: temperatures typed in the person's unit go back to whole °F
   const err = document.getElementById('form-err'); err.innerHTML = '';
   const btn = form.querySelector('[type=submit]'); btn.disabled = true;
   try {

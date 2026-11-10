@@ -1,0 +1,28 @@
+/* Lights that fit the room (js/fit.js, plantdb/fit.py): PLAN.md step 8, 1.56.0. One file per feature (1.46.0).
+   Every state carries a word and a mark as well as a colour, so nothing is told by colour alone. */
+.fit{border:2px solid var(--line);border-left-width:.45rem;border-radius:8px;padding:.5rem .8rem .3rem;margin:.4rem 0 .8rem;background:var(--sheet)}
+.fit.fit-fits{border-left-color:var(--moss)} .fit.fit-nofit{border-left-color:var(--madder)} .fit.fit-unchecked{border-left-color:var(--ochre)}
+.fit-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:.3rem .7rem;margin:0 0 .3rem}
+.fit-tag{display:inline-block;white-space:nowrap;font-weight:700;padding:.05rem .45rem;border:2px solid currentColor;border-radius:4px}
+.fit-tag.fit-fits{color:var(--moss)} .fit-tag.fit-nofit{color:var(--madder)} .fit-tag.fit-unchecked{color:var(--ochre)}
+.fit-lines{margin:.2rem 0 .3rem;padding-left:1.2em} .fit-lines li{margin:.25rem 0;max-width:75ch;overflow-wrap:anywhere}
+.fit-checked{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem .7rem;margin:.3rem 0 .7rem}
+.fit-place{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem .7rem;margin:.3rem 0}
+.fit-pthumb{width:4.5rem;height:4.5rem;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+.fit-photos{display:flex;flex-wrap:wrap;gap:.8rem;align-items:flex-start;margin:.3rem 0 .8rem}
+.fit-photos figure{margin:0;display:flex;flex-direction:column;gap:.3rem;max-width:12rem}
+.fit-photos img{width:12rem;max-width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+.fit-form .f{max-width:100%}
+.fit-form h3{margin:1rem 0 .3rem}
+.sp-fit-h{margin:.8rem 0 .2rem;font-size:1.05em}
+.lt-sum .fit-tag{font-size:.95em}
+/* the setup card: one column, prints on one page where it can */
+.fit-card{max-width:52rem}
+.fit-card-top{display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-start}
+.fit-card-top .dl{flex:1 1 20rem;min-width:0}
+.fit-card-photo{width:16rem;max-width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+.fit-card-plants{padding-left:1.6em} .fit-card-plants li{display:flex;gap:.7rem;align-items:center;margin:.5rem 0}
+.fit-card-plants img,.fit-card-plants li>span:first-child{width:3.5rem;height:3.5rem;flex:0 0 3.5rem;object-fit:cover;border-radius:6px}
+.fit-today{padding-left:1.2em} .fit-today li{margin:.3rem 0}
+@media print{.fit-card .fit{break-inside:avoid} .fit-card-plants li{break-inside:avoid}}
+html[data-role=viewer] :is([data-act=ltmount], [data-act=ltplace], [data-act=spotcheck], [data-act=spotuncheck], [data-act=placephotodel], [data-act=placephotomain]){display:none!important}
