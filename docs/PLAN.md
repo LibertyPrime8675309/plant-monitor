@@ -32,8 +32,9 @@ Steps 1 to 3 come first and in that order; 4 to 6 then run one at a time, 4 befo
 | 6. Knowledge with provenance | One fact per row with source, date and confidence; editors add and correct; any editor reviews; export | 6 to 8 days | Two minors | Step 2; step 4 helps. Done: 6a in 1.53.0, 6b in 1.54.0 | `library.py`, `fungi.py`, `core.py` schema, `library.js`, `review.js`, the batch tooling in `dev/seed_src`, docs |
 | 7. Release rhythm | A minor release on the first of each month, patches only for breakage; install by pulling images | Ongoing | None | Step 3 | `tools/make-release.py`, the updater, `CHANGELOG.md` |
 | 8. Lights that fit the room (proposed) | A light model says how it holds, a room or shelf says what it offers and has photos, a plant has a height; a spot says fits / does not fit before PAR; a setup card and a "Set up and checked" tick | 6 to 7 days | One minor (the December 1 release) | Steps 2 and 4; waiting for Ethan's yes | `lights.py`, `where.py`, `core.py` schema, `lights.js`, `where.js`, `plant.js`, `edit.js`, a batch for the light models, a new check |
+| 9. What is in each pot (proposed) | Amendments with their properties; recipes in parts; each pot's mix, layers and growing kind (soil, semi-hydro, water only); care that fits semi-hydro and water; watering intervals per recipe | 6 to 7 days | One minor (the January 1 release, or December if swapped with step 8) | Steps 2, 4 and 6; waiting for Ethan's yes | new `mixes.py`, `mixes.js`, `care.py`, `repotting.py`, `facts.py`, `sitter.py`, `core.py` schema, `plant.js`, `edit.js`, a batch, a new check |
 
-About six to eight weeks of Claude's time if done one after another, delivered as six or seven releases over two or three months. Steps 1 to 7 were done by November 9, 2026; step 8 was proposed that day and waits for Ethan's review.
+About six to eight weeks of Claude's time if done one after another, delivered as six or seven releases over two or three months. Steps 1 to 7 were done by November 9, 2026; steps 8 and 9 were proposed on November 9 and 10 and wait for Ethan's review.
 
 ## Step 1: decide the shape (done)
 
@@ -203,5 +204,38 @@ The "It would suit … better" suggestion (1.41.0) takes the same test into acco
 **Questions for Ethan.**
 1. Measurements: the level widths, heights between levels and depths of the two brown shelves and the side table (a tape measure in inches is enough), and whether anything else holds plants indoors under lights.
 2. Fixtures: which E26 fixtures you own (clamp lamps, lamps with a base, bare sockets), how many of each, and what each can clamp to or stand on.
-3. Heights: is "plant plus pot, from the surface it stands on" the right height to record, and is once a month at the check-up often enough?
-4. Would a sideways light shading plants behind a taller one (the Barrina 2 ft case) be worth a line of its own, or is "front to back by height" on the setup card enough?
+3. Heights: answered November 10, yes: "plant plus pot, from the surface it stands on", nudged once a month at the check-up.
+4. Shading: answered November 10, keep the "Shaded" line (nice to have; built last within 8d, so it can slip to a patch without holding the rest).
+
+## Step 9 (proposed November 10, 2026, for Ethan's review): what is in each pot
+
+**The gap.** A plant's care sheet says what mix its species wants (`soil_medium`, text), and the care log says when it was last repotted (kind `repot`). Nothing records what actually went into the pot, or how the pot grows: Ethan has pots in soil mixes, pots in pure clay pebbles (semi-hydro) and plants in water only (full hydroponic), and the app treats all of them as "water when the top inch is dry". He mixes by parts with a scoop or trowel, blends everything except an occasional thin top or bottom layer, and has no written recipes yet but would like them.
+
+**9a. Amendments, each with a record (1 day).** A table `amendments` (name, role, grades, notes, created_by, created_at), seeded by an upgrade batch (the next free name when it is built, after step 8's C4). Each has its **grades** (orchid bark small / medium / large; pumice 1/8 to 1/4 in; coir chunks or ground) because a grade changes how it behaves, and a **role**: a *part* (structure, measured in parts), an *additive* (a pinch, measured in teaspoons or tablespoons per gallon of mix, or "a pinch"), or a *medium* (what a semi-hydro pot is filled with). Properties, each a relative scale shown in words, never a number that looks more precise than it is:
+- holds water (low, some, medium, high, very high), lets air in (the same five), lasts (months before it breaks down, or "does not break down"), feeds the plant (none, a little, rich), pH effect (lowers, none, raises), weight (light, medium, heavy).
+The properties are facts (step 6's `facts` table, with the amendment as the subject instead of a species), so each carries a source and a confidence, and Ethan can propose a correction from his own experience that another editor accepts.
+
+The seed list: Ethan's eight (horticultural charcoal, orchid bark, coco coir, horticultural pumice, worm castings, horticultural perlite, horticultural vermiculite, clay pebbles) and the ones added on November 10: sphagnum moss (long-fibre), peat moss, bagged potting mix (as a base), lava rock (scoria), calcined clay, coarse sand or grit, zeolite, rice hulls, tree fern fibre, cork, compost or leaf mould; the additives slow-release fertilizer, dolomite lime and mycorrhizal inoculant; and pon as a semi-hydro medium. Any other can be added on the Amendments page, with its grades.
+
+**9b. Recipes (1 day).** A recipe is a name, notes and a list of parts by volume (`mix_recipes`, `mix_parts`: amendment, grade, parts, halves allowed; additives with their amount). The page shows the percentages and an **estimated summary** of the whole mix (holds water, lets air in, needs fresh mix in about N months, set by the first part to break down that makes up a fifth or more of it), worded as an estimate, because fine particles fill the gaps between coarse ones and a mix does not add up neatly. Recipes grow out of what Ethan actually mixes: any pot's mix has **Save as a recipe**.
+
+**9c. Each pot (1.5 days).** Plants get a **growing kind**: soil mix, semi-hydro or water only (`plants.grow_kind`, default soil; existing plants stay soil until Ethan sets them, or a batch sets the ones he lists). A **Repotted** entry can carry the mix (`pot_mixes`: plant, the care-log entry, date, the recipe if one was used, the parts as they were that day, so changing a recipe later never rewrites history; an optional top layer and bottom layer, each an amendment, a grade and a depth in inches). The plant's page shows "In: Aroid chunky (repotted March 2026)" with the parts folded under it, and "What is it in now?" lets Ethan enter the current mix for plants not repotted since, without inventing a repot date. For a semi-hydro pot the mix is its medium (clay pebbles, pon); for water only there is no mix, only the vessel.
+
+**9d. Care that fits semi-hydro and water only (1.5 days).** The watering countdown leaves these plants out, and each kind gets its own care kinds through the registry:
+- semi-hydro: **Topped up the reservoir** (with the nutrient strength, as ppm, EC or "quarter strength", and pH if measured, all optional) and **Flushed**; a reminder rhythm for each, learned from the log the way watering is, starting from a default (top up weekly, flush monthly) that Ethan can change.
+- water only: **Changed the water** (with nutrients if any) and **Checked the roots**; default every week.
+Today, the sitter sheet (and its link) and notifications use the right words ("Top up the reservoir to the line", not "Water when dry").
+
+**9e. What it learns (1 day).** For soil pots, days between waterings for each recipe, from the care log the app already keeps, shown on the recipe once at least three plants and a few weeks of waterings are behind it ("Plants in Aroid chunky go about 9 days between waterings; 6 plants, since March"). A plain warning when a pot's mix is mostly water-holders and the species wants a fast-draining mix, or the reverse: species get a small "mix it wants" fact (fast-draining, balanced, moisture-holding), filled for Ethan's species by the same batch from their care sheets and correctable like any fact. The repotting plan (1.50.0) uses the mix: a pot whose mix needs freshening sooner is brought forward, one in a mix that lasts can wait.
+
+**Not in this step.** How much of each amendment is on hand and a "running low" note; a later patch if wanted.
+
+**Cost.** Six to seven days; one minor release, the January 1 release under the rhythm from step 7 (or December, swapped with step 8, if Ethan prefers). One in-place upgrade (the new tables and `plants.grow_kind`) and one upgrade batch (amendments, their properties as facts, each species' "mix it wants"). The estimated summary and the interval sums are pure functions with unit tests; a `mixes_check.py` browser check records a mix at a repot, saves it as a recipe, sets a plant to semi-hydro and reads Today and the sitter sheet back.
+
+**Touches.** `plantdb/mixes.py` (new: amendments, recipes, pot mixes, the summary), `care.py` (care kinds, the countdown leaving out semi-hydro and water), `repotting.py`, `facts.py` (amendment subjects), `sitter.py`, `core.py` (schema), `js/mixes.js` and `css/mixes.css` (new), `plant.js`, `edit.js`, `care.js` (through the registry), the batch and its script in `dev/seed_src`, `dev/test/mixes_check.py`, unit tests, README, ARCHITECTURE, CHANGELOG.
+
+**Questions for Ethan.**
+1. Which plants are semi-hydro and which are water only (names or codes are enough)?
+2. For semi-hydro: do you add nutrients at every top-up, and do you measure ppm/EC or pH? How often do you flush now?
+3. For water only: how often do you change the water now?
+4. Is it all right for Claude to fill each of your species' "mix it wants" from its care sheet, for you to correct?
