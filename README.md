@@ -1353,6 +1353,23 @@ Every grow light holds itself in the room in its own way: a bulb screws into a l
 - **The setup card.** **Setup card** on a spot opens a page to print or keep on the phone: where, the light and how it holds, how far from the leaves, the hours, the fit, and the plants (for a sideways light, shortest nearest the light first).
 - **Set up and checked.** Once the light is up and the plants are under it, press **Set up and checked** (with a note of what you found, if anything). Changing the spot's light, place, level, distance or plants takes the tick off by itself ("Changed since it was checked"); the hours and brightness do not. Today lists the spots with plants that are not set up and checked yet.
 
+## What is in each pot (in the January 1 release, 1.57.0)
+
+**Potting mixes** holds what goes into your pots. Open it from **Care → Pots and trays** (the line under the title), or from **Potting mixes** in any plant's What it is in. It has no link of its own in the top bar, so the Care row stays on one line.
+
+- **Recipes.** **New recipe** takes a name and its parts by volume, the way you scoop them: 3 parts orchid bark, 2 parts perlite, 1 part coir (halves are fine). Each part can have a grade (orchid bark small, medium or large). An additive such as slow-release fertilizer asks **How much** ("1 teaspoon a gallon") instead of parts. Each recipe shows the share of each part and an **estimate** of the whole mix: how much water it holds, how much air it lets in, and when it will want freshening (set by the part that breaks down first). It is an estimate because fine bits fill the gaps between coarse ones. Once three plants in a recipe have six or more waterings logged, the recipe says how many days they go between waterings.
+- **Amendments.** Grouped as parts of a mix, semi-hydro media and additives, each with its grades and how it behaves in words (holds water, lets in air, breaks down in, feeds the plant, pH, weight). The numbers behind the words are a rough guide for comparing them, not measurements: **Change** any that your pots disagree with, or **Add an amendment**.
+- **Semi-hydro and water-only care.** How often the app reminds you to top up, flush, change the water and check the roots, in days (weekly, and the root check every 30 days, to start).
+
+On each plant's page, **What it is in** (after Soil) shows:
+
+- **How it grows**: soil mix, semi-hydro or water only. **What holds its water**: it drains freely, a tray under it, a catch pot, or the pot itself (no holes). **Mix its species wants**: fast-draining, balanced or moisture-holding; "Same as its species" uses what is known about the species. Each saves as soon as you choose.
+- **In it now**: the mix, any top or bottom layer, and the estimate. **What is it in now?** records it for a plant you have not repotted lately (choose a recipe to fill in its parts, then change any that differ). **Repotted: record the new mix** does the same and logs Repotted on that day. **Save as a recipe** makes a recipe from a pot's mix. Earlier mixes are folded under **Earlier**.
+- For a semi-hydro pot, **Topping up** and **Flushing**; for a water-only plant, **Fresh water** and **Checking the roots**: when each was last done and when it is next due, with a button to log it. A flush counts as a top-up too.
+- If the mix does not suit what its species wants (a wet mix for a species that wants fast drainage, say), a note says so and what would help.
+
+Semi-hydro and water-only plants say **Top up** or **Change the water** instead of Water in Today's Water list, on their watering button, on the plant-sitter sheet and in the morning notification. Today also lists the pots due a flush or a root check. The repotting plan brings a pot forward when its mix is due for freshening.
+
 ## Homes, adding several plants, and your plant photos (from 1.28.0)
 
 ### Homes

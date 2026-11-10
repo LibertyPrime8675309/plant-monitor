@@ -13,8 +13,15 @@ function relDay(d) {
   if (n < -1 && n > -7) return name + ' (' + md + ')';
   return md;
 }
+const HYDRO_DO = { topup: ['Top up the reservoir', 'Last topped up', 'Topped up'], waterchange: ['Change the water', 'Water last changed', 'Changed the water'] };   // 1.57.0 (PLAN.md step 9)
 function waterWords(w) {
   if (!w) return '';
+  if (w.action && w.action !== 'water') {                                       // a semi-hydro or water-only plant: no "dry out" here
+    const H = HYDRO_DO[w.action];
+    if (w.state === 'unknown') return `${w.grow_kind}: ${H[0].toLowerCase()} about every ${w.every} days. Nothing logged yet: press ${H[2]} when you do it.`;
+    const od = w.overdue, when = od > 0 ? `${od} day${od === 1 ? '' : 's'} overdue (due ${relDay(w.next)})` : od === 0 ? 'due today' : `next ${relDay(w.next)}`;
+    return `${H[0]}: ${when}. ${H[1]} ${relDay(w.last_water)}. About every ${w.every} day${w.every === 1 ? '' : 's'}: ${w.why}.`;
+  }
   if (w.state === 'unknown') return 'No watering logged yet. Press Watered when you water it, and reminders start from there.';
   const od = w.overdue, when = od > 0 ? `${od} day${od === 1 ? '' : 's'} overdue (due ${relDay(w.next)})` : od === 0 ? 'due today' : `next check ${relDay(w.next)}`;
   const rain = w.last_rain && (!w.last_water || w.last_rain > w.last_water) ? ` Rain of ${rainF(w.rain_in)} ${relDay(w.last_rain)} was counted as a watering.` : '';
@@ -25,7 +32,7 @@ function careQuick(p) {
   return html`<div class="quick noprint" role="group" aria-label="Quick care for this plant">
     <p class="quick-status" id="quick-status">&nbsp;</p>
     <div class="quick-btns">
-      <button class="btn" type="button" data-act="care" data-kind="water" data-code="${p.code}" data-name="${p.common_name}">Watered today</button>
+      <button class="btn" type="button" data-act="care" data-kind="water" data-quickwater data-code="${p.code}" data-name="${p.common_name}">Watered today</button>
       <button class="btn ghost" type="button" data-act="care" data-kind="check" data-code="${p.code}" data-name="${p.common_name}">Checked: still moist</button>
       <button class="btn ghost" type="button" data-act="fertlog" data-code="${p.code}">Log feeding</button>
       <label class="btn ghost quick-photo">Add photos<input type="file" accept="image/*" multiple data-act="addphotos" class="sr"></label>
@@ -43,11 +50,13 @@ async function loadCarePlant() {
   const w = W.plants.find(x => x.code === code);
   const qs = document.getElementById('quick-status'); if (qs) qs.textContent = w ? 'Water: ' + waterWords(w) : '';
   // 1.21.0: once watered today, "Watered today" is switched off until tomorrow (Undo or Remove in the care log switch it back on)
-  const wb = document.querySelector('.quick-btns [data-act=care][data-kind=water]'), wn = document.getElementById('water-done-note');
+  const wb = document.querySelector('.quick-btns [data-quickwater]'), wn = document.getElementById('water-done-note');
   const done = !!(w && w.last_water === W.today);
-  if (wb) { wb.disabled = done; wb.classList.toggle('done-today', done); wb.textContent = done ? '✓ Watered today' : 'Watered today'; }
+  const hy = w && w.action && w.action !== 'water' ? HYDRO_DO[w.action] : null;        // 1.57.0: "Topped up today" or "Changed the water today" instead
+  const ck = document.querySelector('.quick-btns [data-act=care][data-kind=check]'); if (ck) ck.hidden = !!hy;
+  if (wb) { if (hy) wb.dataset.kind = w.action; wb.disabled = done; wb.classList.toggle('done-today', done); wb.textContent = (done ? '✓ ' : '') + (hy ? hy[2] : 'Watered') + ' today'; }
   if (wn) wn.hidden = !done;
-  box.innerHTML = rend(html`<div class="verdict-box v-${w && w.state === 'due' ? 'due' : 'wait'}" role="status"><h3>Watering</h3><p>${w ? waterWords(w) : ''}</p>
+  box.innerHTML = rend(html`<div class="verdict-box v-${w && w.state === 'due' ? 'due' : 'wait'}" role="status"><h3>${w && w.action === 'topup' ? 'Topping up' : w && w.action === 'waterchange' ? 'Fresh water' : 'Watering'}</h3><p>${w ? waterWords(w) : ''}</p>
       <p class="hint">Change the gap with "Check for water every (days)" in Edit this page. Rain of ${rainF(W.rain_counts_in)} or more counts as a watering for plants whose Location is Outdoors.</p></div>
     <h3>Care log</h3>${log.length ? html`<ul class="care-log">${log.map(e => html`<li><strong>${CARE_WORD[e.kind] || e.kind}</strong> ${relDay(e.done_on)}${e.note ? ': ' + e.note : ''} <span class="muted">(${e.created_by})</span>
       ${e.pending ? html`<span class="muted">(not sent yet)</span>` : html`<button class="btn small ghost noprint" type="button" data-act="caredel" data-id="${e.id}" data-what="${(CARE_WORD[e.kind] || e.kind) + ' ' + relDay(e.done_on)}" aria-label="Remove: ${(CARE_WORD[e.kind] || e.kind)} ${relDay(e.done_on)}">Remove</button>`}</li>`)}</ul>`
@@ -303,7 +312,9 @@ async function viewToday() {
   const here = FERT.plants.filter(atPlace);                                      // 1.48.0: Today is about the home you are looking at
   const feed = here.map(p => ({ p, st: fertState(p, entriesFor(p.code), t, fertCtx()) })).filter(r => r.st.state === 'due');
   const needs = here.filter(needsYou), reqs = reqsAll.filter(q => !q.plant_code || !by[q.plant_code] || atPlace(by[q.plant_code]));
-  const wbtn = w => html`<button class="btn small" type="button" data-act="care" data-kind="water" data-code="${w.code}" data-name="${by[w.code].common_name}">Watered</button>
+  const wbtn = w => w.action && w.action !== 'water'                            // 1.57.0: a semi-hydro pot is topped up, a water-only plant gets fresh water
+    ? html`<button class="btn small" type="button" data-act="care" data-kind="${w.action}" data-code="${w.code}" data-name="${by[w.code].common_name}">${HYDRO_DO[w.action][2]}</button>`
+    : html`<button class="btn small" type="button" data-act="care" data-kind="water" data-code="${w.code}" data-name="${by[w.code].common_name}">Watered</button>
     <button class="btn small ghost" type="button" data-act="care" data-kind="check" data-code="${w.code}" data-name="${by[w.code].common_name}">Still moist</button>`;
   const n = (k, one, many) => k + ' ' + (k === 1 ? one : many);
   // 1.34.0: Today is the page the app opens on. One line says what needs you, with a button to jump to each part

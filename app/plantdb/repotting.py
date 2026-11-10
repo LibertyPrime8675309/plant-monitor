@@ -61,7 +61,7 @@ def repot_plan(today, rows, last, choice):
     season = repot_season(today)
     plants, left_out = [], []
     for r in rows:
-        auto, why = repot_auto(r.get('growth_rate'), r.get('leaf_type'))
+        auto, why = repot_auto(r.get('growth_rate'), 'Grows in water' if r.get('grow_kind') == 'Water only' else r.get('leaf_type'))
         ch = choice.get(r['code'])
         p = {k: r.get(k) for k in ('code', 'name', 'photo', 'where', 'site', 'pot_size', 'health')}
         p['growth'] = r.get('growth_rate') or ''
@@ -71,6 +71,8 @@ def repot_plan(today, rows, last, choice):
             p.update(why='Switched off by hand' if ch == 'off' else why, months=None)
             left_out.append(p); continue
         if ch is not None: p['why'] = f'Every {months} months, chosen by hand'
+        elif r.get('mix_months') and r['mix_months'] < months:      # 1.57.0 (PLAN.md step 9e): a mix that breaks down sooner brings it forward
+            months = r['mix_months']; p['why'] = f'Its mix wants freshening in about {months} months (the {(r.get("mix_by") or "mix").lower()} breaks down)'
         p['months'] = months
         if not p['last']:
             p.update(state='never', due_on=None, spring=None)
@@ -84,6 +86,13 @@ def repot_plan(today, rows, last, choice):
     return {'today': today.isoformat(), 'season': season, 'choices': list(REPOT_CHOICES), 'plants': plants, 'left_out': left_out,
             'counts': {'due': n('due'), 'never': n('never'), 'later': n('later'), 'left_out': len(left_out)}}
 
+def repot_mix(c, code):
+    """1.57.0: how long the plant's current mix lasts, for the plan: {mix_months, mix_by} (empty when not known)."""
+    m = current_mix(c, code)
+    if not m: return {}
+    s = pot_dict(c, m)['summary']
+    return {'mix_months': s.get('lasts_months'), 'mix_by': s.get('lasts_by')} if s.get('lasts_months') else {}
+
 def repot_report(c, code=None):
     """code: just that plant (its own page)."""
     at, at_args = plants_at(c, location(c))
@@ -95,7 +104,8 @@ def repot_report(c, code=None):
     photo = lambda pid: (c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC,id LIMIT 1', (pid,)).fetchone() or [None])[0]
     rs = [{'code': r['code'], 'name': r['common_name'], 'photo': photo(r['id']), 'site': r['site'] or 'Outdoors',
            'where': ', '.join(x for x in (areas.get(r['area_id']), spots.get(r['spot_id'])) if x),
-           'growth_rate': r['growth_rate'], 'leaf_type': r['leaf_type'], 'pot_size': r['pot_size'], 'health': r['health_rating']} for r in rows]
+           'growth_rate': r['growth_rate'], 'leaf_type': r['leaf_type'], 'pot_size': r['pot_size'], 'health': r['health_rating'],
+           'grow_kind': grow_kind(r), **repot_mix(c, r['code'])} for r in rows]
     return repot_plan(local_today(c), rs, last, repot_choices(c))
 
 @app.route('/api/repotting', methods=['GET', 'PUT'])
