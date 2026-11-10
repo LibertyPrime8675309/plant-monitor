@@ -403,6 +403,27 @@ def light_fields(b, old=None):
     if 'model' in b: d['model'] = str(b.get('model') or '').strip()[:80]       # 1.13.1: the maker's model number
     if 'timer' in b: d['timer'] = str(b.get('timer') or '').strip()[:120]
     if 'dimming' in b: d['dimming'] = sorted({int(x) for x in re.findall(r'\d+', str(b.get('dimming') or '')) if 0 < int(x) <= 100}) or [100]
+    for k, n in (('brand', 60), ('url', 400), ('cri', 20)):          # 1.58.0 (PLAN.md step 10b): what a listing gives
+        if k in b:
+            v = str(b.get(k) or '').strip()[:n]
+            if k == 'url' and v and not re.match(r'^https?://', v): abort(400, 'The link must start with http:// or https://')
+            if v: d[k] = v
+            else: d.pop(k, None)
+    if 'kelvin' in b: d['kelvin'] = int(_num(b, 'kelvin', 1000, 10000, 'Colour temperature (K)') or 0) or None
+    if 'price' in b:
+        d['price'] = _num(b, 'price', 0, 100000, 'Price')
+        if d['price'] is None: d.pop('price_on', None)
+        else:
+            on = str(b.get('price_on') or '')[:10] or date.today().isoformat()
+            try: date.fromisoformat(on)
+            except ValueError: abort(400, 'The date of the price must be a date')
+            d['price_on'] = on
+    if 'direction' in b:
+        v = str(b.get('direction') or '')
+        if v not in ('', 'down', 'side', 'angled'): abort(400, 'Choose down, sideways or at an angle')
+        d['direction'] = v or None
+    for k in ('timer_repeats', 'timer_keeps', 'needs_socket'):
+        if k in b: d[k] = None if b.get(k) in (None, '') else b.get(k) in (True, 1, '1', 'true', 'yes')
     if 'mount' in b:                   # 1.56.0 (PLAN.md step 8a): how it holds (fit.py)
         m = mount_clean(b.get('mount'))
         if m: d['mount'] = m
@@ -416,12 +437,16 @@ def light_text(name, count, fixture):
 def light_add():
     """A light you have: {name, count, watts, points, kind, timer, dimming, fixture, notes}"""
     c = db()
-    name, count, fixture, notes, d = light_fields(request.get_json(silent=True) or {})
+    b = request.get_json(silent=True) or {}
+    status = str(b.get('status') or 'owned')                   # 1.58.0 (PLAN.md step 10b): a light you are considering has none yet
+    if status not in ('owned', 'considering'): abort(400, 'A new light is one you have or one you are considering')
+    if status == 'considering': b = {**b, 'count': 0}
+    name, count, fixture, notes, d = light_fields(b)
     if c.execute('SELECT 1 FROM lights WHERE name=?', (name,)).fetchone(): abort(409, f'"{name}" is already in your lights')
     who = editor()
-    lid = c.execute('INSERT INTO lights(lkey,name,data,count,fixture,notes,sort,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?)',
-                    (None, name, json.dumps(d), count, fixture, notes, 1000, who, now())).lastrowid
-    audit_only(c, 'light', 'light', None, light_text(name, count, fixture), who, 'Grow light added: ' + light_text(name, count, fixture))
+    lid = c.execute('INSERT INTO lights(lkey,name,data,count,fixture,notes,sort,status,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                    (None, name, json.dumps(d), count, fixture, notes, 1000, status, who, now())).lastrowid
+    audit_only(c, 'light', 'light', None, light_text(name, count, fixture), who, ('Grow light being considered: ' if status == 'considering' else 'Grow light added: ') + light_text(name, count, fixture))
     c.commit()
     return jsonify(id=lid), 201
 
@@ -440,6 +465,7 @@ def light_one(i):
         return jsonify(ok=True)
     b = {'name': old['name'], 'count': old['count'], 'fixture': old['fixture'] or '', 'notes': old['notes'] or '', **(request.get_json(silent=True) or {})}   # 1.29.0: one field at a time
     name, count, fixture, notes, d = light_fields(b, light_specs(old))
+    if old['status'] != 'owned' and count: abort(400, 'Use "Bought it" to say how many you have of a light you were considering')
     if c.execute('SELECT 1 FROM lights WHERE name=? AND id<>?', (name, i)).fetchone(): abort(409, f'"{name}" is already in your lights')
     c.execute('UPDATE lights SET name=?,count=?,fixture=?,notes=?,data=?,updated_by=?,updated_at=? WHERE id=?', (name, count, fixture, notes, json.dumps(d), who, now(), i))
     a, z = light_text(old['name'], old['count'], old['fixture']), light_text(name, count, fixture)

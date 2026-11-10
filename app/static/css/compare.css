@@ -1,0 +1,33 @@
+/* Compare lights (js/compare.js, plantdb/compare.py): PLAN.md step 10, 1.58.0. One file per feature (1.46.0). */
+.cmp-controls{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.2rem 1rem;margin:.4rem 0}
+.cmp-controls .f{flex:0 1 12rem;min-width:0;margin-bottom:.5rem}
+.cmp-controls .f select,.cmp-controls .f input{max-width:100%}
+.cmp-controls .cmp-q{flex:1 1 16rem}
+.cmp-controls .cmp-n{flex:0 1 10rem}
+.cmp-controls .chk{display:flex;gap:.5rem;align-items:center;font-weight:400;padding-bottom:1rem;min-height:2.75rem}
+.cmp-colbtn{margin:0 0 .5rem}
+.cmp-filters{border:2px solid var(--line);border-radius:8px;padding:.2rem .8rem;margin:.4rem 0 .6rem;background:var(--sheet)}
+.cmp-filters>summary{cursor:pointer;font-weight:700;padding:.5rem 0;min-height:2.75rem}
+.cmp-chips{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem .6rem;margin:.3rem 0}
+.cmp-chips .chip{font:inherit;color:var(--ink);background:var(--sheet);border:2px solid var(--line);border-radius:999px;padding:.25rem .8rem;min-height:2.75rem;cursor:pointer;max-width:100%;overflow-wrap:anywhere;text-align:left}
+.cmp-say{font-weight:700;margin:.5rem 0}
+.cmp-tbl th,.cmp-tbl td{vertical-align:top}
+.cmp-tbl thead th{padding:0}
+.cmp-th{font:inherit;font-weight:700;color:inherit;background:none;border:0;text-align:left;padding:.45rem .5rem;width:100%;min-height:2.75rem;cursor:pointer;text-decoration:underline;text-underline-offset:.2em}
+.cmp-tbl tbody th{font-weight:400;min-width:10rem}
+.cmp-name{text-align:left}
+.cmp-pick{display:flex;gap:.4rem;align-items:center;font-weight:400;white-space:nowrap;min-height:2.75rem}
+.cmp-cards{list-style:none;padding:0;margin:.4rem 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(22rem,100%),1fr));gap:1rem}
+.cmp-card{border:2px solid var(--line);border-radius:8px;padding:.5rem .9rem;background:var(--sheet);min-width:0}
+.cmp-card h3{margin:.2rem 0 .3rem}
+.cmp-card dd,.cmp-stack dd,.cmp-side td{overflow-wrap:anywhere}
+.cmp-stack dt{font-weight:700;margin-top:.6rem}
+.cmp-stack dd{margin:0} .cmp-stack ul{margin:.1rem 0;padding-left:1.2em}
+.cmp-photo{float:right;width:9rem;max-width:40%;aspect-ratio:1;object-fit:cover;border-radius:6px;border:1px solid var(--line);margin:0 0 .5rem 1rem}
+.cmp-dlg dl{clear:none}
+.cmp-colset{border:0;padding:0;margin:.4rem 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(16rem,100%),1fr));gap:0 1rem}
+.cmp-colset .chk{display:flex;gap:.5rem;align-items:center;min-height:2.75rem}
+.cmp-try-sum{padding-left:1.2em} .cmp-try-sum li{margin:.3rem 0;max-width:75ch}
+#cmp-ltlink{margin-left:auto}
+html[data-role=viewer] :is([data-act=cmpnew]){display:none!important}
+.tbl-wrap.wide.cmp-wrap,#cmp-side-wrap{max-height:none;overflow:visible}   /* "wide" only keeps the app's own stacking off: the page draws cards itself */

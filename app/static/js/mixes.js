@@ -173,7 +173,7 @@ addFeature({
   care: { topup: 'Topped up the reservoir', flush: 'Flushed', waterchange: 'Changed the water', rootcheck: 'Checked the roots' },
   // not a link of its own in the top bar: one more would wrap the Care row and stop Grow lights' title staying at the top.
   // It belongs with Pots and trays (marked while it is open), which links to it, as does each plant's "What it is in".
-  pages: { mixes: { view: viewMixes, nav: 'pots' } },
+  pages: { mixes: { view: viewMixes, nav: 'pots', label: 'Potting mixes', href: '#/mixes' } },      // a label with no section: Search finds it
   adds: [{
     id: 'mx-potslink',
     match: parts => parts[0] === 'pots',
