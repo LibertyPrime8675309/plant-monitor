@@ -9,7 +9,7 @@ Easier to read and use, from the review of every page (November 11):
 - **"Shortcut: R. Press Escape to stop."** no longer sits beside every page title. The R and Escape keys are under Display and in the keyboard list.
 - **Settings:** the small cards have Hide but no Read aloud of their own, so their titles fit on one line. "You and the people who use the app" is now **People and your name**.
 - **Photo pickers are full-size buttons** in the app's colours (they were the browser's small "Choose Files" box).
-- **Bigger tick boxes and round choices**: 28 pixels at normal text size (they were 22), and they grow with the text.
+- **Bigger tick boxes and round choices**: at least 28 pixels (they were 22 at normal text size), and they grow with large text as before.
 - **Add a plant and Edit** show at most three boxes side by side, and **Where it is** has a row of its own.
 - **Stronger colours:** the page links on the second row of the top bar, and in the dark theme the links on What's new and the red Remove buttons, now reach 7 to 1 contrast.
 

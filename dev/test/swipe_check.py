@@ -36,7 +36,7 @@ with sync_playwright() as pw:
     check(all(h in links for h in heads), f'every section title on the page is in the menu ({len(heads)} sections, {len(links)} links)')
     pg.locator('#sidenav').get_by_role('link', name='Name and details').click(); pg.wait_for_timeout(900)
     t = pg.evaluate("document.getElementById('details').getBoundingClientRect().top"); pt = pg.evaluate("document.getElementById('pane-r').getBoundingClientRect().top")
-    check(abs(t - pt) < 120 and pg.evaluate("document.activeElement && document.activeElement.tagName") == 'H1', 'Name and details scrolls the card into view and moves focus to the plant name')
+    check(abs(t - pt) < 120 and pg.evaluate("document.activeElement && document.activeElement.matches('#details h2')"), 'Name and details scrolls the card into view and moves focus to its title (1.57.0: the plant\'s name is above the photos)')
     pg.screenshot(path=os.path.join(OUT, 'swipe-1-menu.png'))
     pg.locator('#sidenav button[data-act=navtoggle]').click(); pg.wait_for_timeout(600)
     row = [x.strip() for x in pg.locator('#jumprow button').all_inner_texts()]

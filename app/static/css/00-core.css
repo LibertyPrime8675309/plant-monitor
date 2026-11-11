@@ -109,7 +109,7 @@ label.f small{display:block;font-weight:400;color:var(--ink-2);margin-top:.15rem
 input[type=text],input[type=number],input[type=search],input[type=date],input[type=url],input[type=tel],input[type=email],input[type=password],select,textarea{width:100%;font:inherit;font-weight:400;color:var(--ink);background:var(--sheet);border:var(--bw) solid var(--ink-2);padding:.55rem .7rem;border-radius:0;margin-top:.35rem;min-height:2.75rem}
 textarea{min-height:7em;resize:vertical;line-height:1.5}
 input:focus-visible,select:focus-visible,textarea:focus-visible{outline:var(--ring) solid var(--focus);outline-offset:1px}
-input[type=checkbox],input[type=radio]{width:1.75rem;height:1.75rem;margin:0;accent-color:var(--cyan);flex:none}   /* 1.57.0: 28 px at normal text size (was 22) */
+input[type=checkbox],input[type=radio]{width:max(1.4rem,28px);height:max(1.4rem,28px);margin:0;accent-color:var(--cyan);flex:none}   /* 1.57.0: at least 28 px (was 22 at normal text size); with large text the same as before, so a narrow column still fits its words */
 /* 1.57.0: a photo picker is a full-size button in the app's style (it was the browser's small "Choose Files" box) */
 input[type=file]{font:inherit;font-size:1rem;max-width:100%;padding:.2rem 0;color:var(--ink-2)}
 input[type=file]::file-selector-button{font:inherit;font-weight:700;color:var(--cyan-ink);background:var(--cyan);border:2px solid var(--cyan);padding:.55rem 1.1rem;min-height:2.75rem;margin:0 .8rem .2rem 0;cursor:pointer}
@@ -852,7 +852,7 @@ li.mi-item{border:2px solid var(--line);border-radius:8px;padding:.5rem .9rem;ma
 li.mi-item.mi-not{border-style:dashed;background:transparent}
 li.mi-item.mi-not .mi-title{font-weight:400}
 .mi-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:.3rem .7rem;align-items:center}
-.mi-head input[type=checkbox]{width:1.75rem;height:1.75rem;margin:0}
+.mi-head input[type=checkbox]{width:max(1.6rem,28px);height:max(1.6rem,28px);margin:0}
 .mi-title{font-weight:700;font-size:1.1rem;cursor:pointer;overflow-wrap:anywhere}
 .mi-body{padding-left:2.3rem}
 html[data-narrow="1"] .mi-head{grid-template-columns:auto minmax(0,1fr)}
@@ -1130,7 +1130,7 @@ ul.srcs li{margin:.25rem 0;overflow-wrap:anywhere}
 .pc-tools h1{margin:.2rem 0 .5rem;overflow-wrap:anywhere}
 .pc-opts{border:2px solid var(--line);border-radius:8px;padding:1rem 1.1rem .4rem;margin:1rem 0 1.6rem;background:var(--sheet)}
 .pc-opt{display:flex;gap:.6rem;align-items:flex-start;margin:.35rem 0;min-height:2.5rem;cursor:pointer}
-.pc-opt input{width:1.75rem;height:1.75rem;margin:.15rem 0 0;flex:none;accent-color:var(--cyan)}
+.pc-opt input{width:max(1.4rem,28px);height:max(1.4rem,28px);margin:.15rem 0 0;flex:none;accent-color:var(--cyan)}
 .pc-cards{display:grid;gap:1.6rem}
 .pc-card{background:var(--sheet);color:var(--ink);border:2px solid var(--ink);border-radius:8px;padding:1.1rem 1.2rem;font-size:1.1rem;line-height:1.45;min-width:0}
 .pc-head{display:flex;gap:1rem;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;border-bottom:3px solid var(--ink);padding-bottom:.7rem;margin-bottom:.9rem}
@@ -1206,7 +1206,7 @@ html[data-narrow="1"] .pc-opts{padding:.7rem .7rem .2rem}
 .tick-find{margin:0;flex:1 1 12rem}
 .rule-row{border:var(--bw) solid var(--line);padding:.6rem .9rem;margin:0 0 .8rem;min-width:0}
 .rule-row legend{font-weight:700;padding:0 .3rem}
-.gset-tbl input[type=checkbox]{width:1.75rem;height:1.75rem}
+.gset-tbl input[type=checkbox]{width:max(1.4rem,28px);height:max(1.4rem,28px)}
 html[data-role=viewer] :is([data-act=grpnew], [data-act=grpedit], [data-act=grpdel], [data-act=grpaddsug], [data-act=grpaddall], [data-act=grprm],
   [data-act=grpcare], [data-act=grpmove], [data-act=grpset], [data-act=grpundo], [data-act=plgroups], #g-do){display:none!important}
 .rule-prev{border-left:.35rem solid var(--cyan);padding:.4rem .8rem;background:var(--cyan-soft)}
@@ -1870,3 +1870,7 @@ html[data-narrow="1"] .top:not(.pages-open) #sub-nav{display:none}
 html[data-narrow="1"] .pl-layout{display:none}   /* a narrow screen shows one column anyway */
 .label.pl-editing dl .ro{display:none}   /* 1.57.0: while the boxes are open, the same details are not shown twice */
 .pl-edrow{margin:0 0 .6rem}
+/* 1.57.0: on a narrow screen the filters are two to a row while they fit, and one to a row with very large text (the bigger tick
+   boxes no longer shrink, so "ID confidence under 70%" needs the width) */
+html[data-narrow="1"] .filters{grid-template-columns:repeat(auto-fill,minmax(min(100%,10.5rem),1fr))}
+.filters .chk{min-width:0}
