@@ -109,8 +109,8 @@ label.f small{display:block;font-weight:400;color:var(--ink-2);margin-top:.15rem
 input[type=text],input[type=number],input[type=search],input[type=date],input[type=url],input[type=tel],input[type=email],input[type=password],select,textarea{width:100%;font:inherit;font-weight:400;color:var(--ink);background:var(--sheet);border:var(--bw) solid var(--ink-2);padding:.55rem .7rem;border-radius:0;margin-top:.35rem;min-height:2.75rem}
 textarea{min-height:7em;resize:vertical;line-height:1.5}
 input:focus-visible,select:focus-visible,textarea:focus-visible{outline:var(--ring) solid var(--focus);outline-offset:1px}
-input[type=checkbox],input[type=radio]{width:max(1.4rem,28px);height:max(1.4rem,28px);margin:0;accent-color:var(--cyan);flex:none}   /* 1.57.0: at least 28 px (was 22 at normal text size); with large text the same as before, so a narrow column still fits its words */
-/* 1.57.0: a photo picker is a full-size button in the app's style (it was the browser's small "Choose Files" box) */
+input[type=checkbox],input[type=radio]{width:max(1.4rem,28px);height:max(1.4rem,28px);margin:0;accent-color:var(--cyan);flex:none}   /* 1.56.5: at least 28 px (was 22 at normal text size); with large text the same as before, so a narrow column still fits its words */
+/* 1.56.5: a photo picker is a full-size button in the app's style (it was the browser's small "Choose Files" box) */
 input[type=file]{font:inherit;font-size:1rem;max-width:100%;padding:.2rem 0;color:var(--ink-2)}
 input[type=file]::file-selector-button{font:inherit;font-weight:700;color:var(--cyan-ink);background:var(--cyan);border:2px solid var(--cyan);padding:.55rem 1.1rem;min-height:2.75rem;margin:0 .8rem .2rem 0;cursor:pointer}
 input[type=file]::file-selector-button:hover{filter:brightness(1.12)}
@@ -1592,7 +1592,7 @@ html[data-role=viewer] :is([data-act=wlcheck], [data-act=wldismiss]){display:non
 
 /* 1.29.0: the section's pages, on their own row under the top bar */
 .sub-in{display:flex;flex-wrap:wrap;gap:.2rem .3rem;padding:.15rem clamp(1rem,1.5vw,2rem) .35rem;border-top:1px solid color-mix(in srgb,var(--top-ink) 30%,transparent);
-  background:color-mix(in srgb,var(--top-bg) 92%,var(--top-ink))}   /* 1.57.0: 92% (was 88%) so its links reach 7:1 */
+  background:color-mix(in srgb,var(--top-bg) 92%,var(--top-ink))}   /* 1.56.5: 92% (was 88%) so its links reach 7:1 */
 .sub-in[hidden]{display:none}
 .sub-in a{color:var(--top-ink);text-decoration:none;padding:.4rem .75rem;border-bottom:4px solid transparent;min-height:2.6rem;display:inline-flex;align-items:center}
 .sub-in a:hover{border-color:color-mix(in srgb,var(--top-ink) 55%,transparent)}
@@ -1840,13 +1840,13 @@ details.grp>summary{flex-wrap:wrap;gap:.3rem 1rem}
 details.grp>summary>:is(h2,h3){flex:1 1 12rem;min-width:0;overflow-wrap:break-word}
 details.grp>summary>.det-tools{margin-left:auto}   /* on a phone with large text the button goes under the title, at the right */
 
-/* 1.57.0: Add a plant and Edit: at most three fields side by side, so help text is not squeezed into narrow columns, and
+/* 1.56.5: Add a plant and Edit: at most three fields side by side, so help text is not squeezed into narrow columns, and
    "Where it is" takes a row of its own with Inside or outside above its two lists */
 .field-grid.fg-form{grid-template-columns:repeat(auto-fit,minmax(min(19rem,100%),1fr))}
 .field-grid.fg-form>.where-f{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(19rem,100%),1fr));gap:0 1.4rem}
 .field-grid.fg-form>.where-f>.opts{grid-column:1/-1}
 
-/* 1.57.0: on a narrow screen the top bar is two short rows: the name, then Pages, Search and More. The pages of this section show
+/* 1.56.5: on a narrow screen the top bar is two short rows: the name, then Pages, Search and More. The pages of this section show
    with the sections when Pages is open, and Online, Home and Editing when More is open. Offline always shows. */
 .more-btn{display:none;align-items:center;justify-content:center;gap:.35rem;background:transparent;color:inherit;border:2px solid color-mix(in srgb,var(--top-ink) 60%,transparent);padding:.25em .7em;font:inherit;font-weight:700;cursor:pointer;min-height:44px}
 .more-btn:hover{background:color-mix(in srgb,var(--top-ink) 14%,transparent)}
@@ -1862,15 +1862,17 @@ html[data-narrow="1"] .top.more-open .top-acts{flex:1 1 100%;flex-wrap:wrap;orde
 html[data-narrow="1"] .top.more-open .top-acts>.more-btn{order:-1}
 html[data-narrow="1"] .top:not(.pages-open) #sub-nav{display:none}
 
-/* 1.57.0: a plant page starts with its name */
+/* 1.56.5: a plant page starts with its name */
 .pl-head{margin:0 0 .6rem}
 .pl-head h1{margin:0 0 .1rem}
 .pl-head .sci{font-size:1.3rem;margin:0 0 .4rem}
 .label .l-body>h2.l-title{font-size:1.35rem;margin:0 0 .6rem}
 html[data-narrow="1"] .pl-layout{display:none}   /* a narrow screen shows one column anyway */
-.label.pl-editing dl .ro{display:none}   /* 1.57.0: while the boxes are open, the same details are not shown twice */
+.label.pl-editing dl .ro{display:none}   /* 1.56.5: while the boxes are open, the same details are not shown twice */
 .pl-edrow{margin:0 0 .6rem}
-/* 1.57.0: on a narrow screen the filters are two to a row while they fit, and one to a row with very large text (the bigger tick
+/* 1.56.5: on a narrow screen the filters are two to a row while they fit, and one to a row with very large text (the bigger tick
    boxes no longer shrink, so "ID confidence under 70%" needs the width) */
 html[data-narrow="1"] .filters{grid-template-columns:repeat(auto-fill,minmax(min(100%,10.5rem),1fr))}
 .filters .chk{min-width:0}
+
+.nv-bar{position:sticky;top:0;z-index:60;display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center;justify-content:space-between;margin:0;border-radius:0}   /* 1.56.5: a new version is installed */

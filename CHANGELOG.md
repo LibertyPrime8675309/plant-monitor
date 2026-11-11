@@ -1,7 +1,14 @@
 # Changelog
 
-## 1.57.0 (coming December 1, 2026)
-Easier to read and use, from the review of every page (November 11):
+## 1.56.5 (2026-11-11)
+- **One reload is enough after an update.** The app used to need two or three reloads before the new version, and its number at the top left, were all there. Now an open page notices the new version by itself and opens it; if you are typing or a window is open, a bar at the top says **Version … is installed** with a **Reload now** button instead.
+- **Viewers can press Got it on What's new.** The page refused it before sending, though the app allows it.
+- **A change saved on a phone while offline no longer gets stuck.** If the app restarted while the phone was sending it (during an update, for example), every later try was refused as "being made right now". After two minutes it is now made.
+- **The Audit log names the backup made before a restore** (it said "The database from before is in True").
+- **A light's price is dated today where your plants are.** On a Texas evening it was dated tomorrow.
+- **The updater checks what it downloads**: the size, and the checksum GitHub publishes, before it uses a release zip or photo pack.
+
+Also in this version, from the November 11 review of every page (they were planned for December 1, and came early):
 - **A shorter top bar on a phone or a narrow window.** The name, then one row with **Pages** (it says which page you are on), **Search** and **More**. More opens Online, Home and Editing; **Offline** always shows when you are offline. The pages of the section you are in show with the sections when Pages is open. The bar took over half of the first screen with large text before.
 - **A plant's page starts with its name** and scientific name, then Previous and Next. **Switch to one column** no longer shows on a phone, where the page is one column anyway.
 - **A plant's details read as text.** Its names, place, pot, height, winter plan and health show as words; **Change these details** opens the boxes to change them, and **Done changing** shows the words again.

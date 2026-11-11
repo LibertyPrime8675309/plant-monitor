@@ -22,8 +22,9 @@ def test_index_and_service_worker_carry_the_script_list():
     man = json.load(open(os.path.join(APP, 'static', 'js', 'manifest.json')))['scripts']
     with S.app.test_client() as c:
         page = c.get('/').get_data(as_text=True)
-        tags = re.findall(r'<script src="/js/([a-z]+)\.js"></script>', page)
-        assert tags == man, 'index.html loads the scripts in manifest order'
+        tags = re.findall(r'<script src="/js/([a-z]+)\.js\?v=([0-9.]+)"></script>', page)
+        assert [t[0] for t in tags] == man, 'index.html loads the scripts in manifest order'
+        assert {t[1] for t in tags} == {S.APP_VERSION} and f'<meta name="app-version" content="{S.APP_VERSION}">' in page, '1.56.5: each names the version'
         assert '<!--scripts' not in page
         sw = c.get('/sw.js').get_data(as_text=True)
         assert '__SHELL_JS__' not in sw and '__VERSION__' not in sw

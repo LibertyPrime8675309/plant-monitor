@@ -77,7 +77,7 @@ with sync_playwright() as p:
     f0 = [l for l in call('GET', '/api/lights')[1]['lights'] if l['id'] == lid][0]
     check(f0['count'] == L['lights'][0]['count'] and f0['fixture'] == L['lights'][0]['fixture'], 'and nothing else on the light changes')
     pg.goto(TS + '/#/plant/P-022'); pg.wait_for_timeout(3000)
-    check(pg.locator('#pl-ed').is_hidden() and 'Change these details' in pg.inner_text('#details'), '1.57.0: a plant\'s details read as text until you press Change these details')
+    check(pg.locator('#pl-ed').is_hidden() and 'Change these details' in pg.inner_text('#details'), '1.56.5: a plant\'s details read as text until you press Change these details')
     pg.click('[data-act=pledit]'); pg.wait_for_timeout(300)
     sel = pg.locator('[data-ed=plant][data-k=tray_id]'); sel.select_option(str(tray['id'])); pg.wait_for_timeout(2500)
     check(plant('P-022')['tray_id'] == tray['id'], 'a plant\'s catch tray is chosen right on its page')

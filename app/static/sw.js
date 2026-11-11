@@ -6,17 +6,17 @@
    Changes made while offline are not handled here: the page keeps them in its outbox and sends them when it is back online. */
 const VERSION = '__VERSION__';
 const SHELL = 'plantdb-shell-' + VERSION, API = 'plantdb-api', PICS = 'plantdb-photos', LIBPICS = 'plantdb-library-photos';
-const SHELL_FILES = ['/', ...__SHELL_JS__, '/style.css', '/prefs.js', '/card.html', '/card.js', '/sitter.html', '/sitter-sheet.js', '/sitter.js', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
+const SHELL_FILES = ['/', ...__SHELL_JS__, '/style.css?v=' + VERSION, '/prefs.js?v=' + VERSION, '/card.html', '/card.js', '/sitter.html', '/sitter-sheet.js', '/sitter.js', '/manifest.webmanifest', '/icon.svg', '/icon-192.png', '/icon-512.png'];
 const NO_SAVE = /^\/api\/(people|backups|ingest|weather\/job|backups\/job|audit|library\/prefetch|library\/local|offline\/|identify\/settings|calendar\/settings|me$)/;
 const WAIT_MS = 5000;
 let downUntil = 0;                           // after the server fails to answer, use saved copies at once for a while (weak signal)
 const quick = () => Date.now() < downUntil;   // 1.38.0: navigator.onLine is not trusted here: on phones it can stay wrong after a VPN comes back
 const wentDown = () => { downUntil = Date.now() + 30000; };
-async function tryNet(req) {
+async function tryNet(req, always) {        // always: ask the server even just after it failed (opening or reloading the app)
   if (req.headers.get('X-Probe')) {          // 1.38.0: the page asking whether the server is back: always ask it, and forget the failures if it answers
     try { const r = await timeout(fetch(req), 8000); downUntil = 0; return r; } catch (e) { wentDown(); throw e; }
   }
-  if (quick()) { fetch(req).then(() => { downUntil = 0; }, () => {}); throw new Error('offline'); }   // see if it is back, without waiting
+  if (quick() && !always) { fetch(req).then(() => { downUntil = 0; }, () => {}); throw new Error('offline'); }   // see if it is back, without waiting
   try { const r = await timeout(fetch(req), WAIT_MS); downUntil = 0; return r; } catch (e) { wentDown(); throw e; }
 }
 
@@ -62,7 +62,9 @@ const shellKey = req => req.mode === 'navigate' && !/\.html$/.test(new URL(req.u
 async function shell(req) {
   const c = await caches.open(SHELL);
   try {
-    const r = await tryNet(req);
+    // 1.56.5: the app's own files always ask the server first. An update restarts the server, the open page's requests fail, and the
+    // 30 seconds of "use saved copies at once" then served the old app to the reload that followed: two or three reloads were needed
+    const r = await tryNet(req, true);
     if (r.ok) c.put(shellKey(req), r.clone());
     return r;
   } catch (e) {
@@ -94,7 +96,7 @@ self.addEventListener('fetch', e => {
   if (url.pathname.startsWith('/api/')) return e.respondWith(apiGet(req));
   if (url.pathname.startsWith('/photos/') || url.pathname.startsWith('/thumbs/')) return e.respondWith(picture(req, PICS));
   if (url.pathname.startsWith('/library-photos/')) return e.respondWith(picture(req, LIBPICS));
-  if (req.mode === 'navigate' || SHELL_FILES.includes(url.pathname) || url.pathname.startsWith('/fonts/') || url.pathname.startsWith('/lights/')) return e.respondWith(shell(req));
+  if (req.mode === 'navigate' || SHELL_FILES.includes(url.pathname) || SHELL_FILES.includes(url.pathname + url.search) || url.pathname.startsWith('/js/') || url.pathname === '/style.css' || url.pathname === '/prefs.js' || url.pathname.startsWith('/fonts/') || url.pathname.startsWith('/lights/')) return e.respondWith(shell(req));
 });
 self.addEventListener('message', e => {
   if (e.data === 'forget') e.waitUntil(Promise.all([API, PICS, LIBPICS].map(n => caches.delete(n))));

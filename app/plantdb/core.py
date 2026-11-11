@@ -837,7 +837,8 @@ def role_refusal(u):
 def me_dict(c):
     u = getattr(g, 'user', None) or {'via': 'local', 'login': None, 'name': '', 'role': 'owner'}
     return {'via': u['via'], 'login': u['login'], 'name': u['name'] if u['via'] == 'tailscale' else '', 'role': u['role'],
-            'role_word': ROLE_WORD[u['role']], 'owner_name': owner_name(c), 'edit_homes': u.get('edit_homes') or []}
+            'role_word': ROLE_WORD[u['role']], 'owner_name': owner_name(c), 'edit_homes': u.get('edit_homes') or [],
+            'viewer_ok': {'posts': list(VIEWER_POSTS), 'prefixes': list(VIEWER_PREFIXES)}}   # 1.56.5: the page checks against the same lists
 
 # ---------- units (1.47.0, PLAN.md step 4a) ----------
 # Everything is stored and sent in °F and inches. A person's units come from their 'units' setting (user_prefs, saved by the Display
@@ -1066,6 +1067,7 @@ def headers(resp):
     resp.headers['Permissions-Policy'] = 'geolocation=(self), microphone=(self), payment=(), usb=(), camera=(self)'   # 1.22.0: location for mushroom finds; microphone for search by voice
     resp.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
     resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['X-App-Version'] = APP_VERSION     # 1.56.5: an open page sees at once that a new version is running, and reloads
     resp.headers['X-Frame-Options'] = 'DENY'
     resp.headers['Referrer-Policy'] = 'no-referrer'
     resp.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'"

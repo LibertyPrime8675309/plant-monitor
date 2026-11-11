@@ -524,7 +524,7 @@ function slips(h) {
     </article>`;
   });
 }
-// 1.29.0: the plant's main details, edited right on its page (the rest is under "Edit this page"). 1.57.0: they read as text, and
+// 1.29.0: the plant's main details, edited right on its page (the rest is under "Edit this page"). 1.56.5: they read as text, and
 // "Change these details" opens the boxes (the page read like a form before)
 let PLEDIT = null;                     // the code of the plant whose details are open to change
 function plantEdHtml(p) {
@@ -562,7 +562,7 @@ async function viewPlant(code) {
   const single = document.documentElement.dataset.layout === 'single';
   return {
     title: p.common_name,
-    // 1.57.0: the plant's name comes first, then Previous / Next (they came first, and on a phone the name was a screen further down)
+    // 1.56.5: the plant's name comes first, then Previous / Next (they came first, and on a phone the name was a screen further down)
     html: html`<header class="pl-head"><h1>${p.common_name}</h1><p class="sci latin">${p.scientific_name || 'Scientific name not set'}</p></header>
     ${pnavBlock(p.code)}<p class="crumb"><a href="#/plants">All plants</a>
       <button class="btn ghost small noprint pl-layout" type="button" data-act="layout">${single ? 'Show photos and details side by side' : 'Switch to one column'}</button></p>

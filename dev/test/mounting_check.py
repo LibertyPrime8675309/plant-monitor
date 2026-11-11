@@ -173,7 +173,7 @@ with sync_playwright() as p:
     check(pg.locator(f'text=Light spots ({n})').count() >= 1, 'with a jump button in the summary')
     pg.locator('#fit-unchecked').screenshot(path=os.path.join(OUT, 'mounting-6-today.png'))
     # a plant's height on its page, and the health walk-through
-    pg.goto(BASE + f'/#/plant/{other}'); pg.wait_for_selector('[data-act=pledit]', timeout=20000); pg.click('[data-act=pledit]')   # 1.57.0: the details open to change
+    pg.goto(BASE + f'/#/plant/{other}'); pg.wait_for_selector('[data-act=pledit]', timeout=20000); pg.click('[data-act=pledit]')   # 1.56.5: the details open to change
     pg.fill('[data-ed=plant][data-k=height_in]', '11'); pg.keyboard.press('Tab'); pg.wait_for_timeout(1200)
     check(call('GET', '/api/plants/' + other)['height_in'] == 11, 'the height is set on the plant page and saves when you leave the box')
     pg.goto(BASE + '/#/checkup'); pg.wait_for_selector('button.ck-big[type=submit]', timeout=20000)

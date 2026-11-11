@@ -10,7 +10,7 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'sho
 E = {'Tailscale-User-Login': 'ethan@example.com', 'Tailscale-User-Name': 'Ethan Schmidtke'}
 G = {'Tailscale-User-Login': 'sam@example.net', 'Tailscale-User-Name': 'Sam Rivera'}
 errs, fails = [], []
-def more(pg):                      # 1.57.0: on a narrow screen Editing is behind More in the top bar
+def more(pg):                      # 1.56.5: on a narrow screen Editing is behind More in the top bar
     if pg.locator('#more-btn').is_visible() and pg.locator('#more-btn').get_attribute('aria-expanded') != 'true': pg.locator('#more-btn').click(); pg.wait_for_timeout(200)
 def check(cond, what):
     print(('ok   ' if cond else 'FAIL ') + what)

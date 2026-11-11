@@ -439,7 +439,7 @@ def light_fields(b, old=None):
         d['price'] = _num(b, 'price', 0, 100000, 'Price')
         if d['price'] is None: d.pop('price_on', None)
         else:
-            on = str(b.get('price_on') or '')[:10] or date.today().isoformat()
+            on = str(b.get('price_on') or '')[:10] or local_today(db()).isoformat()   # 1.56.5: today where the plants are (it was UTC: tomorrow on a Texas evening)
             try: date.fromisoformat(on)
             except ValueError: abort(400, 'The date of the price must be a date')
             d['price_on'] = on

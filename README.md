@@ -137,6 +137,7 @@ The rhythm from December 2026: one release with new features on the **first of e
 In the app:
 
 - **What's new.** After an update, Today starts with "New in <version>" and that version's changes from the list (the first line, with the rest folded under "The rest of what changed"). **Got it** puts it away; it is remembered for you (each person has their own), and "Every version's changes" opens the whole list as a plain page.
+- **Opening the new version (from 1.56.5).** A page left open during an update notices the new version the next time it asks the app for anything, and reloads itself once. If you are typing or a window is open, a bar at the top says **Version … is installed** with **Reload now** instead. Every file the page loads names the version, so one reload brings all of it.
 - **An update is ready.** Twice a day the app asks GitHub whether a newer release exists. When one does, the owner sees "An update is ready: <version>" on Today, with a link to what changed, until it is installed. Only the owner sees it, because only the owner's PC can install it. The container can be told not to ask with `PLANTDB_UPDATES=0` in `docker-compose.yml`.
 - **Test a restore.** Backups are only as good as a restore, so once a quarter the owner's Today has "Test a restore" when none has been done for 90 days (or ever). Do it on the Backups page: **Back up now**, then **Restore** on that newest backup. The database from just before the restore is kept as another backup, so nothing is lost, and the reminder goes away for three months.
 
@@ -311,7 +312,7 @@ On a computer (from 1.26.1) the menu bar at the top uses the whole width of the 
 
 On a phone the menu bar at the top scrolls away with the page (scroll back to the top to reach it), and every page fits the width of the screen at every text size. From 1.26.0:
 - The list of pages folds behind one **Pages** button, which names the page you're on (for example "Pages: Groups"). Press it to show every page; choosing one, or pressing Escape, folds the list again.
-- From 1.57.0 the bar is two short rows: the name, then **Pages** (with just the page's name), **Search** and **More**. **More** opens Online, Home and Editing (Escape folds it); **Offline** always shows when you are offline. The pages of the section you are in show with the sections when Pages is open.
+- From 1.56.5 the bar is two short rows: the name, then **Pages** (with just the page's name), **Search** and **More**. **More** opens Online, Home and Editing (Escape folds it); **Offline** always shows when you are offline. The pages of the section you are in show with the sections when Pages is open.
 - **Navigation** and **Debug** share one bar along the bottom of the screen (from 1.42.0 Display is inside the Navigation menu).
 - On a computer with large text (or a small window such as a tablet held sideways), the page links fold behind the same **Pages** button once they would take more than two rows, or the top bar more than a fifth of the window. If the top bar is still that tall, it scrolls away with the page, as on a phone.
 - Tables too wide for the screen become one box per row: the row's name (a day, a plant, a backup) at the top, then each value next to its column's name, two or more to a line when they fit. The long table on the Weather page still scrolls sideways.
@@ -331,7 +332,7 @@ On a phone the menu bar at the top scrolls away with the page (scroll back to th
 
 ### Read aloud and keyboard shortcuts (from 1.8.0)
 
-Every section has a **Read aloud** button. Your browser reads that section in its own voice, the section gets a dashed outline while it is read, and a big **Stop reading** button stays at the bottom of the screen. **Read this page aloud**, under the page title, reads the whole page (the R key does the same, and Escape stops; from 1.57.0 the reminder of those keys is here and in Display rather than beside every title). In **Display** you can hide the buttons, pick the **Reading speed** (slower to fastest) and the **Voice**, with **Try this voice**. In Microsoft Edge the "Natural" voices sound the most human.
+Every section has a **Read aloud** button. Your browser reads that section in its own voice, the section gets a dashed outline while it is read, and a big **Stop reading** button stays at the bottom of the screen. **Read this page aloud**, under the page title, reads the whole page (the R key does the same, and Escape stops; from 1.56.5 the reminder of those keys is here and in Display rather than beside every title). In **Display** you can hide the buttons, pick the **Reading speed** (slower to fastest) and the **Voice**, with **Try this voice**. In Microsoft Edge the "Natural" voices sound the most human.
 
 Keyboard shortcuts work on every page, except while you are typing in a box. **Display** can turn them off.
 
@@ -388,7 +389,7 @@ The filter row on the Plants page narrows the list. Every filter is remembered i
 
 ## Previous and next plant (from 1.7.5)
 
-Every plant page has **Previous Plant** and **Next Plant** buttons, each showing the name and code of the plant it leads to. On a wide screen they sit in the margins either side of the page; on smaller screens and phones they sit at the top of the page, under the plant's name (from 1.57.0 the name comes first).
+Every plant page has **Previous Plant** and **Next Plant** buttons, each showing the name and code of the plant it leads to. On a wide screen they sit in the margins either side of the page; on smaller screens and phones they sit at the top of the page, under the plant's name (from 1.56.5 the name comes first).
 
 **Swipe (from 1.14.1).** On a phone or tablet, swipe left anywhere on a plant page for the next plant, or right for the previous one. While you swipe, a label names the plant that is coming; once it says "Let go to open it", lifting your finger opens it. Start the swipe away from the very edge of the screen, because your phone uses edge swipes for Back. Swipes that start on a menu, a form field or the photo are left alone, and so is scrolling up and down. To turn it off, open **Display** and set **Swipe between plants** to Off.
 
@@ -408,7 +409,7 @@ The **Today** page (the page the app opens on, from 1.34.0) lists what to do tod
 - **Feed:** plants due for fertilizer today, with **Log feeding** (the same schedule as the Fertilizer page).
 - **Needed from you:** the open requests, with links to answer them.
 
-From 1.57.0 a part with nothing due (Turn the pots, Getting ready to come inside, Feed) is one line in the box at the top, "Nothing due today: …", instead of a part of its own. **What's new** shows in full the first time after an update; on later visits it is one line you can open, until you press **Got it**. **Going away? Make a plant-sitter sheet** is at the end of the page.
+From 1.56.5 a part with nothing due (Turn the pots, Getting ready to come inside, Feed) is one line in the box at the top, "Nothing due today: …", instead of a part of its own. **What's new** shows in full the first time after an update; on later visits it is one line you can open, until you press **Got it**. **Going away? Make a plant-sitter sheet** is at the end of the page.
 
 Every plant page has **quick care buttons** under its label, big enough to use on a phone in the garden after scanning the plant's label: **Watered today**, **Checked: still moist**, **Log feeding**, **Add a photo** (opens the phone's camera) and **Log other care** (repotted, pruned, treated for pests, or a note, with a date). The line above them says when the plant was last watered and when to check it next. The plant's **Water and soil** section explains the reminder and has its **care log**, with a **Remove** button on each entry.
 
@@ -1337,7 +1338,7 @@ Choose a plant's **Pot** and **Catch tray** on its page. The Grow lights page th
 
 ### Editing on the page
 
-On the light cards (Grow lights), Pots and trays, Rooms and spots, and the top of each plant's page (names, home, where, pot and tray, ID confidence, winter plan, health; from 1.57.0 these read as text until you press **Change these details**, and **Done changing** shows them as text again), type or choose a new value. It saves when you leave the box or press Enter. **Escape** puts back what was there before you started, and the message that follows has **Undo** (or press U). Notes and other long text have a small **Edit** button, so reading a page never changes it. **Edit this page** still has everything else. People who can only view see the values but cannot change them.
+On the light cards (Grow lights), Pots and trays, Rooms and spots, and the top of each plant's page (names, home, where, pot and tray, ID confidence, winter plan, health; from 1.56.5 these read as text until you press **Change these details**, and **Done changing** shows them as text again), type or choose a new value. It saves when you leave the box or press Enter. **Escape** puts back what was there before you started, and the message that follows has **Undo** (or press U). Notes and other long text have a small **Edit** button, so reading a page never changes it. **Edit this page** still has everything else. People who can only view see the values but cannot change them.
 
 ### Settings that follow you
 
