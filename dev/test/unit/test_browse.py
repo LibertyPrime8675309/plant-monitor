@@ -37,3 +37,16 @@ def test_sightings_are_counted_with_who_ate_it():
 def test_the_choices_for_a_sighting():
     assert 'Not sure' in S.BROWSE_PESTS and 'Rabbit' in S.BROWSE_PESTS and 'Rat' in S.BROWSE_PESTS and 'Mouse' in S.BROWSE_PESTS
     assert S.RISKS == ['Low', 'Moderate', 'High'] == S.BROWSE_RISKS
+
+def test_sightings_raise_the_risk_and_never_lower_it():
+    r = S.raised_risk
+    assert r('Low', 0) == ('Low', False) and r('Low', 1) == ('Moderate', True) and r('Low', 2) == ('Moderate', True) and r('Low', 3) == ('High', True)
+    assert r('Moderate', 1) == ('Moderate', False) and r('Moderate', 3) == ('High', True)
+    assert r('High', 5) == ('High', False)
+    assert r('Unknown', 1) == ('Moderate', True) and r('Unknown', 0) == ('Unknown', False)
+
+def test_a_hand_set_risk_is_raised_too_by_sightings():
+    row = {'code': 'P-1', 'common_name': 'Aloe', 'scientific_name': 'Aloe vera', 'site': 'Outdoors', 'browse_risk': 'Low'}
+    seen = [{'seen_on': '2026-11-10', 'pest': 'Rat'}] * 3
+    x = S.browse_row(row, seen)
+    assert x['risk'] == 'High' and x['raised'] and x['base'] == 'Low' and x['own'] == 'Low'     # what was set by hand is kept, and shown

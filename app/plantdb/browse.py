@@ -104,15 +104,41 @@ def sightings(c, plant=None, days=SEEN_DAYS):
     if plant: q += ' AND plant_code=?'; a.append(plant)
     return [sighting_dict(r) for r in c.execute(q + ' ORDER BY seen_on DESC, id DESC', a)]
 
+RAISE_TO_MODERATE = 1                       # eaten this many times in the last 60 days: at least "Some risk"
+RAISE_TO_HIGH = 3                           # eaten this many times: "High". Worked out each time, so it falls back when the sightings age out
+
+def raised_risk(base, n):
+    """(risk, raised): the risk once sightings are counted. Sightings only ever raise it, even over one set by hand."""
+    want = 'High' if n >= RAISE_TO_HIGH else 'Moderate' if n >= RAISE_TO_MODERATE else None
+    if want and (RISKS.index(want) > RISKS.index(base) if base in RISKS else True): return want, True
+    return base, False
+
 def browse_row(r, seen=()):
-    """The risk of a plant: the one set by hand if there is one, else the usual for its kind. `seen` is its recent sightings."""
+    """The risk of a plant: the one set by hand if there is one, else the usual for its kind, raised by what was seen eating it.
+    `seen` is its sightings in the last 60 days."""
     usual, why = browse_for(r['scientific_name'], r['common_name'])
     own = r['browse_risk'] if r['browse_risk'] in RISKS else ''
-    risk = own or usual
+    base = own or usual
+    risk, raised = raised_risk(base, len(seen))
     pests = sorted({x['pest'] for x in seen if x['pest'] != 'Not sure'})
     return {'code': r['code'], 'name': r['common_name'], 'sci': r['scientific_name'] or '', 'risk': risk, 'word': RISK_WORD[risk], 'why': why,
-            'own': own, 'usual': usual, 'source': 'you' if own else 'kind', 'site': r['site'] or 'Outdoors',
+            'own': own, 'usual': usual, 'base': base, 'raised': raised, 'source': 'you' if own else 'kind', 'site': r['site'] or 'Outdoors',
             'seen': {'count': len(seen), 'last': seen[0]['seen_on'] if seen else None, 'pests': pests}}
+
+def push_cover(c, hour=None):
+    """From 4 pm, once a day for each home: the plants outside to cover tonight (the same list as on Today). Sent to everyone who wants
+    "Cover plants at night" notifications at that home. `hour` is for tests."""
+    for H in homes(c):
+        local = datetime.now(tzinfo(H['tz']))
+        if (local.hour if hour is None else hour) < TONIGHT_FROM_HOUR: continue
+        with place_for(H['id']):
+            B = browse_report(c, tonight=True)
+        if not B['tonight']: continue
+        if not push_once(c, f'cover:{H["id"]}:{local.date().isoformat()}', 2): continue
+        names = [p['name'].split(' (')[0] for p in B['tonight']]
+        n = len(names)
+        push_send(c, 'cover', f'Tonight: cover {n} plant{"s" if n != 1 else ""} at {H["name"].split(",")[0]}',
+                  ', '.join(names[:5]) + ('…' if n > 5 else '') + '. Rabbits, rats and mice feed at night.', '#/', H['id'], tag='cover')
 
 def evening_now(c):
     return datetime.now(tzinfo(location(c)['tz'])).hour >= TONIGHT_FROM_HOUR

@@ -17,7 +17,9 @@ const brPl = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 const brDay = s => { const d = parseYmd(s), m = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']; return `${m[d.getMonth()]} ${d.getDate()}`; };
 const brSeenWords = p => !p.seen.count ? '' : `Seen eaten ${brPl(p.seen.count, 'time', 'times')} in the last ${BR_DAYS} days${p.seen.pests.length ? ' (' + p.seen.pests.join(', ').toLowerCase() + ')' : ''}, last on ${brDay(p.seen.last)}.`;
 let BR_DAYS = 60;
-const brWhy = p => p.source === 'you' ? html`<strong>${BR_ICON[p.risk]}${p.word}</strong>, as you set it. <span class="muted br-usual">The usual for this kind of plant: ${p.usual === 'Unknown' ? 'not known' : p.usual.toLowerCase()}.</span> ${p.why}`
+const brBase = p => p.base === 'Unknown' ? 'not known' : p.base.toLowerCase();
+const brWhy = p => p.raised ? html`<strong>${BR_ICON[p.risk]}${p.word}.</strong> <strong>Raised because it was eaten ${brPl(p.seen.count, 'time', 'times')} in the last ${BR_DAYS} days</strong> (${p.source === 'you' ? 'you set it to ' : 'the usual for this kind of plant is '}${brBase(p)}). It goes back when those sightings are older than ${BR_DAYS} days. <span class="muted br-usual">${p.why}</span>`
+  : p.source === 'you' ? html`<strong>${BR_ICON[p.risk]}${p.word}</strong>, as you set it. <span class="muted br-usual">The usual for this kind of plant: ${p.usual === 'Unknown' ? 'not known' : p.usual.toLowerCase()}.</span> ${p.why}`
   : html`<strong>${BR_ICON[p.risk]}${p.word}.</strong> ${p.why}`;
 const brBtns = p => html`<button class="btn small ghost" type="button" data-act="brseen" data-code="${p.code}" data-name="${p.name}" aria-label="${'Log a pest seen eating ' + p.name}">Log a sighting</button>
   <button class="btn small ghost" type="button" data-act="brrisk" data-code="${p.code}" data-name="${p.name}" aria-label="${'Change the pest risk of ' + p.name}">Change risk</button>`;
@@ -66,7 +68,7 @@ async function brRiskDialog(code, name) {
     <label class="f">How likely is it to be eaten<select name="risk">
       <option value="" ${cur === '' ? raw('selected') : ''}>The usual for this kind of plant (${p.usual === 'Unknown' ? 'not known' : p.usual.toLowerCase()})</option>
       ${B.risks.map(x => html`<option value="${x}" ${cur === x ? raw('selected') : ''}>${x === 'Low' ? 'Low: usually left alone' : x === 'Moderate' ? 'Some risk' : 'High: a favourite'}</option>`)}</select></label>
-    <p class="hint">${p.why || 'Nothing is known about this kind of plant yet.'} Set it by hand once you see what really gets eaten.</p>
+    <p class="hint">${p.why || 'Nothing is known about this kind of plant yet.'} Set it by hand once you see what really gets eaten. Whatever you set, a plant seen eaten is raised for ${B.days} days: once to some risk, three times to high.</p>
     <div class="row"><button class="btn" value="ok">Save</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`);
   if (r !== 'ok') return;
   const v = dlg.querySelector('[name=risk]').value;
@@ -97,7 +99,7 @@ async function viewBrowse() {
   return {
     title: 'Pests that eat plants',
     html: html`<h1>Pests that eat plants</h1>
-    <p class="muted">Rabbits, rats, mice and deer choose plants that are soft, tasty and have no defence. This sorts your plants by that, from the kind of plant, unless you have set a plant's risk yourself. The usual comes from gardeners' and extension-service knowledge, not a test on your garden: a hungry animal eats almost anything, and a plant that is "usually left alone" is not safe if nothing else is on offer.</p>
+    <p class="muted">Rabbits, rats, mice and deer choose plants that are soft, tasty and have no defence. This sorts your plants by that, from the kind of plant, unless you have set a plant's risk yourself. The usual comes from gardeners' and extension-service knowledge, not a test on your garden, and a plant you log as eaten is raised (once to some risk, three times to high) for ${B.days} days: a hungry animal eats almost anything, and a plant that is "usually left alone" is not safe if nothing else is on offer.</p>
     <div class="verdict-box" role="status"><p><strong>${C.High} most likely to be eaten, ${C.Moderate} with some risk, ${C.Low} usually left alone${C.Unknown ? `, ${C.Unknown} not known yet` : ''}.</strong></p></div>
     <section class="blk" id="br-seen"><h2>Seen eating, last ${B.days} days (${S.length})</h2>
       ${S.length ? html`<p>${Object.entries(B.by_pest).map(([k, n]) => `${k} ${n}`).join(', ')}. Logging each time shows who it is and which plants they go for.</p>

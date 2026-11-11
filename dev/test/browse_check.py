@@ -10,9 +10,9 @@ fails, errs = [], []
 def check(cond, what):
     print(('ok   ' if cond else 'FAIL ') + what)
     if not cond: fails.append(what)
-def call(url, m='GET', body=None):
-    req = urllib.request.Request(BASE + url, data=json.dumps(body).encode() if body is not None else None,
-                                 headers={'Content-Type': 'application/json', 'X-Editor': 'Browse Test'}, method=m)
+def call(url, m='GET', body=None, h=None, base=BASE):
+    req = urllib.request.Request(base + url, data=json.dumps(body).encode() if body is not None else None,
+                                 headers={'Content-Type': 'application/json', 'X-Editor': 'Browse Test', **(h or {})}, method=m)
     with urllib.request.urlopen(req) as r: return json.loads(r.read() or b'null')
 def status(url, m, body=None):
     try: call(url, m, body); return 200
@@ -44,6 +44,29 @@ tn = call('/api/browse?tonight=1')
 check(any(p['code'] == code for p in tn['tonight']), 'a plant set to High (outside) is on tonight\'s list')
 call('/api/browse/sightings/%d' % x['id'], 'DELETE')
 check(call('/api/browse?plant=' + code)['plants'][0]['seen']['count'] == 0, 'a sighting can be removed')
+# ---- sightings raise the risk by themselves, and only for the days they count
+lows = [p for p in call('/api/browse')['plants'] if p['risk'] == 'Low' and not p['own']]
+lc = lows[0]['code']
+ids = [call('/api/browse/sightings', 'POST', {'plant': lc, 'pest': 'Mouse'})['id']]
+o = call('/api/browse?plant=' + lc)['plants'][0]
+check(o['risk'] == 'Moderate' and o['raised'] and o['base'] == 'Low', 'one sighting raises a low-risk plant to some risk')
+ids += [call('/api/browse/sightings', 'POST', {'plant': lc, 'pest': 'Mouse'})['id'] for _ in range(2)]
+o = call('/api/browse?plant=' + lc)['plants'][0]
+check(o['risk'] == 'High' and o['raised'] and o['seen']['count'] == 3, 'three sightings raise it to high')
+check(any(p['code'] == lc for p in call('/api/browse?tonight=1')['tonight']), 'and it is on tonight\'s list')
+for i in ids: call('/api/browse/sightings/%d' % i, 'DELETE')
+check(call('/api/browse?plant=' + lc)['plants'][0]['risk'] == 'Low', 'with the sightings gone it is low again')
+# ---- the evening notification
+call('/api/push/subscribe', 'POST', {'endpoint': 'https://push.example/browse', 'keys': {'p256dh': 'BPk', 'auth': 'aa'}, 'device': 'Windows PC'}, {'Tailscale-User-Login': 'ethan@example.com', 'Tailscale-User-Name': 'Ethan'}, 'http://127.0.0.1:8081')
+call('/mock/pushed', 'DELETE')
+call('/mock/push/run', 'POST', {'what': 'cover', 'hour': 10})
+check(call('/mock/pushed')['pushed'] == [], 'before 4 pm no cover message is sent')
+call('/mock/push/run', 'POST', {'what': 'cover', 'hour': 17})
+P = call('/mock/pushed')['pushed']
+check(len(P) == 1 and P[0]['title'].startswith('Tonight: cover ') and P[0]['kind'] == 'cover', 'from 4 pm one message names how many plants to cover')
+call('/mock/push/run', 'POST', {'what': 'cover', 'hour': 18})
+check(len(call('/mock/pushed')['pushed']) == 1, 'and only once a day')
+check(any(k['key'] == 'cover' for k in call('/api/push', h={'Tailscale-User-Login': 'ethan@example.com', 'Tailscale-User-Name': 'Ethan'}, base='http://127.0.0.1:8081')['kinds']), 'it is a choice each person can turn off')
 pic = os.path.join(OUT, 'browse-evidence.jpg'); Image.new('RGB', (320, 240), (90, 140, 70)).save(pic)
 with sync_playwright() as pw:
     br = pw.chromium.launch()
