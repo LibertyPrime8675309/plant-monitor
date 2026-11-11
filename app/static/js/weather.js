@@ -470,11 +470,12 @@ async function loadWxCharts() {
 // year it has (the cold-season pages are left out at a tropical home). Owner only, like the rest of a place's settings.
 const SEASON_WORDS = { temperate: 'A winter with frost', mild: 'A cool season, frost rare', tropical: 'Wet and dry seasons, no frost' };
 function siteCells(p) {
-  if (ME().role !== 'owner') return html`<div class="hint">${p.country ? p.country + '. ' : ''}${UNIT_WORDS.region[p.units || 'us']}. ${SEASON_WORDS[p.season || 'temperate']}.</div>`;
+  if (ME().role !== 'owner') return html`<div class="hint">${p.country ? p.country + '. ' : ''}${UNIT_WORDS.region[p.units || 'us']}. ${SEASON_WORDS[p.season || 'temperate']}.${p.tended === false ? ' Cared for outside the app.' : ''}</div>`;
   return html`<div class="site-set">
     <label class="f">Country<input type="text" maxlength="2" size="3" value="${p.country || ''}" data-act="placesite" data-id="${p.id}" data-k="country" aria-label="${'Country code for ' + p.name}"></label>
     <label class="f">Units there<select data-act="placesite" data-id="${p.id}" data-k="units" aria-label="${'Units at ' + p.name}">${Object.entries(UNIT_WORDS.region).map(([v, l]) => html`<option value="${v}" ${(p.units || 'us') === v ? raw('selected') : ''}>${l}</option>`)}</select></label>
-    <label class="f">Seasons<select data-act="placesite" data-id="${p.id}" data-k="season" aria-label="${'Seasons at ' + p.name}">${Object.entries(SEASON_WORDS).map(([v, l]) => html`<option value="${v}" ${(p.season || 'temperate') === v ? raw('selected') : ''}>${l}</option>`)}</select></label></div>`;
+    <label class="f">Seasons<select data-act="placesite" data-id="${p.id}" data-k="season" aria-label="${'Seasons at ' + p.name}">${Object.entries(SEASON_WORDS).map(([v, l]) => html`<option value="${v}" ${(p.season || 'temperate') === v ? raw('selected') : ''}>${l}</option>`)}</select></label>
+    ${p.is_home ? '' : html`<label class="f">Care<select data-act="placesite" data-id="${p.id}" data-k="tended" aria-label="${'Care at ' + p.name}"><option value="1" ${p.tended !== false ? raw('selected') : ''}>Logged in this app</option><option value="0" ${p.tended === false ? raw('selected') : ''}>Done outside the app</option></select><small>With "Done outside the app", Water all and a group's care leave its plants out. One plant can still be logged on its page.</small></label>`}</div>`;
 }
 function placesBlock(W) {
   const P = W.places || [];

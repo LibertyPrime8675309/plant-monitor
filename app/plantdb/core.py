@@ -377,6 +377,7 @@ def init_db():
     if 'country' not in lcols: c.execute("ALTER TABLE locations ADD COLUMN country TEXT NOT NULL DEFAULT ''")      # ISO code, 'US'
     if 'units' not in lcols: c.execute("ALTER TABLE locations ADD COLUMN units TEXT NOT NULL DEFAULT ''")          # a region key (UNIT_REGIONS) or '' for US
     if 'season' not in lcols: c.execute("ALTER TABLE locations ADD COLUMN season TEXT NOT NULL DEFAULT 'temperate'")   # temperate | mild | tropical
+    if 'tended' not in lcols: c.execute('ALTER TABLE locations ADD COLUMN tended INTEGER NOT NULL DEFAULT 1')   # 1.58.0: 0 = its plants are cared for outside the app; bulk watering leaves them out
     if 'edit_homes' not in {r[1] for r in c.execute('PRAGMA table_info(people)')}: c.execute("ALTER TABLE people ADD COLUMN edit_homes TEXT NOT NULL DEFAULT ''")   # 1.48.0: an editor limited to some homes (JSON list of ids; '' = all)
     c.execute("UPDATE locations SET country='US' WHERE country='' AND lat BETWEEN 24 AND 50 AND lon BETWEEN -125 AND -66")   # 1.48.0: a first guess for places in the lower 48; editable on Homes and places
     if 'place_id' not in {r[1] for r in c.execute('PRAGMA table_info(light_spots)')}: c.execute('ALTER TABLE light_spots ADD COLUMN place_id INTEGER')   # 1.13.1
@@ -488,10 +489,18 @@ def apply_batches(c):
             for h in b.get('homes_add', []):                 # 1.28.0: another home where plants live (skipped if a place is already there)
                 r = c.execute('SELECT id FROM locations WHERE ABS(lat-?)<0.05 AND ABS(lon-?)<0.05', (h['lat'], h['lon'])).fetchone()
                 if r: c.execute('UPDATE locations SET plants_here=1 WHERE id=?', (r[0],)); continue
-                hid = c.execute('INSERT INTO locations(name,lat,lon,tz,enabled,is_home,plants_here,created_at) VALUES(?,?,?,?,1,0,1,?)',
-                                (h['name'], h['lat'], h['lon'], h['tz'], ts)).lastrowid
+                hid = c.execute('INSERT INTO locations(name,lat,lon,tz,enabled,is_home,plants_here,created_at,tended) VALUES(?,?,?,?,1,0,1,?,?)',
+                                (h['name'], h['lat'], h['lon'], h['tz'], ts, 0 if h.get('tended') is False else 1)).lastrowid
                 c.execute('UPDATE locations SET device=? WHERE id=?', (f'place-{hid}', hid))
                 audit_only(c, 'setting', 'weather_place', None, json.dumps(h), who, f'Home added ({label}): {h["name"]}')
+            for h in b.get('homes_update', []):              # 1.58.0: a home found by its place; each field says the value it expects to replace
+                r = c.execute('SELECT * FROM locations WHERE ABS(lat-?)<0.05 AND ABS(lon-?)<0.05', (h['lat'], h['lon'])).fetchone()
+                if not r: continue                                # not there (yet): nothing to change
+                for k, (old, new) in (h.get('fields') or {}).items():
+                    if k not in ('tended',): raise ValueError(f'homes_update cannot change {k}')
+                    if int(r[k]) != int(old): continue           # changed since (by hand on Homes and places): left alone
+                    c.execute(f'UPDATE locations SET {k}=? WHERE id=?', (int(new), r['id']))
+                    audit_only(c, 'setting', 'weather_place', json.dumps({k: old}), json.dumps({k: new}), who, f'{r["name"]}: ' + ('care is logged in the app' if new else 'cared for outside the app') + f' ({label})')
             for p in b.get('plants', []):
                 n = c.execute("SELECT COALESCE(MAX(CAST(SUBSTR(code,3) AS INTEGER)),0)+1 FROM plants").fetchone()[0]
                 code = f'P-{n:03d}'
