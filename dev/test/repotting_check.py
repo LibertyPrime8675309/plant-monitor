@@ -20,7 +20,9 @@ def status(m, url, body=None):
 R = lambda: call('GET', '/api/repotting')
 r0 = R(); st0 = {p['code']: p for p in r0['plants']}
 year = int(r0['today'][:4])
-check(r0['counts']['never'] == len(r0['plants']) and r0['plants'], f'a fresh install has {len(r0["plants"])} plants on the plan, none recorded yet')
+recorded = [p for p in r0['plants'] if p['last']]          # batch C8 logs the Baraboo moth orchid's repot of November 11, 2026
+check(r0['plants'] and r0['counts']['never'] == len(r0['plants']) - 1 and [(p['name'], p['last']) for p in recorded] == [('Moth orchid (grey pot, from Baraboo)', '2026-11-11')],
+      f'a fresh install has {len(r0["plants"])} plants on the plan, only the Baraboo orchid with a repot recorded')
 check(all(p['months'] in (12, 18, 24, 36) for p in r0['plants']), 'each is due every 12, 18, 24 or 36 months')
 check(any(p['why'].startswith('Grows in water') for p in r0['left_out']), 'plants that grow in water are left out')
 fast = next(c for c, p in st0.items() if p['months'] == 12)

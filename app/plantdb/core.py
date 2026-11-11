@@ -458,6 +458,18 @@ def find_plant(c, u):
     if r and (not u.get('name') or r['common_name'] == u['name']): return r
     return None
 
+def batch_pot_mix(c, m, r, care_id, who, ts, label):
+    """Record what a pot is in from a batch ({mixed_on, parts: [{key, grade?, parts}], top?, bottom?, notes}); r is the plant's row.
+    Used by pot_mixes_add (by code, only where nothing is recorded) and by a new page's own pot_mix (C8)."""
+    am = {k: (i, n, ro) for i, k, n, ro in c.execute('SELECT id, key, name, role FROM amendments')}
+    parts = [{'amendment_id': am[x['key']][0], 'name': am[x['key']][1], 'role': am[x['key']][2], 'grade': x.get('grade', ''), 'parts': x.get('parts'), 'amount': x.get('amount', '')}
+             for x in m.get('parts', []) if x['key'] in am]
+    lay = lambda L: json.dumps({'amendment_id': am[L['key']][0], 'name': am[L['key']][1], 'grade': L.get('grade', ''), 'depth_in': L.get('depth_in')}) if L and L.get('key') in am else ''
+    c.execute('INSERT INTO pot_mixes(plant_code,care_id,mixed_on,parts,top,bottom,notes,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?)',
+              (r['code'], care_id, m.get('mixed_on') or ts[:10], json.dumps(parts), lay(m.get('top')), lay(m.get('bottom')), m.get('notes', ''), who, ts))
+    audit_only(c, 'mixes', 'pot_mix', None, ', '.join(f"{x['parts']:g} {x['name'].lower()}" for x in parts if x.get('parts')), who,
+               '%s (batch %s)' % ('Repotted' if care_id else 'What it is in', label), r['id'], r['code'])
+
 def apply_batches(c):
     """Apply seed/batches/*.json once each, so an existing database can receive new plants after an upgrade.
     Safe to run on every start: a batch is recorded in settings as batch_applied:<id> and never repeats.
@@ -504,6 +516,16 @@ def apply_batches(c):
                           (pid, 1, json.dumps(snapshot(c, pid)), who, ts, 'Initial record from photo analysis (%s)' % label))
                 c.execute("INSERT INTO audit_log(plant_id,plant_code,version,action,field,old_value,new_value,changed_by,changed_at,note) VALUES(?,?,?,?,?,?,?,?,?,?)",
                           (pid, code, 1, 'create', None, None, None, who, ts, 'Record created from photos (%s)' % label))
+                # C8: a new page can come with its own care log and potting mix (a repot logged with the mix it was done with)
+                care_id = None
+                for cl in p.get('care', []):
+                    cid = c.execute('INSERT INTO care_log(plant_code,kind,done_on,note,created_by,created_at) VALUES(?,?,?,?,?,?)',
+                                    (code, cl['kind'], cl['done_on'], cl.get('note', ''), who, ts)).lastrowid
+                    if cl['kind'] == 'repot': care_id = cid
+                if p.get('pot_mix'): batch_pot_mix(c, p['pot_mix'], {'code': code, 'id': pid}, care_id, who, ts, label)
+                for q in p.get('requests', []):                 # questions for Ethan about this new page, shown on it until he answers
+                    if c.execute('INSERT OR IGNORE INTO requests(rkey,plant_code,kind,text,created_by,created_at) VALUES(?,?,?,?,?,?)',
+                                 (q['key'], code, q.get('kind', 'question'), q['text'], who, ts)).rowcount: new_requests.append({'plant_code': code, 'text': q['text']})
             # photos for plants that already exist
             for ph in b.get('existing_photos', []):
                 r = c.execute('SELECT * FROM plants WHERE code=?', (ph['code'],)).fetchone()
@@ -593,14 +615,7 @@ def apply_batches(c):
                 if not r:
                     audit_only(c, 'note', None, None, None, who, 'Batch %s could not find %s for its potting mix, so it was skipped' % (label, m['code'])); continue
                 if c.execute('SELECT 1 FROM pot_mixes WHERE plant_code=?', (m['code'],)).fetchone(): continue
-                am = {k: (i, n, ro) for i, k, n, ro in c.execute('SELECT id, key, name, role FROM amendments')}
-                parts = [{'amendment_id': am[x['key']][0], 'name': am[x['key']][1], 'role': am[x['key']][2], 'grade': x.get('grade', ''), 'parts': x.get('parts'), 'amount': x.get('amount', '')}
-                         for x in m.get('parts', []) if x['key'] in am]
-                lay = lambda L: json.dumps({'amendment_id': am[L['key']][0], 'name': am[L['key']][1], 'grade': L.get('grade', ''), 'depth_in': L.get('depth_in')}) if L and L.get('key') in am else ''
-                c.execute('INSERT INTO pot_mixes(plant_code,mixed_on,parts,top,bottom,notes,created_by,created_at) VALUES(?,?,?,?,?,?,?,?)',
-                          (m['code'], m.get('mixed_on') or ts[:10], json.dumps(parts), lay(m.get('top')), lay(m.get('bottom')), m.get('notes', ''), who, ts))
-                audit_only(c, 'mixes', 'pot_mix', None, ', '.join(f"{x['parts']:g} {x['name'].lower()}" for x in parts if x.get('parts')), who,
-                           'What it is in (batch %s)' % label, r['id'], r['code'])
+                batch_pot_mix(c, m, r, None, who, ts, label)
             if b.get('place_sheets'): where_seed(c)              # 1.56.0 (PLAN.md step 8b): rooms and shelves are areas and spots by now
             for ps in b.get('place_sheets', []):               # a room's or shelf's measurements, only where none are set (Ethan's own stay)
                 a = c.execute("SELECT * FROM areas WHERE side='in' AND home_id IS NULL AND name=?", (ps['room'],)).fetchone()

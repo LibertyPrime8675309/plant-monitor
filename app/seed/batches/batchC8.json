@@ -1,0 +1,167 @@
+{
+ "id": "C8",
+ "created": "2026-11-11",
+ "author": "Ethan's repotted moth orchid from Baraboo (November 11, 2026)",
+ "plants": [
+  {
+   "common_name": "Moth orchid (grey pot, from Baraboo)",
+   "scientific_name": "Phalaenopsis hybrid",
+   "aliases": "Baraboo orchid (from Ethan's mother's house in Baraboo, Wisconsin)",
+   "plant_type": "Orchid (epiphyte)",
+   "location": "Covered porch, on the wicker ottoman",
+   "container": "Grey plastic pot with drainage holes (drilled November 11), almost entirely orchid bark, an old wooden flower stake with a clip",
+   "home_id": null,
+   "area_id": 7,
+   "spot_id": null,
+   "pot_id": null,
+   "tray_id": null,
+   "id_confidence": 85,
+   "id_basis": "Broad, thick, glossy strap-shaped leaves in two opposite rows from a single short stem, and thick silver-green aerial roots with bright green growing tips: a moth orchid (Phalaenopsis). There is no tag and no flower in the photos, so the hybrid and its flower colour are not known. It came from Ethan's mother's house in Baraboo, Wisconsin.",
+   "id_alternatives": "Phalaenopsis hybrid (store orchid)\nDoritaenopsis (an older name for some hybrids)",
+   "id_improve": "A photo of the flowers when it blooms (colour, size, markings)\nAny tag or the receipt, if his mother has it",
+   "temp_ideal_low": 65,
+   "temp_ideal_high": 85,
+   "temp_damage_below": 50,
+   "temp_lethal_below": 35,
+   "temp_notes": "Warm-growing. A few weeks of nights around 60 F in autumn set the flower spike; keep it above 55 F.",
+   "humidity_low": 50,
+   "humidity_high": 70,
+   "humidity_notes": "Likes humid air with movement; buds drop in very dry rooms.",
+   "light_summary": "Bright, indirect light (an east window)",
+   "light_hours": "4-6 h bright indirect, or a grow light 10-12 h",
+   "light_notes": "Leaves should be a medium grass green: dark green means too little light, yellow-green or red-tinged means too much. Never hot midday sun.",
+   "winter_plan": "Move indoors",
+   "winter_summary": "A tropical orchid: indoors all year in Round Rock.",
+   "winter_triggers": "Already indoors; away from cold glass and heater vents.",
+   "winter_steps": "Cooler nights (60-65 F) for a few weeks in autumn help a flower spike form.\nWater a little less in winter; let the bark dry between waterings.\nFeed lightly or not at all until the spike shows.",
+   "indoor_setup": "East window or a grow light 12-18 in away. Humidity 50% or more; a small fan nearby helps. Water in the morning so the crown dries by night.",
+   "health_rating": "Fair",
+   "health_summary": "Repotted November 11: rotted roots removed, drainage holes added, healthy roots set into orchid bark. The leaves are firm and glossy with a reddish tint at the edges, and there are fresh green root tips, so it is putting out new roots. There is no flower spike and no keiki right now, and dried, browning leaf bases at the crown need watching for rot.",
+   "health_observations": "Leaves broad, glossy and firm, with reddish edges (can mean strong light)\nFresh bright-green root tips after the repot\nHealthy silver-green roots, most now in the bark; a few rest over the rim, which is normal\nRotted roots removed at the repot (November 11)\nDried, brown leaf bases at the crown beside the stake\nNo flower spike or keiki seen\nThe pot had no drainage holes until November 11",
+   "health_steps": "Water lightly for the first two weeks, then when the bark is dry and the roots look silver; water at the pot edge, not into the crown.\nBlot any water out of the crown with a paper towel, and keep the leaf bases in the crown dry.\nLet a few aerial roots stay in open air; do not bend or cram them into the bark.\nCheck the crown and the roots again in 2 to 3 weeks; trim dried leaf bases only once they come away easily.\nCheck whether the old flower spike is still green: a live node can grow a keiki, with keiki paste on it.\nPut a saucer or catch pot under the pot when it sits on the ottoman, and empty it after watering.\nBring it indoors before nights fall below 55°F.",
+   "notes": "From Ethan's mother's house in Baraboo, Wisconsin. Photographed November 11, 2026, after the repot, and July 31, 2026, before it. Identified from the photos alone. Moth orchids do not divide, so a keiki on an old flower spike is the way to propagate it.",
+   "temp_damage_above": 95,
+   "vpd_low": 0.5,
+   "vpd_high": 1.2,
+   "par_low": 80,
+   "par_high": 250,
+   "dli_low": 3.0,
+   "dli_high": 9.0,
+   "water_notes": "Water when the roots in the pot turn silver and the bark is dry, roughly every 7-10 days: soak the pot for 10 minutes or run water through it, then drain fully. Never let water sit in the crown or in a cache pot. Firm roots and plump leaves say it is right; limp leaves say the roots are either dry or rotted.",
+   "soil_medium": "Medium orchid bark with a little charcoal and perlite, in a pot with large drainage holes (clear pots show the roots).",
+   "soil_ph_low": 5.5,
+   "soil_ph_high": 6.5,
+   "soil_moisture_low": 20,
+   "soil_moisture_high": 50,
+   "soil_temp_low": 60,
+   "soil_temp_high": 85,
+   "fertilizer": "Orchid feed at quarter strength with most waterings (\"weakly, weekly\"), plain water every fourth time",
+   "nutrients": "Light and frequent; flush monthly.",
+   "fert_from_month": 3,
+   "fert_to_month": 10,
+   "fert_every_days": 10,
+   "pests_watch": "Mealybugs: white cottony fluff in the leaf axils and under the leaves\nScale: brown or white bumps on leaves and flower spikes\nSpider mites: silvery pitting on the leaf undersides",
+   "pest_steps": "Look into the leaf axils and along the leaf undersides every week.\nDab mealybugs with rubbing alcohol on a cotton bud, then spray the whole plant (axils, undersides, the top of the medium) with insecticidal soap or 70% alcohol, repeating every 5-7 days for three weeks.\nKeep an infested plant away from the others until clear for a month.",
+   "pests_current": "",
+   "site": "Covered porch",
+   "water_every_days": 8,
+   "leaf_type": "Large leaves",
+   "pot_size": "Small: fits in a bucket",
+   "pests_found": "Mealybugs",
+   "npk_ratio": "20-20-20",
+   "fert_strength": "Quarter strength",
+   "growth_habit": "A monopodial orchid: a short stem with a fan of thick, strap-shaped leaves, thick silver-green aerial roots, flowers on a spike from between the leaves",
+   "kingdom": "Plantae (plants)",
+   "taxon_order": "Asparagales",
+   "family": "Orchidaceae",
+   "genus": "Phalaenopsis",
+   "height_ground": null,
+   "width_ground": null,
+   "height_pot": "6 to 12 in of leaves; a flower spike to 2 ft",
+   "width_pot": "8 to 16 in",
+   "growth_rate": "Slow (one or two leaves a year)",
+   "lifespan": "Many years",
+   "zone_low": "10b",
+   "zone_high": "12",
+   "zone_notes": "A houseplant here.",
+   "heat_zone_high": null,
+   "heat_zone_low": null,
+   "heat_zone_source": null,
+   "native_range": "Hybrids of Phalaenopsis species from South-East Asia, the Philippines and northern Australia, growing on trees in humid forest.",
+   "conservation_status": "Not applicable: a cultivated hybrid.",
+   "invasive": "Not a risk here.",
+   "bloom": "A spike of long-lasting flowers (white, pink, purple, yellow or spotted) once or twice a year, usually winter to spring, each spike open for 2-3 months.",
+   "fruit": "None in the home.",
+   "danger_humans": "Not toxic.",
+   "danger_animals": "Non-toxic to cats and dogs (ASPCA).",
+   "propagation": "Keikis (plantlets) that form on old flower spikes, potted up once they have roots 2-3 in long.",
+   "sources": "Wikipedia: Phalaenopsis | https://en.wikipedia.org/wiki/Phalaenopsis\nASPCA toxic and non-toxic plants | https://www.aspca.org/pet-care/animal-poison-control/toxic-and-non-toxic-plants",
+   "pet_safety": "Safe for pets (ASPCA)",
+   "height_in": null,
+   "grow_kind": "Soil mix",
+   "reservoir": "Drains freely",
+   "mix_wants": "Fast-draining",
+   "care": [
+    {
+     "kind": "repot",
+     "done_on": "2026-11-11",
+     "note": "Removed the rotted roots, set the healthy aerial roots into the mix, drilled drainage holes in the grey pot; almost entirely orchid bark (Ethan, November 11)"
+    }
+   ],
+   "pot_mix": {
+    "mixed_on": "2026-11-11",
+    "parts": [
+     {
+      "key": "orchid-bark",
+      "parts": 1
+     }
+    ],
+    "notes": "Almost entirely orchid bark; the rest is not recorded (Ethan, November 11). Grey pot with drainage holes added (no saucer in the November 11 photos)."
+   },
+   "requests": [
+    {
+     "key": "c8-orchid-spike",
+     "kind": "question",
+     "text": "Is the old flower spike still green and firm, with its nodes (small bumps) alive? A live node can grow a keiki. Which month did this orchid last flower?"
+    },
+    {
+     "key": "c8-orchid-mix",
+     "kind": "question",
+     "text": "What else is in the bark mix besides bark (charcoal, perlite, moss), and where does the water go now that the pot drains (saucer, catch pot, sink)?"
+    }
+   ],
+   "photos": [
+    {
+     "file": "img_c8_after_front.jpg",
+     "caption": "November 11: after the repot, from the front: roots set into the bark, the old stake and a clip holding the new upright leaf",
+     "primary": true,
+     "source": "Ethan, November 11"
+    },
+    {
+     "file": "img_c8_after_side.jpg",
+     "caption": "November 11: after the repot, from the side: a few healthy roots over the rim",
+     "primary": false,
+     "source": "Ethan, November 11"
+    },
+    {
+     "file": "img_c8_crown_roots.jpg",
+     "caption": "November 11: close up of the crown: fresh green root tips, dried leaf bases beside the stake",
+     "primary": false,
+     "source": "Ethan, November 11"
+    },
+    {
+     "file": "img_c8_crown_clip.jpg",
+     "caption": "November 11: close up of the crown with the clip on the upright leaf; dried, browning leaf bases to watch for rot",
+     "primary": false,
+     "source": "Ethan, November 11"
+    },
+    {
+     "file": "img_c8_before.jpg",
+     "caption": "July 31: before the repot: no drainage holes, on a white saucer, roots hanging out of the pot and over the rim",
+     "primary": false,
+     "source": "Ethan, July 31"
+    }
+   ]
+  }
+ ]
+}
