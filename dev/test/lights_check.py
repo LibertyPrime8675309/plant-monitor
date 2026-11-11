@@ -195,7 +195,7 @@ with sync_playwright() as p:
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and '404' not in m.text else None)
     pg.add_init_script("localStorage.setItem('plantdb.editor','Light Test')")
     pg.goto(LOCAL + '/#/lights'); pg.wait_for_timeout(2500)
-    check(pg.locator('#lt-rooms .lt-room').count() == 5 and 'Big Brown Hutch' in pg.inner_text('#lt-rooms') and 'Living room window' in pg.inner_text('#lt-rooms'), 'the page lists his rooms with the spot on its shelf')
+    check(pg.locator('#lt-rooms .lt-room').count() == 6 and 'Big Brown Hutch' in pg.inner_text('#lt-rooms') and 'Living room window' in pg.inner_text('#lt-rooms'), 'the page lists his rooms with the spot on its shelf')
     # 1.56.3 (Ethan, November 10): each section has the line above its title, and Show/Hide stays put when it is pressed
     secs = ['lt-lights', 'lt-spots', 'lt-rooms', 'lt-plan']
     lined = pg.evaluate("ids => ids.map(id => { const s = document.getElementById(id), h = s.querySelector(':scope > header') || s.querySelector(':scope > h2'); return parseFloat(getComputedStyle(h).borderTopWidth) > 0; })", secs)
@@ -269,7 +269,7 @@ with sync_playwright() as p:
     check(not any(p_['room'] == 'Test single-shelf room' for p_ in call('GET', '/api/lights')[1]['places']), 'and removes it')
     pg.evaluate('window.scrollTo(0, 0)')
     pg.click('#lt-plan [data-act=spotnew]'); pg.wait_for_timeout(1200)
-    check(pg.locator('dialog select[name=place] optgroup').count() == 5, 'the spot window offers the rooms and shelves (and the second home\'s room)')
+    check(pg.locator('dialog select[name=place] optgroup').count() == 6, 'the spot window offers the rooms and shelves (and the other homes\' rooms)')
     t1 = pg.inner_text('#sp-prev')
     pg.fill('dialog input[name=distance]', '40'); pg.wait_for_timeout(900)
     t2 = pg.inner_text('#sp-prev')
