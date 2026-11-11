@@ -281,6 +281,11 @@ with sync_playwright() as p:
     pg.select_option('dialog [data-sp=show]', ''); pg.select_option('dialog [data-sp=sort]', 'need'); pg.wait_for_timeout(400)
     tg = [float(x) for x in pg.locator('ul.sp-plants li.sp-row').evaluate_all('els => els.map(e => e.dataset.target).filter(Boolean)')]
     check(tg == sorted(tg, reverse=True), 'Sort: most light needed first')
+    other = pg.locator('ul.sp-plants li.sp-row[data-other="1"]').count()
+    if other:                                    # 1.56.1: "Hide plants already in another spot" is on at first
+        check(pg.locator('dialog [data-sp=hide]').is_checked() and pg.locator('ul.sp-plants li.sp-row[data-other="1"]:visible').count() == 0
+              and f'{other} in another spot are hidden' in pg.inner_text('#sp-count'), f'plants already in another spot are hidden ({other})')
+    pg.uncheck('dialog [data-sp=hide]'); pg.wait_for_timeout(300)
     check('Showing %d of %d' % (rows.count(), rows.count()) in pg.inner_text('#sp-count'), 'it says how many are showing and ticked')
     pg.locator('ul.sp-plants li.sp-row input[name=plant]').nth(0).check(); pg.locator('ul.sp-plants li.sp-row input[name=plant]').nth(1).check(); pg.wait_for_timeout(300)
     pg.click('dialog [data-act=spotbest]'); pg.wait_for_timeout(1500)

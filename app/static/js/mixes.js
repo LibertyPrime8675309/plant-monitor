@@ -197,7 +197,7 @@ addFeature({
     load: async () => { const d = await api('GET', '/api/mixes/care'); return d.items.length ? d : null; },
     jump: d => `Flush and roots (${d.items.length})`,
     html: d => html`<section class="blk" id="mx-hydro"><h2>Semi-hydro and water-only care (${d.items.length})</h2>
-      <ul class="jobs">${d.items.map(x => html`<li class="job" data-code="${x.code}"><span class="job-nophoto" aria-hidden="true"></span>
+      <ul class="jobs">${d.items.map(x => html`<li class="job" data-code="${x.code}">${x.photo ? html`<img src="${thumbUrl(x.photo)}" alt="" loading="lazy" width="64" height="64">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}
         <div class="job-txt"><a class="nm" href="#/plant/${enc(x.code)}">${x.name}</a> <span class="muted">${x.code}, ${x.grow_kind.toLowerCase()}</span>
           <div>${MX_DOING[x.kind] || x.word}: ${x.last ? `last ${relDay(x.last)}, ${x.overdue > 0 ? `${x.overdue} day${x.overdue === 1 ? '' : 's'} overdue` : 'due today'}` : 'nothing logged yet'} (about every ${x.every} days).</div></div>
         <div class="job-acts"><button class="btn small" type="button" data-act="care" data-kind="${x.kind}" data-code="${x.code}" data-name="${x.name}">${x.word}</button></div></li>`)}</ul></section>`,

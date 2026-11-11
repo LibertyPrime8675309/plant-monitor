@@ -414,5 +414,5 @@ def mixes_care():
         if grow_kind(r) == 'Soil mix': continue
         for h in hydro_state(c, r):
             if h['kind'] in ('flush', 'rootcheck') and h['state'] in ('due', 'unknown'):
-                out.append({'code': r['code'], 'name': r['common_name'], 'grow_kind': grow_kind(r)} | h)
+                out.append({'code': r['code'], 'name': r['common_name'], 'grow_kind': grow_kind(r), 'photo': plant_photo(c, r['id'])} | h)     # 1.56.1: its main photo, as in the Water list
     return jsonify(items=out, every=hydro_every(c))
