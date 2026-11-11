@@ -190,16 +190,14 @@ function addFoldButtons() {
     if (title) title.classList.add('fold-click');           // 1.56.3: the title folds it too
     if (foldIsSet(it.text)) foldSet(it, true, false);
   });
-  // 1.56.3 (Ethan, November 10): a section that folds by its title bar (Today's and Fertilizer's groups, Turn the pots) has a
-  // Hide/Show button too, at the right of the bar like every other section's.
+  // 1.56.3 (Ethan, November 10): a section that folds by its title bar (Today's and Fertilizer's groups, Turn the pots) shows Hide/Show
+  // at the right of the bar like every other section's. 1.56.4: it only looks like a button: the whole title bar is the one control
+  // (a button inside it was a control inside a control, which screen readers report as a fault), and it says open or closed itself.
   document.querySelectorAll('main details.grp').forEach(d => {
     const s = d.querySelector(':scope > summary'); if (!s || s.querySelector('.det-fold')) return;
-    const name = (s.querySelector('h2,h3') || s).textContent.trim();
-    s.insertAdjacentHTML('beforeend', rend(html`<span class="sec-tools det-tools noprint"><button class="btn ghost small sec-fold det-fold" type="button"></button></span>`));
+    s.insertAdjacentHTML('beforeend', rend(html`<span class="sec-tools det-tools noprint" aria-hidden="true"><span class="btn ghost small sec-fold det-fold"></span></span>`));
     const b = s.querySelector('.det-fold');
-    const label = () => { b.setAttribute('aria-expanded', d.open ? 'true' : 'false'); b.setAttribute('aria-label', `${d.open ? 'Hide' : 'Show'} the ${name} section`);
-      b.innerHTML = rend(html`<span aria-hidden="true">${d.open ? '▾' : '▸'}</span> <span>${d.open ? 'Hide' : 'Show'}</span>`); };
-    b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); d.open = !d.open; label(); });   // the summary's own toggle is not run twice; the label changes at once
+    const label = () => { b.innerHTML = rend(html`<span>${d.open ? '▾' : '▸'}</span> <span>${d.open ? 'Hide' : 'Show'}</span>`); };
     d.addEventListener('toggle', label);
     label();
   });
@@ -238,13 +236,39 @@ function foldOpenFor(el) {         // the menu or a section button goes to a fol
   const it = NAVITEMS.find(x => x.el === el || (x.head && x.head === el) || x.el.contains(el));
   if (it && !it.top && foldParts(it).some(c => c.classList.contains('fold-hid'))) foldSet(it, false, true);
 }
+function titleWidth(t) {           // the width a title takes on one line
+  const css = t.style.cssText; t.style.whiteSpace = 'nowrap'; t.style.width = 'max-content'; t.style.paddingRight = '0';
+  const w = t.getBoundingClientRect().width; t.style.cssText = css; return w;
+}
 function foldMeasure() {           // room on the title's right for its buttons
+  const level = (t, tl) => { const lh = parseFloat(getComputedStyle(t).lineHeight) || t.offsetHeight; return (Math.min(lh, t.offsetHeight) - tl.offsetHeight) / 2; };
   document.querySelectorAll('#app .has-fold').forEach(sec => {
     const tl = sec.querySelector(':scope > .sec-tools'); if (!tl) return;
-    sec.style.setProperty('--tools-w', Math.ceil(tl.getBoundingClientRect().width + 14) + 'px');
+    // 1.56.4: the buttons sit beside the title, level with its first line, whenever the title keeps at least 16 rem and over half the
+    // width; otherwise they go on the line under it, at the right. Either way they stay put when the section is folded or opened.
+    let t = tl.previousElementSibling; while (t && t.matches('.rd-page')) t = t.previousElementSibling;    // the plant's name has Read this page aloud under it
+    const w = Math.ceil([...tl.children].reduce((a, c) => a + c.getBoundingClientRect().width, 0) + 8 * (tl.children.length - 1) + 14);
+    const room = sec.clientWidth - w, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const isT = !!(t && t.matches('h1,h2,h3'));
+    const beside = isT && (room >= Math.max(16 * rem, sec.clientWidth * 0.5) || titleWidth(t) <= room);
+    sec.classList.toggle('tools-beside', beside);
+    sec.style.setProperty('--tools-w', w + 'px');
+    tl.style.top = beside ? Math.max(0, t.offsetTop + level(t, tl)) + 'px' : '';
+  });
+  // 1.56.4: a title with no section of its own (Fertilizer's "Today" box) has its Hide/Show at the right of the title, not on a line under it
+  document.querySelectorAll('#app .sec-bare').forEach(tl => {
+    const t = tl.previousElementSibling; tl.style.marginTop = ''; tl.style.marginBottom = ''; if (!t || !t.matches('h1,h2,h3')) return;
+    t.style.paddingRight = '';
+    const w = Math.ceil(tl.querySelector('.sec-fold').getBoundingClientRect().width + 14), host = t.parentElement.clientWidth;
+    if (host - w < Math.max(16 * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16), host * 0.5)) return;
+    t.style.paddingRight = w + 'px';
+    const mb = parseFloat(getComputedStyle(t).marginBottom) || 0;
+    const lv = level(t, tl), th = tl.offsetHeight;
+    tl.style.marginTop = (lv - t.offsetHeight - mb) + 'px'; tl.style.marginBottom = (t.offsetHeight + mb - lv - th) + 'px';
   });
 }
 window.addEventListener('resize', () => { clearTimeout(foldMeasure.t); foldMeasure.t = setTimeout(foldMeasure, 200); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => foldMeasure());   // 1.56.4: titles change height once their font has loaded
 // the text a sighted reader would see: no buttons, form controls, icons, hidden parts or closed details
 function readableText(root) {
   const out = [];

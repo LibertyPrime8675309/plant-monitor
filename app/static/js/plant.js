@@ -564,7 +564,7 @@ async function viewPlant(code) {
       <button class="btn ghost small noprint" type="button" data-act="layout">${single ? 'Show photos and details side by side' : 'Switch to one column'}</button></p>
     ${archived ? html`<div class="notice">This record is archived. It is hidden from the main list.</div>` : ''}
     <div class="plant">
-      <div class="pane" id="pane-l" tabindex="0" role="region" aria-label="Photos"><div id="photopanel" data-section="Photos">${photoPanel(p)}</div></div>
+      <div class="pane" id="pane-l" tabindex="0" role="region" aria-label="Photos"><section class="ph-sec" data-section="Photos"><h2 class="ph-title">Photos</h2><div id="photopanel">${photoPanel(p)}</div></section></div>
       <div class="pane" id="pane-r" tabindex="0" role="region" aria-label="Details">
         <nav class="jump noprint" id="jumprow" aria-label="Jump to a section"></nav>
         <div class="label" id="details" data-section="Name and details">

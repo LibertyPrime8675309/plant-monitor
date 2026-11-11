@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.56.4 (2026-11-11)
+- **Outside or Inside shows which is chosen.** On Add a plant and on every plant's Edit page, the two choices are now buttons, and the chosen one is filled in. They showed as plain words before, with nothing to say which was on.
+- **The group titles on Today, Fertilizer and Turn the pots are one control again.** The Show and Hide at the right of the title is part of the title bar rather than a button inside it, so a screen reader hears one control that says whether the group is open.
+- **Hide and Show line up everywhere.** They sit at the right edge, level with the title, whenever the title has room beside them, and on the line under the title, at the right, when it does not. That now includes the camera on Identify, the "Today" box on Fertilizer, and a plant's photos, which have a **Photos** title of their own.
+
 ## 1.56.3 (2026-11-10)
 - **Plants without a spot** (on Rooms and spots, was "Spots to sort out"). Choosing a spot that is already there, in another area or room, now works: before, nothing moved and the old suggestion came back. Each group of plants has an **Area or room** list and a **Spot** list with that area's spots or **A new spot…**, and its own **Put in this spot** button; untick a plant to leave it for later. Plants with nothing written on them are listed too.
 - The **All plants** page is titled "All plants" (it said "Outdoor plants").

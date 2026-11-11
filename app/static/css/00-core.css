@@ -1215,7 +1215,8 @@ html:not([data-narrow="1"]) .more-f .filters>label:first-child{grid-column:auto}
 
 /* 1.18.0: Identify a plant (camera) and the plant library. The camera view is framed like a specimen on a herbarium sheet:
    corner marks, not a box, so the plant stays the biggest thing on the screen. */
-.id-cam,.lib-form{max-width:46rem}
+.lib-form{max-width:46rem}
+.id-cam>:not(h2):not(.sec-tools){max-width:46rem}   /* 1.56.4: the camera stays this wide, but its title runs the width of the page so Hide/Show sits at the right edge like every other section's */
 .id-sec>h2,#lib-res>h2{margin-top:2rem;margin-bottom:.7rem}
 .id-view{position:relative;background:var(--ink);aspect-ratio:4/3;max-height:70vh;margin:.4rem 0 .6rem;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .id-view video{width:100%;height:100%;object-fit:contain;display:block}
@@ -1612,7 +1613,7 @@ html[data-narrow="1"] .sub-in a{padding:.35rem .55rem;min-height:2.4rem}
 .wh-add{gap:.5rem;align-items:end;flex-wrap:wrap;margin-top:.5rem}
 .where-f{border:0;padding:0;margin:0}
 .where-f legend{font-weight:700;padding:0}
-.where-f .opts{display:flex;gap:1.5rem;margin:.3rem 0 .5rem}
+.where-f .opts{display:flex;gap:.5rem;margin:.3rem 0 .5rem}   /* 1.56.4: the two choices are buttons that show which is chosen (they were bare words) */
 /* 1.29.0: Pots and trays */
 .ct-list{display:grid;gap:1rem}
 .ct-card{display:grid;grid-template-columns:minmax(0,14rem) minmax(0,1fr);gap:1rem;border:2px solid var(--line, #8a9a96);border-radius:8px;padding:1rem;background:var(--sheet)}
@@ -1747,18 +1748,17 @@ html[data-narrow="1"] .mi-head .pr-badge{white-space:normal;max-width:100%;displ
 /* ---- 1.42.0: every section can be folded shut (Show or hide) ---- */
 .fold-hid{display:none!important}
 .has-fold{position:relative}
-.has-fold>.sec-tools{position:absolute;top:.3rem;right:0;display:flex;gap:.5rem;align-items:center;z-index:14}
+.has-fold>.sec-tools{position:static;display:flex;gap:.5rem;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin:0 0 .6rem}   /* 1.56.4: under the title at the right when the title needs the width */
+.has-fold.tools-beside>.sec-tools{position:absolute;top:.3rem;right:0;margin:0;z-index:14}   /* beside it whenever there is room (ui.js foldMeasure decides) */
 .sec-tools .rd-btn{position:static;margin:0}
 .sec-fold{display:inline-flex;gap:.35rem;align-items:center;justify-content:center;white-space:nowrap;min-width:5.6em}     /* 1.56.3: Show and Hide take the same room, so it does not shift */
-.has-fold>:is(h1,h2,h3).sec-keep,main section.blk.has-rd.has-fold>h2,section.needs.has-rd.has-fold>h2{padding-right:var(--tools-w,7rem)}
+.has-fold.tools-beside>:is(h1,h2,h3).sec-keep,main section.blk.has-rd.has-fold.tools-beside>h2,section.needs.has-rd.has-fold.tools-beside>h2{padding-right:var(--tools-w,7rem)}
 .sec-head-row>.sec-tools{display:inline-flex;gap:.5rem;align-items:center;margin-left:auto}
 .sec-bare,.sec-inline{display:flex;justify-content:flex-end;gap:.5rem;margin:-.2rem 0 .5rem}
 section.has-fold[data-folded="1"]{padding-bottom:.3rem}
-html[data-narrow="1"] .has-fold>.sec-tools{position:static;margin:0 0 .6rem;flex-wrap:wrap}
-html[data-narrow="1"] .has-fold>:is(h1,h2,h3).sec-keep,html[data-narrow="1"] main section.blk.has-rd.has-fold>h2,html[data-narrow="1"] section.needs.has-rd.has-fold>h2{padding-right:0}
-@media (max-width:640px){.has-fold>.sec-tools{position:static;margin:0 0 .6rem;flex-wrap:wrap}.has-fold>:is(h1,h2,h3).sec-keep,main section.blk.has-rd.has-fold>h2{padding-right:0}}
 @media print{.fold-hid{display:revert!important}}
-.has-fold>.sec-tools:first-child{position:static;justify-content:flex-end;margin:0 0 .4rem}   /* a part with no title of its own (the photos) */
+.has-fold>.sec-tools:first-child{position:static;justify-content:flex-end;margin:0 0 .4rem}   /* a part with no title of its own */
+.ph-sec>h2.ph-title{margin:0 0 .5rem}   /* 1.56.4: the plant's photos have a title, so Hide/Show sits beside it as in every other section */
 
 /* ---- 1.42.0: Grow lights: the title and summary table stay at the top and fold as one; spots fold; plants two to a row ---- */
 .lt-top{position:sticky;top:var(--top-h);z-index:16;background:var(--paper);border-bottom:2px solid var(--line);padding:.2rem 0 .5rem;margin:0 0 1rem}
