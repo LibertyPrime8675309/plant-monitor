@@ -198,7 +198,7 @@ function ltVerdict(dli, lo, hi) {          // the same rule as light_verdict() o
 function spotRow(c, x, others, inSpot) {
   const sid = LT.assigned[c.code], there = sid && sid !== x.id ? others[sid] : null, id = 'spp-' + c.code;
   return html`<li class="sp-row" data-code="${c.code}" data-name="${c.name.toLowerCase()}" data-lo="${c.need ? c.need.lo : ''}" data-hi="${c.need ? c.need.hi : ''}" data-target="${c.need ? c.need.target : ''}"
-      data-free="${sid ? '0' : '1'}" data-inside="${c.inside ? '1' : '0'}">
+      data-free="${sid ? '0' : '1'}" data-other="${sid && sid !== x.id ? '1' : '0'}" data-inside="${c.inside ? '1' : '0'}">
     <input type="checkbox" id="${id}" name="plant" value="${c.code}" ${inSpot.has(c.code) ? raw('checked') : ''}>
     ${c.photo ? html`<img src="${thumbUrl(c.photo)}" alt="" loading="lazy" width="56" height="56">` : html`<span class="sp-nophoto" aria-hidden="true"></span>`}
     <span class="sp-txt"><label for="${id}" class="nm">${c.name}</label>
@@ -209,7 +209,8 @@ function spotRow(c, x, others, inSpot) {
 // 1.56.0: the levels of the chosen shelf, counted from the bottom, each with its clear height when it is known
 function spotLevels(pid, cur) {
   const pl = (LT && LT.places || []).find(p => String(p.id) === String(pid)), n = pl && pl.levels, o = (v, w) => html`<option value="${v}" ${v === (cur || '') ? raw('selected') : ''}>${w}</option>`;
-  if (!n || n < 2) return html`${o('', n === 1 ? 'Its one level' : 'One level, or not known')}${o('top', 'The top level')}${o('lower', 'A lower level (a shelf above it)')}`;
+  if (n === 1) return html`${o('', 'Its one level')}`;                                   // 1.56.1: a table has nothing else to choose
+  if (!n) return html`${o('', 'One level, or not known')}${o('top', 'The top level')}${o('lower', 'A lower level (a shelf above it)')}`;
   const lower = [...Array(n - 1).keys()].map(i => o('L' + (i + 1), `Level ${i + 1} from the bottom${pl.gaps_in[i] ? `, ${lenF(pl.gaps_in[i])} clear` : ''}`)).reverse();
   return html`${o('', 'Not chosen yet')}${o('top', `The top level (level ${n})`)}${lower}${cur === 'lower' ? o('lower', 'A lower level (which one not said)') : ''}`;
 }
@@ -246,6 +247,7 @@ async function spotDialog(x, opt) {
           <label class="f">Show<select data-sp="show"><option value="">All plants (${n})</option><option value="fit">Fits this setting</option><option value="near">Fits or nearly fits</option>
             <option value="free">Not in a spot yet</option><option value="ticked">Ticked for this spot</option><option value="inside">Lives inside</option><option value="coming">Coming inside</option></select></label>
           <label class="f">Sort<select data-sp="sort"><option value="name">Name, A to Z</option><option value="code">Code</option><option value="need">Most light needed first</option><option value="fit">Best fit first</option></select></label>
+          <label class="sp-hide"><input type="checkbox" data-sp="hide" ${spHideTaken() ? raw('checked') : ''}> Hide plants already in another spot</label>
         </div>
         <p id="sp-count" class="sp-count" role="status"></p>
         <ul class="sp-plants">${LT.candidates.map(c => spotRow(c, x, others, inSpot))}</ul></fieldset>
@@ -266,8 +268,12 @@ async function spotDialog(x, opt) {
     } catch (e) { toast(e.message, true); x = { ...x, name: body.name, place_id: body.place ? +body.place : null, light_id: +body.light, units: +body.units, distance_in: +body.distance, hours: +body.hours, dim_pct: +body.dim, notes: body.notes, codes: body.plants, level: body.level, holder: body.holder }; }
   }
 }
+// 1.56.1: "Hide plants already in another spot", remembered on this device (plants ticked for this spot always show)
+const spHideTaken = () => { try { return localStorage.getItem('plantdb.sphide') !== '0'; } catch (e) { return true; } };
 function spotFilter() {
   const f = dlg.querySelector('form[data-spot]'); if (!f) return;
+  const hide = f.querySelector('[data-sp=hide]').checked;
+  try { localStorage.setItem('plantdb.sphide', hide ? '1' : '0'); } catch (e) { /* this visit only */ }
   const q = f.querySelector('[data-sp=q]').value.trim().toLowerCase(), show = f.querySelector('[data-sp=show]').value, sort = f.querySelector('[data-sp=sort]').value;
   const ul = f.querySelector('ul.sp-plants'), rows = [...ul.children], dli = SP && SP.dli;
   const num = (r, k) => r.dataset[k] === '' ? null : +r.dataset[k];
@@ -278,7 +284,8 @@ function spotFilter() {
     const ok = (!q || r.dataset.name.includes(q) || r.dataset.code.toLowerCase().includes(q)) &&
       (!show || (show === 'fit' && v === 'good') || (show === 'near' && ['good', 'dim', 'bright'].includes(v)) || (show === 'free' && (r.dataset.free === '1' || tick)) ||
        (show === 'ticked' && tick) || (show === 'inside' && r.dataset.inside === '1') || (show === 'coming' && r.dataset.inside === '0'));
-    r.hidden = !ok; if (ok) shown++;
+    const taken = hide && r.dataset.other === '1' && !tick;
+    r.hidden = !ok || taken; if (ok && !taken) shown++;
     r.querySelector('.sp-fit').innerHTML = has(dli) && v !== 'unknown' ? rend(lvTag(v, LIGHT_WORD[v])) : '';
   });
   const fitKey = r => { const t = num(r, 'target'); return t == null || !has(dli) ? 99 : Math.abs(Math.log(Math.max(dli, 0.01) / Math.max(t, 0.01))); };
@@ -287,7 +294,8 @@ function spotFilter() {
   const order = rows.slice().sort(cmp);
   if (order.some((r, i) => r !== rows[i])) order.forEach(r => ul.appendChild(r));      // appendChild moves; focus stays on a moved box
   const ticked = rows.filter(r => r.querySelector('input').checked).length;
-  f.querySelector('#sp-count').textContent = `Showing ${shown} of ${rows.length}. ${ticked} ticked for this spot.`;
+  const nTaken = hide ? rows.filter(r => r.dataset.other === '1' && !r.querySelector('input').checked).length : 0;
+  f.querySelector('#sp-count').textContent = `Showing ${shown} of ${rows.length}. ${ticked} ticked for this spot.${nTaken ? ` ${nTaken} in another spot are hidden.` : ''}`;
 }
 const LIGHT_WORD = { too_dim: 'Too dim', dim: 'A bit dim', good: 'Good', bright: 'A bit bright', too_bright: 'Too bright', unknown: 'Needs not set' };
 function spotPreview(now) {
@@ -312,6 +320,9 @@ function spotPreview(now) {
       const ticked = e.plants.length, cover = e.area_sqft;
       out.innerHTML = rend(html`<p><strong>About ${has(e.dli) ? e.dli : '?'} mol/m² a day</strong> at the leaves${has(e.ppfd) ? `, ${fmt(e.ppfd)} PAR while it is on` : ''}${cover ? `, lighting about ${areaF(cover)}` : ''}.</p>
         ${ticked ? html`<p>${ticked} plant${ticked === 1 ? '' : 's'} ticked; their pots take about ${areaF(e.room_needed_sqft)}${cover ? ` of the ${fmt(cover, 1)} the light covers well` : ''}.${e.crowded ? ' Crowded: the plants at the edge get less.' : ''}</p>` : ''}
+        ${e.units > 1 ? html`<p class="hint">${e.stack >= e.units - 0.05 ? `The ${e.units} lights shine on the same plants, so their light adds up: about ${e.units} times one light${e.area_known ? '' : ' (this light has no area figures, so they are taken to be aimed at the same plants)'}.`
+          : e.stack > 1.05 ? `The ${e.units} lights overlap over these plants: about ${fmt(e.stack, 1)} times one light where the pots are.`
+          : `The ${e.units} lights sit side by side over plants that need the room, so they light more area at the strength of one.`}</p>` : ''}
         ${e.timer_note ? html`<p class="hint">${e.timer_note}</p>` : ''}
         ${e.plants.length ? html`<ul class="sp-verdicts">${e.plants.map(p => html`<li>${lvTag(p.verdict, p.verdict_word)} ${p.name} <span class="muted">(needs ${has(p.lo) ? `${fmt(p.lo, 1)} to ${fmt(p.hi, 1)}` : 'not set'})</span>${p.better ? html`. It would suit <strong>${p.better.name}</strong> (about ${p.better.dli}).` : ''}</li>`)}</ul>` : ''}`);
       const fb = document.getElementById('sp-fitbox'); if (fb) fb.innerHTML = rend(html`<h3 class="sp-fit-h">Does it fit there?</h3>${fitBlock(e.fit)}`);      // 1.56.0 (PLAN.md step 8d)

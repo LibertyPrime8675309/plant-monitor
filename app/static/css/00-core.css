@@ -1810,3 +1810,7 @@ ul.lt-plants.lt-two{grid-template-columns:repeat(auto-fit,minmax(max(min(100%,19
 .p-homes legend{font:inherit;font-weight:700;padding:0 .3rem}
 .p-homes .chk{display:inline-flex;align-items:center;gap:.4rem;margin:.1rem .9rem .1rem 0;font-weight:400}
 .p-homes small{display:block;color:var(--ink-2)}
+.sp-hide{display:flex;gap:.5rem;align-items:center;min-height:2.75rem;font-weight:400;margin-bottom:.5rem}     /* 1.56.1 */
+.whs-plants{list-style:none;padding:0;margin:0;display:grid;gap:.4rem}                                        /* 1.56.1: Spots to sort out */
+.whs-plants a{display:flex;gap:.6rem;align-items:center;min-height:2.75rem}
+.whs-plants img,.whs-plants .job-nophoto{width:48px;height:48px;flex:0 0 48px;object-fit:cover;border-radius:6px}

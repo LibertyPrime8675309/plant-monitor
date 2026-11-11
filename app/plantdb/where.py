@@ -368,9 +368,10 @@ def where_sort():
     c = db()
     if request.method == 'GET':
         out = {}
-        for r in c.execute("SELECT code, common_name, location, area_id FROM plants WHERE status='active' AND spot_id IS NULL AND TRIM(COALESCE(location,''))<>'' ORDER BY location"):
+        for r in c.execute("SELECT id, code, common_name, location, area_id FROM plants WHERE status='active' AND spot_id IS NULL AND TRIM(COALESCE(location,''))<>'' ORDER BY location, code"):
             k = (r['location'].strip(), r['area_id'])
-            out.setdefault(k, {'text': k[0], 'area_id': k[1], 'name': spot_guess(k[0]), 'plants': []})['plants'].append({'code': r['code'], 'name': r['common_name']})
+            out.setdefault(k, {'text': k[0], 'area_id': k[1], 'name': spot_guess(k[0]), 'plants': []})['plants'].append(
+                {'code': r['code'], 'name': r['common_name'], 'photo': plant_photo(c, r['id'])})         # 1.56.1: a small photo of each
         return jsonify(items=list(out.values()))
     b = request.get_json(silent=True) or {}; who = editor(); n = 0
     for it in b.get('items') or []:

@@ -141,22 +141,35 @@ def light_reach(d, pts):
     return {'near_in': pts[0][0], 'far_in': pts[-1][0], 'ppfd_max': round(hi), 'ppfd_min': round(lo, 1), 'dim_min': dims[0],
             'dli12': [dli_of(lo, 12), dli_of(hi, 12)], 'dli_any': [dli_of(lo, 8), dli_of(hi, 16)], 'one_point': len(pts) == 1}
 
+def stack_factor(area, units, need):
+    """1.56.1: how many lights' worth reach the plants when a spot has several of a light. Side by side over plants that need
+    the room, each lights its own patch at the same strength; over plants that fit under fewer of them, their light adds up
+    on the same leaves. So: all the area they light, spread over the larger of one light's area and the pots' room, between
+    1 and the number of lights. With no area figures for the light, they are taken to shine on the same plants."""
+    if units <= 1: return 1.0
+    if not area: return float(units)
+    return max(1.0, min(float(units), units * area / max(area, need or 0)))
+
 def spot_eval(c, s, L, plants):
     d = light_specs(L) if L is not None else {}
     pts = light_points(d)
-    p = ppfd_at(pts, s['distance_in']) if pts else None
-    dl = dli_of(p, s['hours'], s['dim_pct']) if p else None
+    p1 = ppfd_at(pts, s['distance_in']) if pts else None
     area = area_at(pts, s['distance_in']) if pts else None
     rows, need = [], 0.0
+    for r in plants: need += plant_foot(c, r)
+    f = stack_factor(area, s['units'], need)
+    p = p1 * f if p1 else None
+    dl = dli_of(p, s['hours'], s['dim_pct']) if p else None
     for r in plants:
         n = plant_need(r)
-        need += plant_foot(c, r)
         v = light_verdict(dl, n and n['lo'], n and n['hi'])
         rows.append({'code': r['code'], 'name': r['common_name'], 'lo': n and n['lo'], 'hi': n and n['hi'], 'verdict': v, 'verdict_word': LIGHT_VERDICT[v],
                      'photo': plant_photo(c, r['id']), 'height_in': r['height_in'] if 'height_in' in r.keys() else None})
     cover = round(area * s['units'], 1) if area else None
-    return {'ppfd': round(p) if p else None, 'dli': dl, 'area_sqft': cover, 'plants': rows, 'room_needed_sqft': round(need, 1),
-            'crowded': bool(cover and need > cover * LIGHT_ROOM * 1.1), 'timer_note': light_timer_note(d, s['hours']) if L is not None else ''}
+    lit = round(area * s['units'] / f, 1) if area else None              # overlapping lights light less floor, more strongly
+    return {'ppfd': round(p) if p else None, 'dli': dl, 'area_sqft': lit, 'plants': rows, 'room_needed_sqft': round(need, 1),
+            'crowded': bool(cover and need > cover * LIGHT_ROOM * 1.1), 'timer_note': light_timer_note(d, s['hours']) if L is not None else '',
+            'units': s['units'], 'stack': round(f, 2), 'area_known': bool(area)}
 
 def plant_photo(c, pid):
     r = c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC, id LIMIT 1', (pid,)).fetchone()
@@ -355,7 +368,7 @@ def best_setting(c, L, units, plants):
     foot = sum(plant_foot(c, r) for r in plants)
     best = None
     for dist in range(int(math.ceil(dmin)), int(math.floor(dmax)) + 1):
-        p = ppfd_at(pts, dist); area = area_at(pts, dist)
+        area = area_at(pts, dist); p = ppfd_at(pts, dist) * stack_factor(area, units, foot)       # 1.56.1: several lights add up
         crowded = bool(area and foot > area * units * LIGHT_ROOM * 1.1)
         for h in LIGHT_HOURS:
             for dim in dims:

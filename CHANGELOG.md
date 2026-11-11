@@ -2,6 +2,10 @@
 
 ## 1.56.1 (2026-11-10)
 - **Photos in "Semi-hydro and water-only care" on Today.** Each plant there now shows its main photo, as the Water list does, instead of an empty grey box.
+- **How many of a light now counts.** In a light spot, more of a light over plants that fit under fewer of them adds up: two bulbs over one small group give about twice the light (PAR and daily light). Over plants that need the room, they sit side by side and light more area instead. The spot window says which.
+- **Level** offers only "Its one level" for a place with one level, like the side table.
+- **Hide plants already in another spot**, a box above the plant list in the spot window, on until you turn it off.
+- **Spots to sort out** on Rooms and spots shows each plant's photo and name, and each Spot name box offers the spots already in the chosen area, or a new name you type.
 
 ## 1.56.0 (2026-11-10)
 Three new parts, released early (they were planned for December, January and February) so you can use them while bringing plants inside for the winter.

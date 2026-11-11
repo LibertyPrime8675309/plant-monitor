@@ -306,15 +306,21 @@ async function viewWhere() {
     <p class="hint">"Roof overhead" and "Heated" decide how frost warnings and watering treat the plants there: outside with a roof counts as a covered porch, and inside without heat counts as a garage or shed.</p>
     ${S.items.length && can ? html`<section class="blk" id="wh-sort"><h2>Spots to sort out (${S.items.length})</h2>
       <p>These plants have a "Spot (where exactly)" written on them but no spot from the list yet. Check each suggested spot name and area, change any you like, then press <strong>Make these spots</strong>. The words written on the plant stay as they are.</p>
+      <p>Each <strong>Spot name</strong> box offers the spots already in its area: clear it and press the down arrow to see them all, or type a new name.</p>
       <div class="tbl-wrap"><table class="tbl"><caption class="sr">Spots to sort out</caption><thead><tr><th scope="col">Written on the plant</th><th scope="col">Plants</th><th scope="col">Spot name</th><th scope="col">Area or room</th></tr></thead><tbody>
-      ${S.items.map((it, i) => html`<tr><th scope="row">${it.text}</th><td>${it.plants.map((x, k) => html`${k ? ', ' : ''}<a href="#/plant/${enc(x.code)}">${x.code}</a>`)}</td>
-        <td><label class="sr" for="whs-n${i}">Spot name for "${it.text}"</label><input type="text" id="whs-n${i}" maxlength="60" value="${it.name}" data-whs="${i}" data-k="name"></td>
+      ${S.items.map((it, i) => html`<tr><th scope="row">${it.text}</th><td><ul class="whs-plants">${it.plants.map(x => html`<li><a href="#/plant/${enc(x.code)}">${x.photo ? html`<img src="${thumbUrl(x.photo)}" alt="" loading="lazy" width="48" height="48">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}<span>${x.name} <span class="muted">${x.code}</span></span></a></li>`)}</ul></td>
+        <td><label class="sr" for="whs-n${i}">Spot name for "${it.text}"</label><input type="text" id="whs-n${i}" maxlength="60" value="${it.name}" data-whs="${i}" data-k="name" list="whs-l${it.area_id}" autocomplete="off"></td>
         <td><label class="sr" for="whs-a${i}">Area for "${it.text}"</label><select id="whs-a${i}" data-whs="${i}" data-k="area">${d.homes.map(h => html`<optgroup label="${h.home.name}">${h.areas.map(a => html`<option value="${a.id}" ${a.id === it.area_id ? raw('selected') : ''}>${a.side === 'out' ? 'Outside' : 'Inside'}: ${a.name}</option>`)}</optgroup>`)}</select></td></tr>`)}</tbody></table></div>
+      ${d.homes.flatMap(h => h.areas).map(a => html`<datalist id="whs-l${a.id}">${a.spots.map(sp => html`<option value="${sp.name}"></option>`)}</datalist>`)}
       <p class="row"><button class="btn" type="button" data-act="whsort">Make these spots</button></p></section>` : ''}
     ${d.homes.map(h => html`<section class="blk wh-home"><h2>${multi ? h.home.name : 'Your home'}${h.home.is_home && multi ? ' (main home)' : ''}</h2><div class="wh-sides">${sideHtml(h, 'out')}${sideHtml(h, 'in')}</div></section>`)}`,
     after: () => { WHSORT = S.items; } };
 }
 let WHSORT = [];
+document.addEventListener('change', e => {        // 1.56.1: a different area offers that area's spots by name
+  const t = e.target; if (!t.dataset || t.dataset.whs === undefined || t.dataset.k !== 'area') return;
+  const n = document.getElementById('whs-n' + t.dataset.whs); if (n) n.setAttribute('list', 'whs-l' + t.value);
+});
 
 // 1.29.0: Pots and trays: each kind you have, how many, and which plants use them
 const CT_MAT = ['Terracotta', 'Thin plastic', 'Thick plastic'];
