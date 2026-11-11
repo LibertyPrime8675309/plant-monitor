@@ -34,7 +34,8 @@ p = {k: base[k] for k in FIELD_NAMES}
 p.update(
     common_name='Moth orchid (grey pot, from Baraboo)', scientific_name='Phalaenopsis hybrid',
     aliases='Baraboo orchid (from Ethan\'s mother\'s house in Baraboo, Wisconsin)',
-    site='Covered porch', location='Covered porch, on the wicker ottoman',
+    site='Covered porch', location="At his mother's house in Baraboo, Wisconsin (last seen July 31, 2026, on a covered porch)",
+    home_near={'lat': 43.4711, 'lon': -89.7443},
     container='Grey plastic pot with drainage holes (drilled July 31), almost entirely orchid bark, an old wooden flower stake with a clip',
     grow_kind='Soil mix', reservoir='Drains freely', mix_wants='Fast-draining',
     id_confidence=85,
@@ -44,32 +45,31 @@ p.update(
     id_alternatives=L('Phalaenopsis hybrid (store orchid)', 'Doritaenopsis (an older name for some hybrids)'),
     id_improve=L('A photo of the flowers when it blooms (colour, size, markings)', 'Any tag or the receipt, if his mother has it'),
     health_rating='Fair',
-    health_summary=("Repotted July 31: rotted roots removed, drainage holes added, healthy roots set into orchid bark. The leaves are firm and glossy "
+    health_summary=("As of July 31, 2026 (Ethan has not seen it since). Repotted July 31: rotted roots removed, drainage holes added, healthy roots set into orchid bark. The leaves are firm and glossy "
                     "with a reddish tint at the edges, and there are fresh green root tips, so it is putting out new roots. There is no flower spike and "
                     "no keiki right now, and dried, browning leaf bases at the crown need watching for rot."),
     health_observations=L('Leaves broad, glossy and firm, with reddish edges (can mean strong light)', 'Fresh bright-green root tips after the repot',
                           'Healthy silver-green roots, most now in the bark; a few rest over the rim, which is normal',
                           'Rotted roots removed at the repot (July 31)', 'Dried, brown leaf bases at the crown beside the stake',
                           'No flower spike or keiki seen', 'The pot had no drainage holes until July 31'),
-    health_steps=L('Water lightly for the first two weeks, then when the bark is dry and the roots look silver; water at the pot edge, not into the crown.',
+    health_steps=L('It is a tropical orchid and this is Wisconsin: it must be indoors, in a bright window, well before nights fall below 55°F.',
+                   'Water when the bark is dry and the roots look silver; water at the pot edge, not into the crown.',
                    'Blot any water out of the crown with a paper towel, and keep the leaf bases in the crown dry.',
                    'Let a few aerial roots stay in open air; do not bend or cram them into the bark.',
-                   'Check the crown and the roots again in 2 to 3 weeks; trim dried leaf bases only once they come away easily.',
+                   'Check the crown and the roots when next seen; trim dried leaf bases only once they come away easily.',
                    'Check whether the old flower spike is still green: a live node can grow a keiki, with keiki paste on it.',
-                   'Put a saucer or catch pot under the pot when it sits on the ottoman, and empty it after watering.',
-                   'Bring it indoors before nights fall below 55°F.'),
+                   'Put a saucer or catch pot under the pot, and empty it after watering.'),
     pests_current='',
-    notes=("From Ethan's mother's house in Baraboo, Wisconsin. Photographed July 31, 2026, before and after the repot. "
+    notes=("It lives at Ethan's mother's house in Baraboo, Wisconsin, and Ethan has not seen it since July 31, 2026, so its health and spot here are as of then. Photographed July 31, 2026, before and after the repot. "
            "Identified from the photos alone. Moth orchids do not divide, so a keiki on an old flower spike is the way to propagate it."),
     care=[{'kind': 'repot', 'done_on': '2026-07-31',
            'note': 'Removed the rotted roots, set the healthy aerial roots into the mix, drilled drainage holes in the grey pot; almost entirely orchid bark (Ethan, July 31)'}],
     pot_mix={'mixed_on': '2026-07-31', 'parts': [{'key': 'orchid-bark', 'parts': 1}],
-             'notes': 'Almost entirely orchid bark; the rest is not recorded (Ethan, July 31). Grey pot with drainage holes added (no saucer in the after photos).'},
-    requests=[{'key': 'c8-orchid-spike', 'kind': 'question',
-               'text': 'Is the old flower spike still green and firm, with its nodes (small bumps) alive? A live node can grow a keiki. Which month did this orchid last flower?'},
-              {'key': 'c8-orchid-mix', 'kind': 'question',
-               'text': 'What else is in the bark mix besides bark (charcoal, perlite, moss), and where does the water go now that the pot drains (saucer, catch pot, sink)?'}],
+             'notes': 'Almost entirely orchid bark; the rest is not recorded (Ethan, July 31); he does not know what else is in it. Grey pot with drainage holes added (no saucer in the after photos).'},
+    requests=[{'key': 'c8-orchid-update', 'kind': 'question',
+               'text': "Next time you see it, or ask your mother: where is it now (indoors, in a bright window?), is the old flower spike still green (a live node can grow a keiki), what else is in the bark mix, and has it flowered since July?"}],
     dated='2026-07-31', photos=photos)
-batch = {'id': 'C8', 'created': '2026-11-11', 'author': "Ethan's repotted moth orchid from Baraboo (photos of July 31, 2026)", 'plants': [p]}
+batch = {'id': 'C8', 'created': '2026-11-11', 'author': "Ethan's repotted moth orchid from Baraboo (photos of July 31, 2026)",
+         'homes_add': [{'name': 'Baraboo, WI', 'lat': 43.4711, 'lon': -89.7443, 'tz': 'America/Chicago'}], 'plants': [p]}
 json.dump(batch, open(os.path.join(REPO, 'app/seed/batches/batchC8.json'), 'w', encoding='utf-8'), indent=1, ensure_ascii=False)
 print('wrote batchC8.json:', len(photos), 'photos')

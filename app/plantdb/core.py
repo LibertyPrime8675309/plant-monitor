@@ -497,6 +497,9 @@ def apply_batches(c):
                 code = f'P-{n:03d}'
                 cols = ['code'] + FIELD_NAMES + ['version', 'status', 'created_at', 'created_by', 'updated_at', 'updated_by']
                 tp = p['dated'] + 'T12:00:00Z' if p.get('dated') else ts      # C8: a page can carry the date it really dates from (the photos')
+                if p.get('home_near'):                                          # C8: the home it lives at, found by its place (added by homes_add above)
+                    hm = c.execute('SELECT id FROM locations WHERE ABS(lat-?)<0.05 AND ABS(lon-?)<0.05', (p['home_near']['lat'], p['home_near']['lon'])).fetchone()
+                    if hm: p = {**p, 'home_id': hm[0]}
                 p = {**p, 'site': p.get('site') or 'Outdoors'}          # so later batches in the same start-up can expect it
                 vals = [code] + [p.get(k) for k in FIELD_NAMES] + [1, 'active', tp, who, tp, who]
                 pid = c.execute(f"INSERT INTO plants({','.join(cols)}) VALUES({','.join('?' * len(cols))})", vals).lastrowid

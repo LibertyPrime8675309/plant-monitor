@@ -20,7 +20,7 @@ def call(method, u, body=None, h=None):
         except ValueError: return e.code, {}
 
 homes = call('GET', '/api/meta')[1]['homes']
-check([h['name'] for h in homes] == ['Round Rock, TX', 'Nevada City, CA'], 'batch B3 adds Nevada City as a second home')
+check([h['name'] for h in homes] == ['Round Rock, TX', 'Baraboo, WI', 'Nevada City, CA'], 'batches B3 and C8 add Nevada City and Baraboo as other homes')
 nc = [h for h in homes if h['name'].startswith('Nevada')][0]['id']
 rr = [h for h in homes if h['is_home']][0]['id']
 moved = []

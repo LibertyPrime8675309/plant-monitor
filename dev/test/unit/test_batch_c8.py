@@ -14,7 +14,10 @@ def test_the_page_is_made_with_its_photos_and_notes():
     t = S.app.test_client(); code = the_page(t)
     p = t.get('/api/plants/' + code).get_json()
     assert p['site'] == 'Covered porch' and p['grow_kind'] == 'Soil mix' and p['reservoir'] == 'Drains freely'
-    assert 'Baraboo' in p['notes'] and 'Baraboo' in p['aliases']
+    assert 'Baraboo' in p['notes'] and 'Baraboo' in p['aliases'] and 'Baraboo' in p['location']
+    assert p['home_id'], 'it lives at the Baraboo home, not the main one'
+    homes = [h['name'] for h in t.get('/api/places').get_json() if h['id'] == p['home_id']]
+    assert homes == ['Baraboo, WI'] or any('Baraboo' in n for n in homes), homes
     photos = [x for x in p['photos']]
     assert len(photos) == 5 and sum(1 for x in photos if x['is_primary']) == 1
     assert all(os.path.exists(os.path.join(S.DATA_DIR, 'photos', x['file'])) for x in photos)
@@ -31,7 +34,7 @@ def test_the_repot_is_logged_with_the_mix_it_was_done_with():
 def test_its_questions_are_on_its_page():
     t = S.app.test_client(); code = the_page(t)
     q = json.dumps(t.get('/api/requests').get_json())
-    assert 'c8-orchid-spike' in q or 'old flower spike' in q
+    assert 'c8-orchid-update' in q or 'old flower spike' in q
     assert code in q
 
 def test_the_page_is_dated_when_its_photos_were_taken():

@@ -2,13 +2,21 @@
  "id": "C8",
  "created": "2026-11-11",
  "author": "Ethan's repotted moth orchid from Baraboo (photos of July 31, 2026)",
+ "homes_add": [
+  {
+   "name": "Baraboo, WI",
+   "lat": 43.4711,
+   "lon": -89.7443,
+   "tz": "America/Chicago"
+  }
+ ],
  "plants": [
   {
    "common_name": "Moth orchid (grey pot, from Baraboo)",
    "scientific_name": "Phalaenopsis hybrid",
    "aliases": "Baraboo orchid (from Ethan's mother's house in Baraboo, Wisconsin)",
    "plant_type": "Orchid (epiphyte)",
-   "location": "Covered porch, on the wicker ottoman",
+   "location": "At his mother's house in Baraboo, Wisconsin (last seen July 31, 2026, on a covered porch)",
    "container": "Grey plastic pot with drainage holes (drilled July 31), almost entirely orchid bark, an old wooden flower stake with a clip",
    "home_id": null,
    "area_id": 7,
@@ -36,10 +44,10 @@
    "winter_steps": "Cooler nights (60-65 F) for a few weeks in autumn help a flower spike form.\nWater a little less in winter; let the bark dry between waterings.\nFeed lightly or not at all until the spike shows.",
    "indoor_setup": "East window or a grow light 12-18 in away. Humidity 50% or more; a small fan nearby helps. Water in the morning so the crown dries by night.",
    "health_rating": "Fair",
-   "health_summary": "Repotted July 31: rotted roots removed, drainage holes added, healthy roots set into orchid bark. The leaves are firm and glossy with a reddish tint at the edges, and there are fresh green root tips, so it is putting out new roots. There is no flower spike and no keiki right now, and dried, browning leaf bases at the crown need watching for rot.",
+   "health_summary": "As of July 31, 2026 (Ethan has not seen it since). Repotted July 31: rotted roots removed, drainage holes added, healthy roots set into orchid bark. The leaves are firm and glossy with a reddish tint at the edges, and there are fresh green root tips, so it is putting out new roots. There is no flower spike and no keiki right now, and dried, browning leaf bases at the crown need watching for rot.",
    "health_observations": "Leaves broad, glossy and firm, with reddish edges (can mean strong light)\nFresh bright-green root tips after the repot\nHealthy silver-green roots, most now in the bark; a few rest over the rim, which is normal\nRotted roots removed at the repot (July 31)\nDried, brown leaf bases at the crown beside the stake\nNo flower spike or keiki seen\nThe pot had no drainage holes until July 31",
-   "health_steps": "Water lightly for the first two weeks, then when the bark is dry and the roots look silver; water at the pot edge, not into the crown.\nBlot any water out of the crown with a paper towel, and keep the leaf bases in the crown dry.\nLet a few aerial roots stay in open air; do not bend or cram them into the bark.\nCheck the crown and the roots again in 2 to 3 weeks; trim dried leaf bases only once they come away easily.\nCheck whether the old flower spike is still green: a live node can grow a keiki, with keiki paste on it.\nPut a saucer or catch pot under the pot when it sits on the ottoman, and empty it after watering.\nBring it indoors before nights fall below 55°F.",
-   "notes": "From Ethan's mother's house in Baraboo, Wisconsin. Photographed July 31, 2026, before and after the repot. Identified from the photos alone. Moth orchids do not divide, so a keiki on an old flower spike is the way to propagate it.",
+   "health_steps": "It is a tropical orchid and this is Wisconsin: it must be indoors, in a bright window, well before nights fall below 55°F.\nWater when the bark is dry and the roots look silver; water at the pot edge, not into the crown.\nBlot any water out of the crown with a paper towel, and keep the leaf bases in the crown dry.\nLet a few aerial roots stay in open air; do not bend or cram them into the bark.\nCheck the crown and the roots when next seen; trim dried leaf bases only once they come away easily.\nCheck whether the old flower spike is still green: a live node can grow a keiki, with keiki paste on it.\nPut a saucer or catch pot under the pot, and empty it after watering.",
+   "notes": "It lives at Ethan's mother's house in Baraboo, Wisconsin, and Ethan has not seen it since July 31, 2026, so its health and spot here are as of then. Photographed July 31, 2026, before and after the repot. Identified from the photos alone. Moth orchids do not divide, so a keiki on an old flower spike is the way to propagate it.",
    "temp_damage_above": 95,
    "vpd_low": 0.5,
    "vpd_high": 1.2,
@@ -101,6 +109,10 @@
    "grow_kind": "Soil mix",
    "reservoir": "Drains freely",
    "mix_wants": "Fast-draining",
+   "home_near": {
+    "lat": 43.4711,
+    "lon": -89.7443
+   },
    "care": [
     {
      "kind": "repot",
@@ -116,18 +128,13 @@
       "parts": 1
      }
     ],
-    "notes": "Almost entirely orchid bark; the rest is not recorded (Ethan, July 31). Grey pot with drainage holes added (no saucer in the after photos)."
+    "notes": "Almost entirely orchid bark; the rest is not recorded (Ethan, July 31); he does not know what else is in it. Grey pot with drainage holes added (no saucer in the after photos)."
    },
    "requests": [
     {
-     "key": "c8-orchid-spike",
+     "key": "c8-orchid-update",
      "kind": "question",
-     "text": "Is the old flower spike still green and firm, with its nodes (small bumps) alive? A live node can grow a keiki. Which month did this orchid last flower?"
-    },
-    {
-     "key": "c8-orchid-mix",
-     "kind": "question",
-     "text": "What else is in the bark mix besides bark (charcoal, perlite, moss), and where does the water go now that the pot drains (saucer, catch pot, sink)?"
+     "text": "Next time you see it, or ask your mother: where is it now (indoors, in a bright window?), is the old flower spike still green (a live node can grow a keiki), what else is in the bark mix, and has it flowered since July?"
     }
    ],
    "dated": "2026-07-31",
