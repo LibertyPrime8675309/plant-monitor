@@ -1,8 +1,10 @@
 # Changelog
 
-## 1.57.0 (coming December 1, 2026)
+## 1.58.0 (coming December 1, 2026)
 - **Your Baraboo moth orchid has a page.** The orchid from your mother's house in Baraboo, Wisconsin, now has its own page (**Moth orchid (grey pot, from Baraboo)**) with your five photos. The page is dated July 31, 2026, when the photos were taken, not the day it was added. It says what you did at the repot: the rotted roots out, the healthy roots set into the bark, drainage holes in the grey pot. That is logged as **Repotted** on July 31, with a potting mix of almost entirely orchid bark, so the repotting plan counts from that day. The page has care steps for the first weeks (water at the edge, keep the crown dry, put a saucer under it), and two questions for you: whether the old flower spike is still green (a keiki is possible), and what else is in the bark. It is from the photos alone, so the hybrid is not named until it flowers.
-- **For the computer:** an upgrade batch can now give a new page its own care log, potting mix and questions (batch C8 is the first to use it).
+- **For the computer:** an upgrade batch can now give a new page its own care log, potting mix and questions (batch C9 is the first to use it).
+
+## 1.57.0 (2026-11-11)
 - **Notes on request.** Display has a new choice, **Notes under buttons and boxes**: **Always show them** (as now) or **Show them when I ask**. With the second, each small note under a button, box or picture becomes a round **Note** button: press it (or Tab to it and press Enter) to read it, and again to fold it. Pointing at a field with the mouse shows its note too, and on a phone a long press on a box opens its note. Printed pages always show every note.
 - **Water counts only what is due.** Plants with no watering logged are in their own folded part on Today, **No watering logged yet**, so Water no longer shows a number for plants it cannot work out.
 - **A plant's page is shorter the first time.** The reference parts (identification, about, uses, temperature, humidity, sunlight, water and soil, nutrients, pests, timeline, page history) start folded; press Show on any of them. What you fold or open is remembered as before.

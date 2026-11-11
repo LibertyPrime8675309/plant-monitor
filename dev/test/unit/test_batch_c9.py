@@ -1,4 +1,4 @@
-"""Batch C8 (1.57.0): Ethan's repotted moth orchid from Baraboo, Wisconsin. A batch can give a new page its own care log, potting
+"""Batch C9 (1.57.0): Ethan's repotted moth orchid from Baraboo, Wisconsin. A batch can give a new page its own care log, potting
 mix and questions: the page is made, the repot is logged on its date with the mix it was done with, and nothing repeats."""
 import json, os
 import server as S
@@ -31,7 +31,7 @@ def test_the_repot_is_logged_with_the_mix_it_was_done_with():
 def test_its_questions_are_on_its_page():
     t = S.app.test_client(); code = the_page(t)
     q = json.dumps(t.get('/api/requests').get_json())
-    assert 'c8-orchid-spike' in q or 'old flower spike' in q
+    assert 'c9-orchid-spike' in q or 'old flower spike' in q
     assert code in q
 
 def test_the_page_is_dated_when_its_photos_were_taken():
