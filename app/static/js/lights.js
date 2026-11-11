@@ -343,9 +343,11 @@ async function spotBest() {
   } catch (e) { say.textContent = e.message; }
 }
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.sp === 'q') e.preventDefault(); });   // Enter in the search box must not save the spot
+// 1.56.2: a number for a text box that is split on commas: no thousands separator, at most 2 decimals ("2496", "7.87")
+const plainNum = x => String(Math.round(+x * 100) / 100);
 async function lightDialog(L) {
   if (!(await needName())) return;
-  const S = (L && L.specs) || {}, pts = L ? L.points.map(p => `${fmt(p.distance_in, 2)} in ${fmt(p.ppfd, 2)}${p.area_sqft ? ` (${fmt(p.area_sqft, 2)} sq ft)` : ''}`).join(', ') : '';
+  const S = (L && L.specs) || {}, pts = L ? L.points.map(p => `${plainNum(p.distance_in)} in ${plainNum(p.ppfd)}${p.area_sqft ? ` (${plainNum(p.area_sqft)} sq ft)` : ''}`).join(', ') : '';
   let x = { name: L ? L.name : '', model: S.model || '', count: L ? L.count : 1, fixture: L ? L.fixture : '', notes: L ? L.notes : '', watts: S.watts == null ? '' : S.watts, points: pts,
     timer: S.timer || '', dimming: (S.dimming || [100]).join(', '), kind: S.kind || '' };
   for (;;) {

@@ -93,3 +93,17 @@ def test_try_a_light_in_a_spot():
         t3 = t.get(f'/api/lights/{cand}/try?spot={far}').get_json()
         assert any('outside the maker' in n for n in t3['notes']) and any('no 50% setting' in n for n in t3['notes'])
         assert t.get(f'/api/lights/{cand}/try?spot=99999').status_code == 404
+
+def test_figures_over_a_thousand_keep_their_commas_apart():
+    """1.56.2: Ethan's gooseneck, "6 in 2,496, 12 in 804, 18 in 480", was refused: "496" was read as a distance of its own."""
+    with S.app.test_client() as t:
+        lid = next(L['id'] for L in t.get('/api/lights').get_json()['lights'] if L['key'] == 'sansi-gooseneck')
+        before = next(L for L in t.get('/api/lights').get_json()['lights'] if L['id'] == lid)
+        r = t.put(f'/api/lights/{lid}', json={'name': before['name'], 'count': before['count'], 'points': '6 in 2,496, 12 in 804, 18 in 480'}, headers=H)
+        assert r.status_code == 200, r.get_json()
+        after = next(L for L in t.get('/api/lights').get_json()['lights'] if L['id'] == lid)
+        assert [(p['distance_in'], p['ppfd']) for p in after['points']] == [(6, 2496), (12, 804), (18, 480)]
+        r = t.put(f'/api/lights/{lid}', json={'name': before['name'], 'count': before['count'], 'points': '6 in 2,496,12 in 804 (1.5 sq ft); 18: 480'}, headers=H)
+        assert r.status_code == 200 and [p['ppfd'] for p in next(L for L in t.get('/api/lights').get_json()['lights'] if L['id'] == lid)['points']] == [2496, 804, 480]
+        orig = ', '.join(f"{p['distance_in']:g} in {p['ppfd']:g}" + (f" ({p['area_sqft']:g} sq ft)" if p.get('area_sqft') else '') for p in before['points'])
+        assert t.put(f'/api/lights/{lid}', json={'name': before['name'], 'count': before['count'], 'points': orig}, headers=H).status_code == 200   # as it was, for the tests after
