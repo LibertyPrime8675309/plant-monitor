@@ -4,7 +4,7 @@
 .rl-more ul{margin:.3rem 0 0 1.1rem;padding:0}
 .rl-more li{margin:.25rem 0}
 
-.rl-new :is(a,.btn.ghost){color:var(--on-ochre-link,var(--cyan))}   /* 1.57.0: in the dark theme the links on this ochre box are lighter, to reach 7:1 */
+.rl-new :is(a,.btn.ghost){color:var(--on-ochre-link,var(--cyan))}   /* 1.56.5: in the dark theme the links on this ochre box are lighter, to reach 7:1 */
 .rl-new .btn.ghost{border-color:currentColor}
 .rl-fold>summary{cursor:pointer;min-height:2.75rem;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
 .rl-fold[open]>summary{margin-bottom:.3rem}

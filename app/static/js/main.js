@@ -20,7 +20,7 @@ addFeature({
       anchor: main => main.querySelector('#g-plants li.job') && main.querySelector('h1 ~ .row.noprint'), where: 'afterend',
       html: (d, parts) => html`<p class="ps-link noprint" id="ps-link"><a class="btn ghost" href="/sitter.html#group=${parts[1]}">Plant-sitter sheet for this group</a></p>` },
   ],
-  today: { id: 'ps-link', order: 86, load: async () => ({}),          // 1.57.0: at the end of Today (it came before the jobs)
+  today: { id: 'ps-link', order: 86, load: async () => ({}),          // 1.56.5: at the end of Today (it came before the jobs)
     html: () => html`<p class="ps-link noprint" id="ps-link"><a class="btn ghost" href="/sitter.html">Going away? Make a plant-sitter sheet</a></p>` },
 });
 

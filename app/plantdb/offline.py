@@ -33,6 +33,12 @@ def offline_op():
     op = request.headers.get('X-Offline-Op', '')
     return op if request.method not in ('GET', 'HEAD', 'OPTIONS') and OFFLINE_OP_RE.match(op) else None
 
+def op_abandoned(received_at, minutes=2):
+    """1.56.5: a change claimed this long ago and still not finished was cut off part way."""
+    try: t = datetime.strptime(received_at or '', '%Y-%m-%dT%H:%M:%SZ').replace(tzinfo=timezone.utc)
+    except ValueError: return True
+    return datetime.now(timezone.utc) - t > timedelta(minutes=minutes)
+
 def offline_replay():
     """The kept answer when this change was already made (called at the end of guard())."""
     op = offline_op()
@@ -42,7 +48,15 @@ def offline_replay():
     claimed = c.execute('INSERT OR IGNORE INTO sync_ops(op,method,path,status,received_at) VALUES(?,?,?,0,?)', (op, request.method, request.path[:300], now())).rowcount
     c.commit()
     if not claimed:
-        r = c.execute('SELECT status, response FROM sync_ops WHERE op=?', (op,)).fetchone()
+        r = c.execute('SELECT status, response, received_at FROM sync_ops WHERE op=?', (op,)).fetchone()
+        if r and not r['status'] and op_abandoned(r['received_at']):
+            # 1.56.5: claimed over two minutes ago and never finished: the app stopped part way (an update, a restart). Nothing was
+            # kept, so the change was not made; claim it again rather than refusing every resend for ever
+            c.execute('DELETE FROM sync_ops WHERE op=? AND status=0', (op,))
+            claimed = c.execute('INSERT OR IGNORE INTO sync_ops(op,method,path,status,received_at) VALUES(?,?,?,0,?)', (op, request.method, request.path[:300], now())).rowcount
+            c.commit()
+            if claimed: g.offline_op = op; return None
+            r = c.execute('SELECT status, response, received_at FROM sync_ops WHERE op=?', (op,)).fetchone()
         if not r['status']: abort(503, 'This change is being made right now. It will be checked again shortly.')
         return Response(r['response'] or '{}', r['status'], mimetype='application/json', headers={'X-Offline-Replayed': '1'})
     g.offline_op = op
@@ -190,7 +204,7 @@ def script_names():
 def service_worker():
     """1.24.0: the service worker, with the version in it so every update replaces the saved copy of the app. 1.46.0: and the script list."""
     with open(os.path.join(app.static_folder, 'sw.js'), encoding='utf-8') as f:
-        js = f.read().replace('__VERSION__', APP_VERSION).replace('__SHELL_JS__', json.dumps(['/js/%s.js' % n for n in script_names()]))
+        js = f.read().replace('__VERSION__', APP_VERSION).replace('__SHELL_JS__', json.dumps(['/js/%s.js?v=%s' % (n, APP_VERSION) for n in script_names()]))
     return Response(js, mimetype='application/javascript', headers={'Cache-Control': 'no-cache', 'Service-Worker-Allowed': '/'})
 
 CSS_BUILT = {}
@@ -214,6 +228,10 @@ def stylesheet():
 def index():
     """1.46.0: index.html with its script tags written from the manifest (the file itself holds a marker where they go)."""
     with open(os.path.join(app.static_folder, 'index.html'), encoding='utf-8') as f: page = f.read()
-    tags = '\n'.join('<script src="/js/%s.js"></script>' % n for n in script_names())
+    # 1.56.5: every file the page loads names the version (?v=), so after an update no copy of an older file is used, and the page
+    # knows its own version (meta app-version) to notice when the server is newer
+    tags = '\n'.join('<script src="/js/%s.js?v=%s"></script>' % (n, APP_VERSION) for n in script_names())
     page = re.sub(r'<!--scripts:[^>]*-->', tags, page, count=1)
+    page = page.replace('href="/style.css"', 'href="/style.css?v=%s"' % APP_VERSION).replace('src="/prefs.js"', 'src="/prefs.js?v=%s"' % APP_VERSION)
+    page = page.replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta name="app-version" content="%s">' % APP_VERSION, 1)
     return Response(page, mimetype='text/html', headers={'Cache-Control': 'no-cache'})

@@ -211,7 +211,7 @@ def restore_backup(name, by, before=True):
     init_db()                                      # an older backup gets this version's columns, tables and batches
     c = sqlite3.connect(DB_PATH, timeout=30); c.row_factory = sqlite3.Row
     try:
-        audit_only(c, 'backup', 'restore', None, name, by, f'Restored from {name} ({plants} plants, made {meta.get("created_at", "")[:10]} by version {meta.get("version", "?")}). The database from before is in {before}.')
+        audit_only(c, 'backup', 'restore', None, name, by, f'Restored from {name} ({plants} plants, made {meta.get("created_at", "")[:10]} by version {meta.get("version", "?")}).' + (f' The database from before is in {before_name}.' if before_name else ' No backup was made of the database from before.'))   # 1.56.5: it said "is in True"
         c.commit()
     finally: c.close()
     try:                                                            # 1.55.0 (PLAN.md step 7): a restore is the quarterly restore test

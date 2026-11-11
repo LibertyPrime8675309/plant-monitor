@@ -20,7 +20,7 @@ addFeature({
   today: [
     { id: 'rl-new', order: 2,
       load: async () => { const W = await rlLoad(); return W.entry && !W.seen ? W : null; },
-      // 1.57.0: shown in full the first time on this device; after that folded to one line until Got it, so the jobs come first
+      // 1.56.5: shown in full the first time on this device; after that folded to one line until Got it, so the jobs come first
       html: W => { const body = html`<p><strong>New in ${W.entry.version}${W.entry.date ? ` (${W.entry.date})` : ''}:</strong> ${rlLine(W.entry.lines[0] || '')}</p>
         ${W.entry.lines.length > 1 ? html`<details class="rl-more"><summary>The rest of what changed (${W.entry.lines.length - 1})</summary><ul>${W.entry.lines.slice(1).map(l => html`<li>${rlLine(l)}</li>`)}</ul></details>` : ''}
         <p class="row noprint"><button class="btn small ghost" type="button" data-act="rlseen">Got it</button><a class="btn small ghost" href="/api/whatsnew/all" target="_blank" rel="noopener">Every version's changes</a></p>`;

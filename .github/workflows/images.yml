@@ -31,6 +31,8 @@ jobs:
             dockerfile: speech/Dockerfile
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2                                                     # 1.56.5: to see whether this push changed VERSION
       - id: ver
         env:
           GH_TOKEN: ${{ github.token }}
@@ -43,7 +45,10 @@ jobs:
           # images must not replace that release's (a PC that pulls 1.55.0 must get 1.55.0), so once a release v<VERSION>
           # exists, a push is tagged "main" and "main-<commit>" only. The push that changes VERSION is tagged with it and
           # "latest", and release.yml then makes the release.
-          if gh release view "v$v" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          # 1.56.5: and only the push that changes VERSION. Two pull requests merged a minute apart (#99 then #100) both found no
+          # release yet, so the second one's images replaced 1.56.4's.
+          prev=$(git show HEAD^:VERSION 2>/dev/null | tr -d '[:space:]' || true)
+          if [ "$v" = "$prev" ] || gh release view "v$v" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             echo "tags=ghcr.io/$owner/${{ matrix.name }}:main,ghcr.io/$owner/${{ matrix.name }}:main-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
           else
             echo "tags=ghcr.io/$owner/${{ matrix.name }}:$v,ghcr.io/$owner/${{ matrix.name }}:latest" >> "$GITHUB_OUTPUT"

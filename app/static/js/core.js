@@ -172,6 +172,30 @@ async function api(method, url, body, form) {
   else { QGEN++; QC.clear(); PFLY.clear(); }
   return d;
 }
+// 1.56.5: after an update the server answers with its new version. The page reloads once by itself, so the new version is all there
+// (it took two or three reloads by hand). With a box being typed in or a window open it asks instead, so nothing typed is lost.
+const PAGE_VERSION = (document.querySelector('meta[name=app-version]') || {}).content || '';
+function newerApp(v) {
+  if (!v || !PAGE_VERSION || v === PAGE_VERSION || newerApp.seen === v) return;
+  newerApp.seen = v;
+  let again = false; try { again = sessionStorage.getItem('plantdb.reloadedFor') === v; } catch (e) { /* no storage: ask */ }
+  const a = document.activeElement, busy = !!document.querySelector('dialog[open]') || !!(a && a.matches && a.matches('input:not([type=checkbox]):not([type=radio]),textarea,select,[contenteditable]'));
+  if (!again && !busy) {
+    try { sessionStorage.setItem('plantdb.reloadedFor', v); } catch (e) { /* reload anyway */ }
+    toast(`Version ${v} is installed. Opening it now.`);
+    setTimeout(() => location.reload(), 1200);
+    return;
+  }
+  document.querySelectorAll('.nv-bar').forEach(x => x.remove());
+  document.body.insertAdjacentHTML('afterbegin', rend(html`<div class="notice nv-bar noprint" role="status"><span>Version ${v} is installed. Reload to use it${busy ? ' (finish what you are typing first)' : ''}.</span>
+    <button class="btn small" type="button" data-act="reloadnow">Reload now</button></div>`));
+}
+
+// 1.56.5: what a viewer may still send, from the server's own lists (the page kept its own copy, which missed "Got it" on What's new)
+function viewerMay(url) {
+  const path = url.split('?')[0], ok = ME().viewer_ok || { posts: ['/api/identify', '/api/me/prefs', '/api/voice', '/api/whatsnew/seen'], prefixes: ['/api/push/'] };
+  return path === '/api/me' || ok.posts.includes(path) || ok.prefixes.some(p => path.startsWith(p));
+}
 async function apiNet(method, url, body, form, m) {     // m.took: how long the server said it took to make the answer (ms)
   if (method === 'GET' && /^\/api\/fungi\/NEW-/i.test(url)) {        // 1.24.0: a find made offline that is not sent yet
     const f = await idbGet('finds', decodeURIComponent(url.split('/')[3].split('?')[0]));
@@ -181,7 +205,7 @@ async function apiNet(method, url, body, form, m) {     // m.took: how long the 
   const opts = { method, headers: {} };
   if (PLACE) opts.headers['X-Place'] = PLACE;
   if (method !== 'GET') opts.headers['X-Editor'] = cleanName(viaTS() ? ME().name : getName()) || 'Unknown';
-  if (method !== 'GET' && ME().role === 'viewer' && url !== '/api/me' && url !== '/api/me/prefs' && !url.startsWith('/api/identify?') && !url.startsWith('/api/push/')) {      // the server refuses these too; this just says so sooner
+  if (method !== 'GET' && ME().role === 'viewer' && !viewerMay(url)) {      // the server refuses these too; this just says so sooner
     const e = new Error(`You can look at everything, but changes are turned off for you. Ask ${ME().owner_name || 'the owner'} if you would like to edit.`); e.status = 403; throw e;
   }
   if (form) opts.body = form;
@@ -197,6 +221,7 @@ async function apiNet(method, url, body, form, m) {     // m.took: how long the 
     throw new Error(navigator.onLine ? 'Cannot reach the plant server. Check that the container is running.' : 'You are offline. This needs a connection to the plant server.');
   }
   if (method === 'GET') offSeen(r.headers.get('X-Offline-Saved'));
+  if (!r.headers.get('X-Offline-Saved')) newerApp(r.headers.get('X-App-Version'));
   if (m) m.took = +r.headers.get('X-Took-Ms') || null;
   let data = null;
   try { data = await r.json(); } catch (e) { /* not json */ }

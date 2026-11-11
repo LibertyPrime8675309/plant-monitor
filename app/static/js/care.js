@@ -362,7 +362,7 @@ async function viewToday() {
     quiet.length ? { order: 80, id: 'today-quiet', html: html`<section class="blk" id="today-quiet"><h2>Quiet today</h2><p class="muted">${quiet.map((q, i) => html`${i ? ' ' : ''}${q}`)}</p></section>` } : null,
     ...EXT.filter(({ b }) => winter || !b.cold).map(({ b, d }) => ({ order: b.order, id: b.id, jump: b.jump ? b.jump(d) : '', html: b.html(d) })),
   ].filter(Boolean).sort((a, b) => a.order - b.order);
-  // 1.57.0: a part with nothing due ("Water (0)", "Turn the pots (0)") is one line in the box at the top instead of a part of its own,
+  // 1.56.5: a part with nothing due ("Water (0)", "Turn the pots (0)") is one line in the box at the top instead of a part of its own,
   // and has no button there
   const zero = b => { if (b.keep) return null; const h = rend(b.html), m = /<h2[^>]*>([^<]*?)\s*\(0\)\s*<\/h2>/.exec(h); if (!m) return null;
     const a = /href="(#\/[a-z]+)"/.exec(h); return { name: m[1].trim(), href: a ? a[1] : '' }; };    // its page, when the part links to one
