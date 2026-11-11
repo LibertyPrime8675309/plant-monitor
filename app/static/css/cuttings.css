@@ -1,0 +1,6 @@
+/* Cuttings and new plants (#/cuttings, js/cuttings.js, plantdb/cuttings.py): prototype proto/cuttings. One file per feature. */
+.cut-dlg .f{max-width:100%}
+.cut-dlg textarea{width:100%}
+.cut-dlg .row{flex-wrap:wrap}
+.cut-plant .btn{margin-left:.3rem}
+html[data-role=viewer] :is([data-act=cutadd], [data-act=cutedit], [data-act=cutstage], [data-act=cutlook]){display:none!important}
