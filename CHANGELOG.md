@@ -1,7 +1,7 @@
 # Changelog
 
 ## 1.56.2 (2026-11-10)
-- **Changing a light whose figures go over 1,000 works again.** The listing window on Compare lights and **Change** on Grow lights wrote "2,496" with a comma, then read the comma as the break between two distances ("\"496\" needs a distance in inches and a PPFD"). They now write 2496, and a figure typed with a thousands comma is read whole.
+- **Changing a light whose figures go over 1,000 works again.** The listing window on Compare lights and **Change** on Grow lights wrote "2,496" with a comma, then read the comma as the break between two distances (the message said "496" needs a distance in inches and a PPFD). They now write 2496, and a figure typed with a thousands comma is read whole.
 
 ## 1.56.1 (2026-11-10)
 - **Photos in "Semi-hydro and water-only care" on Today.** Each plant there now shows its main photo, as the Water list does, instead of an empty grey box.
