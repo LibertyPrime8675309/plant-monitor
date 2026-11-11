@@ -20,9 +20,16 @@ addFeature({
   today: [
     { id: 'rl-new', order: 2,
       load: async () => { const W = await rlLoad(); return W.entry && !W.seen ? W : null; },
-      html: W => html`<div class="notice rl-new" id="rl-new"><p><strong>New in ${W.entry.version}${W.entry.date ? ` (${W.entry.date})` : ''}:</strong> ${rlLine(W.entry.lines[0] || '')}</p>
+      // 1.57.0: shown in full the first time on this device; after that folded to one line until Got it, so the jobs come first
+      html: W => { const body = html`<p><strong>New in ${W.entry.version}${W.entry.date ? ` (${W.entry.date})` : ''}:</strong> ${rlLine(W.entry.lines[0] || '')}</p>
         ${W.entry.lines.length > 1 ? html`<details class="rl-more"><summary>The rest of what changed (${W.entry.lines.length - 1})</summary><ul>${W.entry.lines.slice(1).map(l => html`<li>${rlLine(l)}</li>`)}</ul></details>` : ''}
-        <p class="row noprint"><button class="btn small ghost" type="button" data-act="rlseen">Got it</button><a class="btn small ghost" href="/api/whatsnew/all" target="_blank" rel="noopener">Every version's changes</a></p></div>` },
+        <p class="row noprint"><button class="btn small ghost" type="button" data-act="rlseen">Got it</button><a class="btn small ghost" href="/api/whatsnew/all" target="_blank" rel="noopener">Every version's changes</a></p>`;
+        const v = W.entry.version; let fold = false;                  // folded from the next visit on (this tab keeps showing it in full)
+        try { const seen = localStorage.getItem('plantdb.rlshown'), here = sessionStorage.getItem('plantdb.rlshown');
+          fold = seen === v && here !== v; if (seen !== v) { localStorage.setItem('plantdb.rlshown', v); sessionStorage.setItem('plantdb.rlshown', v); } } catch (e) { /* shown in full */ }
+        return fold
+          ? html`<details class="notice rl-new rl-fold" id="rl-new"><summary><strong>What's new in ${W.entry.version}</strong> (${W.entry.lines.length} ${W.entry.lines.length === 1 ? 'change' : 'changes'})</summary>${body}</details>`
+          : html`<div class="notice rl-new" id="rl-new">${body}</div>`; } },
     { id: 'rl-update', order: 3,
       load: async () => { const W = await rlLoad(); return W.update ? W.update : null; },
       html: U => html`<div class="notice rl-update" id="rl-update"><p><strong>An update is ready: ${U.version}</strong>${U.published ? ` (released ${U.published})` : ''}. On your PC, run <code>Update Plant Database.cmd</code> in the Plants folder: it fetches this release from GitHub, makes a backup and installs it in a couple of minutes.

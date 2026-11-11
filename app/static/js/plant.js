@@ -524,7 +524,9 @@ function slips(h) {
     </article>`;
   });
 }
-// 1.29.0: the plant's main details, edited right on its page (the rest is under "Edit this page")
+// 1.29.0: the plant's main details, edited right on its page (the rest is under "Edit this page"). 1.57.0: they read as text, and
+// "Change these details" opens the boxes (the page read like a form before)
+let PLEDIT = null;                     // the code of the plant whose details are open to change
 function plantEdHtml(p) {
   const ed = k => raw(`data-ed="plant" data-id="${esc(p.code)}" data-k="${k}"`);
   const txt = (k, label, max) => html`<label class="f">${label}<input type="text" maxlength="${max || 200}" value="${p[k] || ''}" ${ed(k)}></label>`;
@@ -532,7 +534,7 @@ function plantEdHtml(p) {
   const hs = HOMES(), conts = k => ((META && META.containers) || []).filter(x => x.kind === k);
   const sel = (k, label, opts, cur) => html`<label class="f">${label}<select ${ed(k)}>${opts.map(([v, l]) => html`<option value="${v}" ${String(v) === String(cur == null ? '' : cur) ? raw('selected') : ''}>${l}</option>`)}</select></label>`;
   const areas = WHERE().map(h => [h, h.areas]).filter(([h]) => HOMES().length < 2 || String(plantHome(p).id) === String(h.home.id)).flatMap(([h, as]) => as.map(x => [x.id, `${x.side === 'out' ? 'Outside' : 'Inside'}: ${x.name}`]));
-  return html`<div class="field-grid pl-ed noprint" data-pver="${p.version}" data-section-skip>
+  return html`<div class="field-grid pl-ed noprint" id="pl-ed" data-pver="${p.version}" data-section-skip ${PLEDIT === p.code ? '' : raw('hidden')}>
     ${txt('common_name', 'Common name', 120)}${txt('scientific_name', 'Scientific name', 200)}${txt('aliases', 'Other names / cultivar')}${txt('plant_type', 'Plant type', 120)}
     ${hs.length > 1 ? sel('home_id', 'Home', hs.map(h => [h.is_home ? '' : h.id, h.name]), p.home_id || '') : ''}
     ${sel('area_id', 'Area or room', areas, p.area_id)}
@@ -560,21 +562,23 @@ async function viewPlant(code) {
   const single = document.documentElement.dataset.layout === 'single';
   return {
     title: p.common_name,
-    html: html`${pnavBlock(p.code)}<p class="crumb"><a href="#/plants">All plants</a>
-      <button class="btn ghost small noprint" type="button" data-act="layout">${single ? 'Show photos and details side by side' : 'Switch to one column'}</button></p>
+    // 1.57.0: the plant's name comes first, then Previous / Next (they came first, and on a phone the name was a screen further down)
+    html: html`<header class="pl-head"><h1>${p.common_name}</h1><p class="sci latin">${p.scientific_name || 'Scientific name not set'}</p></header>
+    ${pnavBlock(p.code)}<p class="crumb"><a href="#/plants">All plants</a>
+      <button class="btn ghost small noprint pl-layout" type="button" data-act="layout">${single ? 'Show photos and details side by side' : 'Switch to one column'}</button></p>
     ${archived ? html`<div class="notice">This record is archived. It is hidden from the main list.</div>` : ''}
     <div class="plant">
       <div class="pane" id="pane-l" tabindex="0" role="region" aria-label="Photos"><section class="ph-sec" data-section="Photos"><h2 class="ph-title">Photos</h2><div id="photopanel">${photoPanel(p)}</div></section></div>
       <div class="pane" id="pane-r" tabindex="0" role="region" aria-label="Details">
         <nav class="jump noprint" id="jumprow" aria-label="Jump to a section"></nav>
-        <div class="label" id="details" data-section="Name and details">
+        <div class="label${PLEDIT === p.code ? ' pl-editing' : ''}" id="details" data-section="Name and details">
           <div class="l-top"><b>${p.code}</b><span>Page version ${p.version}</span><span>Updated ${timeEl(p.updated_at)} by ${p.updated_by}</span></div>
-          <div class="l-body"><h1>${p.common_name}</h1><p class="sci latin">${p.scientific_name || 'Scientific name not set'}</p>
-            ${canChange() ? plantEdHtml(p) : ''}
+          <div class="l-body"><h2 class="l-title">Name and details</h2>
+            ${canChange() ? html`<p class="row noprint pl-edrow"><button class="btn small" type="button" data-act="pledit" aria-controls="pl-ed" aria-expanded="${PLEDIT === p.code ? 'true' : 'false'}">${PLEDIT === p.code ? 'Done changing' : 'Change these details'}</button></p>${plantEdHtml(p)}` : ''}
             <dl><dt id="site-lbl">Location</dt><dd>${sitePicker(p)}</dd>
-              ${canChange() ? '' : html`${dl.map(x => html`<dt>${x[0]}</dt><dd>${x[1]}</dd>`)}
-              <dt>ID confidence</dt><dd>${p.id_confidence == null ? 'Not rated' : p.id_confidence + '%'}</dd>`}
-              <dt>Winter plan</dt><dd>${planTag(p.winter_plan)}</dd><dt>Health</dt><dd>${healthTag(p.health_rating)}</dd>
+              ${dl.map(x => html`<dt class="ro">${x[0]}</dt><dd class="ro">${x[1]}</dd>`)}
+              <dt class="ro">ID confidence</dt><dd class="ro">${p.id_confidence == null ? 'Not rated' : p.id_confidence + '%'}</dd>
+              <dt class="ro">Winter plan</dt><dd class="ro">${planTag(p.winter_plan)}</dd><dt class="ro">Health</dt><dd class="ro">${healthTag(p.health_rating)}</dd>
               <dt>Groups</dt><dd id="pl-groups">${groupsOf(p.code).length ? groupsOf(p.code).map((g, i) => html`${i ? ', ' : ''}<a href="#/group/${g.id}">${g.name}</a>`) : 'None yet'}
                 <button class="btn small ghost noprint" type="button" data-act="plgroups">Change groups</button></dd></dl>
             <div class="row acts noprint"><a class="btn" href="#/plant/${enc(p.code)}/edit">Edit this page</a>

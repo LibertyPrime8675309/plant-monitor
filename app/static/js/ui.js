@@ -127,8 +127,9 @@ const RD_ICON = raw('<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden
 function addReadButtons() {
   if (!canSpeak()) { foldMeasure(); return; }
   const app = document.getElementById('app');
+  // 1.57.0: not on the small Settings cards, a sentence and a button each, where Read aloud squeezed the title onto three lines
   app.querySelectorAll('section.blk > h2, section.blk > header.sec-head > h2, section.needs > h2, section.cond h2').forEach(h => {
-    const sec = h.closest('section'); if (!sec || sec.querySelector(':scope > .rd-btn, :scope > header > .rd-btn, :scope > .sec-tools > .rd-btn, :scope > header > .sec-tools > .rd-btn')) return;
+    const sec = h.closest('section'); if (!sec || sec.matches('.set-card:not(.set-health)') || sec.querySelector(':scope > .rd-btn, :scope > header > .rd-btn, :scope > .sec-tools > .rd-btn, :scope > header > .sec-tools > .rd-btn')) return;
     const name = h.textContent.trim();
     sec.classList.add('has-rd');
     const b = rend(html`<button class="btn ghost small rd-btn noprint" type="button" data-act="readsec" aria-label="Read the ${name} section aloud">${RD_ICON}<span>Read aloud</span></button>`);
@@ -137,8 +138,7 @@ function addReadButtons() {
   });
   foldMeasure();
   const h1 = app.querySelector('h1');
-  if (h1 && !app.querySelector('.rd-page')) h1.insertAdjacentHTML('afterend', rend(html`<p class="rd-page noprint"><button class="btn ghost small" type="button" data-act="readpage">${RD_ICON}<span>Read this page aloud</span></button>
-    <span class="hint">Shortcut: R. Press Escape to stop.</span></p>`));
+  if (h1 && !app.querySelector('.rd-page')) h1.insertAdjacentHTML('afterend', rend(html`<p class="rd-page noprint"><button class="btn ghost small" type="button" data-act="readpage" aria-keyshortcuts="R">${RD_ICON}<span>Read this page aloud</span></button></p>`));   // 1.57.0: the R and Escape keys are under Display and the keyboard list, not beside every page title
 }
 // ---------- 1.42.0: every section on every page can be folded shut, and stays so ----------
 // Each section in the Navigation menu gets a "Hide" / "Show" button beside its title (a section that already folds by its own
@@ -763,16 +763,19 @@ async function conPoll() {
   finally { CON.busy = false; }
 }
 // 1.26.0: on phones (narrow windows) the list of pages folds behind one "Pages" button, which names the page you are on
+function topMoreFold() { const top = document.querySelector('header.top'), m = document.getElementById('more-btn'); if (top) top.classList.remove('more-open'); if (m) m.setAttribute('aria-expanded', 'false'); }
 function pagesMenu(open) {
   const b = document.getElementById('pages-btn'), top = document.querySelector('header.top'); if (!b || !top) return;
   const cur = document.querySelector('#main-nav a[aria-current=page]'), c = document.getElementById('pages-cur');
   const sub = document.querySelector('#sub-nav:not([hidden]) a[aria-current=page]'), word = a => a.childNodes[0].textContent.trim();
-  if (c) c.textContent = (cur ? word(cur) : 'Plants') + (sub && cur && word(sub) !== word(cur) ? ', ' + word(sub) : '');   // 1.29.0: the section and its page, without the wishlist alert count
+  const narrow = document.documentElement.dataset.narrow === '1';     // 1.57.0: on a narrow screen just the page, so it fits beside Search and More
+  if (c) c.textContent = narrow && sub ? word(sub) : (cur ? word(cur) : 'Plants') + (sub && cur && word(sub) !== word(cur) ? ', ' + word(sub) : '');   // 1.29.0: the section and its page, without the wishlist alert count
   b.setAttribute('aria-expanded', open ? 'true' : 'false'); top.classList.toggle('pages-open', !!open);
 }
 document.addEventListener('keydown', e => {      // Escape folds the list of pages again and goes back to its button
   const top = document.querySelector('header.top');
   if (e.key === 'Escape' && top && top.classList.contains('pages-open') && top.contains(document.activeElement)) { pagesMenu(false); const b = document.getElementById('pages-btn'); if (b) b.focus(); }
+  if (e.key === 'Escape' && top && top.classList.contains('more-open') && top.contains(document.activeElement)) { topMoreFold(); const b = document.getElementById('more-btn'); if (b) b.focus(); }
 });
 function pinLayout() {           // phones: the buttons pinned to the bottom of the screen stack up instead of covering each other
   const r = document.documentElement, tab = conEl('nav-tab'), corner = conEl('corner'), job = conEl('job-badge');

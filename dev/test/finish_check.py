@@ -107,7 +107,7 @@ with sync_playwright() as p:
     link.click(); pg.wait_for_timeout(2500)
     check(pg.evaluate("document.activeElement.textContent") == 'Getting ready to come inside' and pg.locator('#inside a[href="#/inside"]').count() >= 1, 'it opens the plant page at that section, which links to the Coming inside page')
     pg.goto(LOCAL + '/#/'); pg.wait_for_timeout(3000)
-    check(pg.locator('#today-inside a[href="#/inside"]').count() == 1, 'Today links to the Coming inside page')
+    check(pg.locator('#today-inside a[href="#/inside"], .td-none a[href="#/inside"]').count() == 1, 'Today links to the Coming inside page (1.57.0: from the "Nothing due today" line when none is due)')
     # the pages menu knows the new pages (search)
     pg.keyboard.press('/'); pg.wait_for_timeout(500); pg.keyboard.type('coming'); pg.wait_for_timeout(800)
     check('Coming inside' in pg.locator('dialog[open]').inner_text(), 'search finds "Coming inside" as a page')

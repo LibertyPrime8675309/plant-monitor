@@ -202,7 +202,7 @@ function viewForm(p) {
         <label class="f wide">Photos<small>Optional. Take them now or choose them from your photos; the first one becomes the main photo. With a photo, the common name can wait: a stand-in name is used until the photo is checked.</small><input type="file" name="__photos" accept="image/*" multiple data-f="newphotos"></label>
         <p class="row wide"><button class="btn ghost" type="button" data-act="newfill" id="newfill-btn" disabled>Fill in the names from the first photo</button></p>
         <div id="newfill-st" class="hint wide" role="status" aria-live="polite">Choose a photo, then the names can be filled in from it${ID.keys && ID.keys.plantnet ? ' (this computer and Pl@ntNet)' : ''}.</div></div></fieldset>` : ''}
-      ${GROUPS.map(([title, names]) => html`<fieldset><legend>${title}</legend><div class="field-grid">${names.map(n => fieldInput(F[n], p ? p[n] : NEWFILL && NEWFILL[n] ? NEWFILL[n] : (n === 'winter_plan' ? 'Move indoors' : n === 'health_rating' ? 'Fair' : '')))}</div></fieldset>`)}
+      ${GROUPS.map(([title, names]) => html`<fieldset><legend>${title}</legend><div class="field-grid fg-form">${names.map(n => fieldInput(F[n], p ? p[n] : NEWFILL && NEWFILL[n] ? NEWFILL[n] : (n === 'winter_plan' ? 'Move indoors' : n === 'health_rating' ? 'Fair' : '')))}</div></fieldset>`)}
       ${isNew ? '' : html`<fieldset><legend>Change note</legend><label class="f">What did you change, and why?<small>Optional. It appears in the page history.</small><input type="text" name="__note" maxlength="300"></label></fieldset>`}
       <div id="form-err"></div>
       <div class="sticky-save"><button class="btn" type="submit">${isNew ? 'Add plant' : 'Save changes'}</button>

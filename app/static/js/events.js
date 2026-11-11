@@ -343,7 +343,17 @@ const acts = {
     navLayout(); fitPanes(); paintAllCharts();
     const f = open ? document.querySelector('#sn-list a') : document.getElementById('nav-tab'); if (f) f.focus();
   },
-  pages() { const b = document.getElementById('pages-btn'); const open = b && b.getAttribute('aria-expanded') !== 'true'; pagesMenu(open);
+  async pledit(el) {                     // 1.57.0: a plant's main details as text, or in boxes to change
+    const open = el.getAttribute('aria-expanded') !== 'true'; PLEDIT = open && CUR && CUR.p ? CUR.p.code : null;
+    if (!open) { await route(); const b = document.querySelector('[data-act=pledit]'); if (b) b.focus(); return; }   // drawn again with what was changed
+    const ed = document.getElementById('pl-ed'), box = document.getElementById('details');
+    if (ed) ed.hidden = false; if (box) box.classList.add('pl-editing');
+    el.setAttribute('aria-expanded', 'true'); el.textContent = 'Done changing';
+    const f = ed && ed.querySelector('input,select'); if (f) f.focus();
+  },
+  topmore(el) { const top = document.querySelector('header.top'), open = el.getAttribute('aria-expanded') !== 'true';    // 1.57.0: Online, Home and Editing behind More on a narrow screen
+    el.setAttribute('aria-expanded', open ? 'true' : 'false'); top.classList.toggle('more-open', open); if (open) { pagesMenu(false); const f = document.getElementById('net'); if (f) f.focus(); } },
+  pages() { const b = document.getElementById('pages-btn'); const open = b && b.getAttribute('aria-expanded') !== 'true'; pagesMenu(open); if (open) topMoreFold();
     if (open) { const a = document.querySelector('#main-nav a[aria-current=page]') || document.querySelector('#main-nav a'); if (a) a.focus(); } },
   navside() { window.PlantPrefs.set('navside', window.PlantPrefs.get().navside === 'left' ? 'right' : 'left'); navLayout(); fitPanes(); paintAllCharts(); },
   jump(el) {
