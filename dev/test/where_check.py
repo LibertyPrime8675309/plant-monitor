@@ -31,7 +31,8 @@ check(('in', 'Downstairs Living Room') in areas and ('in', 'Garage') in areas an
       'its rooms come from Rooms and shelves, and the garage counts as not heated')
 dl = areas[('in', 'Downstairs Living Room')]
 check({'Tall Black Shelf', 'Large Brown Hutch'} <= {s['name'] for s in dl['spots']}, 'the shelves became spots in their room')
-check(len(W) == 2 and any(a['name'] == 'Yard' for a in W[1]['areas']), 'Nevada City has its own areas')
+nc = [h for h in W[1:] if 'Nevada City' in h['home']['name']]       # batch C9 adds Baraboo as a third home
+check(len(W) == 3 and nc and any(a['name'] == 'Yard' for a in nc[0]['areas']), 'Nevada City has its own areas')
 allp = call('GET', '/api/plants?status=all')[1]
 check(all(p.get('code') for p in allp), 'plants still load')
 pp = [plant(p['code']) for p in allp[:40]]

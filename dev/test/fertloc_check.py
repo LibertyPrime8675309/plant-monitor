@@ -57,8 +57,7 @@ call('PUT', '/api/plants/P-013', {'base_version': v + 1, 'fields': {'npk_ratio':
 # ---- the server: the place in use
 home = call('GET', '/api/meta')['place']
 check(home['is_home'] and home['name'], f"the home place to start with: {home['name']}")
-r = call('POST', '/api/places', {'name': 'Baraboo, WI', 'lat': 43.4711, 'lon': -89.7443, 'tz': 'America/Chicago'})
-pid = r['place']['id']
+pid = call('POST', '/api/places', {'name': 'Baraboo, WI', 'lat': 43.4711, 'lon': -89.7443, 'tz': 'America/Chicago', 'force': True})['place']['id']   # force: batch C9 already has a Baraboo home without weather
 for _ in range(40):
     time.sleep(1.5)
     if not call('GET', '/api/weather/job').get('running'): break
