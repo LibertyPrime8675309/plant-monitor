@@ -249,7 +249,7 @@ async function cmpBought(r) {
 async function cmpDialog(r) {
   if (!(await needName())) return;
   const L = r || {}, S = r ? (CMP.d.rows.find(x => x.id === r.id) || r) : {};
-  const pts = S.chart ? S.chart.map(([x, y]) => `${fmt(x, 2)} in ${fmt(y, 2)}`).join(', ') : '';
+  const pts = S.chart ? S.chart.map(([x, y]) => `${plainNum(x)} in ${plainNum(y)}`).join(', ') : '';      // 1.56.2: no thousands commas, the list is split on commas
   const yn = (name, label, v) => html`<label class="f">${label}<select name="${name}"><option value="" ${v == null ? raw('selected') : ''}>Not known</option><option value="1" ${v === true ? raw('selected') : ''}>Yes</option><option value="0" ${v === false ? raw('selected') : ''}>No</option></select></label>`;
   let x = null;
   for (;;) {

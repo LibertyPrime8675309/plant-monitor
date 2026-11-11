@@ -394,7 +394,8 @@ def light_fields(b, old=None):
     if 'watts' in b: d['watts'] = _num(b, 'watts', 0, 2000, 'Watts')
     if 'points' in b:                  # "12 in 719, 24 in 234 ..." or "12: 719 (0.5 sq ft)"
         pts = []
-        for part in re.split(r'[,;\n]+', str(b.get('points') or '')):
+        text = re.sub(r'(?<=\d),(?=\d{3}(?!\d))', '', str(b.get('points') or ''))   # 1.56.2: "2,496" is two thousand four hundred and ninety-six
+        for part in re.split(r'[,;\n]+', text):
             nums = [float(x) for x in re.findall(r'\d+(?:\.\d+)?', part)]
             if not part.strip(): continue
             if len(nums) < 2: abort(400, f'"{part.strip()}" needs a distance in inches and a PPFD, like "12 in 719"')
