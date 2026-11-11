@@ -170,7 +170,7 @@ function whereInputs(aid, p) {
   const all = WHERE().flatMap(h => h.areas), a = all.find(x => String(x.id) === String(aid)) || null;
   const hid = p ? p.home_id : (NEWFILL && NEWFILL.home_id) || '', side = a ? a.side : ((p && ['Indoors', 'Garage or shed'].includes(p.site)) ? 'in' : 'out');
   return html`<fieldset class="f wide where-f"><legend>Where it is</legend>
-    <div class="opts" role="radiogroup" aria-label="Inside or outside">${[['out', 'Outside'], ['in', 'Inside']].map(([k, l]) => html`<label class="chk"><input type="radio" name="__side" value="${k}" data-f="whereside" ${k === side ? raw('checked') : ''}>${l}</label>`)}</div>
+    <div class="opts" role="radiogroup" aria-label="Inside or outside">${[['out', 'Outside'], ['in', 'Inside']].map(([k, l]) => html`<label><input type="radio" name="__side" value="${k}" data-f="whereside" ${k === side ? raw('checked') : ''}><span>${l}</span></label>`)}</div>
     <label class="f">Area or room<small>Change the list on <a href="#/where">Rooms and spots</a>.</small><select name="area_id" data-f="wherearea">${whereAreaOpts(hid, side, aid)}</select></label>
     <label class="f">Spot<select name="spot_id">${whereSpotOpts(a ? a.id : (whereHome(hid).areas.find(x => x.side === side) || {}).id, p ? p.spot_id : '')}</select></label></fieldset>`;
 }
