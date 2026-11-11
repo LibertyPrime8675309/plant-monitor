@@ -1831,4 +1831,6 @@ ul.lt-plants.lt-two{grid-template-columns:repeat(auto-fit,minmax(max(min(100%,19
 .sec-tools{flex-wrap:wrap;max-width:100%;justify-content:flex-end}   /* 1.56.3: on a phone with the largest text, Read aloud and Show/Hide wrap rather than overflow */
 .sec-head-row>.sec-tools,header.sec-head>.sec-tools{flex:0 0 auto}   /* 1.56.3: the title's other buttons give way, so Hide stays on the right edge */
 .fold-click,header.sec-head:has(.fold-click),main h2:has(+ .sec-bare){cursor:pointer}     /* 1.56.3: a title folds its section when pressed */
-details.grp>summary>.det-tools{margin-left:auto;padding-left:1rem}
+details.grp>summary{flex-wrap:wrap;gap:.3rem 1rem}
+details.grp>summary>:is(h2,h3){flex:1 1 12rem;min-width:0;overflow-wrap:break-word}
+details.grp>summary>.det-tools{margin-left:auto}   /* on a phone with large text the button goes under the title, at the right */
