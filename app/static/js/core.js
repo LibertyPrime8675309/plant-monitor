@@ -288,6 +288,7 @@ async function placeAdd(i) {
 async function viewWhere() {
   const d = await api('GET', '/api/where'); let S = { items: [] }; try { S = await api('GET', '/api/where/sort'); } catch (e) { /* none */ }
   if (META) META.where = d.homes;
+  WHAREAS = d.homes.flatMap(h => h.areas);                     // 1.56.3: the spots each area offers in Plants without a spot
   const can = canChange(), multi = d.homes.length > 1;
   const areaHtml = a => html`<li class="wh-area" data-aid="${a.id}">
     <div class="wh-row"><label class="f wh-name">${a.side === 'out' ? 'Area' : 'Room'}<input type="text" maxlength="60" value="${a.name}" data-ed="area" data-id="${a.id}" data-k="name" ${can ? '' : raw('readonly')}></label>
@@ -304,22 +305,45 @@ async function viewWhere() {
   return { title: 'Rooms and spots', html: html`<h1>Rooms and spots</h1>
     <p>Where plants go at each home: outside or inside, then the area or room, then the spot in it. Choose them on each plant's page. Rename anything here by typing over it; it saves when you leave the box. A room or shelf for grow lights is chosen from the same list.</p>
     <p class="hint">"Roof overhead" and "Heated" decide how frost warnings and watering treat the plants there: outside with a roof counts as a covered porch, and inside without heat counts as a garage or shed.</p>
-    ${S.items.length && can ? html`<section class="blk" id="wh-sort"><h2>Spots to sort out (${S.items.length})</h2>
-      <p>These plants have a "Spot (where exactly)" written on them but no spot from the list yet. Check each suggested spot name and area, change any you like, then press <strong>Make these spots</strong>. The words written on the plant stay as they are.</p>
-      <p>Each <strong>Spot name</strong> box offers the spots already in its area: clear it and press the down arrow to see them all, or type a new name.</p>
-      <div class="tbl-wrap"><table class="tbl"><caption class="sr">Spots to sort out</caption><thead><tr><th scope="col">Written on the plant</th><th scope="col">Plants</th><th scope="col">Spot name</th><th scope="col">Area or room</th></tr></thead><tbody>
-      ${S.items.map((it, i) => html`<tr><th scope="row">${it.text}</th><td><ul class="whs-plants">${it.plants.map(x => html`<li><a href="#/plant/${enc(x.code)}">${x.photo ? html`<img src="${thumbUrl(x.photo)}" alt="" loading="lazy" width="48" height="48">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}<span>${x.name} <span class="muted">${x.code}</span></span></a></li>`)}</ul></td>
-        <td><label class="sr" for="whs-n${i}">Spot name for "${it.text}"</label><input type="text" id="whs-n${i}" maxlength="60" value="${it.name}" data-whs="${i}" data-k="name" list="whs-l${it.area_id}" autocomplete="off"></td>
-        <td><label class="sr" for="whs-a${i}">Area for "${it.text}"</label><select id="whs-a${i}" data-whs="${i}" data-k="area">${d.homes.map(h => html`<optgroup label="${h.home.name}">${h.areas.map(a => html`<option value="${a.id}" ${a.id === it.area_id ? raw('selected') : ''}>${a.side === 'out' ? 'Outside' : 'Inside'}: ${a.name}</option>`)}</optgroup>`)}</select></td></tr>`)}</tbody></table></div>
-      ${d.homes.flatMap(h => h.areas).map(a => html`<datalist id="whs-l${a.id}">${a.spots.map(sp => html`<option value="${sp.name}"></option>`)}</datalist>`)}
-      <p class="row"><button class="btn" type="button" data-act="whsort">Make these spots</button></p></section>` : ''}
+    ${S.items.length && can ? html`<section class="blk" id="wh-sort"><h2 tabindex="-1">Plants without a spot (${S.items.reduce((n, it) => n + it.plants.length, 0)})</h2>
+      <p>These plants are not on a spot from your list yet. For each group, choose the area and one of its spots, or <strong>A new spot</strong> and its name, then press <strong>Put in this spot</strong>. Untick a plant to leave it for later. <strong>Put them all in their spots</strong> at the bottom does every group at once. What is written on a plant ("Spot (where exactly)") stays as it is.</p>
+      <ul class="whs-list">${S.items.map((it, i) => whsCard(it, i, d.homes))}</ul>
+      <p class="row"><button class="btn" type="button" data-act="whsort">Put them all in their spots</button></p></section>` : ''}
     ${d.homes.map(h => html`<section class="blk wh-home"><h2>${multi ? h.home.name : 'Your home'}${h.home.is_home && multi ? ' (main home)' : ''}</h2><div class="wh-sides">${sideHtml(h, 'out')}${sideHtml(h, 'in')}</div></section>`)}`,
     after: () => { WHSORT = S.items; } };
 }
-let WHSORT = [];
-document.addEventListener('change', e => {        // 1.56.1: a different area offers that area's spots by name
-  const t = e.target; if (!t.dataset || t.dataset.whs === undefined || t.dataset.k !== 'area') return;
-  const n = document.getElementById('whs-n' + t.dataset.whs); if (n) n.setAttribute('list', 'whs-l' + t.value);
+let WHSORT = [], WHAREAS = [];
+// 1.56.3 (Ethan, November 10): "Plants without a spot". Each group of plants with the same words written on them (or none):
+// its plants, ticked; the area; one of that area's spots or a new one; and Put in this spot.
+function whsSpotOpts(aid, spotId, name) {
+  const a = WHAREAS.find(x => x.id === +aid), sps = a ? a.spots : [];
+  const pick = spotId || (sps.find(sp => name && sp.name.toLowerCase() === name.toLowerCase()) || {}).id || 'new';
+  return html`${sps.map(sp => html`<option value="${sp.id}" ${String(sp.id) === String(pick) ? raw('selected') : ''}>${sp.name}</option>`)}<option value="new" ${pick === 'new' ? raw('selected') : ''}>A new spot…</option>`;
+}
+function whsCard(it, i, homes) {
+  const isNew = !it.spot_id && !(WHAREAS.find(x => x.id === it.area_id) || { spots: [] }).spots.some(sp => it.name && sp.name.toLowerCase() === it.name.toLowerCase());
+  return html`<li class="whs-card" id="whs-${i}"><h3>${it.text ? html`Written on ${it.plants.length === 1 ? 'it' : 'them'}: "${it.text}"` : 'Nothing written on them'}</h3>
+    <fieldset class="whs-plants"><legend>Plants (${it.plants.length})</legend>${it.plants.map(x => html`<div class="whs-plant"><label><input type="checkbox" checked data-whs="${i}" data-k="code" value="${x.code}">
+      ${x.photo ? html`<img src="${thumbUrl(x.photo)}" alt="" loading="lazy" width="48" height="48">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}<span>${x.name} <span class="muted">${x.code}</span></span></label>
+      <a href="#/plant/${enc(x.code)}" class="whs-open">Open ${x.code}</a></div>`)}</fieldset>
+    <div class="whs-pick">
+      <label class="f">Area or room<select data-whs="${i}" data-k="area">${homes.map(h => html`<optgroup label="${h.home.name}">${h.areas.map(a => html`<option value="${a.id}" ${a.id === it.area_id ? raw('selected') : ''}>${a.side === 'out' ? 'Outside' : 'Inside'}: ${a.name}</option>`)}</optgroup>`)}</select></label>
+      <label class="f">Spot<select data-whs="${i}" data-k="spot">${whsSpotOpts(it.area_id, it.spot_id, it.name)}</select></label>
+      <label class="f" ${isNew ? '' : raw('hidden')} data-whsnew="${i}">Name of the new spot<input type="text" maxlength="60" value="${it.name}" data-whs="${i}" data-k="name"></label>
+    </div>
+    <p class="row"><button class="btn" type="button" data-act="whsone" data-i="${i}">Put in this spot</button></p></li>`;
+}
+function whsItem(i) {
+  const it = WHSORT[i], q = k => document.querySelector(`[data-whs="${i}"][data-k=${k}]`); if (!it || !q('area')) return null;
+  const codes = [...document.querySelectorAll(`[data-whs="${i}"][data-k=code]:checked`)].map(x => x.value);
+  const spot = q('spot').value;
+  return { text: it.text, from_area_id: it.area_id, area_id: +q('area').value, codes, ...(spot === 'new' ? { name: q('name').value } : { spot_id: +spot }) };
+}
+document.addEventListener('change', e => {
+  const t = e.target; if (!t.dataset || t.dataset.whs === undefined) return;
+  const i = t.dataset.whs, sel = document.querySelector(`[data-whs="${i}"][data-k=spot]`), nf = document.querySelector(`[data-whsnew="${i}"]`);
+  if (t.dataset.k === 'area' && sel) sel.innerHTML = rend(whsSpotOpts(t.value, null, (document.querySelector(`[data-whs="${i}"][data-k=name]`) || {}).value));
+  if ((t.dataset.k === 'area' || t.dataset.k === 'spot') && sel && nf) nf.hidden = sel.value !== 'new';
 });
 
 // 1.29.0: Pots and trays: each kind you have, how many, and which plants use them

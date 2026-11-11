@@ -1316,7 +1316,7 @@ Where a plant is has three parts: **outside or inside**, the **area or room**, a
 - **Roof overhead** (outside) and **Heated** (inside) decide how frost warnings and watering treat the plants there. Outside with a roof counts as a covered porch; inside without heat counts as a garage or shed.
 - On a plant's page, choose **Inside** or **Outside**, then the area or room, then the spot. **More about where** (the old "Spot (where exactly)") keeps whatever you wrote.
 - Your Rooms and shelves from the Grow lights page became rooms and spots, and a light spot's **Where** chooses from the same list.
-- **Spots to sort out**, at the top of Rooms and spots, lists the places written on your plants with a suggested spot name for each, and each plant with its photo and name. Change any names or areas, then press **Make these spots** to put those plants in them. Each **Spot name** box offers the spots already in the chosen area (clear it and press the down arrow to see them all), or type a new name (from 1.56.1).
+- **Plants without a spot** (from 1.56.3; it was Spots to sort out), at the top of Rooms and spots, lists every plant that is not on a spot from your list yet, grouped by what is written on them ("Spot (where exactly)", or nothing), each with its photo and name. For each group, choose the **Area or room** and then the **Spot**: the spots already in that area, or **A new spot…** with its name (suggested from the words). It suggests a spot that is already there when the words name it. Press **Put in this spot**; untick a plant to leave it for later. **Put them all in their spots** does every group at once. The words written on a plant stay as they are.
 
 ### Pots and trays
 

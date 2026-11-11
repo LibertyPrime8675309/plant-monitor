@@ -254,10 +254,22 @@ const acts = {
     await guard(async () => { await api('DELETE', '/api/where/areas/' + el.dataset.id); META = await api('GET', '/api/meta'); toast('Removed'); route(); }); },
   async whspotdel(el) { if (!(await needName())) return; if (!(await confirmBox(`Remove the spot ${el.dataset.name}?`, 'Plants there keep their area or room; they just have no spot.', 'Remove', true))) return;
     await guard(async () => { await api('DELETE', '/api/where/spots/' + el.dataset.id); META = await api('GET', '/api/meta'); toast('Spot removed'); route(); }); },
-  async whsort() {
+  async whsort() {                                   // 1.56.3: every group at once
     if (!(await needName())) return;
-    const items = WHSORT.map((it, i) => ({ text: it.text, name: (document.querySelector(`[data-whs="${i}"][data-k=name]`) || {}).value || '', area_id: +(document.querySelector(`[data-whs="${i}"][data-k=area]`) || {}).value }));
-    await guard(async () => { const r = await api('POST', '/api/where/sort', { items }); META = await api('GET', '/api/meta'); toast(`${r.moved} plant${r.moved === 1 ? '' : 's'} put in their spots`); route(); });
+    const items = WHSORT.map((_, i) => whsItem(i)).filter(x => x && x.codes.length);
+    await guard(async () => { const r = await api('POST', '/api/where/sort', { items }); META = await api('GET', '/api/meta');
+      toast(`${r.moved} plant${r.moved === 1 ? '' : 's'} put in their spots${r.made.length ? `. New spot${r.made.length === 1 ? '' : 's'}: ${r.made.join('; ')}` : ''}.`); await route();
+      const h = document.querySelector('#wh-sort h2'); if (h) h.focus(); });
+  },
+  async whsone(el) {                                 // 1.56.3: one group; the focus goes on to the next
+    if (!(await needName())) return;
+    const i = +el.dataset.i, item = whsItem(i); if (!item) return;
+    if (!item.codes.length) { toast('Tick at least one plant to put in this spot.', true); return; }
+    if (!item.spot_id && !String(item.name || '').trim()) { toast('Type the name of the new spot, or choose one of the spots.', true); return; }
+    const where = item.spot_id ? document.querySelector(`[data-whs="${i}"][data-k=spot] option:checked`).textContent : item.name.trim();
+    await guard(async () => { const r = await api('POST', '/api/where/sort', { items: [item] }); META = await api('GET', '/api/meta');
+      toast(`${r.moved} plant${r.moved === 1 ? '' : 's'} put in ${where}${r.made.length ? ' (a new spot)' : ''}.`); await route();
+      const next = document.querySelector(`#whs-${i} [data-k=area]`) || document.querySelector('#wh-sort h2') || document.querySelector('main h1'); if (next) next.focus(); });
   },
   async ctadd(el) { if (!(await needName())) return;
     await guard(async () => { const x = await api('POST', '/api/containers', { kind: el.dataset.kind, name: el.dataset.kind === 'pot' ? 'New pot' : 'New catch tray', shape: 'circle', qty: 1 });

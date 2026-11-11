@@ -363,28 +363,51 @@ def spot_guess(text):
 
 @app.route('/api/where/sort', methods=['GET', 'POST'])
 def where_sort():
-    """GET: each "Spot (where exactly)" text of plants with no spot yet, with a suggested spot name. POST {items: [{text, area_id, name}]}
-    makes the spots (or uses ones already there) and puts those plants in them. The text itself is kept."""
+    """1.56.3, from Ethan (November 10): "Plants without a spot". Its job is to put every plant on a spot from the list (one already
+    there, or a new one), not only to make spots. GET: the active plants with no spot yet, grouped by what is written on them
+    ("Spot (where exactly)", or nothing) and their area, each group with a suggested spot: one of that area's spots when the words
+    name it, else a new name made from the words. POST {items: [{text, from_area_id, area_id, spot_id | name, codes?}]}: the plants
+    of that group (only `codes`, when given) go to the spot chosen, or to a spot of that name in the area (made if it is not there).
+    The words written on a plant stay as they are."""
     c = db()
     if request.method == 'GET':
         out = {}
-        for r in c.execute("SELECT id, code, common_name, location, area_id FROM plants WHERE status='active' AND spot_id IS NULL AND TRIM(COALESCE(location,''))<>'' ORDER BY location, code"):
-            k = (r['location'].strip(), r['area_id'])
-            out.setdefault(k, {'text': k[0], 'area_id': k[1], 'name': spot_guess(k[0]), 'plants': []})['plants'].append(
-                {'code': r['code'], 'name': r['common_name'], 'photo': plant_photo(c, r['id'])})         # 1.56.1: a small photo of each
+        spots = {}
+        for sp in c.execute('SELECT id, area_id, name FROM spots').fetchall(): spots.setdefault(sp['area_id'], []).append(sp)
+        for r in c.execute("SELECT id, code, common_name, location, area_id FROM plants WHERE status='active' AND spot_id IS NULL ORDER BY TRIM(COALESCE(location,''))='', location, code"):
+            k = ((r['location'] or '').strip(), r['area_id'])
+            if k not in out:
+                guess = spot_guess(k[0]) if k[0] else ''
+                named = [sp for sp in spots.get(k[1], []) if guess and (sp['name'].lower() == guess.lower() or sp['name'].lower() in k[0].lower())]
+                hit = max(named, key=lambda sp: (sp['name'].lower() == guess.lower(), len(sp['name'])), default=None)     # the fullest name the words contain
+                out[k] = {'text': k[0], 'area_id': k[1], 'name': hit['name'] if hit else guess, 'spot_id': hit['id'] if hit else None, 'plants': []}
+            out[k]['plants'].append({'code': r['code'], 'name': r['common_name'], 'photo': plant_photo(c, r['id'])})     # 1.56.1: a small photo of each
         return jsonify(items=list(out.values()))
-    b = request.get_json(silent=True) or {}; who = editor(); n = 0
+    b = request.get_json(silent=True) or {}; who = editor(); n = 0; made = []
     for it in b.get('items') or []:
-        name = re.sub(r'\s+', ' ', str(it.get('name') or '')).strip()[:60]
-        if not name: continue
-        a = c.execute('SELECT * FROM areas WHERE id=?', (int(it.get('area_id') or 0),)).fetchone()
+        try: aid = int(it.get('area_id') or 0)
+        except (TypeError, ValueError): continue
+        a = c.execute('SELECT * FROM areas WHERE id=?', (aid,)).fetchone()
         if not a: continue
-        sp = c.execute('SELECT id FROM spots WHERE area_id=? AND name=?', (a['id'], name)).fetchone()
-        sid = sp[0] if sp else c.execute('INSERT INTO spots(area_id,name,sort,created_by,created_at) VALUES(?,?,(SELECT COALESCE(MAX(sort),0)+1 FROM spots),?,?)', (a['id'], name, who, now())).lastrowid
-        for r in c.execute("SELECT * FROM plants WHERE status='active' AND spot_id IS NULL AND TRIM(location)=? AND area_id IS ?", (str(it.get('text') or '').strip(), a['id'])).fetchall():
-            apply_changes(c, r, {'spot_id': sid, 'area_id': a['id']}, who, 'update', f'Put in the spot {a["name"]}, {name}'); n += 1
+        sp = None
+        if it.get('spot_id'):
+            sp = c.execute('SELECT id, name FROM spots WHERE id=? AND area_id=?', (int(it['spot_id']), a['id'])).fetchone()
+            if not sp: abort(400, f'That spot is not in {a["name"]}')
+        else:
+            name = re.sub(r'\s+', ' ', str(it.get('name') or '')).strip()[:60]
+            if not name: continue
+            sp = c.execute('SELECT id, name FROM spots WHERE area_id=? AND name=? COLLATE NOCASE', (a['id'], name)).fetchone()     # "hutch" is the Hutch already there
+            if not sp:
+                sid = c.execute('INSERT INTO spots(area_id,name,sort,created_by,created_at) VALUES(?,?,(SELECT COALESCE(MAX(sort),0)+1 FROM spots),?,?)', (a['id'], name, who, now())).lastrowid
+                sp = {'id': sid, 'name': name}; made.append(f'{a["name"]}, {name}')
+        frm = it.get('from_area_id', a['id'])          # the area the plants are in now: the one chosen may be another (the 1.56.0 bug)
+        q = "SELECT * FROM plants WHERE status='active' AND spot_id IS NULL AND TRIM(COALESCE(location,''))=? AND area_id IS ?"
+        codes = it.get('codes')
+        for r in c.execute(q, (str(it.get('text') or '').strip(), frm)).fetchall():
+            if codes is not None and r['code'] not in codes: continue
+            apply_changes(c, r, {'spot_id': sp['id'], 'area_id': a['id']}, who, 'update', f'Put in the spot {a["name"]}, {sp["name"]}'); n += 1
     c.commit()
-    return jsonify(moved=n, homes=where_list(c))
+    return jsonify(moved=n, made=made, homes=where_list(c))
 
 def light_fields(b, old=None):
     d = dict(old or {})

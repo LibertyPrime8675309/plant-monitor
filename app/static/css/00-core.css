@@ -1811,6 +1811,15 @@ ul.lt-plants.lt-two{grid-template-columns:repeat(auto-fit,minmax(max(min(100%,19
 .p-homes .chk{display:inline-flex;align-items:center;gap:.4rem;margin:.1rem .9rem .1rem 0;font-weight:400}
 .p-homes small{display:block;color:var(--ink-2)}
 .sp-hide{display:flex;gap:.5rem;align-items:center;min-height:2.75rem;font-weight:400;margin-bottom:.5rem}     /* 1.56.1 */
-.whs-plants{list-style:none;padding:0;margin:0;display:grid;gap:.4rem}                                        /* 1.56.1: Spots to sort out */
-.whs-plants a{display:flex;gap:.6rem;align-items:center;min-height:2.75rem}
-.whs-plants img,.whs-plants .job-nophoto{width:48px;height:48px;flex:0 0 48px;object-fit:cover;border-radius:6px}
+.whs-list{list-style:none;padding:0;margin:.6rem 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(30rem,100%),1fr));gap:1rem}   /* 1.56.3: Plants without a spot */
+.whs-card{border:2px solid var(--line);border-radius:8px;padding:.5rem .9rem;background:var(--sheet);min-width:0}
+.whs-card h3{margin:.2rem 0 .4rem;overflow-wrap:anywhere}
+.whs-plants{border:0;padding:0;margin:0 0 .4rem;display:grid;gap:.3rem;min-width:0}
+.whs-plants legend{font:inherit;font-weight:700;padding:0;margin-bottom:.3rem}
+.whs-plant{display:flex;flex-wrap:wrap;align-items:center;gap:.2rem 1rem}
+.whs-plant label{display:flex;gap:.6rem;align-items:center;min-height:2.75rem;font-weight:400;flex:1 1 14rem;min-width:0;overflow-wrap:anywhere}
+.whs-plant img,.whs-plant .job-nophoto{width:48px;height:48px;flex:0 0 48px;object-fit:cover;border-radius:6px}
+.whs-pick{display:flex;flex-wrap:wrap;gap:0 1rem}
+.whs-pick .f{flex:1 1 13rem;min-width:0}
+.whs-pick select,.whs-pick input{max-width:100%}
+.whs-card .row{margin:.2rem 0 .4rem}
