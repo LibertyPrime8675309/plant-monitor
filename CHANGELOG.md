@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.56.1 (2026-11-10)
+- **Photos in "Semi-hydro and water-only care" on Today.** Each plant there now shows its main photo, as the Water list does, instead of an empty grey box.
+
 ## 1.56.0 (2026-11-10)
 Three new parts, released early (they were planned for December, January and February) so you can use them while bringing plants inside for the winter.
 

@@ -3,7 +3,7 @@ plain sentence out. The routes record a recipe and a pot, and the watering list,
 Ethan's answers of November 10, 2026: semi-hydro pots are topped up and flushed about weekly; water-only plants get fresh water
 weekly; his pots (P-032, P-092, P-094 to P-098) are recorded by batch C5."""
 import json
-from datetime import date
+from datetime import date, timedelta
 import server as S
 M = S.MODULES[[m.__name__ for m in S.MODULES].index('plantdb.mixes')]
 H = {'X-Editor': 'Unit'}
@@ -72,7 +72,7 @@ def test_record_a_recipe_and_a_repot():
         assert r.status_code == 201, r.get_json()
         rid = r.get_json()['id']
         assert t.post('/api/mixes/recipes', json={'name': 'Unit chunky', 'parts': []}, headers=H).status_code == 409, 'names are unique'
-        r = t.post('/api/mixes/plant/P-001', json={'mixed_on': date.today().isoformat(), 'recipe_id': rid, 'repot': True}, headers=H)
+        r = t.post('/api/mixes/plant/P-001', json={'mixed_on': (date.today() - timedelta(days=1)).isoformat(), 'recipe_id': rid, 'repot': True}, headers=H)   # yesterday: today in UTC can be tomorrow in Texas
         assert r.status_code == 201
         p = r.get_json()
         assert p['mix']['recipe'] == 'Unit chunky' and p['mix']['care_id'] and p['mix']['words'].startswith('3 orchid bark (medium)')
@@ -98,6 +98,9 @@ def test_the_watering_list_says_top_up_for_semi_hydro():
         assert soil['action'] == 'water'
         items = t.get('/api/mixes/care').get_json()['items']
         assert {x['kind'] for x in items} <= {'flush', 'rootcheck'}, 'top-ups are in the watering list, not twice'
+        p32 = next(x for x in items if x['code'] == 'P-032')
+        main = next(ph['file'] for ph in t.get('/api/plants/P-032').get_json()['photos'] if ph['is_primary'])
+        assert p32['photo'] == main, '1.56.1: each plant comes with its main photo for Today'
 
 def test_a_new_plant_and_clearing_the_fields_need_no_answer():
     with S.app.test_client() as t:

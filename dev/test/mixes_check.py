@@ -7,7 +7,7 @@ of flushes; how often, saved; a viewer; phone width, dark and large text.
 Start the mock server with a fresh data folder, then: python3 dev/test/mixes_check.py [http://127.0.0.1:8080]
 Screenshots: dev/tmp/shots/mixes-*.png"""
 import json, os, sys, urllib.error, urllib.request
-from datetime import date
+from datetime import date, timedelta
 from playwright.sync_api import sync_playwright
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
 TS = BASE.rsplit(':', 1)[0] + ':' + str(int(BASE.rsplit(':', 1)[1]) + 1)
@@ -95,7 +95,7 @@ with sync_playwright() as p:
     fp.locator('button[value=ok]').click(); pg.wait_for_timeout(1500)
     pg.wait_for_selector('#mx-plant'); t = pg.inner_text('#mx-plant')
     check('Aroid chunky: 3 orchid bark' in t and 'when it was repotted' in t and 'Top layer: sphagnum moss' in t, 'P-001 is in Aroid chunky, repotted today, with a top layer')
-    check(any(x['kind'] == 'repot' and x['done_on'] == date.today().isoformat() for x in call('GET', '/api/care?plant=P-001')), 'Repotted is in its care log')
+    check(any(x['kind'] == 'repot' and x['done_on'] in {(date.today() - timedelta(days=d)).isoformat() for d in (0, 1)} for x in call('GET', '/api/care?plant=P-001')), 'Repotted is in its care log')
     # How it grows, changed on the page
     pg.locator('#mx-plant select[data-k=grow_kind]').select_option('Water only'); pg.wait_for_timeout(1500)
     pg.wait_for_selector('#mx-plant'); t = pg.inner_text('#mx-plant')
@@ -105,6 +105,9 @@ with sync_playwright() as p:
     pg.goto(BASE + '/#/today'); pg.wait_for_selector('#mx-hydro', timeout=20000)
     t = pg.inner_text('#mx-hydro')
     check('P-092' in t and 'Flushing' in t and 'P-032' in t, 'Today lists the semi-hydro pots due a flush')
+    pg.evaluate("document.getElementById('mx-hydro').scrollIntoView()"); pg.wait_for_timeout(1500)      # the photos load as they come into view
+    n_img = pg.locator('#mx-hydro li.job img').count()
+    check(n_img >= 1 and pg.evaluate("[...document.querySelectorAll('#mx-hydro li.job img')].every(i => i.complete && i.naturalWidth > 0)"), f'1.56.1: their photos show ({n_img})')
     pg.locator('#mx-hydro').screenshot(path=os.path.join(OUT, 'mixes-5-today.png'))
     # how often
     pg.goto(BASE + '/#/mixes'); pg.wait_for_selector('#mx-every')
