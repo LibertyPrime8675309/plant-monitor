@@ -106,7 +106,7 @@ function drawGrid() {
   const pool = ALL.filter(statusOk).length;
   const led = document.querySelector('.ledger'); if (led) led.innerHTML = rend(ledger());
   const mf = document.querySelector('#more-f > summary'); if (mf) { const n = moreOn(); mf.textContent = 'More filters' + (n ? ` (${n} on)` : ''); }
-  const gt = document.getElementById('g-title'); if (gt) gt.textContent = G.status === 'archived' ? 'Archived plants' : 'Outdoor plants';
+  const gt = document.getElementById('g-title'); if (gt) gt.textContent = G.status === 'archived' ? 'Archived plants' : 'All plants';
   const wa = document.getElementById('wa-btn'); if (wa) { const n = r.filter(p => !isArch(p)).length; wa.textContent = `Water all ${n} shown`; wa.disabled = !n; }
   document.getElementById('count').textContent = `${r.length} of ${pool} ${G.status === 'archived' ? 'archived ' : G.status === 'all' ? '' : 'active '}plants shown`;
   document.getElementById('grid').innerHTML = r.length
@@ -132,7 +132,7 @@ async function viewGallery(qs) {
   const pend = (await offOps()).filter(o => o.url === '/api/plants' && o.method === 'POST' && !o.failed);   // 1.38.0: plants added without a connection
   return {
     title: '',
-    html: html`${pend.length ? html`<p class="notice off-note noprint" role="note"><strong>${pend.length} new plant${pend.length === 1 ? '' : 's'} waiting to be sent:</strong> ${pend.map(o => (o.body.fields || {}).common_name || o.temp).join(', ')}. ${pend.length === 1 ? 'It gets' : 'They get'} a page here once the plant server can be reached. <a href="#/offline">Offline page</a></p>` : ''}<div class="hero"><div><h1 id="g-title">${G.status === 'archived' ? 'Archived plants' : 'Outdoor plants'}</h1>
+    html: html`${pend.length ? html`<p class="notice off-note noprint" role="note"><strong>${pend.length} new plant${pend.length === 1 ? '' : 's'} waiting to be sent:</strong> ${pend.map(o => (o.body.fields || {}).common_name || o.temp).join(', ')}. ${pend.length === 1 ? 'It gets' : 'They get'} a page here once the plant server can be reached. <a href="#/offline">Offline page</a></p>` : ''}<div class="hero"><div><h1 id="g-title">${G.status === 'archived' ? 'Archived plants' : 'All plants'}</h1>
       <p class="muted">${META.counts.plants} plants, ${META.counts.photos} photos. Weather for ${placeName()}.</p></div>
       <a class="btn" href="#/new">Add a plant</a></div>
     <div class="needs-bar row" role="group" aria-label="What Claude needs from you">

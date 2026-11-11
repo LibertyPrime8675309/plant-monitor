@@ -63,6 +63,20 @@ first = S[0]
 st, r = call('POST', '/api/where/sort', {'items': [{'text': first['text'], 'area_id': first['area_id'], 'name': first['name']}]})
 check(st == 200 and r['moved'] == len(first['plants']), f'making a spot puts those plants in it ({r.get("moved")})')
 check(plant(first['plants'][0]['code'])['location'] == first['text'], 'and the words on the plant stay')
+# 1.56.3 (Ethan, November 10): putting plants in a spot that is already there, in another area, used to move nothing
+S = call('GET', '/api/where/sort')[1]['items']
+grp = next(x for x in S if x['area_id'] != dl['id'])
+hutch = next(sp for sp in dl['spots'] if sp['name'] == 'Large Brown Hutch')
+keep = grp['plants'][1:] if len(grp['plants']) > 1 else []
+st, r = call('POST', '/api/where/sort', {'items': [{'text': grp['text'], 'from_area_id': grp['area_id'], 'area_id': dl['id'], 'spot_id': hutch['id'], 'codes': [grp['plants'][0]['code']]}]})
+P0 = plant(grp['plants'][0]['code'])
+check(st == 200 and r['moved'] == 1 and P0['spot_id'] == hutch['id'] and P0['area_id'] == dl['id'] and r['made'] == [],
+      f'a plant goes to a spot already there in another room, with no new spot made ({r.get("moved")}, {r.get("made")})')
+check(all(plant(x['code'])['spot_id'] is None for x in keep), 'an unticked plant of the same group stays for later')
+st, r = call('POST', '/api/where/sort', {'items': [{'text': grp['text'], 'from_area_id': grp['area_id'], 'area_id': dl['id'], 'name': 'large brown hutch', 'codes': [x['code'] for x in keep]}]})
+check(st == 200 and r['made'] == [] and all(plant(x['code'])['spot_id'] == hutch['id'] for x in keep), 'typing the name of a spot already there, in any case, uses it')
+S2 = call('GET', '/api/where/sort')[1]['items']
+check(not any(x['text'] == grp['text'] and x['area_id'] == grp['area_id'] for x in S2), 'and the group is gone from the list')
 
 with sync_playwright() as p:
     b = p.chromium.launch()
@@ -79,6 +93,20 @@ with sync_playwright() as p:
     pg.locator('.undo-toast [data-undo=undo]').click(); pg.wait_for_timeout(1500)
     check(any(a['name'] == 'Downstairs Living Room' for a in call('GET', '/api/where')[1]['homes'][0]['areas']), 'Undo puts the old name back')
     pg.screenshot(path=os.path.join(OUT, 'where-1-page.png'), full_page=True)
+    # 1.56.3: Plants without a spot, from the page
+    check(pg.locator('#wh-sort h2').inner_text().startswith('Plants without a spot ('), 'the section is "Plants without a spot"')
+    card = pg.locator('#whs-0')
+    codes0 = card.locator('[data-k=code]').evaluate_all('els => els.map(e => e.value)')
+    card.locator('[data-k=area]').select_option(str(dl['id'])); pg.wait_for_timeout(300)
+    names = card.locator('[data-k=spot] option').all_inner_texts()
+    check('Tall Black Shelf' in names and names[-1] == 'A new spot…', f'choosing a room offers its spots and a new one ({len(names)})')
+    card.locator('[data-k=spot]').select_option(label='Tall Black Shelf'); pg.wait_for_timeout(200)
+    check(card.locator('[data-whsnew]').is_hidden(), 'the new spot name box only shows for a new spot')
+    card.locator('[data-act=whsone]').click(); pg.wait_for_timeout(2000)
+    tbs = next(sp for sp in dl['spots'] if sp['name'] == 'Tall Black Shelf')
+    check(all(plant(c)['spot_id'] == tbs['id'] for c in codes0), f'Put in this spot puts its plants on the Tall Black Shelf ({len(codes0)})')
+    check('put in Tall Black Shelf' in pg.inner_text('#toasts'), 'and says so')
+    pg.screenshot(path=os.path.join(OUT, 'where-2-without-spot.png'), full_page=False)
     pg.goto(TS + '/#/plant/P-030/edit'); pg.wait_for_timeout(2500)
     f = pg.locator('form[data-form=edit]')
     f.locator('[name=__side][value=in]').check(); pg.wait_for_timeout(300)

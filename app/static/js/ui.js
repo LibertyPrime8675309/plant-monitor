@@ -187,10 +187,35 @@ function addFoldButtons() {
     else { keep.classList.add('sec-keep'); title.insertAdjacentHTML('afterend', tools.replace('sec-tools', 'sec-tools sec-inline')); }   // a title further in
     const rd = sec.querySelector(':scope > .rd-btn'); const tl = sec.querySelector('.sec-tools');
     if (rd && tl) tl.insertAdjacentElement('afterbegin', rd);
+    if (title) title.classList.add('fold-click');           // 1.56.3: the title folds it too
     if (foldIsSet(it.text)) foldSet(it, true, false);
+  });
+  // 1.56.3 (Ethan, November 10): a section that folds by its title bar (Today's and Fertilizer's groups, Turn the pots) has a
+  // Hide/Show button too, at the right of the bar like every other section's.
+  document.querySelectorAll('main details.grp').forEach(d => {
+    const s = d.querySelector(':scope > summary'); if (!s || s.querySelector('.det-fold')) return;
+    const name = (s.querySelector('h2,h3') || s).textContent.trim();
+    s.insertAdjacentHTML('beforeend', rend(html`<span class="sec-tools det-tools noprint"><button class="btn ghost small sec-fold det-fold" type="button"></button></span>`));
+    const b = s.querySelector('.det-fold');
+    const label = () => { b.setAttribute('aria-expanded', d.open ? 'true' : 'false'); b.setAttribute('aria-label', `${d.open ? 'Hide' : 'Show'} the ${name} section`);
+      b.innerHTML = rend(html`<span aria-hidden="true">${d.open ? '▾' : '▸'}</span> <span>${d.open ? 'Hide' : 'Show'}</span>`); };
+    b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); d.open = !d.open; label(); });   // the summary's own toggle is not run twice; the label changes at once
+    d.addEventListener('toggle', label);
+    label();
   });
   foldMeasure();
 }
+// 1.56.3: pressing a section's title (or its title bar) does what its Show/Hide button does; buttons and links in the bar keep their own
+document.addEventListener('click', e => {
+  const t = e.target; if (!(t instanceof Element)) return;
+  if (t.closest('a,button,input,select,textarea,label,summary,[data-act],[data-ed],[contenteditable]')) return;
+  if (String(window.getSelection && window.getSelection()) !== '') return;              // selecting the words is not a press
+  const head = t.closest('.fold-click, header.sec-head, h1, h2, h3'); if (!head) return;
+  if (head.matches('h1,h2,h3') && head.nextElementSibling && head.nextElementSibling.classList.contains('sec-bare')) { head.nextElementSibling.querySelector('.sec-fold').click(); return; }
+  const sec = head.closest('.has-fold'); if (!sec) return;
+  if (!(head.classList.contains('fold-click') || (head.matches('header.sec-head') && head.querySelector('.fold-click')))) return;
+  const b = sec.querySelector('.sec-fold'); if (b) b.click();
+});
 function foldParts(it) {           // what hides: everything in the section beside the path down to its title, or what follows a bare title
   const t = foldTarget(it); if (!t) return [];
   if (t.bare) { const out = []; let n = t.bare.nextElementSibling; while (n && !n.matches('h1,h2') && !n.querySelector('h2') && !n.matches('section,details.blk')) { if (!n.classList.contains('sec-tools')) out.push(n); n = n.nextElementSibling; } return out; }
