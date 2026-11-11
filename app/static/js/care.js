@@ -340,14 +340,16 @@ async function viewToday() {
     cold ? { order: 10, id: 'today-cold', jump: `Cold night (${cold})`, html: html`<section class="blk" id="today-cold">${frostBanner(true)}</section>` } : null,
     snN ? { order: 20, id: 'today-sensors', jump: `Sensors (${snN})`, html: html`<section class="blk" id="today-sensors"><h2>Sensors (${snN})</h2><ul class="jobs">${SN.cards.map(s => html`<li class="job"><span class="job-nophoto" aria-hidden="true"></span><div class="job-txt"><a class="nm" href="#/sensors">${s.name}</a>${s.plant ? html` <span class="muted">${s.plant.code} ${s.plant.common_name}</span>` : ''}<div>${s.words}</div></div>
       <div class="job-acts">${s.plant ? html`<a class="btn small ghost" href="#/plant/${enc(s.plant.code)}">Open its plant</a>` : ''}</div></li>`)}</ul><p><a class="btn small ghost" href="#/sensors">All your sensors</a></p></section>` } : null,
-    { order: 30, id: 'today-water', jump: `Water (${due.length})`, keep: soon.length + unk.length > 0, html: html`<section class="blk" id="today-water"><h2>Water (${due.length})</h2>
+    { order: 30, id: 'today-water', jump: `Water (${due.length})`, keep: soon.length > 0, html: html`<section class="blk" id="today-water"><h2>Water (${due.length})</h2>
       ${due.length ? html`${due.length > 1 ? html`<p><button class="btn small ghost" type="button" data-act="careall" data-kind="water" data-codes="${due.map(w => w.code).join(',')}">Watered all ${due.length}</button></p>` : ''}
         <ul class="jobs">${due.map(w => jobRow(by[w.code], waterWords(w), wbtn(w)))}</ul>` : html`<p class="notice ok">Nothing is due for water today.</p>`}
       ${soon.length ? html`<details class="grp"><summary><h3>Check tomorrow (${soon.length})</h3></summary><ul class="jobs">${soon.map(w => jobRow(by[w.code], waterWords(w), wbtn(w)))}</ul></details>` : ''}
-      ${unk.length ? html`<details class="grp"><summary><h3>No watering logged yet (${unk.length})</h3></summary>
+      </section>` },
+    // 1.57.0: plants with no watering logged are a part of their own, so "Water (0)" folds into the "Nothing due today" line
+    unk.length ? { order: 31, id: 'today-unlogged', html: html`<section class="blk" id="today-unlogged"><details class="grp"><summary><h2>No watering logged yet (${unk.length})</h2></summary>
         <p class="hint">These have no watering in the log and no rain counted, so there is no reminder for them yet. If you water everything on a round, press the button to start the clock for all of them at once.</p>
         <p><button class="btn small ghost" type="button" data-act="careall" data-kind="water" data-codes="${unk.map(w => w.code).join(',')}">I watered all ${unk.length} today</button></p>
-        <ul class="jobs">${unk.map(w => jobRow(by[w.code], w.site !== 'Outdoors' ? w.site + '.' : 'Outdoors.', wbtn(w)))}</ul></details>` : ''}</section>` },
+        <ul class="jobs">${unk.map(w => jobRow(by[w.code], w.site !== 'Outdoors' ? w.site + '.' : 'Outdoors.', wbtn(w)))}</ul></details></section>` } : null,
     { order: 40, id: 'today-feed', jump: `Feed (${feed.length})`, html: html`<section class="blk" id="today-feed"><h2>Feed (${feed.length})</h2>
       ${feed.length ? html`${feed.length > 1 ? html`<p><button class="btn small ghost" type="button" data-act="fertlog" data-group="due">Log feeding for all ${feed.length}</button></p>` : ''}
         <ul class="jobs">${feed.map(r => jobRow(r.p, fertWords(r.p, r.st, t), html`<button class="btn small" type="button" data-act="fertlog" data-code="${r.p.code}">Log feeding</button>`))}</ul>`

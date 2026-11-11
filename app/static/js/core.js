@@ -234,6 +234,14 @@ async function apiNet(method, url, body, form, m) {     // m.took: how long the 
   return data;
 }
 
+// 1.57.0: a new page puts the focus on its title, so a screen reader says which page opened (it went to the whole page area)
+function focusTitle(app) {
+  const h = app.querySelector('h1');
+  if (!h) { app.focus({ preventScroll: true }); return; }
+  if (!h.hasAttribute('tabindex')) h.setAttribute('tabindex', '-1');
+  h.focus({ preventScroll: true });
+}
+
 // ---------- location: the place whose weather this browser uses (1.11.0) ----------
 const placeName = () => (META && META.place && META.place.name) || 'your location';
 const placeShort = () => placeName().split(',')[0].trim();
@@ -531,6 +539,7 @@ async function loadHealth() {
   const copyGood = H.copy.at && !/failed/.test(H.copy.dir + H.copy.receiver) && (H.copy.dir || H.copy.receiver);
   box.innerHTML = rend(html`<ul class="hl">
     <li><span aria-hidden="true">●</span> Version ${H.version}${H.db_version && H.db_version !== H.version ? ` (the database was last opened by ${H.db_version})` : ''}, running as ${H.runs_as || 'the app'}. ${H.plants} plants, ${H.photos} photos, ${H.readings.toLocaleString()} readings${H.sensors ? ` from ${H.sensors} sensor${H.sensors === 1 ? '' : 's'}` : ''}.</li>
+    ${H.journal && H.journal.note ? html`<li><span aria-hidden="true">●</span> Saving mode: ${(H.journal.mode || '').toUpperCase()}. ${H.journal.note}</li>` : ''}
     ${ok(H.backup.last && !oldAge(H.backup.last), H.backup.last ? `Last backup ${when(H.backup.last)}${/^\d{4}-/.test(H.backup.next) ? ', next ' + when(H.backup.next) : ''}.` : H.backup.every === 'turned off' ? 'Automatic backups are turned off.' : 'No automatic backup yet.')}
     ${ok(copyGood, H.copy.at ? `Second copy ${when(H.copy.at)}: ${[H.copy.dir ? 'folder ' + H.copy.dir : '', H.copy.receiver ? 'other computer ' + H.copy.receiver : ''].filter(Boolean).join('; ') || 'nowhere set up'}.` : 'No second copy of a backup yet (Backups page).')}
     ${ok(H.weather.last && !oldAge(H.weather.last), H.weather.last ? `Weather updated ${when(H.weather.last)}.` : 'No weather update yet.')}
@@ -543,12 +552,10 @@ function viewSettings() {
   const card = (title, text, btn) => html`<section class="blk set-card"><h2>${title}</h2><p>${text}</p><div class="row">${btn}</div></section>`;
   return { title: 'Settings', after: () => { api('GET', '/api/problems').then(d => { const n = document.getElementById('prob-n'); if (n && d.open) n.textContent = ` (${d.open})`; }).catch(() => {}); loadHealth(); }, html: html`<h1>Settings</h1>
     <p class="muted">Plant record version <strong>${META.version}</strong>${META.runs_as ? `, running as ${META.runs_as}` : ''}. The version number is also always beside the name at the top of the page.</p>
+    <p>Offline use, Backups and the Audit log are in the row of pages above: <a href="#/offline">Offline use</a>, <a href="#/backups">Backups</a>, <a href="#/history">Audit log</a>.</p>
     <div class="set-grid">
     ${card('People and your name', owner ? 'Your name in the audit log, and who can view, edit or own the app.' : 'Your name in the audit log, and what you are allowed to do.', html`<button class="btn" type="button" data-act="who">${owner ? 'Open people and names' : 'Open your name'}</button>`)}
     ${card('Display', 'Text size, colours, page layout, reading aloud, photos, touch and keyboard. Also on the Display button at the bottom of every page.', html`<button class="btn" type="button" data-act="display">Open Display settings</button>`)}
-    ${card('Offline use', 'Keep a copy of the plants on a phone or tablet, and see changes waiting to be sent.', html`<a class="btn" href="#/offline">Open Offline use</a>`)}
-    ${card('Backups', 'Copies of the database and photos, made by hand or on a schedule.', html`<a class="btn" href="#/backups">Open Backups</a>`)}
-    ${card('Audit log', 'Every change anyone has made, with filters and a download.', html`<a class="btn" href="#/history">Open the Audit log</a>`)}
     ${card('Homes and places', 'Where plants live, and the places whose weather is tracked.', html`<a class="btn" href="#/weather?sec=places">Open Homes and places</a>`)}
     ${card('Stores and keys', 'The stores Shopping checks, the eBay and Etsy keys, and the Pl@ntNet and Claude keys for Identify.', html`<a class="btn" href="#/shopping/stores">Stores</a><a class="btn ghost" href="#/identify">Keys (Identify page)</a>`)}
     ${card('Notifications', 'Messages on your phone or computer, even when the app is closed: cold nights, Shopping alerts, what is due today, and requests from Claude. Chosen for your own sign-in.', html`<button class="btn" type="button" data-act="notify" aria-haspopup="dialog">Open Notifications</button>`)}
@@ -602,6 +609,7 @@ dlg.addEventListener('click', e => { if (DLGDOWN && e.target === dlg && outsideD
 function modal(content, cls) {
   dlg.className = cls || '';
   dlg.innerHTML = rend(content);
+  notesPass(dlg);                                   // 1.57.0: notes on request, in windows too
   const h2 = dlg.querySelector('h2');               // the window is named by its heading, for screen readers
   if (h2) { h2.id = h2.id || 'dlg-title'; dlg.setAttribute('aria-labelledby', h2.id); } else dlg.removeAttribute('aria-labelledby');
   return new Promise(res => {
@@ -809,8 +817,8 @@ async function route() {
     featAdds(parts);                              // 1.46.0: what feature modules add to this page once it is on screen (features.js); they rebuild Navigation when done
     if (parts[0] === 'weather' && qs.get('sec') === 'places') setTimeout(() => { const t = document.getElementById('sec-places'); if (t) { scrollToSection(t); navFlash(t); } }, 300);   // 1.29.0: Homes and places
     else if (qs.get('sec')) { const go2 = () => { const t = document.getElementById(qs.get('sec')); if (t) { scrollToSection(t); navFlash(t); } }; setTimeout(go2, 300); setTimeout(go2, 1500); }   // 1.36.0: #/plant/P-001?sec=inside opens the page at that section
-    buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); setTimeout(() => { buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); }, 1200);
-    if (h !== lastPath) { if (!(wentBack && !qs.get('sec') && scrollBack(h))) window.scrollTo(0, 0); app.focus({ preventScroll: true }); NAVPIN = -1; navActive(); }
+    buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); setTimeout(() => { buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); }, 1200);
+    if (h !== lastPath) { if (!(wentBack && !qs.get('sec') && scrollBack(h))) window.scrollTo(0, 0); focusTitle(app); NAVPIN = -1; navActive(); }
     else if (fresh && keepY) window.scrollTo(0, keepY);
     lastPath = h;
     timingKeep(myTiming, t0, tData, performance.now());
@@ -887,10 +895,19 @@ function topFit() {
   if (was) top.classList.add('pages-open');
   r.dataset.toptall = top.offsetHeight > innerHeight * 0.2 ? '1' : '0';
 }
+// 1.57.0: when the top bar is too tall to stay put, the Navigation menu starts under it and moves up as it scrolls away (it ran from
+// the top of the window, beside a top bar pushed over to make room)
+function navTop() {
+  const r = document.documentElement, top = document.querySelector('.top');
+  if (r.dataset.toptall === '1' && r.dataset.narrow !== '1' && top) r.style.setProperty('--nav-top', Math.max(0, Math.round(top.getBoundingClientRect().bottom)) + 'px');
+  else r.style.removeProperty('--nav-top');
+}
+window.addEventListener('scroll', () => { if (document.documentElement.dataset.toptall === '1' && !navTop.f) navTop.f = requestAnimationFrame(() => { navTop.f = 0; navTop(); }); }, { passive: true });
 function navLayout() {
   const r = document.documentElement, top = document.querySelector('.top');
   topFit();
   r.style.setProperty('--top-h', (r.dataset.narrow === '1' || r.dataset.toptall === '1' ? 0 : (top ? top.getBoundingClientRect().height : 64)) + 'px');   // on phones the top bar scrolls away
+  navTop();
   const open = navOpen();
   r.dataset.navopen = open ? '1' : '0';
   const side = window.PlantPrefs.get().navside;
@@ -922,7 +939,7 @@ function buildSideNav() {
   // 1.14.1: every section title (h2) plus any part marked data-section="Its name", in page order, so new sections join by themselves
   const seen = new Set();
   app.querySelectorAll('h2, [data-section]').forEach(h => {
-    if (h.closest('dialog,.chart-card,#sidenav') || !h.offsetParent) return;
+    if (h.closest('dialog,.chart-card,#sidenav') || !h.offsetParent || h.classList.contains('sr')) return;   // 1.57.0: a heading only for screen readers is not a section
     const marked = h.matches("[data-section]"), sec = marked ? h : (h.closest('section') || h);
     if (seen.has(sec) || (!marked && sec.closest("[data-section]") && sec.closest("[data-section]") !== sec)) return;
     seen.add(sec);

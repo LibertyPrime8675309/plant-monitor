@@ -8,7 +8,7 @@ def _like(q): return '%' + q.replace('%', '').replace('_', '') + '%'
 def search_api():
     c = db(); q = request.args.get('q', '').strip()[:80]
     if len(q) < 2: return jsonify(q=q, groups=[])
-    L, ql, out = _like(q), q.lower(), []
+    L, out = _like(q), []
     rows = c.execute("""SELECT code, common_name, scientific_name, aliases, location, status FROM plants WHERE code LIKE ? OR common_name LIKE ? OR scientific_name LIKE ?
                         OR aliases LIKE ? OR location LIKE ? OR notes LIKE ? ORDER BY status='archived', CASE WHEN code LIKE ? OR common_name LIKE ? THEN 0 ELSE 1 END, code LIMIT 12""",
                      (L, L, L, L, L, L, L, L)).fetchall()

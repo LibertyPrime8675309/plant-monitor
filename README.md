@@ -147,6 +147,8 @@ Every change to the app on GitHub builds all three container images (the app, th
 
 **From 1.46.0 the updater downloads those ready-built images instead of building them on your PC.** An update takes a couple of minutes rather than ten or more, and nothing is compiled on your computer. If GitHub cannot be reached, the updater builds the images from the folder as before, which still works offline from GitHub as long as Docker Hub can be reached for the base image.
 
+From 1.57.0 the Python libraries the app uses are fixed at known versions (`requirements.txt`), so a rebuild never picks up a new library by surprise. Once a week GitHub's Dependabot proposes updates to them, to the base images in the Dockerfiles and to GitHub's own build steps, as pull requests; each one goes through the same checks before it can be merged, and nothing changes on your PC until a release.
+
 ## Version
 
 The `VERSION` file holds this package's version, and `CHANGELOG.md` lists what changed in each one. Keep each zip you receive (the file name carries the version and build time) as your archive; they all collect in `versions_plant-database`.
@@ -297,13 +299,14 @@ Everything you type is taken in your unit too: a plant's temperatures on its edi
 
 ## Display settings and low vision
 
-Press the **Display** button (from 1.42.0 at the bottom of the Navigation menu; on a page with no menu, bottom right) to change how everything looks. The **Debug** button beside it is described under "Audit log" below. Changes apply at once and are remembered in that browser (each computer or phone keeps its own).
+Press the **Display** button (from 1.42.0 at the bottom of the Navigation menu; on a page with no menu, from 1.57.0 in the top bar beside Search) to change how everything looks. The **Debug** button beside it is described under "Audit log" below. Changes apply at once and are remembered in that browser (each computer or phone keeps its own).
 
 - **Text and button size**: Standard, Comfortable (the new default, a little bigger than before), Large, Larger, Largest. Buttons, bars, charts and spacing scale together.
 - **Spacing**: Normal or Roomy (more space between lines, letters and words).
 - **Contrast**: Normal or High (black and white with heavier outlines).
 - **Colours**: match your device, light or dark.
 - **Plant pages**: photos and details side by side, or one column.
+- **Notes under buttons and boxes** (from 1.57.0): **Always show them** (the usual choice) or **Show them when I ask**. With the second, the small notes under buttons, boxes and pictures fold into a round **Note** button, which saves a lot of room on long forms. Press a Note button (or Tab to it and press Enter or Space) to read the note, and again to fold it; Escape folds it too. Pointing at a box with the mouse also shows its note, and on a phone or tablet a long press (about half a second) on a box opens its note. A screen reader still hears every note in full, and printed pages show them all.
 - **Line length** (from 1.26.0): **Use the full width** (the usual choice: paragraphs and lists run across the whole page, so more fits on screen) or **Shorter lines** (about 70 letters per line, which some people find easier to follow).
 
 On a plant page in side-by-side view, the photos (left) and details (right) each scroll on their own: put the pointer over the half you want to move and scroll. A "Switch to one column" button at the top of the page does the same as the Display setting. With very large text or a narrow window the page switches to one column automatically. The row of section buttons (Now, Temperature, Humidity, Light, Water and soil, ...) jumps straight to a section; in side-by-side view it steps aside while the On this page menu is open, because the menu lists the same sections. All parts of the page can also be reached with the Tab key.
@@ -313,7 +316,7 @@ On a computer (from 1.26.1) the menu bar at the top uses the whole width of the 
 On a phone the menu bar at the top scrolls away with the page (scroll back to the top to reach it), and every page fits the width of the screen at every text size. From 1.26.0:
 - The list of pages folds behind one **Pages** button, which names the page you're on (for example "Pages: Groups"). Press it to show every page; choosing one, or pressing Escape, folds the list again.
 - From 1.56.5 the bar is two short rows: the name, then **Pages** (with just the page's name), **Search** and **More**. **More** opens Online, Home and Editing (Escape folds it); **Offline** always shows when you are offline. The pages of the section you are in show with the sections when Pages is open.
-- **Navigation** and **Debug** share one bar along the bottom of the screen (from 1.42.0 Display is inside the Navigation menu).
+- **Navigation** and **Debug** share one bar along the bottom of the screen (from 1.42.0 Display is inside the Navigation menu). From 1.57.0 the bar slips away while you scroll down a page and comes back as soon as you scroll up a little, or reach the end of the page.
 - On a computer with large text (or a small window such as a tablet held sideways), the page links fold behind the same **Pages** button once they would take more than two rows, or the top bar more than a fifth of the window. If the top bar is still that tall, it scrolls away with the page, as on a phone.
 - Tables too wide for the screen become one box per row: the row's name (a day, a plant, a backup) at the top, then each value next to its column's name, two or more to a line when they fit. The long table on the Weather page still scrolls sideways.
 - The same happens on a tablet or a small window whenever the text is large enough that the page switches to one column.
@@ -730,6 +733,35 @@ macOS / Linux (bash):
 ```
 ls -lh data/plants.db
 ```
+
+### Saving mode (from 1.57.0, optional)
+
+The app saves to the database in the way that is safe on every computer (SQLite's "DELETE" journal). A faster way, "WAL", lets pages keep reading while a save is being written, which helps when several people use the app at once. On some Windows folders shared with Docker it does not work, so the app tests it first: when it starts, it writes and reads a small test database in the `data` folder, and uses WAL only if that works. Otherwise it stays as it is and says why. **Settings, Health of the app** shows the saving mode in use whenever WAL was asked for.
+
+To try it, make a backup first (**Backups**, **Make a backup now**), then add a line to the `.env` file next to `docker-compose.yml` and restart the app:
+
+Windows (cmd.exe):
+
+```
+echo PLANTDB_JOURNAL=WAL>> .env
+docker compose up -d
+```
+
+Windows (PowerShell):
+
+```
+Add-Content .env "PLANTDB_JOURNAL=WAL"
+docker compose up -d
+```
+
+macOS / Linux (bash):
+
+```
+echo PLANTDB_JOURNAL=WAL >> .env
+docker compose up -d
+```
+
+To go back, delete that line from `.env` (open it with `notepad .env` on Windows) and run `docker compose up -d` again. With WAL on, the database is three files while the app runs (`plants.db`, `plants.db-wal` and `plants.db-shm`), so copy it with **Backups** rather than by copying `plants.db` by hand.
 
 For a spreadsheet, use the **Weather** page's table (any columns, any dates) or the **Audit log** page: "Download weather and sensor readings (CSV)".
 

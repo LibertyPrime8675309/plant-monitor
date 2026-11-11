@@ -168,9 +168,9 @@ def shops_worker():
             for s in todo:
                 SHOPQ['now'] = s['name']; job_progress(jid, SHOPQ['done'], len(todo), s['name'])
                 if not wants: break
-                try: st, msg, kind = shop_check_one(c, s, wants); err = None
-                except SH.ShopError as e: st, msg, kind, err = 'error', str(e), None, str(e); bad.append(s['name'])
-                except Exception as e: st, msg, kind, err = 'error', 'Could not read it: ' + str(e)[:120], None, str(e)[:300]; bad.append(s['name'])
+                try: _, msg, kind = shop_check_one(c, s, wants); err = None
+                except SH.ShopError as e: msg, kind, err = str(e), None, str(e); bad.append(s['name'])
+                except Exception as e: msg, kind, err = 'Could not read it: ' + str(e)[:120], None, str(e)[:300]; bad.append(s['name'])
                 c.execute('UPDATE shops SET status=?, error=?, checked_at=?, platform=COALESCE(?, platform) WHERE key=?', (msg, err, now(), kind, s['key']))
                 c.commit(); SHOPQ['done'] += 1
             top = c.execute('SELECT COALESCE(MAX(id),0) FROM wish_alerts').fetchone()[0]
@@ -536,3 +536,87 @@ def wishlist_alerts():
         else: c.execute('UPDATE wish_alerts SET dismissed_by=?, dismissed_at=? WHERE id=? AND dismissed_at IS NULL', (editor(), now(), int(b.get('id') or 0)))
         c.commit()
     return jsonify(alerts=wish_alerts_open(c))
+
+# ---------------------------------------------------------------- the wishlist (1.22.0; in library.py until 1.57.0)
+@app.route('/api/wishlist', methods=['GET', 'PUT', 'DELETE'])
+def wishlist_api():
+    c = db()
+    if request.method in ('PUT', 'DELETE'):
+        b = request.get_json(silent=True) or {}
+        name = str(b.get('name') or request.args.get('name') or '').strip()[:120]
+        if not name: abort(400, 'Which species?')
+        old = c.execute('SELECT * FROM wishlist WHERE name=?', (name,)).fetchone()
+        if request.method == 'PUT' and old and str(b.get('rename') or '').strip() and str(b['rename']).strip()[:120] != name:   # 1.30.0: a supply's name can change
+            new_name = str(b['rename']).strip()[:120]
+            if old['kind'] == 'plant': abort(400, 'A wishlist plant keeps its species name. Change its common name instead.')
+            if c.execute('SELECT 1 FROM wishlist WHERE name=?', (new_name,)).fetchone(): abort(409, f'"{new_name}" is already on the list.')
+            c.execute('UPDATE wishlist SET name=? WHERE name=?', (new_name, name))
+            c.execute('UPDATE offers SET wish=? WHERE wish=?', (new_name, name)); c.execute('UPDATE wish_alerts SET wish=? WHERE wish=?', (new_name, name))
+            name = new_name; old = c.execute('SELECT * FROM wishlist WHERE name=?', (name,)).fetchone()
+        if request.method == 'DELETE':
+            c.execute('DELETE FROM wishlist WHERE name=?', (name,))
+            c.execute('DELETE FROM offers WHERE wish=?', (name,))
+            audit_only(c, 'library', 'wishlist', name, None, editor(), f'{name} taken off ' + ('Shopping' if old and old['kind'] != 'plant' else 'the wishlist'))
+        else:
+            st = b.get('status', old['status'] if old else 'want')
+            if st not in ('want', 'got'): abort(400, 'status must be want or got')
+            vals = (str(b.get('common_name', old['common_name'] if old else '') or '')[:120], str(b.get('notes', old['notes'] if old else '') or '').strip()[:2000],
+                    str(b.get('where_seen', old['where_seen'] if old else '') or '').strip()[:300], st)
+            mp = b.get('max_price', old['max_price'] if old else None)          # 1.27.0: price and stock alerts, and what to search the shops for
+            if mp in ('', None): mp = None
+            else:
+                try: mp = round(float(mp), 2)
+                except (TypeError, ValueError): abort(400, 'The price to watch for must be a number of dollars, such as 25')
+                if not 0 < mp < 100000: abort(400, 'The price to watch for must be more than $0')
+            more = (mp, 1 if b.get('alert_stock', old['alert_stock'] if old else 0) else 0,
+                    re.sub(r'[ \t]+', ' ', str(b.get('search_words', old['search_words'] if old else '') or '')).strip()[:300])
+            kind = str(b.get('kind', old['kind'] if old else 'plant') or 'plant')
+            if kind not in SHOP_KIND_WORD: abort(400, 'Choose what kind of thing it is: ' + ', '.join(SHOP_KIND_WORD.values()))
+            per = str(b.get('price_per', old['price_per'] if old else '') or '')
+            if per not in ('', 'unit'): abort(400, 'price_per must be empty (the whole listing) or unit')
+            if per == 'unit' and SH.KIND_UNIT.get(kind, 'each') == 'each': per = ''
+            if old and old['kind'] == 'plant' and kind != 'plant': abort(400, 'A wishlist plant stays a plant.')
+            more += (kind, per, str(b.get('source', old['source'] if old else '') or '')[:60])
+            if old: c.execute('UPDATE wishlist SET common_name=?, notes=?, where_seen=?, status=?, max_price=?, alert_stock=?, search_words=?, kind=?, price_per=?, source=?, updated_by=?, updated_at=? WHERE name=?',
+                              vals + more + (editor(), now(), name))
+            else: c.execute('INSERT INTO wishlist(name,common_name,notes,where_seen,status,max_price,alert_stock,search_words,kind,price_per,source,added_by,added_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                            (name,) + vals + more + (editor(), now()))
+            if old and (old['search_words'] or '') != more[2]: c.execute('DELETE FROM offers WHERE wish=?', (name,))   # new searches: start the list again
+            where = 'the wishlist' if kind == 'plant' else 'Shopping'
+            audit_only(c, 'library', 'wishlist', None, name, editor(), f'{name} ' + (f'updated on {where}' if old else f'added to {where}'))
+        c.commit()
+    rows = [dict(r) for r in c.execute("SELECT * FROM wishlist ORDER BY status='got', added_at DESC")]
+    sp, _ = species_owned(c)
+    for r in rows:
+        r['yours'] = sp.get(r['name'].lower(), []) if r['kind'] == 'plant' else []
+        r['terms'] = SH.terms_for(r)
+        r['offers'] = offer_summary(c, r)
+    return jsonify(wishlist=rows, alerts=wish_alerts_open(c), checked=setting(c, 'shops_checked_at', ''))
+
+def shop_near_sql(c, near):
+    """1.30.0: SQL (with its arguments) keeping the stores that count for a home: every online store, and the stores you can
+    visit near that home. near: 'all', or a home's id."""
+    if not near or near == 'all': return '', []
+    try: hid = int(near)
+    except (TypeError, ValueError): return '', []
+    main = home_place(c)['id']
+    return ' AND (s.online=1 OR s.local=0 OR COALESCE(s.home_id, ?)=?)', [main, hid]
+
+def offer_unit(o, kind):
+    return SH.unit_price(o['title'], o['price'], kind, o['size'] if 'size' in o.keys() else '')
+
+def offer_summary(c, w, near='all'):
+    """How many stores have it in stock, and the cheapest listing: by the price per quart, pound or square foot when the item is
+    sold that way and the listing says its size, else by its price."""
+    extra, args = shop_near_sql(c, near)
+    rows = c.execute('SELECT o.*, s.name shop_name, s.local, s.online FROM offers o JOIN shops s ON s.key=o.shop WHERE o.wish=? AND o.gone=0 AND o.available=1 AND s.enabled=1' + extra,
+                     [w['name']] + args).fetchall()
+    kind = w['kind'] if 'kind' in w.keys() else 'plant'
+    priced = []
+    for o in rows:
+        if o['price'] is None: continue
+        d = dict(o); d['unit'] = offer_unit(o, kind); priced.append(d)
+    want_unit = SH.KIND_UNIT.get(kind, 'each')
+    by_unit = [d for d in priced if d['unit'] and d['unit']['unit'] == want_unit and want_unit != 'each']
+    best = min(by_unit, key=lambda d: d['unit']['per']) if by_unit else (min(priced, key=lambda d: d['price']) if priced else None)
+    return {'count': len(rows), 'shops': len({o['shop'] for o in rows}), 'best': best, 'unit': want_unit if want_unit != 'each' else ''}

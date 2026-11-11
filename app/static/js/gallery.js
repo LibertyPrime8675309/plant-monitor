@@ -151,7 +151,7 @@ async function viewGallery(qs) {
     <p id="count" class="muted" aria-live="polite"></p>
     <div class="water-all noprint"><button class="btn ghost" type="button" data-act="waterall" id="wa-btn">Water all</button>
       <span class="hint">Marks every plant shown (with the filters above) as watered today. Plants already watered today are skipped.</span></div>
-    <div class="grid" id="grid"></div>
+    <h2 class="sr">The plants</h2><div class="grid" id="grid"></div>
     ${archN ? html`<p class="hint" style="margin-top:2rem">${archN} archived plant${archN === 1 ? ' is' : 's are'} hidden from this list. Choose <strong>Show: Active and archived</strong> in the filters to see ${archN === 1 ? 'it' : 'them'} too.</p>` : ''}`,
     after: drawGrid,
   };

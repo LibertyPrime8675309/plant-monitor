@@ -56,6 +56,12 @@ function chartCard(id, spec) {
       <tbody>${rows.map(t => html`<tr><td>${new Date(t).toLocaleString([], { dateStyle: 'medium', timeStyle: spec.daily ? undefined : 'short' })}</td>${look.map(m => html`<td class="num">${m.has(t) ? spec.fmt(m.get(t)) : ''}</td>`)}</tr>`)}</tbody></table></div>
       ${rows.length >= 400 ? html`<p class="hint">Showing the newest 400 rows.</p>` : ''}</details></section>`;
 }
+// 1.57.0: when none of the charts has a single reading in the period, one sentence says so (three empty boxes said it three times)
+function chartsEmpty(cards) {
+  const ids = [...rend(html`${cards}`).matchAll(/id="cb-([\w-]+)"/g)].map(m => m[1]);
+  return ids.length > 0 && ids.every(id => !CHARTS[id] || CHARTS[id].series.every(s => !s.pts.length));
+}
+const NO_READINGS = () => html`<p class="notice">No readings in this period yet. Online weather is added every hour, and your sensors' readings as they arrive; choose a longer period to see older ones.</p>`;
 function paintChart(id) {
   const sp = CHARTS[id], box = document.getElementById('cb-' + id), tip = document.getElementById('ct-' + id);
   if (!sp || !box) return;
@@ -330,7 +336,7 @@ function finishCharts(el, cards, sources, bucket, keepY, done, extraNote) {
   const dfmt = t => new Date(t).toLocaleDateString([], { dateStyle: 'medium' });
   const sum = document.getElementById('wx-sum');
   done(); el.className = 'cols-' + WX.cols;
-  el.innerHTML = rend(html`<div class="wx-grid">${cards.length ? cards : html`<p class="notice">Nothing chosen. Press "Choose what to chart" and tick at least one measurement.</p>`}</div>`);
+  el.innerHTML = rend(html`<div class="wx-grid">${!cards.length ? html`<p class="notice">Nothing chosen. Press "Choose what to chart" and tick at least one measurement.</p>` : chartsEmpty(cards) ? NO_READINGS() : cards}</div>`);
   if (sum) sum.textContent = (span ? `Data shown: ${dfmt(span[0])} to ${dfmt(span[1])}. ` : 'No data in this period. ') + (bucket === 'hour' ? 'One point per hour. ' : `One point per ${bucket} (${BUCKET_WORDS[bucket]} values). `) + (extraNote || '') + `${el.querySelectorAll('.chart-card').length} charts.`;
   const go = document.getElementById('wx-goto');
   if (go) go.innerHTML = rend(html`<option value="">Choose a chart</option>${[...el.querySelectorAll('.chart-card h3')].map(h => html`<option value="${h.closest('.chart-card').getAttribute('aria-labelledby')}">${h.textContent}</option>`)}`);
@@ -451,7 +457,7 @@ async function loadWxCharts() {
   const sum = document.getElementById('wx-sum');
   if (sum) sum.textContent = (span ? `Data shown: ${dfmt(span[0])} to ${dfmt(span[1])}. ` : 'No data in this period. ') + (bucket === 'hour' ? 'One point per hour. ' : `One point per ${bucket} (${BUCKET_WORDS[bucket]} values). `);
   done(); el.className = 'cols-' + WX.cols;
-  el.innerHTML = rend(html`<div class="wx-grid">${cards.length ? cards : html`<p class="notice">Nothing chosen. Press "Choose what to chart" and tick at least one measurement.</p>`}${s && s.points.length === 0 && want('sensor') ? html`<p class="hint">No sensor readings in this period yet.</p>` : ''}</div>`);
+  el.innerHTML = rend(html`<div class="wx-grid">${!cards.length ? html`<p class="notice">Nothing chosen. Press "Choose what to chart" and tick at least one measurement.</p>` : chartsEmpty(cards) ? NO_READINGS() : cards}${s && s.points.length === 0 && want('sensor') ? html`<p class="hint">No sensor readings in this period yet.</p>` : ''}</div>`);
   const go = document.getElementById('wx-goto');
   if (go) go.innerHTML = rend(html`<option value="">Choose a chart</option>${[...el.querySelectorAll('.chart-card h3')].map(h => html`<option value="${h.closest('.chart-card').getAttribute('aria-labelledby')}">${h.textContent}</option>`)}`);
   if (sum) sum.textContent += `${el.querySelectorAll('.chart-card').length} charts.`;

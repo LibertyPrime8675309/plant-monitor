@@ -79,6 +79,7 @@ with sync_playwright() as pw:
     swipe(ph, cdp, 320, 500, 90, 510)
     check(ph.evaluate('location.hash') == '#/plant/P-001', 'with swiping turned off in Display, a swipe does nothing')
     ph.evaluate("PlantPrefs.set('swipe', '1')")
+    ph.evaluate("window.scrollBy(0, -80)"); ph.wait_for_timeout(400)  # 1.57.0: the bottom bar slips away while scrolling down; a little up brings it back
     ph.locator('#nav-tab').click(); ph.wait_for_timeout(400)          # 1.42.0: Display is at the bottom of the Navigation menu
     ph.locator('#display-btn').click(); ph.wait_for_timeout(500)
     check(ph.locator('dialog fieldset', has=ph.locator('legend', has_text='Swipe between plants')).count() == 1, 'Display has a Swipe between plants setting')

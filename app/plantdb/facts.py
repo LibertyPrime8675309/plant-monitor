@@ -20,7 +20,8 @@ nobody but the owner accepts their own. The audit log keeps who did what. Mushro
 JSON) adds proposed rows only, never accepted ones."""
 import csv, io, json, os, re
 from .core import *   # noqa: F401,F403
-from .library import facts_keys, care_get, CARE_DIR, FACTS_FUNGUS_NO
+from .library import care_get, CARE_DIR
+from .speciesfacts import facts_keys, FACTS_FUNGUS_NO
 
 KNOWLEDGE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS facts(
