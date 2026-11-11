@@ -483,7 +483,7 @@ function factsHtml(f, box) {
         ${f.attracts.length ? html`<h3>Brings in</h3><ul class="fact-list">${f.attracts.map(x => html`<li><strong>${x.what}:</strong> ${x.why}</li>`)}</ul>` : ''}</div>` : ''}
       <div><h3>Good partners</h3>${f.partners_good.length ? html`<ul class="fact-list">${f.partners_good.map(partner)}</ul>` : html`<p class="muted">None noted.</p>`}
         <h3>Keep apart from</h3>${f.partners_bad.length ? html`<ul class="fact-list">${f.partners_bad.map(partner)}</ul>` : html`<p class="muted">None noted.</p>`}</div>
-      <div><h3>${fungus ? 'Growing it' : 'Propagation'}</h3>${f.propagation.length ? html`<ul class="fact-list">${f.propagation.map(x => html`<li><strong>${x.method}</strong>${x.when ? html` (${x.when})` : ''}: ${x.how}</li>`)}</ul>` : html`<p class="muted">Not noted.</p>`}
+      <div><h3>${fungus ? 'Growing it' : 'Propagation'}</h3>${f.propagation.length ? html`<ul class="fact-list">${f.propagation.map(x => html`<li><strong>${x.method}</strong>${fungus ? '' : guideLink(x.method)}${x.when ? html` (${x.when})` : ''}: ${x.how}</li>`)}</ul>` : html`<p class="muted">Not noted.</p>`}
         ${fungus ? '' : html`<h3>Breeding</h3>${f.breeding.text ? html`<p>${f.breeding.text}</p>` : ''}
           ${same.length ? html`<p>${factYours(same, 'Your plants of the same species:')}</p>` : ''}
           ${other.length ? html`<p>${factYours(other, `Your plants it may cross with (${[genus].concat(f.breeding.cross_genera || []).map(g => g.charAt(0).toUpperCase() + g.slice(1)).join(' or ')}):`)}</p>` : ''}
