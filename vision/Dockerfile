@@ -1,7 +1,7 @@
 # Plant record vision service (1.18.0): BioCLIP 2.5 on the processor, for camera identification and the plant library.
 # Built on this computer by "docker compose up -d --build" (the updater runs it). The first build downloads about 1 GB of
 # Python packages (PyTorch for processors, no graphics card needed); the model itself downloads into data/vision on first start.
-FROM python:3.12-slim
+FROM python:3.15-slim
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PIP_NO_CACHE_DIR=1 VISION_CACHE=/cache DATA_DIR=/data HF_HOME=/cache/hf HOME=/tmp
 WORKDIR /svc
 RUN pip install --no-compile torch==2.14.1 torchvision==0.29.1 --index-url https://download.pytorch.org/whl/cpu \

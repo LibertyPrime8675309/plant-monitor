@@ -1,7 +1,7 @@
 # Plant record speech service (search by voice): Whisper on the processor, through faster-whisper. Built on this computer by
 # "docker compose up -d --build" (the updater runs it). The first build downloads about 200 MB of Python packages; the model
 # itself downloads into data/speech on first start (small.en: about 465 MB). Nothing you say leaves this computer.
-FROM python:3.12-slim
+FROM python:3.15-slim
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1 PIP_NO_CACHE_DIR=1 PIP_PROGRESS_BAR=off PIP_DISABLE_PIP_VERSION_CHECK=1 SPEECH_CACHE=/cache HF_HOME=/cache/hf HOME=/tmp
 WORKDIR /svc
 COPY speech/requirements.txt /svc/requirements.txt
