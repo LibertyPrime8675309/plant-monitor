@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.57.0 (coming December 1, 2026)
+Easier to read and use, from the review of every page (November 11):
+- **A shorter top bar on a phone or a narrow window.** The name, then one row with **Pages** (it says which page you are on), **Search** and **More**. More opens Online, Home and Editing; **Offline** always shows when you are offline. The pages of the section you are in show with the sections when Pages is open. The bar took over half of the first screen with large text before.
+- **A plant's page starts with its name** and scientific name, then Previous and Next. **Switch to one column** no longer shows on a phone, where the page is one column anyway.
+- **A plant's details read as text.** Its names, place, pot, height, winter plan and health show as words; **Change these details** opens the boxes to change them, and **Done changing** shows the words again.
+- **Today puts the jobs first.** Parts with nothing due (such as Turn the pots) are one line at the top, "Nothing due today: …", and lose their buttons. What's new shows in full the first time; on later visits it is one line you can open until you press Got it. "Going away? Make a plant-sitter sheet" moved to the end.
+- **"Shortcut: R. Press Escape to stop."** no longer sits beside every page title. The R and Escape keys are under Display and in the keyboard list.
+- **Settings:** the small cards have Hide but no Read aloud of their own, so their titles fit on one line. "You and the people who use the app" is now **People and your name**.
+- **Photo pickers are full-size buttons** in the app's colours (they were the browser's small "Choose Files" box).
+- **Bigger tick boxes and round choices**: 28 pixels at normal text size (they were 22), and they grow with the text.
+- **Add a plant and Edit** show at most three boxes side by side, and **Where it is** has a row of its own.
+- **Stronger colours:** the page links on the second row of the top bar, and in the dark theme the links on What's new and the red Remove buttons, now reach 7 to 1 contrast.
+
 ## 1.56.4 (2026-11-11)
 - **Outside or Inside shows which is chosen.** On Add a plant and on every plant's Edit page, the two choices are now buttons, and the chosen one is filled in. They showed as plain words before, with nothing to say which was on.
 - **The group titles on Today, Fertilizer and Turn the pots are one control again.** The Show and Hide at the right of the title is part of the title bar rather than a button inside it, so a screen reader hears one control that says whether the group is open.

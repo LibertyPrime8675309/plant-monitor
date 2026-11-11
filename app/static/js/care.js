@@ -340,7 +340,7 @@ async function viewToday() {
     cold ? { order: 10, id: 'today-cold', jump: `Cold night (${cold})`, html: html`<section class="blk" id="today-cold">${frostBanner(true)}</section>` } : null,
     snN ? { order: 20, id: 'today-sensors', jump: `Sensors (${snN})`, html: html`<section class="blk" id="today-sensors"><h2>Sensors (${snN})</h2><ul class="jobs">${SN.cards.map(s => html`<li class="job"><span class="job-nophoto" aria-hidden="true"></span><div class="job-txt"><a class="nm" href="#/sensors">${s.name}</a>${s.plant ? html` <span class="muted">${s.plant.code} ${s.plant.common_name}</span>` : ''}<div>${s.words}</div></div>
       <div class="job-acts">${s.plant ? html`<a class="btn small ghost" href="#/plant/${enc(s.plant.code)}">Open its plant</a>` : ''}</div></li>`)}</ul><p><a class="btn small ghost" href="#/sensors">All your sensors</a></p></section>` } : null,
-    { order: 30, id: 'today-water', jump: `Water (${due.length})`, html: html`<section class="blk" id="today-water"><h2>Water (${due.length})</h2>
+    { order: 30, id: 'today-water', jump: `Water (${due.length})`, keep: soon.length + unk.length > 0, html: html`<section class="blk" id="today-water"><h2>Water (${due.length})</h2>
       ${due.length ? html`${due.length > 1 ? html`<p><button class="btn small ghost" type="button" data-act="careall" data-kind="water" data-codes="${due.map(w => w.code).join(',')}">Watered all ${due.length}</button></p>` : ''}
         <ul class="jobs">${due.map(w => jobRow(by[w.code], waterWords(w), wbtn(w)))}</ul>` : html`<p class="notice ok">Nothing is due for water today.</p>`}
       ${soon.length ? html`<details class="grp"><summary><h3>Check tomorrow (${soon.length})</h3></summary><ul class="jobs">${soon.map(w => jobRow(by[w.code], waterWords(w), wbtn(w)))}</ul></details>` : ''}
@@ -362,14 +362,22 @@ async function viewToday() {
     quiet.length ? { order: 80, id: 'today-quiet', html: html`<section class="blk" id="today-quiet"><h2>Quiet today</h2><p class="muted">${quiet.map((q, i) => html`${i ? ' ' : ''}${q}`)}</p></section>` } : null,
     ...EXT.filter(({ b }) => winter || !b.cold).map(({ b, d }) => ({ order: b.order, id: b.id, jump: b.jump ? b.jump(d) : '', html: b.html(d) })),
   ].filter(Boolean).sort((a, b) => a.order - b.order);
-  const jumps = blocks.filter(b => b.jump && b.id);
+  // 1.57.0: a part with nothing due ("Water (0)", "Turn the pots (0)") is one line in the box at the top instead of a part of its own,
+  // and has no button there
+  const zero = b => { if (b.keep) return null; const h = rend(b.html), m = /<h2[^>]*>([^<]*?)\s*\(0\)\s*<\/h2>/.exec(h); if (!m) return null;
+    const a = /href="(#\/[a-z]+)"/.exec(h); return { name: m[1].trim(), href: a ? a[1] : '' }; };    // its page, when the part links to one
+  const empty = blocks.map(zero), none = empty.filter(Boolean);
+  const shown = blocks.filter((b, i) => !empty[i]);
+  const jumps = shown.filter(b => b.jump && b.id && !/\(0\)\s*$/.test(b.jump));
   return {
     title: 'Today',
     html: html`<h1>Today</h1><p class="muted">${longDay(t)}. Everything that needs you, most urgent first. <a href="#/plants">All plants</a> is one click away.</p>
     <div class="verdict-box" role="status"><p><strong>${line.charAt(0).toUpperCase() + line.slice(1)}.</strong>
       ${W.avg_high != null ? `Highs have been about ${tF(W.avg_high)} lately.` : ''} ${Object.keys(W.rain).length ? `Rain counted as watering for plants out in the open: ${Object.entries(W.rain).slice(-3).map(([d, i]) => relDay(d) + ', ' + rainF(i)).join('; ')}.` : ''}</p>
-      <p class="row td-jumps">${jumps.map(b => html`<a class="btn small ghost" href="#${b.id}" data-act="jumpsec" data-sec="${b.id}">${b.jump}</a>`)}</p></div>
-    ${blocks.map(b => b.html)}`,
+      ${none.length ? html`<p class="td-none">Nothing due today: ${none.map((x, i) => { const w = i ? x.name.charAt(0).toLowerCase() + x.name.slice(1) : x.name;
+        return html`${i ? (i === none.length - 1 ? ' and ' : ', ') : ''}${x.href ? html`<a href="${x.href}">${w}</a>` : w}`; })}.</p>` : ''}
+      ${jumps.length ? html`<p class="row td-jumps">${jumps.map(b => html`<a class="btn small ghost" href="#${b.id}" data-act="jumpsec" data-sec="${b.id}">${b.jump}</a>`)}</p>` : ''}</div>
+    ${shown.map(b => b.html)}`,
     after: () => document.querySelectorAll('[data-nav]').forEach(a => { if (a.dataset.nav === 'today') a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); }),
   };
 }

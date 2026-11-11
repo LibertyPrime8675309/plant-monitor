@@ -49,6 +49,10 @@ with sync_playwright() as p:
     pg.locator('#rl-restore').screenshot(path=os.path.join(OUT, 'releases-1-restore.png'))
     pg.locator('#rl-new details summary').click() if len(W['entry']['lines']) > 1 else None
     pg.wait_for_timeout(200); pg.locator('#rl-new').screenshot(path=os.path.join(OUT, 'releases-1-new-open.png'))
+    # 1.57.0: on a later visit (another tab) it is folded to one line until Got it
+    pg.evaluate("sessionStorage.removeItem('plantdb.rlshown')"); pg.reload(); pg.wait_for_selector('#rl-new', timeout=20000); pg.wait_for_timeout(800)   # as a new visit
+    check(pg.locator('details#rl-new.rl-fold:not([open])').count() == 1 and f"What's new in {version}" in pg.inner_text('#rl-new summary'), 'a later visit shows it folded to one line')
+    pg.locator('#rl-new > summary').click(); pg.wait_for_timeout(200)
     # Got it
     pg.locator('#rl-new [data-act=rlseen]').focus(); pg.keyboard.press('Enter'); pg.wait_for_timeout(1200)
     check(pg.locator('#rl-new').count() == 0 and 'Noted' in pg.inner_text('#toasts'), 'Got it (by keyboard) removes the box and says so')

@@ -29,8 +29,8 @@
   :root:not([data-theme=light]){
     --paper:#0e2233; --sheet:#143049; --ink:#e9f1f5; --ink-2:#b2c4ce; --line:#3a5c77; --line-2:#244058;
     --cyan:#8cc4f0; --cyan-ink:#0e2233; --cyan-soft:#1b4262;
-    --moss:#7fd09a; --moss-soft:#1c4a35; --ochre:#e9bd6a; --ochre-soft:#4a3a14;
-    --madder:#f0a094; --madder-soft:#4e2623; --critical:#ff9db5;
+    --moss:#7fd09a; --moss-soft:#1c4a35; --ochre:#e9bd6a; --ochre-soft:#4a3a14; --on-ochre-link:#a9d6ff;
+    --madder:#f6b6ab; --madder-soft:#4e2623; --critical:#ff9db5;
     --z-damage:#4d8fc7; --z-cool:#2f5f87; --z-ok:#3f8a58; --z-hot:#b98a2e; --z-heat:#d9742a; --focus:#8cc4f0;
     --top-bg:#0a1a28; --top-ink:var(--ink); --on-bad:#150a0d; --now:#ff86c0; --s1:#3987e5; --s2:#d95926;
   }
@@ -43,8 +43,8 @@
 :root[data-theme=dark]{
   --paper:#0e2233; --sheet:#143049; --ink:#e9f1f5; --ink-2:#b2c4ce; --line:#3a5c77; --line-2:#244058;
   --cyan:#8cc4f0; --cyan-ink:#0e2233; --cyan-soft:#1b4262;
-  --moss:#7fd09a; --moss-soft:#1c4a35; --ochre:#e9bd6a; --ochre-soft:#4a3a14;
-  --madder:#f0a094; --madder-soft:#4e2623; --critical:#ff9db5;
+  --moss:#7fd09a; --moss-soft:#1c4a35; --ochre:#e9bd6a; --ochre-soft:#4a3a14; --on-ochre-link:#a9d6ff;
+  --madder:#f6b6ab; --madder-soft:#4e2623; --critical:#ff9db5;
   --z-damage:#4d8fc7; --z-cool:#2f5f87; --z-ok:#3f8a58; --z-hot:#b98a2e; --z-heat:#d9742a; --focus:#8cc4f0;
   --top-bg:#0a1a28; --top-ink:var(--ink); --on-bad:#150a0d; --now:#ff86c0; --s1:#3987e5; --s2:#d95926;
 }
@@ -109,7 +109,12 @@ label.f small{display:block;font-weight:400;color:var(--ink-2);margin-top:.15rem
 input[type=text],input[type=number],input[type=search],input[type=date],input[type=url],input[type=tel],input[type=email],input[type=password],select,textarea{width:100%;font:inherit;font-weight:400;color:var(--ink);background:var(--sheet);border:var(--bw) solid var(--ink-2);padding:.55rem .7rem;border-radius:0;margin-top:.35rem;min-height:2.75rem}
 textarea{min-height:7em;resize:vertical;line-height:1.5}
 input:focus-visible,select:focus-visible,textarea:focus-visible{outline:var(--ring) solid var(--focus);outline-offset:1px}
-input[type=checkbox],input[type=radio]{width:1.4rem;height:1.4rem;margin:0;accent-color:var(--cyan)}
+input[type=checkbox],input[type=radio]{width:1.75rem;height:1.75rem;margin:0;accent-color:var(--cyan);flex:none}   /* 1.57.0: 28 px at normal text size (was 22) */
+/* 1.57.0: a photo picker is a full-size button in the app's style (it was the browser's small "Choose Files" box) */
+input[type=file]{font:inherit;font-size:1rem;max-width:100%;padding:.2rem 0;color:var(--ink-2)}
+input[type=file]::file-selector-button{font:inherit;font-weight:700;color:var(--cyan-ink);background:var(--cyan);border:2px solid var(--cyan);padding:.55rem 1.1rem;min-height:2.75rem;margin:0 .8rem .2rem 0;cursor:pointer}
+input[type=file]::file-selector-button:hover{filter:brightness(1.12)}
+input[type=file]:focus-visible{outline:var(--ring) solid var(--focus);outline-offset:2px}
 .field-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:0 1.4rem}
 fieldset{border:0;border-top:2px solid var(--ink);margin:2.2rem 0 0;padding:1rem 0 0}
 fieldset legend{font-family:var(--serif);font-weight:600;font-size:1.4rem;padding-right:.8rem}
@@ -847,7 +852,7 @@ li.mi-item{border:2px solid var(--line);border-radius:8px;padding:.5rem .9rem;ma
 li.mi-item.mi-not{border-style:dashed;background:transparent}
 li.mi-item.mi-not .mi-title{font-weight:400}
 .mi-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:.3rem .7rem;align-items:center}
-.mi-head input[type=checkbox]{width:1.6rem;height:1.6rem;margin:0}
+.mi-head input[type=checkbox]{width:1.75rem;height:1.75rem;margin:0}
 .mi-title{font-weight:700;font-size:1.1rem;cursor:pointer;overflow-wrap:anywhere}
 .mi-body{padding-left:2.3rem}
 html[data-narrow="1"] .mi-head{grid-template-columns:auto minmax(0,1fr)}
@@ -1125,7 +1130,7 @@ ul.srcs li{margin:.25rem 0;overflow-wrap:anywhere}
 .pc-tools h1{margin:.2rem 0 .5rem;overflow-wrap:anywhere}
 .pc-opts{border:2px solid var(--line);border-radius:8px;padding:1rem 1.1rem .4rem;margin:1rem 0 1.6rem;background:var(--sheet)}
 .pc-opt{display:flex;gap:.6rem;align-items:flex-start;margin:.35rem 0;min-height:2.5rem;cursor:pointer}
-.pc-opt input{width:1.4rem;height:1.4rem;margin:.15rem 0 0;flex:none;accent-color:var(--cyan)}
+.pc-opt input{width:1.75rem;height:1.75rem;margin:.15rem 0 0;flex:none;accent-color:var(--cyan)}
 .pc-cards{display:grid;gap:1.6rem}
 .pc-card{background:var(--sheet);color:var(--ink);border:2px solid var(--ink);border-radius:8px;padding:1.1rem 1.2rem;font-size:1.1rem;line-height:1.45;min-width:0}
 .pc-head{display:flex;gap:1rem;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;border-bottom:3px solid var(--ink);padding-bottom:.7rem;margin-bottom:.9rem}
@@ -1201,7 +1206,7 @@ html[data-narrow="1"] .pc-opts{padding:.7rem .7rem .2rem}
 .tick-find{margin:0;flex:1 1 12rem}
 .rule-row{border:var(--bw) solid var(--line);padding:.6rem .9rem;margin:0 0 .8rem;min-width:0}
 .rule-row legend{font-weight:700;padding:0 .3rem}
-.gset-tbl input[type=checkbox]{width:1.4rem;height:1.4rem}
+.gset-tbl input[type=checkbox]{width:1.75rem;height:1.75rem}
 html[data-role=viewer] :is([data-act=grpnew], [data-act=grpedit], [data-act=grpdel], [data-act=grpaddsug], [data-act=grpaddall], [data-act=grprm],
   [data-act=grpcare], [data-act=grpmove], [data-act=grpset], [data-act=grpundo], [data-act=plgroups], #g-do){display:none!important}
 .rule-prev{border-left:.35rem solid var(--cyan);padding:.4rem .8rem;background:var(--cyan-soft)}
@@ -1587,7 +1592,7 @@ html[data-role=viewer] :is([data-act=wlcheck], [data-act=wldismiss]){display:non
 
 /* 1.29.0: the section's pages, on their own row under the top bar */
 .sub-in{display:flex;flex-wrap:wrap;gap:.2rem .3rem;padding:.15rem clamp(1rem,1.5vw,2rem) .35rem;border-top:1px solid color-mix(in srgb,var(--top-ink) 30%,transparent);
-  background:color-mix(in srgb,var(--top-bg) 88%,var(--top-ink))}
+  background:color-mix(in srgb,var(--top-bg) 92%,var(--top-ink))}   /* 1.57.0: 92% (was 88%) so its links reach 7:1 */
 .sub-in[hidden]{display:none}
 .sub-in a{color:var(--top-ink);text-decoration:none;padding:.4rem .75rem;border-bottom:4px solid transparent;min-height:2.6rem;display:inline-flex;align-items:center}
 .sub-in a:hover{border-color:color-mix(in srgb,var(--top-ink) 55%,transparent)}
@@ -1834,3 +1839,34 @@ ul.lt-plants.lt-two{grid-template-columns:repeat(auto-fit,minmax(max(min(100%,19
 details.grp>summary{flex-wrap:wrap;gap:.3rem 1rem}
 details.grp>summary>:is(h2,h3){flex:1 1 12rem;min-width:0;overflow-wrap:break-word}
 details.grp>summary>.det-tools{margin-left:auto}   /* on a phone with large text the button goes under the title, at the right */
+
+/* 1.57.0: Add a plant and Edit: at most three fields side by side, so help text is not squeezed into narrow columns, and
+   "Where it is" takes a row of its own with Inside or outside above its two lists */
+.field-grid.fg-form{grid-template-columns:repeat(auto-fit,minmax(min(19rem,100%),1fr))}
+.field-grid.fg-form>.where-f{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(19rem,100%),1fr));gap:0 1.4rem}
+.field-grid.fg-form>.where-f>.opts{grid-column:1/-1}
+
+/* 1.57.0: on a narrow screen the top bar is two short rows: the name, then Pages, Search and More. The pages of this section show
+   with the sections when Pages is open, and Online, Home and Editing when More is open. Offline always shows. */
+.more-btn{display:none;align-items:center;justify-content:center;gap:.35rem;background:transparent;color:inherit;border:2px solid color-mix(in srgb,var(--top-ink) 60%,transparent);padding:.25em .7em;font:inherit;font-weight:700;cursor:pointer;min-height:44px}
+.more-btn:hover{background:color-mix(in srgb,var(--top-ink) 14%,transparent)}
+.more-btn[aria-expanded=true]{background:var(--top-ink);color:var(--top-bg)}
+html[data-narrow="1"] .more-btn{display:inline-flex;flex:0 0 auto}
+html[data-narrow="1"] .pages-btn{flex:1 1 5rem;order:2;min-width:0}
+html[data-narrow="1"] .pages-btn .pg-l{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}   /* the menu sign and the page name; "Pages:" stays for screen readers */
+html[data-narrow="1"] .top #main-nav{order:5}
+html[data-narrow="1"] .top-acts{order:3;flex:0 1 auto;flex-wrap:nowrap;margin-left:auto}
+html[data-narrow="1"] .top-acts>.srch-btn{flex:0 0 auto}
+html[data-narrow="1"] .top:not(.more-open) .top-acts>:is(#net[data-state=online],#place-btn,.who){display:none}
+html[data-narrow="1"] .top.more-open .top-acts{flex:1 1 100%;flex-wrap:wrap;order:4}
+html[data-narrow="1"] .top.more-open .top-acts>.more-btn{order:-1}
+html[data-narrow="1"] .top:not(.pages-open) #sub-nav{display:none}
+
+/* 1.57.0: a plant page starts with its name */
+.pl-head{margin:0 0 .6rem}
+.pl-head h1{margin:0 0 .1rem}
+.pl-head .sci{font-size:1.3rem;margin:0 0 .4rem}
+.label .l-body>h2.l-title{font-size:1.35rem;margin:0 0 .6rem}
+html[data-narrow="1"] .pl-layout{display:none}   /* a narrow screen shows one column anyway */
+.label.pl-editing dl .ro{display:none}   /* 1.57.0: while the boxes are open, the same details are not shown twice */
+.pl-edrow{margin:0 0 .6rem}

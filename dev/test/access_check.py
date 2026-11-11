@@ -10,6 +10,8 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'sho
 E = {'Tailscale-User-Login': 'ethan@example.com', 'Tailscale-User-Name': 'Ethan Schmidtke'}
 G = {'Tailscale-User-Login': 'sam@example.net', 'Tailscale-User-Name': 'Sam Rivera'}
 errs, fails = [], []
+def more(pg):                      # 1.57.0: on a narrow screen Editing is behind More in the top bar
+    if pg.locator('#more-btn').is_visible() and pg.locator('#more-btn').get_attribute('aria-expanded') != 'true': pg.locator('#more-btn').click(); pg.wait_for_timeout(200)
 def check(cond, what):
     print(('ok   ' if cond else 'FAIL ') + what)
     if not cond: fails.append(what)
@@ -85,13 +87,13 @@ with sync_playwright() as pw:
     check('looked after by Ethan Schmidtke' in g.locator('#app').inner_text(), 'Backups page: looked after by the owner')
     g.goto(f'{TS}/#/weather'); g.wait_for_timeout(2600)
     check('Only Ethan Schmidtke can see the sensor' in g.locator('#sensor').inner_text(), 'Weather page: the sensor token is hidden')
-    g.locator('#who-name').click(); g.wait_for_timeout(500)
+    more(g); g.locator('#who-name').click(); g.wait_for_timeout(500)
     t = g.locator('dialog[open]').inner_text()
     check('sam@example.net' in t and 'not make changes' in t and g.locator('dialog[open] #people-box').count() == 0, 'Sam\'s window: who she is, view only, no people list')
     g.keyboard.press('Escape')
     e = page(E)
     e.goto(f'{TS}/#/plants'); e.wait_for_timeout(2500)
-    e.locator('#who-name').click(); e.wait_for_timeout(800)
+    more(e); e.locator('#who-name').click(); e.wait_for_timeout(800)
     check(e.locator('ul.people li').count() == 2, "Ethan's window lists the 2 people")
     e.select_option('select[data-f=prole][data-login="sam@example.net"]', 'editor'); e.wait_for_timeout(900)
     check('Saved: Can edit' in e.locator('#who-msg').inner_text(), 'choosing "Can edit" saves straight away')
@@ -109,13 +111,13 @@ with sync_playwright() as pw:
     l.add_init_script("localStorage.setItem('plantdb.editor','Ethan')")
     l.goto(f'{LOCAL}/#/plants'); l.wait_for_timeout(2400)
     check(l.locator('#who-name').inner_text() == 'Editing as Ethan', 'on this computer: Editing as Ethan, as before')
-    l.locator('#who-name').click(); l.wait_for_timeout(700)
+    more(l); l.locator('#who-name').click(); l.wait_for_timeout(700)
     check(l.locator('ul.people li').count() == 2, 'and the people list is there too')
     l.keyboard.press('Escape')
     # phone, largest text
     p = page(G, (390, 844), {'size': '190', 'theme': 'dark'})
     p.goto(f'{TS}/#/plants'); p.wait_for_timeout(2400)
-    p.locator('#who-name').click(); p.wait_for_timeout(500)
+    more(p); p.locator('#who-name').click(); p.wait_for_timeout(500)
     over = p.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth')
     check(over <= 2, f'phone, largest text: no sideways scrolling ({over}px)')
     p.screenshot(path=f'{OUT}/access-phone-you.png')

@@ -160,8 +160,9 @@ with sync_playwright() as pw:
         p2 = page((w, 800), {'size': size, 'theme': 'dark'})
         for u in ('#/plants', '#/fertilizer', '#/weather'):
             p2.goto(f'{BASE}/{u}'); p2.wait_for_timeout(2200)
+            if p2.locator('#more-btn').is_visible(): p2.locator('#more-btn').click(); p2.wait_for_timeout(300)   # 1.57.0: Home is behind More on a phone
             over = p2.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth')
-            bw = p2.evaluate("(() => { const b = document.getElementById('place-btn').getBoundingClientRect(); return b.right <= innerWidth + 1 && b.left >= -1; })()")
+            bw = p2.evaluate("(() => { const b = document.getElementById('place-btn').getBoundingClientRect(); return b.width > 0 && b.right <= innerWidth + 1 && b.left >= -1; })()")
             check(over <= 2 and bw, f'phone {w}px, text {size}%, {u}: no sideways scrolling ({over}px), Location button fits')
         if size == '190':
             p2.locator('#place-btn').click(); p2.wait_for_timeout(500)
