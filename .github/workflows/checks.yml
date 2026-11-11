@@ -10,8 +10,8 @@ jobs:
   unit:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with: { python-version: '3.12' }
       - run: pip install -r requirements.txt pytest numpy pyflakes   # numpy: the picture checker unit tests (vision/service.py); pyflakes: test_lint.py
       - run: python -m pytest dev/test/unit -q
@@ -24,13 +24,13 @@ jobs:
       matrix:
         shard: ['1/4', '2/4', '3/4', '4/4']
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with: { python-version: '3.12' }
       - run: pip install -r requirements.txt playwright pypdf
       - run: python -m playwright install --with-deps chromium
       - run: python dev/test/run_checks.py --shard ${{ matrix.shard }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: logs-and-screenshots-${{ strategy.job-index }}
