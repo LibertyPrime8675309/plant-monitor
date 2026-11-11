@@ -2,7 +2,7 @@
 # recordings. av is held below 19: faster-whisper 1.2.1 passes an option PyAV 19 removed.
 faster-whisper==1.2.1
 ctranslate2==4.8.5
-av==18.1.0
+av==19.0.2
 numpy==2.5.4
 flask==3.1.3
 gunicorn==26.2.0
