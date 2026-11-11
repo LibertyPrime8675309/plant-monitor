@@ -1178,6 +1178,7 @@ Where everything lives, one line per page:
 | Weather | Homes and places | The places whose weather is tracked | Settings, the Location button |
 | Discover | Identify | Name a plant from a photo | Plant pages (Plant identification) |
 | Discover | Library | Species, facts and photos | Plant pages, Identify |
+| Discover | Propagation and breeding guide (`#/guide`, no link in the top bar) | How to make more plants, and new ones, step by step | Plant pages (Uses), species pages, the Library's buttons, Search |
 | Discover | Around home | What is flowering, fruiting or found near home this month | The Library |
 | Discover | Wishlist | Plants you want | Library species pages |
 | Discover | Shopping | Supplies and plants you are watching, stores, the shopping list | Today's alerts, Pots and Fertilizer ("watch for it") |
@@ -1710,6 +1711,21 @@ Every plant page has a section **Uses, partners and propagation** (the **Uses** 
 - **Breeding**: how it crosses, then links to **your plants of the same species** and **your plants it may cross with**. Patented varieties are flagged: propagating a patented plant isn't allowed while the patent lasts, even for yourself.
 
 For your plants, Claude wrote these from general horticultural knowledge (upgrade batch A9, about 50 species, plus their genus for named hybrids). Nothing was checked by a person. For any other species, press **Write them with Claude** on its page. Like care sheets, it uses the owner's Anthropic key (saved on the Identify page) and keeps the result. For mushrooms, uses never include eating them.
+
+## Propagation and breeding guide (from 1.57.0)
+
+A reference for making more plants, and for making plants that are new. Open it from the **Library** (the **Propagation and breeding guide** button beside Around home and Wishlist), from the **Uses, partners and propagation** part of a plant page or a species page, or with **Search**. It has no link of its own in the top bar.
+
+- **Which way should I do it?** goals such as "an exact copy of a woody or large plant" or "a copy that keeps its variegation", each linked to the ways that suit it.
+- **Before you start**: clean tools, rooting hormone, humidity, warmth, labels and patience.
+- **Copying a plant: propagation**: stem cuttings, leaf cuttings, root cuttings, division, offsets, pups, keikis and runners, layering in the soil, air layering, grafting and budding, bulbs, corms and tubers, spores, tissue culture and seed. Each is folded until you open it, and gives what it suits, the steps, and things worth knowing.
+- **Your plants** are listed under each way: the ones that have it in their own propagation notes or in their species' facts. Each is a link, with its code beside the name.
+- **Breeding: making plants that are new**: the genetics you need, making a cross step by step, selecting and fixing traits, other ways to get something new (sports, chimeras, doubling chromosomes, hybrids between species), orchid breeding, and plant patents.
+- **Keeping a mother plant.**
+- **"How to" links.** In a plant's or a species' list of propagation methods, **How to** beside a method opens the guide at that method.
+- Lengths and temperatures follow your units (**Display → Units**). **Read this page aloud** and **Read aloud** on each section work as on other pages, and the page works offline; only the list of your plants needs the plant server.
+
+The words were written by Claude from general gardening knowledge, and a person has not checked them against a source. The page says so. What one species needs, with where each fact comes from, is on its own page.
 
 ## Audit log (from 1.10.0)
 
