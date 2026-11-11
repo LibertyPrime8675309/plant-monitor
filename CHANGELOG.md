@@ -1,7 +1,9 @@
 # Changelog
 
-## 1.57.0 (coming December 1, 2026)
+## 1.58.0 (coming December 1, 2026)
 - **A page for the variegated Monstera cutting.** The cutting rooting in water on your east window sill has its own page (growing kind: Water only), with your nine photos of November 11, what you checked (node, nub and cut end firm and odourless), and its care steps. It is marked as a probable 'Thai Constellation' (65% sure) because its cream splashes and speckles match the two on the plant table; say which plant it came from and when it was cut and the page can record that. (Upgrade batch C8.)
+
+## 1.57.0 (2026-11-11)
 - **Notes on request.** Display has a new choice, **Notes under buttons and boxes**: **Always show them** (as now) or **Show them when I ask**. With the second, each small note under a button, box or picture becomes a round **Note** button: press it (or Tab to it and press Enter) to read it, and again to fold it. Pointing at a field with the mouse shows its note too, and on a phone a long press on a box opens its note. Printed pages always show every note.
 - **Water counts only what is due.** Plants with no watering logged are in their own folded part on Today, **No watering logged yet**, so Water no longer shows a number for plants it cannot work out.
 - **A plant's page is shorter the first time.** The reference parts (identification, about, uses, temperature, humidity, sunlight, water and soil, nutrients, pests, timeline, page history) start folded; press Show on any of them. What you fold or open is remembered as before.
