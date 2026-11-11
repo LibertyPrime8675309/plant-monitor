@@ -71,7 +71,10 @@ def run(name):
     script = os.path.join(HERE, 'smoke.py' if name == 'smoke' else f'{name}_check.py')
     log = os.path.join(LOGS, name + '.log')
     with open(log, 'w') as f:
-        try: rc = subprocess.run([sys.executable, script], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT, timeout=TIMEOUT.get(name, 400)).returncode
+        # 1.56.2: the checks and their browsers keep the mock home's time (Round Rock, America/Chicago), as Ethan's browser does.
+        # On a UTC computer in a Texas evening, "today" in the browser was already tomorrow while the app said today.
+        env = {**os.environ, 'TZ': os.environ.get('CHECKS_TZ', 'America/Chicago')}
+        try: rc = subprocess.run([sys.executable, script], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT, timeout=TIMEOUT.get(name, 400), env=env).returncode
         except subprocess.TimeoutExpired: rc = 124; f.write('\nTIMED OUT\n')
     text = open(log, errors='replace').read()
     ok = sum(1 for l in text.splitlines() if l.startswith('ok '))
