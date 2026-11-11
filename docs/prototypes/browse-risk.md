@@ -1,15 +1,18 @@
-# Prototype: pests that eat plants (proto/browse-risk)
+# Prototype: pests that eat plants (proto/browse-risk, PR #109)
 
-**What:** Ethan's plants are being eaten by rabbits, rats and mice (November 11, 2026). Each plant gets a rough browse risk, High, Some or Low, with the reason in words, worked out from its genus (a few species have their own entry). A page, `#/browse`, sorts every plant here by it and says what to do; a plant's own page has a line with its risk and a link to the page.
+**What:** Ethan's plants are being eaten by rabbits, rats and mice (November 11, 2026). Each plant gets a browse risk, High, Some or Low, with the reason in words. Ethan answered the three open questions with yes (November 11), so it also has the following.
 
-**Why from the genus and not a stored field:** it works for all ~98 plants and any added later, with no batch of per-plant values to keep in step with codes. Nothing is stored, so no database change and nothing to upgrade.
+1. **Risk set by hand.** The plant field `browse_risk` (enum Low / Moderate / High, optional; on the Edit form under "Pests and diseases", and "Change risk" on the page and the plant's line). Empty means the usual for its kind (from the genus: `BROWSE` in `browse.py`). It saves through the ordinary plant PUT, so it is versioned and audited like any field.
+2. **Pests seen**, with pictures as evidence. Table `pest_sightings(plant_code, seen_on, pest, damage, note, photos JSON, created_by, created_at)` (`BROWSE_SCHEMA`, run by `init_db()`). Pest: rabbit, rat, mouse, squirrel, deer, bird, snail or slug, insect, other, not sure. Damage: leaves eaten, stem chewed, flowers or fruit eaten, dug up, droppings or tracks only, other. Evidence: tick pictures already in the plant's record, or add new ones (`POST /api/browse/photo`, saved as `up_<hex>.jpg`, not added to the plant's own pictures). A sighting only accepts pictures that are in the record or were sent that way. `GET/POST /api/browse/sightings`, `DELETE /api/browse/sightings/<id>`; added and removed sightings are in the audit log. The page shows the last 60 days, counted by pest; each plant's line says how often it was eaten and by whom.
+3. **Today, in the evening.** From 4 pm (the home's time) a block "Cover tonight" (order 66) lists the plants outside (outdoors or covered porch) that are high risk or were eaten in the last 14 days, with "Done for tonight" (kept on this device for the day).
 
-**Files:** `app/plantdb/browse.py` (table `BROWSE`, `browse_for()`, `GET /api/browse[?plant=CODE]`), `app/static/js/browse.js`, `css/browse.css`, one line in `manifest.json` and `run_checks.py`. Tests: `dev/test/unit/test_browse.py`, `dev/test/browse_check.py`.
+**Not changed:** nothing is stored for the usual risk; plants added later get it from their genus.
 
-**Where the data came from:** a photo review in a Claude chat on November 11, 2026 (about 40 photos), saved in Ethan's Plants project as `claude/garden-pest-resistance-plant-id-2026-11-11.md`, checked against general horticulture knowledge. Corrections made on the way: elephant bush (Portulacaria) and purple heart (Tradescantia) are not deterrents, and succulents get chewed by rats and mice in dry spells.
+**Files:** `app/plantdb/browse.py`, `app/static/js/browse.js`, `css/browse.css`; one line each in `core.py` (field, enum, schema), `edit.js` (the field in the Edit form), `manifest.json` and `run_checks.py`. Tests: `dev/test/unit/test_browse.py`, `dev/test/browse_check.py` (35 checks: the API, the two windows with an uploaded picture, the evening block, viewers, phone width with large text).
+
+**Where the usual data came from:** the photo review in a Claude chat on November 11, 2026, saved in Ethan's Plants project as `claude/garden-pest-resistance-plant-id-2026-11-11.md`, checked against general horticulture knowledge.
 
 **Open questions for Ethan**
-1. Should a risk be editable per plant (for example, once you see which plants really get eaten)? That would need a field and a batch.
-2. A "Pests seen" log (who ate what, and when) would show whether it is rabbits or rodents. Wanted?
-3. Should high-risk plants show up on Today in the evening, as a reminder to cover them?
-4. Page link: it is not in the top bar (the row would wrap). Fine?
+1. Should a push notification go out in the evening too (the app has push per account), not only the Today block?
+2. A sighting could count towards the risk itself (a plant eaten three times becomes High). Wanted, or keep the risk in your hands?
+3. Still not in the top bar (the row would wrap): fine?

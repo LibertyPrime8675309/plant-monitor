@@ -114,7 +114,9 @@ FIELDS = [
     ('grow_kind', 'enum', 'How it grows'),                                                               # 1.56.0 (PLAN.md step 9): soil mix, semi-hydro or water only
     ('reservoir', 'enum', 'What holds its water'),                                                       # 1.56.0: drains freely, a tray, a catch pot, or the pot itself
     ('mix_wants', 'enum', 'Mix it wants'),                                                               # 1.56.0: fast-draining, balanced or moisture-holding (also a species fact)
+    ('browse_risk', 'enum', 'Risk of being eaten by pests (set by you)'),                                # 1.57.0 (browse.py): empty = the usual for this kind of plant
 ]
+BROWSE_RISKS = ['Low', 'Moderate', 'High']
 GROW_KINDS = ['Soil mix', 'Semi-hydro', 'Water only']                       # 1.56.0 (PLAN.md step 9); empty means a soil mix
 RESERVOIRS = ['Drains freely', 'A tray under it', 'A catch pot', 'The pot itself (no holes)']
 MIX_WANTS = ['Fast-draining', 'Balanced', 'Moisture-holding']
@@ -135,8 +137,8 @@ CREATE TABLE IF NOT EXISTS pot_mixes(
   created_by TEXT, created_at TEXT);
 CREATE INDEX IF NOT EXISTS pot_mixes_code ON pot_mixes(plant_code, mixed_on);
 '''
-ENUMS = {'grow_kind': GROW_KINDS, 'reservoir': RESERVOIRS, 'mix_wants': MIX_WANTS, 'winter_plan': WINTER_PLANS, 'site': SITES, 'health_rating': HEALTH, 'leaf_type': LEAF_TYPES, 'pot_size': POT_SIZES, 'fert_strength': FERT_STRENGTHS, 'pet_safety': PET_SAFETY}
-OPTIONAL_ENUMS = ('leaf_type', 'pot_size', 'fert_strength', 'pet_safety', 'grow_kind', 'reservoir', 'mix_wants')        # may be left as "Not set"
+ENUMS = {'grow_kind': GROW_KINDS, 'reservoir': RESERVOIRS, 'mix_wants': MIX_WANTS, 'winter_plan': WINTER_PLANS, 'site': SITES, 'health_rating': HEALTH, 'leaf_type': LEAF_TYPES, 'pot_size': POT_SIZES, 'fert_strength': FERT_STRENGTHS, 'pet_safety': PET_SAFETY, 'browse_risk': BROWSE_RISKS}
+OPTIONAL_ENUMS = ('leaf_type', 'pot_size', 'fert_strength', 'pet_safety', 'grow_kind', 'reservoir', 'mix_wants', 'browse_risk')        # may be left as "Not set"
 FIELD_NAMES = [f[0] for f in FIELDS]
 FIELD_KIND = {f[0]: f[1] for f in FIELDS}
 FIELD_LABEL = {f[0]: f[2] for f in FIELDS}
@@ -351,6 +353,7 @@ def init_db():
     c.executescript(PUSH_SCHEMA)                  # 1.33.0: devices that get notifications
     c.executescript(SITTER_SCHEMA)                # 1.49.0: plant-sitter sheets shared by link, and the sitter's ticks
     c.executescript(KNOWLEDGE_SCHEMA)             # 1.53.0 (PLAN.md step 6a): one row per species fact, with its source (the facts table)
+    c.executescript(BROWSE_SCHEMA)                # 1.57.0: pests seen eating a plant, with pictures as evidence (browse.py)
     c.executescript(MIXES_SCHEMA)                 # 1.56.0 (PLAN.md step 9): amendments, recipes, what is in each pot (mixes.py)
     if 'status' not in {r[1] for r in c.execute('PRAGMA table_info(lights)')}:     # 1.56.0 (PLAN.md step 10b): owned, considering, no longer used
         c.execute("ALTER TABLE lights ADD COLUMN status TEXT NOT NULL DEFAULT 'owned'")
