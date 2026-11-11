@@ -22,14 +22,24 @@ def test_the_page_is_made_with_its_photos_and_notes():
 def test_the_repot_is_logged_with_the_mix_it_was_done_with():
     t = S.app.test_client(); code = the_page(t)
     m = t.get('/api/mixes/plant/' + code).get_json()['mix']
-    assert m['mixed_on'] == '2026-11-11' and m['care_id'], 'the mix points at the Repotted entry'
+    assert m['mixed_on'] == '2026-07-31' and m['care_id'], 'the mix points at the Repotted entry'
     assert [x['name'] for x in m['parts']] == ['Orchid bark']
     care = t.get('/api/care?plant=' + code).get_json()
     entries = care if isinstance(care, list) else care.get('entries', care.get('log', []))
-    assert any(e['kind'] == 'repot' and e['done_on'] == '2026-11-11' for e in entries)
+    assert any(e['kind'] == 'repot' and e['done_on'] == '2026-07-31' for e in entries)
 
 def test_its_questions_are_on_its_page():
     t = S.app.test_client(); code = the_page(t)
     q = json.dumps(t.get('/api/requests').get_json())
     assert 'c8-orchid-spike' in q or 'old flower spike' in q
     assert code in q
+
+def test_the_page_is_dated_when_its_photos_were_taken():
+    import plantdb.core as core
+    t = S.app.test_client(); code = the_page(t)
+    with S.app.app_context():
+        c = core.db()
+        r = c.execute('SELECT created_at, updated_at FROM plants WHERE code=?', (code,)).fetchone()
+        assert r['created_at'].startswith('2026-07-31') and r['updated_at'].startswith('2026-07-31')
+        assert {x[0][:10] for x in c.execute('SELECT added_at FROM photos WHERE plant_id=(SELECT id FROM plants WHERE code=?)', (code,))} == {'2026-07-31'}
+        assert c.execute('SELECT created_at FROM care_log WHERE plant_code=?', (code,)).fetchone()[0].startswith('2026-07-31')

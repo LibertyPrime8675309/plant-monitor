@@ -1,11 +1,11 @@
-"""Batch C8 (1.57.0): Ethan's repotted moth orchid from his mother's house in Baraboo, Wisconsin (November 11, 2026).
+"""Batch C8 (1.57.0): Ethan's repotted moth orchid from his mother's house in Baraboo, Wisconsin (photos of July 31, 2026; told to Claude on November 11).
 
-A new page, since the plant had none. Ethan's account (chat, November 11): he removed the rotted roots, set the healthy aerial roots
+A new page, since the plant had none. Ethan's account (chat, November 11), dated July 31 like his photos: he removed the rotted roots, set the healthy aerial roots
 so most of them are in the medium instead of hanging out of the pot, drilled drainage holes in the grey pot (it had none), and
 the medium is almost entirely orchid bark. The page starts from the other moth orchid's care profile (the white geometric pot:
 temperature, light, humidity, feeding, pests) and says what is different about this plant: how it grows now, the repot, the photos.
-The repot is logged as Repotted on 2026-11-11 with the bark mix it was done with (the batch can carry a care log and a pot mix
-for a new page: 'care' and 'pot_mix' on the plant, see apply_batches). Photos: July 31 (before) and November 11 (after).
+The repot is logged as Repotted on 2026-07-31 with the bark mix it was done with (the batch can carry a care log and a pot mix
+for a new page: 'care' and 'pot_mix' on the plant, see apply_batches). Photos: all from July 31 (before and after). The page itself ('dated') is dated July 31, not the day it was added.
 Run: python3 dev/seed_src/build_batchC8.py <plants.db with batches up to C7>"""
 import json, os, sqlite3, sys
 from PIL import Image, ImageOps
@@ -17,7 +17,7 @@ FIELD_NAMES = [r[1] for r in c.execute('PRAGMA table_info(plants)')
 base = c.execute("SELECT * FROM plants WHERE common_name='Moth orchid (white geometric pot)'").fetchone()
 assert base, 'run this on a database with batch B8 applied'
 L = lambda *x: '\n'.join(x)
-D, SRC = 'November 11', 'Ethan, November 11'
+D, SRC = 'July 31', 'Ethan, July 31'
 
 def pic(key):
     f = f'img_c8_{key}.jpg'
@@ -35,7 +35,7 @@ p.update(
     common_name='Moth orchid (grey pot, from Baraboo)', scientific_name='Phalaenopsis hybrid',
     aliases='Baraboo orchid (from Ethan\'s mother\'s house in Baraboo, Wisconsin)',
     site='Covered porch', location='Covered porch, on the wicker ottoman',
-    container='Grey plastic pot with drainage holes (drilled November 11), almost entirely orchid bark, an old wooden flower stake with a clip',
+    container='Grey plastic pot with drainage holes (drilled July 31), almost entirely orchid bark, an old wooden flower stake with a clip',
     grow_kind='Soil mix', reservoir='Drains freely', mix_wants='Fast-draining',
     id_confidence=85,
     id_basis=("Broad, thick, glossy strap-shaped leaves in two opposite rows from a single short stem, and thick silver-green aerial roots with "
@@ -44,13 +44,13 @@ p.update(
     id_alternatives=L('Phalaenopsis hybrid (store orchid)', 'Doritaenopsis (an older name for some hybrids)'),
     id_improve=L('A photo of the flowers when it blooms (colour, size, markings)', 'Any tag or the receipt, if his mother has it'),
     health_rating='Fair',
-    health_summary=("Repotted November 11: rotted roots removed, drainage holes added, healthy roots set into orchid bark. The leaves are firm and glossy "
+    health_summary=("Repotted July 31: rotted roots removed, drainage holes added, healthy roots set into orchid bark. The leaves are firm and glossy "
                     "with a reddish tint at the edges, and there are fresh green root tips, so it is putting out new roots. There is no flower spike and "
                     "no keiki right now, and dried, browning leaf bases at the crown need watching for rot."),
     health_observations=L('Leaves broad, glossy and firm, with reddish edges (can mean strong light)', 'Fresh bright-green root tips after the repot',
                           'Healthy silver-green roots, most now in the bark; a few rest over the rim, which is normal',
-                          'Rotted roots removed at the repot (November 11)', 'Dried, brown leaf bases at the crown beside the stake',
-                          'No flower spike or keiki seen', 'The pot had no drainage holes until November 11'),
+                          'Rotted roots removed at the repot (July 31)', 'Dried, brown leaf bases at the crown beside the stake',
+                          'No flower spike or keiki seen', 'The pot had no drainage holes until July 31'),
     health_steps=L('Water lightly for the first two weeks, then when the bark is dry and the roots look silver; water at the pot edge, not into the crown.',
                    'Blot any water out of the crown with a paper towel, and keep the leaf bases in the crown dry.',
                    'Let a few aerial roots stay in open air; do not bend or cram them into the bark.',
@@ -59,17 +59,17 @@ p.update(
                    'Put a saucer or catch pot under the pot when it sits on the ottoman, and empty it after watering.',
                    'Bring it indoors before nights fall below 55°F.'),
     pests_current='',
-    notes=("From Ethan's mother's house in Baraboo, Wisconsin. Photographed November 11, 2026, after the repot, and July 31, 2026, before it. "
+    notes=("From Ethan's mother's house in Baraboo, Wisconsin. Photographed July 31, 2026, before and after the repot. "
            "Identified from the photos alone. Moth orchids do not divide, so a keiki on an old flower spike is the way to propagate it."),
-    care=[{'kind': 'repot', 'done_on': '2026-11-11',
-           'note': 'Removed the rotted roots, set the healthy aerial roots into the mix, drilled drainage holes in the grey pot; almost entirely orchid bark (Ethan, November 11)'}],
-    pot_mix={'mixed_on': '2026-11-11', 'parts': [{'key': 'orchid-bark', 'parts': 1}],
-             'notes': 'Almost entirely orchid bark; the rest is not recorded (Ethan, November 11). Grey pot with drainage holes added (no saucer in the November 11 photos).'},
+    care=[{'kind': 'repot', 'done_on': '2026-07-31',
+           'note': 'Removed the rotted roots, set the healthy aerial roots into the mix, drilled drainage holes in the grey pot; almost entirely orchid bark (Ethan, July 31)'}],
+    pot_mix={'mixed_on': '2026-07-31', 'parts': [{'key': 'orchid-bark', 'parts': 1}],
+             'notes': 'Almost entirely orchid bark; the rest is not recorded (Ethan, July 31). Grey pot with drainage holes added (no saucer in the after photos).'},
     requests=[{'key': 'c8-orchid-spike', 'kind': 'question',
                'text': 'Is the old flower spike still green and firm, with its nodes (small bumps) alive? A live node can grow a keiki. Which month did this orchid last flower?'},
               {'key': 'c8-orchid-mix', 'kind': 'question',
                'text': 'What else is in the bark mix besides bark (charcoal, perlite, moss), and where does the water go now that the pot drains (saucer, catch pot, sink)?'}],
-    photos=photos)
-batch = {'id': 'C8', 'created': '2026-11-11', 'author': "Ethan's repotted moth orchid from Baraboo (November 11, 2026)", 'plants': [p]}
+    dated='2026-07-31', photos=photos)
+batch = {'id': 'C8', 'created': '2026-11-11', 'author': "Ethan's repotted moth orchid from Baraboo (photos of July 31, 2026)", 'plants': [p]}
 json.dump(batch, open(os.path.join(REPO, 'app/seed/batches/batchC8.json'), 'w', encoding='utf-8'), indent=1, ensure_ascii=False)
 print('wrote batchC8.json:', len(photos), 'photos')

@@ -1,7 +1,7 @@
 {
  "id": "C8",
  "created": "2026-11-11",
- "author": "Ethan's repotted moth orchid from Baraboo (November 11, 2026)",
+ "author": "Ethan's repotted moth orchid from Baraboo (photos of July 31, 2026)",
  "plants": [
   {
    "common_name": "Moth orchid (grey pot, from Baraboo)",
@@ -9,7 +9,7 @@
    "aliases": "Baraboo orchid (from Ethan's mother's house in Baraboo, Wisconsin)",
    "plant_type": "Orchid (epiphyte)",
    "location": "Covered porch, on the wicker ottoman",
-   "container": "Grey plastic pot with drainage holes (drilled November 11), almost entirely orchid bark, an old wooden flower stake with a clip",
+   "container": "Grey plastic pot with drainage holes (drilled July 31), almost entirely orchid bark, an old wooden flower stake with a clip",
    "home_id": null,
    "area_id": 7,
    "spot_id": null,
@@ -36,10 +36,10 @@
    "winter_steps": "Cooler nights (60-65 F) for a few weeks in autumn help a flower spike form.\nWater a little less in winter; let the bark dry between waterings.\nFeed lightly or not at all until the spike shows.",
    "indoor_setup": "East window or a grow light 12-18 in away. Humidity 50% or more; a small fan nearby helps. Water in the morning so the crown dries by night.",
    "health_rating": "Fair",
-   "health_summary": "Repotted November 11: rotted roots removed, drainage holes added, healthy roots set into orchid bark. The leaves are firm and glossy with a reddish tint at the edges, and there are fresh green root tips, so it is putting out new roots. There is no flower spike and no keiki right now, and dried, browning leaf bases at the crown need watching for rot.",
-   "health_observations": "Leaves broad, glossy and firm, with reddish edges (can mean strong light)\nFresh bright-green root tips after the repot\nHealthy silver-green roots, most now in the bark; a few rest over the rim, which is normal\nRotted roots removed at the repot (November 11)\nDried, brown leaf bases at the crown beside the stake\nNo flower spike or keiki seen\nThe pot had no drainage holes until November 11",
+   "health_summary": "Repotted July 31: rotted roots removed, drainage holes added, healthy roots set into orchid bark. The leaves are firm and glossy with a reddish tint at the edges, and there are fresh green root tips, so it is putting out new roots. There is no flower spike and no keiki right now, and dried, browning leaf bases at the crown need watching for rot.",
+   "health_observations": "Leaves broad, glossy and firm, with reddish edges (can mean strong light)\nFresh bright-green root tips after the repot\nHealthy silver-green roots, most now in the bark; a few rest over the rim, which is normal\nRotted roots removed at the repot (July 31)\nDried, brown leaf bases at the crown beside the stake\nNo flower spike or keiki seen\nThe pot had no drainage holes until July 31",
    "health_steps": "Water lightly for the first two weeks, then when the bark is dry and the roots look silver; water at the pot edge, not into the crown.\nBlot any water out of the crown with a paper towel, and keep the leaf bases in the crown dry.\nLet a few aerial roots stay in open air; do not bend or cram them into the bark.\nCheck the crown and the roots again in 2 to 3 weeks; trim dried leaf bases only once they come away easily.\nCheck whether the old flower spike is still green: a live node can grow a keiki, with keiki paste on it.\nPut a saucer or catch pot under the pot when it sits on the ottoman, and empty it after watering.\nBring it indoors before nights fall below 55°F.",
-   "notes": "From Ethan's mother's house in Baraboo, Wisconsin. Photographed November 11, 2026, after the repot, and July 31, 2026, before it. Identified from the photos alone. Moth orchids do not divide, so a keiki on an old flower spike is the way to propagate it.",
+   "notes": "From Ethan's mother's house in Baraboo, Wisconsin. Photographed July 31, 2026, before and after the repot. Identified from the photos alone. Moth orchids do not divide, so a keiki on an old flower spike is the way to propagate it.",
    "temp_damage_above": 95,
    "vpd_low": 0.5,
    "vpd_high": 1.2,
@@ -104,19 +104,19 @@
    "care": [
     {
      "kind": "repot",
-     "done_on": "2026-11-11",
-     "note": "Removed the rotted roots, set the healthy aerial roots into the mix, drilled drainage holes in the grey pot; almost entirely orchid bark (Ethan, November 11)"
+     "done_on": "2026-07-31",
+     "note": "Removed the rotted roots, set the healthy aerial roots into the mix, drilled drainage holes in the grey pot; almost entirely orchid bark (Ethan, July 31)"
     }
    ],
    "pot_mix": {
-    "mixed_on": "2026-11-11",
+    "mixed_on": "2026-07-31",
     "parts": [
      {
       "key": "orchid-bark",
       "parts": 1
      }
     ],
-    "notes": "Almost entirely orchid bark; the rest is not recorded (Ethan, November 11). Grey pot with drainage holes added (no saucer in the November 11 photos)."
+    "notes": "Almost entirely orchid bark; the rest is not recorded (Ethan, July 31). Grey pot with drainage holes added (no saucer in the after photos)."
    },
    "requests": [
     {
@@ -130,30 +130,31 @@
      "text": "What else is in the bark mix besides bark (charcoal, perlite, moss), and where does the water go now that the pot drains (saucer, catch pot, sink)?"
     }
    ],
+   "dated": "2026-07-31",
    "photos": [
     {
      "file": "img_c8_after_front.jpg",
-     "caption": "November 11: after the repot, from the front: roots set into the bark, the old stake and a clip holding the new upright leaf",
+     "caption": "July 31: after the repot, from the front: roots set into the bark, the old stake and a clip holding the new upright leaf",
      "primary": true,
-     "source": "Ethan, November 11"
+     "source": "Ethan, July 31"
     },
     {
      "file": "img_c8_after_side.jpg",
-     "caption": "November 11: after the repot, from the side: a few healthy roots over the rim",
+     "caption": "July 31: after the repot, from the side: a few healthy roots over the rim",
      "primary": false,
-     "source": "Ethan, November 11"
+     "source": "Ethan, July 31"
     },
     {
      "file": "img_c8_crown_roots.jpg",
-     "caption": "November 11: close up of the crown: fresh green root tips, dried leaf bases beside the stake",
+     "caption": "July 31: close up of the crown: fresh green root tips, dried leaf bases beside the stake",
      "primary": false,
-     "source": "Ethan, November 11"
+     "source": "Ethan, July 31"
     },
     {
      "file": "img_c8_crown_clip.jpg",
-     "caption": "November 11: close up of the crown with the clip on the upright leaf; dried, browning leaf bases to watch for rot",
+     "caption": "July 31: close up of the crown with the clip on the upright leaf; dried, browning leaf bases to watch for rot",
      "primary": false,
-     "source": "Ethan, November 11"
+     "source": "Ethan, July 31"
     },
     {
      "file": "img_c8_before.jpg",
