@@ -163,6 +163,14 @@ def db():
         g.db = c
     return g.db
 
+# 1.57.0: the settings table helpers (in weather.py until then)
+def setting(c, key, default=None):
+    r = c.execute('SELECT value FROM settings WHERE key=?', (key,)).fetchone()
+    return r[0] if r else default
+
+def set_setting(c, key, value):
+    c.execute('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)', (key, value))
+
 @app.teardown_appcontext
 def close_db(_):
     c = g.pop('db', None)
@@ -278,12 +286,44 @@ CREATE TABLE IF NOT EXISTS bulk_changes(
   done_by TEXT NOT NULL, done_at TEXT NOT NULL, undone_by TEXT, undone_at TEXT);
 """ % ',\n  '.join(f"{n} {SQLTYPE.get(k, 'TEXT')}" for n, k, _ in FIELDS)
 
+JOURNAL = {'mode': None, 'probe': None}   # 1.57.0: the journal mode in use, and what the WAL test found
+def wal_works():
+    """1.57.0: does WAL work in the data folder? Writes through one connection and reads through another, on a scratch database."""
+    path = os.path.join(os.path.dirname(DB_PATH), '.wal-probe.db')
+    try:
+        for f in (path, path + '-wal', path + '-shm'):
+            if os.path.exists(f): os.remove(f)
+        a = sqlite3.connect(path, timeout=5); b = None
+        try:
+            if a.execute('PRAGMA journal_mode=WAL').fetchone()[0].lower() != 'wal': raise RuntimeError('WAL was refused')
+            a.execute('CREATE TABLE t(x)'); a.execute('INSERT INTO t VALUES(42)'); a.commit()
+            b = sqlite3.connect(path, timeout=5)
+            if b.execute('SELECT x FROM t').fetchone() != (42,): raise RuntimeError('a second connection did not see the write')
+            a.execute('INSERT INTO t VALUES(43)'); a.commit()
+            if b.execute('SELECT COUNT(*) FROM t').fetchone()[0] != 2: raise RuntimeError('a second connection did not see a later write')
+        finally:
+            if b: b.close()
+            a.close()
+        JOURNAL['probe'] = 'WAL works in the data folder.'
+        return True
+    except Exception as e:
+        JOURNAL['probe'] = f'WAL was asked for but does not work in the data folder ({e}), so the app uses DELETE.'
+        return False
+    finally:
+        for f in (path, path + '-wal', path + '-shm'):
+            try: os.remove(f)
+            except OSError: pass
 NEWER_DB = {}        # 1.31.0: set when the database was last opened by a newer version than this one; the app then only says so
 def init_db():
     c = sqlite3.connect(DB_PATH, timeout=30)
     c.row_factory = sqlite3.Row
     # WAL can misbehave on Windows bind mounts; the default rollback journal is safe everywhere for a single-process home app.
-    c.execute('PRAGMA journal_mode=' + os.environ.get('PLANTDB_JOURNAL', 'DELETE'))
+    # 1.57.0: PLANTDB_JOURNAL=WAL (in .env) lets pages read while a save is being written. It is tried on a scratch copy first; if
+    # a second connection cannot see a write there (the shared-memory file does not work on this folder), the app stays on DELETE.
+    want = os.environ.get('PLANTDB_JOURNAL', 'DELETE').upper()
+    if want == 'WAL' and not wal_works(): want = 'DELETE'
+    if want not in ('DELETE', 'WAL', 'TRUNCATE', 'PERSIST'): want = 'DELETE'
+    JOURNAL['mode'] = c.execute('PRAGMA journal_mode=' + want).fetchone()[0]
     # 1.31.0: never let an older version change a database a newer one has already upgraded (its tables and columns would be
     # half understood, and its batches could run again). The app starts, but only to say which version to install.
     try:

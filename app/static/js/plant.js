@@ -572,7 +572,7 @@ async function viewPlant(code) {
       <div class="pane" id="pane-r" tabindex="0" role="region" aria-label="Details">
         <nav class="jump noprint" id="jumprow" aria-label="Jump to a section"></nav>
         <div class="label${PLEDIT === p.code ? ' pl-editing' : ''}" id="details" data-section="Name and details">
-          <div class="l-top"><b>${p.code}</b><span>Page version ${p.version}</span><span>Updated ${timeEl(p.updated_at)} by ${p.updated_by}</span></div>
+          <div class="l-top"><b>${p.code}</b><a href="#history" data-act="jumpsec" data-sec="history">Page history</a></div>
           <div class="l-body"><h2 class="l-title">Name and details</h2>
             ${canChange() ? html`<p class="row noprint pl-edrow"><button class="btn small" type="button" data-act="pledit" aria-controls="pl-ed" aria-expanded="${PLEDIT === p.code ? 'true' : 'false'}">${PLEDIT === p.code ? 'Done changing' : 'Change these details'}</button></p>${plantEdHtml(p)}` : ''}
             <dl><dt id="site-lbl">Location</dt><dd>${sitePicker(p)}</dd>
@@ -641,7 +641,7 @@ async function viewPlant(code) {
         <section class="blk" id="timeline"><h2>Timeline</h2><div id="tl-box" data-code="${p.code}"><p class="loading">Loading the timeline</p></div></section>
 
         <section class="blk" id="history"><h2>Page history</h2>
-          <p class="muted">Created ${timeEl(p.created_at)} by ${p.created_by}. Every save makes a new version and keeps the old one.</p>
+          <p class="muted">Version ${p.version}, updated ${timeEl(p.updated_at)} by ${p.updated_by}. Created ${timeEl(p.created_at)} by ${p.created_by}. Every save makes a new version and keeps the old one.</p>
           ${slips(h)}</section>
       </div>
     </div>`,

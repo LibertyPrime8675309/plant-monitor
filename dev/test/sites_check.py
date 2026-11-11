@@ -68,22 +68,22 @@ with sync_playwright() as p:
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.add_init_script("localStorage.setItem('plantdb.editor','Sites Test')")
     # Round Rock: cold-season pages present
-    pg.goto(LOCAL + '/#/'); pg.wait_for_selector('#today-water', timeout=15000); pg.wait_for_timeout(1000)
+    pg.goto(LOCAL + '/#/'); pg.wait_for_selector('#today-needs', timeout=15000); pg.wait_for_timeout(1000)
     pg.goto(LOCAL + '/#/fertilizer'); pg.wait_for_selector('#sub-nav a[data-nav=fertilizer]', timeout=15000); pg.wait_for_timeout(400)
     check(pg.locator('#sub-nav a[data-nav=frost]').count() == 1 and pg.locator('#sub-nav a[data-nav=inside]').count() == 1, 'at the main home, Care lists the Cold-night checklist and Coming inside')
     check(pg.locator('#main-nav a[data-sec=care]').get_attribute('href') == '#/winter', 'the Care link opens the Winter plan')
     # Nevada City (tropical, metric): no cold pages, °C, only its plants on Today
-    pg.evaluate(f"localStorage.setItem('plantdb.place', '{nc['id']}')"); pg.goto(LOCAL + '/#/'); pg.reload(); pg.wait_for_selector('#today-water', timeout=15000); pg.wait_for_timeout(1500)
+    pg.evaluate(f"localStorage.setItem('plantdb.place', '{nc['id']}')"); pg.goto(LOCAL + '/#/'); pg.reload(); pg.wait_for_selector('#today-needs', timeout=15000); pg.wait_for_timeout(1500)
     check('Nevada City' in pg.inner_text('#place-name'), 'the Location button shows Nevada City')
     pg.goto(LOCAL + '/#/fertilizer'); pg.wait_for_selector('#sub-nav a[data-nav=fertilizer]', timeout=15000); pg.wait_for_timeout(400)
     check(pg.locator('#main-nav a[data-sec=care]').get_attribute('href') == '#/turning', 'the Care link opens Turn the pots there, its first page that applies')
-    pg.goto(LOCAL + '/#/'); pg.wait_for_selector('#today-water', timeout=15000); pg.wait_for_timeout(1200)
+    pg.goto(LOCAL + '/#/'); pg.wait_for_selector('#today-needs', timeout=15000); pg.wait_for_timeout(1200)
     pg.goto(LOCAL + '/#/fertilizer'); pg.wait_for_selector('#sub-nav a[data-nav=fertilizer]', timeout=15000); pg.wait_for_timeout(400)
     check(pg.locator('#sub-nav a[data-nav=frost]').count() == 0 and pg.locator('#sub-nav a[data-nav=inside]').count() == 0 and pg.locator('#sub-nav a[data-nav=fertilizer]').count() == 1,
           'at a tropical home, Care has no Winter plan, Cold-night checklist, Coming inside or Back outside, but keeps Fertilizer')
-    pg.goto(LOCAL + '/#/'); pg.wait_for_selector('#today-water', timeout=15000); pg.wait_for_timeout(1500)
+    pg.goto(LOCAL + '/#/'); pg.wait_for_selector('#today-needs', timeout=15000); pg.wait_for_timeout(1500)
     check(pg.locator('#today-cold, #today-inside, #fd-today, #bo-today, .fz-banner').count() == 0, 'Today has no cold blocks or frost banner there')
-    water_codes = pg.evaluate("[...document.querySelectorAll('#today-water .job')].map(e => e.dataset.code)")
+    water_codes = pg.evaluate("[...document.querySelectorAll('#today-water .job, #today-unlogged .job')].map(e => e.dataset.code)")   # 1.57.0: and the plants with no watering logged
     check(all(c in codes for c in water_codes), 'Today\'s water list has only Nevada City plants')
     needs = pg.inner_text('#today-needs')
     check('P-001' not in needs, 'Needed from you shows no Round Rock plant')

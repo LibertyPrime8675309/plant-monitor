@@ -96,7 +96,7 @@ self.addEventListener('fetch', e => {
   if (url.pathname.startsWith('/api/')) return e.respondWith(apiGet(req));
   if (url.pathname.startsWith('/photos/') || url.pathname.startsWith('/thumbs/')) return e.respondWith(picture(req, PICS));
   if (url.pathname.startsWith('/library-photos/')) return e.respondWith(picture(req, LIBPICS));
-  if (req.mode === 'navigate' || SHELL_FILES.includes(url.pathname) || SHELL_FILES.includes(url.pathname + url.search) || url.pathname.startsWith('/js/') || url.pathname === '/style.css' || url.pathname === '/prefs.js' || url.pathname.startsWith('/fonts/') || url.pathname.startsWith('/lights/')) return e.respondWith(shell(req));
+  if (req.mode === 'navigate' || SHELL_FILES.includes(url.pathname) || SHELL_FILES.includes(url.pathname + url.search) || url.pathname.startsWith('/js/') || url.pathname === '/app.js' || url.pathname === '/style.css' || url.pathname === '/prefs.js' || url.pathname.startsWith('/fonts/') || url.pathname.startsWith('/lights/')) return e.respondWith(shell(req));
 });
 self.addEventListener('message', e => {
   if (e.data === 'forget') e.waitUntil(Promise.all([API, PICS, LIBPICS].map(n => caches.delete(n))));

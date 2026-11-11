@@ -240,7 +240,7 @@ def http_json(url, tries=3):
                 WX_JOB['retries'] = WX_JOB.get('retries', 0) + 1
                 _wait(NET_RETRY_WAITS[attempt], f'Open-Meteo was busy (HTTP {e.code}); trying again'); continue
             raise OMError(e.code, reason)
-        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError, ValueError) as e:
+        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError, ValueError):
             # the connection dropped part-way (for example "UNEXPECTED_EOF_WHILE_READING"), timed out, or came back garbled
             if attempt < len(NET_RETRY_WAITS):
                 WX_JOB['retries'] = WX_JOB.get('retries', 0) + 1
@@ -249,7 +249,6 @@ def http_json(url, tries=3):
 
 # ---------------------------------------------------------------- 1.29.0: Rooms and spots (the lists behind a plant's place)
 def where_list(c):
-    H = home_place(c)
     cnt_a = {k: n for k, n in c.execute("SELECT area_id, COUNT(*) FROM plants WHERE status='active' GROUP BY area_id")}
     cnt_s = {k: n for k, n in c.execute("SELECT spot_id, COUNT(*) FROM plants WHERE status='active' AND spot_id IS NOT NULL GROUP BY spot_id")}
     lights_at = {k: n for k, n in c.execute('SELECT place_id, COUNT(*) FROM light_spots WHERE place_id IS NOT NULL GROUP BY place_id')}

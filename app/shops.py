@@ -6,7 +6,7 @@ Each shop is read one of these ways:
   page          for shops with no online store: the listed pages are read, and any line naming the plant is kept, with a price if
                 one is on that line
 'auto' tries shopify, then woo, then page, and remembers what worked."""
-import base64, html as htmlmod, json, re, time, urllib.parse
+import base64, html as htmlmod, re, time, urllib.parse
 
 DEFAULT_SHOPS = [   # key, name, kind ('api' or 'auto'), the shop's address, extra pages to read, local (a nursery near home)
     ('ebay', 'eBay', 'api', 'https://www.ebay.com/', [], False),

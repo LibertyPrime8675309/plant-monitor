@@ -1,0 +1,17 @@
+# 1.57.0: GitHub opens a pull request when a newer version of a library, a base image or a workflow action comes out. Each runs the
+# same checks as any pull request; merge it only when they are green, like everything else. Grouped so it is one pull request a week
+# per kind, not one per library.
+version: 2
+updates:
+  - package-ecosystem: pip
+    directories: ["/", "/speech"]                 # the picture checker's libraries are pinned in vision/Dockerfile itself
+    schedule: { interval: weekly, day: monday }
+    groups: { python: { patterns: ["*"] } }
+  - package-ecosystem: docker
+    directories: ["/", "/vision", "/speech"]
+    schedule: { interval: weekly, day: monday }
+    groups: { images: { patterns: ["*"] } }
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule: { interval: weekly, day: monday }
+    groups: { actions: { patterns: ["*"] } }

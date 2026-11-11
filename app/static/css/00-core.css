@@ -102,7 +102,9 @@ main{max-width:80rem;margin:0 auto;padding:1.6rem 1.25rem 6rem;outline:none}
 .btn.ghost{background:transparent;color:var(--cyan)}
 .btn.danger{background:transparent;color:var(--madder);border-color:var(--madder)}
 .btn.small{padding:.4rem .85rem;font-size:1rem;min-height:2.5rem}
-.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn[disabled]{opacity:1;cursor:not-allowed;background:var(--sheet);color:var(--ink-2);border:2px dashed var(--ink-2)}   /* 1.57.0: readable when off (it was faded to half), dashed so it does not look like a choice */
+.why{color:var(--ink-2);font-size:1rem;align-self:center}   /* 1.57.0: why the button before it is off */
+:is(button,.btn):not([disabled]) + .why{display:none}
 .row{display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
 label.f{display:block;margin:0 0 1.2rem;font-weight:700}
 label.f small{display:block;font-weight:400;color:var(--ink-2);margin-top:.15rem;font-size:1rem}
@@ -159,7 +161,7 @@ html[data-narrow="1"] .filters label:first-child{grid-column:1/-1}
 
 /* plant page: two panes that scroll on their own (the one under the pointer moves); Display settings can make it one column */
 .crumb{margin:0 0 .9rem;display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;justify-content:space-between}
-.plant{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:2.4rem;align-items:start}
+.plant{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:2rem;align-items:start}   /* 1.57.0: a third for the photos, two thirds for the details (was 5:7), so section titles keep their buttons beside them */
 .plant>.pane{min-width:0}
 html[data-narrow="1"] .plant,html[data-layout=single] .plant{grid-template-columns:minmax(0,1fr);gap:1.6rem;max-width:60rem}
 html:not([data-layout=single]):not([data-narrow="1"]) .plant{height:var(--pane-h,80vh)}
@@ -491,7 +493,7 @@ html[data-navopen="1"][data-narrow="0"]:not([data-layout=single]) .plant .pane .
 html[data-width=wide]{--main-w:100vw}
 main{max-width:var(--main-w)}
 section.blk,section[id],h2[id]{scroll-margin-top:calc(var(--top-h) + .8rem)}
-#sidenav{position:fixed;top:var(--top-h);bottom:0;left:0;width:var(--nav-w);z-index:18;background:var(--sheet);border-right:2px solid var(--line);overflow:auto;padding:.9rem .9rem 0;display:none}
+#sidenav{position:fixed;top:var(--nav-top,var(--top-h));bottom:0;left:0;width:var(--nav-w);z-index:18;background:var(--sheet);border-right:2px solid var(--line);overflow:auto;padding:.9rem .9rem 0;display:none}
 /* 1.42.0: Display at the bottom of the Navigation menu, always in view while the menu is */
 .sn-foot{position:sticky;bottom:0;background:var(--sheet);border-top:2px solid var(--line);margin-top:1rem;padding:.7rem 0 .9rem}
 .sn-foot #display-btn{position:static;width:100%;justify-content:center;box-shadow:none}
@@ -509,7 +511,7 @@ html[data-navempty="1"][data-narrow="0"] #nav-tab{display:none}   /* 1.39.1: a p
 .sn-flash{outline:4px solid var(--ink);outline-offset:6px;border-radius:2px}
 #sn-list a[aria-current=true]{border-left-color:var(--ink);font-weight:700;background:var(--paper)}
 #sn-list .sn-sub a{padding-left:1.6rem;font-size:.92em}
-#nav-tab{position:fixed;top:calc(var(--top-h) + .8rem);left:0;z-index:18;background:var(--ink);color:var(--sheet);border:0;border-radius:0 .5rem .5rem 0;padding:.75rem 1rem;font:inherit;font-weight:700;cursor:pointer;min-height:2.75rem}
+#nav-tab{position:fixed;top:calc(var(--nav-top,var(--top-h)) + .8rem);left:0;z-index:18;background:var(--ink);color:var(--sheet);border:0;border-radius:0 .5rem .5rem 0;padding:.75rem 1rem;font:inherit;font-weight:700;cursor:pointer;min-height:2.75rem}
 html[data-navside=right] #nav-tab{left:auto;right:0;border-radius:.5rem 0 0 .5rem}
 #nav-tab:focus-visible,#sidenav a:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 /* keep the page clear of the open menu when there is room; on narrow screens it covers the page until closed */
@@ -1494,8 +1496,6 @@ html:is([data-narrow="1"],[data-pagesfold="1"]) .top #main-nav{display:flex;flex
 html[data-pagesfold="1"] .top-acts{flex-direction:row;flex-wrap:wrap;margin-left:auto}
 html[data-toptall="1"] .top{position:static}
 /* 1.33.0: a tall top bar scrolls with the page, so the open sections menu would cover its left end; keep the bar's contents clear of the menu */
-html[data-toptall="1"][data-navopen="1"][data-narrow="0"][data-navside=left] :is(.top-in,.sub-in){padding-left:calc(var(--nav-w) + 1rem)}
-html[data-toptall="1"][data-navopen="1"][data-narrow="0"][data-navside=right] :is(.top-in,.sub-in){padding-right:calc(var(--nav-w) + 1rem)}
 html[data-narrow="1"] .top-in,html[data-narrow="1"] main{padding-left:min(1.25rem,4vw);padding-right:min(1.25rem,4vw)}
 html[data-narrow="1"] .top-in{padding-top:.4rem;padding-bottom:.4rem;gap:.4rem}
 html[data-narrow="1"] .brand{font-size:1.2rem}
@@ -1876,3 +1876,25 @@ html[data-narrow="1"] .filters{grid-template-columns:repeat(auto-fill,minmax(min
 .filters .chk{min-width:0}
 
 .nv-bar{position:sticky;top:0;z-index:60;display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center;justify-content:space-between;margin:0;border-radius:0}   /* 1.56.5: a new version is installed */
+
+/* 1.57.0: on a page with no Navigation menu, Display sits in the top bar like Search (it floated over the page's corner) */
+.top-acts>#display-btn{position:static;box-shadow:none;background:transparent;color:inherit;border:2px solid color-mix(in srgb,var(--top-ink) 60%,transparent);padding:.25em .7em;min-height:44px;font-weight:700}
+.top-acts>#display-btn:hover{background:color-mix(in srgb,var(--top-ink) 14%,transparent)}
+.top-acts>#display-btn svg{width:1.1em;height:1.1em}
+.sheet .mat .nophoto.nophoto-none{aspect-ratio:auto;min-height:3rem;padding:.6rem;font-weight:400}   /* 1.57.0 */
+html[data-narrow="1"] #corner{transition:transform .2s ease}
+html[data-narrow="1"][data-barhide="1"] #corner{transform:translateY(calc(100% + 1.2rem))}   /* 1.57.0: slips away while you scroll down */
+@media (prefers-reduced-motion:reduce){html[data-narrow="1"] #corner{transition:none}}
+
+/* 1.57.0: notes on request (Display). A note shows as a small Note button until it is opened (pressed, held, or pointed at); its words
+   stay in the page at size 0, so screen readers still read them */
+html[data-notes=ask] :is(.hint,label.f>small):not(.note-open):not(:hover):not(:focus-visible){font-size:0!important;line-height:0;display:inline-flex;vertical-align:middle;margin:.15rem .3rem .15rem .4rem;padding:0;cursor:pointer;color:var(--cyan)}
+html[data-notes=ask] :is(.hint,label.f>small):not(.note-open):not(:hover):not(:focus-visible) *{font-size:0!important}
+html[data-notes=ask] :is(.hint,label.f>small):not(.note-open):not(:hover):not(:focus-visible)::before{content:"\24D8  Note";font-size:1rem;line-height:1.3;font-weight:700;border:2px solid currentColor;padding:.3rem .65rem;min-height:2.75rem;display:inline-flex;align-items:center;white-space:pre;border-radius:999px}
+html[data-notes=ask] :is(label,.f,.row,li,.chk):hover > :is(.hint,small[data-note]):not(.note-open){font-size:1rem!important;line-height:inherit;display:block;color:var(--ink-2)}
+html[data-notes=ask] :is(label,.f,.row,li,.chk):hover > :is(.hint,small[data-note]):not(.note-open)::before{content:none}
+html[data-notes=ask] :is(label,.f,.row,li,.chk):hover > :is(.hint,small[data-note]):not(.note-open) *{font-size:inherit!important}
+html[data-notes=ask] :is(.hint,label.f>small).note-open,html[data-notes=ask] :is(.hint,label.f>small):is(:hover,:focus-visible){cursor:pointer;display:block}
+html[data-notes=ask] :is(.hint,label.f>small):focus-visible{outline:var(--ring) solid var(--focus);outline-offset:2px}
+@media print{html[data-notes=ask] :is(.hint,label.f>small){font-size:1rem!important;line-height:inherit}html[data-notes=ask] :is(.hint,label.f>small)::before{content:none!important}html[data-notes=ask] :is(.hint,label.f>small) *{font-size:inherit!important}}
+#app h1[tabindex="-1"]:focus{outline:none}     /* 1.57.0: the title takes the focus after moving to a page, so a screen reader starts there; it is not a control, so no ring */

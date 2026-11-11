@@ -5,6 +5,7 @@
 // care kind 'looked'; a new rating and the note (added to the Health summary) are saved on the plant page (version checked)
 // and logged too. Group pages get a "Health walk-through" section with the group's own number of days. The walk is kept in CK
 // while the app is open; the choices are remembered in localStorage plantdb.checkup.
+'use strict';
 Object.assign(CARE_WORD, { looked: 'Looked over' });
 if (!SECTIONS[0][2].some(x => x[0] === 'checkup')) SECTIONS[0][2].push(['checkup', 'Health walk-through', '#/checkup']);   // a second page in the Today section of the top bar
 const CK = { data: null, list: null, i: 0, done: {}, focus: false };

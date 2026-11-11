@@ -117,7 +117,7 @@ def health_api():
            'shops': {'last': sched.get('shops', {}).get('last', ''), 'next': sched.get('shops', {}).get('next', ''), 'every': sched.get('shops', {}).get('every', '')},
            'problems': c.execute('SELECT COUNT(*) FROM problems WHERE cleared_at IS NULL').fetchone()[0],
            'sensors': c.execute("SELECT COUNT(DISTINCT device) FROM readings WHERE source='sensor'").fetchone()[0],
-           'readings': c.execute('SELECT COUNT(*) FROM readings').fetchone()[0], 'runs_as': runs_as(), 'at': now()}
+           'readings': c.execute('SELECT COUNT(*) FROM readings').fetchone()[0], 'runs_as': runs_as(), 'journal': {'mode': JOURNAL.get('mode') or '', 'note': JOURNAL.get('probe') or ''}, 'at': now()}
     HEALTH_CACHE.update(at=time.time(), data=out)
     return jsonify(out)
 HEALTH_CACHE = {}        # the Health of the app card, kept a minute (was named HEALTH, which core uses for the ratings list)

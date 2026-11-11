@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.57.0 (coming December 1, 2026)
+- **Notes on request.** Display has a new choice, **Notes under buttons and boxes**: **Always show them** (as now) or **Show them when I ask**. With the second, each small note under a button, box or picture becomes a round **Note** button: press it (or Tab to it and press Enter) to read it, and again to fold it. Pointing at a field with the mouse shows its note too, and on a phone a long press on a box opens its note. Printed pages always show every note.
+- **Water counts only what is due.** Plants with no watering logged are in their own folded part on Today, **No watering logged yet**, so Water no longer shows a number for plants it cannot work out.
+- **A plant's page is shorter the first time.** The reference parts (identification, about, uses, temperature, humidity, sunlight, water and soil, nutrients, pests, timeline, page history) start folded; press Show on any of them. What you fold or open is remembered as before.
+- **Page history at the top of a plant's card.** The version number and "Updated" line moved from the card's top line into Page history, and the card's top line has a **Page history** link instead.
+- **The plant's details column is wider** next to its photos.
+- **A greyed-out button says why**, in words beside it ("Start the camera first.", "Add a photo below first.", "Tick what you got first."), and it has a dashed edge so it does not depend on its paler colour.
+- **Library cards without a photo** are a short line instead of a big grey box.
+- **Weather with no readings** says so once, instead of drawing three empty charts.
+- **With large text, the Navigation menu starts right under the top bar** on pages like the Health walk-through, instead of leaving a gap.
+- **On a phone, the bottom bar with Navigation and Display slips away while you scroll down** and comes back as soon as you scroll up, so it covers less of the page.
+- **Display moved to the top bar** on pages with no Navigation menu (such as the Audit log), where it covered the end of tables before.
+- **Settings no longer repeats** Offline use, Backups and the Audit log; it links to them.
+- **Moving to a page puts the keyboard and screen reader at its title**, and the headings on Library, All plants, Year in review and Compare lights no longer skip a level.
+- **Pages load faster**: the app's 26 script files are sent as one.
+- **For the computer:** an optional faster saving mode (WAL; see README, "Saving mode"), tested in the data folder before it is used. The libraries the app uses are fixed at known versions, and GitHub proposes updates each week. More tests run on every change (backups and restore, watering, frost, weather sums, names used across the code), and the biggest files are split by topic.
+
 ## 1.56.5 (2026-11-11)
 - **One reload is enough after an update.** The app used to need two or three reloads before the new version, and its number at the top left, were all there. Now an open page notices the new version by itself and opens it; if you are typing or a window is open, a bar at the top says **Version … is installed** with a **Reload now** button instead.
 - **Viewers can press Got it on What's new.** The page refused it before sending, though the app allows it.

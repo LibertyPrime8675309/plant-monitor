@@ -28,11 +28,12 @@ with sync_playwright() as p:
         code2 = pg.locator('#today-water > ul.jobs > li.job').first.get_attribute('data-code')
         pg.locator('#today-water > ul.jobs > li.job').first.locator('button[data-kind=check]').click(); pg.wait_for_timeout(1500)
         check(pg.locator(f'#today-water > ul.jobs > li.job[data-code="{code2}"]').count() == 0, f'{code2} checked (still moist) and left the list')
-    unk = pg.locator('#today-water details.grp:has(h3:text-matches("No watering logged")) li.job').count()
+    # 1.57.0: the plants with no watering logged are a block of their own on Today (#today-unlogged), folded
+    unk = pg.locator('#today-unlogged li.job').count()
     check(unk > 0, f'{unk} plants with no watering logged (porch and indoor plants get no rain)')
-    pg.locator('#today-water details.grp:has(h3:text-matches("No watering logged")) summary').click()
-    pg.locator('#today-water details.grp:has(h3:text-matches("No watering logged")) button[data-act=careall]').click(); confirm(pg)
-    check(pg.locator('#today-water details.grp:has(h3:text-matches("No watering logged"))').count() == 0, 'bulk "I watered all" starts the clock for them')
+    pg.locator('#today-unlogged summary').click()
+    pg.locator('#today-unlogged button[data-act=careall]').click(); confirm(pg)
+    check(pg.locator('#today-unlogged').count() == 0, 'bulk "I watered all" starts the clock for them')
     check(pg.locator('#today-feed').count() == 1 and pg.locator('#today-needs').count() == 1, 'feed and needed-from-you sections are there')
     # plant page
     pg.goto(BASE + '/#/plant/P-031'); pg.wait_for_timeout(2500)

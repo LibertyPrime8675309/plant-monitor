@@ -15,6 +15,7 @@ function displayDialog() {
   G.navopen = group('navopen', 'Navigation menu', [['1', 'Open'], ['0', 'Folded away (the Navigation button opens it)']], 'On narrow windows and phones it starts folded and covers the page while open.');
   G.width = group('width', 'Page width', [['normal', 'Normal'], ['wide', 'Use the full width of the window']], 'Full width gives charts and tables more room on a wide screen.');
   G.lines = group('lines', 'Line length', [['full', 'Use the full width'], ['short', 'Shorter lines (about 70 letters)']], 'Full width fits more on the screen. Shorter lines can be easier to follow from one line to the next.');
+  G.notes = group('notes', 'Notes under buttons and boxes', [['show', 'Always show them'], ['ask', 'Show them when I ask']], 'The small notes that say what a button does or what to type. "When I ask" folds each into a Note button: press it, hold a finger on the button or box it belongs to, or point at it with the mouse. Screen readers still read every note.');
   G.layout = group('layout', 'Plant pages', [['split', 'Photos and details side by side'], ['single', 'One column']], 'Side by side lets each half scroll on its own: scroll with the pointer over the half you want to move. One column stacks the photos above the details.');
   const speak = canSpeak() ? html`${group('readbtns', 'Read aloud buttons', [['1', 'Show them on each section'], ['0', 'Hide them']], 'Your browser reads the section aloud with its own voices. The R key reads the whole page either way.')}
     ${group('rate', 'Reading speed', [['0.8', 'Slower'], ['1', 'Normal'], ['1.25', 'Faster'], ['1.5', 'Fastest']])}
@@ -38,7 +39,7 @@ function displayDialog() {
   const SH = window.PlantSync ? window.PlantSync.shared() : {};
   const share = part => html`<fieldset class="opt-group dv-share"><legend>Where these apply</legend><label class="chk"><input type="checkbox" data-dvshare="${part}" ${SH[part] ? raw('checked') : ''}>Use these on every device I sign in on</label>
     <p class="hint">Off (the usual): only this device. On: any phone, tablet or computer where you sign in and tick this too gets them.</p></fieldset>`;
-  const SECS = [['Text and colours', html`${G.size}${G.space}${G.contrast}${G.theme}${share('text')}`], ['Page layout', html`${G.width}${G.lines}${G.layout}${G.navside}${G.navopen}${share('layout')}`],
+  const SECS = [['Text and colours', html`${G.size}${G.space}${G.contrast}${G.theme}${share('text')}`], ['Page layout', html`${G.width}${G.lines}${G.notes}${G.layout}${G.navside}${G.navopen}${share('layout')}`],
     ['Units', G.units], ['Identify', G.idmode], ['Reading aloud', html`${speak}${share('read')}`], ['Photos and touch', html`${G.photofit}${G.swipe}${share('photos')}`], ['Keyboard and voice', html`${G.keys}${G.vsearch}${share('keys')}`]];
   const keep = DVSCROLL; DVSCROLL = 0;
   modal(html`<form method="dialog" class="dv-form">
@@ -148,6 +149,15 @@ const FOLDS = (() => { try { return JSON.parse(localStorage.getItem('plantdb.fol
 const foldPage = () => { const h = (location.hash || '#/').split('?')[0]; return /^#\/plant\//.test(h) ? '#/plant' : h; };
 const foldKey = t => t.replace(/\(\s*[\d,]+\s*\)/g, '').replace(/[\d][\d,.]*/g, '#').replace(/\s+/g, ' ').trim().toLowerCase();
 function foldSave() { try { localStorage.setItem('plantdb.folds', JSON.stringify(FOLDS)); } catch (e) { /* this visit only */ } }
+// 1.57.0: a plant page is long (about 20 sections). The reference sections start folded on a device that has never folded anything on
+// a plant page, so the details, care and requests come first; Show opens each, and what you fold or open is remembered as before.
+// (Not in the automated checks, which read every section: navigator.webdriver; plant_folds_check turns it on.)
+const PLANT_REF_FOLDED = ['plant identification', 'about this plant', 'uses, partners and propagation', 'temperature', 'humidity', 'sunlight',
+  'water and soil', 'nutrients', 'pests and diseases', 'timeline', 'page history'];
+(() => { try {
+  if (localStorage.getItem('plantdb.foldseed') || FOLDS['#/plant'] || (navigator.webdriver && !localStorage.getItem('plantdb.foldseedtest'))) return;
+  FOLDS['#/plant'] = PLANT_REF_FOLDED.slice(); localStorage.setItem('plantdb.foldseed', '1'); foldSave();
+} catch (e) { /* storage blocked: every section open */ } })();
 function foldIsSet(text) { return (FOLDS[foldPage()] || []).includes(foldKey(text)); }
 function foldRemember(text, on) {
   const pg = foldPage(), k = foldKey(text), list = (FOLDS[pg] || []).filter(x => x !== k);
@@ -167,6 +177,44 @@ function foldBtn(it, open) {
   return rend(html`<button class="btn ghost small sec-fold noprint" type="button" data-act="secfold" data-for="${it.id}" aria-expanded="${open ? 'true' : 'false'}"
     aria-label="${open ? 'Hide' : 'Show'} the ${it.text} section"><span aria-hidden="true">${open ? '▾' : '▸'}</span> <span>${open ? 'Hide' : 'Show'}</span></button>`);
 }
+// ---------- 1.57.0: notes on request (Display: "Notes under buttons and boxes: Show them when I ask") ----------
+// Each small note (.hint) becomes a Note button that opens it in place. It also opens while the mouse is over the control it belongs
+// to (or the note), and when a finger rests on that control for half a second. The words stay in the page, so screen readers read them.
+const NOTE_SEL = '.hint, label.f > small';      // the small notes: hints, and the note under a field's name
+function notesPass(root) {
+  if (document.documentElement.dataset.notes !== 'ask') return;
+  (root || document).querySelectorAll('.hint:not([data-note]), label.f > small:not([data-note])').forEach(n => {
+    n.dataset.note = '1'; n.setAttribute('role', 'button'); n.setAttribute('tabindex', '0'); n.setAttribute('aria-expanded', 'false');
+  });
+}
+function noteToggle(n, open) {
+  const on = open == null ? !n.classList.contains('note-open') : open;
+  n.classList.toggle('note-open', on); n.setAttribute('aria-expanded', on ? 'true' : 'false');
+}
+const noteFor = el => { const box = el.closest('label, .f, .row, li, fieldset, .chk, p'); return box && (box.querySelector(':scope > .hint') || (box.matches('label.f') && box.querySelector(':scope > small')) || (box.nextElementSibling && box.nextElementSibling.matches('.hint') ? box.nextElementSibling : null)); };
+document.addEventListener('click', e => {
+  if (document.documentElement.dataset.notes !== 'ask') return;
+  if (NOTEHOLD.swallow) { NOTEHOLD.swallow = false; e.preventDefault(); e.stopPropagation(); return; }
+  const n = e.target.closest(NOTE_SEL); if (!n || e.target.closest('a,button,input,select,textarea')) return;
+  if (!n.dataset.note) notesPass(n.parentElement);   // drawn after the page: becomes a Note button now
+  noteToggle(n); e.stopPropagation(); e.preventDefault();   // in a field's label, opening the note does not also jump to the field
+}, true);
+document.addEventListener('keydown', e => {
+  if (document.documentElement.dataset.notes !== 'ask') return;
+  const n = e.target.closest && e.target.closest('[data-note]');
+  if (n && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); noteToggle(n); }
+  else if (e.key === 'Escape' && n) noteToggle(n, false);
+});
+const NOTEHOLD = { t: 0, swallow: false };
+document.addEventListener('pointerdown', e => {
+  if (document.documentElement.dataset.notes !== 'ask' || e.pointerType !== 'touch') return;
+  const n = noteFor(e.target); if (!n) return;
+  clearTimeout(NOTEHOLD.t);
+  NOTEHOLD.t = setTimeout(() => { noteToggle(n, true); NOTEHOLD.swallow = true; setTimeout(() => { NOTEHOLD.swallow = false; }, 800); }, 550);
+}, { passive: true });
+['pointerup', 'pointercancel', 'pointermove'].forEach(k => document.addEventListener(k, e => { if (k !== 'pointermove' || Math.abs(e.movementX) + Math.abs(e.movementY) > 6) clearTimeout(NOTEHOLD.t); }, { passive: true }));
+document.addEventListener('prefs', () => { if (document.documentElement.dataset.notes === 'ask') notesPass(); });
+
 function addFoldButtons() {
   NAVITEMS.forEach(it => {
     if (it.top || !it.id) return;
@@ -256,11 +304,12 @@ function foldMeasure() {           // room on the title's right for its buttons
     tl.style.top = beside ? Math.max(0, t.offsetTop + level(t, tl)) + 'px' : '';
   });
   // 1.56.4: a title with no section of its own (Fertilizer's "Today" box) has its Hide/Show at the right of the title, not on a line under it
-  document.querySelectorAll('#app .sec-bare').forEach(tl => {
+  // 1.57.0: and so does a title further into its section (the label card's "Name and details")
+  document.querySelectorAll('#app .sec-bare, #app .sec-inline').forEach(tl => {
     const t = tl.previousElementSibling; tl.style.marginTop = ''; tl.style.marginBottom = ''; if (!t || !t.matches('h1,h2,h3')) return;
     t.style.paddingRight = '';
-    const w = Math.ceil(tl.querySelector('.sec-fold').getBoundingClientRect().width + 14), host = t.parentElement.clientWidth;
-    if (host - w < Math.max(16 * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16), host * 0.5)) return;
+    const w = Math.ceil([...tl.children].reduce((a, c) => a + c.getBoundingClientRect().width, 0) + 8 * (tl.children.length - 1) + 14), host = t.parentElement.clientWidth;
+    if (host - w < Math.max(16 * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16), host * 0.5) && titleWidth(t) > host - w) return;
     t.style.paddingRight = w + 'px';
     const mb = parseFloat(getComputedStyle(t).marginBottom) || 0;
     const lv = level(t, tl), th = tl.offsetHeight;
@@ -787,13 +836,27 @@ function pinLayout() {           // phones: the buttons pinned to the bottom of 
   }
   // 1.42.0: Display sits at the bottom of the Navigation menu; on a page with no sections (no menu) it stays in the corner
   const disp = conEl('display-btn'), foot = conEl('sn-foot'), inCorner = r.dataset.navempty === '1' && r.dataset.narrow !== '1';
-  if (disp && foot && corner) { if (inCorner && disp.parentNode !== corner) corner.append(disp); else if (!inCorner && disp.parentNode !== foot) foot.append(disp); }
+  // 1.57.0: on such a page it goes in the top bar, beside Search, where it covers nothing (in the corner it hid the end of tables)
+  const acts = document.querySelector('header.top .top-acts');
+  if (disp && foot && acts) { if (inCorner && disp.parentNode !== acts) acts.prepend(disp); else if (!inCorner && disp.parentNode !== foot) foot.append(disp); }
   r.dataset.tabup = '0'; if (tab) tab.style.bottom = '';
   if (r.dataset.narrow !== '1' || !corner) { r.style.removeProperty('--pin-h'); if (job) job.style.bottom = ''; return; }
   const cr = corner.getBoundingClientRect();
   r.style.setProperty('--pin-h', Math.round(cr.height) + 'px');
   if (job) job.style.bottom = Math.round(innerHeight - cr.top + 8) + 'px';
 }
+// 1.57.0: on a phone, the Navigation and Display bar at the bottom slips away while you scroll down the page and comes back as soon
+// as you scroll up (or reach the end), so it does not take that space the whole time. Never while it has the focus.
+let BARY = 0;
+window.addEventListener('scroll', () => {
+  const r = document.documentElement, y = window.scrollY, corner = document.getElementById('corner');
+  if (r.dataset.narrow !== '1' || !corner) { if (r.dataset.barhide) delete r.dataset.barhide; BARY = y; return; }
+  const end = y + innerHeight >= document.documentElement.scrollHeight - 40;
+  if (corner.contains(document.activeElement) || end || y < 80) delete r.dataset.barhide;
+  else if (y > BARY + 30) r.dataset.barhide = '1';
+  else if (y < BARY - 10) delete r.dataset.barhide;
+  if (Math.abs(y - BARY) > 10) BARY = y;
+}, { passive: true });
 function conLayout() {
   pinLayout();
   const c = conEl('console'), r = document.documentElement; if (!c) return;

@@ -139,9 +139,11 @@ with sync_playwright() as pw:
     ov = pg.evaluate("(() => { const a = document.getElementById('console').getBoundingClientRect(), b = document.getElementById('corner').getBoundingClientRect(); return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom; })()")
     check(not ov, 'the console does not cover the Debug and Display buttons')
     pg.goto(f'{BASE}/#/plant/P-024'); pg.wait_for_timeout(2500)
-    pane = pg.evaluate("(() => { const p = document.querySelector('.plant .pane:last-child').getBoundingClientRect(), c = document.getElementById('console').getBoundingClientRect(); return [Math.round(p.bottom), Math.round(c.top)]; })()")
+    pane = pg.evaluate("(() => { const p = document.querySelector('.plant .pane:last-child').getBoundingClientRect(), c = document.getElementById('console').getBoundingClientRect(); return [Math.round(p.bottom), Math.round(c.top), Math.round(p.height)]; })()")
     pg.screenshot(path=f'{OUT}/audit-console-plant.png')
-    check(pane[0] <= pane[1] + 2 or pane[0] - pane[1] < 200, f'plant page halves end near the console ({pane[0]} vs {pane[1]})')
+    # 1.57.0: or the halves are at their smallest (360 px, fitPanes), where the page scrolls instead: the plant's name, Previous and Next
+    # and the filters above them leave less than that in a 900 px window with the console open
+    check(pane[0] <= pane[1] + 2 or pane[0] - pane[1] < 200 or pane[2] <= 362, f'plant page halves end near the console ({pane[0]} vs {pane[1]}, {pane[2]} high)')
     pg.locator('[data-act=conclose]').click(); pg.wait_for_timeout(400)
     check(not pg.locator('#console').is_visible() and pg.evaluate("document.activeElement.id === 'debug-btn' || document.activeElement.tagName === 'H1'"),
           'Close hides it and puts you on the Debug button, or the page heading when Debug is not on the page')
