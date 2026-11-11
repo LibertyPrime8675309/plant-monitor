@@ -1749,7 +1749,7 @@ html[data-narrow="1"] .mi-head .pr-badge{white-space:normal;max-width:100%;displ
 .has-fold{position:relative}
 .has-fold>.sec-tools{position:absolute;top:.3rem;right:0;display:flex;gap:.5rem;align-items:center;z-index:14}
 .sec-tools .rd-btn{position:static;margin:0}
-.sec-fold{display:inline-flex;gap:.35rem;align-items:center;white-space:nowrap}
+.sec-fold{display:inline-flex;gap:.35rem;align-items:center;justify-content:center;white-space:nowrap;min-width:5.6em}     /* 1.56.3: Show and Hide take the same room, so it does not shift */
 .has-fold>:is(h1,h2,h3).sec-keep,main section.blk.has-rd.has-fold>h2,section.needs.has-rd.has-fold>h2{padding-right:var(--tools-w,7rem)}
 .sec-head-row>.sec-tools{display:inline-flex;gap:.5rem;align-items:center;margin-left:auto}
 .sec-bare,.sec-inline{display:flex;justify-content:flex-end;gap:.5rem;margin:-.2rem 0 .5rem}
@@ -1781,6 +1781,11 @@ html[data-narrow="1"] table.lt-sum-tbl td::before{content:attr(data-h);display:b
 main section.blk>header.sec-head{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem 1rem;position:sticky;top:var(--top-h);z-index:13;background:var(--paper);margin:0 0 .6rem;padding:.45rem 0 .35rem}
 main section.blk>header.sec-head>h2{margin:0}
 header.sec-head>.sec-tools{margin-left:auto}
+/* 1.56.3: a title row with buttons beside the title (Your lights, Your light spots) keeps the line above it like every other
+   section, and its Read aloud and Show/Hide stay at the right end whether the section is open or folded: other buttons in the
+   row (Add a light, Compare lights) come before them, never after. */
+section.blk>header.sec-head{border-top:2px solid var(--ink);padding-top:.8rem}
+.sec-head-row>.sec-tools,header.sec-head>.sec-tools{order:99;margin-left:auto}
 .lt-spots{display:grid;gap:.7rem}
 details.lt-spot-fold{padding:0}
 details.lt-spot-fold>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1.2rem minmax(0,1fr);gap:.2rem .6rem;align-items:baseline;padding:.7rem 1rem}
@@ -1823,3 +1828,7 @@ ul.lt-plants.lt-two{grid-template-columns:repeat(auto-fit,minmax(max(min(100%,19
 .whs-pick .f{flex:1 1 13rem;min-width:0}
 .whs-pick select,.whs-pick input{max-width:100%}
 .whs-card .row{margin:.2rem 0 .4rem}
+.sec-tools{flex-wrap:wrap;max-width:100%;justify-content:flex-end}   /* 1.56.3: on a phone with the largest text, Read aloud and Show/Hide wrap rather than overflow */
+.sec-head-row>.sec-tools,header.sec-head>.sec-tools{flex:0 0 auto}   /* 1.56.3: the title's other buttons give way, so Hide stays on the right edge */
+.fold-click,header.sec-head:has(.fold-click),main h2:has(+ .sec-bare){cursor:pointer}     /* 1.56.3: a title folds its section when pressed */
+details.grp>summary>.det-tools{margin-left:auto;padding-left:1rem}

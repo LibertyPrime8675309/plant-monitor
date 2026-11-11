@@ -28,6 +28,5 @@
 .cmp-colset{border:0;padding:0;margin:.4rem 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(16rem,100%),1fr));gap:0 1rem}
 .cmp-colset .chk{display:flex;gap:.5rem;align-items:center;min-height:2.75rem}
 .cmp-try-sum{padding-left:1.2em} .cmp-try-sum li{margin:.3rem 0;max-width:75ch}
-#cmp-ltlink{margin-left:auto}
 html[data-role=viewer] :is([data-act=cmpnew]){display:none!important}
 .tbl-wrap.wide.cmp-wrap,#cmp-side-wrap{max-height:none;overflow:visible}   /* "wide" only keeps the app's own stacking off: the page draws cards itself */

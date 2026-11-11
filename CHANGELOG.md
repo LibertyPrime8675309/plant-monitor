@@ -3,6 +3,8 @@
 ## 1.56.3 (2026-11-10)
 - **Plants without a spot** (on Rooms and spots, was "Spots to sort out"). Choosing a spot that is already there, in another area or room, now works: before, nothing moved and the old suggestion came back. Each group of plants has an **Area or room** list and a **Spot** list with that area's spots or **A new spot…**, and its own **Put in this spot** button; untick a plant to leave it for later. Plants with nothing written on them are listed too.
 - The **All plants** page is titled "All plants" (it said "Outdoor plants").
+- **Hide and Show stay in one place.** In every section the button sits at the right end of the title bar and does not move when you press it (on Grow lights it used to jump between "Hide" and "Show"). Your lights and Your light spots have the line above their titles like the other sections.
+- **Every section folds from its title**: pressing the title, or an empty part of its bar, does what Hide or Show does. The groups that already folded that way (Time to fertilize and Resting on Fertilizer, the groups on Today and Turn the pots) now have a Hide or Show button too.
 
 ## 1.56.2 (2026-11-10)
 - **Changing a light whose figures go over 1,000 works again.** The listing window on Compare lights and **Change** on Grow lights wrote "2,496" with a comma, then read the comma as the break between two distances (the message said "496" needs a distance in inches and a PPFD). They now write 2496, and a figure typed with a thousands comma is read whole.

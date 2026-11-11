@@ -196,6 +196,21 @@ with sync_playwright() as p:
     pg.add_init_script("localStorage.setItem('plantdb.editor','Light Test')")
     pg.goto(LOCAL + '/#/lights'); pg.wait_for_timeout(2500)
     check(pg.locator('#lt-rooms .lt-room').count() == 5 and 'Big Brown Hutch' in pg.inner_text('#lt-rooms') and 'Living room window' in pg.inner_text('#lt-rooms'), 'the page lists his rooms with the spot on its shelf')
+    # 1.56.3 (Ethan, November 10): each section has the line above its title, and Show/Hide stays put when it is pressed
+    secs = ['lt-lights', 'lt-spots', 'lt-rooms', 'lt-plan']
+    lined = pg.evaluate("ids => ids.map(id => { const s = document.getElementById(id), h = s.querySelector(':scope > header') || s.querySelector(':scope > h2'); return parseFloat(getComputedStyle(h).borderTopWidth) > 0; })", secs)
+    check(all(lined), f'every Grow lights section has the line above its title ({lined})')
+    xs = lambda: [round(pg.locator(f'#{s} .sec-fold').bounding_box()['x']) for s in secs]
+    before = xs()
+    for s_ in secs: pg.click(f'#{s_} .sec-fold'); pg.wait_for_timeout(150)
+    after = xs()
+    for s_ in secs: pg.click(f'#{s_} .sec-fold'); pg.wait_for_timeout(150)
+    check(before == after and len(set(before)) == 1, f'Show/Hide sits at the same place in every section, open or folded ({before} / {after})')
+    fd = lambda s: pg.locator(f'#{s}').get_attribute('data-folded')
+    for s_ in ('lt-lights', 'lt-rooms'):
+        pg.locator(f'#{s_} h2').first.click(); pg.wait_for_timeout(150); f1 = fd(s_)
+        pg.locator(f'#{s_} h2').first.click(); pg.wait_for_timeout(150)
+        check(f1 == '1' and fd(s_) == '0', f'pressing the {s_} title folds the section and pressing it again opens it')
     check('SANSI-80W-TEST' in pg.inner_text('#lt-lights') and pg.locator('#lt-lights .lt-ed:visible').count() == 0, '1.39.1: each light shows its model as text; the edit fields wait behind a button')
     pg.locator('[data-act=ltedit]').first.click(); pg.wait_for_timeout(300)
     check('Manufacturer model' in pg.inner_text('#lt-lights') and pg.locator('#lt-lights [data-k=model]').evaluate_all("els => els.some(e => e.value === 'SANSI-80W-TEST')"), 'each light shows its manufacturer model (1.29.0: in a box you can type in)')

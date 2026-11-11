@@ -86,7 +86,12 @@ with sync_playwright() as p:
     pg.select_option('select[data-act=turnevery]', '10'); pg.wait_for_timeout(1500)
     check(T()['every'] == 10 and pg.locator('select[data-act=turnevery]').input_value() == '10', 'choosing 10 days saves it')
     nv = pg.locator('.tn-never [data-act=turnedall]')
-    pg.locator('.tn-never > summary').click()
+    # 1.56.3 (Ethan, November 10): a group that folds by its title bar has a Show/Hide button at the right of the bar too
+    fb = pg.locator('.tn-never > summary .det-fold')
+    check(fb.count() == 1 and 'Show' in fb.inner_text() and fb.get_attribute('aria-expanded') == 'false', 'the folded group has a Show button')
+    x0 = fb.bounding_box()['x']; fb.click(); pg.wait_for_timeout(200)
+    check(pg.locator('.tn-never').evaluate('d => d.open') and 'Hide' in fb.inner_text() and fb.get_attribute('aria-expanded') == 'true'
+          and abs(fb.bounding_box()['x'] - x0) < 1, 'pressing it opens the group, it says Hide, and it stays where it was')
     n_never = T()['counts']['never']
     nv.click(); pg.wait_for_selector('dialog[open]')
     check(f'Mark {n_never} pots as turned today?' in pg.inner_text('dialog[open]'), 'I turned all ... asks first')
