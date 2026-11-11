@@ -1,4 +1,4 @@
-"""Batch C8 (1.57.0): Ethan's repotted moth orchid from his mother's house in Baraboo, Wisconsin (photos of July 31, 2026; told to Claude on November 11).
+"""Batch C9 (1.57.0): Ethan's repotted moth orchid from his mother's house in Baraboo, Wisconsin (photos of July 31, 2026; told to Claude on November 11).
 
 A new page, since the plant had none. Ethan's account (chat, November 11), dated July 31 like his photos: he removed the rotted roots, set the healthy aerial roots
 so most of them are in the medium instead of hanging out of the pot, drilled drainage holes in the grey pot (it had none), and
@@ -6,11 +6,11 @@ the medium is almost entirely orchid bark. The page starts from the other moth o
 temperature, light, humidity, feeding, pests) and says what is different about this plant: how it grows now, the repot, the photos.
 The repot is logged as Repotted on 2026-07-31 with the bark mix it was done with (the batch can carry a care log and a pot mix
 for a new page: 'care' and 'pot_mix' on the plant, see apply_batches). Photos: all from July 31 (before and after). The page itself ('dated') is dated July 31, not the day it was added.
-Run: python3 dev/seed_src/build_batchC8.py <plants.db with batches up to C7>"""
+Run: python3 dev/seed_src/build_batchC9.py <plants.db with batches up to C7>"""
 import json, os, sqlite3, sys
 from PIL import Image, ImageOps
 REPO = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
-RAW, PH = REPO + '/dev/photos-raw/rawC8', REPO + '/app/seed/photos'
+RAW, PH = REPO + '/dev/photos-raw/rawC9', REPO + '/app/seed/photos'
 c = sqlite3.connect(sys.argv[1]); c.row_factory = sqlite3.Row
 FIELD_NAMES = [r[1] for r in c.execute('PRAGMA table_info(plants)')
                if r[1] not in ('id', 'code', 'version', 'status', 'created_at', 'created_by', 'updated_at', 'updated_by')]
@@ -20,7 +20,7 @@ L = lambda *x: '\n'.join(x)
 D, SRC = 'July 31', 'Ethan, July 31'
 
 def pic(key):
-    f = f'img_c8_{key}.jpg'
+    f = f'img_c9_{key}.jpg'
     im = ImageOps.exif_transpose(Image.open(f'{RAW}/{key}.jpg')).convert('RGB'); im.thumbnail((1280, 1280)); im.save(f'{PH}/{f}', 'JPEG', quality=80, optimize=True)
     return f
 photos = [
@@ -66,10 +66,10 @@ p.update(
            'note': 'Removed the rotted roots, set the healthy aerial roots into the mix, drilled drainage holes in the grey pot; almost entirely orchid bark (Ethan, July 31)'}],
     pot_mix={'mixed_on': '2026-07-31', 'parts': [{'key': 'orchid-bark', 'parts': 1}],
              'notes': 'Almost entirely orchid bark; the rest is not recorded (Ethan, July 31); he does not know what else is in it. Grey pot with drainage holes added (no saucer in the after photos).'},
-    requests=[{'key': 'c8-orchid-update', 'kind': 'question',
+    requests=[{'key': 'c9-orchid-update', 'kind': 'question',
                'text': "Next time you see it, or ask your mother: where is it now (indoors, in a bright window?), is the old flower spike still green (a live node can grow a keiki), what else is in the bark mix, and has it flowered since July?"}],
     dated='2026-07-31', photos=photos)
-batch = {'id': 'C8', 'created': '2026-11-11', 'author': "Ethan's repotted moth orchid from Baraboo (photos of July 31, 2026)",
+batch = {'id': 'C9', 'created': '2026-11-11', 'author': "Ethan's repotted moth orchid from Baraboo (photos of July 31, 2026)",
          'homes_add': [{'name': 'Baraboo, WI', 'lat': 43.4711, 'lon': -89.7443, 'tz': 'America/Chicago'}], 'plants': [p]}
-json.dump(batch, open(os.path.join(REPO, 'app/seed/batches/batchC8.json'), 'w', encoding='utf-8'), indent=1, ensure_ascii=False)
-print('wrote batchC8.json:', len(photos), 'photos')
+json.dump(batch, open(os.path.join(REPO, 'app/seed/batches/batchC9.json'), 'w', encoding='utf-8'), indent=1, ensure_ascii=False)
+print('wrote batchC9.json:', len(photos), 'photos')

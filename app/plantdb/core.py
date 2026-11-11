@@ -460,7 +460,7 @@ def find_plant(c, u):
 
 def batch_pot_mix(c, m, r, care_id, who, ts, label):
     """Record what a pot is in from a batch ({mixed_on, parts: [{key, grade?, parts}], top?, bottom?, notes}); r is the plant's row.
-    Used by pot_mixes_add (by code, only where nothing is recorded) and by a new page's own pot_mix (C8)."""
+    Used by pot_mixes_add (by code, only where nothing is recorded) and by a new page's own pot_mix (C9)."""
     am = {k: (i, n, ro) for i, k, n, ro in c.execute('SELECT id, key, name, role FROM amendments')}
     parts = [{'amendment_id': am[x['key']][0], 'name': am[x['key']][1], 'role': am[x['key']][2], 'grade': x.get('grade', ''), 'parts': x.get('parts'), 'amount': x.get('amount', '')}
              for x in m.get('parts', []) if x['key'] in am]
@@ -496,8 +496,8 @@ def apply_batches(c):
                 n = c.execute("SELECT COALESCE(MAX(CAST(SUBSTR(code,3) AS INTEGER)),0)+1 FROM plants").fetchone()[0]
                 code = f'P-{n:03d}'
                 cols = ['code'] + FIELD_NAMES + ['version', 'status', 'created_at', 'created_by', 'updated_at', 'updated_by']
-                tp = p['dated'] + 'T12:00:00Z' if p.get('dated') else ts      # C8: a page can carry the date it really dates from (the photos')
-                if p.get('home_near'):                                          # C8: the home it lives at, found by its place (added by homes_add above)
+                tp = p['dated'] + 'T12:00:00Z' if p.get('dated') else ts      # C9: a page can carry the date it really dates from (the photos')
+                if p.get('home_near'):                                          # C9: the home it lives at, found by its place (added by homes_add above)
                     hm = c.execute('SELECT id FROM locations WHERE ABS(lat-?)<0.05 AND ABS(lon-?)<0.05', (p['home_near']['lat'], p['home_near']['lon'])).fetchone()
                     if hm: p = {**p, 'home_id': hm[0]}
                 p = {**p, 'site': p.get('site') or 'Outdoors'}          # so later batches in the same start-up can expect it
@@ -520,7 +520,7 @@ def apply_batches(c):
                           (pid, 1, json.dumps(snapshot(c, pid)), who, tp, 'Initial record from photo analysis (%s)' % label))
                 c.execute("INSERT INTO audit_log(plant_id,plant_code,version,action,field,old_value,new_value,changed_by,changed_at,note) VALUES(?,?,?,?,?,?,?,?,?,?)",
                           (pid, code, 1, 'create', None, None, None, who, tp, 'Record created from photos (%s)' % label))
-                # C8: a new page can come with its own care log and potting mix (a repot logged with the mix it was done with)
+                # C9: a new page can come with its own care log and potting mix (a repot logged with the mix it was done with)
                 care_id = None
                 for cl in p.get('care', []):
                     cid = c.execute('INSERT INTO care_log(plant_code,kind,done_on,note,created_by,created_at) VALUES(?,?,?,?,?,?)',

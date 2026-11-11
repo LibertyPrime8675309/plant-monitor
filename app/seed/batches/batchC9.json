@@ -1,5 +1,5 @@
 {
- "id": "C8",
+ "id": "C9",
  "created": "2026-11-11",
  "author": "Ethan's repotted moth orchid from Baraboo (photos of July 31, 2026)",
  "homes_add": [
@@ -132,7 +132,7 @@
    },
    "requests": [
     {
-     "key": "c8-orchid-update",
+     "key": "c9-orchid-update",
      "kind": "question",
      "text": "Next time you see it, or ask your mother: where is it now (indoors, in a bright window?), is the old flower spike still green (a live node can grow a keiki), what else is in the bark mix, and has it flowered since July?"
     }
@@ -140,31 +140,31 @@
    "dated": "2026-07-31",
    "photos": [
     {
-     "file": "img_c8_after_front.jpg",
+     "file": "img_c9_after_front.jpg",
      "caption": "July 31: after the repot, from the front: roots set into the bark, the old stake and a clip holding the new upright leaf",
      "primary": true,
      "source": "Ethan, July 31"
     },
     {
-     "file": "img_c8_after_side.jpg",
+     "file": "img_c9_after_side.jpg",
      "caption": "July 31: after the repot, from the side: a few healthy roots over the rim",
      "primary": false,
      "source": "Ethan, July 31"
     },
     {
-     "file": "img_c8_crown_roots.jpg",
+     "file": "img_c9_crown_roots.jpg",
      "caption": "July 31: close up of the crown: fresh green root tips, dried leaf bases beside the stake",
      "primary": false,
      "source": "Ethan, July 31"
     },
     {
-     "file": "img_c8_crown_clip.jpg",
+     "file": "img_c9_crown_clip.jpg",
      "caption": "July 31: close up of the crown with the clip on the upright leaf; dried, browning leaf bases to watch for rot",
      "primary": false,
      "source": "Ethan, July 31"
     },
     {
-     "file": "img_c8_before.jpg",
+     "file": "img_c9_before.jpg",
      "caption": "July 31: before the repot: no drainage holes, on a white saucer, roots hanging out of the pot and over the rim",
      "primary": false,
      "source": "Ethan, July 31"
