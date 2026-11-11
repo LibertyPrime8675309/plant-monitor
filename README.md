@@ -1521,6 +1521,16 @@ A plant in a pot slowly fills it with roots and wears out its soil. Most want a 
 - **On Today:** a **Repot this spring** section and a **Repot (N)** jump button from four weeks before the season until the end of May; the rest of the year Today says nothing about it.
 - Each repotting is a "Repotted" entry in the care log, with the usual **Undo**. The plan follows the home you are looking at. The season is spring in the northern hemisphere for now; a home with no winter (1.48.0) still gets the March-to-May words.
 
+## Cuttings (prototype)
+
+Keep track of cuttings, divisions, pups, air layers and seeds from your plants, from the day you take them until they are potted up. **Today → Cuttings**.
+
+- **Take cuttings** (on the page, or under the care buttons on a plant's page): which plant, how (stem cuttings, leaf cuttings, division, offsets or pups, air layering, seed), what they are rooting in (water, potting mix, sphagnum moss, perlite, LECA, still on the plant, other), how many pieces, the day you took them, and a note.
+- **Once a week** each batch comes up on Today under **Cuttings to look at**, with a **Cuttings (N)** jump button. Press **Has roots** (or **Seedlings are up**), or **No roots yet** to be asked again in a week. A batch with roots asks the same way until you press **Potted up**.
+- **The page:** **Look at these today**, **Still rooting**, **Has roots, waiting for a pot**, **Finished in the last 90 days** (potted up, given away, or did not take), and tips for rooting. Each batch says how long ago it was taken and how long that kind usually takes.
+- **Change** sets any field, including **Given away** (with who to) and **Did not take**, or removes the batch from the record (it asks first).
+- Every change is in the plant's history and the Audit log, under the plant the cuttings came from. People who can only view see the cuttings but not the buttons.
+
 ## Turn the pots (from 1.44.0)
 
 A plant by a window grows toward the light and leans. A quarter turn every week or two, always the same way round, keeps it straight and full. **Care → Turn the pots** reminds you, the way watering reminders do.

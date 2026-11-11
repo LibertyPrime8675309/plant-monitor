@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.57.0 (coming December 1, 2026)
+- **Cuttings** (prototype, Today → Cuttings): keep track of cuttings, divisions, pups and seeds from your plants until they are potted up. **Take cuttings** on the page or on a plant's page. Each batch comes up on Today once a week so you remember to look for roots, with **Has roots**, **No roots yet** and **Potted up**; **Change** for given away, did not take, or to remove it.
+
 ## 1.56.3 (2026-11-10)
 - **Plants without a spot** (on Rooms and spots, was "Spots to sort out"). Choosing a spot that is already there, in another area or room, now works: before, nothing moved and the old suggestion came back. Each group of plants has an **Area or room** list and a **Spot** list with that area's spots or **A new spot…**, and its own **Put in this spot** button; untick a plant to leave it for later. Plants with nothing written on them are listed too.
 - The **All plants** page is titled "All plants" (it said "Outdoor plants").
