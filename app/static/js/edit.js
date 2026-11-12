@@ -94,7 +94,7 @@ const GROUPS = [
   ['Nutrients', ['fertilizer', 'npk_ratio', 'fert_strength', 'nutrients', 'fert_from_month', 'fert_to_month', 'fert_every_days']],
   ['Winter plan', ['winter_plan', 'winter_summary', 'winter_triggers', 'winter_steps', 'indoor_setup']],
   ['Health', ['health_rating', 'health_summary', 'health_observations', 'health_steps']],
-  ['Pests and diseases', ['pests_watch', 'pest_steps', 'pests_current', 'pests_found', 'leaf_type', 'pot_size']],
+  ['Pests and diseases', ['pests_watch', 'pest_steps', 'pests_current', 'pests_found', 'browse_risk', 'leaf_type', 'pot_size']],
   ['Notes', ['notes']],
 ];
 const HINTS = {
@@ -109,6 +109,7 @@ const HINTS = {
   pests_found: 'One per line, from: Spider mites, Mealybugs, Scale, Aphids, Whiteflies, Thrips, Ants, Fungus gnats, Root mealybugs, Slugs or snails, Pill bugs or earwigs, Other. The plant page has tick boxes for these.',
   npk_ratio: 'Three numbers for nitrogen, phosphate and potash, such as 3-1-2. The Fertilizer page finds your closest fertilizer.',
   fert_strength: 'How strong to mix it. The Fertilizer page works out the amount per gallon from this.',
+  browse_risk: 'How likely rabbits, rats and mice are to eat this plant. Leave it empty to use the usual for this kind of plant. The page Pests that eat plants uses it.',
   pet_safety: 'Used by the Pets filter on the Plants page. "Safe for pets" only where the ASPCA lists the plant as non-toxic.',
   home_id: 'Where the plant lives. Weather, frost warnings and watering for a home only list its own plants.',
   heat_zone_high: 'AHS heat zone, 1 to 12: the hottest it is listed for, such as 12.', heat_zone_low: 'AHS heat zone, 1 to 12: the coolest it is listed for, such as 1.', heat_zone_source: 'Where the range came from: a title, a | and the web address.',
