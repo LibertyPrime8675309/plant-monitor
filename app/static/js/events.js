@@ -256,9 +256,9 @@ const acts = {
     await guard(async () => { await api('DELETE', '/api/where/spots/' + el.dataset.id); META = await api('GET', '/api/meta'); toast('Spot removed'); route(); }); },
   async whsort() {                                   // 1.56.3: every group at once
     if (!(await needName())) return;
-    const items = WHSORT.map((_, i) => whsItem(i)).filter(x => x && x.codes.length);
+    const items = WHSORT.map((_, i) => whsItem(i)).filter(x => x && x.codes.length), kept = whsKeep(-1);   // 1.58.0: kept for any group left
     await guard(async () => { const r = await api('POST', '/api/where/sort', { items }); META = await api('GET', '/api/meta');
-      toast(`${r.moved} plant${r.moved === 1 ? '' : 's'} put in their spots${r.made.length ? `. New spot${r.made.length === 1 ? '' : 's'}: ${r.made.join('; ')}` : ''}.`); await route();
+      toast(`${r.moved} plant${r.moved === 1 ? '' : 's'} put in their spots${r.made.length ? `. New spot${r.made.length === 1 ? '' : 's'}: ${r.made.join('; ')}` : ''}.`); await route(); whsRestore(kept);
       const h = document.querySelector('#wh-sort h2'); if (h) h.focus(); });
   },
   async whsone(el) {                                 // 1.56.3: one group; the focus goes on to the next
@@ -267,8 +267,9 @@ const acts = {
     if (!item.codes.length) { toast('Tick at least one plant to put in this spot.', true); return; }
     if (!item.spot_id && !String(item.name || '').trim()) { toast('Type the name of the new spot, or choose one of the spots.', true); return; }
     const where = item.spot_id ? document.querySelector(`[data-whs="${i}"][data-k=spot] option:checked`).textContent : item.name.trim();
+    const kept = whsKeep(i);                         // 1.58.0: what was chosen in the other groups survives the redraw
     await guard(async () => { const r = await api('POST', '/api/where/sort', { items: [item] }); META = await api('GET', '/api/meta');
-      toast(`${r.moved} plant${r.moved === 1 ? '' : 's'} put in ${where}${r.made.length ? ' (a new spot)' : ''}.`); await route();
+      toast(`${r.moved} plant${r.moved === 1 ? '' : 's'} put in ${where}${r.made.length ? ' (a new spot)' : ''}.`); await route(); whsRestore(kept);
       const next = document.querySelector(`#whs-${i} [data-k=area]`) || document.querySelector('#wh-sort h2') || document.querySelector('main h1'); if (next) next.focus(); });
   },
   async ctadd(el) { if (!(await needName())) return;
