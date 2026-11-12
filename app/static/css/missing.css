@@ -1,0 +1,10 @@
+/* Missing details (#/missing, js/missing.js; prototype proto/missing-details) */
+.ms-jumps ul{list-style:none;display:flex;flex-wrap:wrap;gap:.5rem;padding:0;margin:.4rem 0 1.2rem}
+.ms-list .job-acts{min-width:min(16rem,100%)}
+.ms-form{display:flex;flex-direction:column;gap:.3rem;margin:0}
+.ms-form .f{font-weight:600;margin:0}
+.ms-in{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+.ms-in select,.ms-in input{flex:1 1 9rem;min-width:0;max-width:100%}
+.ms-in .btn{flex:0 0 auto}
+@media (max-width:640px){.ms-list .job-acts{min-width:0}.ms-form{width:100%}}
+html[data-role=viewer] .ms-form{display:none!important}
