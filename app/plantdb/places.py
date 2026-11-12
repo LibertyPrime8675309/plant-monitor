@@ -24,10 +24,11 @@ def migrate_places(c):
                    st('forecast'), st('weather_status'), st('wx_detail_since'), now()))
     c.commit()
 
-LOC_COLS = ('id', 'name', 'lat', 'lon', 'tz', 'enabled', 'is_home', 'device', 'detail_since', 'note', 'created_at', 'plants_here', 'country', 'units', 'season')   # 1.48.0: the last three make a home a site
+LOC_COLS = ('id', 'name', 'lat', 'lon', 'tz', 'enabled', 'is_home', 'device', 'detail_since', 'note', 'created_at', 'plants_here', 'country', 'units', 'season', 'tended')   # 1.48.0: the last three make a home a site
 def loc_dict(r):
     d = {k: (r[k] if k in r.keys() else 0) for k in LOC_COLS}
     d['enabled'], d['is_home'], d['plants_here'] = bool(d['enabled']), bool(d['is_home']), bool(d['plants_here']) or bool(d['is_home'])
+    d['tended'] = bool(r['tended']) if 'tended' in r.keys() else True       # 1.58.0: False = its plants are cared for outside the app
     for k in ('country', 'units'): d[k] = d[k] or ''
     d['season'] = d['season'] if d['season'] in SEASONS else 'temperate'
     return d
@@ -121,6 +122,9 @@ def site_fields(c, pid, b):
         u = str(b.get('units') or '').strip()
         if u and u not in UNIT_REGIONS: abort(400, 'Units must be one of: ' + ', '.join(UNIT_REGIONS))
         c.execute('UPDATE locations SET units=? WHERE id=?', ('' if u == 'us' else u, pid))
+    if 'tended' in b:                                      # 1.58.0: is care for this home's plants logged in the app?
+        on = str(b.get('tended')).strip().lower() not in ('0', 'false', 'no', '')
+        c.execute('UPDATE locations SET tended=? WHERE id=?', (1 if on else 0, pid))
     if 'season' in b:
         se = str(b.get('season') or 'temperate').strip()
         if se not in SEASONS: abort(400, 'Season must be one of: ' + ', '.join(SEASONS))

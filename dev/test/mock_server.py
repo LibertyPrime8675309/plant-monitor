@@ -109,6 +109,7 @@ def mock_push_run():                     # the clock-driven sends, now, as if it
     try:
         if b.get('what') == 'cold': S.push_cold(c)
         elif b.get('what') == 'sensors': S.push_sensors(c)
+        elif b.get('what') == 'cover': S.push_cover(c, b.get('hour'))
         else: S.push_due(c)
     finally: c.close()
     return S.jsonify(ok=True)

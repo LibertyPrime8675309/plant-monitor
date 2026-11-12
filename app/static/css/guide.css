@@ -1,0 +1,8 @@
+/* Propagation and breeding guide (1.57.0): #/guide, and the "How to" links beside a plant's propagation methods */
+.gd-goals{list-style:none;padding:0;margin:.6rem 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,22rem),1fr));gap:.6rem 1rem}
+.gd-goals li{border:var(--bw) solid var(--line);background:var(--sheet);padding:.6rem .9rem;min-width:0;overflow-wrap:anywhere}
+.gd-method h4{margin:1rem 0 .3rem}
+.gd-method ol,.gd-method ul{margin:.4rem 0 .6rem}
+.gd-method li{margin:.3rem 0}
+.gd-yours{margin:.9rem 0 .3rem;overflow-wrap:anywhere}
+.gd-how{margin-left:.4rem;white-space:nowrap}

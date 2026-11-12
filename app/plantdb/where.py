@@ -187,7 +187,7 @@ def place_climate(c, L):
     return out
 
 def place_brief(L):
-    return {k: L.get(k) for k in ('id', 'name', 'tz', 'is_home', 'enabled', 'plants_here', 'country', 'units', 'season')}   # 1.48.0: a home is a site
+    return {k: L.get(k) for k in ('id', 'name', 'tz', 'is_home', 'enabled', 'plants_here', 'country', 'units', 'season', 'tended')}   # 1.48.0: a home is a site; 1.58.0: tended
 
 def tzinfo(name):
     try:

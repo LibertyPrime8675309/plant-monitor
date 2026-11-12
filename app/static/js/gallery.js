@@ -107,7 +107,13 @@ function drawGrid() {
   const led = document.querySelector('.ledger'); if (led) led.innerHTML = rend(ledger());
   const mf = document.querySelector('#more-f > summary'); if (mf) { const n = moreOn(); mf.textContent = 'More filters' + (n ? ` (${n} on)` : ''); }
   const gt = document.getElementById('g-title'); if (gt) gt.textContent = G.status === 'archived' ? 'Archived plants' : 'All plants';
-  const wa = document.getElementById('wa-btn'); if (wa) { const n = r.filter(p => !isArch(p)).length; wa.textContent = `Water all ${n} shown`; wa.disabled = !n; }
+  const wa = document.getElementById('wa-btn');
+  if (wa) {                                   // 1.58.0: one home at a time, and never a home cared for outside the app
+    const W = waterAllList(), n = W.list.length;
+    wa.textContent = W.home ? `Water all ${n} shown at ${W.home.name}` : `Water all ${n} shown`; wa.disabled = !n;
+    const why = document.getElementById('wa-why'); if (why) why.textContent = W.untended ? `Plants at ${W.home.name} are cared for outside the app.` : n ? '' : (W.home ? `No plants at ${W.home.name} are shown.` : 'No plants are shown.');
+    const hint = document.getElementById('wa-hint'); if (hint) hint.textContent = waterAllWords(W);
+  }
   document.getElementById('count').textContent = `${r.length} of ${pool} ${G.status === 'archived' ? 'archived ' : G.status === 'all' ? '' : 'active '}plants shown`;
   document.getElementById('grid').innerHTML = r.length
     ? rend(r.map(sheet))
@@ -149,8 +155,8 @@ async function viewGallery(qs) {
       ${groupFilter()}${statusFilter()}
       <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70% (${lowN})</label>`, (G.health ? 1 : 0) + (G.group ? 1 : 0) + (G.status !== 'active' ? 1 : 0) + (G.low ? 1 : 0))}
     <p id="count" class="muted" aria-live="polite"></p>
-    <div class="water-all noprint"><button class="btn ghost" type="button" data-act="waterall" id="wa-btn">Water all</button>
-      <span class="hint">Marks every plant shown (with the filters above) as watered today. Plants already watered today are skipped.</span></div>
+    <div class="water-all noprint"><button class="btn ghost" type="button" data-act="waterall" id="wa-btn" aria-describedby="wa-why wa-hint">Water all</button><span class="why" id="wa-why"></span>
+      <span class="hint" id="wa-hint">Marks every plant shown (with the filters above) as watered today. Plants already watered today are skipped.</span></div>
     <h2 class="sr">The plants</h2><div class="grid" id="grid"></div>
     ${archN ? html`<p class="hint" style="margin-top:2rem">${archN} archived plant${archN === 1 ? ' is' : 's are'} hidden from this list. Choose <strong>Show: Active and archived</strong> in the filters to see ${archN === 1 ? 'it' : 'them'} too.</p>` : ''}`,
     after: drawGrid,
@@ -242,6 +248,21 @@ const homeOk = p => !G.home || !homeById(G.home) || String(plantHome(p).id) === 
 // (the same rule as plants_at() on the server), and whether a plant is one of them
 const placeHomeId = () => (META && META.place && META.place.plants_here && homeById(META.place.id)) ? META.place.id : mainHome().id;
 const atPlace = p => HOMES().length < 2 || String(plantHome(p).id) === String(placeHomeId());
+// 1.58.0: watering many plants at once counts the plants at one home only: the one chosen in the Home filter, else the home in use.
+// A home marked "cared for outside the app" (Homes and places) is never watered in bulk; a plant there can still be logged on its page.
+const homeTended = h => !h || h.tended !== false;
+const careHome = () => (G.home && homeById(G.home)) || homeById(placeHomeId()) || mainHome();
+function waterAllList() {
+  const shown = filteredPlants().filter(p => !isArch(p));
+  if (HOMES().length < 2) return { list: shown, home: null, away: 0, untended: false };
+  const h = careHome(), here = shown.filter(p => String(plantHome(p).id) === String(h.id)), untended = !homeTended(h);
+  return { list: untended ? [] : here, home: h, away: shown.length - here.length, untended };
+}
+function waterAllWords(W) {
+  if (!W.home) return 'Marks every plant shown (with the filters above) as watered today. Plants already watered today are skipped.';
+  if (W.untended) return `Choose another home in the Home filter to water its plants. To log care at ${W.home.name} again, change it on Homes and places.`;
+  return `Marks the plants shown at ${W.home.name} as watered today.${W.away ? ` The ${W.away} shown at other homes ${W.away === 1 ? 'is' : 'are'} left out: choose a home in the Home filter to water ${W.away === 1 ? 'it' : 'those'}.` : ''} Plants already watered today are skipped.`;
+}
 function homeFilter() {
   if (HOMES().length < 2) return '';
   return html`<label>Home<select data-f="home"><option value="">All homes</option>${HOMES().map(h => html`<option value="${h.id}" ${String(G.home) === String(h.id) ? raw('selected') : ''}>${h.name}</option>`)}</select></label>`;
@@ -419,11 +440,16 @@ function careKinds() {
 }
 async function groupCare() {
   const d = CURG; if (!d || !(await needName())) return;
+  // 1.58.0: a group can hold plants at several homes; only those at the home in use (and cared for in the app) start ticked
+  const homeOf = c => plantHome(PCODES.get(c)), hereH = homeById(placeHomeId()) || mainHome();
+  const ticked = HOMES().length < 2 ? d.codes : d.codes.filter(c => String(homeOf(c).id) === String(hereH.id) && homeTended(homeOf(c)));
+  const away = d.codes.length - ticked.length, awayHomes = [...new Set(d.codes.filter(c => !ticked.includes(c)).map(c => homeOf(c).name))].join(', ');
   const r = await modal(html`<form method="dialog"><h2>Log care for ${d.name}</h2>
     <label class="f">What did you do?<select name="kind">${careKinds()}</select></label>
     <label class="f">When<input type="date" name="day" value="${todayStr()}" max="${todayStr()}"></label>
     <label class="f">Note (optional)<input type="text" name="note" maxlength="500" placeholder="For example: repotted in the aroid mix"></label>
-    ${tickList(d.codes, d.codes, 'For these plants')}
+    ${away ? html`<p class="hint" id="gc-away">${away === 1 ? 'One of these plants is' : `${away} of these plants are`} at ${homeTended(hereH) ? awayHomes : `${awayHomes}, cared for outside the app`}, so ${away === 1 ? 'it starts' : 'they start'} unticked. Tick ${away === 1 ? 'it' : 'them'} if you cared for ${away === 1 ? 'it' : 'them'} too.</p>` : ''}
+    ${tickList(d.codes, ticked, 'For these plants')}
     <div class="row"><button class="btn" value="ok">Save for the ticked plants</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`, 'wide');
   if (r !== 'ok') return;
   const f = dlg.querySelector('form'), codes = tickedCodes(f);

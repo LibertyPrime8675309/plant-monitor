@@ -90,6 +90,11 @@ def water_report(c, codes=None):
         out.append(st)
     return {'today': today.isoformat(), 'avg_high': avg_high, 'rain': rain, 'rain_counts_in': RAIN_COUNTS_IN, 'plants': out}
 
+def home_today(c, home_id):
+    """1.58.0: today's date at a plant's home (home_id empty = the main home)."""
+    r = c.execute('SELECT tz FROM locations WHERE id=?', (home_id,)).fetchone() if home_id else None
+    return datetime.now(tzinfo(r[0] if r and r[0] else home_place(c)['tz'])).date()
+
 @app.route('/api/water')
 def water_api():
     return jsonify(water_report(db()))
@@ -113,22 +118,28 @@ def care():
     codes = b.get('plants') or ([b['plant']] if b.get('plant') else [])
     if not isinstance(codes, list) or not codes: abort(400, 'Choose at least one plant')
     codes = list(dict.fromkeys(str(x) for x in codes))[:300]
-    day = str(b.get('done_on') or local_today(c).isoformat())
-    try: date.fromisoformat(day)
-    except ValueError: abort(400, 'done_on must look like 2026-10-23')
-    if day > local_today(c).isoformat(): abort(400, 'That date is in the future')
+    given = str(b.get('done_on') or '')
+    if given:
+        try: date.fromisoformat(given)
+        except ValueError: abort(400, 'done_on must look like 2026-10-23')
+        if given > local_today(c).isoformat(): abort(400, 'That date is in the future')
     note = str(b.get('note') or '').strip()[:500]
     if kind == 'note' and not note: abort(400, 'Write the note')
     who, ids, skipped = editor(), [], []
+    tz_of = {}
     for code in codes:
         r = plant_row(c, code)
+        # 1.58.0: "today" is the day where the plant lives (a Nevada City plant logged late on a Texas evening keeps its own date)
+        hid = r['home_id'] if 'home_id' in r.keys() else None
+        if hid not in tz_of: tz_of[hid] = home_today(c, hid).isoformat()
+        day = given or tz_of[hid]
         # 1.21.0: a plant is watered at most once a day, so "Water all" and a second press skip it instead of logging it twice
         if kind == 'water' and c.execute("SELECT 1 FROM care_log WHERE plant_code=? AND kind='water' AND done_on=?", (r['code'], day)).fetchone():
             skipped.append(r['code']); continue
         ids.append(c.execute('INSERT INTO care_log(plant_code,kind,done_on,note,created_by,created_at) VALUES(?,?,?,?,?,?)',
                              (r['code'], kind, day, note, who, now())).lastrowid)
         audit_only(c, 'care', 'care_log', None, f'{CARE_KINDS[kind]} {day}' + (f': {note}' if note else ''), who,
-                   CARE_KINDS[kind] + (f': {note}' if note else '') + ('' if day == local_today(c).isoformat() else f' (for {day_words(day)})'), r['id'], r['code'])
+                   CARE_KINDS[kind] + (f': {note}' if note else '') + ('' if day == tz_of[hid] else f' (for {day_words(day)})'), r['id'], r['code'])
     c.commit()
     return jsonify(ids=ids, skipped=skipped, water=water_report(c, codes)['plants']), 201
 

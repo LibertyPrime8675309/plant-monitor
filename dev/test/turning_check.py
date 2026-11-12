@@ -21,7 +21,7 @@ def status(m, url, body=None):
 T = lambda: call('GET', '/api/turning')
 plants = {p['code']: p for p in call('GET', '/api/plants')}
 t0 = T(); listed = {p['code'] for p in t0['plants']}
-inside = {c for c, p in plants.items() if p['site'] in ('Indoors', 'Covered porch')}
+inside = {c for c, p in plants.items() if p['site'] in ('Indoors', 'Covered porch') and not p.get('home_id')}      # not the Baraboo orchid (batch C9)
 check(t0['every'] == 14 and listed == inside and all(p['state'] == 'never' for p in t0['plants']),
       f'a fresh install lists the {len(inside)} plants indoors or on the covered porch, every 14 days, none turned yet')
 check(not listed & {c for c, p in plants.items() if p['site'] == 'Outdoors'}, 'plants out in the open are not on the list')

@@ -567,18 +567,20 @@ const acts = {
     if (!(await confirmBox(`Mark ${codes.length} plants as watered today?`, 'Each one gets a "Watered" entry for today in its care log. You can remove any of them on the plant\'s page.', 'Mark as watered'))) return;
     await guard(async () => { const r = await api('POST', '/api/care', { plants: codes, kind: el.dataset.kind }); careUndoToast(codes.length + ' plants marked as watered' + offWhen(r), r && r.ids); await careRefresh(); });
   },
-  async waterall() {                    // 1.21.0: Plants page, every plant the filters show
-    const shown = filteredPlants().filter(p => !isArch(p)); if (!shown.length) return;
+  async waterall() {                    // 1.21.0: Plants page, every plant the filters show; 1.58.0: at one home (waterAllList)
+    const WAL = waterAllList(), shown = WAL.list;
+    if (WAL.untended) { toast(`Plants at ${WAL.home.name} are cared for outside the app, so Water all leaves them out. You can still log one on its own page.`); return; }
+    if (!shown.length) return;
     if (!(await needName())) return;
     await guard(async () => {
       const W = await api('GET', '/api/water'), done = new Set(W.plants.filter(w => w.last_water === W.today).map(w => w.code));
       const todo = shown.filter(p => !done.has(p.code)), skip = shown.length - todo.length;
       if (!todo.length) { toast(`All ${shown.length} plants shown were already watered today.`); return; }
       if (!(await confirmBox(`Mark ${todo.length} plant${todo.length === 1 ? '' : 's'} as watered today?`,
-        `These are the plants shown with your filters.${skip ? ` ${skip} of them ${skip === 1 ? 'was' : 'were'} already watered today and ${skip === 1 ? 'is' : 'are'} skipped.` : ''} Each gets a "Watered" entry for today in its care log.`, 'Mark as watered'))) return;
+        `These are the plants shown with your filters${WAL.home ? ` at ${WAL.home.name}` : ''}.${WAL.away ? ` The ${WAL.away} shown at other homes ${WAL.away === 1 ? 'is' : 'are'} left out.` : ''}${skip ? ` ${skip} of them ${skip === 1 ? 'was' : 'were'} already watered today and ${skip === 1 ? 'is' : 'are'} skipped.` : ''} Each gets a "Watered" entry for today in its care log.`, 'Mark as watered'))) return;
       const r = await api('POST', '/api/care', { plants: todo.map(p => p.code), kind: 'water' });
-      const nn = r.offline ? todo.length : r.ids.length;
-      careUndoToast(`${nn} plant${nn === 1 ? '' : 's'} marked as watered${skip ? ` (${skip} already watered today were skipped)` : ''}${offWhen(r)}`, r.ids);
+      const nn = r.offline ? todo.length : r.ids.length, sk = skip + (r.offline ? 0 : (r.skipped || []).length);   // the server also skips any it finds already watered
+      careUndoToast(`${nn} plant${nn === 1 ? '' : 's'} marked as watered${sk ? ` (${sk} already watered today ${sk === 1 ? 'was' : 'were'} skipped)` : ''}${offWhen(r)}`, r.ids);
     });
   },
   careother(el) { return careDialog(el.dataset.code, el.dataset.name); },
@@ -638,8 +640,8 @@ const changeActs = {
     await guard(async () => {
       await api('PUT', '/api/places/' + el.dataset.id, { [k]: v });
       META = await api('GET', '/api/meta');
-      toast(k === 'country' ? 'Country saved' : k === 'units' ? 'Units for this home saved' : 'Seasons saved');
-      if (k !== 'country') { ROUTE_FRESH = true; await route(); }        // units and seasons change what pages show
+      toast(k === 'country' ? 'Country saved' : k === 'units' ? 'Units for this home saved' : k === 'tended' ? (v === '0' ? 'Care there is done outside the app' : 'Care there is logged in this app') : 'Seasons saved');
+      if (k !== 'country') { ROUTE_FRESH = true; await route(); }        // (and 1.58.0: care, which changes Water all)        // units and seasons change what pages show
       const n = document.querySelector(`[data-act=placesite][data-id="${el.dataset.id}"][data-k="${k}"]`); if (n) n.focus({ preventScroll: true });
     });
   },
