@@ -7,10 +7,20 @@ updates:
     directories: ["/", "/speech"]                 # the picture checker's libraries are pinned in vision/Dockerfile itself
     schedule: { interval: weekly, day: monday }
     groups: { python: { patterns: ["*"] } }
+    ignore:
+      # November 11, 2026 (Ethan, closing #107): faster-whisper 1.2.1 passes an option PyAV 19 removed (see speech/requirements.txt),
+      # and the speech service is never run by GitHub's checks (they use a stand-in), so a green check would not catch it
+      - dependency-name: av
+        versions: [">=19"]
   - package-ecosystem: docker
     directories: ["/", "/vision", "/speech"]
     schedule: { interval: weekly, day: monday }
     groups: { images: { patterns: ["*"] } }
+    ignore:
+      # November 11, 2026 (Ethan, closing #104): a new Python version (3.12 to 3.15) is moved to on purpose, with full testing, not
+      # proposed weekly; the speech service's libraries had no build for 3.15 yet. Patch releases inside 3.12 still come in
+      - dependency-name: python
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: "/"
     schedule: { interval: weekly, day: monday }
