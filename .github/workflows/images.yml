@@ -30,7 +30,7 @@ jobs:
           - name: plant-database-speech
             dockerfile: speech/Dockerfile
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 2                                                     # 1.56.5: to see whether this push changed VERSION
       - id: ver
@@ -53,14 +53,14 @@ jobs:
           else
             echo "tags=ghcr.io/$owner/${{ matrix.name }}:$v,ghcr.io/$owner/${{ matrix.name }}:latest" >> "$GITHUB_OUTPUT"
           fi
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - if: github.event_name == 'push'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ matrix.dockerfile }}
