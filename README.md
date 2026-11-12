@@ -390,6 +390,15 @@ The filter row on the Plants page narrows the list. Every filter is remembered i
 - **Sort by:** code, health, ID confidence, recently updated, name, or group.
 - **Needs something from you** and **ID confidence under 70%.**
 
+## Missing details (prototype)
+
+Some pages need a detail about a plant to work for it, and quietly leave the plant out or use a guess without it. **Missing details** (the link on **All plants**, or Search for "missing") lists, detail by detail, the active plants at the home you are using that do not have it yet:
+
+- **Pot size** (grow-light spacing, the coming-inside checklist), **Leaf type** (the coming-inside checklist, the repotting plan), **Height with its pot** (shelves and grow light spots), **Coldest it can take** (the frost alert and cold-night checklist), **How often to check for water** (Water), **Feeding months** (the feeding calendar) and **Safety for pets** (the pets filter).
+- Each plant has a box and a **Save** button; Enter saves too, and the keyboard then moves to the next plant in the list. Heights and temperatures are typed in your own units. **Feeding months** has **Open Edit** instead, since it is three boxes.
+- Saving is an ordinary edit of the plant's page: it shows in Page history and the Audit log, and if someone else changed the plant in the meantime nothing is overwritten.
+- People who can only view see the lists but not the boxes.
+
 ## Previous and next plant (from 1.7.5)
 
 Every plant page has **Previous Plant** and **Next Plant** buttons, each showing the name and code of the plant it leads to. On a wide screen they sit in the margins either side of the page; on smaller screens and phones they sit at the top of the page, under the plant's name (from 1.56.5 the name comes first).

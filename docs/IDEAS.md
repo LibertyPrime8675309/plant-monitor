@@ -36,4 +36,5 @@ Asked for by Ethan and built in 1.9.0:
 - Getting plants ready to come inside: ten pest methods rated per plant, with steps, logging, second-round reminders and keep-apart dates.
 
 ## Suggested by Claude, waiting for review
+- Missing details: one page listing, detail by detail, the plants that do not have a detail other pages need (pot size, leaf type, height, coldest it can take, how often to check for water, feeding months, safety for pets), with a box to fill each in right there. (suggested by Claude) (in progress: proto/missing-details)
 - Health walk-through: go round the plants one at a time on a phone, with big buttons to say each one looks the same or has a new health rating, and a list of plants not looked over for two weeks. (suggested by Claude) (in progress: proto/health-walk)
