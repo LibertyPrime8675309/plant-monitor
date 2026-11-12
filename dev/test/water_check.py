@@ -56,7 +56,8 @@ with sync_playwright() as p:
     check(f'Mark {len(shown) - len(before)} plant' in t and 'already watered today and' in t, 'it asks first, and says how many are skipped as already watered')
     pg.screenshot(path=os.path.join(OUT, 'water-2-all.png'))
     pg.click('dialog[open] button[value=ok]'); pg.wait_for_timeout(1800)
-    check(set(shown) <= watered(), 'every plant shown is now watered today')
+    here = {p['code'] for p in call('GET', '/api/plants') if not p.get('home_id')}      # a plant at another home (batch C8: Baraboo) is not on this home's watering list
+    check(set(shown) & here <= watered(), 'every plant shown here is now watered today')
     check(all(len(todays(c)) == 1 for c in shown), 'and none of them has two waterings for today')
     other = [w['code'] for w in call('GET', '/api/water')['plants'] if w['site'] != 'Covered porch']
     check(not (set(other) & watered() - {'P-002', 'P-006', 'P-007'}), 'plants the filters hid were not touched')
