@@ -28,13 +28,14 @@ p = {k: row('P-094')[k] for k in FIELD_NAMES}
 p.update(
     common_name="Monstera 'Thai Constellation' cutting (rooting in water)",
     scientific_name="Monstera deliciosa 'Thai Constellation' (probable)",
-    aliases='Variegated Monstera cutting; Swiss cheese plant (variegated); cutting from the mother plant',
-    id_confidence=65,
-    id_basis=("Ethan: a cutting from a larger mother plant. Large heart-shaped, unsplit leaves, green with irregular cream splashes and fine cream "
-              "speckles all over, which is how 'Thai Constellation' looks and matches the two pages P-094 and P-095. A plain albo has big clean white "
-              "sectors and no speckling, so it fits less well. There is no tag on the cutting, and which plant it came from is not recorded."),
+    aliases='Variegated Monstera cutting; Swiss cheese plant (variegated); cutting from the Baraboo coffee shop mother plant (same line as P-094)',
+    id_confidence=70,
+    id_basis=("Ethan: it came from the mother plant at a coffee shop in Baraboo, Wisconsin (July 2026), the same line as P-094, which grew from a cutting of "
+              "that plant. Large heart-shaped, unsplit leaves, green with irregular cream splashes and fine cream speckles, which is how 'Thai Constellation' "
+              "looks and matches P-094 and P-095. A plain albo has big clean white sectors and no speckling, so it fits less well. There is no tag on the "
+              "cutting or on the Baraboo plant that Ethan knows of, so the name rests on the leaves."),
     id_alternatives=L("Monstera deliciosa 'Thai Constellation'", "Monstera deliciosa 'Albo Variegata' (less likely: no speckling)", "Monstera deliciosa 'Aurea' (cream-yellow, not speckled)"),
-    id_improve=L('Which plant the cutting came from (P-094, P-095 or another), and its tag or source', "The first new leaf once it roots: 'Thai Constellation' keeps the speckles and splashes"),
+    id_improve=L('A tag or label on the Baraboo mother plant, if the coffee shop knows its name', "The first new leaf once it roots: 'Thai Constellation' keeps the speckles and splashes"),
     location='East-facing window sill, in a tall clear container of filtered water',
     container='Tall clear plastic jar of filtered water, with the root nub and cut end underwater, leaves in the air',
     site='Indoors', grow_kind='Water only', reservoir='The pot itself (no holes)', water_every_days=None,
@@ -57,12 +58,31 @@ p.update(
                    'If the node ever turns soft, dark or smelly, trim back to firm tissue and change the water.',
                    'When roots are about an inch long, move it into perlite, sphagnum or a gritty mix; water roots are fragile in soil.'),
     pests_current='',
-    notes=("A cutting from a larger mother plant, in water since before November 11, 2026 (the exact day it was cut is not recorded). Photographed and checked "
-           "on November 11: node, nub and cut end firm and odourless. Ethan can tell the app which plant it came from and when it was cut."))
+    notes=("A cutting from the mother plant at a coffee shop in Baraboo, Wisconsin (July 2026, Ethan). P-094 grew from a cutting of the same mother plant. "
+           "In water in Round Rock since before November 11, 2026 (the exact day it was cut is not recorded). Photographed and checked on November 11: node, "
+           "nub and cut end firm and odourless."))
 p['photos'] = photos([('leaf_a', 'the healthier leaf: green with cream splashes and speckles'), ('window', 'the whole cutting on the east window sill'),
                       ('leaves', 'both leaves, one browned and sagging'), ('leaf_dead', 'the browned leaf, from the front'),
                       ('under_dead', 'underside of the browned leaf'), ('under_ok', 'underside of the healthier leaf'),
                       ('nub', 'the root nub, firm and green-tan'), ('base', 'the cut end: dry callus, firm, no film'), ('water', 'how far the stem sits in the water')])
-batch = {'id': 'C8', 'created': '2026-11-11', 'author': "Ethan's photos and checks of the variegated Monstera cutting (November 11, 2026)", 'plants': [p]}
+
+# P-094 came from the Baraboo coffee shop plant; the H-E-B tag belongs to P-095 (bought in Round Rock), which shares P-094's pot (Ethan, November 11).
+r94 = row('P-094')
+def g(f, old, new): return {f: [r94[f], new]} if r94[f] == old else {}
+S94 = {}
+S94.update(g('aliases', "Tag: H-E-B 'Monstera Thai Constellation, Monstera deliciosa'; Swiss cheese plant (variegated); 'Thai Constellation' left plant",
+             "Swiss cheese plant (variegated); 'Thai Constellation' left plant; from the Baraboo coffee shop plant (July 2026)"))
+S94.update(g('container', r94['container'], r94['container'].replace('; H-E-B tag', '; no tag (the H-E-B tag in the pot belongs to P-095)')))
+S94.update(g('id_basis', r94['id_basis'],
+             "Grown from a cutting of the mother plant at a coffee shop in Baraboo, Wisconsin (Ethan, July 2026). It has no tag of its own: the H-E-B tag in "
+             "the pot belongs to P-095, which was bought in Round Rock. The leaves match 'Thai Constellation': heart-shaped juvenile Monstera leaves "
+             "speckled and splashed with cream, on a moss pole in sphagnum. 'Thai Constellation' is the tissue-cultured variegated form of Monstera "
+             "deliciosa with stable cream speckling."))
+S94.update(g('id_improve', r94['id_improve'], "A tag or name from the Baraboo coffee shop, if they know it. A photo when the first split leaf opens would be nice for the record."))
+S94.update(g('id_confidence', 95, 75))
+S94.update(g('notes', r94['notes'], "Grown from a cutting taken in July 2026 from the mother plant at a coffee shop in Baraboo, Wisconsin (Ethan, November 11). " + r94['notes']))
+updates = [{'code': 'P-094', 'name': r94['common_name'], 'photos': [c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY id LIMIT 1', (r94['id'],)).fetchone()[0]],
+            'note': "Ethan, November 11: this plant came from the Baraboo coffee shop plant; the H-E-B tag is P-095's", 'set': S94}]
+batch = {'id': 'C8', 'created': '2026-11-11', 'author': "Ethan's photos and checks of the variegated Monstera cutting (November 11, 2026)", 'plants': [p], 'updates': updates}
 json.dump(batch, open(os.path.join(REPO, 'app/seed/batches/batchC8.json'), 'w', encoding='utf-8'), indent=1, ensure_ascii=False)
 print('1 new plant,', len(p['photos']), 'photos')

@@ -6,7 +6,7 @@
   {
    "common_name": "Monstera 'Thai Constellation' cutting (rooting in water)",
    "scientific_name": "Monstera deliciosa 'Thai Constellation' (probable)",
-   "aliases": "Variegated Monstera cutting; Swiss cheese plant (variegated); cutting from the mother plant",
+   "aliases": "Variegated Monstera cutting; Swiss cheese plant (variegated); cutting from the Baraboo coffee shop mother plant (same line as P-094)",
    "plant_type": "Tropical foliage plant (aroid)",
    "location": "East-facing window sill, in a tall clear container of filtered water",
    "container": "Tall clear plastic jar of filtered water, with the root nub and cut end underwater, leaves in the air",
@@ -15,10 +15,10 @@
    "spot_id": null,
    "pot_id": null,
    "tray_id": null,
-   "id_confidence": 65,
-   "id_basis": "Ethan: a cutting from a larger mother plant. Large heart-shaped, unsplit leaves, green with irregular cream splashes and fine cream speckles all over, which is how 'Thai Constellation' looks and matches the two pages P-094 and P-095. A plain albo has big clean white sectors and no speckling, so it fits less well. There is no tag on the cutting, and which plant it came from is not recorded.",
+   "id_confidence": 70,
+   "id_basis": "Ethan: it came from the mother plant at a coffee shop in Baraboo, Wisconsin (July 2026), the same line as P-094, which grew from a cutting of that plant. Large heart-shaped, unsplit leaves, green with irregular cream splashes and fine cream speckles, which is how 'Thai Constellation' looks and matches P-094 and P-095. A plain albo has big clean white sectors and no speckling, so it fits less well. There is no tag on the cutting or on the Baraboo plant that Ethan knows of, so the name rests on the leaves.",
    "id_alternatives": "Monstera deliciosa 'Thai Constellation'\nMonstera deliciosa 'Albo Variegata' (less likely: no speckling)\nMonstera deliciosa 'Aurea' (cream-yellow, not speckled)",
-   "id_improve": "Which plant the cutting came from (P-094, P-095 or another), and its tag or source\nThe first new leaf once it roots: 'Thai Constellation' keeps the speckles and splashes",
+   "id_improve": "A tag or label on the Baraboo mother plant, if the coffee shop knows its name\nThe first new leaf once it roots: 'Thai Constellation' keeps the speckles and splashes",
    "temp_ideal_low": 65,
    "temp_ideal_high": 85,
    "temp_damage_below": 50,
@@ -39,7 +39,7 @@
    "health_summary": "A rootless cutting with two leaves and one root nub. One leaf has browned, dried and collapsed; the other holds up better but has brown patches. The node, the nub and the cut end were all checked on November 11 and are firm, green and odourless, with no slime, so the cutting itself is alive. A cutting with no roots cannot replace the water its leaves lose, so sag and leaf loss are common; the exact cause here is not confirmed.",
    "health_observations": "Two leaves on long stalks; one browned, dry and collapsed\nThe other leaf has brown patches and a limp tip\nNode where the leaf meets the stem: green, firm, no smell\nOne root nub, firm, no film, no smell\nCut end: dry brown callus, firm, no film, no smell\nWater 3 days old and clear\nOnly the lower stem is under water; the leaves stay dry",
    "health_steps": "Change the water every 3 to 5 days and keep only the root nub and cut end under water.\nBright indirect light; keep it out of hot direct sun, which scorches the cream parts.\nKeep it warm: rooting slows a lot below about 70°F.\nCut off the collapsed leaf once it is fully dead, so it cannot rot in the water or touch the other leaf.\nBe patient: variegated cuttings often take 4 to 8 weeks or more to root.\nIf the node ever turns soft, dark or smelly, trim back to firm tissue and change the water.\nWhen roots are about an inch long, move it into perlite, sphagnum or a gritty mix; water roots are fragile in soil.",
-   "notes": "A cutting from a larger mother plant, in water since before November 11, 2026 (the exact day it was cut is not recorded). Photographed and checked on November 11: node, nub and cut end firm and odourless. Ethan can tell the app which plant it came from and when it was cut.",
+   "notes": "A cutting from the mother plant at a coffee shop in Baraboo, Wisconsin (July 2026, Ethan). P-094 grew from a cutting of the same mother plant. In water in Round Rock since before November 11, 2026 (the exact day it was cut is not recorded). Photographed and checked on November 11: node, nub and cut end firm and odourless.",
    "temp_damage_above": 95,
    "vpd_low": 0.6,
    "vpd_high": 1.3,
@@ -157,6 +157,42 @@
      "source": "Ethan, November 11"
     }
    ]
+  }
+ ],
+ "updates": [
+  {
+   "code": "P-094",
+   "name": "Monstera 'Thai Constellation' (left of the pole, speckled leaves)",
+   "photos": [
+    "img_b8_thai_pot1.jpg"
+   ],
+   "note": "Ethan, November 11: this plant came from the Baraboo coffee shop plant; the H-E-B tag is P-095's",
+   "set": {
+    "aliases": [
+     "Tag: H-E-B 'Monstera Thai Constellation, Monstera deliciosa'; Swiss cheese plant (variegated); 'Thai Constellation' left plant",
+     "Swiss cheese plant (variegated); 'Thai Constellation' left plant; from the Baraboo coffee shop plant (July 2026)"
+    ],
+    "container": [
+     "Grey plastic pot on a terracotta saucer, sphagnum moss and bark with lava rock, a plastic-mesh moss pole shared by both plants; H-E-B tag",
+     "Grey plastic pot on a terracotta saucer, sphagnum moss and bark with lava rock, a plastic-mesh moss pole shared by both plants; no tag (the H-E-B tag in the pot belongs to P-095)"
+    ],
+    "id_basis": [
+     "The H-E-B tag reads 'Monstera Thai Constellation, Monstera deliciosa', and the leaves match: heart-shaped juvenile Monstera leaves speckled and splashed with cream, on a moss pole in sphagnum. 'Thai Constellation' is the tissue-cultured variegated form of Monstera deliciosa with stable cream speckling.",
+     "Grown from a cutting of the mother plant at a coffee shop in Baraboo, Wisconsin (Ethan, July 2026). It has no tag of its own: the H-E-B tag in the pot belongs to P-095, which was bought in Round Rock. The leaves match 'Thai Constellation': heart-shaped juvenile Monstera leaves speckled and splashed with cream, on a moss pole in sphagnum. 'Thai Constellation' is the tissue-cultured variegated form of Monstera deliciosa with stable cream speckling."
+    ],
+    "id_improve": [
+     "Nothing needed: the tag and the leaves agree. A photo when the first split leaf opens would be nice for the record.",
+     "A tag or name from the Baraboo coffee shop, if they know it. A photo when the first split leaf opens would be nice for the record."
+    ],
+    "id_confidence": [
+     95,
+     75
+    ],
+    "notes": [
+     "Photographed indoors on November 5, 2026 (batch 3 of the indoor plants): two Thai Constellations share this pot and moss pole. This is the one whose leaves are mostly green with cream speckles (left of the pole in the wide shots). Which close-up belongs to which plant is Claude's guess from the variegation; move any photo that is on the wrong page.",
+     "Grown from a cutting taken in July 2026 from the mother plant at a coffee shop in Baraboo, Wisconsin (Ethan, November 11). Photographed indoors on November 5, 2026 (batch 3 of the indoor plants): two Thai Constellations share this pot and moss pole. This is the one whose leaves are mostly green with cream speckles (left of the pole in the wide shots). Which close-up belongs to which plant is Claude's guess from the variegation; move any photo that is on the wrong page."
+    ]
+   }
   }
  ]
 }
