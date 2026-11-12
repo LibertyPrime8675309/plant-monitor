@@ -121,7 +121,7 @@ addFeature({
   // No link in the top bar (the row would wrap); each plant's page links to it and Search finds it.
   pages: { browse: { view: viewBrowse, nav: 'plants', label: 'Pests that eat plants', href: '#/browse' } },
   today: {
-    id: 'today-browse', order: 66,                                   // after turn the pots (65), before repotting (68)
+    id: 'today-browse', order: 64,                                   // before turn the pots (65), which must stay just before Needed from you
     load: async () => {
       if (brDoneToday()) return null;
       const B = await api('GET', '/api/browse?tonight=1');
