@@ -428,6 +428,8 @@ How the reminders work:
 
 **Water all** (from 1.21.0): on the Plants page, **Water all … shown** marks every plant the filters show as watered today, after asking. Plants already watered today are skipped, and the message has **Undo**. For example, choose Location: Covered porch, then **Water all**.
 
+From 1.58.0, with more than one home, Water all waters the plants at **one home**: the one chosen in the **Home** filter, or, with "All homes", the home you are using (the Location button). The button names it ("Water all 28 shown at Round Rock, TX"), and the note under it says how many plants at other homes it leaves out. A home whose care is **Done outside the app** (see "A home is a site" below) is never watered in bulk: with that home chosen in the filter, the button is off and says why. **Log care for all of them** on a group works the same way: plants at other homes start unticked, and you can tick them. Each care entry is dated by the day where the plant lives, so a Nevada City plant logged late on a Texas evening keeps its own date.
+
 ## Frost alert and cold-night checklist (from 1.8.0)
 
 When a night in the 7-day forecast would hurt a plant that is outside, a banner at the top of the page says how cold it will get and on which night, how many plants could die, would be damaged or are close calls, and when to act ("before dark today"). It is called "Frost warning" at 36°F or below and "Cold warning" above that, because the tropical plants are hurt at 50 to 60°F. **Hide until the forecast changes** hides it until the forecast gets colder or more plants are at risk. Plant pages show their own **Frost risk** note instead of the banner.
@@ -1439,10 +1441,11 @@ Plants can live at more than one home: Round Rock, and Nevada City in California
 
 ### A home is a site (from 1.48.0)
 
-Each home now carries three settings, on **Weather → Homes and places**, in its Plants column (the owner changes them):
+Each home now carries these settings, on **Weather → Homes and places**, in its Plants column (the owner changes them):
 
 - **Country** (a two-letter code, filled in from the search when you add a place).
 - **Units there**: what people see who have not chosen units of their own in Display. Your own choice always wins.
+- **Care** (from 1.58.0, not on the main home): **Logged in this app** (the usual) or **Done outside the app**, for a home where nobody records care in the app, such as your mother's house in Baraboo. Water all, a group's care and Today's water-them-all buttons leave its plants out; you can still log care for one of its plants on that plant's page. Baraboo starts as Done outside the app.
 - **Seasons**: a winter with frost (the usual), a cool season where frost is rare, or wet and dry seasons with no frost. At a home with no frost, the Care section has no Winter plan, Cold-night checklist, Coming inside or Back outside, and Today has no cold-night, coming-inside or frost-dates blocks; the Care button opens the first page that applies there.
 
 Today follows the home chosen with the Location button for everything now: water, feed, Needed from you, coming inside, turning, the health walk-through and the frost blocks all list only that home's plants. The Plants page keeps its own Home filter.

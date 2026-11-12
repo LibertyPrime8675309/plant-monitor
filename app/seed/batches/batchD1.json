@@ -1,0 +1,9 @@
+{
+ "id": "D1",
+ "created": "2026-11-11",
+ "author": "Claude (Ethan, November 11: the Baraboo home is cared for outside the app)",
+ "_": "The Baraboo, WI home (added by batch C9) is marked as cared for outside the app, so Water all and a group's care leave its plant out. Guarded: if it was changed on Homes and places already, it is left alone; on a database without that home, nothing happens. D1 sorts after C9 (C10 would sort before C2).",
+ "homes_update": [
+  {"name": "Baraboo, WI", "lat": 43.4711, "lon": -89.7443, "fields": {"tended": [1, 0]}}
+ ]
+}
