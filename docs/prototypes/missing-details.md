@@ -13,10 +13,10 @@ Many pages in the app need one detail about a plant to work for it, and when tha
 | Feeding months | The feeding calendar and Today's Feed list | No feeding reminders |
 | Safety for pets | The pets filter on All plants | The plant only shows under "Pet safety not set" |
 
-On a fresh copy of your plants, 71 have no pot size and 99 have no height, so the grow-light planner and the shelf checks are guessing for most of the collection. Finding which ones means opening each plant's Edit page. This puts them all on one page, with a box to fill each one in right there.
+On a fresh copy of your plants, 72 of the 100 have no pot size and none has a height yet, so the grow-light planner and the shelf checks are guessing for most of the collection. Finding which ones means opening each plant's Edit page. This puts them all on one page, with a box to fill each one in right there.
 
 - **A new page, Missing details** (`#/missing`). It is part of Plants, but has no link of its own in the top bar, because a ninth link wraps the row (the same as the Propagation guide). You reach it from:
-  - a line on **All plants**, under the title: "99 plants are missing details that other pages use. Missing details". It only shows when something is missing.
+  - a line on **All plants**, under the title: "100 plants are missing details that other pages use. Missing details". It only shows when something is missing.
   - **Search**: type "missing".
 - **At the top:** how many of the plants at the home you are using are missing something, and a row of buttons, one per detail with its count, that jump to that list.
 - **One section per detail**, with what it is for in one line, then each plant with its photo, name and code, and a box:
@@ -66,6 +66,6 @@ Then open http://127.0.0.1:8080/#/missing. The focused check is `python3 dev/tes
 2. **"I don't know" or "Skip".** Some details you may not know for a plant yet (its height until you measure it). Would you like a **Not now** button that hides a plant from one list for a month? That would store a small list in settings.
 3. **A line on each plant's page**, such as "Missing: pot size and height. Fill them in", linking to that plant's gaps? It would sit under the plant's name.
 4. **On Today:** should a short "Missing details (3)" reminder show there, one plant at a time, or is the link on All plants enough?
-5. **Long lists:** Height has 99 plants. Is one long list fine with the jump buttons and Hide, or would you rather see 10 at a time with **Show 10 more**?
+5. **Long lists:** Height has 100 plants. Is one long list fine with the jump buttons and Hide, or would you rather see 10 at a time with **Show 10 more**?
 
 Reply on this pull request with changes, or say 'merge' when you are happy.

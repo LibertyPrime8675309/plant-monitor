@@ -83,11 +83,11 @@ Object.assign(acts, {
     t.scrollIntoView({ block: 'start' }); const h = t.querySelector('h2'); if (h) { h.setAttribute('tabindex', '-1'); h.focus({ preventScroll: true }); }
   },
 });
-// What this module adds (features.js): the page #/missing, marked as part of Plants but with no link of its own in the top bar
+// What this module adds (features.js): the page #/missing, part of Plants (nav 'missing' is in no section, so Plants is marked) but with no link of its own in the top bar
 // (a ninth link wraps the row); All plants links to it when anything is missing, and Search finds it by name.
 addFeature({
   name: 'missing',
-  pages: { missing: { view: viewMissing, nav: 'plants', label: 'Missing details', href: '#/missing' } },
+  pages: { missing: { view: viewMissing, nav: 'missing', label: 'Missing details', href: '#/missing' } },
   adds: {
     id: 'ms-link', match: parts => parts[0] === 'plants', anchor: '#g-title', where: 'afterend',
     load: async () => { const M = await api('GET', '/api/missing'); return M.plants_with ? M : null; },

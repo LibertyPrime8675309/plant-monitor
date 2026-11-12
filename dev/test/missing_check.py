@@ -61,6 +61,7 @@ with sync_playwright() as p:
     pg.click('#ms-link a'); pg.wait_for_selector('#ms-pot_size')
     check(pg.inner_text('main h1') == 'Missing details' and 'Missing details' in pg.title(), 'the link opens Missing details')
     check(pg.locator('#main-nav a[data-sec=plants][aria-current=page]').count() == 1, 'the page counts as part of Plants in the top bar')
+    check(pg.locator('#sub-nav a[aria-current=page]').count() == 0, 'and does not mark All plants as the page you are on')
     m = M()
     for d in m['details']:
         n = len(d['plants'])
@@ -96,7 +97,9 @@ with sync_playwright() as p:
     check('(°C)' in row.locator('label').inner_text(), 'the cold limit asks in °C when that is the unit')
     row.locator('input').fill('-1'); row.locator('button[type=submit]').click(); pg.wait_for_timeout(1500)
     check(call('GET', '/api/plants/' + a)['temp_damage_below'] == 30, '-1 °C is saved as 30 °F')
-    pg.evaluate("localStorage.removeItem('plantdb.units')"); pg.reload(); pg.wait_for_selector('#ms-water')
+    pg.evaluate("localStorage.removeItem('plantdb.units')")
+    call('PUT', '/api/me/prefs', {'units': None})          # the units are kept for the person on the server too
+    pg.reload(); pg.wait_for_selector('#ms-water')
     row = pg.locator(f'#ms-water .job[data-code="{b}"]'); row.locator('input').fill('9'); row.locator('button[type=submit]').click(); pg.wait_for_timeout(1500)
     check(call('GET', '/api/plants/' + b)['water_every_days'] == 9, 'How often to check for water sets "Check for water every (days)"')
     check(pg.locator(f'#ms-feed .job[data-code="{c3}"]').count() == 0, '(the plant that needs no feeding is not under Feeding months)')
@@ -119,7 +122,7 @@ with sync_playwright() as p:
     for name, disp in (('phone-light', {}), ('phone-dark-big', {'theme': 'dark', 'size': '160'})):
         ph = br.new_page(viewport={'width': 390, 'height': 844}, device_scale_factor=2)
         ph.on('pageerror', lambda x: errs.append(str(x)))
-        ph.add_init_script("localStorage.setItem('plantdb.editor','Missing Test');localStorage.setItem('plantdb.display', JSON.stringify(%s))" % json.dumps(disp))
+        ph.add_init_script("localStorage.setItem('plantdb.editor','Missing Test');localStorage.setItem('plantdb.units', JSON.stringify({region: 'us'}));localStorage.setItem('plantdb.display', JSON.stringify(%s))" % json.dumps(disp))
         ph.goto(BASE + '/#/missing'); ph.wait_for_selector('#ms-pot_size'); ph.wait_for_timeout(800)
         over = ph.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth')
         check(over <= 0, f'{name}: nothing scrolls sideways ({over}px)')
