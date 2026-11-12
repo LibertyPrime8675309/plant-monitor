@@ -1,7 +1,7 @@
 # Changelog
 
 ## 1.58.0 (coming December 1, 2026)
-- **A page for the variegated Monstera cutting.** The cutting rooting in water on your east window sill has its own page (growing kind: Water only), with your nine photos of November 11, what you checked (node, nub and cut end firm and odourless), and its care steps. It is marked as a probable 'Thai Constellation' (70% sure) because its cream splashes and speckles match the two on the plant table; it came from the coffee shop plant in Baraboo, the same line as P-094. The same update corrects P-094: it has no tag of its own, because the H-E-B tag belongs to P-095. (Upgrade batch C8.)
+- **P-094's origin and photos.** P-094 is the Monstera cutting from the coffee shop plant in Baraboo (cut around July 31, 2026). Its page now says so, and has your nine November 11 photos of the cutting in its jar of water (no separate page). The H-E-B tag is removed from P-094's page, because it belongs to P-095; P-094's ID confidence goes from 95% to 75%, since it rested on that tag. Anything you edited yourself is left alone. (Upgrade batch C8.)
 
 ## 1.57.0 (2026-11-11)
 - **Notes on request.** Display has a new choice, **Notes under buttons and boxes**: **Always show them** (as now) or **Show them when I ask**. With the second, each small note under a button, box or picture becomes a round **Note** button: press it (or Tab to it and press Enter) to read it, and again to fold it. Pointing at a field with the mouse shows its note too, and on a phone a long press on a box opens its note. Printed pages always show every note.
