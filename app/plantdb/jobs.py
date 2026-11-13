@@ -70,7 +70,8 @@ def jobs_api():
     with JOBS['lock']:
         running = sorted(JOBS['running'].values(), key=lambda j: j['id'])
         done = list(JOBS['done'])
-    return jsonify(running=running, done=done, schedule=jobs_schedule(c), problems=c.execute('SELECT COUNT(*) FROM problems WHERE cleared_at IS NULL').fetchone()[0])
+    return jsonify(running=running, done=done, schedule=jobs_schedule(c), problems=c.execute('SELECT COUNT(*) FROM problems WHERE cleared_at IS NULL').fetchone()[0],
+                   backup_notes=[n['key'] for n in backup_notes(c)])       # 1.58.0: Today tells the owner when the backups would not save the record
 
 @app.route('/api/jobs/run', methods=['POST'])
 def jobs_run_now():
@@ -112,7 +113,8 @@ def health_api():
     out = {'version': APP_VERSION, 'db_version': setting(c, 'db_version', ''), 'plants': plants, 'photos': photos,
            'db_bytes': os.path.getsize(DB_PATH) if os.path.exists(DB_PATH) else 0, 'data_bytes': dir_size(DATA_DIR), 'free_bytes': free, 'disk_bytes': total,
            'backup': {'last': sched.get('backup', {}).get('last', ''), 'next': sched.get('backup', {}).get('next', ''), 'every': sched.get('backup', {}).get('every', '')},
-           'copy': {'at': st.get('at', ''), 'dir': st.get('dir', ''), 'receiver': st.get('receiver', '')},
+           'copy': {'at': st.get('at', ''), 'dir': st.get('dir', ''), 'receiver': st.get('receiver', ''), 'away': copy_away(c)},
+           'backup_notes': backup_notes(c),          # 1.58.0: photos left out, or every copy on one drive (the owner's pages say so)
            'weather': {'last': sched.get('weather', {}).get('last', ''), 'next': sched.get('weather', {}).get('next', '')},
            'shops': {'last': sched.get('shops', {}).get('last', ''), 'next': sched.get('shops', {}).get('next', ''), 'every': sched.get('shops', {}).get('every', '')},
            'problems': c.execute('SELECT COUNT(*) FROM problems WHERE cleared_at IS NULL').fetchone()[0],

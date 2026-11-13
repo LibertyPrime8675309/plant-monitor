@@ -218,6 +218,14 @@ const acts = {
     try { await navigator.clipboard.writeText('Problems from Plant record ' + (META && META.version) + ':\n' + PROBTEXT); if (m) m.textContent = 'Copied. Paste it into the chat with Claude.'; }
     catch (e) { if (m) m.textContent = 'Could not copy. Select the list and copy it yourself.'; }
   },
+  async bkphotoson() {               // 1.58.0: the Backups page's own warning: photos into automatic backups, with one press
+    if (!(await needName())) return;
+    await guard(async () => { await api('PUT', '/api/backups/settings', { photos: true }); toast('Photos are in automatic backups from now on'); route(); });
+  },
+  async bkautoon() {
+    if (!(await needName())) return;
+    await guard(async () => { await api('PUT', '/api/backups/settings', { enabled: true }); toast('Automatic backups are on'); route(); });
+  },
   async bkcopynow(el) {              // 1.33.0
     const m = document.getElementById('bk-copy-msg'); el.disabled = true; if (m) m.textContent = 'Copying…';
     try { const r = await api('POST', '/api/backups/copies', {}); const st = r.status || {}; if (m) m.textContent = `Done. Folder: ${st.dir || 'not set up'}. Other computer: ${st.receiver || 'not set up'}.`; }

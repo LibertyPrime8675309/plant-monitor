@@ -21,6 +21,10 @@ os.environ.setdefault('PLANTDB_OSM_URL', os.environ['PLANTDB_VISION_URL'] + '/mo
 os.environ.setdefault('PLANTDB_INAT_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/inat/v1')                 # 1.21.0: library photos
 os.environ.setdefault('PLANTDB_INAT_IMG_OK', os.environ['PLANTDB_VISION_URL'] + '/mock/inat/img/')
 os.environ.setdefault('PLANTDB_ASPCA_MIN', '3')
+# 1.58.0: like an installed copy, the second-copy folder exists beside the data (docker-compose maps ./backups-copy there until
+# PLANTDB_COPY_DIR names another drive), so the pages can say that it is the same drive
+os.environ.setdefault('PLANTDB_COPY_MOUNT', os.path.join(os.path.dirname(os.path.abspath(os.environ.get('DATA_DIR', '/data'))), 'backups-copy-mock'))
+os.makedirs(os.environ['PLANTDB_COPY_MOUNT'], exist_ok=True)
 os.environ.setdefault('PLANTDB_ASPCA_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/aspca')                       # 1.23.0: pet safety lists
 sys.path.insert(0,os.environ.get('APPDIR', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'app')))
 import server as S

@@ -275,6 +275,20 @@ If it doesn't load from the phone, Windows Firewall may be blocking port 8080. A
 
 Remove the line from `.env` and run `docker compose up -d` to close it again.
 
+### The names this computer answers to (from 1.58.0)
+
+On this computer's own address (`http://localhost:8080`) the app treats everyone as you, the owner. So that a web page from somewhere else cannot reach it through your browser by giving 127.0.0.1 a name of its own, the app answers there only to:
+
+- `localhost`, and number addresses such as `127.0.0.1` or `192.168.1.20`;
+- a single-word name, such as your PC's name on the home network, and names ending in `.local`, `.lan`, `.home`, `.home.arpa`, `.internal` or `.localhost`;
+- the address saved for labels, and the public address saved for the calendar.
+
+Any other name gets a short page saying so. People who come in through Tailscale are not affected: they are let in by who they are. If you reach this computer's port under a name of your own with dots in it (through your own proxy, say), list it in `.env` and restart (several names: separate them with commas):
+
+- Windows (cmd.exe): `(echo PLANTDB_HOSTS=plants.myhouse.example)>>.env` then `docker compose up -d`
+- Windows (PowerShell): `Add-Content .env 'PLANTDB_HOSTS=plants.myhouse.example'; docker compose up -d`
+- bash: `echo 'PLANTDB_HOSTS=plants.myhouse.example' >> .env && docker compose up -d`
+
 ### If something doesn't work
 
 - **The address doesn't open:** check that Tailscale is on for that phone or computer. Run Set Up Remote Access again: it says what is missing.
@@ -1280,10 +1294,15 @@ Cold nights and what is due are for the home you start on (People, Starts on). *
 
 **Backups, Second copy.** Each new backup is copied as soon as it is made:
 
-- **Another drive:** to the folder named by `PLANTDB_COPY_DIR` in the `.env` file next to `docker-compose.yml` (for example `PLANTDB_COPY_DIR=D:\PlantBackups`), after `docker compose up -d`. Until that is set, copies go to `backups-copy` next to the data folder, which is the same drive. The newest 10 are kept.
+- **Another drive:** to the folder named by `PLANTDB_COPY_DIR` in the `.env` file next to `docker-compose.yml` (for example `PLANTDB_COPY_DIR=D:\PlantBackups`), after `docker compose up -d`. Until that is set, copies go to `backups-copy` next to the data folder, which is the same drive and protects nothing if that drive fails. The newest 10 are kept. To set it (use your own folder; make the folder first):
+  - Windows (cmd.exe): `(echo PLANTDB_COPY_DIR=D:\PlantBackups)>>.env` then `docker compose up -d`
+  - Windows (PowerShell): `Add-Content .env 'PLANTDB_COPY_DIR=D:\PlantBackups'; docker compose up -d`
+  - bash: `echo 'PLANTDB_COPY_DIR=/mnt/backups/plants' >> .env && docker compose up -d`
 - **Another computer:** run the receiver from the `receiver` folder of the release on it (its README has the steps: Docker, a token, Tailscale), then type its address and token on the Backups page. The newest 20 are kept there.
 
 **Copy the newest backup now** tries both. What happened last shows under the form, and failures go on the Problems list.
+
+From 1.58.0 the app says so when every copy is on the record's own drive (no folder named in `PLANTDB_COPY_DIR` and no other computer set): at the top of the Backups page, on the Health card on Settings, and in one line on Today for the owner. Before 1.58.0 the Health card showed a tick for the `backups-copy` folder, and the Backups page could not see `PLANTDB_COPY_DIR` even when it was set.
 
 ### Search everywhere
 
@@ -1788,12 +1807,13 @@ Everything is in the `data` folder next to `docker-compose.yml`:
 
 Open **Backups** in the menu.
 
-- **Back up now** makes a backup straight away. Add an optional note, and tick **Include the photos** if you want them too.
+- **Back up now** makes a backup straight away. Add an optional note. **Include the photos** is ticked to start with (from 1.58.0, unless your photos come to more than a gigabyte); untick it for the database alone.
 - **Automatic backups**: switch them on or off and choose:
   - how often: every 6 hours, every 12 hours, daily, every 3 days or weekly
   - the hour of day
-  - how many automatic backups to keep (older automatic ones are deleted; backups you make yourself and the updater's backups are never deleted automatically)
-  - whether to include the photos
+  - how many automatic backups to keep (older automatic ones are deleted; backups you make yourself are never deleted automatically)
+  - whether to include the photos. From 1.58.0 they are included unless you untick the box. A record that had the box unticked was switched over once when 1.58.0 was installed (the Audit log says so), unless its photos come to more than a gigabyte; untick it again and it stays unticked. If they are left out, the top of the Backups page says so, with a button to put them in.
+- **Backups made before an update** (the updater makes one each time): from 1.58.0 the newest 5 are kept and older ones are deleted. Before that they were never deleted, one for every version installed.
 - The **Your backups** list shows each backup with a Download and a Delete button.
 
 Backups are zips named `plantdb-backup-YYYYMMDD-HHMMSS-<manual|auto|update>.zip`. Each holds `plants.db`, a `backup.json` describing it and, if chosen, a `photos` folder. They are saved in the `backups` folder next to `data`, so updates do not touch them. That folder is still on the same disk, so copy a few to another drive or cloud folder now and then.

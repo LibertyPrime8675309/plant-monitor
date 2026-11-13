@@ -41,6 +41,7 @@ This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that r
   - Owner-only areas must be added to `OWNER_ONLY_PATHS` or `OWNER_ONLY_CHANGES` in `app/plantdb/core.py`.
   - Buttons that make changes must also be added to the viewer CSS block in `style.css`.
   - Never publish 8081, and never trust `Tailscale-User-*` headers on any other port.
+  - On 8080 everyone is the owner, so it answers only to names `host_known()` in `core.py` allows (1.58.0: `localhost`, number addresses, single-word and `.local` names, `PLANTDB_HOSTS`, the saved addresses). Tests and tools use `127.0.0.1` or `localhost`.
   - **From the internet (1.58.0):** Funnel publishes `/cal` and `/share` of port 8080, where every other request is the owner's. A request marked `Tailscale-Funnel-Request` reaches only what `public_link()` in `core.py` allows (the calendar link and `/share/<token>`); a new public route must be added there, must check its own token, and must not live beside anything that changes data without one.
   - The container starts as root and `app/start.py` picks the user (10001 if it can write to the data folders, else root). Don't add `USER` to the Dockerfile, and keep gunicorn settings in `app/gunicorn.conf.py`.
 - **Mushrooms (from 1.22.0):** nothing in the app may say or suggest that a wild mushroom is edible or safe; IDs are always "leads, not proof". Front-end names for finds use the `mu` prefix (`fz` belongs to the frost checklist).
