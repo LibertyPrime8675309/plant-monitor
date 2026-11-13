@@ -1085,8 +1085,28 @@ def people():
 def took_start():                   # 1.30.0: how long each answer takes to make, sent back as X-Took-Ms for the Debug page timings
     g.t0 = time.perf_counter()
 
+# ---- 1.58.0: what the internet may reach. Tailscale Funnel publishes a path of this computer's own port (README, "A calendar
+# link that works away from home" and "A plant-sitter sheet by link"), where every other request is the owner's. Tailscale marks
+# each request that came in through Funnel with this header and removes any copy the visitor sent, so a visitor cannot take it
+# off, and a request from this computer that carries it only loses access.
+FUNNEL_HEADER = 'Tailscale-Funnel-Request'
+SITTER_LINK = re.compile(r'^/share/[A-Za-z0-9_-]{20,}(/|$)')
+
+def from_funnel():
+    return bool(has_request_context() and request.headers.get(FUNNEL_HEADER))
+
+def public_link():
+    """The only two things reachable without being a person of this record: the subscribed calendar (calendar services cannot
+    type a password, so its link carries a private token, checked in frost.py) and a plant-sitter sheet (1.49.0: the long token
+    in the link is the key; sitter.py checks it on every route under it). A new public route must be added here."""
+    m = request.method
+    if request.path.startswith('/cal/'): return m in ('GET', 'HEAD')
+    return bool(SITTER_LINK.match(request.path)) and m in ('GET', 'HEAD', 'POST')
+
 @app.before_request
 def guard():
+    if from_funnel() and not public_link():        # 1.58.0: from the internet, a calendar or sitter link and nothing else
+        return Response('Not found', 404, {'Content-Type': 'text/plain; charset=utf-8'})
     if NEWER_DB:                     # 1.31.0: an older version on a newer database: every page says what to do, and nothing is changed
         msg = (f"This plant record was last opened by version {NEWER_DB['last']}, and this is the older version {NEWER_DB['this']}. "
                f"To keep your data safe it will not run. Install version {NEWER_DB['last']} or newer with the updater (Update Plant Database.cmd), "
@@ -1103,10 +1123,7 @@ def guard():
         tok = setting(db(), 'ingest_token', '')
         if not tok or not hmac.compare_digest(request.headers.get('X-Ingest-Token', ''), tok): abort(403, 'missing or wrong X-Ingest-Token')
         return None
-    if request.path.startswith('/cal/') and request.method in ('GET', 'HEAD'):
-        return None                  # the subscribed calendar: calendar services cannot type a password, so its link carries a private token instead
-    if re.match(r'^/share/[A-Za-z0-9_-]{20,}(/|$)', request.path) and request.method in ('GET', 'HEAD', 'POST'):
-        return None                  # 1.49.0: the plant-sitter sheet by link: the long token in the link is the key (sitter.py checks it on every route there)
+    if public_link(): return None    # the calendar and plant-sitter links carry their own token (see public_link)
     if via_tailscale():
         g.user = ts_user()
         if g.user is None:
