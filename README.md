@@ -1471,7 +1471,7 @@ Each home now carries these settings, on **Weather → Homes and places**, in it
 
 Today follows the home chosen with the Location button for everything now: water, feed, Needed from you, coming inside, turning, the health walk-through and the frost blocks all list only that home's plants. The Plants page keeps its own Home filter.
 
-**Editors at some homes only.** In the people list (Settings → people and names), an editor's row lists your homes with a tick box each. Untick a home and that person can still see everything, but cannot change plants at that home (their pages, care log, photos, requests). The owner is never limited. Lights, pots, groups and places are shared between homes and are not limited this way.
+**Editors at some homes only.** In the people list (Settings → people and names), an editor's row lists your homes with a tick box each. Untick a home and that person can still see everything, but cannot change plants at that home (their pages, care log, photos, requests). The owner is never limited. Lights, pots, groups and places are shared between homes and are not limited this way. From 1.58.0 the limit is checked wherever a plant is changed: its photos, questions, fertilizer and potting-mix entries, pest sightings, grow light spot and shelf follow the plant's home too, and such an editor can add plants, or move them, only at their own homes. Before 1.58.0 some of those went through when the request did not carry the plant's code.
 
 ### Add several plants at once
 

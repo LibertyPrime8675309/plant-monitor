@@ -336,6 +336,7 @@ def mixes_plant(code):
     r = c.execute('SELECT * FROM plants WHERE code=?', (code.upper(),)).fetchone()
     if not r: abort(404, 'No plant with that code')
     if request.method == 'GET': return jsonify(plant_mix_state(c, r))
+    home_check(c, r)                                 # 1.58.0: what a plant is in follows its home
     who = editor(); b = request.get_json(silent=True) or {}
     day = str(b.get('mixed_on') or local_today(c).isoformat())[:10]
     try: dd = date.fromisoformat(day)
@@ -366,6 +367,7 @@ def mixes_pot_del(i):
     c = db(); who = editor()
     m = c.execute('SELECT * FROM pot_mixes WHERE id=?', (i,)).fetchone()
     if not m: abort(404, 'That entry is not there any more')
+    home_check(c, m['plant_code'])                   # 1.58.0
     d = pot_dict(c, m)
     c.execute('DELETE FROM pot_mixes WHERE id=?', (i,))
     r = c.execute('SELECT * FROM plants WHERE code=?', (m['plant_code'],)).fetchone()

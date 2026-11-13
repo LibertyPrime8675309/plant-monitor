@@ -719,6 +719,7 @@ def editor():
 def plant_row(c, code):
     r = c.execute('SELECT * FROM plants WHERE code=?', (code,)).fetchone()
     if not r: abort(404, 'plant not found')
+    home_check(c, r)                     # 1.58.0: in a request that changes something, an editor limited to some homes is stopped here
     return r
 
 def photos_for(c, pid):
@@ -781,6 +782,7 @@ def norm(name, v):
 
 def bump(c, pid, code, who, action, summary, changes=None):
     """Increment page version, write snapshot and audit rows. changes = [(field, old, new)]"""
+    home_check(c, pid)                   # 1.58.0: the home limit, where the plant is changed (see home_check)
     c.execute('UPDATE plants SET version=version+1, updated_at=?, updated_by=? WHERE id=?', (now(), who, pid))
     ver = c.execute('SELECT version FROM plants WHERE id=?', (pid,)).fetchone()[0]
     c.execute('INSERT INTO plant_versions(plant_id,version,snapshot,changed_by,changed_at,summary) VALUES(?,?,?,?,?,?)',
@@ -796,6 +798,8 @@ def audit_only(c, action, field, old, new, who, note, pid=None, code=None):
 
 def apply_changes(c, r, new_fields, who, action, note):
     ch = []
+    home_check(c, r)                                         # 1.58.0: the home limit, where the plant is changed
+    if 'home_id' in new_fields: home_check_new(c, new_fields.get('home_id'))     # and it cannot be moved to a home outside the limit
     new_fields = place_sync(c, r, dict(new_fields))          # 1.29.0
     for n, v in new_fields.items():
         if n not in FIELD_KIND: continue
@@ -863,6 +867,45 @@ def plant_home_of(c, code):
     r = c.execute("SELECT home_id FROM plants WHERE code=?", (str(code or '').strip().upper(),)).fetchone()
     if r is None: return None
     return int(r[0]) if r[0] else home_place(c)['id']
+
+def home_limit():
+    """The home ids this request's person may change plants at, when they are limited (an editor with people.edit_homes) and the
+    request is one that changes something; None otherwise (owners, editors without a limit, reading, batches, background jobs,
+    a sensor's or a plant-sitter's request)."""
+    if not has_request_context() or request.method in ('GET', 'HEAD', 'OPTIONS'): return None
+    u = g.get('user')
+    if not u or u.get('role') != 'editor': return None
+    return u.get('edit_homes') or None
+
+def home_words(c, allowed, code, h):
+    names = {x['id']: x['name'] for x in homes(c)}
+    return f"You can change plants at {', '.join(names.get(x, str(x)) for x in allowed)} only. {code} is at {names.get(h, 'another home')}."
+
+def home_check(c, plant):
+    """1.58.0: refuses (403) a change to a plant at a home this person may not change. `plant` is its row, its code or its id.
+    home_refusal() below reads the plant out of the request before the route runs, which misses every request that names the
+    plant another way (a photo's id, a care entry, a mix, a light spot). So the limit is also checked here, where a plant is
+    fetched for a change (plant_row) and where it is changed (apply_changes, bump, set_spot_plants), and by the few routes that
+    reach a plant's records without those. A route that changes a plant some new way must call this too:
+    test_every_route_that_changes_a_plant_keeps_the_home_limit tries each one."""
+    allowed = home_limit()
+    if not allowed or plant is None: return
+    if isinstance(plant, int): r = c.execute('SELECT code, home_id FROM plants WHERE id=?', (plant,)).fetchone()
+    elif isinstance(plant, str): r = c.execute('SELECT code, home_id FROM plants WHERE code=?', (plant.strip().upper(),)).fetchone()
+    else: r = plant
+    if r is None: return
+    h = int(r['home_id']) if r['home_id'] else home_place(c)['id']
+    if h not in allowed: abort(403, home_words(c, allowed, r['code'], h))
+
+def home_check_new(c, home_id):
+    """The same for a plant that is being added, or moved to another home: the home it would be at."""
+    allowed = home_limit()
+    if not allowed: return
+    try: h = int(home_id) if home_id not in (None, '', 0, '0') else home_place(c)['id']
+    except (TypeError, ValueError): h = home_place(c)['id']
+    if h not in allowed:
+        names = {x['id']: x['name'] for x in homes(c)}
+        abort(403, f"You can add or move plants at {', '.join(names.get(x, str(x)) for x in allowed)} only, not at {names.get(h, 'another home')}.")
 
 def home_refusal(u, c):
     """1.48.0 (PLAN.md step 4b): an editor limited to some homes may change plants only at those homes. The request's plant comes
