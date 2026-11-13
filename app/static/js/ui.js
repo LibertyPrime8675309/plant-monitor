@@ -754,7 +754,7 @@ function placeLabels(base) {
 // ---------- audit log page: every change to every record, with filters (1.10.0; was the Change log page) ----------
 let AUDOPEN = false;             // 1.39.1: the audit filters box stays open for the visit once you open it
 document.addEventListener('toggle', e => { if (e.target && e.target.id === 'aud-fbox') AUDOPEN = e.target.open; }, true);
-const AUD = { f: { q: '', plant: '', who: '', kind: '', field: '', from: '', to: '', order: 'desc' }, offset: 0, limit: 100, facets: null, total: 0, t: null };
+const AUD = { f: { q: '', plant: '', who: '', kind: '', field: '', from: '', to: '', order: 'desc' }, offset: 0, limit: 100, facets: null, total: 0, t: null, seq: 0 };
 try { const s = JSON.parse(localStorage.getItem('plantdb.auditf') || '{}'); Object.keys(AUD.f).forEach(k => { if (typeof s[k] === 'string') AUD.f[k] = s[k]; }); } catch (e) { /* defaults */ }
 const audSave = () => { try { localStorage.setItem('plantdb.auditf', JSON.stringify(AUD.f)); } catch (e) { /* not remembered */ } };
 function audQS(extra) {
@@ -805,11 +805,15 @@ function audWords() {
   if (f.from) w.push('from ' + midDay(f.from)); if (f.to) w.push('to ' + midDay(f.to));
   return w.join(', ');
 }
+// 1.58.0: only the answer to the latest search is shown. Two choices made one after the other start two searches, and the first one's
+// answer can arrive last (it is the longer list); it then replaced the list while the filters and the summary named the second choice.
 async function audLoad(focusSel) {
   const box = document.getElementById('aud-list'); if (!box) return;
+  const my = ++AUD.seq;
   let r;
   try { r = await api('GET', '/api/audit/search?' + audQS({ limit: AUD.limit, offset: AUD.offset })); }
-  catch (e) { box.innerHTML = rend(html`<p class="notice bad">Could not load the audit log: ${e.message}</p>`); return; }
+  catch (e) { if (my === AUD.seq) box.innerHTML = rend(html`<p class="notice bad">Could not load the audit log: ${e.message}</p>`); return; }
+  if (my !== AUD.seq) return;
   AUD.total = r.total;
   const end = Math.min(r.offset + r.entries.length, r.total), words = audWords();
   document.getElementById('aud-sum').textContent = r.total ? `Showing ${(r.offset + 1).toLocaleString()} to ${end.toLocaleString()} of ${r.total.toLocaleString()} ${r.total === 1 ? 'change' : 'changes'}${words ? ' ' + words : ''}.` : `No changes${words ? ' ' + words : ''}.`;
