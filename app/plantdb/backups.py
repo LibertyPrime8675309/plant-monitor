@@ -7,7 +7,9 @@ BACKUP_RE = re.compile(r'^plantdb-backup-\d{8}-\d{6}-(manual|auto|update)(-photo
 BK_LOCK = threading.Lock()
 BK_JOB = {'running': False}
 BK_FREQ = {'6h': 6, '12h': 12, 'daily': 24, '3d': 72, 'weekly': 168}
-BK_DEFAULTS = {'enabled': True, 'freq': 'daily', 'hour': 3, 'keep': 14, 'photos': False}
+BK_DEFAULTS = {'enabled': True, 'freq': 'daily', 'hour': 3, 'keep': 14, 'photos': True}    # 1.58.0: photos are in unless turned off (they were left out)
+KEEP_UPDATES = 5                 # 1.58.0: backups made before an update were never removed; the newest few are kept
+PHOTOS_ONCE_MAX = 1024 ** 3      # the one-time switch to photos-included is skipped above this much (every backup carries them all)
 
 def bk_settings(c):
     try: d = json.loads(setting(c, 'backup_settings', '') or '{}')
@@ -58,12 +60,47 @@ def make_backup(kind='manual', photos=False, note='', by='Unknown'):
         return name
 
 def prune_backups(keep):
-    autos = [b for b in bk_list() if b['kind'] == 'auto']
+    """Removes automatic backups beyond `keep` and, from 1.58.0, backups made before an update beyond KEEP_UPDATES (they piled up:
+    one for every version installed). Backups a person made are never removed."""
+    lst = bk_list()
+    old = [b for b in lst if b['kind'] == 'auto'][keep:] + [b for b in lst if b['kind'] == 'update'][KEEP_UPDATES:]
     removed = []
-    for b in autos[keep:]:
+    for b in old:
         try: os.remove(os.path.join(BACKUP_DIR, b['file'])); removed.append(b['file'])
         except OSError: pass
     return removed
+
+def photo_bytes():
+    return sum(os.path.getsize(os.path.join(PHOTO_DIR, f)) for f in os.listdir(PHOTO_DIR) if os.path.isfile(os.path.join(PHOTO_DIR, f)))
+
+def backup_photos_once(c):
+    """1.58.0: automatic backups left the photos out unless a box was ticked, so a record could have weeks of backups and not
+    one of them with its photos. They are in from now on (BK_DEFAULTS). A record whose saved settings still say no is switched
+    over once, unless its photos are over a gigabyte (each backup carries them all; the Backups page says they are left out
+    instead). Unticking the box afterwards is kept. Called by init_db()."""
+    if setting(c, 'backup_photos_once'): return
+    raw = setting(c, 'backup_settings', '')
+    try: d = json.loads(raw or '{}')
+    except ValueError: d = {}
+    if d.get('photos') is False and photo_bytes() <= PHOTOS_ONCE_MAX:
+        d['photos'] = True
+        set_setting(c, 'backup_settings', json.dumps(d))
+        audit_only(c, 'setting', 'backup_settings', raw, json.dumps(d), 'Plant record',
+                   'Automatic backups now include the photos (1.58.0). Untick the box on the Backups page if you do not want that.')
+    set_setting(c, 'backup_photos_once', now()); c.commit()
+
+def backup_notes(c):
+    """1.58.0: what the owner should know about how safe the backups are; [] when all is well. The pages put the words to each
+    key (bkNote() in ui.js): 'off' no automatic backups, 'photos' they leave the photos out, 'one-drive' every copy is on the
+    drive the record itself is on (no folder named in PLANTDB_COPY_DIR and no other computer set)."""
+    S = bk_settings(c); out = []
+    if not S['enabled']: out.append({'key': 'off'})
+    elif not S['photos']:
+        with_photos = next((b for b in bk_list() if b['photos'] and not b['broken']), None)
+        out.append({'key': 'photos', 'photos': c.execute('SELECT COUNT(*) FROM photos').fetchone()[0], 'bytes': photo_bytes(),
+                    'last': with_photos['created_at'] if with_photos else ''})
+    if not copy_away(c): out.append({'key': 'one-drive'})
+    return out
 
 def run_backup_job(kind, photos, note, by):
     if BK_JOB.get('running'): return False
@@ -74,9 +111,9 @@ def run_backup_job(kind, photos, note, by):
             name = make_backup(kind, photos, note, by)
             c = sqlite3.connect(DB_PATH, timeout=30); c.row_factory = sqlite3.Row
             try:
-                removed = prune_backups(bk_settings(c)['keep']) if kind == 'auto' else []
+                removed = prune_backups(bk_settings(c)['keep']) if kind in ('auto', 'update') else []
                 if kind == 'auto': set_setting(c, 'backup_last_auto', now())
-                audit_only(c, 'backup', 'backup', None, name, by, f'Backup made ({kind}{", with photos" if photos else ""})' + (f'; removed {len(removed)} old automatic backup(s)' if removed else ''))
+                audit_only(c, 'backup', 'backup', None, name, by, f'Backup made ({kind}{", with photos" if photos else ""})' + (f'; removed {len(removed)} old automatic and before-update backup(s)' if removed else ''))
                 c.commit()
             finally: c.close()
             BK_JOB.update(running=False, ok=True, file=name, finished=now())
@@ -125,7 +162,8 @@ def backups():
         if b.get('wait'):                         # the updater waits for the file before it touches anything
             if BK_JOB.get('running'): abort(409, 'A backup is already running')
             name = make_backup(kind, bool(b.get('photos')), str(b.get('note', '')), editor())
-            audit_only(c, 'backup', 'backup', None, name, editor(), f'Backup made ({kind})'); c.commit()
+            removed = prune_backups(bk_settings(c)['keep']) if kind == 'update' else []       # 1.58.0: the newest few before-update backups are kept
+            audit_only(c, 'backup', 'backup', None, name, editor(), f'Backup made ({kind})' + (f'; removed {len(removed)} old automatic and before-update backup(s)' if removed else '')); c.commit()
             return jsonify(file=name, path=os.path.join(BACKUP_DIR, name)), 201
         started = run_backup_job(kind, bool(b.get('photos')), str(b.get('note', '')), editor())
         return jsonify(started=started, job=dict(BK_JOB)), (202 if started else 409)
@@ -134,8 +172,7 @@ def backups():
     free = shutil.disk_usage(BACKUP_DIR)
     return jsonify(backups=lst, settings=S, job=dict(BK_JOB), last_auto=setting(c, 'backup_last_auto'), dir=BACKUP_DIR,
                    mounted=BACKUP_DIR == '/backups', total_bytes=sum(x['bytes'] for x in lst), free_bytes=free.free,
-                   db_bytes=os.path.getsize(DB_PATH), photo_bytes=sum(os.path.getsize(os.path.join(PHOTO_DIR, f)) for f in os.listdir(PHOTO_DIR) if os.path.isfile(os.path.join(PHOTO_DIR, f))),
-                   freqs=list(BK_FREQ))
+                   db_bytes=os.path.getsize(DB_PATH), photo_bytes=photo_bytes(), freqs=list(BK_FREQ), keep_updates=KEEP_UPDATES, notes=backup_notes(c))
 
 @app.route('/api/backups/settings', methods=['PUT'])
 def backup_settings_put():

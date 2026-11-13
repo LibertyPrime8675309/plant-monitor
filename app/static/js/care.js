@@ -333,6 +333,8 @@ async function viewToday() {
     if (sc.shops) quiet.push(sc.shops.last ? `Stores last checked ${when(sc.shops.last)}${/^\d{4}-/.test(sc.shops.next) ? '; next ' + when(sc.shops.next) : ''}.` : 'The stores have not been checked yet.');
     if (sc.backup) quiet.push(sc.backup.last ? `Backup made ${when(sc.backup.last)}.` : sc.backup.every === 'turned off' ? 'Automatic backups are turned off.' : 'No automatic backup yet.');
     quiet.push(J.problems ? html`<a href="#/settings">${J.problems} problem${J.problems === 1 ? '' : 's'} to look at</a>.` : 'No problems.');
+    if ((J.backup_notes || []).length && ME().role === 'owner')       // 1.58.0: backups that would not save the record are the owner's to know about
+      quiet.push(html`<a href="#/backups">Backups need a look</a>: ${J.backup_notes.map(k => bkNote(k, true)).join(' ')}`);
   }
   // 1.46.0: the page is a list of blocks in a fixed order (the numbers are in features.js), so what a feature module adds lands in
   // the same place every time, whatever order the scripts loaded in

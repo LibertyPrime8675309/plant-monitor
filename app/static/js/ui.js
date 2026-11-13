@@ -562,12 +562,30 @@ const BK_FREQ_WORDS = { '6h': 'Every 6 hours', '12h': 'Every 12 hours', daily: '
 const BK_KIND = { manual: 'Made by you', auto: 'Automatic', update: 'Before an update' };
 let BK = null;
 let CP = null;
+// 1.58.0: what the owner should know about how safe the backups are (the keys come from backup_notes() in backups.py)
+function bkNote(n, short) {
+  const key = n.key || n;
+  if (key === 'off') return 'Automatic backups are turned off.';
+  if (key === 'photos') return short ? 'Automatic backups leave out your photos.'
+    : `Automatic backups leave out your photos (${n.photos} photo${n.photos === 1 ? '' : 's'}, ${mb(n.bytes)}). ${n.last ? `The newest backup that has them was made ${when(n.last)}.` : 'No backup has them yet.'}`;
+  if (key === 'one-drive') return short ? 'Every backup is on the same drive as the plant record.'
+    : 'Every backup is on the same drive as the plant record itself. If that drive fails, or the plant-database folder is deleted by mistake, the record and all of its backups go together.';
+  return '';
+}
+function bkNotesHtml(notes) {
+  return (notes || []).map(n => html`<div class="notice bad bk-note" role="note"><p><strong>${bkNote(n)}</strong></p><div class="row">
+    ${n.key === 'photos' ? html`<button class="btn" type="button" data-act="bkphotoson">Include the photos from now on</button>`
+      : n.key === 'off' ? html`<button class="btn" type="button" data-act="bkautoon">Turn automatic backups on</button>`
+      : html`<a class="btn" href="#/backups?sec=bk-copies">How to keep a copy on another drive</a>`}</div></div>`);
+}
 function copiesHtml(C) {          // 1.33.0: the second copy of each backup
   const st = C.status || {};
   return html`<section class="blk" id="bk-copies"><h2>Second copy</h2>
-    <p>Backups are on this PC's drive. A second copy of each new backup can also go to another drive, and to another computer over Tailscale (your girlfriend's PC, say), as soon as the backup is made. The newest ${C.keep} are kept in the folder, the newest 20 on the other computer.</p>
+    <p>Backups are on this PC's drive. A second copy of each new backup can also go to another drive, and to another computer over Tailscale (a family member's PC, say), as soon as the backup is made. The newest ${C.keep} are kept in the folder, the newest 20 on the other computer.</p>
     <h3>Another drive</h3>
-    ${C.dir_ok ? html`<p><span aria-hidden="true">✓</span> Copies go to <code>${C.dir_env || 'backups-copy, next to the data folder'}</code>${C.dir_files.length ? ` (${C.dir_files.length} there now).` : ' (none there yet).'}${!C.dir_env ? ' That is the same drive: to use another one, put <code>PLANTDB_COPY_DIR=D:\\PlantBackups</code> (your folder) in the <code>.env</code> file next to docker-compose.yml, then run the updater or <code>docker compose up -d</code>.' : ''}</p>`
+    ${C.dir_ok && C.dir_env ? html`<p><span aria-hidden="true">✓</span> Copies go to <code>${C.dir_env}</code>${C.dir_files.length ? ` (${C.dir_files.length} there now).` : ' (none there yet).'}</p>`
+      : C.dir_ok ? html`<p><span aria-hidden="true">!</span> <strong>Copies go to <code>backups-copy</code>, next to the data folder${C.dir_files.length ? ` (${C.dir_files.length} there now)` : ''}. That is the same drive as the record, so it protects nothing if the drive fails.</strong></p>
+        <p>To send them to another drive: make a folder on it (an inside drive or a USB one), open the file named <code>.env</code> next to docker-compose.yml in Notepad (make it if it is not there), add the line <code>PLANTDB_COPY_DIR=D:\\PlantBackups</code> with your own folder, save, then run <strong>Update Plant Database.cmd</strong> or <code>docker compose up -d</code>. The README has the steps under "A second copy of each backup".</p>`
       : html`<p class="muted">No folder is mapped. Put <code>PLANTDB_COPY_DIR=D:\\PlantBackups</code> (a folder on another drive) in the <code>.env</code> file next to docker-compose.yml, then run <code>docker compose up -d</code>.</p>`}
     <h3>Another computer</h3>
     <form data-form="bkcopies" class="f-grid" autocomplete="off">
@@ -588,11 +606,12 @@ async function viewBackups() {
     html: html`<h1>Backups</h1>
     <p class="muted">A backup is a zip with a complete copy of the database (plants, change log, weather history, feeding log, settings) and, if you choose, all the photos. Backups are saved in ${where}, so they survive updates. Copy a few to another drive now and then.</p>
     <p class="${last ? 'notice ok' : 'notice'}" role="status">${last ? html`Latest backup: <strong>${when(last.created_at)}</strong> (${BK_KIND[last.kind]}, ${mb(last.bytes)}).` : 'No backups yet. Make one now.'}
-      ${S.enabled ? ` Automatic backups: ${BK_FREQ_WORDS[S.freq].toLowerCase()}${['daily', '3d', 'weekly'].includes(S.freq) ? ' at about ' + hourOpt(S.hour) : ''}.` : ' Automatic backups are off.'}</p>
+      ${S.enabled ? ` Automatic backups: ${BK_FREQ_WORDS[S.freq].toLowerCase()}${['daily', '3d', 'weekly'].includes(S.freq) ? ' at about ' + hourOpt(S.hour) : ''}${S.photos ? ', with the photos' : ''}.` : ' Automatic backups are off.'}</p>
+    ${bkNotesHtml(BK.notes)}
     <section class="blk"><h2>Back up now</h2>
       <form data-form="bknow"><div class="field-grid">
         <label class="f">Note (optional)<input type="text" name="note" maxlength="300" placeholder="For example: before repotting day"></label></div>
-        <label class="chk-row" style="border:0"><input type="checkbox" name="photos"><span>Include the photos (adds about ${mb(BK.photo_bytes)})</span></label>
+        <label class="chk-row" style="border:0"><input type="checkbox" name="photos" ${BK.photo_bytes <= 1073741824 ? raw('checked') : ''}><span>Include the photos (adds about ${mb(BK.photo_bytes)})</span></label>
         <div class="row"><button class="btn" type="submit">Back up now</button></div></form>
       <div id="bk-job" role="status" aria-live="polite">${bkJobHtml(BK.job)}</div></section>
     <section class="blk"><h2>Automatic backups</h2>
@@ -600,8 +619,8 @@ async function viewBackups() {
         <div class="field-grid">
           <label class="f">How often<select name="freq">${BK.freqs.map(f => html`<option value="${f}" ${S.freq === f ? raw('selected') : ''}>${BK_FREQ_WORDS[f]}</option>`)}</select></label>
           <label class="f">At about<small>For daily, 3-day and weekly backups</small><select name="hour">${[...Array(24).keys()].map(h => html`<option value="${h}" ${+S.hour === h ? raw('selected') : ''}>${hourOpt(h)}</option>`)}</select></label>
-          <label class="f">Keep this many automatic backups<small>Older automatic ones are deleted. Your own backups are never deleted automatically.</small><input type="number" name="keep" min="1" max="365" value="${S.keep}"></label></div>
-        <label class="chk-row" style="border:0"><input type="checkbox" name="photos" ${S.photos ? raw('checked') : ''}><span>Include the photos in automatic backups</span></label>
+          <label class="f">Keep this many automatic backups<small>Older automatic ones are deleted. Of the backups made before an update, the newest ${BK.keep_updates} are kept. Your own backups are never deleted automatically.</small><input type="number" name="keep" min="1" max="365" value="${S.keep}"></label></div>
+        <label class="chk-row" style="border:0"><input type="checkbox" name="photos" ${S.photos ? raw('checked') : ''}><span>Include the photos in automatic backups (about ${mb(BK.photo_bytes)} in each)</span></label>
         <p class="hint">The database is ${mb(BK.db_bytes)} (most of it is weather history); a backup zip is usually a third to a half of that. Backups now use ${mb(BK.total_bytes)}; ${mb(BK.free_bytes)} free. The app must be running for automatic backups; a missed one runs when it next starts.</p>
         <button class="btn" type="submit">Save automatic backup settings</button></form></section>
     ${CP ? copiesHtml(CP) : ''}

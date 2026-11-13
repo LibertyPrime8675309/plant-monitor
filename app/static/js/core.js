@@ -561,12 +561,15 @@ async function loadHealth() {
   const ok = (good, text) => html`<li class="${good ? 'hl-ok' : 'hl-bad'}"><span aria-hidden="true">${good ? '✓' : '!'}</span> ${text}</li>`;
   const oldAge = ts => ts && (Date.now() - new Date(ts)) > 2 * 86400e3;
   const lowDisk = H.free_bytes != null && H.free_bytes < 2e9;
-  const copyGood = H.copy.at && !/failed/.test(H.copy.dir + H.copy.receiver) && (H.copy.dir || H.copy.receiver);
+  const copyGood = H.copy.at && !/failed/.test(H.copy.dir + H.copy.receiver) && (H.copy.dir || H.copy.receiver) && H.copy.away !== false;   // 1.58.0: a copy beside the data is not a second copy
+  const notes = (H.backup_notes || []).filter(n => n.key !== 'one-drive');
   box.innerHTML = rend(html`<ul class="hl">
     <li><span aria-hidden="true">●</span> Version ${H.version}${H.db_version && H.db_version !== H.version ? ` (the database was last opened by ${H.db_version})` : ''}, running as ${H.runs_as || 'the app'}. ${H.plants} plants, ${H.photos} photos, ${H.readings.toLocaleString()} readings${H.sensors ? ` from ${H.sensors} sensor${H.sensors === 1 ? '' : 's'}` : ''}.</li>
     ${H.journal && H.journal.note ? html`<li><span aria-hidden="true">●</span> Saving mode: ${(H.journal.mode || '').toUpperCase()}. ${H.journal.note}</li>` : ''}
     ${ok(H.backup.last && !oldAge(H.backup.last), H.backup.last ? `Last backup ${when(H.backup.last)}${/^\d{4}-/.test(H.backup.next) ? ', next ' + when(H.backup.next) : ''}.` : H.backup.every === 'turned off' ? 'Automatic backups are turned off.' : 'No automatic backup yet.')}
-    ${ok(copyGood, H.copy.at ? `Second copy ${when(H.copy.at)}: ${[H.copy.dir ? 'folder ' + H.copy.dir : '', H.copy.receiver ? 'other computer ' + H.copy.receiver : ''].filter(Boolean).join('; ') || 'nowhere set up'}.` : 'No second copy of a backup yet (Backups page).')}
+    ${notes.map(n => ok(false, html`${bkNote(n)} <a href="#/backups">Backups</a>`))}
+    ${H.copy.away === false ? ok(false, html`${bkNote('one-drive')} <a href="#/backups?sec=bk-copies">How to keep a copy on another drive</a>`)
+      : ok(copyGood, H.copy.at ? `Second copy ${when(H.copy.at)}: ${[H.copy.dir ? 'folder ' + H.copy.dir : '', H.copy.receiver ? 'other computer ' + H.copy.receiver : ''].filter(Boolean).join('; ') || 'nowhere set up'}.` : 'No second copy of a backup yet (Backups page).')}
     ${ok(H.weather.last && !oldAge(H.weather.last), H.weather.last ? `Weather updated ${when(H.weather.last)}.` : 'No weather update yet.')}
     ${ok(true, H.shops.last ? `Stores checked ${when(H.shops.last)} (${H.shops.every}).` : `Stores not checked yet (${H.shops.every}).`)}
     ${ok(!H.problems, H.problems ? `${H.problems} problem${H.problems === 1 ? '' : 's'} to look at.` : 'No problems.')}

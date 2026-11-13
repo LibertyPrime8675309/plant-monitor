@@ -6,7 +6,7 @@ Everything lives in DATA_DIR (default /data): plants.db, photos/, cache/.
 Edits are versioned: every save bumps the plant's page version, writes a full snapshot
 to plant_versions and one row per changed field to audit_log (what / before / after / who / when).
 """
-import csv, gzip, hmac, html as html_mod, io, json, math, os, re, secrets, shutil, sqlite3, threading, time, urllib.error, urllib.parse, urllib.request, uuid
+import csv, gzip, hmac, html as html_mod, io, ipaddress, json, math, os, re, secrets, shutil, sqlite3, threading, time, urllib.error, urllib.parse, urllib.request, uuid
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import urlparse
 
@@ -443,6 +443,7 @@ def init_db():
     c.commit()
     repair_seed_photos(c)
     facts_migrate(c)                                    # 1.53.0: the facts table, loaded once from what the record already knows
+    backup_photos_once(c)                               # 1.58.0: automatic backups include the photos (a saved "no" is switched once)
     c.execute("INSERT OR REPLACE INTO settings(key,value) VALUES('db_version',?)", (APP_VERSION,)); c.commit()
     c.close()
 
@@ -1103,6 +1104,32 @@ def public_link():
     if request.path.startswith('/cal/'): return m in ('GET', 'HEAD')
     return bool(SITTER_LINK.match(request.path)) and m in ('GET', 'HEAD', 'POST')
 
+# ---- 1.58.0: the names this computer's port answers to. On that port every request is the owner's, so a web page from somewhere
+# else must not be able to reach it through the browser by pointing a name of its own at 127.0.0.1 ("DNS rebinding"; the page
+# would then be the same site as far as the browser can tell, X-Editor and the Origin check included). Such a name is always a
+# public one, with dots in it. A plain number address, localhost, a single-word name (a PC on the home network) and names
+# ending in .local and the like cannot be pointed here by a stranger; anything else has to be listed in PLANTDB_HOSTS (commas,
+# in .env) or be the address saved for labels or for the calendar. People who come in through Tailscale are not checked this
+# way: they are let in by who they are, not by the port.
+LOCAL_SUFFIXES = ('.local', '.localhost', '.test', '.lan', '.home', '.home.arpa', '.internal', '.localdomain')   # .test and .localhost are reserved: nobody can own a name there (RFC 6761)
+EXTRA_HOSTS = {h.strip().lower().rstrip('.') for h in os.environ.get('PLANTDB_HOSTS', '').split(',') if h.strip()}
+
+def host_name():
+    h = (request.host or '').strip().lower()
+    if h.startswith('['): return h[1:h.index(']')] if ']' in h else h          # [::1]:8080
+    return (h.rsplit(':', 1)[0] if ':' in h else h).rstrip('.')
+
+def host_known():
+    h = host_name()
+    if not h or h == 'localhost' or '.' not in h or h.endswith(LOCAL_SUFFIXES) or h in EXTRA_HOSTS: return True
+    try: ipaddress.ip_address(h); return True
+    except ValueError: pass
+    c = db()
+    saved = [setting(c, 'base_url', '')]
+    try: saved.append(json.loads(setting(c, 'ics_options', '') or '{}').get('public_base', ''))
+    except ValueError: pass
+    return any(s and (urlparse(s).hostname or '').lower() == h for s in saved)
+
 @app.before_request
 def guard():
     if from_funnel() and not public_link():        # 1.58.0: from the internet, a calendar or sitter link and nothing else
@@ -1129,6 +1156,11 @@ def guard():
         if g.user is None:
             return Response('Open Plant record from a device that is signed in to Tailscale as a person.', 403, {'Content-Type': 'text/plain; charset=utf-8'})
     else:
+        if not host_known():             # 1.58.0: not a name this computer answers to (see host_known)
+            return Response(f'Plant record on this computer does not answer to the name "{host_name()}". Open it at http://localhost:8080 here, '
+                            'or through its Tailscale address. If this is a name you gave this computer yourself, add the line '
+                            f'PLANTDB_HOSTS={host_name()} to the .env file next to docker-compose.yml and run the updater '
+                            '(README, "The names this computer answers to").', 403, {'Content-Type': 'text/plain; charset=utf-8'})
         if PASSWORD:
             a = request.authorization
             if not (a and hmac.compare_digest(a.password or '', PASSWORD)):
