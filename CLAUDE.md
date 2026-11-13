@@ -39,6 +39,7 @@ This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that r
   - Any new route that changes data is refused for viewers automatically.
   - The exceptions are `VIEWER_POSTS` (`/api/identify`, `/api/me/prefs`) and `VIEWER_PREFIXES` (`/api/push/`): requests that change nothing of the plants, or only the person's own settings and devices.
   - Owner-only areas must be added to `OWNER_ONLY_PATHS` or `OWNER_ONLY_CHANGES` in `app/plantdb/core.py`.
+  - **Home limits (1.58.0):** an editor may be limited to some homes (`people.edit_homes`). A route that changes a plant, or a record that follows a plant, must get the plant with `plant_row()` or call `home_check()`; a new plant or a move calls `home_check_new()`. `dev/test/unit/test_home_limit.py` fails for a new route that changes data until it is tried there or listed in its `FREE` set.
   - Buttons that make changes must also be added to the viewer CSS block in `style.css`.
   - Never publish 8081, and never trust `Tailscale-User-*` headers on any other port.
   - On 8080 everyone is the owner, so it answers only to names `host_known()` in `core.py` allows (1.58.0: `localhost`, number addresses, single-word and `.local` names, `PLANTDB_HOSTS`, the saved addresses). Tests and tools use `127.0.0.1` or `localhost`.

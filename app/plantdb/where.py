@@ -280,6 +280,7 @@ def where_spot_delete(c, sid, who):
     sp = c.execute('SELECT s.*, a.name AS area FROM spots s JOIN areas a ON a.id=s.area_id WHERE s.id=?', (sid,)).fetchone()
     if not sp: abort(404, 'That spot is not in the list')
     n = c.execute('SELECT COUNT(*) FROM plants WHERE spot_id=?', (sid,)).fetchone()[0]
+    for (pid,) in c.execute('SELECT id FROM plants WHERE spot_id=?', (sid,)).fetchall(): home_check(c, pid)   # 1.58.0: removing a spot moves the plants in it
     c.execute('UPDATE plants SET spot_id=NULL WHERE spot_id=?', (sid,)); c.execute('UPDATE light_spots SET place_id=? WHERE place_id=?', (-sp['area_id'], sid))
     place_photos_drop(c, 'spot_id=?', sid)
     c.execute('DELETE FROM spots WHERE id=?', (sid,))
