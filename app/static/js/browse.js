@@ -137,7 +137,7 @@ addFeature({
   adds: {
     id: 'br-plant',
     match: parts => parts[0] === 'plant' && parts[1] && parts[2] !== 'edit',
-    anchor: main => { const b = main.querySelector('.quick-btns'); return b && b.parentElement; }, where: 'beforeend',
+    anchor: quickMore, where: 'beforeend',
     load: async parts => {
       if (!CUR || CUR.p.code !== parts[1]) return null;
       const B = await api('GET', '/api/browse?plant=' + enc(parts[1]));

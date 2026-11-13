@@ -48,7 +48,9 @@ async function loadCarePlant() {
   catch (e) { box.innerHTML = rend(html`<p class="notice bad">Could not load the watering record: ${e.message}</p>`); return; }
   if (!CUR || CUR.p.code !== code) return;
   const w = W.plants.find(x => x.code === code);
-  const qs = document.getElementById('quick-status'); if (qs) qs.textContent = w ? 'Water: ' + waterWords(w) : '';
+  // 1.58.0: under the plant's name the line is short ("Water: 4 days overdue. Watered Nov 9."); the reasons are in Water and soil, just below
+  const qs = document.getElementById('quick-status');
+  if (qs) qs.textContent = !w ? '' : 'Water: ' + (w.state === 'unknown' ? 'no watering logged yet.' : waterShort(w).replace(/^[A-Z]/, c => c.toLowerCase()) + '. ' + waterLast(w));
   // 1.21.0: once watered today, "Watered today" is switched off until tomorrow (Undo or Remove in the care log switch it back on)
   const wb = document.querySelector('.quick-btns [data-quickwater]'), wn = document.getElementById('water-done-note');
   const done = !!(w && w.last_water === W.today);

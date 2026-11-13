@@ -736,13 +736,19 @@ function frostBanner(inPage) {
     : html`Bring ${sameNight || act.date !== first.date ? 'them' : 'those'} in or cover them <strong>${fzActBy(act.date)}</strong>${
         act.date !== first.date ? ', before the first night that would damage a plant' : ''}.${todo < n ? ` ${n - todo} ${n - todo === 1 ? 'is' : 'are'} already marked as covered.` : ''}${
         !sameNight && act.date === first.date ? ' The checklist says which night each of the others needs it by.' : ''}`;
+  // 1.58.0 (Ethan, November 13, 2026: the first screen): off Today the warning is one line with its two buttons, so a page starts with its own
+  // content; the numbers and the reasons are on the checklist it opens. On a phone the words are shorter still: the place is the home you are
+  // looking at, and "Hide" says the rest in its spoken name.
+  if (!inPage) { const nar = document.documentElement.dataset.narrow === '1';
+    return html`<section class="fz-banner fz-line ${real ? 'bad' : ''} noprint" aria-labelledby="fz-h">
+      <p class="fz-title" id="fz-h">${nar ? title.replace(` for ${placeShort()}`, '') : title}. <span class="fz-do">${todo ? html`${todo} plant${todo === 1 ? '' : 's'} to bring in or cover <strong>${fzActBy(by.date)}</strong>.` : `${n === 1 ? 'It is' : `All ${n} are`} marked as covered.`}</span></p>
+      <p class="row"><a class="btn small" href="#/frost">${nar ? 'Open the checklist' : 'Open the cold-night checklist'}</a>
+        <button class="btn small ghost" type="button" data-act="frosthide"${nar ? raw(' aria-label="Hide this warning until the forecast changes"') : ''}>${nar ? 'Hide' : 'Hide until the forecast changes'}</button></p></section>`; }
   // 1.34.0: on Today the warning is part of the page (a section with a heading, never hidden); elsewhere it is the banner above the page
-  return html`<${inPage ? 'div' : 'section'} class="fz-banner ${real ? 'bad' : ''} noprint" ${inPage ? '' : raw('aria-labelledby="fz-h"')}>
-    ${inPage ? html`<h2 class="fz-title">${title}</h2>` : html`<p class="fz-title" id="fz-h">${title}</p>`}
+  return html`<div class="fz-banner ${real ? 'bad' : ''} noprint"><h2 class="fz-title">${title}</h2>
     <p>Of your ${F.outdoor} plants outside, ${fzList(W.counts)} that night.${sameNight ? '' : ` The first cold night is ${fzDay(first.date, true)}, at ${tF(first.low)}: ${fzList(first.counts)}${act && act.date !== first.date ? ', and nothing would be damaged' : ''}.`}
       <span class="fz-do">${what}</span></p>
-    <p class="row"><a class="btn" href="#/frost">Open the cold-night checklist</a>
-      ${inPage ? '' : html`<button class="btn ghost" type="button" data-act="frosthide">Hide until the forecast changes</button>`}</p></${inPage ? 'div' : 'section'}>`;
+    <p class="row"><a class="btn" href="#/frost">Open the cold-night checklist</a></p></div>`;
 }
 const FZ_DO = {
   'Move indoors': 'Bring it inside: a heated room, or the garage for a night or two.',
