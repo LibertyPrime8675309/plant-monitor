@@ -29,7 +29,7 @@ function checkedLine(s, onCard) {
     <span class="row noprint">${card}${can ? html`<button class="btn small" type="button" data-act="spotcheck" data-id="${s.id}" aria-label="${s.name}: set up and checked">Set up and checked</button>` : ''}</span></p>`;
 }
 function mountLine(L) {
-  return html`<dt>How it holds</dt><dd>${L.mount_words || html`<span class="muted">Not said yet.</span>`}${canChange() ? html` <button class="btn ghost small noprint" type="button" data-act="ltmount" data-id="${L.id}" aria-label="How the ${L.name} holds">How it holds</button>` : ''}</dd>`;
+  return html`<dt>How it holds</dt><dd>${L.mount_words || html`<span class="muted">Not said yet.</span>`}${canChange() ? html` <button class="btn ghost small noprint" type="button" data-act="ltmount" data-id="${L.id}" aria-label="How it holds: ${L.name}">How it holds</button>` : ''}</dd>`;
 }
 function placeBits(pl) {      // a room's or shelf's main photo and measurements, and its button, under Rooms and shelves
   return html`${pl.photo ? html`<img class="fit-pthumb" src="${thumbUrl(pl.photo)}" alt="${pl.label}" loading="lazy">` : ''}
@@ -70,7 +70,7 @@ function placePhotos(P) {
   const can = canChange();
   return html`<div class="fit-photos" id="pd-photos">${P.photos.length ? P.photos.map((ph, i) => html`<figure><img src="${thumbUrl(ph.file)}" alt="${P.label}, photo ${i + 1}${ph.is_primary ? ' (main photo)' : ''}" loading="lazy">
       <figcaption>${ph.is_primary ? 'Main photo' : html`Photo ${i + 1}`}</figcaption>
-      ${can ? html`<span class="row">${ph.is_primary ? '' : html`<button class="btn ghost small" type="button" data-act="placephotomain" data-id="${ph.id}" aria-label="Make photo ${i + 1} the main photo">Make it the main photo</button>`}
+      ${can ? html`<span class="row">${ph.is_primary ? '' : html`<button class="btn ghost small" type="button" data-act="placephotomain" data-id="${ph.id}" aria-label="Make it the main photo: photo ${i + 1}">Make it the main photo</button>`}
         <button class="btn ghost small" type="button" data-act="placephotodel" data-id="${ph.id}" aria-label="Remove photo ${i + 1}">Remove</button></span>` : ''}</figure>`)
     : html`<p class="muted">No photo yet. A photo of each shelf helps when you fill in its measurements and set up a light.</p>`}
     ${can ? html`<label class="btn ghost small">Add photos<input type="file" accept="image/*" multiple class="sr" data-act="placephoto" data-id="${P.id}"></label>` : ''}</div>`;

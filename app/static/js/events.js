@@ -70,6 +70,7 @@ const acts = {
   fertlog(el) {
     const o = {};
     if (el.dataset.code) o.codes = [el.dataset.code];
+    if (el.dataset.codes) o.codes = el.dataset.codes.split(',');          // 1.58.0: Today's "No feeding logged yet" part
     if (el.dataset.date) o.date = el.dataset.date;
     if (el.dataset.group === 'due') { const t = todayStr(); o.codes = FERT.plants.filter(p => fertState(p, entriesFor(p.code), t, fertCtx()).state === 'due').map(p => p.code); }
     return fertDialog(o);

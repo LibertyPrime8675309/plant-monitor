@@ -660,6 +660,7 @@ async function loadWxTable() {
       <thead><tr><th scope="col">${lbl}</th>${T.source === 'sensor' ? html`<th scope="col">Device</th>` : ''}${T.kind === 'daily' ? html`<th scope="col">Status</th>` : ''}${cols.map(c => html`<th scope="col" class="num">${c.label}${c.unit ? html`<div class="hint">${c.unit}</div>` : ''}</th>`)}</tr></thead>
       <tbody>${T.rows.map(r => html`<tr><th scope="row">${T.kind === 'daily' ? dayLong(r.when) : r.when}</th>${T.source === 'sensor' ? html`<td>${r.device}</td>` : ''}${T.kind === 'daily' ? html`<td>${r.kind === 'forecast' ? 'Forecast' : 'Observed'}</td>` : ''}${cols.map(c => html`<td class="num">${wtCell(c.key, r[c.key], T.tz)}</td>`)}</tr>`)}</tbody></table></div>
       ${wtPager(T, 'bottom')}` : ''}`);
+  scrollBoxes(el);                                  // 1.58.0: the long table can be scrolled from the keyboard
 }
 function wtPager(T, where) {
   const off = c => c ? raw('disabled') : '';
@@ -703,18 +704,43 @@ function fzActBy(d) {
   return new Date(addDays(d, -1) + 'T12:00:00').toLocaleDateString([], { weekday: 'long' }) + ' evening';
 }
 function fzSig() { const F = FROST; return F && F.first ? [F.first.date, F.first.low, F.worst.date, F.worst.low, F.worst.counts.danger, F.worst.counts.damage, F.worst.counts.watch].join('|') : ''; }
+// 1.58.0 (November 12 review, item 8): each night says its own numbers, and the deadline is the first night that would hurt a plant.
+// The warning used the worst night's numbers with the first night's deadline: on a 61°F night with one close call it read "25 plants
+// ... Bring them in or cover them before dark today", and Today's button said "Cold night (25)".
+function fzList(k) {                // "3 could die, 8 would be damaged and 14 are close calls"
+  const parts = [k.danger ? `${k.danger} could die` : '', k.damage ? `${k.damage} would be damaged` : '', k.watch ? `${k.watch} ${k.watch === 1 ? 'is a close call' : 'are close calls'}` : ''].filter(Boolean);
+  return parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0];
+}
+function fzNights() {               // the nights with a plant on them: the first, the first that would damage or kill one, and what is not covered yet
+  const ns = ((FROST && FROST.nights) || []).filter(n => n.level), left = n => n ? n.plants.filter(x => !x.done).length : 0;
+  return { ns, first: ns[0] || null, act: ns.find(n => n.level !== 'watch') || null, left };
+}
+function fzToday() {                // for Today: what the next cold night needs, in a few words, and how many plants that is
+  const { ns, first, act, left } = fzNights(); if (!first) return { n: 0, bit: '' };
+  const open = ns.find(n => left(n)) || null;                       // the next night with a plant still to bring in or cover
+  if (!open) return { n: 0, bit: '', covered: true };
+  const close = n => `${left(n)} close call${left(n) === 1 ? '' : 's'} ${fzDay(n.date, true)}`;
+  const bit = open.level !== 'watch' ? `a cold night ${fzDay(open.date, true)}`
+    : act && left(act) && act.date > open.date ? `${close(open)} and a cold night ${fzDay(act.date, true)}` : close(open);
+  return { n: left(open), bit };
+}
 function frostBanner(inPage) {
   const F = FROST; if (!F || !F.first) return '';
   try { if (!inPage && localStorage.getItem('plantdb.frosthide') === fzSig()) return ''; } catch (e) { /* show it */ }
-  const W = F.worst, real = W.level !== 'watch', c = W.counts, sameNight = F.first.date === W.date;
-  const parts = [c.danger ? `${c.danger} could die` : '', c.damage ? `${c.damage} would be damaged` : '', c.watch ? `${c.watch} ${c.watch === 1 ? 'is a close call' : 'are close calls'}` : ''].filter(Boolean);
-  const list = parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0];
+  const W = F.worst, real = W.level !== 'watch', { first, act, left } = fzNights(); if (!first) return '';
+  const sameNight = first.date === W.date;
   const title = `${!real ? 'Cold night ahead' : W.low <= 36 ? 'Frost warning' : 'Cold warning'} for ${placeShort()}: down to ${tF(W.low)} ${fzDay(W.date, true)}`;
+  const by = act || first, n = by.plants.length, todo = left(by);       // the night to act before, and how many of its plants are not marked as covered
+  const what = !todo ? html`${n === 1 ? 'It is' : `All ${n} are`} marked as covered for ${fzDay(by.date, true)}.`
+    : !act ? html`None is forecast to be damaged: a close call is within ${tD(F.margin)} of a plant's damage point, and forecasts can miss by that much. To be safe, bring ${todo === 1 ? 'it' : 'them'} in or cover ${todo === 1 ? 'it' : 'them'} <strong>${fzActBy(by.date)}</strong>.`
+    : html`Bring ${sameNight || act.date !== first.date ? 'them' : 'those'} in or cover them <strong>${fzActBy(act.date)}</strong>${
+        act.date !== first.date ? ', before the first night that would damage a plant' : ''}.${todo < n ? ` ${n - todo} ${n - todo === 1 ? 'is' : 'are'} already marked as covered.` : ''}${
+        !sameNight && act.date === first.date ? ' The checklist says which night each of the others needs it by.' : ''}`;
   // 1.34.0: on Today the warning is part of the page (a section with a heading, never hidden); elsewhere it is the banner above the page
   return html`<${inPage ? 'div' : 'section'} class="fz-banner ${real ? 'bad' : ''} noprint" ${inPage ? '' : raw('aria-labelledby="fz-h"')}>
     ${inPage ? html`<h2 class="fz-title">${title}</h2>` : html`<p class="fz-title" id="fz-h">${title}</p>`}
-    <p>Of your ${F.outdoor} plants outside, ${list} that night.${sameNight ? '' : ` The first cold night is ${fzDay(F.first.date, true)}, at ${tF(F.first.low)}.`}
-      Bring them in or cover them <strong>${fzActBy(F.first.date)}</strong>.</p>
+    <p>Of your ${F.outdoor} plants outside, ${fzList(W.counts)} that night.${sameNight ? '' : ` The first cold night is ${fzDay(first.date, true)}, at ${tF(first.low)}: ${fzList(first.counts)}${act && act.date !== first.date ? ', and nothing would be damaged' : ''}.`}
+      <span class="fz-do">${what}</span></p>
     <p class="row"><a class="btn" href="#/frost">Open the cold-night checklist</a>
       ${inPage ? '' : html`<button class="btn ghost" type="button" data-act="frosthide">Hide until the forecast changes</button>`}</p></${inPage ? 'div' : 'section'}>`;
 }

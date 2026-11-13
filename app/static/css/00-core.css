@@ -10,10 +10,12 @@
 
 /* Tokens. Everything is sized in rem so the Display settings (text size) scale the whole page, not only the text. */
 :root{
-  --paper:#f3f6f4; --sheet:#fff; --ink:#15222b; --ink-2:#3f5059; --line:#b9c7c1; --line-2:#dde5e1;
+  /* 1.58.0 (November 12 review, item 11): the muted ink, green, amber and red are a little darker, so that as text each reaches 7 to 1 on the page, on white and on
+     its own soft tint. They were 6.3 to 6.8 to 1 on the page (#3f5059, #2a6340, #7d5200, #9b2f22): health and winter-plan tags, "Damaged", Remove buttons. */
+  --paper:#f3f6f4; --sheet:#fff; --ink:#15222b; --ink-2:#3b4b54; --line:#b9c7c1; --line-2:#dde5e1;
   --cyan:#1b4b72; --cyan-ink:#fff; --cyan-soft:#e3edf5;
-  --moss:#2a6340; --moss-soft:#e1efe5; --ochre:#7d5200; --ochre-soft:#f6ead2;
-  --madder:#9b2f22; --madder-soft:#f6e1dd; --critical:#6f1230;
+  --moss:#255738; --moss-soft:#e1efe5; --ochre:#6a4600; --ochre-soft:#f6ead2;
+  --madder:#87291e; --madder-soft:#f6e1dd; --critical:#6f1230;
   --z-fatal-a:#0d2a43; --z-fatal-b:#1d4b70; --z-damage:#3d7db5; --z-cool:#b4d2ea; --z-ok:#4f9a68; --z-hot:#e3b45a; --z-heat:#c4621b;
   --top-bg:var(--cyan); --top-ink:var(--cyan-ink); --on-bad:#fff; --now:#a8005a;
   --s1:#2a78d6; --s2:#eb6834;
@@ -29,8 +31,8 @@
   :root:not([data-theme=light]){
     --paper:#0e2233; --sheet:#143049; --ink:#e9f1f5; --ink-2:#b2c4ce; --line:#3a5c77; --line-2:#244058;
     --cyan:#8cc4f0; --cyan-ink:#0e2233; --cyan-soft:#1b4262;
-    --moss:#7fd09a; --moss-soft:#1c4a35; --ochre:#e9bd6a; --ochre-soft:#4a3a14; --on-ochre-link:#a9d6ff;
-    --madder:#f6b6ab; --madder-soft:#4e2623; --critical:#ff9db5;
+    --moss:#7fd09a; --moss-soft:#1c4a35; --ochre:#e9bd6a; --ochre-soft:#4a3a14; --on-ochre-link:#a9d6ff; --on-soft-link:#badcf6;
+    --madder:#f6b6ab; --madder-soft:#4c2522; --critical:#ff9db5;      /* 1.58.0: #4e2623 left the outline buttons in a cold-night warning at 6.9 to 1 */
     --z-damage:#4d8fc7; --z-cool:#2f5f87; --z-ok:#3f8a58; --z-hot:#b98a2e; --z-heat:#d9742a; --focus:#8cc4f0;
     --top-bg:#0a1a28; --top-ink:var(--ink); --on-bad:#150a0d; --now:#ff86c0; --s1:#3987e5; --s2:#d95926;
   }
@@ -43,8 +45,8 @@
 :root[data-theme=dark]{
   --paper:#0e2233; --sheet:#143049; --ink:#e9f1f5; --ink-2:#b2c4ce; --line:#3a5c77; --line-2:#244058;
   --cyan:#8cc4f0; --cyan-ink:#0e2233; --cyan-soft:#1b4262;
-  --moss:#7fd09a; --moss-soft:#1c4a35; --ochre:#e9bd6a; --ochre-soft:#4a3a14; --on-ochre-link:#a9d6ff;
-  --madder:#f6b6ab; --madder-soft:#4e2623; --critical:#ff9db5;
+  --moss:#7fd09a; --moss-soft:#1c4a35; --ochre:#e9bd6a; --ochre-soft:#4a3a14; --on-ochre-link:#a9d6ff; --on-soft-link:#badcf6;
+  --madder:#f6b6ab; --madder-soft:#4c2522; --critical:#ff9db5;
   --z-damage:#4d8fc7; --z-cool:#2f5f87; --z-ok:#3f8a58; --z-hot:#b98a2e; --z-heat:#d9742a; --focus:#8cc4f0;
   --top-bg:#0a1a28; --top-ink:var(--ink); --on-bad:#150a0d; --now:#ff86c0; --s1:#3987e5; --s2:#d95926;
 }
@@ -147,7 +149,7 @@ html[data-narrow="1"] .filters label:first-child{grid-column:1/-1}
 .sheet{display:block;color:inherit;text-decoration:none}
 .sheet .mat{background:var(--sheet);padding:.5rem .5rem 0;border:1px solid var(--line);position:relative}
 .sheet .mat img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;background:var(--line-2)}
-.sheet .mat .nophoto{aspect-ratio:4/5;display:grid;place-items:center;color:var(--ink-2);background:var(--line-2)}
+.sheet .mat .nophoto{aspect-ratio:4/5;display:grid;place-items:center;color:var(--ink);background:var(--line-2)}   /* 1.58.0: the muted ink was 6 to 1 on this grey in the dark theme */
 .sheet .acc{position:absolute;left:0;top:.9rem;background:var(--ink);color:var(--paper);font-weight:700;font-size:1rem;padding:.05rem .65rem .05rem .55rem}
 .sheet .bar{height:.6rem;margin:.5rem -.5rem 0;background:var(--hb,var(--line))}
 .sheet .name{font-family:var(--serif);font-weight:600;font-size:1.25rem;line-height:1.25;margin:.65rem 0 0}
@@ -289,6 +291,8 @@ section.blk h3{margin:1.4rem 0 .4rem}
 .notice{border-left:.4rem solid var(--ochre);background:var(--ochre-soft);padding:.7rem 1rem;max-width:68ch;margin:.8rem 0}
 .notice.bad{border-color:var(--madder);background:var(--madder-soft)}
 .notice.ok{border-color:var(--moss);background:var(--moss-soft)}
+/* 1.58.0: in the dark theme a link or an outline button on a tinted box (amber, green, blue, the cold-night warning) was 5.4 to 6.9 to 1; there it is a lighter blue */
+:is(.notice,.ask,.fz-banner,.sp-prev,.rule-prev) :is(a:not(.btn),.btn.ghost){color:var(--on-soft-link,var(--cyan))}
 
 /* dialog, toast */
 dialog{border:2px solid var(--ink);background:var(--sheet);color:var(--ink);padding:1.4rem;max-width:min(48rem,94vw);max-height:92vh;overflow:auto;width:100%}
@@ -1225,12 +1229,12 @@ html:not([data-narrow="1"]) .more-f .filters>label:first-child{grid-column:auto}
 .lib-form{max-width:46rem}
 .id-cam>:not(h2):not(.sec-tools){max-width:46rem}   /* 1.56.4: the camera stays this wide, but its title runs the width of the page so Hide/Show sits at the right edge like every other section's */
 .id-sec>h2,#lib-res>h2{margin-top:2rem;margin-bottom:.7rem}
-.id-view{position:relative;background:var(--ink);aspect-ratio:4/3;max-height:70vh;margin:.4rem 0 .6rem;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.id-view{position:relative;background:#0b141a;aspect-ratio:4/3;max-height:70vh;margin:.4rem 0 .6rem;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .id-view video{width:100%;height:100%;object-fit:contain;display:block}
 .id-view::before,.id-view::after{content:"";position:absolute;width:2.2rem;height:2.2rem;border:4px solid #fff;pointer-events:none;mix-blend-mode:difference}
 .id-view::before{top:.8rem;left:.8rem;border-right:0;border-bottom:0}
 .id-view::after{bottom:.8rem;right:.8rem;border-left:0;border-top:0}
-.id-placeholder{position:absolute;color:#fff;font-weight:700;margin:0;font-size:1.2rem}
+.id-placeholder{position:absolute;color:#fff;font-weight:700;margin:0;font-size:1.2rem}   /* 1.58.0: the box behind it is dark in both themes. It was var(--ink), which is near-white in the dark theme: white words on a white box */
 .id-live{min-height:1.6em;font-weight:700;font-size:1.15rem;margin:0 0 .6rem}
 .id-btns .btn{flex:1 1 12rem}
 .id-file{position:relative;overflow:hidden}

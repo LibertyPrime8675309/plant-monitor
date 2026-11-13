@@ -50,7 +50,8 @@ with sync_playwright() as p:
     pg.goto(LOCAL + '/'); pg.wait_for_timeout(3000)
     check(pg.locator('h1').first.inner_text() == 'Today' and pg.locator('#main-nav a[aria-current=page]').inner_text().strip() == 'Today', 'the app opens on Today')
     line = pg.locator('.verdict-box strong').first.inner_text()
-    check('to water' in line and 'to feed' in line and 'needs from you' in line, f'one line says what needs you: "{line[:90]}"')
+    import re as _re                                                             # 1.58.0: only what there is: no "0 to feed"
+    check('to water' in line and 'needs from you' in line and not _re.search(r'(^|\D)0 (plants? to water|to feed|things? Claude)', line), f'one line says what needs you, and leaves out what does not: "{line[:90]}"')
     jumps = pg.locator('.td-jumps a')
     check(jumps.count() >= 3 and jumps.first.inner_text().startswith('Cold night'), f'{jumps.count()} jump buttons, the cold night first')
     check(pg.locator('#today-cold h2').count() == 1 and pg.locator('#today-cold [data-act=frosthide]').count() == 0 and pg.locator('#app > .fz-banner').count() == 0,

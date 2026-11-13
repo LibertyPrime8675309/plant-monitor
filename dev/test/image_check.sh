@@ -108,7 +108,7 @@ page=$(curl -fsS "$URL/")
 case "$page" in *"app.js?v=$VER"*) ;; *) fail "the page does not load its script for version $VER";; esac
 echo "ok   the page and its files are in the image"
 h=$(curl -fsS "$URL/api/health")
-printf '%s' "$h" | json "'ok   ' + str(d['runs_as'].get('text') if isinstance(d['runs_as'], dict) else d['runs_as']) + ' Saving mode: ' + str(d['journal']['mode']) + '.'"
+printf '%s' "$h" | json "'ok   ' + str(d['runs_as'].get('text') if isinstance(d['runs_as'], dict) else d['runs_as']) + '. Saving mode: ' + str(d['journal']['mode']) + '.'"
 [ "$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: evil.example:8080' "$URL/api/people")" = 403 ] || fail "it answers to a name that is not its own"
 echo "ok   it does not answer to a stranger's name"
 

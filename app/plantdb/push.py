@@ -77,18 +77,43 @@ def push_cold(c):
         nights = [n for n in F.get('nights', []) if n.get('plants')]
         tz = tzinfo(H['tz']); local = datetime.now(tz)
         for n in nights:
-            d = n['date']; cnt = len(n['plants']); worst = n.get('worst') or 'watch'
-            word = {'danger': 'could die', 'damage': 'would be damaged', 'watch': 'are close calls'}.get(worst, 'are at risk')
+            d = n['date']
             when_ = 'tonight' if d == (local.date() + timedelta(days=1)).isoformat() else midday_word(d)
             if push_once(c, f'cold:{H["id"]}:{d}:new', 9):
-                push_send(c, 'cold', lambda u, n=n, when_=when_, H=H, cnt=cnt, word=word: (f'Cold night {when_}: {temp_text(round(n["low"]), u)} at {H["name"].split(",")[0]}', f'{cnt} plant{"s" if cnt != 1 else ""} outside {word}. Open the cold-night checklist.'), None, '#/frost', H['id'], tag=f'cold-{d}')
+                push_send(c, 'cold', lambda u, n=n, when_=when_, H=H: (f'Cold night {when_}: {temp_text(round(n["low"]), u)} at {H["name"].split(",")[0]}', f'Outside: {cold_words(n["counts"])}. Open the cold-night checklist.'), None, '#/frost', H['id'], tag=f'cold-{d}')
             night_of = date.fromisoformat(d) - timedelta(days=1)       # the night of a date is the evening before it
-            if local.date() == night_of and local.hour >= 15 and push_once(c, f'cold:{H["id"]}:{d}:eve', 3):
-                push_send(c, 'cold', lambda u, n=n, H=H, cnt=cnt: (f'Tonight: down to {temp_text(round(n["low"]), u)} at {H["name"].split(",")[0]}', f'{cnt} plant{"s" if cnt != 1 else ""} to bring in or cover this evening.'), None, '#/frost', H['id'], tag=f'cold-{d}')
+            body = cold_evening(n['plants'])
+            if body and local.date() == night_of and local.hour >= 15 and push_once(c, f'cold:{H["id"]}:{d}:eve', 3):
+                push_send(c, 'cold', lambda u, n=n, H=H, body=body: (f'Tonight: down to {temp_text(round(n["low"]), u)} at {H["name"].split(",")[0]}', body), None, '#/frost', H['id'], tag=f'cold-{d}')
+
+def cold_evening(plants):
+    """The words of the reminder on the evening before a cold night, or None when there is nothing left to do (1.58.0): plants ticked as covered for that night are
+    left out, and a night with close calls only says that nothing is forecast to be damaged (it said "N plants to bring in or cover this evening" for any night)."""
+    left = [x for x in plants if not x.get('done')]
+    if not left: return None
+    real = sum(1 for x in left if x['level'] != 'watch'); close = len(left) - real
+    if real: return f'{real} plant{"s" if real != 1 else ""} to bring in or cover this evening.' + (f' {close} more {"is a close call" if close == 1 else "are close calls"}.' if close else '')
+    return f'{close} close call{"s" if close != 1 else ""}: nothing is forecast to be damaged. Cover {"it" if close == 1 else "them"} to be safe.'
+
+def cold_words(k):
+    """What one night would do, in its own numbers: "3 plants could die, 8 would be damaged and 14 are close calls" (1.58.0: the message looked up a key the night
+    does not have, so every cold night read "are close calls", a freeze included)."""
+    parts = [f'{k["danger"]} could die' if k.get('danger') else '', f'{k["damage"]} would be damaged' if k.get('damage') else '',
+             f'{k["watch"]} {"is a close call" if k["watch"] == 1 else "are close calls"}' if k.get('watch') else '']
+    parts = [x for x in parts if x]
+    if not parts: return 'no plant is at risk'
+    n = next(k[x] for x in ('danger', 'damage', 'watch') if k.get(x))
+    parts[0] = parts[0].replace(' ', f' plant{"" if n == 1 else "s"} ', 1)
+    return parts[0] if len(parts) == 1 else ', '.join(parts[:-1]) + ' and ' + parts[-1]
 
 def midday_word(d):
     try: return date.fromisoformat(d).strftime('%A')
     except ValueError: return d
+
+def feed_due(c, codes, today):
+    """The plants to feed today, for the morning message. As on Today (1.58.0), a plant with no feeding ever logged has no reminder yet: it stayed "due" every day of
+    its season, so the message said "3 to feed" each morning for plants nobody had fed through the app."""
+    return [p for d in ics_feed_days(c, today, today) for p in d['plants'] if p['code'] in codes and p.get('last')]
 
 def push_due(c):
     """At 8 in the morning, local time, for each home: what is due today."""
@@ -101,7 +126,7 @@ def push_due(c):
             at, at_args = plants_at(c, H)
             codes = {r[0] for r in c.execute("SELECT code FROM plants WHERE status='active'" + at, at_args)}
             today = local.date()
-            feed = [p for d in ics_feed_days(c, today, today) for p in d['plants'] if p['code'] in codes]
+            feed = feed_due(c, codes, today)
         water = [p for p in W['plants'] if p['state'] == 'due']
         if not water and not feed: continue
         parts = []

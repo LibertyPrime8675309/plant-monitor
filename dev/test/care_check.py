@@ -34,7 +34,11 @@ with sync_playwright() as p:
     pg.locator('#today-unlogged summary').click()
     pg.locator('#today-unlogged button[data-act=careall]').click(); confirm(pg)
     check(pg.locator('#today-unlogged').count() == 0, 'bulk "I watered all" starts the clock for them')
-    check(pg.locator('#today-feed').count() == 1 and pg.locator('#today-needs').count() == 1, 'feed and needed-from-you sections are there')
+    # 1.58.0: with no feeding ever logged, the plants in season are a folded part of their own and Feed is not counted
+    unfed = pg.locator('#today-unfed li.job').count()
+    check(unfed > 0 and pg.locator('#today-unfed details.grp:not([open])').count() == 1 and pg.locator('#today-feed').count() == 0 and pg.locator('#today-needs').count() == 1,
+          f'{unfed} plants in season with no feeding logged are a folded part; nothing is counted as due to feed')
+    check('feed' in pg.locator('.td-none').inner_text().lower() and pg.locator('.td-jumps a[data-sec=today-feed]').count() == 0, 'Feed is in the "Nothing due today" line and has no button')
     # plant page
     pg.goto(BASE + '/#/plant/P-031'); pg.wait_for_timeout(2500)
     st = pg.locator('#quick-status').inner_text()

@@ -2,13 +2,14 @@
 amendments from batch C5 in three groups and their properties in words; a new recipe in parts by volume through its dialog
 (an additive asks "How much" instead of parts) and its estimate; a plant's "What it is in" section (P-032 semi-hydro in LECA,
 P-094 with a sphagnum top layer); recording a repot from a recipe with a top layer, which logs Repotted; "How it grows"
-changed on the page; a semi-hydro pot's watering button saying "Top up" and its toast "Topped up the reservoir"; Today's list
-of flushes; how often, saved; a viewer; phone width, dark and large text.
+changed on the page; a semi-hydro pot's watering button saying "Top up" and its toast "Topped up the reservoir"; Today's flushes
+(never logged: a folded part; logged once and overdue: counted); how often, saved; a viewer; phone width, dark and large text.
 Start the mock server with a fresh data folder, then: python3 dev/test/mixes_check.py [http://127.0.0.1:8080]
 Screenshots: dev/tmp/shots/mixes-*.png"""
 import json, os, sys, urllib.error, urllib.request
 from datetime import date, timedelta
 from playwright.sync_api import sync_playwright
+from waits import until
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
 TS = BASE.rsplit(':', 1)[0] + ':' + str(int(BASE.rsplit(':', 1)[1]) + 1)
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
@@ -101,14 +102,25 @@ with sync_playwright() as p:
     pg.wait_for_selector('#mx-plant'); t = pg.inner_text('#mx-plant')
     check('Water only care' in t and 'Fresh water' in t and 'Checking the roots' in t, 'Water only: its care becomes fresh water and root checks')
     pg.locator('#mx-plant select[data-k=grow_kind]').select_option('Soil mix'); pg.wait_for_timeout(1500)
-    # Today
-    pg.goto(BASE + '/#/today'); pg.wait_for_selector('#mx-hydro', timeout=20000)
-    t = pg.inner_text('#mx-hydro')
-    check('P-092' in t and 'Flushing' in t and 'P-032' in t, 'Today lists the semi-hydro pots due a flush')
-    pg.evaluate("document.getElementById('mx-hydro').scrollIntoView()"); pg.wait_for_timeout(1500)      # the photos load as they come into view
-    n_img = pg.locator('#mx-hydro li.job img').count()
-    check(n_img >= 1 and pg.evaluate("[...document.querySelectorAll('#mx-hydro li.job img')].every(i => i.complete && i.naturalWidth > 0)"), f'1.56.1: their photos show ({n_img})')
-    pg.locator('#mx-hydro').screenshot(path=os.path.join(OUT, 'mixes-5-today.png'))
+    # Today. 1.58.0: a flush that was never logged has no rhythm to be late on, so it is not counted as due: it waits in a folded part of its own
+    pg.goto(BASE + '/#/today'); pg.wait_for_selector('#mx-hydro-new', timeout=20000)
+    check(pg.locator('#mx-hydro').count() == 0 and pg.locator('.td-jumps a[data-sec=mx-hydro]').count() == 0 and pg.locator('#mx-hydro-new details.grp:not([open])').count() == 1,
+          'with no flush ever logged, Today counts none as due: they are in a folded part, "No flush or root check logged yet"')
+    pg.wait_for_timeout(1500)                                       # a page shown from what was saved last time is drawn once more just after: let that pass
+    def opened():                                                   # opens the folded part (again, if the page was drawn again) and waits for its photos
+        if not pg.locator('#mx-hydro-new details').evaluate('e => e.open'): pg.locator('#mx-hydro-new summary').click()
+        return pg.evaluate("(() => { const im = [...document.querySelectorAll('#mx-hydro-new li.job img')]; im.forEach(i => { i.loading = 'eager'; }); return im.length > 0 && im.every(i => i.complete && i.naturalWidth > 0); })()")
+    shown = until(pg, opened)
+    t = pg.inner_text('#mx-hydro-new'); n_img = pg.locator('#mx-hydro-new li.job img').count()
+    check('P-092' in t and 'Flushing' in t and 'P-032' in t and 'nothing logged yet' in t, 'the folded part lists the semi-hydro pots and says nothing is logged for them yet')
+    check(shown and n_img >= 1, f'1.56.1: their photos show ({n_img})')
+    pg.locator('#mx-hydro-new').screenshot(path=os.path.join(OUT, 'mixes-5-today.png'))
+    # once one is logged, the next is counted from that day: a flush logged long ago is due now
+    x = next(i for i in call('GET', '/api/mixes/care')['items'] if i['code'] == 'P-092' and i['kind'] == 'flush')
+    call('POST', '/api/care', {'plant': 'P-092', 'kind': 'flush', 'done_on': (date.today() - timedelta(days=x['every'] + 4)).isoformat()})
+    pg.goto(BASE + '/#/history'); pg.goto(BASE + '/#/today'); pg.wait_for_selector('#mx-hydro', timeout=20000)
+    t = pg.inner_text('#mx-hydro'); jump = pg.locator('.td-jumps a[data-sec=mx-hydro]')
+    check('P-092' in t and 'overdue' in t and 'P-032' not in t and jump.count() == 1 and jump.inner_text() == 'Flush and roots (1)', f'a flush logged {x["every"] + 4} days ago is due: Today counts that one ("{jump.inner_text() if jump.count() else ""}")')
     # how often
     pg.goto(BASE + '/#/mixes'); pg.wait_for_selector('#mx-every')
     pg.fill('#mx-every [name=flush]', '10'); pg.click('#mx-every button[type=submit]'); pg.wait_for_timeout(1200)
