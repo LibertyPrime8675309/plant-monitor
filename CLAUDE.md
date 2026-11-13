@@ -3,7 +3,7 @@
 This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that runs in Docker Desktop on his Windows PC. It is being built to manage large plant collections at several sites around the world, to hold the knowledge about them, and to identify and log plants and mushrooms better over time. Today it has one site, Ethan's house in Round Rock, Texas, with about 80 potted plants and the local weather. `docs/PLAN.md` is the agreed order of work (November 2026): its first three steps come before any new feature. Read `docs/ARCHITECTURE.md` before changing code, and `docs/PROTOTYPING.md` before starting a prototype.
 
 ## Who it is for
-- Ethan is visually impaired. Accessibility is a requirement:
+- Accessibility is a requirement, to the standard a person with low vision needs:
   - Large, scalable text (everything scales with the Display setting).
   - High contrast and light/dark themes.
   - Full keyboard use with visible focus.
