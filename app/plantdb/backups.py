@@ -27,13 +27,15 @@ def bk_list():
             with zipfile.ZipFile(os.path.join(BACKUP_DIR, f)) as z:
                 if 'backup.json' in z.namelist(): meta = json.loads(z.read('backup.json'))
         except (zipfile.BadZipFile, OSError, ValueError): meta = {'broken': True}
-        out.append({'file': f, 'bytes': st.st_size, 'kind': m.group(1), 'photos': bool(m.group(2)), 'created_at': meta.get('created_at') or iso(st.st_mtime),
+        out.append({'file': f, 'bytes': st.st_size, 'kind': m.group(1), 'photos': bool(m.group(2)), 'weather': meta.get('weather', True), 'created_at': meta.get('created_at') or iso(st.st_mtime),
                     'version': meta.get('version'), 'note': meta.get('note', ''), 'by': meta.get('by', ''), 'plants': meta.get('plants'), 'broken': meta.get('broken', False)})
     return sorted(out, key=lambda x: x['file'], reverse=True)
 
 def make_backup(kind='manual', photos=False, note='', by='Unknown'):
-    """A consistent copy of the database (SQLite's own backup, safe while the app runs), zipped, optionally with the photos."""
+    """A consistent copy of the database (SQLite's own backup, safe while the app runs), zipped, optionally with the photos.
+    1.58.0: the weather history is left out once it has a backup of its own (wxbackup.py), which is most of the size."""
     with BK_LOCK:
+        weather = not wx_covered()
         stamp = datetime.now(timezone.utc).strftime('%Y%m%d-%H%M%S')
         name = f'plantdb-backup-{stamp}-{kind}{"-photos" if photos else ""}.zip'
         tmpdb = os.path.join(BACKUP_DIR, f'.tmp-{stamp}.db')
@@ -42,8 +44,9 @@ def make_backup(kind='manual', photos=False, note='', by='Unknown'):
             src = sqlite3.connect(DB_PATH, timeout=60); dst = sqlite3.connect(tmpdb)
             with dst: src.backup(dst)
             plants = dst.execute('SELECT COUNT(*) FROM plants').fetchone()[0]
+            if not weather: wx_strip(dst)
             src.close(); dst.close()
-            meta = {'created_at': now(), 'version': APP_VERSION, 'kind': kind, 'photos': photos, 'note': note[:300], 'by': by, 'plants': plants,
+            meta = {'created_at': now(), 'version': APP_VERSION, 'kind': kind, 'photos': photos, 'weather': weather, 'note': note[:300], 'by': by, 'plants': plants,
                     'restore': 'Stop the app, put plants.db in the data folder (and the photos folder, if included), then start the app. See README, Backups.'}
             with zipfile.ZipFile(tmpzip, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as z:
                 z.write(tmpdb, 'plants.db')
@@ -149,6 +152,7 @@ def backup_loop():
             try:
                 if backup_due(c) and not BK_JOB.get('running'):
                     run_backup_job('auto', bk_settings(c)['photos'], 'Automatic backup', 'Automatic backup')
+                wx_backup_tick(c)                          # 1.58.0: the weather history's own backup, on its own schedule
             finally: c.close()
         except Exception as e: problem_exc('backup', e, 'The automatic backup could not be started')
         time.sleep(300)
@@ -230,6 +234,7 @@ def restore_backup(name, by, before=True):
                 plants = t.execute('SELECT COUNT(*) FROM plants').fetchone()[0]
             finally: t.close()
             before_name = make_backup('manual', False, f'Before restoring {name}', by) if before else None
+            carried = wx_carry(tmpdb) if meta.get('weather', True) is False else None      # 1.58.0: a backup without weather keeps the weather the record has
             with BK_LOCK:
                 src = sqlite3.connect(tmpdb); dst = sqlite3.connect(DB_PATH, timeout=60)
                 try:
@@ -246,15 +251,23 @@ def restore_backup(name, by, before=True):
             try: os.remove(tmpdb)
             except OSError: pass
     init_db()                                      # an older backup gets this version's columns, tables and batches
+    wx = 'in the backup'
+    if carried is not None:
+        wx = f'kept as it was ({carried:,} hourly readings)' if carried else 'none in the record, and no weather backup to put it back from'
+        if not carried:                             # a new computer, or a record that lost its weather: put it back from the weather backup, if there is one
+            try:
+                f = wx_fill(by)
+                if f['hourly'] or f['days']: wx = f"put back from the weather backup ({f['hourly']:,} hourly readings)"
+            except Exception as e: problem_exc('backup', e, 'The weather history could not be put back after the restore')
     c = sqlite3.connect(DB_PATH, timeout=30); c.row_factory = sqlite3.Row
     try:
-        audit_only(c, 'backup', 'restore', None, name, by, f'Restored from {name} ({plants} plants, made {meta.get("created_at", "")[:10]} by version {meta.get("version", "?")}).' + (f' The database from before is in {before_name}.' if before_name else ' No backup was made of the database from before.'))   # 1.56.5: it said "is in True"
+        audit_only(c, 'backup', 'restore', None, name, by, f'Restored from {name} ({plants} plants, made {meta.get("created_at", "")[:10]} by version {meta.get("version", "?")}).' + (f' The database from before is in {before_name}.' if before_name else ' No backup was made of the database from before.') + f' Weather history: {wx}.')   # 1.56.5: it said "is in True"
         c.commit()
     finally: c.close()
     try:                                                            # 1.55.0 (PLAN.md step 7): a restore is the quarterly restore test
         c2 = sqlite3.connect(DB_PATH, timeout=30); c2.execute("INSERT OR REPLACE INTO settings(key,value) VALUES('restore_tested_at',?)", (now(),)); c2.commit(); c2.close()
     except sqlite3.Error: pass
-    return {'ok': True, 'before': before_name, 'plants': plants, 'photos_added': added, 'version': meta.get('version'), 'restore_tested_at': now()}
+    return {'ok': True, 'before': before_name, 'plants': plants, 'photos_added': added, 'version': meta.get('version'), 'restore_tested_at': now(), 'weather': wx}
 
 @app.route('/api/backups/restore', methods=['POST'])
 def backup_restore():

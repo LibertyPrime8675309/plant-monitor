@@ -233,20 +233,25 @@ const acts = {
     catch (e) { if (m) m.textContent = e.message; }
     el.disabled = false;
   },
+  async wbrun(el) {                  // 1.58.0: the weather history's own backup: make a piece, combine them, or put missing days back
+    if (!(await needName())) return;
+    await guard(async () => { const r = await api('POST', '/api/backups/weather', { what: el.dataset.what }); if (!r.started) toast('A weather backup is already running', true); wbPoll(); });
+  },
   async bkrestore(el) {              // 1.31.0: put a backup's database back in place
     if (!(await needName())) return;
     const r = await modal(html`<form method="dialog"><h2>Restore this backup?</h2>
       <p>The plant record goes back to how it was on <strong>${el.dataset.made}</strong>${el.dataset.plants ? ` (${el.dataset.plants} plants)` : ''}. Every plant, note, setting and log entry made since then is replaced by what the backup holds.</p>
       <ul><li>A backup of how things are now is made first, so this can be undone by restoring that one.</li>
         <li>Photos are never removed. ${el.dataset.photos ? 'Photos in the backup that are missing from your folder are put back.' : 'This backup has no photos; your photos stay as they are.'}</li>
-        <li>An older backup is brought up to this version on the way in.</li></ul>
+        <li>An older backup is brought up to this version on the way in.</li>
+        <li>The weather history is not lost: a backup that leaves it out keeps the weather the record has now.</li></ul>
       <div class="row"><button class="btn danger" value="ok">Restore it</button><button class="btn ghost" value="cancel" autofocus>Cancel</button></div></form>`);
     if (r !== 'ok') return;
     el.disabled = true; toast('Restoring. This takes a few seconds.');
     await guard(async () => {
       const x = await api('POST', '/api/backups/restore', { file: el.dataset.file });
       QC.clear(); PCODES_AT = 0; FROST = null; PGROUPS = null; META = null;
-      await modal(html`<form method="dialog"><h2>Restored</h2><p>${x.plants} plants are back as they were. ${x.photos_added ? `${x.photos_added} photos were put back. ` : ''}The database from before is kept as <code>${x.before}</code>.</p>
+      await modal(html`<form method="dialog"><h2>Restored</h2><p>${x.plants} plants are back as they were. ${x.photos_added ? `${x.photos_added} photos were put back. ` : ''}Weather history: ${x.weather || 'in the backup'}. The database from before is kept as <code>${x.before}</code>.</p>
         <div class="row"><button class="btn" value="ok" autofocus>Done</button></div></form>`);
       location.reload();
     });
@@ -744,6 +749,11 @@ const formActs = {
     if (!(await needName())) return;
     const f = form.elements;
     await guard(async () => { const r = await api('POST', '/api/backups', { photos: f.photos.checked, note: f.note.value.trim() }); if (!r.started) toast('A backup is already running', true); bkPoll(); });
+  },
+  async wbset(form) {
+    if (!(await needName())) return;
+    const f = form.elements;
+    await guard(async () => { await api('PUT', '/api/backups/weather/settings', { enabled: f.enabled.checked, freq: f.freq.value, hour: f.hour.value }); toast('Weather backup settings saved'); route(); });
   },
   async bkset(form) {
     if (!(await needName())) return;

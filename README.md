@@ -1815,15 +1815,26 @@ Open **Backups** in the menu.
   - how many automatic backups to keep (older automatic ones are deleted; backups you make yourself are never deleted automatically)
   - whether to include the photos. From 1.58.0 they are included unless you untick the box. A record that had the box unticked was switched over once when 1.58.0 was installed (the Audit log says so), unless its photos come to more than a gigabyte; untick it again and it stays unticked. If they are left out, the top of the Backups page says so, with a button to put them in.
 - **Backups made before an update** (the updater makes one each time): from 1.58.0 the newest 5 are kept and older ones are deleted. Before that they were never deleted, one for every version installed.
+- **Weather history** (from 1.58.0) has a backup of its own, in pieces, on its own schedule. Nearly all of the database is weather history, and little of it changes from day to day, so every backup used to carry the same 50 MB again.
+  - The first piece holds everything. Each later piece holds only the days that are new or have changed. All the pieces together are the whole history.
+  - Choose how often (every day, 3 days, week, 2 weeks or month; it starts as every week) and the hour. A run with nothing new makes no file. **Back up the weather now** makes a piece straight away.
+  - **Combine the pieces into one** writes one new piece with everything, checks it, and only then removes the old ones. Past 26 pieces this happens by itself.
+  - **Put missing weather back from the pieces** adds the days your record lacks. It never changes or removes weather the record has.
+  - Once the first piece is made, the other backups leave the weather out, which makes them a few megabytes. The list says "without the weather history" on those. Restoring one of them keeps the weather your record has; if the record has none (a new computer), it is put back from the pieces.
+  - Untick **Back up the weather history by itself** and the other backups carry the whole weather history again.
 - The **Your backups** list shows each backup with a Download and a Delete button.
 
 Backups are zips named `plantdb-backup-YYYYMMDD-HHMMSS-<manual|auto|update>.zip`. Each holds `plants.db`, a `backup.json` describing it and, if chosen, a `photos` folder. They are saved in the `backups` folder next to `data`, so updates do not touch them. That folder is still on the same disk, so copy a few to another drive or cloud folder now and then.
+
+The pieces of the weather backup are zips named `plantdb-weather-YYYYMMDD-HHMMSS-<full|part>.zip` in `backups\weather`. Each holds `weather.db` (a small SQLite database with the hourly readings and the day summaries it carries) and `piece.json`, which lists the days in it. A piece is never changed once written. If a second folder is set for backups (`PLANTDB_COPY_DIR`), each piece is copied to a `weather` folder there too. Pieces are not sent to the other computer's receiver yet, so a mirror shows no weather history.
 
 The app must be running for automatic backups. If it was off when one was due, that backup runs within a few minutes of the next start.
 
 ### Restoring a backup
 
 Stop the app, keep the current database under another name, put the backup's `plants.db` in its place, and start the app again. The example uses `plantdb-backup-20261021-030000-auto.zip`; use your file's name.
+
+Restoring from the Backups page is simpler and keeps your weather history. Done by hand as below, a backup made from 1.58.0 on has no weather history in it: a few minutes after the app starts it puts the weather back from the pieces in `backups\weather` by itself (or press **Put missing weather back from the pieces** on the Backups page). Anything the pieces do not hold is downloaded again over the following hours.
 
 Windows (cmd.exe):
 

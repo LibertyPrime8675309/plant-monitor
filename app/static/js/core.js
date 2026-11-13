@@ -527,7 +527,7 @@ async function jobsDialog() {               // 1.32.0: the background jobs, in o
       ${j.total ? html` <span class="muted">(${j.done} of ${j.total})</span>` : ''}<br><small class="muted">Started ${when(j.started)}</small></li>`)}</ul>` : html`<p class="muted">Nothing is running.</p>`}
     <h3>On a schedule</h3>
     <ul class="job-list">${d.schedule.map(s => html`<li><strong>${s.word}</strong>: ${s.every}.${s.next ? ` Next ${/^\d{4}-/.test(s.next) ? when(s.next) : s.next}.` : ''} Last ${ago(s.last)}.
-      ${owner && ['weather', 'shops', 'backup'].includes(s.kind) ? html` <button class="btn ghost small" type="button" data-act="jobrun" data-kind="${s.kind}">Run now</button>` : ''}</li>`)}</ul>
+      ${owner && ['weather', 'shops', 'backup', 'wxbackup'].includes(s.kind) ? html` <button class="btn ghost small" type="button" data-act="jobrun" data-kind="${s.kind}">Run now</button>` : ''}</li>`)}</ul>
     <h3>Finished (${d.done.length})</h3>
     ${d.done.length ? html`<ul class="job-list">${d.done.map(j => html`<li><span aria-hidden="true">${j.ok ? '✓' : '✗'}</span> <strong>${j.word}</strong>${j.label ? `: ${j.label}` : ''}, ${j.ok ? 'done' : 'failed'}${j.text ? `: ${j.text}` : ''}
       <br><small class="muted">${when(j.finished)}, ${j.seconds != null ? `${j.seconds} s` : ''}</small></li>`)}</ul>` : html`<p class="muted">Nothing has finished since the app started.</p>`}

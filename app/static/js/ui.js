@@ -577,6 +577,49 @@ const mb = n => n >= 1073741824 ? (n / 1073741824).toFixed(1) + ' GB' : n >= 104
 const BK_FREQ_WORDS = { '6h': 'Every 6 hours', '12h': 'Every 12 hours', daily: 'Every day', '3d': 'Every 3 days', weekly: 'Every week' };
 const BK_KIND = { manual: 'Made by you', auto: 'Automatic', update: 'Before an update' };
 let BK = null;
+// 1.58.0: the weather history's own backup, in pieces (plantdb/wxbackup.py)
+let WB = null;
+const wbDate = s => s ? parseYmd(s).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+const WB_FREQ_WORDS = { daily: 'Every day', '3d': 'Every 3 days', weekly: 'Every week', '2w': 'Every 2 weeks', monthly: 'Every month' };
+function wbJobHtml(j) {
+  if (!j || (!j.running && !j.finished)) return '';
+  if (j.running) return html`<p class="notice">${{ make: 'Backing up the weather history', combine: 'Combining the pieces', fill: 'Putting missing weather back' }[j.what] || 'Working'}… the first time this takes up to a minute.</p>`;
+  return j.ok ? html`<p class="notice ok">Finished ${when(j.finished)}: ${j.text}.</p>` : html`<p class="notice bad">It failed: ${j.error}</p>`;
+}
+async function wbPoll() {
+  const el = document.getElementById('wx-job'); if (!el) return;
+  let j; try { j = await api('GET', '/api/backups/weather/job'); } catch (e) { return; }
+  el.innerHTML = rend(wbJobHtml(j));
+  if (j.running) setTimeout(wbPoll, 1500); else if (location.hash.startsWith('#/backups')) { toast(j.ok ? j.text : 'The weather backup failed', !j.ok); route(); }
+}
+function wbHtml(W, hourOpt) {
+  const S = W.settings, n = W.pieces.length, good = W.pieces.filter(p => !p.broken), newest = good[0], L = W.live;
+  const num = x => Number(x).toLocaleString();
+  return html`<section class="blk" id="bk-wx"><h2>Weather history</h2>
+    <p class="muted">The weather history is most of the database${L.rows ? ` (${num(L.rows)} hourly readings, ${wbDate(L.first)} to ${wbDate(L.last)})` : ''}, and it changes little from day to day. So it has a backup of its own, in pieces, saved in the <span class="code">weather</span> folder inside the backups folder. The first piece holds everything. Each later piece holds only the days that are new or have changed. All the pieces together are the whole history.</p>
+    <p class="${newest ? 'notice ok' : 'notice'}" role="status">${newest ? html`Newest piece: <strong>${when(newest.created_at)}</strong>. ${n} piece${n === 1 ? '' : 's'}, ${mb(W.total_bytes)} in all.`
+        : S.enabled ? 'No weather backup yet. The first piece is made within a few minutes of the app starting, or press the button below.' : 'The weather history has no backup of its own.'}
+      ${W.last ? html` Last run ${when(W.last)}${W.result ? html`: ${W.result.charAt(0).toLowerCase() + W.result.slice(1)}` : ''}.` : ''}
+      ${W.covered ? ' The other backups leave the weather out, which is why they are small.' : !S.enabled ? ' The other backups carry the weather.'
+        : newest ? ' It has not run for a while, so the other backups carry the weather until it does.' : ' Until the first piece is made, the other backups still carry the weather.'}</p>
+    <form data-form="wbset"><label class="chk-row" style="border:0"><input type="checkbox" name="enabled" ${S.enabled ? raw('checked') : ''}><span>Back up the weather history by itself</span></label>
+      <div class="field-grid">
+        <label class="f">How often<select name="freq">${W.freqs.map(f => html`<option value="${f}" ${S.freq === f ? raw('selected') : ''}>${WB_FREQ_WORDS[f]}</option>`)}</select></label>
+        <label class="f">At about<select name="hour">${[...Array(24).keys()].map(h => html`<option value="${h}" ${+S.hour === h ? raw('selected') : ''}>${hourOpt(h)}</option>`)}</select></label></div>
+      <p class="hint">A run with nothing new makes no file. Past ${W.combine_at} pieces they are combined into one by themselves. If you turn this off, the other backups carry the whole weather history again, in every one.</p>
+      <button class="btn" type="submit">Save weather backup settings</button></form>
+    <div class="row" style="margin-top:1rem"><button class="btn" type="button" data-act="wbrun" data-what="make">Back up the weather now</button>
+      <button class="btn ghost" type="button" data-act="wbrun" data-what="combine" ${good.length < 2 ? raw('disabled') : ''}>Combine the pieces into one</button>
+      <button class="btn ghost" type="button" data-act="wbrun" data-what="fill" ${good.length ? '' : raw('disabled')}>Put missing weather back from the pieces</button></div>
+    <p class="hint">Combining writes one new piece with everything, checks it, and only then removes the old ones. Putting back adds the days the record lacks; it never changes or removes weather the record has.</p>
+    <div id="wx-job" role="status" aria-live="polite">${wbJobHtml(W.job)}</div>
+    ${n ? html`<details class="grp"><summary><h3>The pieces (${n})</h3></summary><div class="tbl-wrap"><table class="tbl"><caption class="sr">Pieces of the weather backup, newest first</caption>
+      <thead><tr><th scope="col">Made</th><th scope="col">Holds</th><th scope="col" class="num">Size</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
+      ${W.pieces.map(p => html`<tr><th scope="row">${when(p.created_at)}<div class="hint">${p.kind === 'full' ? 'Everything up to then' : 'What was new or changed'}</div></th>
+        <td>${p.broken ? html`<strong>Damaged file</strong>` : html`${num(p.rows)} hourly readings, ${num(p.days)} day summaries<div class="hint">${wbDate(p.first)} to ${wbDate(p.last)}</div>`}</td>
+        <td class="num">${mb(p.bytes)}</td><td><a class="btn small" href="/api/backups/weather/${enc(p.file)}" download aria-label="Download the piece ${p.file}">Download</a></td></tr>`)}</tbody></table></div></details>` : ''}
+  </section>`;
+}
 let CP = null;
 // 1.58.0: what the owner should know about how safe the backups are (the keys come from backup_notes() in backups.py)
 function bkNote(n, short) {
@@ -613,14 +656,14 @@ function copiesHtml(C) {          // 1.33.0: the second copy of each backup
 }
 async function viewBackups() {
   if (ME().role !== 'owner') return { title: 'Backups', html: html`<h1>Backups</h1><p class="notice">Backups are looked after by ${ME().owner_name}. They hold a copy of everything, so only the owner can make, download or restore them.</p>` };
-  [BK, CP] = await Promise.all([api('GET', '/api/backups'), api('GET', '/api/backups/copies').catch(() => null)]);
+  [BK, CP, WB] = await Promise.all([api('GET', '/api/backups'), api('GET', '/api/backups/copies').catch(() => null), api('GET', '/api/backups/weather').catch(() => null)]);
   const S = BK.settings, hourOpt = h => new Date(2026, 0, 1, h).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const where = BK.mounted ? 'the backups folder inside your plant-database folder' : 'data\\backups inside your plant-database folder';
   const last = BK.backups[0];
   return {
     title: 'Backups',
     html: html`<h1>Backups</h1>
-    <p class="muted">A backup is a zip with a complete copy of the database (plants, change log, weather history, feeding log, settings) and, if you choose, all the photos. Backups are saved in ${where}, so they survive updates. Copy a few to another drive now and then.</p>
+    <p class="muted">A backup is a zip with a complete copy of the database (plants, change log, feeding log, settings${WB && WB.covered ? '' : ', weather history'}) and, if you choose, all the photos.${WB && WB.covered ? html` The weather history has <a href="#bk-wx" data-act="jumpsec" data-sec="bk-wx">a backup of its own</a>.` : ''} Backups are saved in ${where}, so they survive updates. Copy a few to another drive now and then.</p>
     <p class="${last ? 'notice ok' : 'notice'}" role="status">${last ? html`Latest backup: <strong>${when(last.created_at)}</strong> (${BK_KIND[last.kind]}, ${mb(last.bytes)}).` : 'No backups yet. Make one now.'}
       ${S.enabled ? ` Automatic backups: ${BK_FREQ_WORDS[S.freq].toLowerCase()}${['daily', '3d', 'weekly'].includes(S.freq) ? ' at about ' + hourOpt(S.hour) : ''}${S.photos ? ', with the photos' : ''}.` : ' Automatic backups are off.'}</p>
     ${bkNotesHtml(BK.notes)}
@@ -637,21 +680,23 @@ async function viewBackups() {
           <label class="f">At about<small>For daily, 3-day and weekly backups</small><select name="hour">${[...Array(24).keys()].map(h => html`<option value="${h}" ${+S.hour === h ? raw('selected') : ''}>${hourOpt(h)}</option>`)}</select></label>
           <label class="f">Keep this many automatic backups<small>Older automatic ones are deleted. Of the backups made before an update, the newest ${BK.keep_updates} are kept. Your own backups are never deleted automatically.</small><input type="number" name="keep" min="1" max="365" value="${S.keep}"></label></div>
         <label class="chk-row" style="border:0"><input type="checkbox" name="photos" ${S.photos ? raw('checked') : ''}><span>Include the photos in automatic backups (about ${mb(BK.photo_bytes)} in each)</span></label>
-        <p class="hint">The database is ${mb(BK.db_bytes)} (most of it is weather history); a backup zip is usually a third to a half of that. Backups now use ${mb(BK.total_bytes)}; ${mb(BK.free_bytes)} free. The app must be running for automatic backups; a missed one runs when it next starts.</p>
+        <p class="hint">The database is ${mb(BK.db_bytes)} (most of it is weather history${WB && WB.covered ? ', which these backups leave out: it has its own, below' : ''}); ${WB && WB.covered ? 'a backup zip without photos is a few MB' : 'a backup zip is usually a third to a half of that'}. Backups now use ${mb(BK.total_bytes)}; ${mb(BK.free_bytes)} free. The app must be running for automatic backups; a missed one runs when it next starts.</p>
         <button class="btn" type="submit">Save automatic backup settings</button></form></section>
+    ${WB ? wbHtml(WB, hourOpt) : ''}
     ${CP ? copiesHtml(CP) : ''}
     <section class="blk"><h2>Your backups (${BK.backups.length})</h2>
       ${BK.backups.length ? html`<div class="tbl-wrap"><table class="tbl"><caption class="sr">Backups, newest first</caption><thead><tr><th scope="col">Made</th><th scope="col">Type</th><th scope="col" class="num">Size</th><th scope="col">Contents</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
         ${BK.backups.map(b => html`<tr><th scope="row">${when(b.created_at)}${b.note ? html`<div class="hint">${b.note}</div>` : ''}</th><td>${BK_KIND[b.kind]}${b.by && b.kind !== 'auto' ? html`<div class="hint">${b.by}</div>` : ''}</td>
-          <td class="num">${mb(b.bytes)}</td><td>${b.broken ? html`<strong>Damaged file</strong>` : html`Database${b.photos ? ' and photos' : ''}${b.plants != null ? `, ${b.plants} plants` : ''}${b.version ? html`<div class="hint">App version ${b.version}</div>` : ''}`}</td>
+          <td class="num">${mb(b.bytes)}</td><td>${b.broken ? html`<strong>Damaged file</strong>` : html`Database${b.photos ? ' and photos' : ''}${b.weather === false ? ', without the weather history' : ''}${b.plants != null ? `, ${b.plants} plants` : ''}${b.version ? html`<div class="hint">App version ${b.version}</div>` : ''}`}</td>
           <td><div class="row" style="gap:.4rem"><a class="btn small" href="/api/backups/${enc(b.file)}" download aria-label="Download the backup ${b.file}">Download</a>${!b.broken && ME().role === 'owner' ? html`<button class="btn small ghost" type="button" data-act="bkrestore" data-file="${b.file}" data-made="${when(b.created_at)}" data-plants="${b.plants == null ? '' : b.plants}" data-photos="${b.photos ? '1' : ''}">Restore</button>` : ''}<button class="btn small danger" type="button" data-act="bkdel" data-file="${b.file}" aria-label="Delete the backup ${b.file}">Delete</button></div></td></tr>`)}</tbody></table></div>` : html`<div class="empty">No backups yet.</div>`}</section>
     <section class="blk"><h2>Restoring a backup</h2>
       <ol><li>Stop the app (in the plant-database folder): <span class="code">docker compose down</span></li>
         <li>Rename the current <span class="code">data\\plants.db</span> to <span class="code">plants-old.db</span> (keep it until you are sure).</li>
         <li>Open the backup zip and copy <span class="code">plants.db</span> into the <span class="code">data</span> folder. If the backup has a <span class="code">photos</span> folder, copy its files into <span class="code">data\\photos</span>.</li>
         <li>Start the app: <span class="code">docker compose up -d</span></li></ol>
+      <p class="hint">A backup that says "without the weather history" has none in it. Restored by hand like this, the app puts the weather back from the pieces above a few minutes after it starts. The Restore button in the list keeps your weather as it is.</p>
       <p class="hint">The README has these steps as cmd.exe, PowerShell and bash commands.</p></section>`,
-    after: () => { if (BK.job && BK.job.running) bkPoll(); },
+    after: () => { if (BK.job && BK.job.running) bkPoll(); if (WB && WB.job && WB.job.running) wbPoll(); },
   };
 }
 function bkJobHtml(j) {
