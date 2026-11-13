@@ -30,7 +30,7 @@ PAGES = [('today', 'Today', '#/'), ('plants', 'Plants', '#/plants'), ('plant', '
          ('identify', 'Identify', '#/identify'), ('library', 'Library', '#/library'), ('species', 'A species page', '#/species/Monstera%20deliciosa'),
          ('around', 'Around home', '#/around'), ('wishlist', 'Wishlist', '#/wishlist'), ('fungi', 'Mushrooms', '#/fungi'), ('find', 'A mushroom find', '#/fungi/F-001'),
          ('findnew', 'Adding a find', '#/fungi/new'), ('photos', 'Photos', '#/photos'), ('labels', 'Labels', '#/labels'), ('history', 'Audit log', '#/history'),
-         ('backups', 'Backups', '#/backups'), ('offline', 'Offline use', '#/offline'), ('settings', 'Settings', '#/settings'), ('display', 'Display settings window', '#/?display')]
+         ('where', 'Rooms and spots', '#/where'), ('backups', 'Backups', '#/backups'), ('offline', 'Offline use', '#/offline'), ('settings', 'Settings', '#/settings'), ('display', 'Display settings window', '#/?display')]
 MAX_SCREENS = int(os.environ.get('SHOTS_SCREENS', '4'))          # long pages are cut after this many screens
 PREVIEW = os.environ.get('SHOTS_PREVIEW', '')                    # a layout option to show: the JSON for localStorage "plantdb.preview" (static/js/preview.js)
 AS = os.environ.get('SHOTS_AS', '')                              # "key=Title": save this run's pictures as that page instead, so an option sits beside the page as it is
@@ -72,8 +72,11 @@ with sync_playwright() as p:
                 pg.goto(L + '/' + (h_.split('?')[0] if disp else h_)); pg.wait_for_timeout(2600)
                 if disp: pg.evaluate("document.getElementById('display-btn').click()"); pg.wait_for_timeout(500)
                 # pictures further down the page load when they come into view: ask for them all now, so none is a grey box in the picture
-                pg.evaluate("document.querySelectorAll('img[loading=lazy]').forEach(i => { i.loading = 'eager'; })")
-                try: pg.wait_for_function("[...document.images].every(i => i.complete)", timeout=8000)
+                pg.evaluate("document.querySelectorAll('img').forEach(i => { i.loading = 'eager'; i.decoding = 'sync'; })")
+                try: pg.wait_for_function("[...document.images].every(i => i.complete)", timeout=45000)
+                except Exception: pass
+                # a photo that has arrived but is not unpacked yet is painted as an empty box: unpack them all before the picture
+                try: pg.evaluate("Promise.all([...document.images].map(i => i.decode().catch(() => 0)))")
                 except Exception: pass
                 pg.evaluate("window.scrollTo(0,0)"); pg.wait_for_timeout(200)
                 top = pg.evaluate("s => { const e = s && document.querySelector(s); return e ? Math.max(0, Math.round(e.getBoundingClientRect().top + scrollY - 8)) : 0; }", FROM)
