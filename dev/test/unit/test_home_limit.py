@@ -188,7 +188,7 @@ def test_an_editor_without_a_limit_and_the_owner_are_not_held_back(world):
 # closed by the owner-only and viewer rules, which test_access and the access check cover.
 FREE = {
     # the owner's: backups, people, settings, jobs, problems, keys
-    'backups', 'backup_file', 'backup_restore', 'backup_settings_put', 'backup_copies_api', 'people', 'settings', 'jobs_run_now', 'problems_api',
+    'backups', 'backup_file', 'backup_restore', 'backup_settings_put', 'backup_copies_api', 'wx_backup_api', 'wx_backup_settings_put', 'people', 'settings', 'jobs_run_now', 'problems_api',
     'identify_settings', 'library_settings', 'weather_settings', 'shops_api', 'shops_keys', 'ingest_regen', 'calendar_new_link',
     # a person's own: name, settings, devices, "Got it"
     'me', 'me_prefs', 'push_device_rm', 'push_subscribe', 'push_test', 'whatsnew_seen', 'for_claude_copied',
