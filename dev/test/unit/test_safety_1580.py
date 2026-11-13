@@ -116,7 +116,7 @@ def test_the_pages_get_the_backup_notes(settings_back, monkeypatch):
     S.HEALTH_CACHE.clear()
 
 # ---------------------------------------------------------------- the names this computer's port answers to
-GOOD = ('localhost:8080', 'LOCALHOST', '127.0.0.1:8080', '[::1]:8080', '192.168.1.20:8080', 'ethans-pc:8080', 'ethans-pc.local', 'host.docker.internal:8080', 'plants.lan:8080')
+GOOD = ('localhost:8080', 'LOCALHOST', '127.0.0.1:8080', '[::1]:8080', '192.168.1.20:8080', 'ethans-pc:8080', 'ethans-pc.local', 'host.docker.internal:8080', 'plants.lan:8080', 'plants.test:8080')
 BAD = ('evil.example:8080', 'attacker.com', 'localhost.evil.example:8080', 'plants.example.ts.net:8443', '127.0.0.1.evil.example')
 
 def test_this_computers_port_answers_to_its_own_names():

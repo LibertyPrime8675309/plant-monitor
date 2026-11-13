@@ -1199,7 +1199,7 @@ def public_link():
 # ending in .local and the like cannot be pointed here by a stranger; anything else has to be listed in PLANTDB_HOSTS (commas,
 # in .env) or be the address saved for labels or for the calendar. People who come in through Tailscale are not checked this
 # way: they are let in by who they are, not by the port.
-LOCAL_SUFFIXES = ('.local', '.localhost', '.lan', '.home', '.home.arpa', '.internal', '.localdomain')
+LOCAL_SUFFIXES = ('.local', '.localhost', '.test', '.lan', '.home', '.home.arpa', '.internal', '.localdomain')   # .test and .localhost are reserved: nobody can own a name there (RFC 6761)
 EXTRA_HOSTS = {h.strip().lower().rstrip('.') for h in os.environ.get('PLANTDB_HOSTS', '').split(',') if h.strip()}
 
 def host_name():

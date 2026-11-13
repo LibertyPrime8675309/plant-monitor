@@ -280,7 +280,7 @@ Remove the line from `.env` and run `docker compose up -d` to close it again.
 On this computer's own address (`http://localhost:8080`) the app treats everyone as you, the owner. So that a web page from somewhere else cannot reach it through your browser by giving 127.0.0.1 a name of its own, the app answers there only to:
 
 - `localhost`, and number addresses such as `127.0.0.1` or `192.168.1.20`;
-- a single-word name, such as your PC's name on the home network, and names ending in `.local`, `.lan`, `.home`, `.home.arpa`, `.internal` or `.localhost`;
+- a single-word name, such as your PC's name on the home network, and names ending in `.local`, `.lan`, `.home`, `.home.arpa`, `.internal`, `.localhost` or `.test`;
 - the address saved for labels, and the public address saved for the calendar.
 
 Any other name gets a short page saying so. People who come in through Tailscale are not affected: they are let in by who they are. If you reach this computer's port under a name of your own with dots in it (through your own proxy, say), list it in `.env` and restart (several names: separate them with commas):
