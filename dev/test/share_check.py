@@ -50,8 +50,8 @@ with sync_playwright() as p:
     pg.goto(LOCAL + '/#/photos'); pg.wait_for_timeout(3500)
     check(pg.locator('a[href="#/share"]').count() == 1, 'the Photos page links to the shared photos')
     check(pg.evaluate("navigator.serviceWorker.controller ? true : false"), 'the service worker is in charge of the page')
-    pg.evaluate("() => { const f = document.createElement('form'); f.method = 'POST'; f.action = '/share'; f.enctype = 'multipart/form-data'; const i = document.createElement('input'); i.type = 'file'; i.name = 'photos'; f.appendChild(i); document.body.appendChild(f); window.__f = f; }")
-    pg.set_input_files('form[action="/share"] input', PHOTO)
+    pg.evaluate("() => { const f = document.createElement('form'); f.method = 'POST'; f.action = '/share-in'; f.enctype = 'multipart/form-data'; const i = document.createElement('input'); i.type = 'file'; i.name = 'photos'; f.appendChild(i); document.body.appendChild(f); window.__f = f; }")
+    pg.set_input_files('form[action="/share-in"] input', PHOTO)
     pg.evaluate("window.__f.submit()"); pg.wait_for_timeout(4000)
     check(pg.url.endswith('#/share') and pg.locator('h1').inner_text() == 'Photos shared with Plant record' and pg.locator('.share-grid img').count() == 1, 'sharing a picture lands on the Shared photos page with the picture shown')
     pg.screenshot(path=f'{OUT}/share-page.png')
@@ -65,12 +65,23 @@ with sync_playwright() as p:
     import mimetypes
     boundary = '----plantrec'
     body = (f'--{boundary}\r\nContent-Disposition: form-data; name="photos"; filename="shared.jpg"\r\nContent-Type: image/jpeg\r\n\r\n').encode() + open(PHOTO, 'rb').read() + f'\r\n--{boundary}--\r\n'.encode()
-    req = urllib.request.Request(LOCAL + '/share', data=body, method='POST', headers={'Content-Type': f'multipart/form-data; boundary={boundary}', 'X-Editor': 'Share Test'})
+    req = urllib.request.Request(LOCAL + '/share-in', data=body, method='POST', headers={'Content-Type': f'multipart/form-data; boundary={boundary}', 'X-Editor': 'Share Test'})
     class NoRedirect(urllib.request.HTTPRedirectHandler):
         def redirect_request(self, *a, **k): return None
     try: urllib.request.build_opener(NoRedirect).open(req); st = 200
     except urllib.error.HTTPError as e: st = e.code
     check(st == 303 and any(x['caption'] == 'shared.jpg' for x in call('GET', '/api/photos/unassigned')[1]), 'without a service worker, the server keeps a shared picture as an unassigned photo')
+    # 1.58.0: the old address (/share, the prefix Funnel publishes for sitter links) takes no pictures from the server any more;
+    # an installed app that still has it is answered by the service worker, as the first part of this check does for /share-in
+    req = urllib.request.Request(LOCAL + '/share', data=body, method='POST', headers={'Content-Type': f'multipart/form-data; boundary={boundary}', 'X-Editor': 'Share Test'})
+    try: urllib.request.build_opener(NoRedirect).open(req); st = 200
+    except urllib.error.HTTPError as e: st = e.code
+    check(st == 405, f'the server no longer takes pictures at /share ({st})')
+    pg.goto(LOCAL + '/#/photos'); pg.wait_for_timeout(2500)
+    pg.evaluate("() => { const f = document.createElement('form'); f.method = 'POST'; f.action = '/share'; f.enctype = 'multipart/form-data'; f.id = 'oldshare'; const i = document.createElement('input'); i.type = 'file'; i.name = 'photos'; f.appendChild(i); document.body.appendChild(f); window.__g = f; }")
+    pg.set_input_files('#oldshare input', PHOTO)
+    pg.evaluate("window.__g.submit()"); pg.wait_for_timeout(4000)
+    check(pg.url.endswith('#/share') and pg.locator('.share-grid img').count() == 1, 'an installed app with the old address still works: the service worker takes the share')
     b.close()
 
 # ---- the mirror: a second instance, read-only, fed from a backup of this one

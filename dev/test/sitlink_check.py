@@ -1,14 +1,18 @@
 """Checks 1.49.0 (PLAN.md step 4c): the plant-sitter sheet by link. An editor makes a link on the sitter page, copies it, a sitter
-with no sign-in opens it in a browser of their own (a fresh context, through the Tailscale port with no identity headers, as a Funnel
-visitor arrives), reads the sheet in large print, ticks a box, and the tick shows on the printout in the app. A viewer sees no
-"Share the sheet by link". The link taken down answers 410 in plain words. Nothing but the sheet is reachable through it.
+with no sign-in opens it in a browser of their own, reads the sheet in large print, ticks a box, and the tick shows on the printout
+in the app. A viewer sees no "Share the sheet by link". The link taken down answers 410 in plain words. Nothing but the sheet is
+reachable through it.
+1.58.0: the sitter arrives the way a Funnel visitor really does: on this computer's own port (8080, where every other request is
+the owner's), marked by Tailscale with the Tailscale-Funnel-Request header. Before, this check used the Tailscale port with no
+identity, which is not where the README's Funnel command sends people, and so it missed that /share itself took pictures from anyone.
 Start the mock server with a fresh data folder (MOCK_TS=1), then:  python3 dev/test/sitlink_check.py [base]
 Screenshots: dev/tmp/shots/sitlink-*.png"""
 import json, os, sys, urllib.request, urllib.error
 from datetime import date, timedelta
 from playwright.sync_api import sync_playwright
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
-TS = BASE.replace(':8080', ':8081')                     # the Tailscale port: what a Funnel visitor reaches (no identity headers)
+TS = BASE.replace(':8080', ':8081')                     # the Tailscale port: people with an identity
+FUN = {'Tailscale-Funnel-Request': '?1'}                # what Tailscale adds to every request that came in from the internet through Funnel
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
 fails = []
 def check(cond, what):
@@ -18,10 +22,15 @@ def call(m, url, body=None, base=BASE, headers=None):
     req = urllib.request.Request(base + url, data=json.dumps(body).encode() if body is not None else None,
                                  headers={'Content-Type': 'application/json', 'X-Editor': 'Link Test', **(headers or {})}, method=m)
     with urllib.request.urlopen(req) as r: return json.loads(r.read() or b'null')
-def status(url, base=TS):
+def status(url, base=TS, headers=None, method='GET', data=None):
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, *a, **k): return None
     try:
-        with urllib.request.urlopen(base + url) as r: return r.status
+        with urllib.request.build_opener(NoRedirect).open(urllib.request.Request(base + url, headers=headers or {}, method=method, data=data)) as r: return r.status
     except urllib.error.HTTPError as e: return e.code
+def visitor(url, method='GET', data=None, more=None):
+    """As someone on the internet: this computer's own port, with Tailscale's Funnel mark."""
+    return status(url, base=BASE, headers={**FUN, **(more or {})}, method=method, data=data)
 
 OWN = {'Tailscale-User-Login': 'ethan@example.com', 'Tailscale-User-Name': 'Ethan'}
 VIEW = {'Tailscale-User-Login': 'aunt@example.com', 'Tailscale-User-Name': 'Aunt May'}
@@ -53,11 +62,11 @@ with sync_playwright() as p:
     pg.screenshot(path=os.path.join(OUT, 'sitlink-owner.png'), full_page=True)
     tok = url.rsplit('/', 1)[1]
 
-    # --- the sitter: a browser of their own, no sign-in, through the Tailscale port with no identity (as through Funnel)
-    ctx = b.new_context(viewport={'width': 390, 'height': 844})
+    # --- the sitter: a browser of their own, no sign-in, arriving through Funnel (this computer's own port, with Tailscale's mark)
+    ctx = b.new_context(viewport={'width': 390, 'height': 844}, extra_http_headers=FUN)
     sp = ctx.new_page(); serrs = []
     sp.on('pageerror', lambda e: serrs.append(str(e))); sp.on('console', lambda m: m.type == 'error' and '404' not in m.text and serrs.append(m.text))
-    sp.goto(f'{TS}/share/{tok}'); sp.wait_for_selector('.ps-doc'); sp.wait_for_timeout(500)
+    sp.goto(f'{BASE}/share/{tok}'); sp.wait_for_selector('.ps-doc'); sp.wait_for_timeout(500)
     check(sp.locator('.ps-doc h2').inner_text() == 'Looking after the plants', 'the sitter sees the sheet with no sign-in')
     check('The key is under the mat.' in sp.locator('.ps-msg').inner_text(), 'the note is on it')
     check(sp.locator('.ps-day').count() == 5, 'five days, day by day')
@@ -97,6 +106,17 @@ with sync_playwright() as p:
     check(status(f'/share/{tok}/photo/not-here.jpg') == 404, 'a photo that is not on the sheet is not served')
     check(status('/api/plants') == 403, 'the Tailscale port still refuses an unknown visitor elsewhere')
     check(status('/share/' + 'x' * 32) == 404, 'a wrong token is refused')
+    # 1.58.0: from the internet, a sitter link or the calendar and nothing else, on the port where everyone else is the owner
+    check(visitor(f'/share/{tok}/data') == 200 and visitor(f'/share/{tok}/photo/not-here.jpg') == 404 and visitor('/share/' + 'x' * 32) == 404, 'a visitor from the internet reaches the link, and only what is on it')
+    shut = {u: visitor(u) for u in ('/', '/share', '/share-in', '/api/plants', '/api/people', '/api/backups', '/healthz', '/app.js', '/sitter.html')}
+    check(all(v == 404 for v in shut.values()), f'everything else is "not found" to a visitor from the internet: {shut}')
+    boundary = '----plantrec'
+    body = (f'--{boundary}\r\nContent-Disposition: form-data; name="photos"; filename="visitor.jpg"\r\nContent-Type: image/jpeg\r\n\r\n').encode() + open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'app', 'static', 'icon-192.png'), 'rb').read() + f'\r\n--{boundary}--\r\n'.encode()
+    n0 = len(call('GET', '/api/photos/unassigned'))
+    posts = {u: visitor(u, 'POST', body, {'Content-Type': f'multipart/form-data; boundary={boundary}', 'X-Editor': 'Visitor'}) for u in ('/share', '/share-in', '/api/photos')}
+    check(all(v == 404 for v in posts.values()) and len(call('GET', '/api/photos/unassigned')) == n0, f'a visitor cannot send pictures in, whatever headers they add: {posts}')
+    cal = call('GET', '/api/calendar/settings')['links']['local']
+    check(visitor('/cal/' + cal.rsplit('/', 1)[-1]) == 200 and visitor('/cal/wrong.ics') == 404, 'the calendar link still works from the internet, and only with its own token')
 
     # --- back in the app: the tick shows on the printout
     pg.reload(); pg.wait_for_selector('.ps-doc'); pg.wait_for_timeout(1200)
@@ -117,7 +137,7 @@ with sync_playwright() as p:
     check(pg.locator('.ps-linkrow').count() == 0 and 'taken down' in pg.locator('#ps-share-msg').inner_text(), 'the link is gone from the list and the page says so')
     sp.reload(); sp.wait_for_timeout(800)
     check('taken down' in sp.locator('#ps-sheet').inner_text() and sp.locator('.ps-tick').count() == 0, 'the sitter now sees "taken down" instead of the sheet')
-    check(status(f'/share/{tok}') == 410, 'the link answers 410')
+    check(status(f'/share/{tok}') == 410 and visitor(f'/share/{tok}') == 410, 'the link answers 410')
     sp.screenshot(path=os.path.join(OUT, 'sitlink-sitter-down.png'))
     for e in errs: check(False, f'owner page: {e}')
     ctx.close(); b.close()
