@@ -1,0 +1,25 @@
+/* Propagation (#/propagating, js/propagation.js, plantdb/propagation.py): cuttings, layers, grafts, divisions, offsets and seeds. */
+.prp-need{font-weight:700;margin:.2rem 0}
+.prp-job .job-acts{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+.prp-form .prp-steps{border:2px solid var(--line);border-radius:8px;padding:.4rem .9rem .6rem;margin:.8rem 0;background:var(--sheet)}
+.prp-form .prp-steps legend{font-weight:700;padding:0 .4rem}
+.prp-step-row{display:grid;grid-template-columns:minmax(12rem,2fr) repeat(3,minmax(5.5rem,1fr));gap:0 .8rem;align-items:end}
+.prp-step-row .chk{display:flex;gap:.5rem;align-items:center;min-height:2.75rem;padding-bottom:1rem}
+.prp-stages{padding-left:1.4em} .prp-stage{margin:.5rem 0;max-width:75ch}
+.prp-stage .btn{margin:.15rem .3rem .15rem 0}
+.prp-run{font-weight:700}
+.prp-count,.prp-note,.prp-stageadd{display:flex;flex-wrap:wrap;gap:.2rem 1rem;align-items:flex-end;margin:.5rem 0}
+.prp-count .f{flex:0 1 11rem} .prp-note .f{flex:1 1 20rem}
+.prp-stageadd{display:block}
+.prp-events{padding-left:1.2em} .prp-events li{margin:.4rem 0;max-width:75ch}
+.prp-tbl th,.prp-tbl td{vertical-align:top;text-align:left}
+/* the family tree: nested lists with a line down the left of each branch; the words carry the meaning, the lines only help the eye */
+.prp-tree,.prp-tree ul{list-style:none;margin:0;padding-left:1.1rem}
+.prp-tree{padding-left:0}
+.prp-tree li{position:relative;margin:.3rem 0;padding:.15rem 0 .15rem .9rem;border-left:2px solid var(--line)}
+.prp-tree li::before{content:'';position:absolute;left:0;top:1.05rem;width:.6rem;border-top:2px solid var(--line)}
+.prp-tree .prp-via{font-weight:700}
+.prp-tree .prp-plant>.nm{font-weight:700}
+@media (max-width:40rem){.prp-step-row{grid-template-columns:1fr 1fr 1fr}.prp-step-row .chk{grid-column:1/-1;padding-bottom:0}}
+html[data-role=viewer] :is([data-act^=prp], form[data-form^=prp], .prp-count, .prp-note, .prp-stageadd, #prp-edit, #prp-record, #prp-pot){display:none!important}
+.prp-job .job-txt>div.muted{white-space:normal}
