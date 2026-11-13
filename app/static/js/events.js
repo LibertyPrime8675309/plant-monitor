@@ -264,6 +264,26 @@ const acts = {
   },
   needs() { G.needs = !G.needs; gSave(); route(); },
   edlong(el) { const w = el.closest('.ed-long'), l = w.querySelector('label'); l.hidden = false; const t = l.querySelector('textarea'); t.dataset.was = t.value; t.focus(); },
+  async whmove(el) {                 // 1.58.0: a room or a spot one place up or down; Today lists the plants to water in this order
+    if (!(await needName())) return;
+    const d = el.dataset;
+    await guard(async () => { const r = await api('POST', '/api/where/order', { kind: d.kind, id: +d.id, dir: d.dir }); META = await api('GET', '/api/meta');
+      toast(r.moved ? `${d.name} moved ${d.dir}` : `${d.name} is already ${d.dir === 'up' ? 'first' : 'last'}`); await route();
+      const sel = dir => `[data-act="whmove"][data-kind="${d.kind}"][data-id="${d.id}"][data-dir="${dir}"]`;        // keep the place: the same button, or the other one at an end
+      const b = document.querySelector(sel(d.dir)) || document.querySelector(sel(d.dir === 'up' ? 'down' : 'up')); if (b) b.focus(); });
+  },
+  async waterorder(el) {             // 1.58.0: Today's watering lists by room and spot, or most overdue first; remembered on this device
+    WATER_ORDER = el.dataset.order === 'late' ? 'late' : 'place';
+    try { localStorage.setItem('plantdb.waterorder', WATER_ORDER); } catch (e) { /* private window: for this visit only */ }
+    await route();
+    const b = document.querySelector(`[data-act="waterorder"][data-order="${WATER_ORDER}"]`); if (b) b.focus();
+  },
+  async askset(el) {                 // 1.58.0: the answer to "do you want reminders for care that was never logged" (asks.py)
+    if (!(await needName())) return;
+    const { kind, answer } = el.dataset, word = kind === 'feed' ? 'Feeding' : 'Flush and root-check';
+    await guard(async () => { ASKS = await api('PUT', '/api/asks', { kind, answer });
+      toast(answer === 'yes' ? `${word} reminders are on, counting from today` : `${word} reminders are off for plants with none logged`); route(); });
+  },
   async whareadel(el) { if (!(await needName())) return; if (!(await confirmBox(`Remove ${el.dataset.name}?`, 'Its spots are removed too. Plants must be moved out of it first.', 'Remove', true))) return;
     await guard(async () => { await api('DELETE', '/api/where/areas/' + el.dataset.id); META = await api('GET', '/api/meta'); toast('Removed'); route(); }); },
   async whspotdel(el) { if (!(await needName())) return; if (!(await confirmBox(`Remove the spot ${el.dataset.name}?`, 'Plants there keep their area or room; they just have no spot.', 'Remove', true))) return;

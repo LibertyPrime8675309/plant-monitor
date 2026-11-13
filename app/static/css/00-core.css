@@ -1040,7 +1040,7 @@ html[data-role=viewer] :is(a[href="#/new"], a[href$="/edit"], .quick-btns, label
   [data-act=spotnew], [data-act=spotedit], [data-act=spotdel], [data-act=spotadd], [data-act=spotplanall], [data-act=growsug], [data-act=growadd], [data-act=grownew], [data-act=lightedit], [data-act=lightnew], [data-act=sevsave], form[data-form=sevgo], .add-mode, [data-act=libareaadd],
   [data-act=roomnew], [data-act=roomedit], [data-act=roomdel], [data-act=shelfnew],
   [data-act=buynew], [data-act=buyedit], [data-act=buygot], [data-act=sldone], [data-act=buyrm], [data-act=buywatch], [data-act=wlcheck], [data-act=storeedit], [data-act=storelookup],
-  [data-act=storenoterm], form[data-form=storenote]){display:none!important}
+  [data-act=storenoterm], form[data-form=storenote], [data-act=askset], [data-act=whmove]){display:none!important}
 /* only the owner changes the label address, places' settings and who is home */
 html:not([data-role=owner]) :is(form[data-form=base], form[data-form=wxloc], [data-act=placehome], [data-act=placedel], [data-act=placeonoff], [data-act=placeplants], [data-act=plchome]){display:none!important}
 .who-name{align-items:end;gap:.6rem;flex-wrap:wrap}

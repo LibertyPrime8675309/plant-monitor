@@ -188,7 +188,7 @@ def test_an_editor_without_a_limit_and_the_owner_are_not_held_back(world):
 # closed by the owner-only and viewer rules, which test_access and the access check cover.
 FREE = {
     # the owner's: backups, people, settings, jobs, problems, keys
-    'backups', 'backup_file', 'backup_restore', 'backup_settings_put', 'backup_copies_api', 'wx_backup_api', 'wx_backup_settings_put', 'people', 'settings', 'jobs_run_now', 'problems_api',
+    'backups', 'backup_file', 'backup_restore', 'backup_settings_put', 'backup_copies_api', 'wx_backup_api', 'wx_backup_settings_put', 'asks_api', 'people', 'settings', 'jobs_run_now', 'problems_api',
     'identify_settings', 'library_settings', 'weather_settings', 'shops_api', 'shops_keys', 'ingest_regen', 'calendar_new_link',
     # a person's own: name, settings, devices, "Got it"
     'me', 'me_prefs', 'push_device_rm', 'push_subscribe', 'push_test', 'whatsnew_seen', 'for_claude_copied',
@@ -203,7 +203,7 @@ FREE = {
     'mixes_recipe_add', 'mixes_recipe_one', 'fertilizer_products', 'fertilizer_product_one', 'shop_details', 'shop_lookup_api',
     'shop_note_add', 'shop_note_rm', 'wishlist_api', 'wishlist_alerts', 'shops_check',
     # rooms, shelves and places themselves (the plants in them are checked when they would move: where_sort, where_spot_one above)
-    'where_area_add', 'where_spot_add', 'light_place_add', 'light_place_one', 'light_spot_checked',
+    'where_area_add', 'where_spot_add', 'where_order', 'light_place_add', 'light_place_one', 'light_spot_checked',
     'fit_place_one', 'fit_place_photos_add', 'fit_place_photo_one', 'places', 'place_one',
     # photos not on a plant, the list of things to photograph, mushroom finds, sensors, the weather
     'add_unassigned', 'share_target', 'to_photograph', 'to_photograph_item', 'fungi_list', 'fungi_one', 'fungi_add_photos', 'fungi_status',

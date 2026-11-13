@@ -39,6 +39,19 @@ def test_the_morning_message_leaves_out_plants_never_fed():
     S.patch('ics_feed_days', lambda c, a, b, weekday=None: [{'date': a.isoformat(), 'plants': [{'code': 'P-001', 'name': 'Fed before', 'every': 30, 'last': '2026-09-01'},
                                                                                              {'code': 'P-002', 'name': 'Never fed', 'every': 30, 'last': None},
                                                                                              {'code': 'P-900', 'name': 'At another home', 'every': 30, 'last': '2026-09-01'}]}])
-    try: got = S.feed_due(None, {'P-001', 'P-002'}, date(2026, 11, 13))
-    finally: S.patch('ics_feed_days', keep)
-    assert [p['code'] for p in got] == ['P-001']
+    import json, sqlite3
+    c = sqlite3.connect(S.DB_PATH); c.row_factory = sqlite3.Row
+    def ask(v):
+        c.execute("DELETE FROM settings WHERE key='ask_feed'")
+        if v: c.execute("INSERT INTO settings(key,value) VALUES('ask_feed',?)", (json.dumps(v),))
+        c.commit()
+        return [p['code'] for p in S.feed_due(c, {'P-001', 'P-002'}, date(2026, 11, 13))]
+    try:
+        assert ask(None) == ['P-001'], 'not asked yet: a plant never fed is not in the message'
+        # November 13: Today asks once (asks.py). Yes counts each plant from the day of the answer; no keeps them out.
+        assert ask({'answer': 'yes', 'on': '2026-11-01', 'by': 'T'}) == ['P-001'], 'yes, 12 days ago: a plant fed every 30 days is not due yet'
+        assert ask({'answer': 'yes', 'on': '2026-10-14', 'by': 'T'}) == ['P-001', 'P-002'], 'yes, 30 days ago: now it is'
+        assert ask({'answer': 'no', 'on': '2026-10-01', 'by': 'T'}) == ['P-001']
+        assert ask({'answer': 'maybe', 'on': '2026-10-01'}) == ['P-001'], 'an answer that is neither yes nor no counts as not asked'
+    finally:
+        S.patch('ics_feed_days', keep); ask(None); c.close()

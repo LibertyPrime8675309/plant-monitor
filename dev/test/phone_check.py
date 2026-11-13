@@ -64,7 +64,7 @@ try:
         pg.goto(B + '/#/plants'); pg.wait_for_timeout(3000)
         pg.goto(B + '/#/'); pg.wait_for_timeout(3000)
         check(pg.evaluate('!!navigator.serviceWorker.controller'), 'the service worker is in charge of the page')
-        code = pg.locator('#today-water .job').first.get_attribute('data-code'); n0 = pg.locator('#today-water .job').count()
+        code = pg.locator('#today-water .wpl-card').first.get_attribute('data-code'); n0 = pg.locator('#today-water .wpl-card').count()
         pg.goto(B + '/#/plant/' + code); pg.wait_for_timeout(3000)
         st, F = call('GET', '/api/frost'); cold = next(x for x in F['plants'] if x['plan'] == 'Move indoors' and x['code'] != code)['code']
         pg.goto(B + '/#/frost'); pg.wait_for_timeout(3000)
@@ -73,8 +73,8 @@ try:
 
         # ---- Today, offline: Watered leaves the list at once, and the care log shows the entry as waiting
         stop()
-        pg.click(f'#today-water .job[data-code="{code}"] [data-kind=water]'); pg.wait_for_timeout(8000)
-        check(pg.locator('#net').inner_text().startswith('Offline') and pg.locator(f'#today-water .job[data-code="{code}"]').count() == 0 and pg.locator('#today-water .job').count() == n0 - 1,
+        pg.click(f'#today-water .wpl-card[data-code="{code}"] [data-kind=water]'); pg.wait_for_timeout(8000)
+        check(pg.locator('#net').inner_text().startswith('Offline') and pg.locator(f'#today-water .wpl-card[data-code="{code}"]').count() == 0 and pg.locator('#today-water .wpl-card').count() == n0 - 1,
               'offline, "Watered" takes the plant off the Water list at once and the badge says Offline')
         note = pg.locator('.off-note')
         check(note.count() >= 1 and 'what this device saved' in note.first.inner_text() and pg.locator('[data-act=offtry]').count() == 1, 'the page says it shows what the device saved, with "Try to connect now"')

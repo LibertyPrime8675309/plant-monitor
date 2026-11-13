@@ -105,7 +105,7 @@ with sync_playwright() as p:
     # Today. 1.58.0: a flush that was never logged has no rhythm to be late on, so it is not counted as due: it waits in a folded part of its own
     pg.goto(BASE + '/#/today'); pg.wait_for_selector('#mx-hydro-new', timeout=20000)
     check(pg.locator('#mx-hydro').count() == 0 and pg.locator('.td-jumps a[data-sec=mx-hydro]').count() == 0 and pg.locator('#mx-hydro-new details.grp:not([open])').count() == 1,
-          'with no flush ever logged, Today counts none as due: they are in a folded part, "No flush or root check logged yet"')
+          'with no flush ever logged, Today counts none as due: it asks once about reminders, with the plants folded under the question')
     pg.wait_for_timeout(1500)                                       # a page shown from what was saved last time is drawn once more just after: let that pass
     def opened():                                                   # opens the folded part (again, if the page was drawn again) and waits for its photos
         if not pg.locator('#mx-hydro-new details').evaluate('e => e.open'): pg.locator('#mx-hydro-new summary').click()

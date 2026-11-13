@@ -302,10 +302,65 @@ function todayPrep(PR, t) {
     ${free.length ? html`<ul class="jobs">${free.map(p => row(p, 'Its 3 weeks apart end today. If you have seen no pests, it can join your other houseplants.', html`<a class="btn small ghost" href="#/plant/${enc(p.code)}">Open its page</a>`))}</ul>` : ''}
     ${!again.length && !free.length ? html`<p class="notice ok">No sprays due and nobody to move today.</p>` : ''}</section>`;
 }
+// ---------- 1.58.0 (Ethan, November 13, 2026): the watering lists by room and spot, as cards ----------
+// Today's lists were in the order of how late each plant was, with the same long reason on every row. A round is walked spot by spot, so the
+// plants are grouped by room and spot, in the order of Rooms and spots (which can be set there now), and each spot has one button for all of
+// its plants. A card is the plant's picture, its name and how late it is; the reason is behind "Why". "Most overdue first" is the list as it was.
+let WATER_ORDER = (() => { try { return localStorage.getItem('plantdb.waterorder') === 'late' ? 'late' : 'place'; } catch (e) { return 'place'; } })();
+function wplGroups(list, by) {       // [{a: room, s: spot or null, ws: its plants}] in the order of Rooms and spots; a room's plants with no spot come last in it
+  const order = new Map(); let i = 0;
+  for (const h of WHERE()) for (const a of h.areas) { for (const s of a.spots) order.set(a.id + '|' + s.id, { i: i++, a, s }); order.set(a.id + '|', { i: i++, a, s: null }); }
+  const g = new Map();
+  for (const w of list) { const p = by[w.code], k = (p.area_id || '') + '|' + (p.spot_id || ''); if (!g.has(k)) g.set(k, []); g.get(k).push(w); }
+  return [...g.entries()].map(([k, ws]) => ({ ...(order.get(k) || order.get(k.split('|')[0] + '|') || { i: 1e6, a: null, s: null }), ws })).sort((x, y) => x.i - y.i);
+}
+function waterShort(w) {              // "4 days overdue", "Due today", "Top up: 2 days overdue": the part of waterWords() that differs from plant to plant
+  if (w.state === 'unknown') return 'No watering logged yet';
+  const od = w.overdue, hy = w.action && w.action !== 'water' ? HYDRO_DO[w.action][0] + ': ' : '';
+  const s = od > 0 ? `${od} day${od === 1 ? '' : 's'} overdue` : od === 0 ? 'due today' : `next ${hy ? '' : 'check '}${relDay(w.next)}`;
+  return hy ? hy + s : s[0].toUpperCase() + s.slice(1);
+}
+const waterLast = w => w.last_rain && (!w.last_water || w.last_rain > w.last_water) ? `Rain counted ${relDay(w.last_rain)}.` : w.last_water ? `Watered ${relDay(w.last_water)}.` : 'No watering logged yet.';
+function wplCard(p, w, btns) {
+  // one link holds the picture and the name, so the picture can be pressed too and a keyboard meets each plant once
+  return html`<li class="wpl-card" data-code="${p.code}"><a class="wpl-open" href="#/plant/${enc(p.code)}">${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy" width="160" height="120">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}<span class="nm">${p.common_name}</span></a>
+    <span class="muted">${p.code}</span>
+    <p class="wpl-st"><strong>${waterShort(w)}.</strong></p>
+    <div class="wpl-acts">${btns}</div>
+    ${w.state === 'unknown' ? '' : html`<details class="wpl-why"><summary aria-label="Why: ${p.common_name}">Why</summary><p>${waterWords(w)}</p></details>`}</li>`;
+}
+function waterByPlace(list, by, wbtn, canAll, key) {      // key: 'due', 'soon' or 'unk', so headings in the three lists have ids of their own
+  const gs = wplGroups(list, by), nm = g => g.a ? g.a.name + ': ' + (g.s ? g.s.name : 'no spot set') : 'No room set';
+  // with three spots or more, a row of buttons goes straight to each one: a shelf of thirty plants is a long way to scroll past
+  return html`<div class="wpl">${gs.length > 2 ? html`<nav class="wpl-jump row" aria-label="Go to a spot">${gs.map((g, i) =>
+      html`<button class="btn small ghost" type="button" data-act="jumpsec" data-sec="wpl-${key}-${i}">${nm(g)} (${g.ws.length})</button>`)}</nav>` : ''}
+    ${gs.map((g, i) => {
+    const name = nm(g), n = g.ws.length;
+    return html`<section class="wpl-grp" aria-labelledby="wpl-${key}-${i}"><div class="wpl-head"><h3 id="wpl-${key}-${i}" tabindex="-1">${name} <span class="wpl-n">(${n})</span></h3>
+      ${n > 1 && canAll ? html`<button class="btn small" type="button" data-act="careall" data-kind="water" data-codes="${g.ws.map(w => w.code).join(',')}" aria-label="Watered all ${n} here: ${name}">Watered all ${n} here</button>` : ''}</div>
+      <ul class="wpl-cards">${g.ws.map(w => wplCard(by[w.code], w, wbtn(w)))}</ul></section>`; })}</div>`;
+}
+// 1.58.0 (Ethan, November 13, 2026): care that has never been logged asks once (plantdb/asks.py): {feed, flush}, each {answer, on, by} or null
+let ASKS = {};
+const loadAsks = () => api('GET', '/api/asks').then(d => { ASKS = d || {}; }).catch(() => { /* an older server, or offline: nothing has been asked */ });
+const askOn = (kind, every, t) => { const a = ASKS[kind]; return !!(a && a.answer === 'yes' && daysBetween(a.on, t) >= +every); };   // a "yes" counts from its own day
+function askLine(kind, word) {        // on the Fertilizer and Potting mixes pages: where the answer stands, and the way to change it
+  const a = ASKS[kind]; if (!a || !canChange()) return '';
+  return html`<p class="ask-line" id="ask-${kind}"><span>Reminders for plants with no ${word} logged yet are <strong>${a.answer === 'yes' ? 'on' : 'off'}</strong>${a.answer === 'yes' ? `, counting from ${longDay(a.on)}` : ''}.</span>
+    <button class="btn small ghost" type="button" data-act="askset" data-kind="${kind}" data-answer="${a.answer === 'yes' ? 'no' : 'yes'}">${a.answer === 'yes' ? 'Turn them off' : 'Turn them on'}</button></p>`;
+}
+function askBlock(kind, id, n, title, what, hint, list) {     // Today's question, with the plants it is about folded under it
+  return html`<section class="blk" id="${id}" aria-labelledby="${id}-h"><h2 id="${id}-h">${title}</h2>
+    <p>${what}</p>
+    ${canChange() ? html`<p class="row"><button class="btn" type="button" data-act="askset" data-kind="${kind}" data-answer="yes">Yes, remind me</button>
+      <button class="btn ghost" type="button" data-act="askset" data-kind="${kind}" data-answer="no">No reminders for these</button></p>` : ''}
+    <p class="hint">${hint}</p>
+    <details class="grp"><summary><h3>The ${n === 1 ? 'plant' : n + ' plants'}</h3></summary>${list}</details></section>`;
+}
 async function viewToday() {
   const [W, reqsAll, , PR, WA, J, SN, EXT] = await Promise.all([api('GET', '/api/water'), api('GET', '/api/requests?open=1'), loadFertData(true), api('GET', '/api/prep').catch(() => null),
     api('GET', '/api/wishlist/alerts').catch(() => ({ alerts: [] })), api('GET', '/api/jobs').catch(() => null), api('GET', '/api/sensors/summary').catch(() => null),   // 1.35.0: sensors
-    featTodayLoad()]);                                                                  // 1.46.0: the blocks feature modules registered (features.js)
+    featTodayLoad(), loadAsks()]);                                                      // 1.46.0: the blocks feature modules registered (features.js)
   const by = Object.fromEntries(FERT.plants.map(p => [p.code, p])), t = todayStr();
   const ws = W.plants.filter(w => by[w.code]);
   const due = ws.filter(w => w.state === 'due').sort((a, b) => b.overdue - a.overdue), soon = ws.filter(w => w.state === 'soon'), unk = ws.filter(w => w.state === 'unknown');
@@ -313,12 +368,18 @@ async function viewToday() {
   const feedDue = here.map(p => ({ p, st: fertState(p, entriesFor(p.code), t, fertCtx()) })).filter(r => r.st.state === 'due');
   // 1.58.0 (November 12 review, item 8): a plant with no feeding ever logged has no rhythm to be late on. It stayed "due" every day of its season, so
   // "Feed (3)" never changed and stopped meaning anything. Like watering (1.57.0), such plants are a folded part of their own until the first one is logged.
-  const feed = feedDue.filter(r => r.st.last), unfed = feedDue.filter(r => !r.st.last);
+  // (November 13: Ethan chose to be asked once instead. Until the answer, the question shows with these plants under it; "yes" counts each from that day; "no" drops them.)
+  const feed = feedDue.filter(r => r.st.last || askOn('feed', r.p.fert_every_days, t)), unfed = ASKS.feed ? [] : feedDue.filter(r => !r.st.last);
   const needs = here.filter(needsYou), reqs = reqsAll.filter(q => !q.plant_code || !by[q.plant_code] || atPlace(by[q.plant_code]));
+  const outH = HOMES().length > 1 && !homeTended(homeById(placeHomeId())) ? homeById(placeHomeId()) : null;   // 1.58.0: a home cared for outside the app: no water-them-all buttons
   const wbtn = w => w.action && w.action !== 'water'                            // 1.56.0: a semi-hydro pot is topped up, a water-only plant gets fresh water
-    ? html`<button class="btn small" type="button" data-act="care" data-kind="${w.action}" data-code="${w.code}" data-name="${by[w.code].common_name}">${HYDRO_DO[w.action][2]}</button>`
-    : html`<button class="btn small" type="button" data-act="care" data-kind="water" data-code="${w.code}" data-name="${by[w.code].common_name}">Watered</button>
-    <button class="btn small ghost" type="button" data-act="care" data-kind="check" data-code="${w.code}" data-name="${by[w.code].common_name}">Still moist</button>`;
+    ? html`<button class="btn small" type="button" data-act="care" data-kind="${w.action}" data-code="${w.code}" data-name="${by[w.code].common_name}" aria-label="${HYDRO_DO[w.action][2]}: ${by[w.code].common_name}">${HYDRO_DO[w.action][2]}</button>`
+    : html`<button class="btn small" type="button" data-act="care" data-kind="water" data-code="${w.code}" data-name="${by[w.code].common_name}" aria-label="Watered: ${by[w.code].common_name}">Watered</button>
+    <button class="btn small ghost" type="button" data-act="care" data-kind="check" data-code="${w.code}" data-name="${by[w.code].common_name}" aria-label="Still moist: ${by[w.code].common_name}">Still moist</button>`;
+  // 1.58.0: a watering list by room and spot (cards), or in the old order (rows with the reasons)
+  const place = WATER_ORDER === 'place';
+  const wlist = (list, key) => place ? waterByPlace(list, by, wbtn, !outH, key)
+    : html`<ul class="jobs">${list.map(w => jobRow(by[w.code], key === 'unk' ? (w.site !== 'Outdoors' ? w.site + '.' : 'Outdoors.') : waterWords(w), wbtn(w)))}</ul>`;
   const n = (k, one, many) => k + ' ' + (k === 1 ? one : many);
   // 1.34.0: Today is the page the app opens on. One line says what needs you, with a button to jump to each part
   const winter = coldSeason();                                                  // 1.48.0: a tropical home has no cold night, coming inside or frost blocks
@@ -342,31 +403,34 @@ async function viewToday() {
   }
   // 1.46.0: the page is a list of blocks in a fixed order (the numbers are in features.js), so what a feature module adds lands in
   // the same place every time, whatever order the scripts loaded in
-  const outH = HOMES().length > 1 && !homeTended(homeById(placeHomeId())) ? homeById(placeHomeId()) : null;   // 1.58.0: a home cared for outside the app: no water-them-all buttons
   const blocks = [
     coldOn ? { order: 10, id: 'today-cold', jump: `Cold night (${FZ.n})`, html: html`<section class="blk" id="today-cold">${frostBanner(true)}</section>` } : null,
     snN ? { order: 20, id: 'today-sensors', jump: `Sensors (${snN})`, html: html`<section class="blk" id="today-sensors"><h2>Sensors (${snN})</h2><ul class="jobs">${SN.cards.map(s => html`<li class="job"><span class="job-nophoto" aria-hidden="true"></span><div class="job-txt"><a class="nm" href="#/sensors">${s.name}</a>${s.plant ? html` <span class="muted">${s.plant.code} ${s.plant.common_name}</span>` : ''}<div>${s.words}</div></div>
       <div class="job-acts">${s.plant ? html`<a class="btn small ghost" href="#/plant/${enc(s.plant.code)}">Open its plant</a>` : ''}</div></li>`)}</ul><p><a class="btn small ghost" href="#/sensors">All your sensors</a></p></section>` } : null,
     { order: 30, id: 'today-water', jump: `Water (${due.length})`, keep: soon.length > 0, html: html`<section class="blk" id="today-water"><h2>Water (${due.length})</h2>
-      ${due.length ? html`${due.length > 1 && !outH ? html`<p><button class="btn small ghost" type="button" data-act="careall" data-kind="water" data-codes="${due.map(w => w.code).join(',')}">Watered all ${due.length}</button></p>` : ''}
-        <ul class="jobs">${due.map(w => jobRow(by[w.code], waterWords(w), wbtn(w)))}</ul>` : html`<p class="notice ok">Nothing is due for water today.</p>`}
-      ${soon.length ? html`<details class="grp"><summary><h3>Check tomorrow (${soon.length})</h3></summary><ul class="jobs">${soon.map(w => jobRow(by[w.code], waterWords(w), wbtn(w)))}</ul></details>` : ''}
+      ${due.length || soon.length || unk.length ? html`<div class="row wpl-order" role="group" aria-label="Order of the watering lists">
+          <button class="btn small${place ? '' : ' ghost'}" type="button" data-act="waterorder" data-order="place" aria-pressed="${String(place)}">By room and spot</button>
+          <button class="btn small${place ? ' ghost' : ''}" type="button" data-act="waterorder" data-order="late" aria-pressed="${String(!place)}">Most overdue first</button>
+          ${due.length > 1 && !outH ? html`<button class="btn small ghost" type="button" data-act="careall" data-kind="water" data-codes="${due.map(w => w.code).join(',')}">Watered all ${due.length}</button>` : ''}</div>` : ''}
+      ${due.length ? wlist(due, 'due') : html`<p class="notice ok">Nothing is due for water today.</p>`}
+      ${soon.length ? html`<details class="grp"><summary><h3>Check tomorrow (${soon.length})</h3></summary>${wlist(soon, 'soon')}</details>` : ''}
       </section>` },
     // 1.57.0: plants with no watering logged are a part of their own, so "Water (0)" folds into the "Nothing due today" line
     unk.length ? { order: 31, id: 'today-unlogged', html: html`<section class="blk" id="today-unlogged"><details class="grp"><summary><h2>No watering logged yet (${unk.length})</h2></summary>
         <p class="hint">These have no watering in the log and no rain counted, so there is no reminder for them yet. If you water everything on a round, press the button to start the clock for all of them at once.</p>
         ${outH ? html`<p class="hint">${outH.name} is marked as cared for outside the app (Homes and places), so there is no button to water them all here.</p>`
           : html`<p><button class="btn small ghost" type="button" data-act="careall" data-kind="water" data-codes="${unk.map(w => w.code).join(',')}">I watered all ${unk.length} today</button></p>`}
-        <ul class="jobs">${unk.map(w => jobRow(by[w.code], w.site !== 'Outdoors' ? w.site + '.' : 'Outdoors.', wbtn(w)))}</ul></details></section>` } : null,
+        ${wlist(unk, 'unk')}</details></section>` } : null,
     { order: 40, id: 'today-feed', jump: `Feed (${feed.length})`, html: html`<section class="blk" id="today-feed"><h2>Feed (${feed.length})</h2>
       ${feed.length ? html`${feed.length > 1 ? html`<p><button class="btn small ghost" type="button" data-act="fertlog" data-group="due">Log feeding for all ${feed.length}</button></p>` : ''}
         <ul class="jobs">${feed.map(r => jobRow(r.p, fertWords(r.p, r.st, t), html`<button class="btn small" type="button" data-act="fertlog" data-code="${r.p.code}">Log feeding</button>`))}</ul>`
         : html`<p class="notice ok">No plant is due for fertilizer today. The Fertilizer page has the calendar.</p>`}</section>` },
-    unfed.length ? { order: 41, id: 'today-unfed', html: html`<section class="blk" id="today-unfed"><details class="grp"><summary><h2>No feeding logged yet (${unfed.length})</h2></summary>
-        <p class="hint">These are in their feeding season and have no feeding in the log, so there is no reminder for them yet. Log one feeding and the next is counted from that day. If you do not feed them, leave them here: Today does not count them.</p>
-        ${unfed.length > 1 ? html`<p><button class="btn small ghost" type="button" data-act="fertlog" data-codes="${unfed.map(r => r.p.code).join(',')}">Log feeding for all ${unfed.length}</button></p>` : ''}
+    unfed.length ? { order: 41, id: 'today-unfed', html: askBlock('feed', 'today-unfed', unfed.length, 'Feeding reminders',
+      `${unfed.length === 1 ? 'One plant is' : unfed.length + ' plants are'} in ${unfed.length === 1 ? 'its' : 'their'} feeding season, and no feeding has ever been logged for ${unfed.length === 1 ? 'it' : 'them'}. Do you want Today to remind you to feed ${unfed.length === 1 ? 'it' : 'them'}?`,
+      'Yes starts counting today, so each plant comes up when its next feeding is due and they do not all show at once. No keeps Today quiet about plants that have never been fed. A plant with a feeding in the log is reminded either way. You can change the answer on the Fertilizer page.',
+      html`${unfed.length > 1 && canChange() ? html`<p><button class="btn small ghost" type="button" data-act="fertlog" data-codes="${unfed.map(r => r.p.code).join(',')}">Log feeding for all ${unfed.length}</button></p>` : ''}
         <ul class="jobs">${unfed.map(r => jobRow(r.p, fertWords(r.p, r.st, t), html`<button class="btn small" type="button" data-act="fertlog" data-code="${r.p.code}">Log feeding</button>`))}</ul>
-        <p><a class="btn small ghost" href="#/fertilizer">Open the Fertilizer page</a></p></details></section>` } : null,
+        <p><a class="btn small ghost" href="#/fertilizer">Open the Fertilizer page</a></p>`) } : null,
     WA.alerts.length ? { order: 50, id: 'today-wish', jump: `Shopping (${WA.alerts.length})`, html: html`<section class="blk wl-alerts" id="today-wish"><h2>Shopping alerts (${WA.alerts.length})</h2>${wlAlertsHtml(WA.alerts.slice(0, 6), true)}<p><a class="btn small ghost" href="#/shopping/list">Shopping list for a store visit</a></p></section>` } : null,
     winter && PR && PR.plants.length ? { order: 60, id: 'today-inside', html: todayPrep(PR, t) } : null,
     { order: 70, id: 'today-needs', jump: `Needed from you (${needs.length})`, html: html`<section class="blk" id="today-needs"><h2>Needed from you (${needs.length})</h2>
@@ -779,7 +843,7 @@ async function loadFertPlant() {
 
 // ---------- the Fertilizer page ----------
 async function viewFertilizer() {
-  await loadFertData(true);
+  await Promise.all([loadFertData(true), loadAsks()]);
   const t = todayStr(), by = Object.fromEntries(FERT.plants.map(p => [p.code, p]));
   const rows = FERT.plants.map(p => ({ p, st: fertState(p, entriesFor(p.code), t, fertCtx()) }));
   const grp = k => rows.filter(r => r.st.state === k || (k === 'wait' && r.st.state === 'fed'));
@@ -792,6 +856,7 @@ async function viewFertilizer() {
     title: 'Fertilizer',
     html: html`<h1>Fertilizer</h1>
     <p class="muted">When to feed each plant, and a record of what you used. Every plant has its own feeding season (the months it grows) and a gap between feedings, and the N-P-K ratio it needs. Change them on a plant's Edit page.</p>
+    ${askLine('feed', 'feeding')}
     <div class="verdict-box" role="status"><h2 style="margin:0 0 .4rem">Today, ${longDay(t)}</h2>
       <p>${q('due')} plant${q('due') === 1 ? ' is' : 's are'} due for fertilizer${q('hold') ? `, ${q('hold')} should wait because of cold or health` : ''}. ${q('wait')} ${q('wait') === 1 ? 'was' : 'were'} fed recently and ${q('rest')} ${q('rest') === 1 ? 'is' : 'are'} resting for the season.</p>
       <div class="row noprint"><button class="btn" type="button" data-act="fertlog">Log fertilizer</button>${q('due') ? html`<button class="btn ghost" type="button" data-act="fertlog" data-group="due">Log fertilizer for the ${q('due')} due plants</button>` : ''}</div></div>

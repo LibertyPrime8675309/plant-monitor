@@ -111,9 +111,10 @@ def midday_word(d):
     except ValueError: return d
 
 def feed_due(c, codes, today):
-    """The plants to feed today, for the morning message. As on Today (1.58.0), a plant with no feeding ever logged has no reminder yet: it stayed "due" every day of
-    its season, so the message said "3 to feed" each morning for plants nobody had fed through the app."""
-    return [p for d in ics_feed_days(c, today, today) for p in d['plants'] if p['code'] in codes and p.get('last')]
+    """The plants to feed today, for the morning message. As on Today (1.58.0), a plant with no feeding ever logged has no reminder: it stayed "due" every day of
+    its season, so the message said "3 to feed" each morning for plants nobody had fed through the app. Once Today's question about feeding reminders is answered
+    yes (asks.py), such a plant counts from the day of the answer."""
+    return [p for d in ics_feed_days(c, today, today) for p in d['plants'] if p['code'] in codes and (p.get('last') or ask_started(c, 'feed', p['every'], today))]
 
 def push_due(c):
     """At 8 in the morning, local time, for each home: what is due today."""

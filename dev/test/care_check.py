@@ -18,26 +18,28 @@ with sync_playwright() as p:
     pg.goto(BASE + '/#/today'); pg.wait_for_timeout(2500)
     check(pg.locator('h1').inner_text() == 'Today', 'Today page opens from the menu link')
     check(pg.locator('[data-nav=today][aria-current=page]').count() == 1, 'Today is highlighted in the menu')
-    due = pg.locator('#today-water > ul.jobs > li.job'); nd = due.count()
+    due = pg.locator('#today-water > .wpl .wpl-card'); nd = due.count()
     check(nd > 0, f'{nd} plants due for water (rain counted for plants in the open)')
     pg.screenshot(path=f'{OUT}/care-today-light.png')
     code = due.first.get_attribute('data-code')
     due.first.locator('button[data-act=care][data-kind=water]').click(); pg.wait_for_timeout(1500)
-    check(pg.locator(f'#today-water > ul.jobs > li.job[data-code="{code}"]').count() == 0, f'{code} watered and left the list')
+    check(pg.locator(f'#today-water > .wpl .wpl-card[data-code="{code}"]').count() == 0, f'{code} watered and left the list')
     if nd > 1:
-        code2 = pg.locator('#today-water > ul.jobs > li.job').first.get_attribute('data-code')
-        pg.locator('#today-water > ul.jobs > li.job').first.locator('button[data-kind=check]').click(); pg.wait_for_timeout(1500)
-        check(pg.locator(f'#today-water > ul.jobs > li.job[data-code="{code2}"]').count() == 0, f'{code2} checked (still moist) and left the list')
+        code2 = pg.locator('#today-water > .wpl .wpl-card').first.get_attribute('data-code')
+        pg.locator('#today-water > .wpl .wpl-card').first.locator('button[data-kind=check]').click(); pg.wait_for_timeout(1500)
+        check(pg.locator(f'#today-water > .wpl .wpl-card[data-code="{code2}"]').count() == 0, f'{code2} checked (still moist) and left the list')
     # 1.57.0: the plants with no watering logged are a block of their own on Today (#today-unlogged), folded
-    unk = pg.locator('#today-unlogged li.job').count()
+    unk = pg.locator('#today-unlogged .wpl-card').count()
     check(unk > 0, f'{unk} plants with no watering logged (porch and indoor plants get no rain)')
     pg.locator('#today-unlogged summary').click()
-    pg.locator('#today-unlogged button[data-act=careall]').click(); confirm(pg)
+    pg.locator('#today-unlogged details > p > button[data-act=careall]').click(); confirm(pg)      # the one for all of them; each spot has its own as well (1.58.0)
     check(pg.locator('#today-unlogged').count() == 0, 'bulk "I watered all" starts the clock for them')
-    # 1.58.0: with no feeding ever logged, the plants in season are a folded part of their own and Feed is not counted
+    # 1.58.0: with no feeding ever logged, Feed is not counted. Today asks once whether reminders are wanted, with the plants folded under the question
+    # (wplace_check.py answers it)
     unfed = pg.locator('#today-unfed li.job').count()
-    check(unfed > 0 and pg.locator('#today-unfed details.grp:not([open])').count() == 1 and pg.locator('#today-feed').count() == 0 and pg.locator('#today-needs').count() == 1,
-          f'{unfed} plants in season with no feeding logged are a folded part; nothing is counted as due to feed')
+    check(unfed > 0 and pg.locator('#today-unfed details.grp:not([open])').count() == 1 and pg.locator('#today-feed').count() == 0 and pg.locator('#today-needs').count() == 1
+          and pg.locator('#today-unfed button[data-act=askset]').count() == 2,
+          f'{unfed} plants in season with no feeding logged: Today asks about reminders, and nothing is counted as due to feed')
     check('feed' in pg.locator('.td-none').inner_text().lower() and pg.locator('.td-jumps a[data-sec=today-feed]').count() == 0, 'Feed is in the "Nothing due today" line and has no button')
     # plant page
     pg.goto(BASE + '/#/plant/P-031'); pg.wait_for_timeout(2500)
