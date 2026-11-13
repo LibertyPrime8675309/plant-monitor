@@ -18,8 +18,8 @@ ORDER = [('frost', '40'), ('frostdates', 'fresh'), ('care', 'fresh'), ('read', '
          ('card', 'fresh'), ('sitter', 'fresh'), ('photos', 'fresh'), ('water', 'fresh'), ('library', 'fresh'), ('filters', 'fresh'), ('fungi', 'fresh'), ('wishlist', 'fresh'),
          ('know', 'fresh'), ('facts', 'fresh'), ('shops', 'fresh'), ('layout', 'fresh'), ('dialog', 'fresh'), ('offline', 'fresh'), ('sectionmenu', 'fresh'),
          ('homes', 'fresh'), ('sites', 'fresh'), ('places', 'fresh'), ('several', 'fresh'), ('where', 'fresh'), ('pots', 'fresh'), ('prefs', 'fresh'), ('shopping', 'fresh'),
-         ('quickwins', 'fresh'), ('jobs', 'fresh'), ('reach', 'fresh'), ('pages', 'fresh'), ('sensors', 'fresh'), ('finish', 'fresh'), ('share', 'fresh'), ('phone', 'share'), ('turning', 'fresh'), ('repotting', 'fresh'), ('browse', 'fresh'), ('releases', 'fresh'), ('mounting', 'fresh'), ('mixes', 'fresh'), ('compare', 'fresh'), ('checkup', 'fresh'), ('voice', 'fresh'), ('units', 'fresh'), ('sitlink', 'fresh'), ('review2', 'fresh'), ('guide', 'fresh'), ('smoke', 'fresh')]
-TIMEOUT = {'smoke': 600, 'reach': 600, 'shopping': 600, 'quickwins': 600, 'pages': 600, 'share': 600, 'phone': 900}
+         ('quickwins', 'fresh'), ('jobs', 'fresh'), ('reach', 'fresh'), ('pages', 'fresh'), ('sensors', 'fresh'), ('finish', 'fresh'), ('share', 'fresh'), ('phone', 'share'), ('turning', 'fresh'), ('repotting', 'fresh'), ('browse', 'fresh'), ('releases', 'fresh'), ('mounting', 'fresh'), ('mixes', 'fresh'), ('compare', 'fresh'), ('checkup', 'fresh'), ('voice', 'fresh'), ('units', 'fresh'), ('sitlink', 'fresh'), ('review2', 'fresh'), ('guide', 'fresh'), ('names', 'fresh'), ('smoke', 'fresh')]
+TIMEOUT = {'smoke': 600, 'names': 900, 'reach': 600, 'shopping': 600, 'quickwins': 600, 'pages': 600, 'share': 600, 'phone': 900}
 SERVER = None
 
 def stop_server():

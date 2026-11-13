@@ -63,5 +63,5 @@ async function featAdds(parts, care) {
     if (a.where === 'inside') at.innerHTML = rend(h); else at.insertAdjacentHTML(a.where || 'afterend', rend(h));   // 'inside' fills a box the page left for it
     if (a.then) a.then(a.id ? document.getElementById(a.id) : at, d);
   }));
-  if (my === ADDS_RUN[kind] && todo.length && !care) { buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); }   // a new section joins Navigation with Show or hide
+  if (my === ADDS_RUN[kind] && todo.length && !care) { buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); scrollBoxes(); }   // a new section joins Navigation with Show or hide
 }

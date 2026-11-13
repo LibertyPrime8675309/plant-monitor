@@ -133,7 +133,7 @@ function addReadButtons() {
     const sec = h.closest('section'); if (!sec || sec.matches('.set-card:not(.set-health)') || sec.querySelector(':scope > .rd-btn, :scope > header > .rd-btn, :scope > .sec-tools > .rd-btn, :scope > header > .sec-tools > .rd-btn')) return;
     const name = h.textContent.trim();
     sec.classList.add('has-rd');
-    const b = rend(html`<button class="btn ghost small rd-btn noprint" type="button" data-act="readsec" aria-label="Read the ${name} section aloud">${RD_ICON}<span>Read aloud</span></button>`);
+    const b = rend(html`<button class="btn ghost small rd-btn noprint" type="button" data-act="readsec" aria-label="Read aloud: the ${name} section">${RD_ICON}<span>Read aloud</span></button>`);
     const tools = sec.querySelector(':scope > .sec-tools, :scope > header > .sec-tools');      // 1.42.0: beside Show or hide
     if (tools) tools.insertAdjacentHTML('afterbegin', b); else h.insertAdjacentHTML('afterend', b);
   });
@@ -214,6 +214,22 @@ document.addEventListener('pointerdown', e => {
 }, { passive: true });
 ['pointerup', 'pointercancel', 'pointermove'].forEach(k => document.addEventListener(k, e => { if (k !== 'pointermove' || Math.abs(e.movementX) + Math.abs(e.movementY) > 6) clearTimeout(NOTEHOLD.t); }, { passive: true }));
 document.addEventListener('prefs', () => { if (document.documentElement.dataset.notes === 'ask') notesPass(); });
+// 1.58.0 (November 12 review, item 11): a table that scrolls inside its box could not be scrolled from the keyboard when it holds links or buttons (the browser
+// then leaves the box itself out of the Tab order): the long weather log, the lights compared, and any table on a narrow screen. A box that scrolls gets a place in
+// the Tab order, the role of a region and a name (its table's caption), so the arrow keys scroll it; one that fits loses them again.
+function scrollBoxes(root) {
+  (root || document).querySelectorAll('.tbl-wrap').forEach(w => {
+    const scrolls = w.scrollWidth > w.clientWidth + 1 || w.scrollHeight > w.clientHeight + 1;
+    if (scrolls && !w.dataset.scrolls) {
+      const cap = w.querySelector('caption');
+      w.dataset.scrolls = '1'; w.tabIndex = 0; w.setAttribute('role', 'region');
+      w.setAttribute('aria-label', (cap ? cap.textContent.trim() : 'Table') + '. Scroll it with the arrow keys.');
+    } else if (!scrolls && w.dataset.scrolls) { delete w.dataset.scrolls; w.removeAttribute('tabindex'); w.removeAttribute('role'); w.removeAttribute('aria-label'); }
+  });
+}
+let SCROLLBOX_T = 0;
+window.addEventListener('resize', () => { clearTimeout(SCROLLBOX_T); SCROLLBOX_T = setTimeout(() => scrollBoxes(), 200); });
+document.addEventListener('prefs', () => setTimeout(() => scrollBoxes(), 50));          // a larger text size can make a table scroll
 
 function addFoldButtons() {
   NAVITEMS.forEach(it => {
@@ -654,7 +670,7 @@ async function bkPoll() {
 function labelCard(p, base, withLink) {
   return html`<div class="lblwrap"><div class="lbl"><img src="/api/plants/${enc(p.code)}/qr.svg?base=${enc(base)}" alt="QR code for ${p.code}" width="96" height="96" loading="lazy">
     <div><span class="code">${p.code}</span><b>${p.common_name}</b><span class="sci latin">${p.scientific_name || ''}</span></div></div>
-    ${withLink ? html`<a class="btn small ghost noprint lbl-open" href="#/plant/${enc(p.code)}" aria-label="Open the page for ${p.code} ${p.common_name}">Open plant page</a>` : ''}</div>`;
+    ${withLink ? html`<a class="btn small ghost noprint lbl-open" href="#/plant/${enc(p.code)}" aria-label="Open plant page: ${p.code} ${p.common_name}">Open plant page</a>` : ''}</div>`;
 }
 async function viewLabels() {
   const [list, st] = await Promise.all([api('GET', '/api/plants'), api('GET', '/api/settings')]);
@@ -685,8 +701,8 @@ function placeLabels(base) {
   const card = (q, name, sub, href, aria) => html`<div class="lblwrap"><div class="lbl"><img src="/api/where/qr.svg?${q}&base=${enc(base)}" alt="QR code for ${name}" width="96" height="96" loading="lazy">
       <div><b>${name}</b><span class="sci">${sub}</span></div></div>
     <a class="btn small ghost noprint lbl-open" href="${href}" aria-label="${aria}">Show its plants</a></div>`;
-  const cards = homes.flatMap(h => h.areas.flatMap(a => [card('area=' + a.id, a.name, `${a.site}${multi ? ', ' + h.home.name : ''} · ${a.plants} plant${a.plants === 1 ? '' : 's'}`, `#/plants?area=${a.id}`, `Show the plants in ${a.name}`),
-    ...(a.spots || []).map(sp => card('spot=' + sp.id, sp.name, `${a.name}${multi ? ', ' + h.home.name : ''} · ${sp.plants} plant${sp.plants === 1 ? '' : 's'}`, `#/plants?spot=${sp.id}`, `Show the plants at ${sp.name}, ${a.name}`))]));
+  const cards = homes.flatMap(h => h.areas.flatMap(a => [card('area=' + a.id, a.name, `${a.site}${multi ? ', ' + h.home.name : ''} · ${a.plants} plant${a.plants === 1 ? '' : 's'}`, `#/plants?area=${a.id}`, `Show its plants: ${a.name}`),
+    ...(a.spots || []).map(sp => card('spot=' + sp.id, sp.name, `${a.name}${multi ? ', ' + h.home.name : ''} · ${sp.plants} plant${sp.plants === 1 ? '' : 's'}`, `#/plants?spot=${sp.id}`, `Show its plants: ${sp.name}, ${a.name}`))]));
   return cards.length ? html`<div class="lsheet">${cards}</div>` : html`<p class="muted">No rooms or spots yet. Add them under <a href="#/where">Rooms and spots</a>.</p>`;
 }
 

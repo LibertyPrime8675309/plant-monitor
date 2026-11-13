@@ -17,7 +17,7 @@ function tnWords(p) {
 }
 function tnBtns(p, withOff) {
   return html`<button class="btn small" type="button" data-act="turned" data-code="${p.code}" data-name="${p.name}" aria-label="${'Turned ' + p.name}">Turned</button>
-    ${withOff ? html`<button class="btn small ghost" type="button" data-act="turnset" data-code="${p.code}" data-on="0" aria-label="${'No turn reminders for ' + p.name}">No reminders</button>` : ''}`;
+    ${withOff ? html`<button class="btn small ghost" type="button" data-act="turnset" data-code="${p.code}" data-on="0" aria-label="${'No reminders to turn ' + p.name}">No reminders</button>` : ''}`;
 }
 function tnAllBtn(list, label) {
   return list.length > 1 ? html`<p><button class="btn small ghost" type="button" data-act="turnedall" data-codes="${list.map(p => p.code).join(',')}">${label}</button></p>` : '';

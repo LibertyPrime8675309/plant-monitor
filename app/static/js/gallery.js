@@ -311,7 +311,7 @@ async function viewGroups() {
       <p class="noprint"><button class="btn" type="button" data-act="grpaddall">Add all ${sug.length} suggested groups</button></p>
       <ul class="grp-list">${sug.map((x, i) => html`<li class="grp-card"><h3>${x.name}</h3><p>Plants join when ${x.rule_words}.</p>
         <p><strong>${x.count} plants</strong>: ${nameList(x.codes)}</p>
-        <p class="noprint"><button class="btn small" type="button" data-act="grpaddsug" data-i="${i}" aria-label="Add the group ${x.name}">Add this group</button></p></li>`)}</ul></section>` : ''}
+        <p class="noprint"><button class="btn small" type="button" data-act="grpaddsug" data-i="${i}" aria-label="Add this group: ${x.name}">Add this group</button></p></li>`)}</ul></section>` : ''}
     <section class="blk" id="grp-how"><h2>How groups work</h2><ul>
       <li><strong>Smart groups</strong> have a rule, such as "Genus is Philodendron" or "Location is Indoors". Plants that fit join by themselves, and leave when they stop fitting.</li>
       <li><strong>Hand-picked groups</strong> hold the plants you choose. Add or take out plants on the group's page or on a plant's own page.</li>

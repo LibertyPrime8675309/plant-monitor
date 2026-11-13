@@ -130,7 +130,10 @@ const ME = () => (META && META.me) || { via: 'local', role: 'owner', name: '', l
 const viaTS = () => ME().via === 'tailscale';
 function paintWho() {
   const n = viaTS() ? ME().name : getName(), el = document.getElementById('who-name');
-  if (el) el.textContent = viaTS() ? 'Signed in as ' + n : n ? 'Editing as ' + n : 'Set your name';
+  if (el) {
+    el.textContent = viaTS() ? 'Signed in as ' + n : n ? 'Editing as ' + n : 'Set your name';
+    el.parentNode.setAttribute('aria-label', el.textContent + (viaTS() ? '. People and your name' : '. Change who is editing'));      // 1.58.0: the spoken name starts with the words shown
+  }
   document.documentElement.dataset.role = ME().role;
   topSoon();
 }
@@ -638,6 +641,7 @@ function modal(content, cls) {
   dlg.className = cls || '';
   dlg.innerHTML = rend(content);
   notesPass(dlg);                                   // 1.57.0: notes on request, in windows too
+  setTimeout(() => scrollBoxes(dlg), 0);            // 1.58.0: a table that scrolls in a window can be scrolled by keyboard (measured once the window is open)
   const h2 = dlg.querySelector('h2');               // the window is named by its heading, for screen readers
   if (h2) { h2.id = h2.id || 'dlg-title'; dlg.setAttribute('aria-labelledby', h2.id); } else dlg.removeAttribute('aria-labelledby');
   return new Promise(res => {
@@ -845,7 +849,7 @@ async function route() {
     featAdds(parts);                              // 1.46.0: what feature modules add to this page once it is on screen (features.js); they rebuild Navigation when done
     if (parts[0] === 'weather' && qs.get('sec') === 'places') setTimeout(() => { const t = document.getElementById('sec-places'); if (t) { scrollToSection(t); navFlash(t); } }, 300);   // 1.29.0: Homes and places
     else if (qs.get('sec')) { const go2 = () => { const t = document.getElementById(qs.get('sec')); if (t) { scrollToSection(t); navFlash(t); } }; setTimeout(go2, 300); setTimeout(go2, 1500); }   // 1.36.0: #/plant/P-001?sec=inside opens the page at that section
-    buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); setTimeout(() => { buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); }, 1200);
+    buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); scrollBoxes(); setTimeout(() => { buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); scrollBoxes(); }, 1200);
     if (h !== lastPath) { if (!(wentBack && !qs.get('sec') && scrollBack(h))) window.scrollTo(0, 0); focusTitle(app); NAVPIN = -1; navActive(); }
     else if (fresh && keepY) window.scrollTo(0, keepY);
     lastPath = h;

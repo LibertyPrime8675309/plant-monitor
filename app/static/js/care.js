@@ -310,7 +310,10 @@ async function viewToday() {
   const ws = W.plants.filter(w => by[w.code]);
   const due = ws.filter(w => w.state === 'due').sort((a, b) => b.overdue - a.overdue), soon = ws.filter(w => w.state === 'soon'), unk = ws.filter(w => w.state === 'unknown');
   const here = FERT.plants.filter(atPlace);                                      // 1.48.0: Today is about the home you are looking at
-  const feed = here.map(p => ({ p, st: fertState(p, entriesFor(p.code), t, fertCtx()) })).filter(r => r.st.state === 'due');
+  const feedDue = here.map(p => ({ p, st: fertState(p, entriesFor(p.code), t, fertCtx()) })).filter(r => r.st.state === 'due');
+  // 1.58.0 (November 12 review, item 8): a plant with no feeding ever logged has no rhythm to be late on. It stayed "due" every day of its season, so
+  // "Feed (3)" never changed and stopped meaning anything. Like watering (1.57.0), such plants are a folded part of their own until the first one is logged.
+  const feed = feedDue.filter(r => r.st.last), unfed = feedDue.filter(r => !r.st.last);
   const needs = here.filter(needsYou), reqs = reqsAll.filter(q => !q.plant_code || !by[q.plant_code] || atPlace(by[q.plant_code]));
   const wbtn = w => w.action && w.action !== 'water'                            // 1.56.0: a semi-hydro pot is topped up, a water-only plant gets fresh water
     ? html`<button class="btn small" type="button" data-act="care" data-kind="${w.action}" data-code="${w.code}" data-name="${by[w.code].common_name}">${HYDRO_DO[w.action][2]}</button>`
@@ -319,12 +322,13 @@ async function viewToday() {
   const n = (k, one, many) => k + ' ' + (k === 1 ? one : many);
   // 1.34.0: Today is the page the app opens on. One line says what needs you, with a button to jump to each part
   const winter = coldSeason();                                                  // 1.48.0: a tropical home has no cold night, coming inside or frost blocks
-  const F = FROST, cold = winter && F && F.first ? F.worst.counts.danger + F.worst.counts.damage + F.worst.counts.watch : 0;
+  const F = FROST, coldOn = !!(winter && F && F.first), FZ = coldOn ? fzToday() : { n: 0, bit: '' };     // 1.58.0: the next cold night's own count, not the worst night's with today's date
   const prepN = PR && PR.plants ? PR.plants.reduce((k, p) => k + p.methods.filter(m => m.next_due && m.next_due <= t).length + (p.status === 'apart' && p.keep_until && p.keep_until <= t ? 1 : 0), 0) : 0;
   const snN = SN ? SN.look + SN.quiet : 0;
-  const bits = [cold ? `a cold night ${fzDay(F.first.date, true)}` : '', snN ? n(snN, 'sensor to look at', 'sensors to look at') : '', n(due.length, 'plant to water', 'plants to water'), n(feed.length, 'to feed', 'to feed'),
-    WA.alerts.length ? n(WA.alerts.length, 'Shopping alert', 'Shopping alerts') : '', n(needs.length, 'thing Claude needs from you', 'things Claude needs from you')].filter(Boolean);
-  const line = bits.length > 1 ? bits.slice(0, -1).join(', ') + ', and ' + bits[bits.length - 1] : bits[0];
+  // 1.58.0: only what there is: "0 to feed" said nothing the "Nothing due today" line below does not say
+  const bits = [FZ.bit, snN ? n(snN, 'sensor to look at', 'sensors to look at') : '', due.length ? n(due.length, 'plant to water', 'plants to water') : '', feed.length ? n(feed.length, 'to feed', 'to feed') : '',
+    WA.alerts.length ? n(WA.alerts.length, 'Shopping alert', 'Shopping alerts') : '', needs.length ? n(needs.length, 'thing Claude needs from you', 'things Claude needs from you') : ''].filter(Boolean);
+  const line = bits.length > 2 ? bits.slice(0, -1).join(', ') + ', and ' + bits[bits.length - 1] : bits.length ? bits.join(' and ') : 'Nothing needs you today';
   const quiet = [];
   if (PR && PR.plants && !prepN) quiet.push('No pest rounds due.');
   if (SN && SN.n && !snN) quiet.push(`${SN.n} sensor${SN.n === 1 ? '' : 's'} sending, all in range.`);
@@ -340,7 +344,7 @@ async function viewToday() {
   // the same place every time, whatever order the scripts loaded in
   const outH = HOMES().length > 1 && !homeTended(homeById(placeHomeId())) ? homeById(placeHomeId()) : null;   // 1.58.0: a home cared for outside the app: no water-them-all buttons
   const blocks = [
-    cold ? { order: 10, id: 'today-cold', jump: `Cold night (${cold})`, html: html`<section class="blk" id="today-cold">${frostBanner(true)}</section>` } : null,
+    coldOn ? { order: 10, id: 'today-cold', jump: `Cold night (${FZ.n})`, html: html`<section class="blk" id="today-cold">${frostBanner(true)}</section>` } : null,
     snN ? { order: 20, id: 'today-sensors', jump: `Sensors (${snN})`, html: html`<section class="blk" id="today-sensors"><h2>Sensors (${snN})</h2><ul class="jobs">${SN.cards.map(s => html`<li class="job"><span class="job-nophoto" aria-hidden="true"></span><div class="job-txt"><a class="nm" href="#/sensors">${s.name}</a>${s.plant ? html` <span class="muted">${s.plant.code} ${s.plant.common_name}</span>` : ''}<div>${s.words}</div></div>
       <div class="job-acts">${s.plant ? html`<a class="btn small ghost" href="#/plant/${enc(s.plant.code)}">Open its plant</a>` : ''}</div></li>`)}</ul><p><a class="btn small ghost" href="#/sensors">All your sensors</a></p></section>` } : null,
     { order: 30, id: 'today-water', jump: `Water (${due.length})`, keep: soon.length > 0, html: html`<section class="blk" id="today-water"><h2>Water (${due.length})</h2>
@@ -358,6 +362,11 @@ async function viewToday() {
       ${feed.length ? html`${feed.length > 1 ? html`<p><button class="btn small ghost" type="button" data-act="fertlog" data-group="due">Log feeding for all ${feed.length}</button></p>` : ''}
         <ul class="jobs">${feed.map(r => jobRow(r.p, fertWords(r.p, r.st, t), html`<button class="btn small" type="button" data-act="fertlog" data-code="${r.p.code}">Log feeding</button>`))}</ul>`
         : html`<p class="notice ok">No plant is due for fertilizer today. The Fertilizer page has the calendar.</p>`}</section>` },
+    unfed.length ? { order: 41, id: 'today-unfed', html: html`<section class="blk" id="today-unfed"><details class="grp"><summary><h2>No feeding logged yet (${unfed.length})</h2></summary>
+        <p class="hint">These are in their feeding season and have no feeding in the log, so there is no reminder for them yet. Log one feeding and the next is counted from that day. If you do not feed them, leave them here: Today does not count them.</p>
+        ${unfed.length > 1 ? html`<p><button class="btn small ghost" type="button" data-act="fertlog" data-codes="${unfed.map(r => r.p.code).join(',')}">Log feeding for all ${unfed.length}</button></p>` : ''}
+        <ul class="jobs">${unfed.map(r => jobRow(r.p, fertWords(r.p, r.st, t), html`<button class="btn small" type="button" data-act="fertlog" data-code="${r.p.code}">Log feeding</button>`))}</ul>
+        <p><a class="btn small ghost" href="#/fertilizer">Open the Fertilizer page</a></p></details></section>` } : null,
     WA.alerts.length ? { order: 50, id: 'today-wish', jump: `Shopping (${WA.alerts.length})`, html: html`<section class="blk wl-alerts" id="today-wish"><h2>Shopping alerts (${WA.alerts.length})</h2>${wlAlertsHtml(WA.alerts.slice(0, 6), true)}<p><a class="btn small ghost" href="#/shopping/list">Shopping list for a store visit</a></p></section>` } : null,
     winter && PR && PR.plants.length ? { order: 60, id: 'today-inside', html: todayPrep(PR, t) } : null,
     { order: 70, id: 'today-needs', jump: `Needed from you (${needs.length})`, html: html`<section class="blk" id="today-needs"><h2>Needed from you (${needs.length})</h2>
@@ -496,7 +505,9 @@ function calHtml(id) {
   const days = Array.from({ length: n }, (_, i) => Y + '-' + pad2(M) + '-' + pad2(i + 1));
   const focus = days.includes(c.sel) ? c.sel : days.includes(today) ? today : days[0];
   const info = Object.fromEntries(days.map(d => [d, c.cfg.cell(d, c)]));
-  const label = d => `${longDay(d)}${d === today ? ', today' : ''}. ${info[d].aria || 'Nothing recorded.'}`;
+  // 1.58.0: a day's spoken name starts with the words it shows (its number or short date, "today", its badges), then the full date and what the day means
+  const shown = (d, short) => [short ? midDay(d) + (d === today ? ' (today)' : '') : +d.slice(8) + (d === today ? ' today' : ''), ...(info[d].badges || []).map(b => String(b.text).replace(/[^\p{L}\p{N}\s.,:%°'()\/-]/gu, '').trim())].join(' ');     // the marks (▲ ●) are for the eye, not the name
+  const label = (d, short) => `${shown(d, short)}. ${longDay(d)}. ${info[d].aria || 'Nothing recorded.'}`;
   const cells = [...Array(dow).fill(null), ...days];
   while (cells.length % 7) cells.push(null);
   const weeks = []; for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
@@ -512,9 +523,9 @@ function calHtml(id) {
     <table class="cal" aria-labelledby="calh-${id}"><thead><tr>${DOWN.map(d => html`<th scope="col"><abbr title="${d}">${d.slice(0, 3)}</abbr></th>`)}</tr></thead>
       <tbody>${weeks.map(w => html`<tr>${w.map(d => d ? html`<td><button type="button" class="day ${info[d].cls || ''} ${d === c.sel ? 'sel' : ''} ${d === today ? 'today' : ''}" data-act="calpick" data-cal="${id}" data-date="${d}"
           tabindex="${d === focus ? 0 : -1}" aria-pressed="${String(d === c.sel)}" aria-label="${label(d)}">
-          <span class="dn">${+d.slice(8)}${d === today ? html` <span class="tdy">today</span>` : ''}</span>${(info[d].badges || []).map(bad)}</button></td>` : html`<td></td>`)}</tr>`)}</tbody></table>
-    <ul class="cal-list">${days.map(d => html`<li><button type="button" class="day ${info[d].cls || ''} ${d === c.sel ? 'sel' : ''} ${d === today ? 'today' : ''}" data-act="calpick" data-cal="${id}" data-date="${d}" aria-pressed="${String(d === c.sel)}" aria-label="${label(d)}">
-        <span class="dn">${midDay(d)}${d === today ? ' (today)' : ''}</span><span class="bds">${(info[d].badges || []).map(bad)}</span></button></li>`)}</ul>
+          <span class="dn">${+d.slice(8)}${d === today ? html` <span class="tdy">today</span>` : ''}</span> ${(info[d].badges || []).map((b, k) => html`${k ? ' ' : ''}${bad(b)}`)}</button></td>` : html`<td></td>`)}</tr>`)}</tbody></table>
+    <ul class="cal-list">${days.map(d => html`<li><button type="button" class="day ${info[d].cls || ''} ${d === c.sel ? 'sel' : ''} ${d === today ? 'today' : ''}" data-act="calpick" data-cal="${id}" data-date="${d}" aria-pressed="${String(d === c.sel)}" aria-label="${label(d, true)}">
+        <span class="dn">${midDay(d)}${d === today ? ' (today)' : ''}</span> <span class="bds">${(info[d].badges || []).map((b, k) => html`${k ? ' ' : ''}${bad(b)}`)}</span></button></li>`)}</ul>
     ${c.cfg.legend ? html`<p class="hint cal-legend">${c.cfg.legend}</p>` : ''}</div>`;
 }
 function calRender(id, keepFocus) {

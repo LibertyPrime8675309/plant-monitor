@@ -168,6 +168,16 @@ async function mxPotDialog(code, repot) {
     top: L('top'), bottom: L('bottom'), notes: f.elements.notes.value, save_as: f.elements.save_as.value.trim() };
   await guard(async () => { await api('POST', '/api/mixes/plant/' + enc(code), body); toast(body.repot ? 'Repotted, with its mix' : 'Saved: what it is in'); MXD = null; route(); });
 }
+let MX_CARE = null;
+function mxCare() {                       // Today's two parts ask in the same moment: one request serves both
+  if (!MX_CARE) MX_CARE = api('GET', '/api/mixes/care').then(d => ({ due: d.items.filter(x => x.last), fresh: d.items.filter(x => !x.last), every: d.every }))
+    .finally(() => { MX_CARE = null; });
+  return MX_CARE;
+}
+const mxCareRow = x => html`<li class="job" data-code="${x.code}">${x.photo ? html`<img src="${thumbUrl(x.photo)}" alt="" loading="lazy" width="64" height="64">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}
+  <div class="job-txt"><a class="nm" href="#/plant/${enc(x.code)}">${x.name}</a> <span class="muted">${x.code}, ${x.grow_kind.toLowerCase()}</span>
+    <div>${MX_DOING[x.kind] || x.word}: ${x.last ? `last ${relDay(x.last)}, ${x.overdue > 0 ? `${x.overdue} day${x.overdue === 1 ? '' : 's'} overdue` : 'due today'}` : 'nothing logged yet'} (about every ${x.every} days).</div></div>
+  <div class="job-acts"><button class="btn small" type="button" data-act="care" data-kind="${x.kind}" data-code="${x.code}" data-name="${x.name}">${x.word}</button></div></li>`;
 addFeature({
   name: 'mixes',
   care: { topup: 'Topped up the reservoir', flush: 'Flushed', waterchange: 'Changed the water', rootcheck: 'Checked the roots' },
@@ -192,15 +202,19 @@ addFeature({
     },
     html: ({ S, p }) => mxPlantHtml(S, p),
   }],
+  // 1.58.0 (November 12 review, item 8): a flush or root check that has never been logged has no rhythm to be late on, so it is not counted as due
+  // (it stayed on Today for ever: "Flush and roots (6)" with nothing logged). Those wait in a folded part until the first one is logged, like watering.
   today: [{
     id: 'mx-hydro', order: 33,                                       // just after Water (30)
-    load: async () => { const d = await api('GET', '/api/mixes/care'); return d.items.length ? d : null; },
-    jump: d => `Flush and roots (${d.items.length})`,
-    html: d => html`<section class="blk" id="mx-hydro"><h2>Semi-hydro and water-only care (${d.items.length})</h2>
-      <ul class="jobs">${d.items.map(x => html`<li class="job" data-code="${x.code}">${x.photo ? html`<img src="${thumbUrl(x.photo)}" alt="" loading="lazy" width="64" height="64">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}
-        <div class="job-txt"><a class="nm" href="#/plant/${enc(x.code)}">${x.name}</a> <span class="muted">${x.code}, ${x.grow_kind.toLowerCase()}</span>
-          <div>${MX_DOING[x.kind] || x.word}: ${x.last ? `last ${relDay(x.last)}, ${x.overdue > 0 ? `${x.overdue} day${x.overdue === 1 ? '' : 's'} overdue` : 'due today'}` : 'nothing logged yet'} (about every ${x.every} days).</div></div>
-        <div class="job-acts"><button class="btn small" type="button" data-act="care" data-kind="${x.kind}" data-code="${x.code}" data-name="${x.name}">${x.word}</button></div></li>`)}</ul></section>`,
+    load: async () => { const d = await mxCare(); return d.due.length ? d : null; },
+    jump: d => `Flush and roots (${d.due.length})`,
+    html: d => html`<section class="blk" id="mx-hydro"><h2>Semi-hydro and water-only care (${d.due.length})</h2><ul class="jobs">${d.due.map(mxCareRow)}</ul></section>`,
+  }, {
+    id: 'mx-hydro-new', order: 34,
+    load: async () => { const d = await mxCare(); return d.fresh.length ? d : null; },
+    html: d => html`<section class="blk" id="mx-hydro-new"><details class="grp"><summary><h2>No flush or root check logged yet (${d.fresh.length})</h2></summary>
+      <p class="hint">Semi-hydro pots are flushed and water-only plants have their roots checked now and then. None is logged for these yet, so there is no reminder: log the first one and the next is counted from that day.</p>
+      <ul class="jobs">${d.fresh.map(mxCareRow)}</ul></details></section>`,
   }],
 });
 Object.assign(acts, {

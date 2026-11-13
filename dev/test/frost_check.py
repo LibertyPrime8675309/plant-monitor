@@ -61,6 +61,48 @@ with sync_playwright() as p:
         over = q.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth')
         check(over <= 2, f'{name}: no sideways scrolling ({over}px)')
         q.close()
+    # 1.58.0 (November 12 review, item 8): each night says its own numbers. Made-up forecasts are put in the page's place, since the mock's is whatever the date makes it.
+    t = b.new_page(viewport={'width': 1366, 'height': 900}); t.on('pageerror', lambda e: errs.append(str(e)))
+    t.add_init_script("localStorage.setItem('plantdb.editor','Frost Test')")
+    t.goto(BASE + '/#/today'); t.wait_for_timeout(2500)
+    say = lambda nights: t.evaluate('''nights => {
+      const keep = FROST, LV = { danger: 3, damage: 2, watch: 1 }, day = k => addDays(keep.today, k);
+      const some = (n, level, done) => Array.from({ length: n || 0 }, (_, i) => ({ code: 'T-' + level + i, name: 'x', level, done: i < (done || 0) ? { by: 'me', at: '' } : null }));
+      const ns = nights.map(([k, low, c, done]) => ({ date: day(k), low, counts: { danger: c.danger || 0, damage: c.damage || 0, watch: c.watch || 0 },
+        level: c.danger ? 'danger' : c.damage ? 'damage' : c.watch ? 'watch' : null, plants: [...some(c.danger, 'danger', done), ...some(c.damage, 'damage', c.danger ? 0 : done), ...some(c.watch, 'watch', c.danger || c.damage ? 0 : done)] }));
+      const at = ns.filter(n => n.level), worst = at.reduce((w, n) => !w || LV[n.level] > LV[w.level] || (n.level === w.level && n.low < w.low) ? n : w, null);
+      FROST = Object.assign({}, keep, { nights: ns, worst, first: at[0], outdoor: 86 });
+      const el = document.createElement('div'); el.innerHTML = rend(frostBanner(true));
+      const out = { text: el.textContent.replace(/\\s+/g, ' ').trim(), today: fzToday(), by: [0, 1, 5].map(k => fzActBy(day(k))) };
+      FROST = keep; return out; }''', nights)
+    r = say([[0, 61, {'watch': 1}], [5, 50, {'damage': 11, 'watch': 14}]])           # what his own Today showed on November 12
+    print('     ' + r['text'][:420])
+    check('11 would be damaged and 14 are close calls that night' in r['text'] and 'at 61°F: 1 is a close call' in r['text'], 'a close call tonight and a cold night later: each night has its own numbers')
+    check('before dark today' not in r['text'] and '1 is a close call, and nothing would be damaged.' in r['text'] and f"Bring them in or cover them {r['by'][2]}, before the first night" in r['text'], 'the deadline is the evening before the first night that would damage a plant, not today')
+    check(r['today']['n'] == 1 and r['today']['bit'].startswith('1 close call today') and 'and a cold night' in r['today']['bit'], f"Today counts tonight's one plant and names both nights: {r['today']}")
+    r = say([[0, 45, {'damage': 3, 'watch': 2}]])
+    check('3 would be damaged and 2 are close calls that night. Bring them in or cover them before dark today.' in r['text'] and r['today'] == {'n': 5, 'bit': r['today']['bit']} and r['today']['bit'].startswith('a cold night today'),
+          'a night that would damage plants tonight still says before dark today')
+    r = say([[1, 58, {'watch': 4}]])
+    check('None is forecast to be damaged' in r['text'] and 'To be safe, bring them in or cover them this evening' in r['text'] and r['today']['n'] == 4 and r['today']['bit'].startswith('4 close calls tomorrow'),
+          'close calls only: it says nothing is forecast to be damaged, and why to cover them anyway')
+    r = say([[0, 45, {'damage': 3}, 1]])
+    check('before dark today. 1 is already marked as covered.' in r['text'] and r['today']['n'] == 2, 'plants ticked as covered are not counted again')
+    r = say([[0, 45, {'damage': 3}, 3]])
+    check('All 3 are marked as covered for today' in r['text'] and r['today']['n'] == 0 and r['today']['bit'] == '', 'when all are covered Today stops asking')
+    r = say([[0, 48, {'damage': 2}], [3, 30, {'danger': 5, 'damage': 10}]])
+    check('at 48°F: 2 would be damaged. Bring those in or cover them before dark today. The checklist says which night each of the others needs it by.' in r['text'] and r['today']['n'] == 2,
+          'two plants tonight and a freeze later: tonight\'s two first')
+    # and on the page itself: the button counts the next cold night's plants that are still to do
+    import json, urllib.request
+    F = json.load(urllib.request.urlopen(BASE + '/api/frost'))
+    first = next((n for n in F['nights'] if n['level']), None)
+    if first:
+        left = sum(1 for x in first['plants'] if not x.get('done'))
+        jump = t.locator('.td-jumps a[data-sec=today-cold]')
+        check((jump.count() == 1 and jump.inner_text() == f'Cold night ({left})') if left else jump.count() == 0, f"Today's button counts the next cold night's {left} plants, not the worst night's ({sum(F['worst']['counts'].values())})")
+        t.locator('#today-cold').screenshot(path=f'{OUT}/frost-today.png')
+    t.close()
     b.close()
 for e in errs: print('JS error:', e)
 sys.exit(1 if fails or errs else 0)
