@@ -596,7 +596,7 @@ function wbHtml(W, hourOpt) {
   const S = W.settings, n = W.pieces.length, good = W.pieces.filter(p => !p.broken), newest = good[0], L = W.live;
   const num = x => Number(x).toLocaleString();
   return html`<section class="blk" id="bk-wx"><h2>Weather history</h2>
-    <p class="muted">The weather history is most of the database${L.rows ? ` (${num(L.rows)} hourly readings, ${wbDate(L.first)} to ${wbDate(L.last)})` : ''}, and it changes little from day to day. So it has a backup of its own, in pieces, saved in the <span class="code">weather</span> folder inside the backups folder. The first piece holds everything. Each later piece holds only the days that are new or have changed. All the pieces together are the whole history.</p>
+    <p class="muted">The weather history is most of the database${L.rows ? ` (${num(L.rows)} hourly readings, ${wbDate(L.first)} to ${wbDate(L.last)})` : ''}, and it changes little from day to day. So it has a backup of its own, in pieces, saved in the <strong>weather</strong> folder inside the backups folder. The first piece holds everything. Each later piece holds only the days that are new or have changed. All the pieces together are the whole history.</p>
     <p class="${newest ? 'notice ok' : 'notice'}" role="status">${newest ? html`Newest piece: <strong>${when(newest.created_at)}</strong>. ${n} piece${n === 1 ? '' : 's'}, ${mb(W.total_bytes)} in all.`
         : S.enabled ? 'No weather backup yet. The first piece is made within a few minutes of the app starting, or press the button below.' : 'The weather history has no backup of its own.'}
       ${W.last ? html` Last run ${when(W.last)}${W.result ? html`: ${W.result.charAt(0).toLowerCase() + W.result.slice(1)}` : ''}.` : ''}
