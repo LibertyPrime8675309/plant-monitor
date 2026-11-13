@@ -29,11 +29,12 @@ function mxInterval(r) {
 const dateF = d => d ? parseYmd(d).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 // ---- the Potting mixes page
 async function viewMixes() {
-  await mxLoad();
+  await Promise.all([mxLoad(), loadAsks()]);
   const can = canChange(), E = MXD.every;
   const byRole = r => MXD.amendments.filter(a => a.role === r);
   return { title: 'Potting mixes', html: html`<h1>Potting mixes</h1>
     <p class="lede">What goes into your pots: recipes in parts by volume, the amendments they are made of, and how often semi-hydro and water-only plants are looked after. A plant's own page says what it is in now; <a href="#/pots">Pots and trays</a> has the pots themselves.</p>
+    ${askLine('flush', 'flush or root check')}
     <section class="blk" id="mx-recipes"><h2>Recipes (${MXD.recipes.length})</h2>
       ${can ? html`<p><button class="btn" type="button" data-act="mxrecipe">New recipe</button></p>` : ''}
       ${MXD.recipes.length ? html`<div class="mx-cards">${MXD.recipes.map(r => html`<article class="mx-card" data-id="${r.id}"><h3>${r.name}</h3>
@@ -170,7 +171,10 @@ async function mxPotDialog(code, repot) {
 }
 let MX_CARE = null;
 function mxCare() {                       // Today's two parts ask in the same moment: one request serves both
-  if (!MX_CARE) MX_CARE = api('GET', '/api/mixes/care').then(d => ({ due: d.items.filter(x => x.last), fresh: d.items.filter(x => !x.last), every: d.every }))
+  // 1.58.0 (Ethan, November 13, 2026): care never logged asks once (asks.py). No answer yet: the question, with these plants under it.
+  // Yes: each counts from the day of the answer. No: Today says nothing about them.
+  if (!MX_CARE) MX_CARE = Promise.all([api('GET', '/api/mixes/care'), loadAsks()]).then(([d]) => { const t = todayStr();
+    return { due: d.items.filter(x => x.last || askOn('flush', x.every, t)), fresh: ASKS.flush ? [] : d.items.filter(x => !x.last), every: d.every }; })
     .finally(() => { MX_CARE = null; });
   return MX_CARE;
 }
@@ -212,9 +216,10 @@ addFeature({
   }, {
     id: 'mx-hydro-new', order: 34,
     load: async () => { const d = await mxCare(); return d.fresh.length ? d : null; },
-    html: d => html`<section class="blk" id="mx-hydro-new"><details class="grp"><summary><h2>No flush or root check logged yet (${d.fresh.length})</h2></summary>
-      <p class="hint">Semi-hydro pots are flushed and water-only plants have their roots checked now and then. None is logged for these yet, so there is no reminder: log the first one and the next is counted from that day.</p>
-      <ul class="jobs">${d.fresh.map(mxCareRow)}</ul></details></section>`,
+    html: d => askBlock('flush', 'mx-hydro-new', d.fresh.length, 'Flush and root-check reminders',
+      `${d.fresh.length === 1 ? 'One semi-hydro or water-only plant has' : d.fresh.length + ' semi-hydro or water-only plants have'} no flush or root check in the log. Do you want Today to remind you when ${d.fresh.length === 1 ? 'it is' : 'they are'} due?`,
+      'Semi-hydro pots are flushed and water-only plants have their roots checked now and then. Yes starts counting today, so each comes up when it is next due. No keeps Today quiet about plants with none logged. A plant with one in the log is reminded either way. You can change the answer on the Potting mixes page.',
+      html`<ul class="jobs">${d.fresh.map(mxCareRow)}</ul>`),
   }],
 });
 Object.assign(acts, {

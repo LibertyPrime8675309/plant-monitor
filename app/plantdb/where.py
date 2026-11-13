@@ -355,6 +355,35 @@ def where_spot_one(sid):
     audit_only(c, 'where', 'spot', f'{sp["area"]}, {sp["name"]}', f'{sp["area"]}, {name}', who, f'Spot renamed: {sp["area"]}, {name}'); c.commit()
     return jsonify(homes=where_list(c))
 
+@app.route('/api/where/order', methods=['POST'])
+def where_order():
+    """1.58.0 (Ethan, November 13, 2026: watering by room and spot): {kind: 'area' | 'spot', id, dir: 'up' | 'down'}. Moves a room
+    one place among the rooms on its side of its home, or a spot among its room's spots. Today lists the plants to water in this
+    order, so it can follow the way a round is walked. Rooms and spots used to stay in the order they were made."""
+    c = db(); who = editor(); b = request.get_json(silent=True) or {}
+    kind, way = b.get('kind'), b.get('dir')
+    if kind not in ('area', 'spot') or way not in ('up', 'down'): abort(400, 'kind must be area or spot, and dir up or down')
+    try: i = int(b.get('id'))
+    except (TypeError, ValueError): abort(400, 'id must be a number')
+    if kind == 'area':
+        a = c.execute('SELECT * FROM areas WHERE id=?', (i,)).fetchone()
+        if not a: abort(404, 'That area is not in the list')
+        rows = c.execute('SELECT id, name FROM areas WHERE side=? AND ' + ('home_id IS NULL' if a['home_id'] is None else 'home_id=?') + ' ORDER BY sort, id',
+                         (a['side'],) + (() if a['home_id'] is None else (a['home_id'],))).fetchall()
+        name = a['name']
+    else:
+        sp = c.execute('SELECT s.*, a.name AS area FROM spots s JOIN areas a ON a.id=s.area_id WHERE s.id=?', (i,)).fetchone()
+        if not sp: abort(404, 'That spot is not in the list')
+        rows = c.execute('SELECT id, name FROM spots WHERE area_id=? ORDER BY sort, id', (sp['area_id'],)).fetchall()
+        name = f'{sp["area"]}, {sp["name"]}'
+    ids = [r['id'] for r in rows]; k = ids.index(i); j = k - 1 if way == 'up' else k + 1
+    moved = 0 <= j < len(ids)
+    if moved:
+        ids[k], ids[j] = ids[j], ids[k]
+        for n, x in enumerate(ids): c.execute(f"UPDATE {'areas' if kind == 'area' else 'spots'} SET sort=? WHERE id=?", (n + 1, x))     # only this group is compared with itself
+        audit_only(c, 'where', 'order', str(k + 1), str(j + 1), who, f'{name} moved {way} in the order of rooms and spots'); c.commit()
+    return jsonify(homes=where_list(c), moved=moved)
+
 def spot_guess(text):
     """'Black bench, yard' -> 'Black bench'; 'On the pallet shelf by the door' -> 'Pallet shelf by the door'."""
     t = re.split(r'[,;(]| - ', str(text or ''))[0].strip()

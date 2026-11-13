@@ -1,0 +1,24 @@
+/* 1.58.0 (Ethan, November 13, 2026): Today's watering lists by room and spot, as cards (care.js: waterByPlace), and the one-time
+   questions about care that was never logged (askBlock, askLine). */
+.wpl-order{margin:.2rem 0 .8rem}
+.wpl-jump{margin:0 0 .9rem}
+.wpl-grp{margin:0 0 1.1rem;border:var(--bw) solid var(--line);border-radius:8px;background:var(--sheet);padding:.55rem .85rem .15rem}
+.wpl-head{display:flex;flex-wrap:wrap;gap:.4rem 1rem;align-items:center;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:.45rem}
+.wpl-head h3{margin:0;font-size:1.2rem;flex:1 1 12rem;min-width:0;overflow-wrap:break-word}
+.wpl-n{font-weight:400;color:var(--ink-2);font-family:var(--sans);font-size:1rem}
+.wpl-cards{list-style:none;padding:0;margin:.6rem 0 .7rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,9rem),1fr));gap:.6rem}
+.wpl-card{border:var(--bw) solid var(--line);border-radius:6px;padding:.4rem .45rem .45rem;display:flex;flex-direction:column;gap:.15rem;min-width:0;overflow-wrap:anywhere}
+.wpl-card .wpl-open{display:block;text-decoration:none}
+.wpl-card img,.wpl-card .job-nophoto{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:4px;background:var(--line)}
+.wpl-card .nm{display:block;margin-top:.3rem;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.wpl-card .wpl-st{margin:0}
+.wpl-acts{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:auto;padding-top:.25rem}
+.wpl-acts .btn{flex:1 1 5.5rem;padding-left:.4rem;padding-right:.4rem}
+.wpl-why{margin:.15rem 0 0}
+.wpl-why>summary{cursor:pointer;display:inline-block;color:var(--cyan);font-weight:700;text-decoration:underline;text-underline-offset:3px;padding:.15rem .1rem;list-style:none}
+.wpl-why>summary::-webkit-details-marker{display:none}
+.wpl-why>summary::before{content:"\25B8\00a0"}
+.wpl-why[open]>summary::before{content:"\25BE\00a0"}
+.wpl-why>p{margin:.2rem 0 .3rem}
+details.grp>.wpl{margin-top:.6rem}
+.ask-line{display:flex;flex-wrap:wrap;gap:.3rem .9rem;align-items:center}

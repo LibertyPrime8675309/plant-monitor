@@ -11,7 +11,7 @@ def check(cond, what):
     if not cond: fails.append(what)
 def get(path): return json.load(urllib.request.urlopen(BASE + path))
 def log_for(code): return get('/api/care?plant=' + code)
-JOBS = '#today-water > ul.jobs > li.job'
+JOBS = '#today-water > .wpl .wpl-card'                   # 1.58.0: the watering list is cards by room and spot
 TOAST = '#toasts .undo-toast'
 with sync_playwright() as p:
     b = p.chromium.launch()
