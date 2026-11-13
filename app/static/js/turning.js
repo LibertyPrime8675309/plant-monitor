@@ -109,7 +109,7 @@ addFeature({
   adds: {
     id: 'tn-plant', care: true,
     match: parts => parts[0] === 'plant' && parts[1] && parts[2] !== 'edit',
-    anchor: main => { const b = main.querySelector('.quick-btns'); return b && b.parentElement; }, where: 'beforeend',
+    anchor: quickMore, where: 'beforeend',
     load: async parts => {
       if (!CUR || CUR.p.code !== parts[1]) return null;
       const T = await api('GET', '/api/turning');                // offline with nothing saved: leave it out

@@ -133,12 +133,6 @@ fieldset legend{font-family:var(--serif);font-weight:600;font-size:1.4rem;paddin
 /* gallery */
 .hero{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
 .hero p{margin:.4rem 0 0}
-.ledger{display:flex;gap:0;margin:1.2rem 0 1.4rem;flex-wrap:wrap}
-.ledger button{flex:1 1 9rem;font:inherit;text-align:left;background:var(--sheet);border:1px solid var(--line);border-bottom:.45rem solid var(--bar,var(--ink-2));padding:.6rem .8rem .5rem;cursor:pointer;color:var(--ink);margin:0 -1px -1px 0;min-height:4rem}
-.ledger button b{font-family:var(--serif);font-size:1.7rem;display:block;line-height:1.1}
-.ledger button[aria-pressed=true]{background:var(--bar,var(--ink));color:#fff;border-color:var(--bar,var(--ink))}
-:root[data-theme=dark] .ledger button[aria-pressed=true]{color:#0e2233}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .ledger button[aria-pressed=true]{color:#0e2233}}
 .filters{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,14rem),1fr));gap:.9rem;align-items:end;margin-bottom:1.8rem}
 html:not([data-narrow="1"]) .filters>label:first-child{grid-column:span 2}
 .filters label{font-weight:700}
@@ -1665,7 +1659,7 @@ a[href^="tel:"]{white-space:nowrap}
    only by a background or a coloured border is drawn again here with system colours and a visible outline. */
 @media (forced-colors:active){
   :root{--ring:3px}
-  .btn,.ledger button,.tag,.tag-home,.sheet,.wl-item,.set-card,.notice,.toast,#console,dialog{forced-color-adjust:none;color:CanvasText;background:Canvas;border:2px solid CanvasText}
+  .btn,.tag,.tag-home,.sheet,.wl-item,.set-card,.notice,.toast,#console,dialog{forced-color-adjust:none;color:CanvasText;background:Canvas;border:2px solid CanvasText}
   .btn{color:ButtonText;background:ButtonFace;border-color:ButtonText}
   .btn:not(.ghost):not(.danger){background:ButtonText;color:ButtonFace}
   .btn.danger{border-style:double;border-width:4px}
@@ -1674,7 +1668,7 @@ a[href^="tel:"]{white-space:nowrap}
   .top,.sub-in,header.top nav a{background:Canvas;color:CanvasText}
   .top nav a[aria-current=page],#sub-nav a[aria-current=page]{outline:3px solid Highlight;outline-offset:-3px;text-decoration:underline}
   .opts span{forced-color-adjust:none;border:2px solid ButtonText;background:ButtonFace;color:ButtonText}
-  .opts input:checked+span,.ledger button[aria-pressed=true],.chips button[aria-pressed=true]{forced-color-adjust:none;background:Highlight;color:HighlightText;border-color:HighlightText;outline:3px solid CanvasText;outline-offset:2px;text-decoration:underline}
+  .opts input:checked+span,.chips button[aria-pressed=true]{forced-color-adjust:none;background:Highlight;color:HighlightText;border-color:HighlightText;outline:3px solid CanvasText;outline-offset:2px;text-decoration:underline}
   .toast,.undo-toast{background:Highlight;color:HighlightText;border:3px solid CanvasText}
   .undo-toast .btn{background:ButtonFace;color:ButtonText;border-color:ButtonText}
   .notice.bad,.bad-text{border-color:CanvasText;color:CanvasText;text-decoration:underline wavy}

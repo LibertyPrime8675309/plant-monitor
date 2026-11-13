@@ -5,6 +5,8 @@ This check runs its own mock server (port 8480) so it can stop and start it; the
     python3 dev/test/phone_check.py      Screenshots: dev/tmp/shots/phone-*.png"""
 import glob, json, os, shutil, subprocess, sys, time, urllib.request, urllib.error
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from waits import until
 HERE = os.path.dirname(os.path.abspath(__file__)); ROOT = os.path.abspath(os.path.join(HERE, '..', '..'))
 OUT = os.path.join(HERE, '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
 DATA = os.path.join(HERE, '..', 'tmp', 'phone-data'); LOG = os.path.join(HERE, '..', 'tmp', 'phone-server.log')
@@ -116,9 +118,17 @@ try:
         # ---- the single Add a plant form: photos from the phone, names from the first photo, no forced camera
         pg.goto(B + '/#/new'); pg.wait_for_timeout(2500)
         check(pg.locator('input[name=__photos]').count() == 1 and pg.locator('input[type=file][capture]').count() == 0 and pg.locator('#newfill-btn').is_disabled(), 'the form has a Photos field; nothing forces the camera open, so the phone offers its photos too')
-        save = pg.locator('form[data-form=new] button[type=submit]'); save.scroll_into_view_if_needed(); pg.wait_for_timeout(400)
-        sb, cb = save.bounding_box(), pg.locator('#corner').bounding_box()
-        check(sb and cb and sb['y'] + sb['height'] <= cb['y'] + 1, 'the Save bar sits above the bottom bar, not under it')
+        # The Save bar is held at the bottom of the screen once the form's first lines have passed; before that it is in its place in the form,
+        # like the rest of the page. 1.58.0: the page starts higher, so this goes down into the form (the bottom bar slips away), a little way
+        # back up (it returns), and compares the two where both are shown. It used to pass as well with the bottom bar away.
+        pg.evaluate('window.scrollTo(0, 900)'); until(pg, lambda: pg.evaluate('document.documentElement.dataset.barhide') == '1')
+        pg.evaluate('window.scrollTo(0, 860)')
+        def save_above():
+            m = pg.evaluate("""() => { const cb = document.getElementById('corner').getBoundingClientRect(), bar = document.querySelector('form[data-form=new] .sticky-save').getBoundingClientRect(),
+                sb = document.querySelector('form[data-form=new] button[type=submit]').getBoundingClientRect();
+                return { away: document.documentElement.dataset.barhide || '', shown: Math.abs(cb.bottom - innerHeight) < 1, bar: bar.bottom, save: sb.bottom, top: cb.top }; }""")
+            return not m['away'] and m['shown'] and m['save'] <= m['top'] + 1 and abs(m['bar'] - m['top']) <= 1.5
+        check(until(pg, save_above), 'the Save bar sits above the bottom bar, not under it')
         pg.set_input_files('input[name=__photos]', PHOTOS[:2]); pg.wait_for_timeout(400)
         check(not pg.locator('#newfill-btn').is_disabled() and not pg.evaluate("document.querySelector('input[name=common_name]').required"), 'with photos chosen, the names can be filled in from the first one, and the common name may wait')
         pg.click('#newfill-btn'); pg.wait_for_timeout(6000)

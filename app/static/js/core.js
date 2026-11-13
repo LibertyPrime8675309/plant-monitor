@@ -111,7 +111,6 @@ const r1 = n => Math.round(n * 10) / 10;           // avoids 3.7000000000000003
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
 const PLAN_CLASS = { 'Move indoors': 'p-move', 'Protect outside': 'p-protect', 'Hardy outside': 'p-hardy', 'Seasonal die-back': 'p-die', 'Annual': 'p-annual' };
-const PLAN_COLOR = { 'Move indoors': 'var(--cyan)', 'Protect outside': 'var(--ochre)', 'Hardy outside': 'var(--moss)', 'Seasonal die-back': 'var(--ink-2)', 'Annual': 'var(--ink-2)' };
 const HEALTH_CLASS = { Good: 'h-good', Fair: 'h-fair', Poor: 'h-poor', Critical: 'h-critical' };
 const HEALTH_COLOR = { Good: 'var(--moss)', Fair: 'var(--ochre)', Poor: 'var(--madder)', Critical: 'var(--critical)' };
 const HEALTH_ORDER = { Critical: 0, Poor: 1, Fair: 2, Good: 3 };

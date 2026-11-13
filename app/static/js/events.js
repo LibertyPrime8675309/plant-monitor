@@ -534,7 +534,6 @@ const acts = {
   clearfilters() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '', status: 'active', site: '', home: '', area: '', spot: '' }, Object.fromEntries(MORE_KEYS.map(k => [k, '']))); MOREOPEN = false; gSave(); route(); },
   clearplace() { G.area = ''; G.spot = ''; gSave(); route(); },
   heatf(el) { Object.assign(G, { q: '', needs: false, status: 'active', heat: el.dataset.heatf }); gSave(); go('#/plants'); },   // 1.36.0: from the Weather page's summer counts
-  plan(el) { G.plan = G.plan === el.dataset.plan ? '' : el.dataset.plan; document.querySelectorAll('.ledger button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.plan === G.plan))); drawGrid(); },
   pick(el) { PIDX = +el.dataset.i; repaintPhotos(); },
   zoom() { const c = curPhoto(); if (c) modal(html`<form method="dialog"><img src="${photoUrl(c.file)}" alt="${c.caption || CUR.p.common_name}"><p class="cap">${c.caption}</p><button class="btn" value="ok" autofocus>Close</button></form>`, 'photo'); },
   zoomloose(el) { modal(html`<form method="dialog"><img src="${photoUrl(el.dataset.file)}" alt="${el.dataset.cap}"><p class="cap">${el.dataset.cap}</p><button class="btn" value="ok" autofocus>Close</button></form>`, 'photo'); },

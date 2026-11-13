@@ -386,10 +386,12 @@ Every page has a menu down the side listing its sections (for example on the Wea
 
 ## Plants page filters
 
+From 1.58.0 the Plants page starts with its plants. The count ("101 of 101 active plants shown") sits beside the title. Under it is one row of tools: **Search**, **Home** (with more than one home), **Location**, **Winter plan** and **Sort by**. Under that is one row of small buttons: **More filters**, **Plants that need something from you**, **Copy my answers for Claude**, the photos still to take, and **Water all**. **What Water all does** opens its explanation. Then the plants. On a phone only the search box stays out: the lists are in **More filters** and the buttons are in **More to do here**. Before 1.58.0 the first plant was most of a screen down on a computer and more than two screens down on a phone.
+
 The filter row on the Plants page narrows the list. Every filter is remembered in this browser, and **Clear filters** resets them.
 
 - **Search:** name, code, location or plant type.
-- **Health** and **winter plan** (the coloured buttons above the filters).
+- **Winter plan:** a list in the row of tools, with how many plants have each plan (from 1.58.0; it was a row of five coloured buttons). **Health** is in More filters.
 - **Location (from 1.16.2):** outdoors, covered porch, indoors, or garage or shed.
 - **Group (from 1.16.0):** only the plants in one group.
 - **Show (from 1.16.2):** active plants only (the usual), active and archived together, or archived only. Archived plants say "Archived" on their card. Archiving hides a plant without deleting anything; **Move back to the main list** on its page undoes it.
@@ -432,7 +434,7 @@ The **Today** page (the page the app opens on, from 1.34.0) lists what to do tod
 
 From 1.56.5 a part with nothing due (Turn the pots, Getting ready to come inside, Feed) is one line in the box at the top, "Nothing due today: …", instead of a part of its own. From 1.58.0 the first sentence names only what there is (no "0 to feed"), and the **Cold night** button counts the plants of the next cold night that are not marked as covered yet. **What's new** shows in full the first time after an update; on later visits it is one line you can open, until you press **Got it**. **Going away? Make a plant-sitter sheet** is at the end of the page.
 
-Every plant page has **quick care buttons** under its label, big enough to use on a phone in the garden after scanning the plant's label: **Watered today**, **Checked: still moist**, **Log feeding**, **Add a photo** (opens the phone's camera) and **Log other care** (repotted, pruned, treated for pests, or a note, with a date). The line above them says when the plant was last watered and when to check it next. The plant's **Water and soil** section explains the reminder and has its **care log**, with a **Remove** button on each entry.
+Every plant page has **quick care buttons** straight under the plant's name (from 1.58.0; they were further down, under its label), big enough to use on a phone in the garden after scanning the plant's label: **Watered today**, **Checked: still moist**, **Log feeding**, **Add photos** (from the phone's camera or its photos) and **Log other care** (repotted, pruned, treated for pests, or a note, with a date). The line beside or above them is short from 1.58.0 ("Water: 4 days overdue. Watered Nov 2."): how late the plant is and what it last had. Under the buttons, **All plants**, **Previous Plant**, **Next Plant**, their filters and the layout switch share one row. What other parts of the app add about a plant's care (repotting, turning the pot, pests) is in a box of its own at the top of the details. The plant's **Water and soil** section explains the reminder and has its **care log**, with a **Remove** button on each entry.
 
 How the reminders work:
 
@@ -451,6 +453,8 @@ From 1.58.0, with more than one home, Water all waters the plants at **one home*
 ## Frost alert and cold-night checklist (from 1.8.0)
 
 When a night in the 7-day forecast would hurt a plant that is outside, a banner at the top of the page says how cold it will get and on which night, how many plants could die, would be damaged or are close calls, and when to act ("before dark today"). From 1.58.0 each night has its own numbers: the banner leads with the coldest night, then says what the first cold night would do if it is a different one, and the time to act is the evening before the first night that would damage a plant. A night with close calls only says that nothing is forecast to be damaged. Plants you marked as covered are not counted again. It is called "Frost warning" at 36°F or below and "Cold warning" above that, because the tropical plants are hurt at 50 to 60°F. **Hide until the forecast changes** hides it until the forecast gets colder or more plants are at risk. Plant pages show their own **Frost risk** note instead of the banner.
+
+From 1.58.0 the banner on pages other than Today is one line: the warning, how many plants to bring in or cover and by when, **Open the cold-night checklist** and **Hide until the forecast changes** (on a phone, **Open the checklist** and **Hide**). The numbers for each night are on Today and on the checklist.
 
 **Open the cold-night checklist** (on the banner, or on the Winter plan page) shows the next 7 nights, then each plant once, most urgent first, in three groups: **Bring inside**, **Cover or move to shelter**, and **Close calls** (within 3°F of the damage point). Each plant has **Moved indoors** (sets its Location to Indoors, so it leaves every list and warning) and **Covered for tonight** (ticks it off for its next cold night only, since covers go back on each night), with **Undo**. Each group also has a button for all its plants, which asks first. Tips for a cold night are at the bottom.
 
@@ -1358,6 +1362,8 @@ The details for the stores near Round Rock and six stores near Nevada City (Peac
 ## The top bar, rooms and spots, pots and trays, editing on the page, and settings that follow you (from 1.29.0)
 
 ### The top bar
+
+On a phone (from 1.58.0) the top bar is one row: the page menu, Search and **More**. "Plant record" and the version are inside More. At the largest text Search and More take a second row.
 
 Six sections: **Today**, **Plants**, **Care**, **Weather**, **Discover** and **Settings**. Choose one, and its pages appear on a second row under it:
 

@@ -137,7 +137,9 @@ with sync_playwright() as p:
         check(pg.locator('#tn-plant-btn').count() == 0 and pg.locator('#tn-plant').count() == 0, f'a plant out in the open ({out_code}) gets nothing about turning')
     pg.goto(BASE + f'/#/plant/{a}'); pg.wait_for_timeout(2500)
     pg.evaluate("document.querySelector('.quick').scrollIntoView({block: 'center'})"); pg.wait_for_timeout(200)
-    pg.locator('.quick').screenshot(path=os.path.join(OUT, 'turning-5-plant.png'))
+    pg.locator('.quick').screenshot(path=os.path.join(OUT, 'turning-5-plant.png'))                # the button, beside Watered today
+    pg.evaluate("document.querySelector('#quick-more').scrollIntoView({block: 'center'})"); pg.wait_for_timeout(200)
+    pg.locator('#quick-more').screenshot(path=os.path.join(OUT, 'turning-5-plant-line.png'))      # 1.58.0: its line, in the box for the rest of the care
     pg.evaluate("document.documentElement.dataset.role = 'viewer'")
     check(pg.locator('#tn-plant-btn:visible').count() == 0, 'people who can only view do not see Turned today')
     pg.evaluate("document.documentElement.dataset.role = 'owner'")

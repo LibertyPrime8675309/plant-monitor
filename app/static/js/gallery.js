@@ -104,7 +104,6 @@ function drawGrid() {
   if (!document.getElementById('grid')) { drawPnav(); return; }
   const r = filteredPlants();
   const pool = ALL.filter(statusOk).length;
-  const led = document.querySelector('.ledger'); if (led) led.innerHTML = rend(ledger());
   const mf = document.querySelector('#more-f > summary'); if (mf) { const n = moreOn(); mf.textContent = 'More filters' + (n ? ` (${n} on)` : ''); }
   const gt = document.getElementById('g-title'); if (gt) gt.textContent = G.status === 'archived' ? 'Archived plants' : 'All plants';
   const wa = document.getElementById('wa-btn');
@@ -119,10 +118,37 @@ function drawGrid() {
     ? rend(r.map(sheet))
     : rend(html`<div class="empty" style="grid-column:1/-1"><p>No plants match these filters.</p><button class="btn ghost" type="button" data-act="clearfilters">Clear filters</button></div>`);
 }
-function ledger() {
-  const n = pl => ALL.filter(p => statusOk(p) && p.winter_plan === pl).length;
-  return html`${META.winter_plans.map(pl => html`<button type="button" data-act="plan" data-plan="${pl}" style="--bar:${PLAN_COLOR[pl]}" aria-pressed="${String(G.plan === pl)}"><b>${n(pl)}</b>${pl}</button>`)}`;
+// ---------- 1.58.0 (Ethan, November 13, 2026: option A of the previews): All plants starts with its plants ----------
+// The first plant was 867 px down a 1080 screen and 2.4 screens down a phone: a title, a line of counts, three buttons, five winter-plan
+// tiles, the filters, a count and Water all with its explanation all came first. Now: the count beside the title; one row of tools
+// (search, home, where, winter plan, sort); one row of small buttons (more filters, what needs you, Water all); then the plants.
+// On a phone only the search box stays out: the lists go in "More filters" and the buttons in "More to do here". The page is drawn
+// for the width it has; when the window crosses the narrow width (a turned tablet, a new text size) it is drawn again.
+let PL_NARROW = null, plRz = 0;
+function plantsHead({ needN, fcN, todoN, lowN }) {
+  const narrow = PL_NARROW = document.documentElement.dataset.narrow === '1';
+  const planN = pl => ALL.filter(p => statusOk(p) && p.winter_plan === pl).length;
+  const lists = html`${homeFilter()}${siteFilter()}<label>Winter plan<select data-f="pnplan"><option value="">Any</option>${META.winter_plans.map(pl => html`<option value="${pl}" ${G.plan === pl ? raw('selected') : ''}>${pl} (${planN(pl)})</option>`)}</select></label>
+    <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>`;
+  const needs = html`<button type="button" class="btn small ${G.needs ? '' : 'ghost'}" data-act="needs" aria-pressed="${String(G.needs)}">${G.needs ? 'Showing plants that need something from you' : 'Plants that need something from you'} (${needN})</button>`;
+  const acts = html`<button type="button" class="btn small ghost" data-act="forclaude"><span>Copy my answers for Claude${fcN ? html`<span class="fc-n"> (${fcN} new)</span>` : ''}</span></button>
+    ${todoN ? html`<a class="btn small ghost" href="#/photos">${todoN} to photograph</a>` : ''}
+    <span class="water-all noprint"><button class="btn small ghost" type="button" data-act="waterall" id="wa-btn" aria-describedby="wa-why wa-hint">Water all</button><span class="why" id="wa-why"></span>
+      <details class="pl-what"><summary>What Water all does</summary><span class="hint" id="wa-hint"></span></details></span>`;
+  const more = html`<label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
+      ${groupFilter()}${statusFilter()}
+      <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70% (${lowN})</label>`;
+  return html`<div class="hero pl-hero"><div class="pl-title"><h1 id="g-title">${G.status === 'archived' ? 'Archived plants' : 'All plants'}</h1><p id="count" class="muted" aria-live="polite"></p></div>
+      <a class="btn" href="#/new">Add a plant</a></div>
+    <div class="filters filters-main pl-tools" id="pl-tools"><label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>${narrow ? '' : lists}</div>
+    ${placeChip()}
+    <div class="pl-row needs-bar">${moreFilters(html`${narrow ? lists : ''}${more}`,
+        (G.health ? 1 : 0) + (G.group ? 1 : 0) + (G.status !== 'active' ? 1 : 0) + (G.low ? 1 : 0) + (narrow ? (G.plan ? 1 : 0) + (G.site ? 1 : 0) + (G.home ? 1 : 0) : 0))}
+      ${narrow ? html`<details class="more-f pl-acts"><summary>More to do here</summary><div class="row">${needs}${acts}</div></details>` : html`${needs}${acts}`}</div>`;
 }
+const plRedraw = () => { if (PL_NARROW === null || !document.getElementById('pl-tools') || (document.documentElement.dataset.narrow === '1') === PL_NARROW) return;
+  clearTimeout(plRz); plRz = setTimeout(() => { if (document.getElementById('pl-tools')) route(); }, 150); };
+window.addEventListener('resize', plRedraw); document.addEventListener('prefs', plRedraw);
 async function viewGallery(qs) {
   if (qs && (qs.get('spot') || qs.get('area'))) {       // 1.34.0: from a room or shelf label: just that place, nothing else filtered
     Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '', status: 'active', site: '', home: '', area: qs.get('area') || '', spot: qs.get('spot') || '' }, Object.fromEntries(MORE_KEYS.map(k => [k, ''])));
@@ -138,25 +164,7 @@ async function viewGallery(qs) {
   const pend = (await offOps()).filter(o => o.url === '/api/plants' && o.method === 'POST' && !o.failed);   // 1.38.0: plants added without a connection
   return {
     title: '',
-    html: html`${pend.length ? html`<p class="notice off-note noprint" role="note"><strong>${pend.length} new plant${pend.length === 1 ? '' : 's'} waiting to be sent:</strong> ${pend.map(o => (o.body.fields || {}).common_name || o.temp).join(', ')}. ${pend.length === 1 ? 'It gets' : 'They get'} a page here once the plant server can be reached. <a href="#/offline">Offline page</a></p>` : ''}<div class="hero"><div><h1 id="g-title">${G.status === 'archived' ? 'Archived plants' : 'All plants'}</h1>
-      <p class="muted">${META.counts.plants} plants, ${META.counts.photos} photos. Weather for ${placeName()}.</p></div>
-      <a class="btn" href="#/new">Add a plant</a></div>
-    <div class="needs-bar row" role="group" aria-label="What Claude needs from you">
-      <button type="button" class="btn small ${G.needs ? '' : 'ghost'}" data-act="needs" aria-pressed="${String(G.needs)}" title="Questions, checks, photos and ID details Claude is waiting for">${G.needs ? 'Showing plants that need something from you' : 'Plants that need something from you'} (${needN})</button>
-      <button type="button" class="btn small ghost" data-act="forclaude"><span>Copy my answers for Claude${fcN ? html`<span class="fc-n"> (${fcN} new)</span>` : ''}</span></button>
-      ${todoN ? html`<a class="btn small ghost" href="#/photos">${todoN} to photograph</a>` : ''}</div>
-    <div class="ledger" role="group" aria-label="Filter by winter plan">${ledger()}</div>
-    <div class="filters filters-main">
-      <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
-      ${homeFilter()}${siteFilter()}
-      <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
-    </div>
-    ${placeChip()}${moreFilters(html`<label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
-      ${groupFilter()}${statusFilter()}
-      <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70% (${lowN})</label>`, (G.health ? 1 : 0) + (G.group ? 1 : 0) + (G.status !== 'active' ? 1 : 0) + (G.low ? 1 : 0))}
-    <p id="count" class="muted" aria-live="polite"></p>
-    <div class="water-all noprint"><button class="btn ghost" type="button" data-act="waterall" id="wa-btn" aria-describedby="wa-why wa-hint">Water all</button><span class="why" id="wa-why"></span>
-      <span class="hint" id="wa-hint">Marks every plant shown (with the filters above) as watered today. Plants already watered today are skipped.</span></div>
+    html: html`${pend.length ? html`<p class="notice off-note noprint" role="note"><strong>${pend.length} new plant${pend.length === 1 ? '' : 's'} waiting to be sent:</strong> ${pend.map(o => (o.body.fields || {}).common_name || o.temp).join(', ')}. ${pend.length === 1 ? 'It gets' : 'They get'} a page here once the plant server can be reached. <a href="#/offline">Offline page</a></p>` : ''}${plantsHead({ needN, fcN, todoN, lowN })}
     <h2 class="sr">The plants</h2><div class="grid" id="grid"></div>
     ${archN ? html`<p class="hint" style="margin-top:2rem">${archN} archived plant${archN === 1 ? ' is' : 's are'} hidden from this list. Choose <strong>Show: Active and archived</strong> in the filters to see ${archN === 1 ? 'it' : 'them'} too.</p>` : ''}`,
     after: drawGrid,

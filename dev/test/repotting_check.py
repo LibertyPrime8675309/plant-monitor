@@ -96,7 +96,7 @@ with sync_playwright() as p:
     check('Repotted' in pg.inner_text('.care-log'), 'the repotting is in its care log')
     pg.evaluate("document.querySelectorAll('#toasts > *').forEach(t => t.remove())")      # the Undo message, for a clean picture
     pg.evaluate("document.querySelector('#rp-plant').scrollIntoView({block: 'center'})"); pg.wait_for_timeout(200)
-    pg.locator('.quick').screenshot(path=os.path.join(OUT, 'repotting-3-plant.png'))
+    pg.locator('#quick-more').screenshot(path=os.path.join(OUT, 'repotting-3-plant.png'))      # 1.58.0: the lines about a plant's care have a box of their own
     pg.locator('#rp-plant [data-act=repotset]').click(); pg.wait_for_selector('dialog[open]')
     check('Add a repotting?' in pg.inner_text('dialog[open] legend'), 'Change there opens the same window')
     pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
