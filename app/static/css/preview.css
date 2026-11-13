@@ -1,0 +1,160 @@
+/* Previews (proto/import-and-cards; November 13, 2026). Goes with js/preview.js: options switched on from localStorage "plantdb.preview",
+   each as data-pv-<name> on <html>. The option Ethan picks is built as a real change and this file goes away. */
+
+/* ===== the watering cards, three ways ===== */
+/* shared: the code sits beside the name, and the line that says how late is the button for "Why" */
+html[data-pv-water] .wpl-card .nm{display:inline}
+html[data-pv-water] .wpl-card .wpl-open img,html[data-pv-water] .wpl-card .wpl-open .job-nophoto{margin-bottom:.3rem}
+html[data-pv-water] .wpl-code{font-weight:400;white-space:nowrap}
+html[data-pv-water] .wpl-st{margin:0}
+html[data-pv-water] details.wpl-st>summary{padding:.1rem 0}
+html[data-pv-water] .wpl-card{gap:.1rem}
+/* a phone: one list to go to a spot, in place of a button for each */
+.wpl-go{display:block;font-weight:700;margin:0 0 .8rem}
+.wpl-go select{display:block;width:100%;margin-top:.25rem}
+
+/* boxes: spots with few plants side by side (a wide screen): each spot is as wide as its cards, and cards keep one width */
+html:not([data-narrow="1"]) .wpl-flow{display:flex;flex-wrap:wrap;gap:0 .9rem;align-items:stretch}
+html:not([data-narrow="1"]) .wpl-flow>:not(.wpl-grp){flex:1 1 100%}
+html:not([data-narrow="1"]) .wpl-flow>.wpl-grp{--cw:12.5rem;flex:0 1 auto;width:min(100%,calc(var(--n) * (var(--cw) + .6rem) + 1.15rem + 2 * var(--bw)));min-width:min(100%,15rem)}
+html:not([data-narrow="1"]) .wpl-flow .wpl-cards{grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--cw)),var(--cw)))}
+.wpl-flow .wpl-head h3{flex:1 1 8rem}
+
+/* flow and tick: one run of cards; a spot starts with a tile (its name and its one button), a full row on a phone */
+.wpl-grid{--cw:9.5rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--cw)),1fr));gap:.6rem;margin:0 0 .9rem}
+.wpl-in,.wpl-in>.wpl-cards{display:contents}
+/* a wide screen: wider cards. The buttons then sit side by side and names take fewer lines, so a larger picture costs no length */
+html:not([data-narrow="1"]) .wpl-run .wpl-grid{--cw:12.5rem}
+html:not([data-narrow="1"]) .wpl-tick .wpl-grid{--cw:11rem}
+html:not([data-narrow="1"]) .wpl-acts .btn{flex:1 1 5rem;padding-left:.3rem;padding-right:.3rem}
+/* (.wpl-head.wpl-tile, not .wpl-tile alone: today-places.css comes later in the stylesheet and would win at the same weight) */
+.wpl-head.wpl-tile{flex-direction:column;flex-wrap:nowrap;align-items:stretch;justify-content:flex-start;gap:.45rem;border:3px solid var(--ink);border-radius:6px;background:var(--sheet);padding:.45rem .55rem .55rem;min-width:0}
+.wpl-head.wpl-tile h3{flex:0 0 auto;font-size:1.15rem;line-height:1.25;overflow-wrap:anywhere}
+.wpl-head.wpl-tile .wpl-kick{margin:0 0 -.25rem;font-weight:700;color:var(--ink-2);max-width:none}
+.wpl-head.wpl-tile .btn{margin-top:auto;white-space:normal}
+html[data-narrow="1"] .wpl-head.wpl-tile{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-top:.5rem}
+html[data-narrow="1"] .wpl-head.wpl-tile h3{flex:1 1 9rem}
+html[data-narrow="1"] .wpl-kick{display:none}
+html[data-narrow="1"] .wpl-head.wpl-tile .btn{margin-top:0}
+
+/* tick: the picture is the tick box's label; ticked shows as a tick, a band of words and a heavier border */
+.wpl-tk{display:block;position:relative;cursor:pointer;border-radius:4px}
+.wpl-tk input{position:absolute;top:.35rem;left:.35rem;width:1.75rem;height:1.75rem;margin:0;z-index:1;accent-color:var(--ink)}
+.wpl-tkmark{display:none;position:absolute;left:0;right:0;bottom:0;background:var(--ink);color:var(--paper);font-weight:700;text-align:center;padding:.12rem .3rem;border-radius:0 0 4px 4px}
+.wpl-tk input:checked~.wpl-tkmark{display:block}
+.wpl-pick:has(input:checked){border-color:var(--ink);box-shadow:0 0 0 2px var(--ink)}
+.wpl-tk:focus-within{outline:3px solid var(--ink);outline-offset:2px}
+.wpl-nml{margin:.3rem 0 0}
+.wpl-bar{position:sticky;bottom:0;z-index:6;display:flex;flex-wrap:wrap;gap:.5rem .7rem;align-items:center;background:var(--paper);border-top:2px solid var(--ink);padding:.55rem 0 .6rem;margin:.2rem 0 .6rem}
+html[data-narrow="1"] .wpl-bar{bottom:var(--pin-h,4rem)}
+html[data-narrow="1"][data-barhide="1"] .wpl-bar{bottom:0}      /* the bottom bar has slipped away: the ticks' bar takes its place */
+.wpl-bar[hidden]{display:none}
+.wpl-tick{display:contents}        /* so the bar is held within the whole Water part: inside the list alone it was pushed off the screen at the list's first rows */
+.wpl-bar-n{font-weight:700;flex:1 1 5rem}
+.wpl-tickhint{margin:0 0 .6rem}
+html[data-narrow="1"] .wpl-bar{padding:.45rem 0 .5rem;gap:.4rem .5rem}
+html[data-narrow="1"] .wpl-bar .btn{padding-left:.55rem;padding-right:.55rem}
+
+/* spots: a spot is its name, its one button and a strip of pictures; the cards open on request */
+.wpl-spots .wpl-grp{margin-bottom:.7rem;padding-bottom:.35rem}
+.wpl-spot .wpl-head{border-bottom:0;padding-bottom:0}
+.wpl-late{color:var(--ink-2)}
+.wpl-strip{list-style:none;padding:0;margin:.5rem 0 .2rem;display:flex;flex-wrap:wrap;gap:.4rem}
+.wpl-strip a{display:block;border-radius:4px}
+.wpl-strip img,.wpl-noph{display:block;width:7.5rem;height:7.5rem;object-fit:cover;border-radius:4px;background:var(--line)}
+.wpl-noph{font-size:.85rem;padding:.3rem;overflow:hidden;overflow-wrap:anywhere}
+.wpl-more>summary{cursor:pointer;display:inline-block;color:var(--cyan);font-weight:700;text-decoration:underline;text-underline-offset:3px;padding:.3rem .1rem}
+.wpl-more[open]>summary{margin-bottom:.2rem}
+html:not([data-narrow="1"]) .wpl-spot{display:grid;grid-template-columns:minmax(12rem,17rem) minmax(0,1fr);gap:0 1.1rem;align-items:start}
+html:not([data-narrow="1"]) .wpl-spot .wpl-head{flex-direction:column;align-items:flex-start;gap:.35rem;padding-top:.5rem}
+html:not([data-narrow="1"]) .wpl-spot .wpl-head h3{flex:0 0 auto}
+html[data-narrow="1"] .wpl-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.35rem}
+html[data-narrow="1"] .wpl-strip img,html[data-narrow="1"] .wpl-noph{width:100%;height:auto;aspect-ratio:1}
+
+/* ===== item 12: Updates from Claude ===== */
+.upd-file{border:var(--bw) solid var(--line);border-radius:8px;background:var(--sheet);padding:.55rem .9rem;margin:0 0 .8rem}
+.upd-file p{margin:.25rem 0}
+.upd-file .btn{margin-left:.6rem}
+.upd-k{font-weight:700;color:var(--ink-2);margin-right:.35rem}
+.upd-sum{font-weight:700;margin:.4rem 0 .6rem}
+.upd-all{margin:0 0 .9rem}
+.upd-needs a{display:inline-block;margin-left:.6rem}
+.upd-list{list-style:none;padding:0;margin:0}
+.upd-ch{padding:.55rem 0 .5rem;border-top:1px solid var(--line)}
+.upd-list>.upd-ch:first-child{border-top:0;padding-top:.15rem}
+.upd-tick{display:flex;gap:.6rem;align-items:flex-start;cursor:pointer;font-weight:400}
+.upd-tick input,.upd-pick input{width:1.5rem;height:1.5rem;margin:.05rem 0 0;flex:none}
+.upd-vals{margin:.2rem 0 0 2.1rem}
+.upd-vals p{margin:.1rem 0}
+.upd-ch>.hint{margin:.25rem 0 0 2.1rem}
+.upd-pics{list-style:none;padding:0;margin:.35rem 0 0;display:flex;flex-wrap:wrap;gap:.4rem}
+.upd-pics img{display:block;width:6rem;height:6rem;object-fit:cover;border-radius:4px;background:var(--line)}
+/* a change that needs a decision: a box, a tag in words, and a choice of two */
+.upd-list>.upd-ch.upd-conf,.upd-conf{border:var(--bw) solid var(--ink);border-radius:6px;padding:.55rem .7rem;margin:.45rem 0;background:var(--paper)}
+.upd-conf>p{margin:.2rem 0}
+.upd-conf>.hint{margin-left:0}
+.upd-tag{margin-left:.4rem}
+.upd-pick{border:0;padding:0;margin:.35rem 0}
+.upd-pick label{display:flex;gap:.6rem;align-items:flex-start;padding:.3rem 0;cursor:pointer;font-weight:400}
+
+/* A: plant by plant */
+.upd-plants{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,34rem),1fr));gap:.9rem 1.2rem;align-items:start;margin-bottom:.4rem}
+.upd-plant{border:var(--bw) solid var(--line);border-radius:8px;background:var(--sheet);padding:.7rem .85rem;display:grid;grid-template-columns:9rem minmax(0,1fr);gap:.2rem 1rem;align-items:start}
+.upd-ph img,.upd-ph .job-nophoto{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:6px;background:var(--line)}
+.upd-body{min-width:0;overflow-wrap:anywhere}
+.upd-body h3{margin:0 0 .3rem;font-size:1.2rem}
+.upd-body h3 .muted{font-family:var(--sans);font-size:1rem;font-weight:400;white-space:nowrap}
+html[data-narrow="1"] .upd-plant{grid-template-columns:5.5rem minmax(0,1fr);gap:.3rem .7rem;padding:.6rem .65rem}
+html[data-narrow="1"] .upd-body{display:contents}
+html[data-narrow="1"] .upd-body h3{align-self:center;margin:0}
+html[data-narrow="1"] .upd-body .upd-list{grid-column:1/-1}
+
+/* B: one plant at a time */
+.upd-prog{margin:.3rem 0;font-size:1.1rem}
+.upd-meter{height:.75rem;border:2px solid var(--ink);border-radius:4px;margin:0 0 .8rem;max-width:40rem;background:var(--sheet)}
+.upd-meter span{display:block;height:100%;background:var(--ink)}
+.upd-big{grid-template-columns:minmax(12rem,24rem) minmax(0,1fr);gap:.4rem 1.4rem;padding:.9rem 1rem;max-width:72rem}
+.upd-big .upd-body h3{font-size:1.5rem}
+.upd-nav{margin:.8rem 0 1rem}
+.upd-steps{padding-left:1.8rem;margin:.5rem 0}
+.upd-steps li{margin:.3rem 0}
+.upd-steps li>span{margin-left:.6rem}
+.upd-steps [aria-current]{border-width:3px;border-color:var(--ink)}
+html[data-narrow="1"] .upd-big{grid-template-columns:minmax(0,1fr)}
+html[data-narrow="1"] .upd-big .upd-ph{max-width:16rem}
+html[data-narrow="1"] .upd-big .upd-body{display:block}
+
+/* C: a short list by the kind of change */
+.upd-kind h2{margin:1rem 0 .3rem}
+.upd-rows{list-style:none;padding:0;margin:0 0 .6rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,36rem),1fr));column-gap:2.5rem}
+.upd-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.2rem .8rem;align-items:start;padding:.55rem 0;border-bottom:1px solid var(--line)}
+.upd-row img,.upd-row .job-nophoto{display:block;width:4rem;height:4rem;object-fit:cover;border-radius:6px;flex:none;background:var(--line)}
+.upd-row-t{min-width:0;overflow-wrap:anywhere}
+.upd-row-t .nm{font-weight:700}
+.upd-line{display:block;margin-top:.15rem}
+.upd-row .wpl-why{margin:0}
+.upd-row .wpl-why[open]{grid-column:1/-1}
+.upd-needlist>.upd-needp{padding:.2rem 0}
+.upd-needn{margin:.3rem 0 0;font-weight:700}
+.upd-needlist{max-width:60rem}
+
+/* before a file, and after the changes */
+.upd-choose{max-width:46rem;border:var(--bw) solid var(--line);border-radius:8px;background:var(--sheet);padding:.7rem .9rem;margin:.6rem 0 1.2rem}
+.upd-choose .row{margin:.6rem 0 .1rem}
+.upd-old{padding-left:1.2rem}
+.upd-old li{margin:.35rem 0}
+.upd-did{padding-left:1.2rem;columns:2 26rem;column-gap:2.5rem}
+.upd-did li{margin:.3rem 0;break-inside:avoid}
+.upd-proto{font-style:italic}
+.upd-safe{margin:0 0 .7rem}
+.upd-fold>summary{cursor:pointer;font-weight:700;padding:.2rem 0}
+.upd-fold[open]>summary{margin-bottom:.3rem}
+.upd-bar{align-items:center}
+html[data-narrow="1"] .upd-bar{padding:.55rem 0;gap:.5rem}
+html[data-narrow="1"] .upd-bar .btn{flex:1 1 auto;padding-left:.6rem;padding-right:.6rem}
+html[data-narrow="1"] .upd-bar .upd-no{display:none}
+html:not([data-narrow="1"]) .upd-no-end{display:none}
+.upd-no-end{margin:.8rem 0 0}
+html[data-narrow="1"] .upd-row{grid-template-columns:minmax(0,1fr)}
+html[data-narrow="1"] .upd-row .wpl-why{margin-left:7.3rem}
+html[data-narrow="1"] .upd-row .wpl-why[open]{margin-left:0}

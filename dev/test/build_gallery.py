@@ -1,5 +1,7 @@
 """Builds the layout preview gallery (1.26.0) from shots_all.py output folders.
 python3 dev/test/build_gallery.py OUTDIR AFTER_DIR[,AFTER_DIR...] [BEFORE_DIR]
+GALLERY_TEXT=file.json gives the page its own words (title, intro, notes, the names of the two layouts, a line about each page): see
+the top of the script in gallery_template.html. Without it the page reads as the 1.26 review did.
 Writes OUTDIR/index.html and OUTDIR/data/<page>__<device>.json (each picture as a data: URI, WebP), one file per page and device,
 so the page only loads the pictures being looked at."""
 import base64, io, json, os, sys
@@ -34,9 +36,12 @@ for key, b in bundles.items():
     open(os.path.join(OUT, 'data', key + '.json'), 'w').write(s)
 # the order Ethan reads them in: computers, then tablets, then phones
 DEV_ORDER = ['pc1080', 'pc1440', 'ipad6l', 'ipad6p', 'firel', 'firep', 's21u', 'iphone11']
-manifest = {'devices': [[k, meta['devices'][k]] for k in DEV_ORDER if k in meta['devices']],
-            'combos': [[k, meta['combos'][k]] for k in ('usual', 'largest', 'stress') if k in meta['combos']],
+got_dev = {k.split('__')[1] for k in have}; got_combo = {c for h in have.values() for c in h.get('after', [])}     # only what there are pictures of
+manifest = {'devices': [[k, meta['devices'][k]] for k in DEV_ORDER if k in meta['devices'] and k in got_dev],
+            'combos': [[k, meta['combos'][k]] for k in ('usual', 'largest', 'stress') if k in meta['combos'] and k in got_combo],
             'pages': [[k, v] for k, v in meta['pages'].items()], 'have': have}
 tpl = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'gallery_template.html')).read()
-open(os.path.join(OUT, 'index.html'), 'w').write(tpl.replace('/*MANIFEST*/null', json.dumps(manifest, separators=(',', ':'))))
+text = json.load(open(os.environ['GALLERY_TEXT'])) if os.environ.get('GALLERY_TEXT') else None
+if text and text.get('order'): manifest['pages'].sort(key=lambda kv: text['order'].index(kv[0]) if kv[0] in text['order'] else 99)
+open(os.path.join(OUT, 'index.html'), 'w').write(tpl.replace('/*MANIFEST*/null', json.dumps(manifest, separators=(',', ':'))).replace('/*TEXT*/null', json.dumps(text, separators=(',', ':')) if text else 'null'))
 print(f'{len(bundles)} files, {total / 1e6:.1f} MB of data')

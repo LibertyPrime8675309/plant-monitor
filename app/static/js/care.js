@@ -380,7 +380,7 @@ async function viewToday() {
     <button class="btn small ghost" type="button" data-act="care" data-kind="check" data-code="${w.code}" data-name="${by[w.code].common_name}" aria-label="Still moist: ${by[w.code].common_name}">Still moist</button>`;
   // 1.58.0: a watering list by room and spot (cards), or in the old order (rows with the reasons)
   const place = WATER_ORDER === 'place';
-  const wlist = (list, key) => place ? waterByPlace(list, by, wbtn, !outH, key)
+  const wlist = (list, key) => place ? (PV('water') ? pvWaterByPlace : waterByPlace)(list, by, wbtn, !outH, key)      // proto: an option from js/preview.js
     : html`<ul class="jobs">${list.map(w => jobRow(by[w.code], key === 'unk' ? (w.site !== 'Outdoors' ? w.site + '.' : 'Outdoors.') : waterWords(w), wbtn(w)))}</ul>`;
   const n = (k, one, many) => k + ' ' + (k === 1 ? one : many);
   // 1.34.0: Today is the page the app opens on. One line says what needs you, with a button to jump to each part
