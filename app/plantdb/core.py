@@ -447,9 +447,10 @@ def init_db():
     c.execute("INSERT OR REPLACE INTO settings(key,value) VALUES('db_version',?)", (APP_VERSION,)); c.commit()
     c.close()
 
-def find_plant(c, u):
-    """Find the plant an update is meant for. Photos are the most stable clue (codes shift if you added plants yourself);
-    otherwise the code must also still carry the expected name."""
+def find_plant(c, u, meant=None):
+    """Find the plant a batch entry is meant for. Photos are the most stable clue. Otherwise its code, and the plant must still carry the expected name when one is given.
+    A code in a batch file is the code a new install gives the plant: `meant` (batch_numbering) says which plant that is in this record, where someone may have added plants
+    of their own in between. A plant the owner added is not in it, and is found by the code it has here (1.58.0)."""
     files = u.get('photos') or []
     if files:
         ids = None
@@ -459,9 +460,46 @@ def find_plant(c, u):
         if ids and len(ids) == 1:
             return c.execute('SELECT * FROM plants WHERE id=?', (ids.pop(),)).fetchone()
         if not u.get('name'): return None
-    r = c.execute('SELECT * FROM plants WHERE code=?', (u['code'],)).fetchone() if u.get('code') else None
-    if r and (not u.get('name') or r['common_name'] == u['name']): return r
+    if not u.get('code'): return None
+    rows = []
+    if meant and u['code'] in meant: rows.append(c.execute('SELECT * FROM plants WHERE id=?', (meant[u['code']],)).fetchone())
+    rows.append(c.execute('SELECT * FROM plants WHERE code=?', (u['code'],)).fetchone())
+    for r in rows:
+        if r and (not u.get('name') or r['common_name'] == u['name']): return r
     return None
+
+CREATED_BY_BATCH = 'Record created from photos (%s)'           # the log line of a page a batch made; batch_numbering() reads it, so it must not change
+BATCH_ROW_IDS = ('home_id', 'area_id', 'spot_id', 'pot_id', 'tray_id')   # the numbers of rows in one record: they mean something else in another, so a batch cannot give
+                                                                # them (1.58.0: C9's orchid in Baraboo carried a room of the main home). `home_near` says the home.
+
+def batch_files():
+    """[(file name, batch)] in the order they apply."""
+    bdir = os.path.join(SEED_DIR, 'batches')
+    if not os.path.isdir(bdir): return []
+    return [(fn, json.load(open(os.path.join(bdir, fn), encoding='utf-8'))) for fn in sorted(os.listdir(bdir)) if fn.endswith('.json')]
+
+def batch_numbering(c, files=None):
+    """-> (meant, codes). The batch files number plants as a new install does: the first list's own codes, then each batch's new plants in the order they are made.
+    codes = {batch id: [the code each of its new plants has in the files]}; meant = {that code: the plant's id in this record}, for the pages that are here already.
+    In a record where someone added a plant of their own before a batch made its pages, those pages have later codes than the files say, and a batch entry that named one by
+    its code alone used to land on the neighbouring plant (found by the upgrade test, 1.58.0). What each batch made is in the log, in order; a batch whose log does not have
+    as many pages as its file is left out of `meant`, so its codes mean what they say, as before."""
+    meant, codes, n = {}, {}, 0
+    try: seed = json.load(open(os.path.join(SEED_DIR, 'seed.json'), encoding='utf-8'))
+    except (OSError, ValueError): seed = {}
+    for p in seed.get('plants', []):
+        m = re.match(r'P-(\d+)$', p.get('code') or '')
+        if m: n = max(n, int(m.group(1)))
+        r = c.execute('SELECT id FROM plants WHERE code=?', (p.get('code'),)).fetchone()
+        if r: meant[p['code']] = r[0]
+    for fn, b in (files if files is not None else batch_files()):
+        mine = codes[b['id']] = []
+        for p in b.get('plants', []):
+            n += 1; mine.append(f'P-{n:03d}')
+        if not mine or not c.execute('SELECT 1 FROM settings WHERE key=?', ('batch_applied:' + b['id'],)).fetchone(): continue
+        made = [x[0] for x in c.execute("SELECT plant_id FROM audit_log WHERE action='create' AND note=? ORDER BY id", (CREATED_BY_BATCH % b['id'],))]
+        if len(made) == len(mine): meant.update(zip(mine, made))
+    return meant, codes
 
 def batch_pot_mix(c, m, r, care_id, who, ts, label):
     """Record what a pot is in from a batch ({mixed_on, parts: [{key, grade?, parts}], top?, bottom?, notes}); r is the plant's row.
@@ -479,15 +517,13 @@ def apply_batches(c):
     """Apply seed/batches/*.json once each, so an existing database can receive new plants after an upgrade.
     Safe to run on every start: a batch is recorded in settings as batch_applied:<id> and never repeats.
     User edits are never overwritten: a field update only applies if the field still holds the value the batch expects."""
-    bdir = os.path.join(SEED_DIR, 'batches')
-    if not os.path.isdir(bdir): return
-    for fn in sorted(os.listdir(bdir)):
-        if not fn.endswith('.json'): continue
-        b = json.load(open(os.path.join(bdir, fn), encoding='utf-8'))
+    files = batch_files(); meant = codes = None
+    for fn, b in files:
         key = 'batch_applied:' + b['id']
         if c.execute('SELECT 1 FROM settings WHERE key=?', (key,)).fetchone(): continue
+        if meant is None: meant, codes = batch_numbering(c, files)      # 1.58.0: which plant each code in the files means in this record
         who, ts = b.get('author', 'Claude (batch)'), now()
-        label = b['id']; new_requests = []
+        label = b['id']; new_requests = []; made = []
         try:
             c.execute('BEGIN')
             for h in b.get('homes_add', []):                 # 1.28.0: another home where plants live (skipped if a place is already there)
@@ -510,19 +546,23 @@ def apply_batches(c):
                 code = f'P-{n:03d}'
                 cols = ['code'] + FIELD_NAMES + ['version', 'status', 'created_at', 'created_by', 'updated_at', 'updated_by']
                 tp = p['dated'] + 'T12:00:00Z' if p.get('dated') else ts      # C9: a page can carry the date it really dates from (the photos')
+                p = {k: v for k, v in p.items() if k not in BATCH_ROW_IDS}
                 if p.get('home_near'):                                          # C9: the home it lives at, found by its place (added by homes_add above)
                     hm = c.execute('SELECT id FROM locations WHERE ABS(lat-?)<0.05 AND ABS(lon-?)<0.05', (p['home_near']['lat'], p['home_near']['lon'])).fetchone()
                     if hm: p = {**p, 'home_id': hm[0]}
                 p = {**p, 'site': p.get('site') or 'Outdoors'}          # so later batches in the same start-up can expect it
                 vals = [code] + [p.get(k) for k in FIELD_NAMES] + [1, 'active', tp, who, tp, who]
                 pid = c.execute(f"INSERT INTO plants({','.join(cols)}) VALUES({','.join('?' * len(cols))})", vals).lastrowid
+                made.append(pid)
+                if len(made) <= len(codes.get(b['id'], [])): meant[codes[b['id']][len(made) - 1]] = pid     # this page, under the code the files know it by
                 for ph in p.get('photos', []):
                     copy_seed_photo(ph['file'])
                     c.execute("INSERT INTO photos(plant_id,file,caption,kind,is_primary,source_name,added_by,added_at) VALUES(?,?,?,?,?,?,?,?)",
                               (pid, ph['file'], ph['caption'], 'plant', 1 if ph['primary'] else 0, ph.get('source'), who, tp))
                 # photos already in the database that belong to this new plant (they were on the wrong page): move them here
                 for mv in p.get('take_photos', []):
-                    old = c.execute('SELECT ph.id, ph.plant_id, p.code FROM photos ph JOIN plants p ON p.id=ph.plant_id WHERE ph.file=? AND p.code=?', (mv['file'], mv['from'])).fetchone()
+                    src = find_plant(c, {'code': mv['from'], 'name': mv.get('name')}, meant)
+                    old = c.execute('SELECT ph.id, ph.plant_id, p.code FROM photos ph JOIN plants p ON p.id=ph.plant_id WHERE ph.file=? AND p.id=?', (mv['file'], src['id'])).fetchone() if src else None
                     if not old: continue
                     has = c.execute('SELECT 1 FROM photos WHERE plant_id=? AND is_primary=1', (pid,)).fetchone()
                     c.execute('UPDATE photos SET plant_id=?, is_primary=?, caption=COALESCE(?, caption) WHERE id=?', (pid, 0 if has else 1, mv.get('caption'), old[0]))
@@ -532,7 +572,7 @@ def apply_batches(c):
                 c.execute('INSERT INTO plant_versions(plant_id,version,snapshot,changed_by,changed_at,summary) VALUES(?,?,?,?,?,?)',
                           (pid, 1, json.dumps(snapshot(c, pid)), who, tp, 'Initial record from photo analysis (%s)' % label))
                 c.execute("INSERT INTO audit_log(plant_id,plant_code,version,action,field,old_value,new_value,changed_by,changed_at,note) VALUES(?,?,?,?,?,?,?,?,?,?)",
-                          (pid, code, 1, 'create', None, None, None, who, tp, 'Record created from photos (%s)' % label))
+                          (pid, code, 1, 'create', None, None, None, who, tp, CREATED_BY_BATCH % label))
                 # C9: a new page can come with its own care log and potting mix (a repot logged with the mix it was done with)
                 care_id = None
                 for cl in p.get('care', []):
@@ -545,8 +585,10 @@ def apply_batches(c):
                                  (q['key'], code, q.get('kind', 'question'), q['text'], who, ts)).rowcount: new_requests.append({'plant_code': code, 'text': q['text']})
             # photos for plants that already exist
             for ph in b.get('existing_photos', []):
-                r = c.execute('SELECT * FROM plants WHERE code=?', (ph['code'],)).fetchone()
-                if not r: continue
+                r = find_plant(c, {'code': ph['code'], 'name': ph.get('name'), 'photos': ph.get('photos') or []}, meant)
+                if not r:
+                    audit_only(c, 'note', None, None, None, who, 'Batch %s could not find %s for a photo (%s), so it was skipped' % (label, ph.get('name') or ph['code'], ph['file']))
+                    continue
                 copy_seed_photo(ph['file'])
                 if ph.get('primary'): c.execute('UPDATE photos SET is_primary=0 WHERE plant_id=?', (r['id'],))
                 has = c.execute('SELECT 1 FROM photos WHERE plant_id=? AND is_primary=1', (r['id'],)).fetchone()
@@ -555,12 +597,13 @@ def apply_batches(c):
                 bump(c, r['id'], r['code'], who, 'photo_add', 'Photo added (%s): %s' % (label, ph['caption']), [('photo', None, ph['file'])])
             # guarded field updates
             for u in b.get('updates', []):
-                r = find_plant(c, u)
+                r = find_plant(c, u, meant)
                 if not r:
                     audit_only(c, 'note', None, None, None, who, 'Batch %s could not find %s (%s), so it was skipped' % (label, u.get('name') or u.get('code'), u.get('code')))
                     continue
                 todo, skipped = {}, []
                 for f, (old, new) in u['set'].items():
+                    if f in BATCH_ROW_IDS: raise ValueError(f'batch {label}: an update cannot set {f} (a row number of one record)')
                     cur = r[f] if r[f] is not None else ''
                     if str(cur) == str(old if old is not None else ''): todo[f] = new
                     else: skipped.append(f)
@@ -570,7 +613,7 @@ def apply_batches(c):
             for q in b.get('requests_add', []):
                 code = None
                 if q.get('code'):
-                    r = find_plant(c, {'code': q['code'], 'name': q.get('name'), 'photos': q.get('photos') or []})
+                    r = find_plant(c, {'code': q['code'], 'name': q.get('name'), 'photos': q.get('photos') or []}, meant)
                     if not r:
                         audit_only(c, 'note', None, None, None, who, 'Batch %s could not find %s for a request, so it was skipped' % (label, q['code']))
                         continue
@@ -579,7 +622,7 @@ def apply_batches(c):
                              (q['key'], code, q.get('kind', 'question'), q['text'], who, ts)).rowcount: new_requests.append({'plant_code': code, 'text': q['text']})
             # records found to be duplicates of another page: archived (hidden, nothing deleted; Move back to the main list undoes it)
             for a in b.get('archive', []):
-                r = find_plant(c, a)
+                r = find_plant(c, a, meant)
                 if not r or r['status'] == 'archived': continue
                 c.execute("UPDATE plants SET status='archived' WHERE id=?", (r['id'],))
                 bump(c, r['id'], r['code'], who, 'archive', a.get('note') or 'Archived (%s)' % label, [('status', r['status'], 'archived')])
@@ -628,10 +671,10 @@ def apply_batches(c):
                           (a['key'], a['name'], a.get('role', 'part'), json.dumps(a.get('grades') or []), a.get('holds_water'), a.get('airy'), a.get('lasts_months'),
                            a.get('feeds'), a.get('ph'), a.get('weight'), a.get('source', ''), a.get('notes', ''), who, ts))
             for m in b.get('pot_mixes_add', []):               # 1.56.0 (9c): what a pot is in, only where nothing is recorded yet
-                r = c.execute('SELECT * FROM plants WHERE code=?', (m['code'],)).fetchone()
+                r = find_plant(c, {'code': m['code'], 'name': m.get('name'), 'photos': m.get('photos') or []}, meant)
                 if not r:
-                    audit_only(c, 'note', None, None, None, who, 'Batch %s could not find %s for its potting mix, so it was skipped' % (label, m['code'])); continue
-                if c.execute('SELECT 1 FROM pot_mixes WHERE plant_code=?', (m['code'],)).fetchone(): continue
+                    audit_only(c, 'note', None, None, None, who, 'Batch %s could not find %s for its potting mix, so it was skipped' % (label, m.get('name') or m['code'])); continue
+                if c.execute('SELECT 1 FROM pot_mixes WHERE plant_code=?', (r['code'],)).fetchone(): continue
                 batch_pot_mix(c, m, r, None, who, ts, label)
             if b.get('place_sheets'): where_seed(c)              # 1.56.0 (PLAN.md step 8b): rooms and shelves are areas and spots by now
             for ps in b.get('place_sheets', []):               # a room's or shelf's measurements, only where none are set (Ethan's own stay)
@@ -678,8 +721,10 @@ def apply_batches(c):
                 d = facts_clean(f['data'], f.get('kind', 'plant'))
                 c.execute('INSERT OR IGNORE INTO species_facts(key,name,kind,data,origin,written_by,written_at) VALUES(?,?,?,?,?,?,?)',
                           (f['key'].lower(), f['name'], f.get('kind', 'plant'), json.dumps(d), 'researched', who, ts))
-            for code, k in b.get('facts_link', {}).items():   # plants whose scientific name does not say which facts are theirs
-                c.execute('INSERT OR IGNORE INTO facts_link(code,key) VALUES(?,?)', (code, k.lower()))
+            fl = b.get('facts_link') or []                    # plants whose scientific name does not say which facts are theirs: {code: key}, or [{code, name, photos, key}]
+            for e in ([{'code': k, 'key': v} for k, v in fl.items()] if isinstance(fl, dict) else fl):
+                r = find_plant(c, e, meant)
+                if r: c.execute('INSERT OR IGNORE INTO facts_link(code,key) VALUES(?,?)', (r['code'], e['key'].lower()))
             for pre in b.get('to_photograph_done', []):
                 c.execute('UPDATE to_photograph SET done=1 WHERE done=0 AND label LIKE ?', (pre.replace('%', '') + '%',))
             for t in b.get('to_photograph_add', []):

@@ -1,7 +1,8 @@
 # PLAN.md step 3: build the three container images on GitHub, so Ethan's PC is never the first place a Dockerfile fails.
 # Claude's sandbox cannot reach Docker Hub, so until this workflow existed an image was only ever built on his PC.
 #
-# On a pull request each image is built and thrown away (the build itself is the test). On a push to main the images
+# On a pull request each image is built, started and asked a few questions (dev/test/image_check.sh, from 1.58.0; before
+# that the build itself was the only test) and then thrown away. On a push to main the images that pass
 # are also pushed to GitHub's registry under this repository, tagged with the release number from VERSION and "latest"
 # (or, between releases, "main": see the ver step):
 #   ghcr.io/<owner>/plant-database:<version>, ...-vision:<version>, ...-speech:<version>
@@ -60,13 +61,33 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v7
+      # 1.58.0 (November 12 review, item 6): the build alone is not the test. Nothing ever started what was built, and the
+      # failures that reached Ethan's PC were of that kind (1.12.0 could not write to its folders and restarted for ever).
+      # So the image is built and kept on this runner, dev/test/image_check.sh is run on it, and only then is it pushed
+      # (the second build step finds every layer already built, so it only pushes). The app image is started with this
+      # repository's own docker-compose.yml, asked a few questions, made to write a backup, and started a second time on its
+      # own data; the speech image decodes a second of sound; the picture checker loads its libraries. No model is downloaded.
+      - name: Build the image
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ matrix.dockerfile }}
           build-args: PLANTDB_VERSION=${{ steps.ver.outputs.version }}
-          push: ${{ github.event_name == 'push' }}
-          tags: ${{ steps.ver.outputs.tags }}
+          load: true
+          tags: ${{ matrix.name }}:ci
           labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,scope=${{ matrix.name }},mode=max
+      - name: Start what was built and ask it a few questions
+        run: bash dev/test/image_check.sh ${{ matrix.name }} ${{ steps.ver.outputs.version }} ${{ matrix.name }}:ci
+      - name: Push it to GitHub's registry (a push to main only, and only an image that passed)
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          build-args: PLANTDB_VERSION=${{ steps.ver.outputs.version }}
+          push: true
+          tags: ${{ steps.ver.outputs.tags }}
+          labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=${{ matrix.name }}

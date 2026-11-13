@@ -35,6 +35,8 @@ This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that r
 - **Plant facts go in upgrade batches** (`app/seed/batches/*.json`), never as hand edits to a database.
   - A field update states the value it expects to replace (`{field: [old, new]}`), so anything Ethan edited himself is left alone.
   - Batch files apply in **filename order**, once each. Name new ones so they sort last: `batch9d.json`, then `batchA1.json`. `batch10.json` would sort before `batch2.json`.
+  - **A code in a batch file is the code a new install gives the plant (1.58.0).** On Ethan's PC it is the same code only while he has added no plant of his own. So every entry that names a plant by its code (`updates`, `archive`, `requests_add`, `existing_photos`, `pot_mixes_add`, `facts_link`, `take_photos`) also gives its `name`, or `photos` that are on its page; a plant he added himself is named by the code it has on his PC plus its name. `dev/test/unit/test_batches.py` refuses a new file without them.
+  - A batch never gives a row number (`home_id`, `area_id`, `spot_id`, `pot_id`, `tray_id`): they mean something else in every record. `home_near` says the home. A script that copies a plant's row to start a new page must leave them out.
 - **Access (from 1.12.0).** People reach the app through its own Tailscale container: port 8081, with identity headers, roles owner/editor/viewer. This computer uses port 8080 (localhost only), and sensors use 8082 (readings only).
   - Any new route that changes data is refused for viewers automatically.
   - The exceptions are `VIEWER_POSTS` (`/api/identify`, `/api/me/prefs`) and `VIEWER_PREFIXES` (`/api/push/`): requests that change nothing of the plants, or only the person's own settings and devices.
@@ -50,8 +52,9 @@ This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that r
 - **Test before shipping:**
   1. `python3 -m pytest dev/test/unit -q` (seconds).
   2. `python3 dev/test/run_checks.py` runs every browser check and the smoke test on a fresh mock server each (fake weather, no internet; about 90 minutes), or `run_checks.py lights shops` for a few. Look at the screenshots in `dev/tmp/shots/`. GitHub runs the same on every pull request (`.github/workflows/checks.yml`), and builds the three container images (`images.yml`). **Merge a pull request only when both are green.** The repository is public (November 7, 2026) and a branch rule on main requires the `unit`, `browser (n/4)` and `build (...)` checks, so a merge with a red check is refused.
-  3. For upgrades, also test on a copy of a database that has the previous version's batches applied.
-- Docker Hub is not reachable from Claude's sandbox. `docker compose config` works, a real image build does not, so say so when a change touches the Dockerfile.
+  3. Upgrades are tested by the unit tests (1.58.0): `test_upgrade.py` starts this version on the databases three old versions left behind (`dev/test/fixtures/`), with edits made by hand in them, and compares each with a new install. **After each release, make the fixture of that release and remove the one before it** (`dev/test/fixtures/make_upgrade_fixture.py` says how).
+  4. A browser check waits for what it expects with `until()` and `redrawn()` from `dev/test/waits.py`, not with a fixed pause. Convert a check when you change it.
+- Docker Hub is not reachable from Claude's sandbox. `docker compose config` works, a real image build does not, so say so when a change touches the Dockerfile. GitHub builds each image, starts it and asks it a few questions before it counts as built or is pushed (`dev/test/image_check.sh`, 1.58.0).
 
 ## Where things are
 - `app/`: the app (`server.py` is the entry point; the code is in `plantdb/`, one module per feature, `core.py` first; `static/js/*.js`, `static/style.css`, `static/index.html`, `static/prefs.js`, `seed/`)
