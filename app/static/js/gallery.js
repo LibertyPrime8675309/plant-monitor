@@ -138,7 +138,7 @@ async function viewGallery(qs) {
   const pend = (await offOps()).filter(o => o.url === '/api/plants' && o.method === 'POST' && !o.failed);   // 1.38.0: plants added without a connection
   return {
     title: '',
-    html: html`${pend.length ? html`<p class="notice off-note noprint" role="note"><strong>${pend.length} new plant${pend.length === 1 ? '' : 's'} waiting to be sent:</strong> ${pend.map(o => (o.body.fields || {}).common_name || o.temp).join(', ')}. ${pend.length === 1 ? 'It gets' : 'They get'} a page here once the plant server can be reached. <a href="#/offline">Offline page</a></p>` : ''}<div class="hero"><div><h1 id="g-title">${G.status === 'archived' ? 'Archived plants' : 'All plants'}</h1>
+    html: html`${pend.length ? html`<p class="notice off-note noprint" role="note"><strong>${pend.length} new plant${pend.length === 1 ? '' : 's'} waiting to be sent:</strong> ${pend.map(o => (o.body.fields || {}).common_name || o.temp).join(', ')}. ${pend.length === 1 ? 'It gets' : 'They get'} a page here once the plant server can be reached. <a href="#/offline">Offline page</a></p>` : ''}${PV('plants') ? pvPlantsHead({ needN, fcN, todoN, lowN }) : html`<div class="hero"><div><h1 id="g-title">${G.status === 'archived' ? 'Archived plants' : 'All plants'}</h1>
       <p class="muted">${META.counts.plants} plants, ${META.counts.photos} photos. Weather for ${placeName()}.</p></div>
       <a class="btn" href="#/new">Add a plant</a></div>
     <div class="needs-bar row" role="group" aria-label="What Claude needs from you">
@@ -156,7 +156,7 @@ async function viewGallery(qs) {
       <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70% (${lowN})</label>`, (G.health ? 1 : 0) + (G.group ? 1 : 0) + (G.status !== 'active' ? 1 : 0) + (G.low ? 1 : 0))}
     <p id="count" class="muted" aria-live="polite"></p>
     <div class="water-all noprint"><button class="btn ghost" type="button" data-act="waterall" id="wa-btn" aria-describedby="wa-why wa-hint">Water all</button><span class="why" id="wa-why"></span>
-      <span class="hint" id="wa-hint">Marks every plant shown (with the filters above) as watered today. Plants already watered today are skipped.</span></div>
+      <span class="hint" id="wa-hint">Marks every plant shown (with the filters above) as watered today. Plants already watered today are skipped.</span></div>`}
     <h2 class="sr">The plants</h2><div class="grid" id="grid"></div>
     ${archN ? html`<p class="hint" style="margin-top:2rem">${archN} archived plant${archN === 1 ? ' is' : 's are'} hidden from this list. Choose <strong>Show: Active and archived</strong> in the filters to see ${archN === 1 ? 'it' : 'them'} too.</p>` : ''}`,
     after: drawGrid,

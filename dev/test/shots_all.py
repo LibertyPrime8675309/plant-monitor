@@ -32,6 +32,10 @@ PAGES = [('today', 'Today', '#/'), ('plants', 'Plants', '#/plants'), ('plant', '
          ('findnew', 'Adding a find', '#/fungi/new'), ('photos', 'Photos', '#/photos'), ('labels', 'Labels', '#/labels'), ('history', 'Audit log', '#/history'),
          ('backups', 'Backups', '#/backups'), ('offline', 'Offline use', '#/offline'), ('settings', 'Settings', '#/settings'), ('display', 'Display settings window', '#/?display')]
 MAX_SCREENS = int(os.environ.get('SHOTS_SCREENS', '4'))          # long pages are cut after this many screens
+PREVIEW = os.environ.get('SHOTS_PREVIEW', '')                    # a layout option to show: the JSON for localStorage "plantdb.preview" (static/js/preview.js)
+AS = os.environ.get('SHOTS_AS', '')                              # "key=Title": save this run's pictures as that page instead, so an option sits beside the page as it is
+AS_KEY, AS_TITLE = (AS.split('=', 1) + [''])[:2] if AS else ('', '')
+FROM = os.environ.get('SHOTS_FROM', '')                          # a CSS selector: the picture starts at that part of the page (the watering list on Today, say)
 def call(method, u, body=None):
     req = urllib.request.Request(L + u, data=None if body is None else json.dumps(body).encode(), method=method, headers={'Content-Type': 'application/json', 'X-Editor': 'Shots'})
     try:
@@ -51,7 +55,8 @@ pages = want(sys.argv[4] if len(sys.argv) > 4 else '', [p[0] for p in PAGES])
 seed()
 idx_path = os.path.join(OUT, 'index.json')
 index = json.load(open(idx_path)) if os.path.exists(idx_path) else {'devices': {}, 'combos': {}, 'pages': {}, 'shots': {}}
-index['devices'].update({k: v[0] for k, v in DEVICES.items()}); index['combos'].update({k: v[0] for k, v in COMBOS.items()}); index['pages'].update({p[0]: p[1] for p in PAGES})
+index['devices'].update({k: v[0] for k, v in DEVICES.items()}); index['combos'].update({k: v[0] for k, v in COMBOS.items()})
+index['pages'].update({AS_KEY: AS_TITLE} if AS_KEY else {p[0]: p[1] for p in PAGES if p[0] in pages})
 with sync_playwright() as p:
     b = p.chromium.launch()
     for dk in devs:
@@ -59,16 +64,21 @@ with sync_playwright() as p:
         for ck in combos:
             prefs = COMBOS[ck][1]
             ctx = b.new_context(viewport={'width': w, 'height': h}, device_scale_factor=dpr, is_mobile=touch, has_touch=touch, service_workers='block')
-            ctx.add_init_script(f"localStorage.setItem('plantdb.editor','Ethan');localStorage.setItem('plantdb.display',JSON.stringify({json.dumps(prefs)}));localStorage.removeItem('plantdb.filters')")
+            ctx.add_init_script(f"localStorage.setItem('plantdb.editor','Ethan');localStorage.setItem('plantdb.display',JSON.stringify({json.dumps(prefs)}));localStorage.removeItem('plantdb.filters');" + (f"localStorage.setItem('plantdb.preview',{json.dumps(PREVIEW)})" if PREVIEW else "localStorage.removeItem('plantdb.preview')"))
             pg = ctx.new_page()
             for key, title, h_ in PAGES:
                 if key not in pages: continue
                 disp = h_.endswith('?display')
                 pg.goto(L + '/' + (h_.split('?')[0] if disp else h_)); pg.wait_for_timeout(2600)
                 if disp: pg.evaluate("document.getElementById('display-btn').click()"); pg.wait_for_timeout(500)
+                # pictures further down the page load when they come into view: ask for them all now, so none is a grey box in the picture
+                pg.evaluate("document.querySelectorAll('img[loading=lazy]').forEach(i => { i.loading = 'eager'; })")
+                try: pg.wait_for_function("[...document.images].every(i => i.complete)", timeout=8000)
+                except Exception: pass
                 pg.evaluate("window.scrollTo(0,0)"); pg.wait_for_timeout(200)
-                full = pg.evaluate("Math.min(document.documentElement.scrollHeight, innerHeight * %d)" % MAX_SCREENS)
-                raw = pg.screenshot(full_page=False, clip=None) if disp else pg.screenshot(full_page=True, clip={'x': 0, 'y': 0, 'width': w, 'height': full})
+                top = pg.evaluate("s => { const e = s && document.querySelector(s); return e ? Math.max(0, Math.round(e.getBoundingClientRect().top + scrollY - 8)) : 0; }", FROM)
+                full = pg.evaluate("t => Math.min(document.documentElement.scrollHeight - t, innerHeight * %d)" % MAX_SCREENS, top)
+                raw = pg.screenshot(full_page=False, clip=None) if disp else pg.screenshot(full_page=True, clip={'x': 0, 'y': top, 'width': w, 'height': full})
                 im = Image.open(io.BytesIO(raw)).convert('RGB')
                 cap = (900 if w >= 700 else 700) if touch else 1400
                 if im.width > cap: im = im.resize((cap, round(im.height * cap / im.width)))
@@ -80,6 +90,7 @@ with sync_playwright() as p:
                         y = round(i * h * k)
                         if y >= im.height - 2: break
                         for x in range(0, im.width, 24): dr.line([(x, y), (x + 13, y)], fill=(255, 0, 170), width=max(3, round(3 * k)))
+                key = AS_KEY or key
                 name = f'{key}__{dk}__{ck}.jpg'
                 im.save(os.path.join(OUT, name), 'JPEG', quality=72, optimize=True)
                 sw = pg.evaluate('document.documentElement.scrollWidth > innerWidth + 1')

@@ -571,6 +571,7 @@ const acts = {
     const k = el.dataset.kind, code = el.dataset.code;
     await guard(async () => { const r = await api('POST', '/api/care', { plant: code, kind: k }); careUndoToast((k === 'water' ? 'Watered: ' : k === 'check' ? 'Checked, still moist: ' : (CARE_WORD[k] || k) + ': ') + el.dataset.name + offWhen(r), r && r.ids, code); await careRefresh(code); });
   },
+  wplorder(el) { WPL_ORDER = el.dataset.order; route(); },          // proto/first-screen
   async careall(el) {
     const codes = el.dataset.codes.split(',').filter(Boolean); if (!codes.length) return;
     if (!(await needName())) return;

@@ -1,0 +1,96 @@
+/* Layout previews (proto/first-screen; November 12 review, items 9 and 10). See static/js/preview.js. */
+
+/* ----- item 9: Today's watering list by place ----- */
+.wpl-order{margin:.2rem 0 .8rem}
+.wpl-grp{margin:0 0 1.1rem;border:var(--bw) solid var(--line);border-radius:8px;background:var(--sheet);padding:.55rem .85rem .15rem}
+.wpl-head{display:flex;flex-wrap:wrap;gap:.4rem 1rem;align-items:center;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:.45rem}
+.wpl-head h3{margin:0;font-size:1.2rem;flex:1 1 12rem;min-width:0;overflow-wrap:break-word}
+.wpl-n{font-weight:400;color:var(--ink-2);font-family:var(--sans);font-size:1rem}
+.wpl-st{margin:.1rem 0 0}
+.wpl-why{margin:.15rem 0 0}
+.wpl-line{display:flex;flex-wrap:wrap;gap:0 .9rem;align-items:baseline}
+.wpl-line .wpl-why{margin:0}
+.wpl-last{color:var(--ink-2)}
+.wpl-line .wpl-why[open]{flex:1 1 100%}
+.wpl-why>summary{cursor:pointer;display:inline-block;color:var(--cyan);font-weight:700;text-decoration:underline;text-underline-offset:3px;padding:.15rem .1rem;list-style:none}
+.wpl-why>summary::-webkit-details-marker{display:none}
+.wpl-why>summary::before{content:"\25B8\00a0"}
+.wpl-why[open]>summary::before{content:"\25BE\00a0"}
+.wpl-why>p{margin:.2rem 0 .3rem;max-width:70ch}
+/* rows: one line of facts per plant, both buttons beside it */
+.wpl-rows.jobs{margin:.1rem 0 .3rem;grid-template-columns:repeat(auto-fill,minmax(min(100%,30rem),1fr))}
+.job.wpl-row{grid-template-columns:48px minmax(0,1fr) auto;align-items:center;padding:.45rem 0}
+.job.wpl-row img,.job.wpl-row .job-nophoto{width:48px;height:48px}
+.wpl-row .job-acts{flex-direction:row;flex-wrap:wrap;min-width:0}
+.wpl-row .job-txt>div{margin-top:.1rem}
+@media (max-width:640px){.job.wpl-row{grid-template-columns:48px minmax(0,1fr)}.wpl-row .job-acts{grid-column:1/-1}.wpl-row .job-acts .btn{flex:1 1 7rem}}
+/* cards: a picture, the name, how late, the buttons */
+.wpl-cards{list-style:none;padding:0;margin:.6rem 0 .7rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,9rem),1fr));gap:.6rem}
+.wpl-card{border:var(--bw) solid var(--line);border-radius:6px;padding:.4rem .45rem .45rem;display:flex;flex-direction:column;gap:.15rem;min-width:0;overflow-wrap:anywhere}
+.wpl-card .wpl-ph{display:block}
+.wpl-card img,.wpl-card .job-nophoto{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:4px;background:var(--line-2,var(--line))}
+.wpl-card .nm{font-weight:700}
+.wpl-card .wpl-st{margin:0}
+.wpl-acts{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:auto;padding-top:.25rem}
+.wpl-acts .btn{flex:1 1 5.5rem;padding-left:.4rem;padding-right:.4rem}
+
+/* ----- item 10: All plants with its cards on the first screen ----- */
+.fz-banner.fz-line{display:flex;flex-wrap:wrap;gap:.3rem 1.2rem;align-items:center;justify-content:space-between;padding:.45rem .9rem;margin-bottom:.7rem}
+.fz-banner.fz-line p{margin:0;max-width:none}
+.fz-banner.fz-line .fz-title{font-size:1.15rem;flex:1 1 24rem;margin:0}
+.fz-banner.fz-line .fz-do{font-family:var(--sans);font-size:1rem;font-weight:400;margin-left:.4rem}
+.fz-banner.fz-line .row{margin:0}
+.hero.pv-hero{align-items:center;margin-bottom:.55rem}
+.pv-title{display:flex;flex-wrap:wrap;align-items:center;gap:.2rem 1.2rem;min-width:0}
+.pv-title h1{margin:0}
+.pv-title p{margin:0}
+.filters.pv-tools{margin-bottom:.7rem;gap:.5rem .9rem}
+.ledger.pv-ledger{margin:0 0 .6rem;gap:.4rem}
+.ledger.pv-ledger button{flex:0 1 auto;min-height:2.5rem;padding:.2rem .75rem;display:inline-flex;align-items:baseline;gap:.45rem;border:var(--bw) solid var(--line);border-left:.5rem solid var(--bar,var(--ink-2));margin:0}
+.ledger.pv-ledger button b{display:inline;font-size:1.2rem}
+.pv-row{display:flex;flex-wrap:wrap;gap:.5rem .6rem;align-items:flex-start;margin:0 0 1rem}
+.pv-row>.more-f{margin:0;padding:0 .85rem;flex:0 0 auto}
+.pv-row>.more-f>summary{padding:.45rem 0}
+.pv-row>.more-f[open]{flex:1 1 100%;order:5;padding-bottom:.5rem}
+.pv-row>.more-f.pv-acts[open]{order:6}
+.pv-row .water-all{margin:0;gap:.4rem .6rem}
+.pv-what>summary{cursor:pointer;display:inline-block;color:var(--cyan);font-weight:700;text-decoration:underline;text-underline-offset:3px;padding:.5rem .1rem}
+.pv-what[open]{flex:1 1 100%}
+.pv-what .hint{display:block;margin:0 0 .3rem}
+.pv-acts .row{margin:.3rem 0 .4rem}
+
+/* ----- item 10: a plant's page with its care buttons under its name ----- */
+html[data-pv-plant] main>.quick{margin:0 0 .7rem;padding:.5rem .8rem}
+html[data-pv-plant]:not([data-narrow="1"]) main>.quick{display:flex;flex-wrap:wrap;gap:.3rem 1.2rem;align-items:center}
+html[data-pv-plant]:not([data-narrow="1"]) main>.quick .quick-status{flex:1 1 26rem;margin:0;max-width:none}
+html[data-pv-plant]:not([data-narrow="1"]) main>.quick .quick-btns{flex:1 1 44rem}
+html[data-pv-plant]:not([data-narrow="1"]) main>.quick .quick-btns .btn{flex:1 1 8rem;min-height:2.75rem;padding-left:.6rem;padding-right:.6rem}
+html[data-pv-plant] main>.quick #water-done-note{flex:1 1 100%;margin:0}
+.pv-navrow{display:flex;flex-wrap:wrap;gap:.5rem .7rem;align-items:flex-start;margin:0 0 .7rem}
+.pv-navrow .pnav:not(.pn-side){margin:0;flex:0 1 auto;gap:.5rem;flex-wrap:wrap}
+.pv-navrow .pnav:not(.pn-side) .pn{flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:.1rem .5rem;padding:.3rem .75rem;max-width:26rem;flex:0 1 auto;min-height:2.5rem;margin:0;text-align:left;align-content:center}
+.pv-navrow .pn-filters{margin:0;flex:1 1 18rem;padding:0 .8rem}
+.pv-navrow .pn-filters[open]{flex-basis:100%;order:5;padding-bottom:.5rem}
+.pv-navrow .pn-filters>summary{padding:.45rem 0}
+.pv-navrow .pl-layout{margin-left:auto}
+html[data-pv-plant] .pl-head{margin-bottom:.4rem}
+.pv-quick-more:empty{display:none}
+.pv-quick-more>:first-child{margin-top:0}
+html[data-pv-plant][data-narrow="1"] main>.quick .quick-btns .btn{flex:1 1 8rem}
+html[data-pv-plant][data-narrow="1"] main>.quick .quick-btns .btn:first-child{flex-basis:100%}
+html[data-narrow="1"] .pv-navrow .pnav:not(.pn-side){flex:1 1 100%;flex-wrap:nowrap}
+html[data-narrow="1"] .pv-navrow .pnav:not(.pn-side) .pn{flex:1 1 0;flex-direction:column;gap:0;max-width:none}
+html[data-narrow="1"] .pv-navrow .pnav:not(.pn-side) .pn-next{text-align:right}
+html[data-narrow="1"] .pv-navrow .pn-code{display:none}
+
+/* ----- item 10: the top bar in one row on a phone ----- */
+/* The name of the app and its version move into "More"; the page menu, search and More share one row. */
+html[data-pv-bar=one][data-narrow="1"] .top:not(.more-open) :is(.brand,.ver){display:none}
+html[data-pv-bar=one][data-narrow="1"] .top:not(.more-open) .top-in{align-items:stretch}
+html[data-pv-bar=one][data-narrow="1"] .top:not(.more-open) .pages-btn{flex:1 1 7rem}      /* when search and More do not fit beside it (the largest text), they take a second row */
+html[data-pv-bar=one][data-narrow="1"] .top:not(.more-open) .top-acts{flex:0 0 auto;margin-left:auto}
+html[data-pv-bar=one][data-narrow="1"] .top.more-open .brand{order:-2}
+html[data-pv-bar=one][data-narrow="1"] .top.more-open .ver{order:-1;margin-right:auto}
+html[data-narrow="1"] .fz-banner.fz-line .fz-title{font-size:1.05rem;font-family:var(--sans);flex-basis:100%}
+html[data-narrow="1"] .fz-banner.fz-line .fz-do{margin-left:0}
+html[data-narrow="1"] .fz-banner.fz-line .row{flex-wrap:wrap}

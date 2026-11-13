@@ -48,7 +48,8 @@ async function loadCarePlant() {
   catch (e) { box.innerHTML = rend(html`<p class="notice bad">Could not load the watering record: ${e.message}</p>`); return; }
   if (!CUR || CUR.p.code !== code) return;
   const w = W.plants.find(x => x.code === code);
-  const qs = document.getElementById('quick-status'); if (qs) qs.textContent = w ? 'Water: ' + waterWords(w) : '';
+  const qs = document.getElementById('quick-status');           // proto/first-screen: under the name, the short words; the reasons are in Water and soil
+  if (qs) qs.textContent = !w ? '' : 'Water: ' + (!PV('plant') ? waterWords(w) : w.state === 'unknown' ? 'no watering logged yet.' : waterShort(w).replace(/^[A-Z]/, c => c.toLowerCase()) + '. ' + wplLast(w));
   // 1.21.0: once watered today, "Watered today" is switched off until tomorrow (Undo or Remove in the care log switch it back on)
   const wb = document.querySelector('.quick-btns [data-quickwater]'), wn = document.getElementById('water-done-note');
   const done = !!(w && w.last_water === W.today);
@@ -343,13 +344,18 @@ async function viewToday() {
   // 1.46.0: the page is a list of blocks in a fixed order (the numbers are in features.js), so what a feature module adds lands in
   // the same place every time, whatever order the scripts loaded in
   const outH = HOMES().length > 1 && !homeTended(homeById(placeHomeId())) ? homeById(placeHomeId()) : null;   // 1.58.0: a home cared for outside the app: no water-them-all buttons
+  const wOrd = PV('water') ? (WPL_ORDER || 'place') : '';              // proto/first-screen: the watering list by place, or as it was
   const blocks = [
     coldOn ? { order: 10, id: 'today-cold', jump: `Cold night (${FZ.n})`, html: html`<section class="blk" id="today-cold">${frostBanner(true)}</section>` } : null,
     snN ? { order: 20, id: 'today-sensors', jump: `Sensors (${snN})`, html: html`<section class="blk" id="today-sensors"><h2>Sensors (${snN})</h2><ul class="jobs">${SN.cards.map(s => html`<li class="job"><span class="job-nophoto" aria-hidden="true"></span><div class="job-txt"><a class="nm" href="#/sensors">${s.name}</a>${s.plant ? html` <span class="muted">${s.plant.code} ${s.plant.common_name}</span>` : ''}<div>${s.words}</div></div>
       <div class="job-acts">${s.plant ? html`<a class="btn small ghost" href="#/plant/${enc(s.plant.code)}">Open its plant</a>` : ''}</div></li>`)}</ul><p><a class="btn small ghost" href="#/sensors">All your sensors</a></p></section>` } : null,
     { order: 30, id: 'today-water', jump: `Water (${due.length})`, keep: soon.length > 0, html: html`<section class="blk" id="today-water"><h2>Water (${due.length})</h2>
-      ${due.length ? html`${due.length > 1 && !outH ? html`<p><button class="btn small ghost" type="button" data-act="careall" data-kind="water" data-codes="${due.map(w => w.code).join(',')}">Watered all ${due.length}</button></p>` : ''}
-        <ul class="jobs">${due.map(w => jobRow(by[w.code], waterWords(w), wbtn(w)))}</ul>` : html`<p class="notice ok">Nothing is due for water today.</p>`}
+      ${due.length ? html`${wOrd ? html`<div class="row wpl-order" role="group" aria-label="Order of the watering list">
+          <button class="btn small${wOrd === 'place' ? '' : ' ghost'}" type="button" data-act="wplorder" data-order="place" aria-pressed="${String(wOrd === 'place')}">By place</button>
+          <button class="btn small${wOrd === 'late' ? '' : ' ghost'}" type="button" data-act="wplorder" data-order="late" aria-pressed="${String(wOrd === 'late')}">Most overdue first</button>
+          ${due.length > 1 && !outH ? html`<button class="btn small ghost" type="button" data-act="careall" data-kind="water" data-codes="${due.map(w => w.code).join(',')}">Watered all ${due.length}</button>` : ''}</div>`
+          : due.length > 1 && !outH ? html`<p><button class="btn small ghost" type="button" data-act="careall" data-kind="water" data-codes="${due.map(w => w.code).join(',')}">Watered all ${due.length}</button></p>` : ''}
+        ${wOrd === 'place' ? waterByPlace(due, by, wbtn, PV('water'), !outH) : html`<ul class="jobs">${due.map(w => jobRow(by[w.code], waterWords(w), wbtn(w)))}</ul>`}` : html`<p class="notice ok">Nothing is due for water today.</p>`}
       ${soon.length ? html`<details class="grp"><summary><h3>Check tomorrow (${soon.length})</h3></summary><ul class="jobs">${soon.map(w => jobRow(by[w.code], waterWords(w), wbtn(w)))}</ul></details>` : ''}
       </section>` },
     // 1.57.0: plants with no watering logged are a part of their own, so "Water (0)" folds into the "Nothing due today" line
