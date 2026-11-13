@@ -10,6 +10,7 @@ Screenshots: dev/tmp/shots/mounting-*.png"""
 import io, json, os, sys, tempfile, urllib.error, urllib.request
 from datetime import date, timedelta
 from playwright.sync_api import sync_playwright
+from waits import until                      # 1.58.0: a save is waited for itself; a 0.6 s pause was too short once on GitHub (#123)
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
 TS = BASE.rsplit(':', 1)[0] + ':' + str(int(BASE.rsplit(':', 1)[1]) + 1)
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
@@ -126,17 +127,21 @@ with sync_playwright() as p:
     check(pg.locator('form[data-mount] [name=grip_in]').is_visible() and not pg.locator('form[data-mount] [name=length_in]').is_visible(), 'How it holds shows only the numbers a clamp has')
     pg.fill('form[data-mount] [name=grip_in]', '1.5'); pg.fill('form[data-mount] [name=reach_in]', '10')
     pg.locator('form[data-mount]').screenshot(path=os.path.join(OUT, 'mounting-2-mount.png'))
-    pg.click('form[data-mount] button[value=ok]'); pg.wait_for_selector('#lt-spots', timeout=10000); pg.wait_for_timeout(600)
-    check('up to 1.5 in thick' in pg.locator('article.lt-light', has_text='GooingTop').inner_text(), 'saved: it clamps to an edge up to 1.5 in thick')
+    pg.click('form[data-mount] button[value=ok]')
+    check(until(pg, lambda: 'up to 1.5 in thick' in pg.locator('article.lt-light', has_text='GooingTop').inner_text()), 'saved: it clamps to an edge up to 1.5 in thick')
     # Measurements and photos, for the side table
     pg.locator(f'[data-act=ltplace][data-id="{side}"]').first.click(); pg.wait_for_selector('form[data-place]')
     pg.set_input_files('form[data-place] input[type=file]', [pic, pic2]); pg.wait_for_selector('#pd-photos figure:nth-child(2)', timeout=10000)
     check(pg.locator('#pd-photos figure').count() == 2 and 'Main photo' in pg.inner_text('#pd-photos'), 'two photos added from the dialog; the first is the main photo')
-    pg.locator('#pd-photos [data-act=placephotomain]').first.click(); pg.wait_for_timeout(600)
-    check(pg.locator('#pd-photos [data-act=placephotomain]').count() == 1, 'Make it the main photo swaps which is main')
+    first = pg.locator('#pd-photos figure img').first.get_attribute('src')
+    pg.locator('#pd-photos [data-act=placephotomain]').first.click()
+    check(until(pg, lambda: pg.locator('#pd-photos figure img').first.get_attribute('src') != first or 'Main photo' in pg.locator('#pd-photos figure').nth(1).inner_text())
+          and pg.locator('#pd-photos [data-act=placephotomain]').count() == 1, 'Make it the main photo swaps which is main')
     pg.fill('form[data-place] [name=free_in]', '7'); pg.select_option('form[data-place] [name=edge]', 'no')
     pg.locator('form[data-place]').screenshot(path=os.path.join(OUT, 'mounting-3-place.png'))
-    pg.click('form[data-place] button[value=ok]'); pg.wait_for_selector('#lt-spots', timeout=10000); pg.wait_for_timeout(800)
+    pg.click('form[data-place] button[value=ok]')
+    until(pg, lambda: call('GET', '/api/lights')['spots'] and {s['id']: s for s in call('GET', '/api/lights')['spots']}[s_bar]['fit']['status'] == 'fits')
+    until(pg, lambda: pg.locator('dialog[open]').count() == 0 and pg.locator('#lt-rooms img.fit-pthumb').count() >= 1)
     F = {s['id']: s for s in call('GET', '/api/lights')['spots']}
     check(F[s_bar]['fit']['status'] == 'fits' and '7 in free; its base needs 5 in' in ' '.join(x['text'] for x in F[s_bar]['fit']['lines']),
           'with 7 in free beside the plants, the Barrina fits on the side table (its base needs 5 in)')
@@ -145,8 +150,8 @@ with sync_playwright() as p:
     pg.locator(f'details.lt-spot-fold[data-id="{s_bulb}"] summary').click()
     pg.locator(f'[data-act=spotedit][data-id="{s_bulb}"]').click(); pg.wait_for_selector('#sp-fitbox .fit', timeout=10000)
     check(not pg.locator('#sp-holder-f').is_hidden() and 'Not checked' in pg.inner_text('#sp-fitbox'), 'for a bulb the dialog asks what it screws into, and says Not checked until it is chosen')
-    pg.select_option('form[data-spot] [name=holder]', 'clamp'); pg.wait_for_timeout(900)
-    check('no edge to clamp to' in pg.inner_text('#sp-fitbox'), 'a clamp lamp on the side table: it has no edge to clamp to')
+    pg.select_option('form[data-spot] [name=holder]', 'clamp')
+    check(until(pg, lambda: 'no edge to clamp to' in pg.inner_text('#sp-fitbox')), 'a clamp lamp on the side table: it has no edge to clamp to')
     pg.select_option('form[data-spot] [name=holder]', 'base'); pg.wait_for_timeout(900)
     check('Fits' in pg.inner_text('#sp-fitbox') and 'A lamp with a base stands on the Side Table' in pg.inner_text('#sp-fitbox'), 'a lamp with a base fits beside the plants')
     pg.select_option('form[data-spot] [name=light]', str(key['barrina-t5']['id'])); pg.wait_for_timeout(900)
