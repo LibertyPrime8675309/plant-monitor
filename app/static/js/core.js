@@ -372,6 +372,31 @@ function whsItem(i) {
   const spot = q('spot').value;
   return { text: it.text, from_area_id: it.area_id, area_id: +q('area').value, codes, ...(spot === 'new' ? { name: q('name').value } : { spot_id: +spot }) };
 }
+// 1.58.0 (Ethan, November 12): Put in this spot redraws the page, which used to undo the area, spot, name and ticks chosen in every
+// other group. They are noted first and put back afterwards, matched by group (its area and what is written on it), since the
+// groups' places in the list change when one is done.
+const whsKey = it => `${it.area_id}|${it.text || ''}`;
+function whsKeep(skip) {
+  const out = {};
+  WHSORT.forEach((it, i) => {
+    const q = k => document.querySelector(`[data-whs="${i}"][data-k=${k}]`); if (i === skip || !q('area')) return;
+    out[whsKey(it)] = { area: q('area').value, spot: q('spot').value, name: q('name') ? q('name').value : null,
+      off: [...document.querySelectorAll(`[data-whs="${i}"][data-k=code]:not(:checked)`)].map(x => x.value) };
+  });
+  return out;
+}
+function whsRestore(kept) {
+  WHSORT.forEach((it, i) => {
+    const k = kept[whsKey(it)], q = n => document.querySelector(`[data-whs="${i}"][data-k=${n}]`), area = q('area'), sel = q('spot');
+    if (!k || !area || !sel) return;
+    if ([...area.options].some(o => o.value === k.area)) area.value = k.area;
+    if (q('name') && k.name !== null) q('name').value = k.name;
+    sel.innerHTML = rend(whsSpotOpts(area.value, null, k.name));
+    if ([...sel.options].some(o => o.value === k.spot)) sel.value = k.spot;
+    const nf = document.querySelector(`[data-whsnew="${i}"]`); if (nf) nf.hidden = sel.value !== 'new';
+    document.querySelectorAll(`[data-whs="${i}"][data-k=code]`).forEach(b => { if (k.off.includes(b.value)) b.checked = false; });
+  });
+}
 document.addEventListener('change', e => {
   const t = e.target; if (!t.dataset || t.dataset.whs === undefined) return;
   const i = t.dataset.whs, sel = document.querySelector(`[data-whs="${i}"][data-k=spot]`), nf = document.querySelector(`[data-whsnew="${i}"]`);
