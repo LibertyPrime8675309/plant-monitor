@@ -29,6 +29,9 @@ services:
       # 1.33.0: a second copy of each new backup lands here. Put PLANTDB_COPY_DIR=D:\PlantBackups (a folder on another drive) in
       # the .env file next to this one to send them there; until then they go to backups-copy next to the data folder.
       - ${PLANTDB_COPY_DIR:-./backups-copy}:/backups-copy
+      # 1.58.0: Claude saves a file of plant updates here (corrections, new pages); the page "Updates from Claude" shows each change
+      # before anything is changed. The app only reads this folder.
+      - ./plant-updates:/plant-updates:ro
     environment:
       # Optional: uncomment to require a password (any username) for http://localhost:8080 (and the home network, if opened).
       # People who come in through Tailscale are signed in by Tailscale instead.

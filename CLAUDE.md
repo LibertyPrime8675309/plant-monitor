@@ -32,7 +32,12 @@ This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that r
 
 ## Rules for changes
 - **Never touch his data.** `data/` (database and photos) and `backups/` never go into git or a release. A new version must upgrade an existing database in place, safely and idempotently (`init_db()` adds columns and tables; see ARCHITECTURE).
-- **Plant facts go in upgrade batches** (`app/seed/batches/*.json`), never as hand edits to a database.
+- **Changes to Ethan's own plants go in an update file (from 1.58.0), not in the code and never as hand edits to a database.** His plants' details stay out of the public repository.
+  - Write `plant-updates-YYYYMMDD-HHMM.json` (UTC; a `.zip` holding `updates.json` and `photos/` when a new page comes with pictures). The format is at the top of `app/plantdb/updates.py`: changes of kind `set`, `archive`, `ask` and `new`, each with a `why` in plain words.
+  - A change names its plant by the code it has **on his PC** and its name. A `set` states the value it expects to replace (`from`), so anything he edited himself needs his decision and is otherwise left alone.
+  - Check the file with `python3 tools/check-plant-updates.py FILE`, then save it into `plant-updates` inside his app folder on his PC (under 30 MB) and tell him its name. He looks through it on the Updates from Claude page; nothing changes until he accepts.
+  - Never commit an update file: `plant-updates/` holds only its README in git, and a release leaves the rest out.
+- **Upgrade batches** (`app/seed/batches/*.json`) are for what every install needs (lights, amendments, stores, measurements, the plants a new install starts with), and for the batches already made.
   - A field update states the value it expects to replace (`{field: [old, new]}`), so anything Ethan edited himself is left alone.
   - Batch files apply in **filename order**, once each. Name new ones so they sort last: `batch9d.json`, then `batchA1.json`. `batch10.json` would sort before `batch2.json`.
   - **A code in a batch file is the code a new install gives the plant (1.58.0).** On Ethan's PC it is the same code only while he has added no plant of his own. So every entry that names a plant by its code (`updates`, `archive`, `requests_add`, `existing_photos`, `pot_mixes_add`, `facts_link`, `take_photos`) also gives its `name`, or `photos` that are on its page; a plant he added himself is named by the code it has on his PC plus its name. `dev/test/unit/test_batches.py` refuses a new file without them.
