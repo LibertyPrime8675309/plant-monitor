@@ -80,7 +80,7 @@ async function careDialog(code, name) {
 async function careRefresh(code) {
   if (document.getElementById('care-plant')) return loadCarePlant();
   const y = window.scrollY; await route(); window.scrollTo(0, y);
-  const f = (code && document.querySelector(`.job[data-code="${code}"] button`)) || document.querySelector('.job button') || document.querySelector('main h1');
+  const f = (code && document.querySelector(`.job[data-code="${code}"] button, .wpl-card[data-code="${code}"] input[data-act=wtick]`)) || document.querySelector('.job button') || document.querySelector('main h1');    // (a watering card's tick box, 1.58.0)
   if (f) f.focus({ preventScroll: true });
 }
 function jobRow(p, words, btns) {
@@ -146,7 +146,7 @@ document.getElementById('toasts').addEventListener('click', e => {      // its o
 document.addEventListener('keydown', e => {
   if (!UNDO || (e.key !== 'u' && e.key !== 'U')) return;
   if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || window.PlantPrefs.get().keys !== '1') return;
-  if (e.target.closest && e.target.closest('input,textarea,select,[contenteditable="true"],dialog[open]')) return;
+  if (e.target.closest && e.target.closest('input:not([type=checkbox]):not([type=radio]),textarea,select,[contenteditable="true"],dialog[open]')) return;   // (a tick box takes no typing: after the watering cards' bar the focus is on one)
   e.preventDefault(); careUndo();
 });
 // ---------- getting plants ready to come inside (added in 1.9.0) ----------
@@ -304,11 +304,22 @@ function todayPrep(PR, t) {
     ${free.length ? html`<ul class="jobs">${free.map(p => row(p, 'Its 3 weeks apart end today. If you have seen no pests, it can join your other houseplants.', html`<a class="btn small ghost" href="#/plant/${enc(p.code)}">Open its page</a>`))}</ul>` : ''}
     ${!again.length && !free.length ? html`<p class="notice ok">No sprays due and nobody to move today.</p>` : ''}</section>`;
 }
-// ---------- 1.58.0 (Ethan, November 13, 2026): the watering lists by room and spot, as cards ----------
+// ---------- 1.58.0 (Ethan, November 13 and 14, 2026): the watering lists by room and spot, as cards to tick ----------
 // Today's lists were in the order of how late each plant was, with the same long reason on every row. A round is walked spot by spot, so the
 // plants are grouped by room and spot, in the order of Rooms and spots (which can be set there now), and each spot has one button for all of
-// its plants. A card is the plant's picture, its name and how late it is; the reason is behind "Why". "Most overdue first" is the list as it was.
+// its plants. "Most overdue first" is the list as it was.
+// November 14: a card had its own two buttons and every spot a band of the page to itself, so 45 plants took 4.6 screens of his monitor and
+// 14 of his phone. Now the cards are one run, with a tile where each spot starts (its name and its one button), and a card is the picture,
+// the name and how late the plant is: the picture is a tick box, and one bar held at the bottom of the screen has Watered and Still moist
+// for everything ticked. How late a plant is opens the reason. The size of the pictures is a choice kept on each device.
 let WATER_ORDER = (() => { try { return localStorage.getItem('plantdb.waterorder') === 'late' ? 'late' : 'place'; } catch (e) { return 'place'; } })();
+const WATER_SIZES = { small: 'Small', medium: 'Medium', large: 'Large' };
+let WATER_PICS = (() => { try { const v = localStorage.getItem('plantdb.waterpics'); return WATER_SIZES[v] ? v : 'medium'; } catch (e) { return 'medium'; } })();
+// The ticks of each list ('due', 'soon', 'unk'), kept while the app is open: a look at a plant's page and back leaves them as they were.
+// A new day starts with none, and a plant that has left its list is no longer ticked.
+const WTICK = { day: '', sets: {} };
+function wticks(key) { const t = todayStr(); if (WTICK.day !== t) { WTICK.day = t; WTICK.sets = {}; } return WTICK.sets[key] || (WTICK.sets[key] = new Set()); }
+const waterKind = w => w.action && w.action !== 'water' ? w.action : 'water';      // what "Watered" logs: a pot kept in water is topped up or given fresh water
 function wplGroups(list, by) {       // [{a: room, s: spot or null, ws: its plants}] in the order of Rooms and spots; a room's plants with no spot come last in it
   const order = new Map(); let i = 0;
   for (const h of WHERE()) for (const a of h.areas) { for (const s of a.spots) order.set(a.id + '|' + s.id, { i: i++, a, s }); order.set(a.id + '|', { i: i++, a, s: null }); }
@@ -323,24 +334,58 @@ function waterShort(w) {              // "4 days overdue", "Due today", "Top up:
   return hy ? hy + s : s[0].toUpperCase() + s.slice(1);
 }
 const waterLast = w => w.last_rain && (!w.last_water || w.last_rain > w.last_water) ? `Rain counted ${relDay(w.last_rain)}.` : w.last_water ? `Watered ${relDay(w.last_water)}.` : 'No watering logged yet.';
-function wplCard(p, w, btns) {
-  // one link holds the picture and the name, so the picture can be pressed too and a keyboard meets each plant once
-  return html`<li class="wpl-card" data-code="${p.code}"><a class="wpl-open" href="#/plant/${enc(p.code)}">${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy" width="160" height="120">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}<span class="nm">${p.common_name}</span></a>
-    <span class="muted">${p.code}</span>
-    <p class="wpl-st"><strong>${waterShort(w)}.</strong></p>
-    <div class="wpl-acts">${btns}</div>
-    ${w.state === 'unknown' ? '' : html`<details class="wpl-why"><summary aria-label="Why: ${p.common_name}">Why</summary><p>${waterWords(w)}</p></details>`}</li>`;
+// What the bar of a list says and offers, from the kinds of the ticked plants (waterKind). Used when the list is drawn and after every tick.
+const wtickWords = n => n ? `${n} ticked` : '';
+const wtickLabel = kinds => kinds.size === 1 && !kinds.has('water') ? HYDRO_DO[[...kinds][0]][2] : 'Watered';      // "Topped up" when every ticked pot is a semi-hydro one
+function wplCard(p, w, key, can) {
+  const pic = p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy" width="160" height="120">` : html`<span class="job-nophoto" aria-hidden="true"></span>`;
+  // someone who can change things: the picture is the tick box's label, and the name opens the plant. A viewer: the picture and the name open the plant, as one link.
+  return html`<li class="wpl-card${can ? ' wpl-pick' : ''}" data-code="${p.code}">${can
+    ? html`<label class="wpl-tk"><input type="checkbox" data-act="wtick" data-code="${p.code}" data-kind="${waterKind(w)}" data-name="${p.common_name}" aria-label="Tick ${p.common_name}" ${wticks(key).has(p.code) ? raw('checked') : ''}>${pic}<span class="wpl-tkmark" aria-hidden="true">✓ Ticked</span></label>
+      <button class="wpl-skip" type="button" data-act="wtickgo">Go to the buttons for the ticked plants</button>
+      <p class="wpl-nml"><a class="nm" href="#/plant/${enc(p.code)}">${p.common_name}</a> <span class="muted wpl-code">${p.code}</span></p>`
+    : html`<a class="wpl-open" href="#/plant/${enc(p.code)}">${pic}<span class="nm">${p.common_name}</span></a> <span class="muted wpl-code">${p.code}</span>`}
+    ${w.state === 'unknown' ? '' : html`<details class="wpl-why"><summary aria-label="${waterShort(w)}. Why: ${p.common_name}">${waterShort(w)}.</summary><p>${waterWords(w)}</p></details>`}</li>`;
 }
-function waterByPlace(list, by, wbtn, canAll, key) {      // key: 'due', 'soon' or 'unk', so headings in the three lists have ids of their own
-  const gs = wplGroups(list, by), nm = g => g.a ? g.a.name + ': ' + (g.s ? g.s.name : 'no spot set') : 'No room set';
-  // with three spots or more, a row of buttons goes straight to each one: a shelf of thirty plants is a long way to scroll past
-  return html`<div class="wpl">${gs.length > 2 ? html`<nav class="wpl-jump row" aria-label="Go to a spot">${gs.map((g, i) =>
-      html`<button class="btn small ghost" type="button" data-act="jumpsec" data-sec="wpl-${key}-${i}">${nm(g)} (${g.ws.length})</button>`)}</nav>` : ''}
-    ${gs.map((g, i) => {
-    const name = nm(g), n = g.ws.length;
-    return html`<section class="wpl-grp" aria-labelledby="wpl-${key}-${i}"><div class="wpl-head"><h3 id="wpl-${key}-${i}" tabindex="-1">${name} <span class="wpl-n">(${n})</span></h3>
-      ${n > 1 && canAll ? html`<button class="btn small" type="button" data-act="careall" data-kind="water" data-codes="${g.ws.map(w => w.code).join(',')}" aria-label="Watered all ${n} here: ${name}">Watered all ${n} here</button>` : ''}</div>
-      <ul class="wpl-cards">${g.ws.map(w => wplCard(by[w.code], w, wbtn(w)))}</ul></section>`; })}</div>`;
+function waterByPlace(list, by, canAll, key) {      // key: 'due', 'soon' or 'unk', so the three lists have headings, ticks and a bar of their own
+  const gs = wplGroups(list, by), nm = g => g.a ? g.a.name + ': ' + (g.s ? g.s.name : 'no spot set') : 'No room set', can = canChange();
+  const ticks = wticks(key), here = new Set(list.map(w => w.code));
+  for (const c of [...ticks]) if (!here.has(c)) ticks.delete(c);
+  const tk = list.filter(w => ticks.has(w.code)), kinds = new Set(tk.map(waterKind)), n = tk.length;
+  return html`<div class="wpl" data-key="${key}" data-pics="${WATER_PICS}">
+    ${gs.length > 2 ? html`<label class="wpl-go">Go to a spot<select data-act="wgo"><option value="">Choose one of ${gs.length}</option>${gs.map((g, i) => html`<option value="wpl-${key}-${i}">${nm(g)} (${g.ws.length})</option>`)}</select></label>` : ''}
+    ${can ? html`<p class="hint wpl-tickhint">Press a picture to tick a plant. <strong>Watered</strong> and <strong>Still moist</strong> for the ticked plants then stay at the bottom of the screen.</p>
+      <p class="wpl-say" role="status"></p>` : ''}
+    <div class="wpl-grid">${gs.map((g, i) => { const name = nm(g), c = g.ws.length;
+      return html`<section class="wpl-in" aria-labelledby="wpl-${key}-${i}"><div class="wpl-head">${g.a ? html`<p class="wpl-kick" aria-hidden="true">${g.s ? 'Spot' : 'Room'}</p>` : ''}<h3 id="wpl-${key}-${i}" tabindex="-1">${name} <span class="wpl-n">(${c})</span></h3>
+        ${c > 1 && canAll ? html`<button class="btn small" type="button" data-act="careall" data-kind="water" data-codes="${g.ws.map(w => w.code).join(',')}" aria-label="Watered all ${c} here: ${name}">Watered all ${c} here</button>` : ''}</div>
+        <ul class="wpl-cards" role="list">${g.ws.map(w => wplCard(by[w.code], w, key, can))}</ul></section>`; })}</div>
+    ${can ? html`<div class="wpl-bar" id="wpl-bar-${key}" role="group" aria-label="The plants you ticked" ${n ? '' : raw('hidden')}><span class="wpl-bar-n">${wtickWords(n)}</span>
+      <button class="btn small" type="button" data-act="wtickdo" data-how="water">${wtickLabel(kinds)}</button>
+      <button class="btn small ghost" type="button" data-act="wtickdo" data-how="check" ${!n || kinds.has('water') ? '' : raw('hidden')}>Still moist</button>
+      <button class="btn small ghost" type="button" data-act="wtickclear">Untick</button></div>` : ''}</div>`;
+}
+function wtickState(wpl) {            // after a tick: remember it, and bring the bar up to date (it is there only while something is ticked)
+  const on = [...wpl.querySelectorAll('input[data-act=wtick]:checked')], set = wticks(wpl.dataset.key), n = on.length, was = set.size;
+  set.clear(); on.forEach(t => set.add(t.dataset.code));
+  const bar = wpl.querySelector('.wpl-bar'), kinds = new Set(on.map(t => t.dataset.kind)), say = wpl.querySelector('.wpl-say'); if (!bar) return;
+  bar.hidden = !n; bar.querySelector('.wpl-bar-n').textContent = wtickWords(n);
+  bar.querySelector('[data-how=water]').textContent = wtickLabel(kinds);
+  bar.querySelector('[data-how=check]').hidden = !!n && !kinds.has('water');          // Still moist is for plants in soil
+  // for a screen reader: how many are ticked, and at the first one where the buttons are
+  if (say) say.textContent = !n ? 'Nothing ticked.' : wtickWords(n) + (was ? '.' : `. ${wtickLabel(kinds)}${kinds.has('water') ? ' and Still moist' : ''} for the ticked plants ${kinds.has('water') ? 'are' : 'is'} after this list.`);
+}
+function wtickDone(kinds, name) {     // "2 plants marked as watered, 1 topped up": what the bar's button just logged ({kind: [codes]}); one plant alone is named, as its own button named it
+  const n = k => (kinds[k] || []).length, pl = c => `${c} plant${c === 1 ? '' : 's'}`, one = Object.keys(kinds)[0];
+  if (name && Object.values(kinds).flat().length === 1) return (one === 'water' ? 'Watered: ' : one === 'check' ? 'Checked, still moist: ' : (CARE_WORD[one] || one) + ': ') + name;
+  if (kinds.check) return `${pl(n('check'))} marked as still moist`;
+  return [[n('water'), 'marked as watered'], [n('topup'), 'topped up'], [n('waterchange'), 'given fresh water']].filter(x => x[0]).map(([c, w], i) => (i ? c : pl(c)) + ' ' + w).join(', ');
+}
+function wplFocus(key) {              // after a button of a list: the focus stays in that list (its first tick box; a folded list is opened again), or goes to the part's heading when the list is gone
+  const w = document.querySelector(`.wpl[data-key="${key}"]`), box = w && w.querySelector('input[data-act=wtick]'), d = box && box.closest('details');
+  if (d) d.open = true;
+  const f = box || (key === 'unk' && document.querySelector('#today-unlogged summary')) || document.querySelector('#today-water h2') || document.querySelector('main h1');
+  if (f) { if (f.matches('h1,h2') && !f.hasAttribute('tabindex')) f.setAttribute('tabindex', '-1'); f.focus({ preventScroll: true }); }
 }
 // 1.58.0 (Ethan, November 13, 2026): care that has never been logged asks once (plantdb/asks.py): {feed, flush}, each {answer, on, by} or null
 let ASKS = {};
@@ -378,9 +423,9 @@ async function viewToday() {
     ? html`<button class="btn small" type="button" data-act="care" data-kind="${w.action}" data-code="${w.code}" data-name="${by[w.code].common_name}" aria-label="${HYDRO_DO[w.action][2]}: ${by[w.code].common_name}">${HYDRO_DO[w.action][2]}</button>`
     : html`<button class="btn small" type="button" data-act="care" data-kind="water" data-code="${w.code}" data-name="${by[w.code].common_name}" aria-label="Watered: ${by[w.code].common_name}">Watered</button>
     <button class="btn small ghost" type="button" data-act="care" data-kind="check" data-code="${w.code}" data-name="${by[w.code].common_name}" aria-label="Still moist: ${by[w.code].common_name}">Still moist</button>`;
-  // 1.58.0: a watering list by room and spot (cards), or in the old order (rows with the reasons)
+  // 1.58.0: a watering list by room and spot (cards to tick), or in the old order (rows with the reasons and a row's own buttons)
   const place = WATER_ORDER === 'place';
-  const wlist = (list, key) => place ? waterByPlace(list, by, wbtn, !outH, key)
+  const wlist = (list, key) => place ? waterByPlace(list, by, !outH, key)
     : html`<ul class="jobs">${list.map(w => jobRow(by[w.code], key === 'unk' ? (w.site !== 'Outdoors' ? w.site + '.' : 'Outdoors.') : waterWords(w), wbtn(w)))}</ul>`;
   const n = (k, one, many) => k + ' ' + (k === 1 ? one : many);
   // 1.34.0: Today is the page the app opens on. One line says what needs you, with a button to jump to each part
@@ -410,9 +455,10 @@ async function viewToday() {
     snN ? { order: 20, id: 'today-sensors', jump: `Sensors (${snN})`, html: html`<section class="blk" id="today-sensors"><h2>Sensors (${snN})</h2><ul class="jobs">${SN.cards.map(s => html`<li class="job"><span class="job-nophoto" aria-hidden="true"></span><div class="job-txt"><a class="nm" href="#/sensors">${s.name}</a>${s.plant ? html` <span class="muted">${s.plant.code} ${s.plant.common_name}</span>` : ''}<div>${s.words}</div></div>
       <div class="job-acts">${s.plant ? html`<a class="btn small ghost" href="#/plant/${enc(s.plant.code)}">Open its plant</a>` : ''}</div></li>`)}</ul><p><a class="btn small ghost" href="#/sensors">All your sensors</a></p></section>` } : null,
     { order: 30, id: 'today-water', jump: `Water (${due.length})`, keep: soon.length > 0, html: html`<section class="blk" id="today-water"><h2>Water (${due.length})</h2>
-      ${due.length || soon.length || unk.length ? html`<div class="row wpl-order" role="group" aria-label="Order of the watering lists">
+      ${due.length || soon.length || unk.length ? html`<div class="row wpl-order"><span class="row wpl-ord" role="group" aria-label="Order of the watering lists">
           <button class="btn small${place ? '' : ' ghost'}" type="button" data-act="waterorder" data-order="place" aria-pressed="${String(place)}">By room and spot</button>
-          <button class="btn small${place ? ' ghost' : ''}" type="button" data-act="waterorder" data-order="late" aria-pressed="${String(!place)}">Most overdue first</button>
+          <button class="btn small${place ? ' ghost' : ''}" type="button" data-act="waterorder" data-order="late" aria-pressed="${String(!place)}">Most overdue first</button></span>
+          ${place ? html`<label class="wpl-size">Picture size<select data-act="waterpics">${Object.entries(WATER_SIZES).map(([k, v]) => html`<option value="${k}" ${WATER_PICS === k ? raw('selected') : ''}>${v}</option>`)}</select></label>` : ''}
           ${due.length > 1 && !outH ? html`<button class="btn small ghost" type="button" data-act="careall" data-kind="water" data-codes="${due.map(w => w.code).join(',')}">Watered all ${due.length}</button>` : ''}</div>` : ''}
       ${due.length ? wlist(due, 'due') : html`<p class="notice ok">Nothing is due for water today.</p>`}
       ${soon.length ? html`<details class="grp"><summary><h3>Check tomorrow (${soon.length})</h3></summary>${wlist(soon, 'soon')}</details>` : ''}

@@ -278,6 +278,28 @@ const acts = {
     await route();
     const b = document.querySelector(`[data-act="waterorder"][data-order="${WATER_ORDER}"]`); if (b) b.focus();
   },
+  // 1.58.0 (November 14): the bar of a watering list, for the plants ticked in it (care.js: waterByPlace). Watered logs each plant's own
+  // kind, so a semi-hydro pot is topped up and a plant in water gets fresh water; Still moist is for the plants in soil.
+  async wtickdo(el) {
+    const wpl = el.closest('.wpl'), key = wpl.dataset.key, moist = el.dataset.how === 'check';
+    const ticks = [...wpl.querySelectorAll('input[data-act=wtick]:checked')].filter(t => !moist || t.dataset.kind === 'water'); if (!ticks.length) return;
+    if (!(await needName())) return;
+    const kinds = {}, done = {}; ticks.forEach(t => { const k = moist ? 'check' : t.dataset.kind; (kinds[k] = kinds[k] || []).push(t.dataset.code); });
+    await guard(async () => {
+      let ids = [], off = null;
+      try {
+        for (const [kind, codes] of Object.entries(kinds)) { const r = await api('POST', '/api/care', { plants: codes, kind }); ids = ids.concat((r && r.ids) || []); if (r && r.offline) off = r; done[kind] = codes; }
+      } finally {                         // what was saved before something failed is still said, and can still be undone
+        const codes = Object.values(done).flat();
+        if (codes.length) { codes.forEach(c => wticks(key).delete(c)); careUndoToast(wtickDone(done, (ticks.find(t => t.dataset.code === codes[0]) || ticks[0]).dataset.name) + offWhen(off), ids, codes[0]); await careRefresh(); wplFocus(key); }
+      }
+    });
+  },
+  wtickclear(el) {
+    const wpl = el.closest('.wpl'); wpl.querySelectorAll('input[data-act=wtick]:checked').forEach(t => { t.checked = false; }); wtickState(wpl);
+    const f = wpl.querySelector('input[data-act=wtick]'); if (f) f.focus({ preventScroll: true });        // the bar has gone, so the focus goes back to the list
+  },
+  wtickgo(el) { const b = el.closest('.wpl').querySelector('.wpl-bar button:not([hidden])'); if (b) b.focus(); },   // from a ticked card straight to the bar, for a keyboard
   async askset(el) {                 // 1.58.0: the answer to "do you want reminders for care that was never logged" (asks.py)
     if (!(await needName())) return;
     const { kind, answer } = el.dataset, word = kind === 'feed' ? 'Feeding' : 'Flush and root-check';
@@ -599,7 +621,9 @@ const acts = {
     const codes = el.dataset.codes.split(',').filter(Boolean); if (!codes.length) return;
     if (!(await needName())) return;
     if (!(await confirmBox(`Mark ${codes.length} plants as watered today?`, 'Each one gets a "Watered" entry for today in its care log. You can remove any of them on the plant\'s page.', 'Mark as watered'))) return;
-    await guard(async () => { const r = await api('POST', '/api/care', { plants: codes, kind: el.dataset.kind }); careUndoToast(codes.length + ' plants marked as watered' + offWhen(r), r && r.ids); await careRefresh(); });
+    const wpl = el.closest('.wpl'), key = wpl ? wpl.dataset.key : el.closest('.wpl-order') ? 'due' : el.closest('#today-unlogged') ? 'unk' : '';     // 1.58.0: a watering list's own button
+    await guard(async () => { const r = await api('POST', '/api/care', { plants: codes, kind: el.dataset.kind }); careUndoToast(codes.length + ' plants marked as watered' + offWhen(r), r && r.ids); await careRefresh();
+      if (key) wplFocus(key); });        // the focus stays with the list, not on the first button of another part
   },
   async waterall() {                    // 1.21.0: Plants page, every plant the filters show; 1.58.0: at one home (waterAllList)
     const WAL = waterAllList(), shown = WAL.list;
@@ -668,6 +692,14 @@ const acts = {
 document.addEventListener('change', e => { const el = e.target; if (el.dataset && el.dataset.dvshare && window.PlantSync) { window.PlantSync.share(el.dataset.dvshare, el.checked);
   toast(el.checked ? 'These settings now follow you to other devices' : 'These settings now stay on this device'); } }, true);
 const changeActs = {
+  // 1.58.0 (November 14): Today's watering cards: a tick, the list of spots on a phone, and the size of the pictures (kept on this device)
+  wtick(el) { wtickState(el.closest('.wpl')); },
+  wgo(el) { const t = el.value && document.getElementById(el.value); el.value = ''; if (t) { scrollToSection(t); navFlash(t); } },
+  waterpics(el) {
+    WATER_PICS = WATER_SIZES[el.value] ? el.value : 'medium';
+    try { localStorage.setItem('plantdb.waterpics', WATER_PICS); } catch (e) { /* private window: for this visit only */ }
+    document.querySelectorAll('.wpl[data-pics]').forEach(w => { w.dataset.pics = WATER_PICS; });      // only the width of a card changes, so nothing is drawn again and the ticks stay
+  },
   // 1.48.0: a home's country, units default or seasons (Homes and places)
   async placesite(el) {
     const k = el.dataset.k, v = el.value.trim();

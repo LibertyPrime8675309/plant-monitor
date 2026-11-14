@@ -1,24 +1,89 @@
-/* 1.58.0 (Ethan, November 13, 2026): Today's watering lists by room and spot, as cards (care.js: waterByPlace), and the one-time
-   questions about care that was never logged (askBlock, askLine). */
+/* 1.58.0 (Ethan, November 13 and 14, 2026): Today's watering lists by room and spot, as cards to tick (care.js: waterByPlace), and the
+   one-time questions about care that was never logged (askBlock, askLine). */
 .wpl-order{margin:.2rem 0 .8rem}
-.wpl-jump{margin:0 0 .9rem}
-.wpl-grp{margin:0 0 1.1rem;border:var(--bw) solid var(--line);border-radius:8px;background:var(--sheet);padding:.55rem .85rem .15rem}
-.wpl-head{display:flex;flex-wrap:wrap;gap:.4rem 1rem;align-items:center;justify-content:space-between;border-bottom:2px solid var(--ink);padding-bottom:.45rem}
-.wpl-head h3{margin:0;font-size:1.2rem;flex:1 1 12rem;min-width:0;overflow-wrap:break-word}
+.wpl-size{display:inline-flex;align-items:center;gap:.5rem;font-weight:700}
+.wpl-size select{width:auto;margin-top:0;min-height:2.5rem;padding:.3rem .55rem}
+/* a phone: tighter, so the picture size and "Watered all" share a line when they fit */
+html[data-narrow="1"] .wpl-order{gap:.5rem}
+html[data-narrow="1"] .wpl-size{gap:.35rem}
+html[data-narrow="1"] .wpl-order>.btn{padding-left:.6rem;padding-right:.6rem}
+/* One run of cards. A spot starts with a tile (its name and its one button), which is a row of its own on a phone.
+   .wpl has no box of its own, so the ticked plants' bar is held within the whole part (Water, Check tomorrow, No watering logged yet):
+   held within the list alone, it was pushed off the screen while the list's first rows were on it. */
+.wpl{display:contents}
+/* The size of the pictures (Small, Medium, Large; kept on each device) is the width of a card: the width it would like (--cw), and a
+   number of cards across (--n) that a narrow screen still gets while a card stays at least --lo wide. So a phone has 3, 2 or 1 across,
+   a tablet held upright 5, 4 or 3, and a 2560 x 1440 monitor at 150% has 11, 8 or 6; with large text a card keeps the room its words need. */
+.wpl-grid{--cw:10.5rem;--lo:9rem;--n:2;display:grid;gap:.6rem;margin:0 0 .9rem;
+  grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--cw),max(var(--lo),calc((100% - (var(--n) - 1) * .6rem) / var(--n) - .5px))),1fr))}      /* (- .5px: a width that fits exactly can round to one card fewer) */
+.wpl[data-pics=small] .wpl-grid{--cw:8rem;--lo:5.8rem;--n:3}
+.wpl[data-pics=large] .wpl-grid{--cw:14rem;--lo:14rem;--n:1}
+.wpl-in,.wpl-in>.wpl-cards{display:contents}
+.wpl-head{display:flex;flex-direction:column;gap:.45rem;border:3px solid var(--ink);border-radius:6px;background:var(--sheet);padding:.45rem .55rem .55rem;min-width:0}
+.wpl-grid .wpl-head h3{margin:0;font-size:1.15rem;line-height:1.25;overflow-wrap:anywhere}        /* (.wpl-grid: "section.blk h3" gives a heading room above it) */
+.wpl-kick{margin:0 0 -.25rem;font-weight:700;color:var(--ink-2)}
+.wpl-head .btn{margin-top:auto;white-space:normal}
 .wpl-n{font-weight:400;color:var(--ink-2);font-family:var(--sans);font-size:1rem}
-.wpl-cards{list-style:none;padding:0;margin:.6rem 0 .7rem;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,9rem),1fr));gap:.6rem}
-.wpl-card{border:var(--bw) solid var(--line);border-radius:6px;padding:.4rem .45rem .45rem;display:flex;flex-direction:column;gap:.15rem;min-width:0;overflow-wrap:anywhere}
-.wpl-card .wpl-open{display:block;text-decoration:none}
+html[data-narrow="1"] .wpl-head{grid-column:1/-1;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.4rem 1rem;margin-top:.5rem}
+html[data-narrow="1"] .wpl-head h3{flex:1 1 9rem}
+html[data-narrow="1"] .wpl-kick{display:none}
+html[data-narrow="1"] .wpl-head .btn{margin-top:0}
+/* ...but not on a tablet held upright, or a monitor with very large text: where three cards or more fit across, the tile is one of the run again */
+.wpl-grid{container-type:inline-size}
+@container (min-width:40rem){
+  html[data-narrow="1"] .wpl-head{grid-column:auto;flex-direction:column;flex-wrap:nowrap;align-items:stretch;justify-content:flex-start;gap:.45rem;margin-top:0}
+  html[data-narrow="1"] .wpl-head h3{flex:0 0 auto}
+  html[data-narrow="1"] .wpl-kick{display:block}
+  html[data-narrow="1"] .wpl-head .btn{margin-top:auto}
+}
+.wpl-cards{list-style:none;padding:0;margin:0}
+.wpl-card{position:relative;margin:0;border:var(--bw) solid var(--line);border-radius:6px;padding:.4rem .45rem .45rem;display:flex;flex-direction:column;gap:.1rem;min-width:0;overflow-wrap:anywhere}
 .wpl-card img,.wpl-card .job-nophoto{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:4px;background:var(--line)}
-.wpl-card .nm{display:block;margin-top:.3rem;font-weight:700;text-decoration:underline;text-underline-offset:3px}
-.wpl-card .wpl-st{margin:0}
-.wpl-acts{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:auto;padding-top:.25rem}
-.wpl-acts .btn{flex:1 1 5.5rem;padding-left:.4rem;padding-right:.4rem}
-.wpl-why{margin:.15rem 0 0}
-.wpl-why>summary{cursor:pointer;display:inline-block;color:var(--cyan);font-weight:700;text-decoration:underline;text-underline-offset:3px;padding:.15rem .1rem;list-style:none}
+.wpl-card .nm{font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.wpl-card .wpl-open{display:block;text-decoration:none}          /* someone who can only look: the picture and the name are one link */
+.wpl-card .wpl-open .nm{display:block;margin-top:.3rem}
+.wpl-code{font-weight:400;white-space:nowrap}
+.wpl-nml{margin:.3rem 0 0}
+/* the picture is the tick box's label; ticked shows as a tick in the box, a band of words and a heavier border (never by colour alone) */
+.wpl-tk{display:block;position:relative;cursor:pointer;border-radius:4px}
+.wpl-tk input{position:absolute;top:.35rem;left:.35rem;width:max(1.75rem,28px);height:max(1.75rem,28px);margin:0;z-index:1;accent-color:var(--ink);border-radius:3px;box-shadow:0 0 0 2px var(--ink),0 0 0 4px var(--paper)}      /* two rings, so the box shows on a dark photo and on a light one */
+.wpl-tkmark{display:none;position:absolute;left:0;right:0;bottom:0;background:var(--ink);color:var(--paper);font-weight:700;text-align:center;padding:.12rem .3rem;border-radius:0 0 4px 4px}
+.wpl-tk input:checked~.wpl-tkmark{display:block}
+.wpl-pick:has(input:checked){border-color:var(--ink);box-shadow:0 0 0 2px var(--ink)}
+.wpl-tk input:focus-visible{outline:none}                            /* the ring goes round the whole picture */
+.wpl-tk:focus-within{outline:var(--ring) solid var(--focus);outline-offset:2px}
+.wpl-tk:focus-within:not(:has(:focus-visible)){outline:none}        /* not after a press with a finger or the mouse (a browser without :has keeps the ring) */
+/* a keyboard's way from a ticked card to the bar: a button that shows only while the focus is on it */
+.wpl-skip{font:inherit;font-weight:700;color:var(--cyan-ink);background:var(--cyan);border:2px solid var(--cyan);border-radius:4px;padding:.35rem .5rem;cursor:pointer;text-align:left}
+.wpl-skip:not(:focus){position:absolute;width:1px;height:1px;padding:0;border:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.wpl-skip:focus{position:absolute;left:.45rem;right:.45rem;top:.4rem;z-index:2}
+.wpl-pick:not(:has(input:checked)) .wpl-skip{display:none}
+/* how late a plant is opens the reason */
+.wpl-why{margin:0}
+.wpl-why>summary{cursor:pointer;display:inline-block;color:var(--cyan);font-weight:700;text-decoration:underline;text-underline-offset:3px;padding:.1rem 0;list-style:none}
 .wpl-why>summary::-webkit-details-marker{display:none}
 .wpl-why>summary::before{content:"\25B8\00a0"}
 .wpl-why[open]>summary::before{content:"\25BE\00a0"}
 .wpl-why>p{margin:.2rem 0 .3rem}
-details.grp>.wpl{margin-top:.6rem}
+/* the ticked plants' buttons: a bar held at the bottom of the screen, there only while something is ticked */
+.wpl-bar{position:sticky;bottom:0;z-index:6;display:flex;flex-wrap:wrap;gap:.5rem .7rem;align-items:center;background:var(--paper);border-top:2px solid var(--ink);padding:.55rem 0 .6rem;margin:.2rem 0 .6rem;
+  box-shadow:-.4rem 0 0 var(--paper),.4rem 0 0 var(--paper)}       /* (the shadow: a ticked card's heavier border is a little wider than the bar) */
+.wpl-bar-n{font-weight:700;flex:1 1 4rem}
+html[data-narrow="1"] .wpl-bar{bottom:var(--pin-h,4rem);padding:.45rem 0 .5rem;gap:.4rem;flex-wrap:wrap-reverse}
+html[data-narrow="1"] .wpl-bar-n{order:3}                        /* a phone: when the bar needs two lines, the count goes above and the buttons stay at the bottom, together */
+html[data-narrow="1"][data-barhide="1"] .wpl-bar{bottom:0}       /* the phone's bottom bar has slipped away: this bar takes its place */
+html[data-narrow="1"] .wpl-bar .btn{padding-left:.45rem;padding-right:.45rem}        /* so the bar is one line on a phone 360 wide */
+/* a message (the one with Undo) sits clear of the bar, so the next plants' buttons are not under it */
+html:not([data-console="1"]):has(.wpl-bar:not([hidden])) #toasts{bottom:7.5rem}
+html[data-narrow="1"]:not([data-console="1"]):has(.wpl-bar:not([hidden])) #toasts{bottom:calc(var(--pin-h,4rem) + 7.5rem)}
+html[data-narrow="1"][data-barhide="1"]:not([data-console="1"]):has(.wpl-bar:not([hidden])) #toasts{bottom:7.5rem}
+html[data-console="1"]:not([data-narrow="1"]) .wpl-bar{bottom:var(--console-space,0px)}       /* the owner's console is open along the bottom: the bar sits on top of it */
+.wpl-tickhint{margin:0 0 .6rem}
+.wpl-say{position:absolute;width:1px;height:1px;margin:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap}      /* said by a screen reader, not shown */
+/* a phone: one list to go to a spot (a run of cards on a wide screen is short enough to need none) */
+.wpl-go{display:none}
+html[data-narrow="1"] .wpl-go{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem .6rem;font-weight:700;margin:0 0 .8rem}
+.wpl-go select{flex:1 1 11rem;width:auto;min-width:0;margin-top:0}
+details.grp .wpl-go,details.grp .wpl-tickhint,details.grp .wpl-grid{margin-top:.6rem}
+html[data-role=viewer] :is(.wpl-bar, .wpl-tickhint, .wpl-skip, [data-act=wtick], [data-act=wtickdo], [data-act=wtickclear]){display:none!important}
 .ask-line{display:flex;flex-wrap:wrap;gap:.3rem .9rem;align-items:center}

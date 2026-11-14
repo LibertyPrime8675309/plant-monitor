@@ -1,4 +1,5 @@
-"""Checks Today's watering lists by room and spot (1.58.0, Ethan's choice of November 13, 2026: cards, one button per spot), the
+"""Checks Today's watering lists by room and spot (1.58.0, Ethan's choices of November 13 and 14, 2026: one run of cards with a tile
+where each spot starts, pictures to tick, one bar of buttons for the ticked plants, and a picture size kept on each device), the
 order of rooms and spots that they follow (Move up and Move down on Rooms and spots), and the one-time questions about care that
 was never logged (feeding; flushes and root checks).
 Start the mock server with a fresh data folder, then: python3 dev/test/wplace_check.py [http://127.0.0.1:8080]
@@ -39,49 +40,106 @@ with sync_playwright() as p:
     pg = br.new_page(viewport={'width': 1280, 'height': 1000})
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.add_init_script("localStorage.setItem('plantdb.editor','Place Test')")
-    pg.goto(BASE + '/#/'); pg.wait_for_selector('#today-water .wpl-grp', timeout=30000)
-    hs = heads(pg)
+    pg.goto(BASE + '/#/'); pg.wait_for_selector('#today-water .wpl-head', timeout=30000)
+    DUE = '#today-water > .wpl[data-key=due]'
+    hs = heads(pg, DUE)
     check(len(hs) > 1 and hs == [o for o in order if o in hs], 'the plants to water are grouped by room and spot, in the order of Rooms and spots')
-    ok = pg.evaluate("""() => [...document.querySelectorAll('#today-water > .wpl .wpl-grp')].every(g => g.querySelectorAll('.wpl-card').length === +g.querySelector('.wpl-n').textContent.replace(/\\D/g, ''))""")
-    cards = pg.eval_on_selector_all('#today-water > .wpl .wpl-card', 'els => els.map(e => [e.dataset.code, e.closest(".wpl-grp").querySelector("h3").textContent.replace(/\\s*\\(\\d+\\)\\s*$/, "").trim()])')
-    check(ok and len(cards) == len(due) and all(spot_name[(plants[c]['area_id'], plants[c]['spot_id'])] == h for c, h in cards), 'every due plant is a card under its own spot, and each heading counts its cards')
-    c0 = pg.locator('#today-water > .wpl .wpl-card').first
-    name0 = c0.locator('.nm').inner_text()
-    check(c0.locator('a.wpl-open img').count() == 1 and c0.locator('a').count() == 1 and ('overdue' in c0.locator('.wpl-st').inner_text().lower() or 'due today' in c0.locator('.wpl-st').inner_text().lower()),
-          'a card has the picture and the name in one link, and how late the plant is')
-    check(c0.locator('button[data-kind=water]').get_attribute('aria-label') == 'Watered: ' + name0 and c0.locator('button[data-kind=check]').get_attribute('aria-label') == 'Still moist: ' + name0,
-          'the buttons on a card say which plant they are for')
-    c0.locator('details.wpl-why > summary').click()
-    check(until(pg, lambda: 'Check about every' in c0.locator('details.wpl-why p').inner_text() or 'overdue' in c0.locator('details.wpl-why p').inner_text()), 'the reason is behind "Why"')
+    ok = pg.evaluate("""s => [...document.querySelectorAll(s + ' .wpl-in')].every(g => g.querySelectorAll('.wpl-card').length === +g.querySelector('.wpl-n').textContent.replace(/\\D/g, ''))""", DUE)
+    cards = pg.eval_on_selector_all(DUE + ' .wpl-card', 'els => els.map(e => [e.dataset.code, e.closest(".wpl-in").querySelector("h3").textContent.replace(/\\s*\\(\\d+\\)\\s*$/, "").trim()])')
+    check(ok and len(cards) == len(due) and all(spot_name[(plants[c]['area_id'], plants[c]['spot_id'])] == h for c, h in cards), 'every due plant is a card after the tile of its own spot, and each tile counts its cards')
+    tops = pg.evaluate("""s => { const g = document.querySelector(s + ' .wpl-grid'), k = [...g.querySelectorAll('.wpl-head, .wpl-card')].map(e => Math.round(e.getBoundingClientRect().top)); return [new Set(k).size, k.length, g.querySelectorAll('.wpl-head').length]; }""", DUE)
+    check(tops[0] < tops[1] - tops[2], 'the cards are one run: a spot does not start a row of its own on a wide screen')
+    c0 = pg.locator(DUE + ' .wpl-card').first
+    name0 = c0.locator('.nm').inner_text(); box0 = c0.locator('input[data-act=wtick]')
+    check(c0.locator('label.wpl-tk img').count() == 1 and box0.get_attribute('aria-label') == 'Tick ' + name0 and c0.locator('a.nm').get_attribute('href').startswith('#/plant/')
+          and c0.locator('[data-act=care]').count() == 0, 'a card is a picture to tick (the tick box says which plant) and the name, which opens the plant; it has no buttons of its own')
+    late0 = c0.locator('details.wpl-why > summary')
+    check(('overdue' in late0.inner_text().lower() or 'due today' in late0.inner_text().lower()) and late0.get_attribute('aria-label').endswith('Why: ' + name0), 'it says how late the plant is')
+    late0.click()
+    check(until(pg, lambda: 'Check about every' in c0.locator('details.wpl-why p').inner_text() or 'overdue' in c0.locator('details.wpl-why p').inner_text()), 'and pressing that opens the reason')
+    late0.click()
+    # ticking, and the bar of buttons for the ticked plants
+    bar = pg.locator('#wpl-bar-due')
+    check(bar.is_hidden() and pg.locator(DUE + ' .wpl-tickhint').count() == 1, 'with nothing ticked there is no bar, and a line says how ticking works')
+    c0.locator('label.wpl-tk').click()
+    check(until(pg, lambda: bar.is_visible() and bar.locator('.wpl-bar-n').inner_text() == '1 ticked') and box0.is_checked() and c0.locator('.wpl-tkmark').is_visible(),
+          'pressing a picture ticks the plant: a tick, the word Ticked, and a bar that says "1 ticked"')
+    check('1 ticked' in pg.locator(DUE + ' .wpl-say').inner_text() and 'after this list' in pg.locator(DUE + ' .wpl-say').inner_text(), 'a screen reader is told how many are ticked and where the buttons are')
+    inview = pg.evaluate("() => { const r = document.getElementById('wpl-bar-due').getBoundingClientRect(); return r.top >= 0 && r.bottom <= innerHeight + 1; }")
+    check(inview, 'the bar is on the screen while the list is longer than the screen')
+    c1 = pg.locator(DUE + ' .wpl-card').nth(1); c1.locator('input[data-act=wtick]').focus(); pg.keyboard.press('Space')
+    check(until(pg, lambda: bar.locator('.wpl-bar-n').inner_text() == '2 ticked'), 'the space bar ticks one too')
+    pg.keyboard.press('Tab')
+    check(pg.evaluate('document.activeElement.dataset.act') == 'wtickgo' and pg.locator(DUE + ' .wpl-card').nth(1).locator('.wpl-skip').is_visible(), 'from a ticked card, the next Tab is a button that goes to the bar')
+    pg.keyboard.press('Enter')
+    check(until(pg, lambda: pg.evaluate('document.activeElement.dataset.how') == 'water'), 'and it puts the focus on Watered')
     pg.screenshot(path=os.path.join(OUT, 'wplace-today.png'))
-    # go straight to a spot
-    jump = pg.locator('#today-water .wpl-jump button')
-    check(jump.count() == len(hs), 'with three spots or more, a row of buttons names each spot')
-    jump.nth(len(hs) - 1).click()
-    check(until(pg, lambda: pg.evaluate('document.activeElement && document.activeElement.id') == f'wpl-due-{len(hs) - 1}'), 'a spot\'s button puts the focus on that spot\'s heading')
-    # one button for a whole spot
-    g = pg.locator('#today-water > .wpl .wpl-grp', has=pg.locator('button[data-act=careall]')).first
+    # the picture size: three sizes, kept on this device; the ticks stay
+    size = pg.locator('select[data-act=waterpics]')
+    across = lambda: pg.evaluate("s => getComputedStyle(document.querySelector(s + ' .wpl-grid')).gridTemplateColumns.split(' ').length", DUE)
+    n_med = across()
+    check(size.input_value() == 'medium' and size.locator('option').all_inner_texts() == ['Small', 'Medium', 'Large'] and pg.locator('label.wpl-size').inner_text().startswith('Picture size'), 'Picture size starts at Medium, with Small and Large to choose')
+    size.select_option('large')
+    check(until(pg, lambda: across() < n_med) and bar.locator('.wpl-bar-n').inner_text() == '2 ticked', 'Large puts fewer, larger cards across, and the ticks stay')
+    n_large = across(); size.select_option('small')
+    check(until(pg, lambda: across() > n_med), 'Small puts more across')
+    size.select_option('large'); pg.reload(); pg.wait_for_selector(DUE + ' .wpl-card', timeout=30000)
+    check(pg.locator('select[data-act=waterpics]').input_value() == 'large' and across() == n_large, 'the size is remembered on this device')
+    check(pg.locator('#wpl-bar-due').is_hidden(), 'ticks are for this visit: loading the page again starts with none')
+    pg.locator('select[data-act=waterpics]').select_option('medium')
+    # Watered and Still moist for the ticked plants
+    codes = [c for c, _ in cards]
+    for c in codes[:2]: pg.locator(f'{DUE} .wpl-card[data-code="{c}"] label.wpl-tk').click()
+    pg.goto(BASE + '/#/plant/' + codes[0]); pg.wait_for_selector('#care-plant', state='attached', timeout=20000); pg.go_back(); pg.wait_for_selector(DUE + ' .wpl-card', timeout=30000)
+    check(until(pg, lambda: pg.locator('#wpl-bar-due .wpl-bar-n').inner_text() == '2 ticked'), 'a look at a plant and back leaves the ticks as they were')
+    pg.locator('#wpl-bar-due [data-how=water]').click()
+    check(until(pg, lambda: pg.locator('#today-water h2').inner_text().startswith(f'Water ({len(due) - 2})') and all(pg.locator(f'{DUE} .wpl-card[data-code="{c}"]').count() == 0 for c in codes[:2]), 20000),
+          'Watered waters the two ticked plants and no others')
+    check('2 plants marked as watered' in pg.locator('.undo-toast .undo-msg').inner_text() and pg.locator('#wpl-bar-due').is_hidden(), 'the message says so, with Undo, and the bar goes')
+    check(pg.evaluate("document.activeElement.dataset.act") == 'wtick', 'the focus stays in the list')
+    pg.locator(f'{DUE} .wpl-card[data-code="{codes[2]}"] label.wpl-tk').click(); pg.locator('#wpl-bar-due [data-how=check]').click()
+    check(until(pg, lambda: pg.locator(f'{DUE} .wpl-card[data-code="{codes[2]}"]').count() == 0 and call('GET', f'/api/care?plant={codes[2]}&n=1')[0]['kind'] == 'check'), 'Still moist logs a check for the ticked plant')
+    pg.locator(f'{DUE} .wpl-card[data-code="{codes[3]}"] label.wpl-tk').click(); pg.locator('#wpl-bar-due [data-act=wtickclear]').click()
+    check(until(pg, lambda: pg.locator('#wpl-bar-due').is_hidden()) and pg.locator(DUE + ' input:checked').count() == 0 and pg.evaluate("document.activeElement.dataset.act") == 'wtick', 'Untick clears the ticks, and the focus goes back to the list')
+    left = len(due) - 3
+    # one button for a whole spot, on its tile
+    g = pg.locator(DUE + ' .wpl-in', has=pg.locator('button[data-act=careall]')).first
     gname = g.locator('h3').inner_text(); n = int(''.join(ch for ch in g.locator('.wpl-n').inner_text() if ch.isdigit()))
     btn = g.locator('button[data-act=careall]')
-    check(btn.inner_text() == f'Watered all {n} here' and btn.get_attribute('aria-label').startswith(f'Watered all {n} here: '), 'each spot with more than one plant has "Watered all N here", named for its spot')
+    check(btn.inner_text() == f'Watered all {n} here' and btn.get_attribute('aria-label').startswith(f'Watered all {n} here: '), 'the tile of a spot with more than one plant has "Watered all N here", named for its spot')
     btn.click(); pg.locator('dialog[open] button', has_text='Mark as watered').click()
-    check(until(pg, lambda: pg.locator('#today-water h2').inner_text().startswith(f'Water ({len(due) - n})'), 20000), f'pressing it waters the {n} plants of that spot and no others')
-    check(gname.rsplit('(', 1)[0].strip() not in heads(pg), 'and the spot leaves the list')
-    left = len(due) - n
+    check(until(pg, lambda: pg.locator('#today-water h2').inner_text().startswith(f'Water ({left - n})'), 20000), f'pressing it waters the {n} plants of that spot and no others')
+    check(gname.rsplit('(', 1)[0].strip() not in heads(pg, DUE), 'and the spot leaves the list')
+    left -= n
     # the old order is one press away, and is remembered
     late = pg.locator('button[data-act=waterorder][data-order=late]')
     check(late.get_attribute('aria-pressed') == 'false' and pg.locator('button[data-act=waterorder][data-order=place]').get_attribute('aria-pressed') == 'true', 'By room and spot is the order to start with')
     late.click()
-    check(until(pg, lambda: pg.locator('#today-water > ul.jobs > li.job').count() == left and pg.locator('#today-water .wpl-grp').count() == 0), 'Most overdue first is the list as it was: one row a plant, with its reason')
+    check(until(pg, lambda: pg.locator('#today-water > ul.jobs > li.job').count() == left and pg.locator('#today-water .wpl-head').count() == 0), 'Most overdue first is the list as it was: one row a plant, with its reason')
+    check(pg.locator('#today-water > ul.jobs > li.job').first.locator('button[data-act=care][data-kind=water]').count() == 1 and pg.locator('select[data-act=waterpics]').count() == 0, 'its rows keep their own buttons, and there is no picture size to choose')
     check(pg.evaluate('document.activeElement && document.activeElement.dataset.order') == 'late' and pg.locator('button[data-act=waterorder][data-order=late]').get_attribute('aria-pressed') == 'true', 'the focus stays on the button that was pressed')
     pg.reload(); pg.wait_for_selector('#today-water ul.jobs', timeout=30000)
-    check(pg.locator('#today-water .wpl-grp').count() == 0, 'the choice is remembered')
+    check(pg.locator('#today-water .wpl-head').count() == 0, 'the choice is remembered')
     pg.locator('button[data-act=waterorder][data-order=place]').click()
-    check(until(pg, lambda: pg.locator('#today-water > .wpl .wpl-card').count() == left), 'and By room and spot brings the cards back')
-    # the folded lists are grouped too
+    check(until(pg, lambda: pg.locator(DUE + ' .wpl-card').count() == left), 'and By room and spot brings the cards back')
+    # the folded lists are the same cards, with ticks and a bar of their own; a pot kept in water is topped up
     if pg.locator('#today-unlogged').count():
+        UNK = '#today-unlogged .wpl[data-key=unk]'
         pg.evaluate("document.querySelector('#today-unlogged details').open = true")
-        check(pg.locator('#today-unlogged .wpl-grp').count() > 0 and pg.locator('#today-unlogged .wpl-card details.wpl-why').count() == 0, 'No watering logged yet is grouped the same way (with no "Why": there is no reason to give)')
+        check(pg.locator(UNK + ' .wpl-head').count() > 0 and pg.locator(UNK + ' .wpl-card details.wpl-why').count() == 0, 'No watering logged yet is grouped the same way (with no reason to open: there is none to give)')
+        hy = pg.locator(UNK + ' input[data-act=wtick]:not([data-kind=water])'); soil = pg.locator(UNK + ' input[data-act=wtick][data-kind=water]')
+        if hy.count() and soil.count():
+            kind = hy.first.get_attribute('data-kind'); hc = hy.first.get_attribute('data-code'); sc = soil.first.get_attribute('data-code')
+            word = {'topup': 'Topped up', 'waterchange': 'Changed the water'}[kind]
+            pg.locator(f'{UNK} .wpl-card[data-code="{hc}"] label.wpl-tk').click()
+            ub = pg.locator('#wpl-bar-unk')
+            check(until(pg, lambda: ub.locator('[data-how=water]').inner_text() == word) and ub.locator('[data-how=check]').is_hidden(), f'a ticked pot kept in water: the bar says "{word}", and has no Still moist')
+            pg.locator(f'{UNK} .wpl-card[data-code="{sc}"] label.wpl-tk').click()
+            check(until(pg, lambda: ub.locator('[data-how=water]').inner_text() == 'Watered') and ub.locator('[data-how=check]').is_visible() and pg.locator('#wpl-bar-due').is_hidden(), 'with a plant in soil ticked too it says "Watered"; the other list\'s bar is not shown')
+            ub.locator('[data-how=water]').click()
+            check(until(pg, lambda: call('GET', f'/api/care?plant={hc}&n=1')[0]['kind'] == kind and call('GET', f'/api/care?plant={sc}&n=1')[0]['kind'] == 'water'), 'Watered logs each plant\'s own kind: the pot is topped up, the other is watered')
+            check(until(pg, lambda: pg.locator('.undo-toast .undo-msg').inner_text().startswith('1 plant marked as watered, 1 ')), 'and the message says both')
+            check(until(pg, lambda: pg.locator('#today-unlogged details').count() == 0 or pg.evaluate("document.querySelector('#today-unlogged details').open")), 'the folded list is open again afterwards')
     # the order of rooms and spots
     area = next(a for a in home['areas'] if len(a['spots']) > 1)
     first, second = area['spots'][0], area['spots'][1]
@@ -100,7 +158,7 @@ with sync_playwright() as p:
         check(until(pg, lambda: [a['id'] for a in call('GET', '/api/where')['homes'][0]['areas'] if a['side'] == 'out'][:2] == [a1[1]['id'], a1[0]['id']]), 'an area moves the same way')
     now = call('GET', '/api/where')['homes'][0]
     order2 = [f"{a['name']}: {s['name']}" for a in now['areas'] for s in a['spots']]
-    pg.goto(BASE + '/#/'); pg.wait_for_selector('#today-water .wpl-grp', timeout=30000)
+    pg.goto(BASE + '/#/'); pg.wait_for_selector('#today-water .wpl-head', timeout=30000)
     check(heads(pg) == [o for o in order2 if o in heads(pg)] and order2 != order, 'Today lists the spots in the new order')
     # the one-time questions
     q = pg.locator('#today-unfed')
@@ -125,13 +183,46 @@ with sync_playwright() as p:
         check(until(pg, lambda: pg.locator('#mx-hydro-new').count() == 0 and (call('GET', '/api/asks')['flush'] or {}).get('answer') == 'no'), 'No is saved and the question goes')
         pg.goto(BASE + '/#/mixes'); pg.wait_for_selector('#ask-flush', timeout=20000)
         check('are off' in pg.locator('#ask-flush').inner_text(), 'the Potting mixes page says where it stands')
+    # someone who can only look: the same cards with nothing to tick
+    TS = BASE.rsplit(':', 1)[0] + ':' + os.environ.get('PLANTDB_TS_PORT', '8081')
+    try:
+        owner = {'Tailscale-User-Login': 'owner@example.com', 'Tailscale-User-Name': 'Owner Person'}
+        urllib.request.urlopen(urllib.request.Request(TS + '/api/me', headers=owner)).read()
+        vc = br.new_context(viewport={'width': 1280, 'height': 1000}, extra_http_headers={'Tailscale-User-Login': 'looker@example.com', 'Tailscale-User-Name': 'Looker Person'})
+        vw = vc.new_page(); vw.goto(TS + '/#/'); vw.wait_for_selector('#today-water .wpl-card', timeout=30000)
+        check(vw.evaluate('document.documentElement.dataset.role') == 'viewer' and vw.locator('input[data-act=wtick]').count() == 0 and vw.locator('.wpl-bar').count() == 0 and vw.locator('.wpl-tickhint').count() == 0
+              and vw.locator('#today-water .wpl-card a.wpl-open img').count() > 0 and not vw.locator('#today-water [data-act=careall]').first.is_visible(),
+              'someone who can only view gets the cards with nothing to tick: the picture and the name open the plant')
+        vc.close()
+    except urllib.error.URLError:
+        print('skip  the view-only check (the mock server was started without MOCK_TS=1)')
     # a phone
     ph = br.new_page(viewport={'width': 384, 'height': 740})
     ph.add_init_script("localStorage.setItem('plantdb.editor','Place Test')")
     ph.goto(BASE + '/#/'); ph.wait_for_selector('#today-water .wpl-card', timeout=30000)
     check(not ph.evaluate('document.documentElement.scrollWidth > innerWidth + 1'), 'Today fits a phone with no sideways scrolling')
-    xs = ph.eval_on_selector_all('#today-water > .wpl .wpl-grp:first-of-type .wpl-card', 'els => els.slice(0, 2).map(e => Math.round(e.getBoundingClientRect().left))')
-    check(len(xs) < 2 or xs[0] != xs[1], 'two cards sit side by side on a phone')
+    PD = '#today-water > .wpl[data-key=due]'
+    row = lambda: ph.evaluate("""s => { const g = [...document.querySelectorAll(s + ' .wpl-in')].sort((a, b) => b.querySelectorAll('.wpl-card').length - a.querySelectorAll('.wpl-card').length)[0];
+        const c = [...g.querySelectorAll('.wpl-card')], t = Math.round(c[0].getBoundingClientRect().top); return [c.filter(e => Math.round(e.getBoundingClientRect().top) === t).length, c.length]; }""", PD)
+    r = row()
+    check(r[1] < 2 or r[0] == 2, 'two cards sit side by side on a phone at the Medium size')
+    tile = ph.evaluate("s => { const h = document.querySelector(s + ' .wpl-head').getBoundingClientRect(), g = document.querySelector(s + ' .wpl-grid').getBoundingClientRect(); return Math.round(h.width) >= Math.round(g.width) - 1; }", PD)
+    check(tile, 'and a spot\'s tile is a row of its own there')
+    go = ph.locator(PD + ' label.wpl-go select')
+    if len(heads(ph, PD)) > 2:
+        check(go.is_visible() and go.locator('option').count() == len(heads(ph, PD)) + 1, 'with three spots or more, a phone has one list to go to a spot')
+        last = len(heads(ph, PD)) - 1; go.select_option(f'wpl-due-{last}')
+        check(until(ph, lambda: ph.evaluate('document.activeElement && document.activeElement.id') == f'wpl-due-{last}') and go.input_value() == '', 'choosing a spot puts the focus on that spot\'s tile, and the list is ready for the next choice')
+    ph.locator('select[data-act=waterpics]').select_option('small')
+    check(until(ph, lambda: row()[1] < 3 or row()[0] == 3) and not ph.evaluate('document.documentElement.scrollWidth > innerWidth + 1'), 'Small is three across on a phone')
+    ph.locator('select[data-act=waterpics]').select_option('large')
+    check(until(ph, lambda: row()[0] == 1) and not ph.evaluate('document.documentElement.scrollWidth > innerWidth + 1'), 'Large is one across')
+    ph.locator('select[data-act=waterpics]').select_option('medium')
+    ph.locator(PD + ' .wpl-card label.wpl-tk').first.click()
+    fits = ph.evaluate("""() => { const b = document.getElementById('wpl-bar-due'), r = b.getBoundingClientRect(), k = [...b.querySelectorAll('button:not([hidden])')].map(e => Math.round(e.getBoundingClientRect().top));
+        const c = document.getElementById('corner'), ct = c && getComputedStyle(c).display !== 'none' && document.documentElement.dataset.barhide !== '1' ? c.getBoundingClientRect().top : innerHeight;
+        return [r.bottom <= ct + 1 && r.top >= 0, new Set(k).size === 1]; }""")
+    check(fits[0] and fits[1], 'the ticked plants\' bar sits above the phone\'s bottom bar, with its buttons on one line')
     ph.locator('#today-water').scroll_into_view_if_needed(); ph.screenshot(path=os.path.join(OUT, 'wplace-phone.png'))
     br.close()
 check(not errs, 'no script errors' + (': ' + '; '.join(errs[:3]) if errs else ''))

@@ -75,7 +75,7 @@ try:
 
         # ---- Today, offline: Watered leaves the list at once, and the care log shows the entry as waiting
         stop()
-        pg.click(f'#today-water .wpl-card[data-code="{code}"] [data-kind=water]'); pg.wait_for_timeout(8000)
+        pg.click(f'#today-water .wpl-card[data-code="{code}"] label.wpl-tk'); pg.click('#wpl-bar-due [data-how=water]'); pg.wait_for_timeout(8000)     # 1.58.0: tick the picture, then the bar's Watered
         check(pg.locator('#net').inner_text().startswith('Offline') and pg.locator(f'#today-water .wpl-card[data-code="{code}"]').count() == 0 and pg.locator('#today-water .wpl-card').count() == n0 - 1,
               'offline, "Watered" takes the plant off the Water list at once and the badge says Offline')
         note = pg.locator('.off-note')
