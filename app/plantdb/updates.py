@@ -62,6 +62,7 @@ def upd_parse(raw, name):
         if len(infos) > 400 or sum(i.file_size for i in infos) > 200 * 1024 * 1024: raise ValueError('The zip file holds too much to be an update file.')
         names = {i.filename for i in infos}
         if 'updates.json' not in names: raise ValueError('The zip file has no updates.json in it.')
+        if any(i.file_size > (4 if i.filename == 'updates.json' else 25) * 1024 * 1024 for i in infos): raise ValueError('The zip file holds a list of changes or a photo that is too large to be part of an update file.')
         for n in names - {'updates.json'}:
             if not (n.startswith('photos/') and UPD_PHOTO.match(n[7:])): raise ValueError(f'The zip file holds something that is not a photo of the update: {n[:60]}')
             photos.append(n[7:])
@@ -157,6 +158,14 @@ def upd_value(field, v):
 
 def upd_same(a, b): return str(a if a is not None else '').strip() == str(b if b is not None else '').strip()
 
+def upd_photos_ok(u, names):
+    """Can every photo of a new page be opened as a picture? (Looked at when the file is shown, so a broken one is said then and not at the last step.)"""
+    try:
+        with zipfile.ZipFile(u['path']) as z:
+            for n in names: Image.open(io.BytesIO(z.read('photos/' + n))).verify()
+        return True
+    except Exception: return False
+
 def upd_photo_of(c, pid):
     r = c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC, id LIMIT 1', (pid,)).fetchone()
     return r[0] if r else ''
@@ -177,6 +186,7 @@ def upd_review(c, u):
                 _, why = upd_value(n, v)
                 if why: d.update(state='out', note=why); break
             if bad: d.update(state='out', note='The file sets something a new page cannot be given: ' + ', '.join(bad[:4]) + '.')
+            elif d['state'] == 'ready' and d['photos'] and not upd_photos_ok(u, d['photos']): d.update(state='out', note='A photo that comes with this page cannot be read.')
             elif d['state'] == 'ready':
                 twin = c.execute("SELECT code FROM plants WHERE common_name=? AND status='active' LIMIT 1", (d['name'],)).fetchone()
                 if twin: d.update(state='conflict', note=f'A plant with this name is already in your record ({twin[0]}).')
@@ -299,7 +309,8 @@ def upd_new_plant(c, u, x, who, ts, note, written):
     if x['photos']:
         with zipfile.ZipFile(u['path']) as z:
             for j, p in enumerate(x['photos']):
-                im = ImageOps.exif_transpose(Image.open(io.BytesIO(z.read('photos/' + p['file'])))).convert('RGB')     # written again: no location or camera details stay in it
+                try: im = ImageOps.exif_transpose(Image.open(io.BytesIO(z.read('photos/' + p['file'])))).convert('RGB')     # written again: no location or camera details stay in it
+                except Exception: abort(400, f'The photo {p["file"]} in the file cannot be read, so nothing was changed.')
                 im.thumbnail((1600, 1600)); name = f'up_{uuid.uuid4().hex[:16]}.jpg'
                 im.save(os.path.join(PHOTO_DIR, name), 'JPEG', quality=84, optimize=True); written.append(name)
                 c.execute('INSERT INTO photos(plant_id,file,caption,kind,is_primary,source_name,added_by,added_at) VALUES(?,?,?,?,?,?,?,?)', (pid, name, p['caption'] or p['file'][:80], 'plant', 0 if j else 1, p['file'], who, ts))

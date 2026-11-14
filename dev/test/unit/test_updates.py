@@ -127,6 +127,7 @@ def test_a_new_page_comes_with_its_photos_and_a_failure_changes_nothing(folder, 
     (pack([], photos={'photos/../../evil.jpg': b'x'}), 'not a photo of the update'),
     (pack([], photos={'photos/run.exe': b'x'}), 'not a photo of the update'),
     (b'PK\x03\x04 not really a zip', 'damaged'),
+    (pack([], photos={'photos/huge.jpg': b'\0' * (26 * 1024 * 1024)}), 'too large to be part of an update file'),
 ])
 def test_a_file_that_is_not_an_update_file_is_refused_in_plain_words(folder, raw, words):
     with pytest.raises(ValueError) as e: UM.upd_parse(raw, 'plant-updates-x.json')
@@ -137,6 +138,16 @@ def test_a_file_that_is_not_an_update_file_is_refused_in_plain_words(folder, raw
         (folder / 'plant-updates-bad.json').write_bytes(raw)
         w = c.get('/api/updates').get_json()['waiting']
         assert len(w) == 1 and words in w[0]['bad'] and w[0]['id'] == '', 'in the folder it is named, with the reason, and cannot be opened'
+
+def test_a_photo_that_is_not_a_picture_leaves_its_page_out(folder):
+    with S.app.test_client() as c:
+        n0 = len(c.get('/api/plants').get_json())
+        fid = save(folder, pack([{'kind': 'new', 'fields': {'common_name': 'Broken photo plant'}, 'photos': [{'file': 'a.jpg', 'caption': ''}, {'file': 'b.jpg', 'caption': ''}], 'why': ''}],
+                                photos={'photos/a.jpg': jpeg(), 'photos/b.jpg': b'this is not a picture'}), 'plant-updates-20261114-0800.zip')
+        x = c.get('/api/updates/' + fid).get_json()['items'][0]
+        assert x['state'] == 'out' and 'cannot be read' in x['note']
+        assert c.get(f'/api/updates/{fid}/photo/b.jpg').status_code == 400
+        assert c.post(f'/api/updates/{fid}/apply', json={'accept': [0]}, headers=OWN).get_json()['before']['made_n'] == 0 and len(c.get('/api/plants').get_json()) == n0
 
 def test_a_file_chosen_on_the_page_is_kept_until_it_is_used_and_can_be_set_aside(folder):
     with S.app.test_client() as c:
