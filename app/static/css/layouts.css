@@ -1,0 +1,162 @@
+/* Layouts (js/layouts.js, plantdb/layouts.py): prototype, proto/layouts. One file per feature (1.46.0).
+   Every mark on a drawing is a pattern and a sign as well as a colour, and is said in a sentence beside it: a thing that does
+   not fit has close red bars across it and a cross, one to look at has wide amber bars the other way and an exclamation mark,
+   the chosen thing has a ring round it, an area to keep clear is a dashed outline with thin bars. */
+.ly-status p{margin:0;max-width:none}
+.ly-status .ly-stale{margin-top:.5rem;display:flex;flex-wrap:wrap;gap:.4rem .8rem;align-items:center}
+.ly-tools{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1rem;margin:.2rem 0 .9rem}
+.ly-tools fieldset{border:0;padding:0;margin:0;min-width:0}
+.ly-tools .opts span{min-width:0;min-height:2.75rem}
+.ly-tools .f{margin:0;display:flex;flex-wrap:wrap;align-items:center;gap:.2rem .5rem;font-weight:400;min-width:0;max-width:100%}
+.ly-tools .f select{width:auto;max-width:100%;margin-top:0}
+.ly-chk{display:flex;gap:.55rem;align-items:center;min-height:2.75rem;font-weight:400}
+.ly-chk input{width:1.5rem;height:1.5rem;flex:none;margin:0}
+.ly-zoom{display:inline-flex;gap:.4rem}
+.ly-more{min-width:0}
+.ly-more[open]{flex:1 1 100%}
+.ly-more>summary,.ly-fold>summary{list-style:none;cursor:pointer;width:max-content;max-width:100%}
+.ly-more>summary::-webkit-details-marker,.ly-fold>summary::-webkit-details-marker{display:none}
+.ly-more>summary::before,.ly-fold>summary::before{content:"▸";margin-right:.45rem}
+.ly-more[open]>summary::before,.ly-fold[open]>summary::before{content:"▾"}
+.ly-fold[open]>summary{margin-bottom:.6rem}
+.ly-key{margin-top:.5rem}
+.ly-key ul{margin:0;padding-left:1.2rem}
+.ly-key li{margin:0 0 .35rem}
+#ly-p-light:empty{display:none}
+.ly-more-now{font-weight:400}
+.ly-more-in{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem 1.1rem;margin:.6rem 0 0;padding:.6rem .8rem;border:var(--bw) solid var(--line);background:var(--sheet)}
+.ly-crumb{justify-content:flex-start}
+
+.ly-main{display:grid;grid-template-columns:minmax(0,1fr);gap:.6rem 1.8rem;align-items:start}
+.ly-main.ly-two{grid-template-columns:minmax(0,1fr) clamp(19rem,30%,27rem)}       /* set by the page when it is at least 62rem wide (layouts.js, lyMeasure) */
+/* a tall narrow shelf on a page with no room for a third column: its front view down the left, the top view and the chosen thing's boxes beside it */
+.ly-main.ly-tall{grid-template-columns:fit-content(calc(100% - 20rem)) minmax(0,1fr);grid-template-rows:auto 1fr}
+.ly-main.ly-tall>.ly-draw{display:contents}
+.ly-main.ly-tall .ly-fig[data-view=front]{grid-column:1;grid-row:1 / span 2}
+.ly-main.ly-tall .ly-fig[data-view=top]{grid-column:2;grid-row:1}
+.ly-main.ly-tall>.ly-side{grid-column:2;grid-row:2}
+.ly-side .blk{margin-bottom:1.4rem}
+.ly-draw{display:flex;flex-wrap:wrap;gap:.9rem 1.5rem;align-items:flex-start;min-width:0}
+.ly-draw.ly-stack{flex-direction:column}
+.ly-draw.ly-pair{flex-wrap:nowrap;gap:.9rem 2rem}
+.ly-pair>.ly-fig{flex:0 1 auto;position:sticky;top:calc(var(--top-h) + .6rem)}      /* the shorter view stays in sight while the taller one scrolls */
+.ly-pair>.ly-fig figcaption,.ly-tall .ly-fig[data-view=front] figcaption{width:0;min-width:100%}      /* its words wrap to the drawing's width, and never push the other view down */
+.ly-fig{margin:0;min-width:0;max-width:100%}
+.ly-fig figcaption{margin:0 0 .25rem}
+.ly-frame{display:inline-block;max-width:100%;vertical-align:top}
+.ly-edge{margin:0;text-align:center;font-size:.9rem;line-height:1.35;color:var(--ink-2);max-width:none}
+.ly-edge-row{display:flex;justify-content:space-between;gap:.6rem}
+.ly-scroll{max-width:100%;overflow:auto}
+.ly-scroll.is-wide{max-height:85vh}
+.ly-scroll:focus-visible{outline:var(--ring) solid var(--focus);outline-offset:2px}
+
+/* the drawing itself */
+.ly-svg{display:block;user-select:none;-webkit-user-select:none}
+.ly-space{fill:var(--sheet)}
+.ly-edge-line{fill:none;stroke:var(--ink)}
+.ly-floor{stroke:var(--ink)}
+.ly-gl{stroke:var(--line)}
+.ly-gL{stroke:var(--ink-2);opacity:.55}
+.ly-gridfill{pointer-events:none}
+.ly-it{cursor:pointer;outline:none}
+.ly-it.can-move{cursor:grab}
+.ly-it.can-move.is-sel{touch-action:none}            /* a chosen thing drags under a finger; one not chosen yet lets the page scroll */
+.ly-hit{fill:transparent}
+.ly-shape{fill:var(--cyan-soft);stroke:var(--ink)}
+.ly-k-plant>.ly-shape{fill:var(--moss-soft);stroke:var(--moss)}
+.ly-k-light>.ly-shape{fill:var(--ochre-soft);stroke:var(--ochre)}
+.ly-k-shelf>.ly-shape{fill:var(--line-2);stroke:var(--ink-2)}
+.ly-k-zone>.ly-shape{fill:none;stroke:var(--ink-2)}
+.ly-through .ly-k-shelf>.ly-shape{fill-opacity:.22}
+.ly-through .ly-lab.ly-k-shelf>.ly-name{display:none}            /* a shelf unit seen from above with every level showing: its boards are see-through */
+.ly-svg[data-view=top] .ly-k-light>.ly-shape{fill-opacity:.45}      /* a light seen from above is over the plants: they show through it */
+.ly-zfill,.ly-hatch,.ly-photo,.ly-rim,.ly-sun,.ly-lab{pointer-events:none}
+.ly-zz{fill:var(--ink-2);opacity:.4}
+.ly-rim{fill:none;stroke:var(--moss)}
+.ly-sun circle{fill:var(--ochre)}
+.ly-sun .ly-rays{fill:none;stroke:var(--ochre)}
+.ly-hatch{display:none}
+.ly-hh{fill:var(--madder);opacity:.8}
+.ly-hs{fill:var(--ochre);opacity:.8}
+.ly-it.is-hard>.ly-hatch-h,.ly-it.is-soft>.ly-hatch-s{display:inline}
+.ly-it.is-hard>.ly-shape,.ly-it.is-hard>.ly-rim{stroke:var(--madder)}
+.ly-it.is-soft>.ly-shape,.ly-it.is-soft>.ly-rim{stroke:var(--ochre)}
+.ly-badge circle{fill:var(--sheet);stroke:var(--ink)}
+.ly-badge text{fill:var(--ink);font-family:var(--sans);font-weight:700}
+.ly-flag{display:none}
+.ly-lab.is-hard>.ly-flag,.ly-lab.is-soft>.ly-flag{display:inline}
+.ly-flag circle{fill:var(--madder);stroke:var(--sheet)}
+.ly-lab.is-soft>.ly-flag circle{fill:var(--ochre)}
+.ly-flag text{display:none;fill:var(--sheet);font-family:var(--sans);font-weight:700}
+.ly-lab.is-hard>.ly-flag .ly-flag-h,.ly-lab.is-soft>.ly-flag .ly-flag-s{display:inline}
+.ly-name{fill:var(--ink);stroke:var(--sheet);paint-order:stroke;stroke-linejoin:round;font-family:var(--sans);font-weight:700}
+.ly-it.is-dim{opacity:.2;pointer-events:none}
+.ly-lab.is-dim{display:none}
+.ly-it:focus-visible>.ly-shape,.ly-it:focus-visible>.ly-rim{stroke:var(--focus);stroke-width:5px;vector-effect:non-scaling-stroke;stroke-dasharray:none}
+.ly-selmark{pointer-events:none}
+.ly-selring{fill:none;stroke:var(--focus)}
+.ly-handle{fill:var(--sheet);stroke:var(--focus);pointer-events:all;cursor:nwse-resize;touch-action:none}
+.ly-handle-front{cursor:nesw-resize}
+.ly-still .ly-it{cursor:inherit}
+
+/* the chosen thing, what to look at, and the lists */
+.ly-who{display:flex;flex-wrap:wrap;gap:.5rem .8rem;align-items:flex-start;margin:0 0 .6rem}      /* the words beside the picture where there is room for them, under it where there is not */
+.ly-who img{width:5.5rem;height:5.5rem;object-fit:cover;flex:none;background:var(--line-2)}
+.ly-who p{margin:0;flex:1 1 9rem;min-width:0;overflow-wrap:break-word}
+.ly-num{display:inline-grid;place-items:center;min-width:1.9rem;height:1.9rem;padding:0 .3rem;border:2px solid var(--ink);border-radius:1rem;font-weight:700;line-height:1;background:var(--sheet);color:var(--ink);flex:none}
+.ly-fields{gap:0 1rem}
+.ly-fields .f{margin-bottom:.8rem}
+.ly-fields.three{grid-template-columns:repeat(auto-fit,minmax(min(100%,7.5rem),1fr))}
+.ly-acts{margin:.9rem 0 0}
+.ly-flist{list-style:none;padding:0;margin:0 0 .8rem}
+.ly-flist:empty{display:none}
+.ly-f{display:flex;flex-wrap:wrap;gap:.4rem .8rem;align-items:flex-start;justify-content:space-between;padding:.5rem .7rem;margin:0 0 .4rem;border-left:.45rem solid var(--ochre);background:var(--ochre-soft)}
+.ly-f-hard{border-left-color:var(--madder);background:var(--madder-soft)}
+.ly-f>span{flex:1 1 11rem;min-width:0;overflow-wrap:anywhere}
+.ly-f .btn{flex:none}
+.ly-tag{display:inline-block;max-width:100%;border:2px solid var(--ochre);padding:0 .45rem;font-weight:700;font-size:1rem;line-height:1.5}
+.ly-tag-hard{border-color:var(--madder);border-style:double;border-width:4px}
+.ly-tag-ok{border-color:var(--moss)}
+.ly-list{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,24rem),1fr));gap:0 1.6rem}
+.ly-row{display:flex;flex-wrap:wrap;gap:.5rem .7rem;align-items:flex-start;padding:.6rem .4rem;border-bottom:1px solid var(--line)}
+.ly-row-main{flex:1 1 12rem;display:flex;flex-wrap:wrap;gap:.4rem .8rem;align-items:flex-start;justify-content:space-between;min-width:0}      /* the words beside the picture and the button beside the words where there is room, under them where there is not */
+.ly-row-main>.btn{flex:none}
+.ly-row.is-sel{outline:3px solid var(--focus);outline-offset:-3px}
+.ly-row img,.ly-nophoto{width:4.5rem;height:4.5rem;object-fit:cover;background:var(--line-2);display:block;flex:none}
+.ly-np-light{background:var(--ochre-soft);border:2px dashed var(--ochre)}
+.ly-np-shelf{border:2px solid var(--ink-2)}
+.ly-np-zone{background:none;border:2px dashed var(--ink-2)}
+.ly-row-txt{flex:1 1 11rem;min-width:0;overflow-wrap:break-word}
+.ly-row-txt .code,.ly-who .code,.ly-pick .code{white-space:nowrap}
+.ly-row .ly-tag{margin:.1rem 0}
+
+/* the list of layouts */
+.ly-cards{list-style:none;padding:0;margin:1rem 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,17rem),1fr));gap:1.2rem 1.4rem}
+.ly-card{border:var(--bw) solid var(--ink);background:var(--sheet);padding:.8rem}
+.ly-card p{margin:.4rem 0 0;max-width:none}
+.ly-card-link{display:block;color:inherit;text-decoration:none}
+.ly-card-pic{display:grid;place-items:center;min-height:11rem;background:var(--paper);margin-bottom:.5rem;overflow:hidden}
+.ly-card-pic svg{max-width:100%;height:auto}
+.ly-card-name{display:block;font-size:1.2rem;text-decoration:underline;color:var(--cyan)}
+
+/* the windows */
+.ly-form>.f,.ly-form [data-lyk]>.f,.ly-form [data-lyown]>.f{max-width:36rem}
+.ly-form .field-grid{max-width:44rem}
+.ly-form fieldset.ly-kind{border:0;margin:0 0 1rem;padding:0}
+.ly-form fieldset.ly-kind legend{font:inherit;font-weight:700;padding:0;margin-bottom:.3rem}
+.ly-picks{list-style:none;padding:0;margin:0 0 1rem;max-height:44vh;overflow:auto;border:2px solid var(--line);display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,19rem),1fr))}
+.ly-pick label{display:flex;gap:.7rem;align-items:center;padding:.45rem .6rem;font-weight:400;min-height:3rem}
+.ly-pick input{width:1.5rem;height:1.5rem;flex:none;margin:0}
+.ly-pick img,.ly-pick .ly-nophoto{width:3.5rem;height:3.5rem}
+.ly-pick label>span:last-child{min-width:0;overflow-wrap:anywhere}
+.ly-pick:has(input:focus-visible){outline:var(--ring) solid var(--focus);outline-offset:-3px}
+.ly-wh{margin-left:.4rem}
+#ly-wherelink{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap}
+
+html[data-role=viewer] :is([data-act=lynew], [data-act=lyadd], [data-act=lyundo], [data-act=lyspace], [data-act=lydel], [data-act=lyturn], [data-act=lycopy], [data-act=lyrm], [data-act=lytray], .ly-handle){display:none!important}
+@media (forced-colors:active){
+  .ly-svg{forced-color-adjust:none}
+  .ly-f,.ly-tag,.ly-card,.ly-num{forced-color-adjust:none;color:CanvasText;background:Canvas;border-color:CanvasText}
+  .ly-row.is-sel{outline-color:Highlight}
+}
+@media print{.ly-handle,.ly-selring{display:none}}
