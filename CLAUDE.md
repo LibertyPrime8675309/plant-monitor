@@ -5,12 +5,17 @@ This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that r
 ## Who it is for
 - Accessibility is a requirement, to the standard a person with low vision needs:
   - Large, scalable text (everything scales with the Display setting).
-  - High contrast and light/dark themes.
+  - High contrast and light/dark themes (and Cream paper, Soft dark, colour-vision colours from 1.58.0).
   - Full keyboard use with visible focus.
   - Real labels on every control.
   - No information carried by colour alone.
   - Nothing that only works on hover.
   - Pages must work at phone width with no sideways scrolling.
+- Colour vision and reading (1.58.0) are requirements too:
+  - Every theme (Light, Cream paper, Dark, Soft dark) and colour-vision setting keeps text at 7 to 1. A new colour token gets a value in each, and `dev/test/unit/test_colours.py` must pass. Status colours use `--moss` (good), `--ochre` (fair), `--madder` / `--critical` (poor), never a colour of their own, so the colour-vision setting reaches them.
+  - Readable with dyslexia: no justified text, no capitals made by the stylesheet (`text-transform`), italics only for Latin names (`.latin`, `<i>`). Use `<strong>`, not `<em>`, for emphasis. `test_colours.py` checks the stylesheets.
+  - Everything must still work with the Reading settings at their strongest (OpenDyslexic, one plain font, Widest spacing, Largest text): no sideways scrolling, no text cut off. `reading_check.py` looks at every page that way.
+  - Short sentences and short paragraphs; one idea per sentence; a list in place of a long sentence of items.
 - Write labels, buttons and help text in plain words, sentence case, active voice. Say what a button does ("Save changes", "Moved indoors").
 
 ## How Ethan works
