@@ -118,9 +118,21 @@ try:
         # ---- the single Add a plant form: photos from the phone, names from the first photo, no forced camera
         pg.goto(B + '/#/new'); pg.wait_for_timeout(2500)
         check(pg.locator('input[name=__photos]').count() == 1 and pg.locator('input[type=file][capture]').count() == 0 and pg.locator('#newfill-btn').is_disabled(), 'the form has a Photos field; nothing forces the camera open, so the phone offers its photos too')
-        # The Save bar is held at the bottom of the screen once the form's first lines have passed; before that it is in its place in the form,
-        # like the rest of the page. 1.58.0: the page starts higher, so this goes down into the form (the bottom bar slips away), a little way
-        # back up (it returns), and compares the two where both are shown. It used to pass as well with the bottom bar away.
+        # 1.58.0: the Save bar is held above the bottom bar from the top of the page (it used to sit on the form's first line until that had
+        # passed, with the Add plant button half under the bottom bar), and all the way down a slow scroll, which leaves the bottom bar in place.
+        def save_clear(shown=True):
+            m = pg.evaluate("""() => { const cb = document.getElementById('corner').getBoundingClientRect(), sb = document.querySelector('form[data-form=new] button[type=submit]').getBoundingClientRect();
+                return { shown: Math.abs(cb.bottom - innerHeight) < 1, top: sb.top, bottom: sb.bottom, corner: cb.top, h: innerHeight }; }""")
+            if not m['shown'] and not shown: return m['top'] > 0 and m['bottom'] <= m['h'] + 1        # the bottom bar has slipped away: on the screen is enough
+            return m['shown'] and m['top'] > 0 and m['bottom'] <= m['corner'] + 1
+        check(until(pg, save_clear), 'on Add a plant the Add plant button is above the bottom bar as soon as the page opens')
+        slow = []
+        for y in range(10, 260, 10):
+            pg.evaluate('y => window.scrollTo(0, y)', y); slow.append(until(pg, lambda: save_clear(False), 1500))
+        check(all(slow), 'and it stays clear of the bottom bar while the page is scrolled slowly')
+        # Then down into the form (the bottom bar slips away), a little way back up (it returns), and the two are compared where both are shown.
+        # (Back to the top first: the slow scroll may have sent the bottom bar away already, and the wait below must see it go at 900.)
+        pg.evaluate('window.scrollTo(0, 0)'); until(pg, lambda: not pg.evaluate("document.documentElement.dataset.barhide || ''"))
         pg.evaluate('window.scrollTo(0, 900)'); until(pg, lambda: pg.evaluate('document.documentElement.dataset.barhide') == '1')
         pg.evaluate('window.scrollTo(0, 860)')
         def save_above():
