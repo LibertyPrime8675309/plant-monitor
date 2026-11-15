@@ -463,3 +463,5 @@ Each page below is a file in the `manual` folder. When the app says "see README"
 - How often you water (prototype)
 ### Missing details (prototype): `manual/missing-details.md`
 - Missing details (prototype)
+### Your own reminders (prototype): `manual/reminders.md`
+- Your own reminders (prototype)

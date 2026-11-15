@@ -765,6 +765,7 @@ def export_json():
             'weather_places': [loc_dict(r) for r in c.execute('SELECT * FROM locations ORDER BY id')],
             'mushroom_finds': [dict(r) for r in c.execute('SELECT * FROM fungi_finds ORDER BY id')],          # 5d (1.51.1)
             'mushroom_photos': [dict(r) for r in c.execute('SELECT * FROM fungi_photos ORDER BY id')]}
+    for name, fn in sorted(EXPORT_EXTRA.items()): data[name] = fn(c)          # 1.58.0: lists a feature module adds
     return Response(json.dumps(data, indent=1), mimetype='application/json', headers={'Content-Disposition': 'attachment; filename=plants-export.json'})
 
 def _csv_safe(v):

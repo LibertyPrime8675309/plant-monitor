@@ -76,6 +76,12 @@ def world():
         d.execute("INSERT INTO readings(ts, source, device, temp_f) VALUES(?, 'sensor', 'limit-probe', 70)", (S.now(),)); d.commit()
         # Missing details: the owner put the plant at the main home off one list
         r = c.post('/api/missing/later', json={'plant': F, 'key': 'height_in'}, headers=OWN); assert r.status_code == 200, r.get_data(as_text=True)
+        # a reminder of the owner's for the plant at the main home, one of them already done
+        tomorrow = (S.local_today(d) + S.timedelta(days=1)).isoformat()
+        r = c.post('/api/reminders', json={'text': 'Look for roots', 'due_on': tomorrow, 'plant': F}, headers=OWN); assert r.status_code == 200, r.get_data(as_text=True)
+        W['remind'] = r.get_json()['id']
+        r = c.post('/api/reminders', json={'text': 'Spray again', 'due_on': tomorrow, 'plant': F}, headers=OWN); W['remind_done'] = r.get_json()['id']
+        assert c.post(f"/api/reminders/{W['remind_done']}/done", headers=OWN).status_code == 200
         W['version'] = c.get(f'/api/plants/{F}').get_json()['version']
         W['counts'] = counts(d)
         d.close()
@@ -160,6 +166,15 @@ def test_a_limited_editor_cannot_change_a_plant_at_another_home_by_any_route(wor
     refused(c, 'missing_later_api', 'POST', '/api/missing/later', json={'plant': F, 'key': 'pot_size'})
     refused(c, 'missing_later_api', 'DELETE', '/api/missing/later', json={'key': 'height_in'})
     assert f'{F}:height_in' in S.missing_later(conn()) and f'{F}:pot_size' not in S.missing_later(conn()), 'nothing about the lists changed'
+    # --- your own reminders: a plant's reminder follows the plant
+    R = W['remind']
+    refused(c, 'reminders_api', 'POST', '/api/reminders', json={'text': 'Mine now', 'due_on': '2099-01-01', 'plant': F})
+    refused(c, 'reminder_one', 'PUT', f'/api/reminders/{R}', json={'text': 'Changed'})
+    refused(c, 'reminder_one', 'DELETE', f'/api/reminders/{R}')
+    refused(c, 'reminder_done', 'POST', f'/api/reminders/{R}/done')
+    refused(c, 'reminder_done', 'DELETE', f"/api/reminders/{W['remind_done']}/done")
+    mine = {x['id']: x for x in c.get(f'/api/reminders?plant={F}', headers=OWN).get_json()['open']}
+    assert mine[R]['text'] == 'Look for roots' and len(mine) == 1, 'nothing about the reminders changed'
     # --- and nothing about the plant changed
     d = conn()
     assert c.get(f'/api/plants/{F}').get_json()['version'] == W['version']

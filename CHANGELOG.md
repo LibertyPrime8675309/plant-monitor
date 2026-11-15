@@ -40,6 +40,7 @@
 - **The README is short again, and there is a manual.** The README had grown to about 200,000 characters. It now holds only what you need to run the app: starting, stopping, updating, versions, where your data is and backups. How to use each part moved, word for word, into eight files in a new **manual** folder beside it (display, your plants, care, weather, Identify and the Library, grow lights, away from home and offline, working with Claude). The README ends with a list of every section and the file it is in, so when the app says "see README" and names a section you can find it there.
 - **For the computer:** `docs/ARCHITECTURE.md` is a short map now (16,000 characters, from 133,000); the notes for each area are in `docs/architecture/`.
 - **Date acquired.** Every plant page can now hold the day the plant came to you. Set it on **Edit this page** (under Names and place) or when you add a plant; the page then shows it with how long you have had the plant, such as "May 17, 2024 (2 years and 6 months ago)". If you only know the month, choose its first day. Nothing changes for a plant until you fill it in.
+- **Your own reminders (prototype).** **Today → Reminders:** notes to yourself with a date, for one plant or for none ("Check the cutting for roots", "Buy potting mix"). Add one there, on Today, or on a plant's page. A reminder shows near the top of **Today** from its day until you press **Done**, and says "Late:" once its day has passed. **Tomorrow** and **A week later** move it on; **Change** edits or removes it. It can **repeat** (every week up to every year), counted from the day you press Done. Your phone gets one message at 8 in the morning when reminders are due. **Done** works with no connection. Reminders are in the calendar file and the download.
 
 ## 1.57.0 (2026-11-11)
 - **Notes on request.** Display has a new choice, **Notes under buttons and boxes**: **Always show them** (as now) or **Show them when I ask**. With the second, each small note under a button, box or picture becomes a round **Note** button: press it (or Tab to it and press Enter) to read it, and again to fold it. Pointing at a field with the mouse shows its note too, and on a phone a long press on a box opens its note. Printed pages always show every note.
@@ -155,6 +156,7 @@ Step 6a of the plan: every fact about a species now says where it came from.
 - **A plant's page fills in from the species** any care field left empty on the plant, and says so in a line with a link to the species' facts. The plant's own value always wins; the edit form shows only what is really on the plant.
 - **Download every fact (CSV)** from the section, or as JSON at `/api/facts/export`.
 - Adding and correcting facts from the page, with review by another editor, comes next (step 6b).
+
 ## 1.52.1 (2026-11-09)
 - Search finds the **Plant-sitter sheet** and the **Large-print care cards** pages (they are pages of their own, so they were missing from the list).
 

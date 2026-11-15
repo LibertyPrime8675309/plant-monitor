@@ -80,3 +80,4 @@ Read the file for the part you are changing. Each holds the notes as they were w
 | `own-pages.md` | **Features with files of their own: voice search, frost dates, repotting, the sitter sheet, care cards.** Search by voice (prototype proto/voice-search); Frost dates (1.45.0, prototype #65); Repotting (1.50.0, prototype #70 rebuilt on the registry); Plant-sitter sheet (1.43.0, prototype #41); Care cards (1.19.0, 1.20.0) |
 | `releases-and-tests.md` | **Releases, and how old records and built images are tested.** The release rhythm (1.55.0, PLAN.md step 7); Old records and built images are tested (1.58.0; November 12 review, item 6) |
 | `water-rhythm.md` | **How often you water (prototype).** How often you water (prototype proto/water-rhythm) |
+| `reminders.md` | **Your own reminders (prototype).**  |
