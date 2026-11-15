@@ -28,7 +28,8 @@ sub = lambda who, dev, ep: call('POST', '/api/push/subscribe', {'endpoint': 'htt
 
 # devices and choices
 k = call('GET', '/api/push', h=E, base=TS)[1]
-check(len(k['key']) > 60 and len(k['kinds']) == 6 and all(x['on'] for x in k['kinds']), 'everyone starts with the six kinds on, and the page gets the key it needs')
+SIX = {'cold', 'shopping', 'due', 'requests', 'sensors', 'cover'}       # the built-in kinds; a feature may add its own after them (PUSH_EXTRA_KINDS: reminders)
+check(len(k['key']) > 60 and SIX <= {x['key'] for x in k['kinds']} and all(x['on'] for x in k['kinds']), 'everyone starts with the six kinds (and any a feature adds) on, and the page gets the key it needs')
 check(sub(E, 'Windows PC, Chrome', 'ethan-pc')[0] == 200 and sub(E, 'Android phone, Chrome', 'ethan-phone')[0] == 200, 'a device can be added for Ethan')
 check(sub(V, 'iPhone, Safari', 'gf-phone')[0] == 200, 'and one for someone who can only view (their own devices)')
 check(call('POST', '/api/push/subscribe', {'endpoint': 'ftp://x', 'keys': {'p256dh': 'a', 'auth': 'b'}}, E, TS)[0] == 400, 'a bad address is refused')
@@ -107,7 +108,7 @@ with sync_playwright() as p:
     pg.goto(TS + '/#/settings'); pg.wait_for_timeout(2500)
     pg.locator('[data-act=notify]').click(); pg.wait_for_timeout(1500)
     t = pg.locator('#dlg').inner_text()
-    check('Cold nights' in t and 'Your devices (2)' in t and pg.locator('#dlg [data-f=pushkind]').count() == 6, 'the Notifications window lists the choices and your devices')
+    check('Cold nights' in t and 'Your devices (2)' in t and pg.locator('#dlg [data-f=pushkind]').count() == len(k['kinds']), 'the Notifications window lists the choices and your devices')
     pg.screenshot(path=os.path.join(OUT, 'reach-1-notify.png'))
     pg.keyboard.press('Escape'); pg.wait_for_timeout(300)
     pg.keyboard.press('/'); pg.wait_for_timeout(500)
