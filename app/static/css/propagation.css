@@ -1,0 +1,38 @@
+/* Propagation (#/propagating, js/propagation.js, plantdb/propagation.py): cuttings, layers, grafts, divisions, offsets and seeds. */
+.prp-need{font-weight:700;margin:.2rem 0}
+.prp-job .job-acts{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+.prp-form .prp-steps{border:2px solid var(--line);border-radius:8px;padding:.4rem .9rem .6rem;margin:.8rem 0;background:var(--sheet)}
+.prp-form .prp-steps legend{font-weight:700;padding:0 .4rem}
+.prp-step-row{display:grid;grid-template-columns:minmax(12rem,2fr) repeat(3,minmax(5.5rem,1fr));gap:0 .8rem;align-items:end}
+.prp-step-row .chk{display:flex;gap:.5rem;align-items:center;min-height:2.75rem;padding-bottom:1rem}
+.prp-stages{padding-left:1.4em} .prp-stage{margin:.5rem 0;max-width:75ch}
+.prp-stage .btn{margin:.15rem .3rem .15rem 0}
+.prp-run{font-weight:700}
+.prp-count,.prp-note,.prp-stageadd{display:flex;flex-wrap:wrap;gap:.2rem 1rem;align-items:flex-end;margin:.5rem 0}
+.prp-count .f{flex:0 1 11rem} .prp-note .f{flex:1 1 20rem}
+.prp-stageadd{display:block}
+.prp-events{padding-left:1.2em} .prp-events li{margin:.4rem 0;max-width:75ch}
+.prp-tbl th,.prp-tbl td{vertical-align:top;text-align:left}
+/* the family tree: nested lists with a line down the left of each branch; the words carry the meaning, the lines only help the eye */
+.prp-tree,.prp-tree ul{list-style:none;margin:0;padding-left:1.1rem}
+.prp-tree{padding-left:0}
+.prp-tree li{position:relative;margin:.3rem 0;padding:.15rem 0 .15rem .9rem;border-left:2px solid var(--line)}
+.prp-tree li::before{content:'';position:absolute;left:0;top:1.05rem;width:.6rem;border-top:2px solid var(--line)}
+.prp-tree .prp-via{font-weight:700}
+.prp-tree .prp-plant>.nm{font-weight:700}
+@media (max-width:40rem){.prp-step-row{grid-template-columns:repeat(auto-fit,minmax(min(6.5rem,100%),1fr))}.prp-step-row .chk{grid-column:1/-1;padding-bottom:0}}
+.prp-form .prp-steps{min-width:0} .prp-step-row .f{min-width:0}
+/* photos of an attempt, and the seed test */
+.prp-photos{display:flex;flex-wrap:wrap;gap:.8rem;align-items:flex-start;margin:.3rem 0 .8rem}
+.prp-photos figure{margin:0;display:flex;flex-direction:column;gap:.3rem;align-items:flex-start;flex:0 1 18rem;min-width:0;max-width:100%}
+.prp-photos img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+.prp-photos figcaption{overflow-wrap:anywhere}
+.prp-photoadd{display:flex;flex-wrap:wrap;gap:.2rem 1rem;align-items:flex-end}
+.prp-photoadd .f{flex:1 1 16rem;min-width:0} .prp-photoadd input[type=file]{display:block;max-width:100%}
+.prp-test fieldset{border:2px solid var(--line);border-radius:8px;padding:.3rem .9rem .2rem;margin:.6rem 0;max-width:60rem}
+.prp-test legend{font-weight:700;padding:0 .4rem}
+.prp-test-row{display:flex;flex-wrap:wrap;gap:0 1rem} .prp-test-row .f{flex:1 1 11rem;min-width:0}
+html[data-role=viewer] :is([data-act^=prp], form[data-form^=prp], .prp-photoadd, .prp-test, .prp-count, .prp-note, .prp-stageadd, #prp-edit, #prp-record, #prp-pot){display:none!important}
+.prp-job .job-txt>div.muted{white-space:normal}
+
+.prp-lib{max-width:60rem}.prp-lib h3{margin:.1rem 0 .4rem}.prp-lib .prp-src{overflow-wrap:anywhere}

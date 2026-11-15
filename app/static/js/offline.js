@@ -62,6 +62,7 @@ function offWords(op) {                       // what a waiting change is, in wo
   if (u === '/api/fungi') return `New mushroom find ${op.temp}${b.fields && b.fields.name ? ': ' + b.fields.name : ''}`;
   if (/^\/api\/fungi\/photos\//.test(u)) return 'A mushroom photo changed';
   if (/^\/api\/fungi\//.test(u)) return `${code}: edited ${Object.keys(b.fields || {}).join(', ') || 'details'}`;
+  if (/^\/api\/reminders\/\d+\/done$/.test(u)) return 'A reminder marked done' + (b.done_on ? ` (${b.done_on})` : '');      // proto/reminders
   if (u === '/api/library/notes') return `Notes and tags for ${b.name}`;
   if (u === '/api/report') { const t = ((op.form || []).find(p => p.k === 'notes') || {}).v || ''; return `A problem report${t ? ': ' + t.slice(0, 60) + (t.length > 60 ? '…' : '') : ''}`; }
   if (u === '/api/wishlist') return op.method === 'DELETE' ? `${b.name} taken off the wishlist` : `${b.name} on the wishlist`;
@@ -716,7 +717,7 @@ function icsPreview(D) {
   if (!what.length) return html`<p class="notice bad">Choose feeding days, cold nights or both.</p>`;
   const rem = [o.feed && o.feed_remind ? `at ${icsTime(o.feed_at)} on feeding days` : '', o.cold && o.cold_remind ? `at ${icsTime(o.cold_at)} the day before a cold night` : ''].filter(Boolean);
   return html`<p><strong>Your calendar will have ${what.join(' and ')}</strong>, for ${D.place}.${rem.length ? ' Reminders ' + rem.join(' and ') + '.' : ' No reminders.'}</p>
-    ${list.length ? html`<ul class="ics-list">${list.map(e => html`<li><span class="ics-k ${e.kind === 'cold' ? 'k-cold' : 'k-feed'}">${e.kind === 'cold' ? '❄ Cold night' : '● Feeding'}</span>
+    ${list.length ? html`<ul class="ics-list">${list.map(e => html`<li><span class="ics-k ${e.kind === 'cold' ? 'k-cold' : 'k-feed'}">${e.kind === 'cold' ? '❄ Cold night' : e.kind === 'feed' ? '● Feeding' : '◆ ' + (e.word || 'Reminder')}</span>
       <span><b>${e.kind === 'cold' ? 'Night before ' + midDay(e.date) : midDay(e.date)}</b><br>${e.title}</span></li>`)}</ul>
       ${D.events.length > list.length ? html`<p class="hint">And ${D.events.length - list.length} more.</p>` : ''}`
       : html`<p class="notice ok">Nothing to add right now${o.cold && !o.feed ? ': no cold nights in the forecast' : ''}.</p>`}`;

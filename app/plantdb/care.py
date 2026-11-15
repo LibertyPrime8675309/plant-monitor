@@ -43,8 +43,20 @@ def water_factor(avg_high, inside):
         if avg_high >= limit: return f, f'{why} lately (highs about {temp_text(avg_high)})'
     return 1.0, ''
 
+def water_exact(c):
+    """The plants whose watering gap was chosen on How often you water (proto/water-rhythm): the number chosen is the number
+    given, so the indoor stretch is left out for them. One setting, a list of codes."""
+    try: v = json.loads(setting(c, 'water_exact', '') or '[]')
+    except ValueError: v = []
+    return set(v) if isinstance(v, list) else set()
+
+def water_factor_for(exact, code, avg_high, inside):
+    if inside and code in exact: return 1.0, 'indoors, at the gap you chose'
+    return water_factor(avg_high, inside)
+
 def water_report(c, codes=None):
     today = local_today(c)
+    exact = water_exact(c)
     avg_high, rain = water_weather(c, today)
     at, at_args = plants_at(c, location(c)) if not codes else ('', [])     # 1.28.0: the plants at the place in use
     q = "SELECT * FROM plants WHERE status='active'" + at + (' AND code IN (%s)' % ','.join('?' * len(codes)) if codes else '') + ' ORDER BY code'
@@ -72,7 +84,7 @@ def water_report(c, codes=None):
         site = r['site'] or 'Outdoors'
         inside, open_sky = site in INSIDE_SITES, site == 'Outdoors'
         base, base_why = water_base_days(r)
-        f, f_why = water_factor(avg_high, inside)
+        f, f_why = water_factor_for(exact, r['code'], avg_high, inside)
         every = max(1, round(base * f))
         lw, lc = last.get(r['code'], {}).get('water'), last.get(r['code'], {}).get('check')
         lr = max((d for d in rain if open_sky and (not lw or d > lw)), default=None)
