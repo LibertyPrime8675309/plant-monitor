@@ -158,6 +158,7 @@ def push_loop():
             try:
                 if c.execute('SELECT 1 FROM push_subs LIMIT 1').fetchone():
                     push_cold(c); push_due(c); push_sensors(c); push_cover(c)
+                    for fn in list(PUSH_CLOCK): fn(c)              # 1.58.0: senders a feature module added
             finally: c.close()
         except Exception as e: problem_exc('push', e, 'The notifications check failed')
         time.sleep(600)
@@ -168,7 +169,7 @@ def push_info():
     c = db(); login = prefs_login(c)
     priv, pub = push_keys(c)
     subs = [dict(s) for s in c.execute('SELECT id, device, created_at, last_ok, fails FROM push_subs WHERE login=? ORDER BY id', (login,))]
-    return jsonify(key=pub, devices=subs, kinds=[{'key': k, 'label': l, 'help': h, 'on': push_wants(c, login, k)} for k, l, h in PUSH_KINDS],
+    return jsonify(key=pub, devices=subs, kinds=[{'key': k, 'label': l, 'help': h, 'on': push_wants(c, login, k)} for k, l, h in PUSH_KINDS + PUSH_EXTRA_KINDS],
                    https=via_tailscale() or request.host.startswith(('localhost', '127.0.0.1')))
 
 @app.route('/api/push/subscribe', methods=['POST', 'DELETE'])

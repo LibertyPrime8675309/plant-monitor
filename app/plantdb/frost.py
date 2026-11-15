@@ -243,6 +243,7 @@ def ics_events(c, o):
             ev.append({'kind': 'cold', 'uid': f'cold-{n["date"]}', 'date': n['date'], 'title': title, 'desc': desc, 'level': n['level'] if serious else 'watch',
                        'start': start.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ'), 'end': stop.astimezone(timezone.utc).strftime('%Y%m%dT%H%M%SZ'),
                        'plants': [x['code'] for x in at], 'path': '#/frost'})
+    for fn in list(ICS_EXTRA): ev += fn(c, today, end)          # 1.58.0: all-day entries a feature module adds
     ev.sort(key=lambda e: (e['date'], e['kind']))
     return {'place': L['name'], 'place_id': L['id'], 'today': today.isoformat(), 'until': end.isoformat(), 'options': o, 'events': ev,
             'counts': {'feed': sum(1 for e in ev if e['kind'] == 'feed'), 'cold': sum(1 for e in ev if e['kind'] == 'cold')}}
@@ -257,15 +258,15 @@ def ics_body(c, o, E, base):
            'REFRESH-INTERVAL;VALUE=DURATION:PT6H', 'X-PUBLISHED-TTL:PT6H']
     for e in E['events']:
         out += ['BEGIN:VEVENT', f'UID:{e["uid"]}@{host}', 'DTSTAMP:' + stamp]
-        if e['kind'] == 'feed':
+        if e['kind'] != 'cold':                              # a feeding day, or an all-day entry a feature added (1.58.0)
             d = date.fromisoformat(e['date'])
             out += ['DTSTART;VALUE=DATE:' + d.strftime('%Y%m%d'), 'DTEND;VALUE=DATE:' + (d + timedelta(days=1)).strftime('%Y%m%d'),
-                    'TRANSP:TRANSPARENT', 'CATEGORIES:Plants,Feeding']
+                    'TRANSP:TRANSPARENT', 'CATEGORIES:Plants,' + ('Feeding' if e['kind'] == 'feed' else ics_text(e.get('word') or 'Reminder'))]
         else:
             out += ['DTSTART:' + e['start'], 'DTEND:' + e['end'], 'TRANSP:TRANSPARENT', 'CATEGORIES:Plants,Cold night']
         out += ['SUMMARY:' + ics_text(e['title']), 'DESCRIPTION:' + ics_text(e['desc'] + ('\n\n' + base + e['path'] if base else ''))] + (['URL:' + base + e['path']] if base else [])
         trig = None
-        if e['kind'] == 'feed' and o['feed_remind']:
+        if e['kind'] != 'cold' and o['feed_remind']:
             trig = f'TRIGGER;RELATED=START:PT{fh}H{fm}M'                     # that time on the feeding day
         elif e['kind'] == 'cold' and o['cold_remind']:
             d = date.fromisoformat(e['date']) - timedelta(days=1)            # that time on the day before the cold morning
