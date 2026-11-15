@@ -98,7 +98,9 @@ def list_plants():
 def get_plant(code):
     c = db()
     r = plant_row(c, code)
-    return jsonify(plant_dict(c, r) | {'requests': [dict(x) for x in c.execute('SELECT * FROM requests WHERE plant_code=? ORDER BY done, id', (r['code'],))]})
+    p = plant_dict(c, r)
+    if request.args.get('fill') == '1': species_fill(c, p)        # 1.53.0: the plant's page reads the species' facts for what the plant leaves empty (not the edit form)
+    return jsonify(p | {'requests': [dict(x) for x in c.execute('SELECT * FROM requests WHERE plant_code=? ORDER BY done, id', (r['code'],))]})
 
 # ---------------------------------------------------------------- requests: what Claude needs from you
 REQUEST_KINDS = ('check', 'question', 'photo', 'info')
@@ -126,6 +128,7 @@ def request_one(rid):
     c = db()
     r = c.execute('SELECT * FROM requests WHERE id=?', (rid,)).fetchone()
     if not r: abort(404, 'request not found')
+    home_check(c, r['plant_code'])                   # 1.58.0: a question about a plant follows that plant's home
     b = request.get_json(silent=True) or {}
     done = 1 if b.get('done', True) else 0
     answer = str(b.get('answer', '') or '').strip()[:2000] or None
@@ -309,6 +312,7 @@ def create_plant():
     f['site'] = f.get('site') or 'Outdoors'
     f = place_sync(c, None, f)                                 # 1.29.0: the area and spot go with the Location
     vals = {k: norm(k, f.get(k)) for k in FIELD_NAMES}
+    home_check_new(c, vals.get('home_id'))                     # 1.58.0: an editor limited to some homes adds plants only there
     cols = ['code'] + FIELD_NAMES + ['version', 'status', 'created_at', 'created_by', 'updated_at', 'updated_by']
     cur = c.execute(f"INSERT INTO plants({','.join(cols)}) VALUES({','.join('?' * len(cols))})",
                     [code] + [vals[k] for k in FIELD_NAMES] + [1, 'active', ts, who, ts, who])
@@ -419,6 +423,7 @@ def several_create():
         if not f.get('pet_safety'): f['pet_safety'] = pets_word(f.get('scientific_name'))
         f = place_sync(c, None, f)
         items[i] = (it, {k: norm(k, f.get(k)) for k in FIELD_NAMES})        # every plant is checked before any is added
+        home_check_new(c, items[i][1].get('home_id'))                       # 1.58.0: the home limit, for each one
     cols = ['code'] + FIELD_NAMES + ['version', 'status', 'created_at', 'created_by', 'updated_at', 'updated_by']
     for it, vals in items:
         n = c.execute("SELECT COALESCE(MAX(CAST(SUBSTR(code,3) AS INTEGER)),0)+1 FROM plants").fetchone()[0]

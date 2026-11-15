@@ -29,7 +29,7 @@ check(D['hard']['first']['usual_day'] >= F['first']['usual_day'] and D['hard']['
 check(len({w['last'][5:] for w in D['per_winter']}) <= 2, 'the same weather each year gives the same last-freeze day give or take a leap day')
 check(D['frost_free_days'] and 200 < D['frost_free_days'] < 300, f"frost-free days between: {D['frost_free_days']}")
 plants = {p['code']: p for p in call('GET', '/api/plants')}
-outside = {c for c, p in plants.items() if p.get('temp_damage_below') is not None and (p.get('site') or 'Outdoors') not in ('Indoors', 'Garage or shed')}
+outside = {c for c, p in plants.items() if not p.get('home_id') and p.get('temp_damage_below') is not None and (p.get('site') or 'Outdoors') not in ('Indoors', 'Garage or shed')}
 listed = {p['code'] for g in D['plants'] for p in g['plants']}
 check(listed == outside, f'every plant outside with a damage temperature is listed once ({len(listed)})')
 days = [g['first']['usual_day'] for g in D['plants'] if g['first'] and not g['most_none']]

@@ -14,12 +14,12 @@ LOGS = os.path.join(ROOT, 'dev', 'tmp', 'logs'); DATA = os.path.join(ROOT, 'dev'
 # (name, server): 'fresh' = a new data folder; '40' = fresh, with cold nights; 'share' = the server the check before it used
 ORDER = [('frost', '40'), ('frostdates', 'fresh'), ('care', 'fresh'), ('read', 'share'), ('timeline', 'share'), ('copy', 'share'), ('photocheck', 'share'), ('jumprow', 'share'),
          ('prep', 'fresh'), ('audit', 'fresh'), ('fertloc', 'fresh'), ('access', 'fresh'), ('lights', 'fresh'), ('details', 'fresh'), ('swipe', 'fresh'),
-         ('calendar', '40'), ('outside', 'share'), ('groups', 'fresh'), ('newplant', 'fresh'), ('identify', 'fresh'), ('idmodes', 'fresh'), ('idloop', 'fresh'), ('header', 'fresh'), ('undo', 'fresh'),
+         ('calendar', '40'), ('outside', 'share'), ('groups', 'fresh'), ('newplant', 'fresh'), ('identify', 'fresh'), ('idmodes', 'fresh'), ('idloop', 'fresh'), ('factrows', 'fresh'), ('factreview', 'fresh'), ('header', 'fresh'), ('undo', 'fresh'),
          ('card', 'fresh'), ('sitter', 'fresh'), ('photos', 'fresh'), ('water', 'fresh'), ('library', 'fresh'), ('filters', 'fresh'), ('fungi', 'fresh'), ('wishlist', 'fresh'),
          ('know', 'fresh'), ('facts', 'fresh'), ('shops', 'fresh'), ('layout', 'fresh'), ('dialog', 'fresh'), ('offline', 'fresh'), ('sectionmenu', 'fresh'),
          ('homes', 'fresh'), ('sites', 'fresh'), ('places', 'fresh'), ('several', 'fresh'), ('where', 'fresh'), ('pots', 'fresh'), ('prefs', 'fresh'), ('shopping', 'fresh'),
-         ('quickwins', 'fresh'), ('jobs', 'fresh'), ('reach', 'fresh'), ('pages', 'fresh'), ('sensors', 'fresh'), ('finish', 'fresh'), ('share', 'fresh'), ('phone', 'share'), ('turning', 'fresh'), ('repotting', 'fresh'), ('reminders', 'fresh'), ('checkup', 'fresh'), ('voice', 'fresh'), ('units', 'fresh'), ('sitlink', 'fresh'), ('smoke', 'fresh')]
-TIMEOUT = {'smoke': 600, 'reach': 600, 'shopping': 600, 'quickwins': 600, 'pages': 600, 'share': 600, 'phone': 900}
+         ('quickwins', 'fresh'), ('jobs', 'fresh'), ('reach', 'fresh'), ('pages', 'fresh'), ('sensors', 'fresh'), ('finish', 'fresh'), ('share', 'fresh'), ('phone', 'share'), ('turning', 'fresh'), ('repotting', 'fresh'), ('browse', 'fresh'), ('releases', 'fresh'), ('wxbackup', 'fresh'), ('wplace', 'fresh'), ('mounting', 'fresh'), ('mixes', 'fresh'), ('compare', 'fresh'), ('checkup', 'fresh'), ('voice', 'fresh'), ('units', 'fresh'), ('sitlink', 'fresh'), ('review2', 'fresh'), ('guide', 'fresh'), ('updates', 'fresh'), ('reminders', 'fresh'), ('names', 'fresh'), ('smoke', 'fresh')]
+TIMEOUT = {'smoke': 600, 'names': 900, 'reach': 600, 'shopping': 600, 'quickwins': 600, 'pages': 600, 'share': 600, 'phone': 900}
 SERVER = None
 
 def stop_server():
@@ -71,7 +71,10 @@ def run(name):
     script = os.path.join(HERE, 'smoke.py' if name == 'smoke' else f'{name}_check.py')
     log = os.path.join(LOGS, name + '.log')
     with open(log, 'w') as f:
-        try: rc = subprocess.run([sys.executable, script], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT, timeout=TIMEOUT.get(name, 400)).returncode
+        # 1.56.2: the checks and their browsers keep the mock home's time (Round Rock, America/Chicago), as Ethan's browser does.
+        # On a UTC computer in a Texas evening, "today" in the browser was already tomorrow while the app said today.
+        env = {**os.environ, 'TZ': os.environ.get('CHECKS_TZ', 'America/Chicago')}
+        try: rc = subprocess.run([sys.executable, script], cwd=ROOT, stdout=f, stderr=subprocess.STDOUT, timeout=TIMEOUT.get(name, 400), env=env).returncode
         except subprocess.TimeoutExpired: rc = 124; f.write('\nTIMED OUT\n')
     text = open(log, errors='replace').read()
     ok = sum(1 for l in text.splitlines() if l.startswith('ok '))

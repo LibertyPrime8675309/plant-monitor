@@ -1,0 +1,1178 @@
+{
+ "id": "C5",
+ "created": "2026-11-10",
+ "author": "Claude (Ethan's pots and amendments, November 10, 2026)",
+ "amendments_add": [
+  {
+   "key": "orchid-bark",
+   "name": "Orchid bark",
+   "role": "part",
+   "grades": [
+    "small",
+    "medium",
+    "large"
+   ],
+   "holds_water": 2,
+   "airy": 5,
+   "lasts_months": 18,
+   "feeds": 0,
+   "ph": -1,
+   "weight": 1,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "Fir or pine bark. Chunky and airy; breaks down and packs down over a year or two."
+  },
+  {
+   "key": "coco-coir",
+   "name": "Coco coir",
+   "role": "part",
+   "grades": [
+    "chunks",
+    "ground"
+   ],
+   "holds_water": 4,
+   "airy": 3,
+   "lasts_months": 24,
+   "feeds": 0,
+   "ph": 0,
+   "weight": 1,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "Chunks are airy; ground coir holds more water. Rinse well: some is salty."
+  },
+  {
+   "key": "charcoal",
+   "name": "Horticultural charcoal",
+   "role": "part",
+   "grades": [
+    "small",
+    "medium",
+    "large"
+   ],
+   "holds_water": 2,
+   "airy": 4,
+   "lasts_months": 0,
+   "feeds": 0,
+   "ph": 1,
+   "weight": 1,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "Light and airy; does not break down."
+  },
+  {
+   "key": "pumice",
+   "name": "Horticultural pumice",
+   "role": "part",
+   "grades": [
+    "1/8 in",
+    "1/4 in",
+    "3/8 in"
+   ],
+   "holds_water": 2,
+   "airy": 5,
+   "lasts_months": 0,
+   "feeds": 0,
+   "ph": 0,
+   "weight": 2,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "Porous stone: airy, holds a little water inside, never breaks down."
+  },
+  {
+   "key": "worm-castings",
+   "name": "Worm castings",
+   "role": "part",
+   "grades": [],
+   "holds_water": 4,
+   "airy": 2,
+   "lasts_months": 6,
+   "feeds": 2,
+   "ph": 0,
+   "weight": 2,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "Gentle food and holds water; use a small share."
+  },
+  {
+   "key": "perlite",
+   "name": "Horticultural perlite",
+   "role": "part",
+   "grades": [
+    "fine",
+    "medium",
+    "coarse"
+   ],
+   "holds_water": 1,
+   "airy": 5,
+   "lasts_months": 0,
+   "feeds": 0,
+   "ph": 0,
+   "weight": 1,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "Very light, opens a mix; floats when watered. Also used on its own for semi-hydro."
+  },
+  {
+   "key": "vermiculite",
+   "name": "Horticultural vermiculite",
+   "role": "part",
+   "grades": [
+    "fine",
+    "medium",
+    "coarse"
+   ],
+   "holds_water": 5,
+   "airy": 2,
+   "lasts_months": 24,
+   "feeds": 0,
+   "ph": 0,
+   "weight": 1,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "Holds a lot of water; the opposite of perlite in a mix."
+  },
+  {
+   "key": "leca",
+   "name": "Clay pebbles (LECA)",
+   "role": "medium",
+   "grades": [
+    "4 to 8 mm",
+    "8 to 16 mm"
+   ],
+   "holds_water": 2,
+   "airy": 5,
+   "lasts_months": 0,
+   "feeds": 0,
+   "ph": 0,
+   "weight": 2,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "Fired clay balls for semi-hydro: they wick water up from a reservoir and never break down. No food: the water carries it."
+  },
+  {
+   "key": "sphagnum",
+   "name": "Sphagnum moss (long-fibre)",
+   "role": "part",
+   "grades": [],
+   "holds_water": 5,
+   "airy": 3,
+   "lasts_months": 12,
+   "feeds": 0,
+   "ph": -1,
+   "weight": 1,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "Holds a lot of water but stays airy. Often a top layer on semi-hydro pots."
+  },
+  {
+   "key": "peat",
+   "name": "Peat moss",
+   "role": "part",
+   "grades": [],
+   "holds_water": 5,
+   "airy": 2,
+   "lasts_months": 24,
+   "feeds": 0,
+   "ph": -1,
+   "weight": 1,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "The base of most bagged mixes; hard to wet again once dry."
+  },
+  {
+   "key": "potting-mix",
+   "name": "Bagged potting mix",
+   "role": "part",
+   "grades": [],
+   "holds_water": 4,
+   "airy": 2,
+   "lasts_months": 12,
+   "feeds": 1,
+   "ph": 0,
+   "weight": 2,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "As a base to add to. Most have peat or coir and a little starter food."
+  },
+  {
+   "key": "lava-rock",
+   "name": "Lava rock (scoria)",
+   "role": "part",
+   "grades": [
+    "small",
+    "medium"
+   ],
+   "holds_water": 2,
+   "airy": 5,
+   "lasts_months": 0,
+   "feeds": 0,
+   "ph": 0,
+   "weight": 3,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "Like pumice but heavier and rougher."
+  },
+  {
+   "key": "calcined-clay",
+   "name": "Calcined clay",
+   "role": "part",
+   "grades": [],
+   "holds_water": 3,
+   "airy": 4,
+   "lasts_months": 0,
+   "feeds": 0,
+   "ph": 0,
+   "weight": 2,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "Fired clay granules (sold for bonsai and sports turf); holds some water inside the grain."
+  },
+  {
+   "key": "grit",
+   "name": "Coarse sand or grit",
+   "role": "part",
+   "grades": [],
+   "holds_water": 1,
+   "airy": 3,
+   "lasts_months": 0,
+   "feeds": 0,
+   "ph": 0,
+   "weight": 3,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "For cacti and succulents; adds weight so tall plants do not tip. Not fine play sand."
+  },
+  {
+   "key": "zeolite",
+   "name": "Zeolite",
+   "role": "part",
+   "grades": [],
+   "holds_water": 3,
+   "airy": 4,
+   "lasts_months": 0,
+   "feeds": 1,
+   "ph": 0,
+   "weight": 2,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "Holds nutrients and lets them go slowly; also used in semi-hydro."
+  },
+  {
+   "key": "rice-hulls",
+   "name": "Rice hulls (parboiled)",
+   "role": "part",
+   "grades": [],
+   "holds_water": 1,
+   "airy": 4,
+   "lasts_months": 12,
+   "feeds": 0,
+   "ph": 0,
+   "weight": 1,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "A perlite substitute that breaks down in about a year."
+  },
+  {
+   "key": "tree-fern",
+   "name": "Tree fern fibre",
+   "role": "part",
+   "grades": [],
+   "holds_water": 2,
+   "airy": 5,
+   "lasts_months": 36,
+   "feeds": 0,
+   "ph": 0,
+   "weight": 1,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "For orchids and other epiphytes."
+  },
+  {
+   "key": "cork",
+   "name": "Cork",
+   "role": "part",
+   "grades": [
+    "nuggets"
+   ],
+   "holds_water": 1,
+   "airy": 5,
+   "lasts_months": 60,
+   "feeds": 0,
+   "ph": 0,
+   "weight": 1,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "For orchids and epiphytes; lasts for years."
+  },
+  {
+   "key": "compost",
+   "name": "Compost or leaf mould",
+   "role": "part",
+   "grades": [],
+   "holds_water": 4,
+   "airy": 2,
+   "lasts_months": 6,
+   "feeds": 2,
+   "ph": 0,
+   "weight": 2,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "A little food and structure, like worm castings."
+  },
+  {
+   "key": "slow-release",
+   "name": "Slow-release fertilizer",
+   "role": "additive",
+   "grades": [],
+   "holds_water": null,
+   "airy": null,
+   "lasts_months": null,
+   "feeds": 2,
+   "ph": 0,
+   "weight": null,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "A pinch, not a part: follow the label for how much per gallon of mix."
+  },
+  {
+   "key": "dolomite",
+   "name": "Dolomite lime",
+   "role": "additive",
+   "grades": [],
+   "holds_water": null,
+   "airy": null,
+   "lasts_months": null,
+   "feeds": 1,
+   "ph": 1,
+   "weight": null,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "Raises pH and adds calcium and magnesium. A little per gallon of a peat mix."
+  },
+  {
+   "key": "mycorrhizae",
+   "name": "Mycorrhizal inoculant",
+   "role": "additive",
+   "grades": [],
+   "holds_water": null,
+   "airy": null,
+   "lasts_months": null,
+   "feeds": 0,
+   "ph": 0,
+   "weight": null,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "Beneficial fungi for the roots; dust onto the roots or into the mix."
+  },
+  {
+   "key": "pon",
+   "name": "Pon",
+   "role": "medium",
+   "grades": [],
+   "holds_water": 3,
+   "airy": 4,
+   "lasts_months": 0,
+   "feeds": 0,
+   "ph": 0,
+   "weight": 2,
+   "source": "Claude's summary of common growing guidance (November 2026): a rough guide for comparing amendments, not measured values",
+   "notes": "A ready semi-hydro mix of pumice, zeolite and lava."
+  }
+ ],
+ "facts_add": [
+  {
+   "name": "Adenium obesum",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Aeonium haworthii type (probable)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Aglaonema sp. (red cultivar)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Aglaonema sp. (red speckled cultivar)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Alocasia 'Sarian' or 'Portora' type (unconfirmed)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Alocasia micholitziana 'Frydek'",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Aloe vera (spotted young form) or a hybrid",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Aloiampelos striatula (syn. Aloe striatula)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Artemisia ludoviciana",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Begonia rex-cultorum hybrid",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Begonia sp. 'Obsidian' (Leafjoy)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Begonia sp. (probable)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Bougainvillea sp.",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Caesalpinia mexicana (Erythrostemon mexicanus)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Celosia cristata (Celosia argentea Cristata Group) 'Dracula Red'",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Cosmos bipinnatus / Cosmos sulphureus",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Cucurbitaceae (probably a gourd or melon; species unconfirmed)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Dieffenbachia seguine",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Dieffenbachia seguine cultivar (possibly 'Camille')",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Dwarf Aloe hybrid or xGasteraloe (unconfirmed)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Episcia cupreata",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Episcia cupreata (dark form)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Euphorbia milii",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Ficus carica",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Ficus lyrata",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Goeppertia sp. ('Freddie' / concinna type, unconfirmed)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Moisture-holding",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Gynura aurantiaca",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Haworthiopsis attenuata type",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Hibiscus coccineus",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Moisture-holding",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Ipomoea batatas (probable)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Ipomoea hederacea (probable)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Monarda fistulosa",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Monstera deliciosa 'Thai Constellation'",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Monstera deliciosa (young, probable)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Myrtillocactus geometrizans cv. 'Fukurokuryuzinboku'",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Nephrolepis exaltata 'Emina'",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Moisture-holding",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Nephrolepis exaltata, curly cultivar (probably 'Emina')",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Moisture-holding",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Opuntia sp. (possibly Opuntia ficus-indica)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Orchid, not yet identified (possibly Dendrobium)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Petunia × hybrida 'Ray Black'",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Phalaenopsis hybrid (miniature)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Phalaenopsis hybrid (stake: Phalaenopsis amabilis)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Philodendron 'Birkin'",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Philodendron 'Black Cardinal'",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Philodendron 'Painted Lady'",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Philodendron 'Ring of Fire' (tag: Philodendron serratum)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Philodendron 'Royal Queen' (tagged; possibly sun-faded)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Philodendron erubescens 'Pink Princess'",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Philodendron sp. (unconfirmed)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Plectranthus scutellarioides",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Pleiospilos nelii",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Pleiospilos nelii 'Royal Flush'",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Portulacaria afra 'Variegata'",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Ravenea rivularis",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Moisture-holding",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Rhaphidophora tetrasperma",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Rosa 'WEKjucstokol' (Queen of Elegance), floribunda",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Rosa (miniature hybrid)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Rosa sp. (probably a miniature or patio rose)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Spathiphyllum sp. (probable)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Moisture-holding",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Spathiphyllum, variegated cultivar ('Picasso' type)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Syngonium 'Black Velvet'",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Tradescantia, variegated (T. fluminensis or T. albiflora 'Albovittata' type)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Vanilla planifolia",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Vitis mustangensis (probable)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Balanced",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Wedelia acapulcensis var. hispida (syn. Wedelia texana, Zexmenia hispida)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "Zamioculcas zamiifolia",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  },
+  {
+   "name": "xGraptosedum 'Francesco Baldi' type (probable)",
+   "kind": "plant",
+   "field": "mix_wants",
+   "value": "Fast-draining",
+   "source": "Upgrade batch C5: read from the potting-mix advice on its care sheet",
+   "source_kind": "batch",
+   "confidence": "likely"
+  }
+ ],
+ "updates": [
+  {
+   "code": "P-032",
+   "set": {
+    "grow_kind": [
+     null,
+     "Semi-hydro"
+    ],
+    "reservoir": [
+     null,
+     "The pot itself (no holes)"
+    ]
+   },
+   "note": "What it grows in (step 9)"
+  },
+  {
+   "code": "P-092",
+   "set": {
+    "grow_kind": [
+     null,
+     "Semi-hydro"
+    ],
+    "reservoir": [
+     null,
+     "A catch pot"
+    ]
+   },
+   "note": "What it grows in (step 9)"
+  },
+  {
+   "code": "P-094",
+   "set": {
+    "grow_kind": [
+     null,
+     "Semi-hydro"
+    ],
+    "reservoir": [
+     null,
+     "A tray under it"
+    ]
+   },
+   "note": "What it grows in (step 9)"
+  },
+  {
+   "code": "P-095",
+   "set": {
+    "grow_kind": [
+     null,
+     "Semi-hydro"
+    ],
+    "reservoir": [
+     null,
+     "A tray under it"
+    ]
+   },
+   "note": "What it grows in (step 9)"
+  },
+  {
+   "code": "P-096",
+   "set": {
+    "grow_kind": [
+     null,
+     "Soil mix"
+    ],
+    "reservoir": [
+     null,
+     "A catch pot"
+    ]
+   },
+   "note": "What it grows in (step 9)"
+  },
+  {
+   "code": "P-097",
+   "set": {
+    "grow_kind": [
+     null,
+     "Semi-hydro"
+    ],
+    "reservoir": [
+     null,
+     "The pot itself (no holes)"
+    ]
+   },
+   "note": "What it grows in (step 9)"
+  },
+  {
+   "code": "P-098",
+   "set": {
+    "grow_kind": [
+     null,
+     "Semi-hydro"
+    ],
+    "reservoir": [
+     null,
+     "The pot itself (no holes)"
+    ]
+   },
+   "note": "What it grows in (step 9)"
+  },
+  {
+   "code": "P-032",
+   "name": "Moth orchid in water",
+   "set": {
+    "container": [
+     "Glass jar with water",
+     "Glass jar with clay pebbles (semi-hydro)"
+    ],
+    "soil_medium": [
+     "None right now (water culture). The usual medium is coarse orchid bark or sphagnum moss in a clear pot with side holes.",
+     "Clay pebbles (LECA), semi-hydro: the jar holds the water. The usual alternatives are coarse orchid bark or sphagnum moss in a clear pot with side holes."
+    ]
+   },
+   "note": "Moved from water into clay pebbles (Ethan, November 10)"
+  }
+ ],
+ "pot_mixes_add": [
+  {
+   "code": "P-032",
+   "mixed_on": "2026-11-10",
+   "parts": [
+    {
+     "key": "leca",
+     "parts": 1
+    }
+   ],
+   "top": null,
+   "notes": "In a glass jar (Ethan, November 10, 2026)."
+  },
+  {
+   "code": "P-092",
+   "mixed_on": "2026-11-10",
+   "parts": [
+    {
+     "key": "leca",
+     "parts": 1
+    }
+   ],
+   "top": {
+    "key": "sphagnum",
+    "grade": "",
+    "depth_in": null
+   },
+   "notes": "Pot with drainage holes in a catch pot (Ethan, November 10)."
+  },
+  {
+   "code": "P-094",
+   "mixed_on": "2026-11-10",
+   "parts": [
+    {
+     "key": "leca",
+     "parts": 1
+    }
+   ],
+   "top": {
+    "key": "sphagnum",
+    "grade": "",
+    "depth_in": null
+   },
+   "notes": "Pot with drainage holes on a terracotta tray (Ethan, November 10)."
+  },
+  {
+   "code": "P-095",
+   "mixed_on": "2026-11-10",
+   "parts": [
+    {
+     "key": "leca",
+     "parts": 1
+    }
+   ],
+   "top": {
+    "key": "sphagnum",
+    "grade": "",
+    "depth_in": null
+   },
+   "notes": "Pot with drainage holes on a terracotta tray (Ethan, November 10)."
+  },
+  {
+   "code": "P-096",
+   "mixed_on": "2026-11-10",
+   "parts": [
+    {
+     "key": "orchid-bark",
+     "parts": 1
+    }
+   ],
+   "top": null,
+   "notes": "Chunky, mostly orchid bark; the rest is not recorded yet (Ethan, November 10). Plastic drainage pot in a catch pot."
+  },
+  {
+   "code": "P-097",
+   "mixed_on": "2026-11-10",
+   "parts": [
+    {
+     "key": "perlite",
+     "parts": 1
+    }
+   ],
+   "top": null,
+   "notes": "Perlite in a glass container (Ethan, November 10)."
+  },
+  {
+   "code": "P-098",
+   "mixed_on": "2026-11-10",
+   "parts": [
+    {
+     "key": "perlite",
+     "parts": 1
+    }
+   ],
+   "top": null,
+   "notes": "Perlite in a glass container (Ethan, November 10)."
+  }
+ ]
+}

@@ -15,6 +15,7 @@ function displayDialog() {
   G.navopen = group('navopen', 'Navigation menu', [['1', 'Open'], ['0', 'Folded away (the Navigation button opens it)']], 'On narrow windows and phones it starts folded and covers the page while open.');
   G.width = group('width', 'Page width', [['normal', 'Normal'], ['wide', 'Use the full width of the window']], 'Full width gives charts and tables more room on a wide screen.');
   G.lines = group('lines', 'Line length', [['full', 'Use the full width'], ['short', 'Shorter lines (about 70 letters)']], 'Full width fits more on the screen. Shorter lines can be easier to follow from one line to the next.');
+  G.notes = group('notes', 'Notes under buttons and boxes', [['show', 'Always show them'], ['ask', 'Show them when I ask']], 'The small notes that say what a button does or what to type. "When I ask" folds each into a Note button: press it, hold a finger on the button or box it belongs to, or point at it with the mouse. Screen readers still read every note.');
   G.layout = group('layout', 'Plant pages', [['split', 'Photos and details side by side'], ['single', 'One column']], 'Side by side lets each half scroll on its own: scroll with the pointer over the half you want to move. One column stacks the photos above the details.');
   const speak = canSpeak() ? html`${group('readbtns', 'Read aloud buttons', [['1', 'Show them on each section'], ['0', 'Hide them']], 'Your browser reads the section aloud with its own voices. The R key reads the whole page either way.')}
     ${group('rate', 'Reading speed', [['0.8', 'Slower'], ['1', 'Normal'], ['1.25', 'Faster'], ['1.5', 'Fastest']])}
@@ -38,7 +39,7 @@ function displayDialog() {
   const SH = window.PlantSync ? window.PlantSync.shared() : {};
   const share = part => html`<fieldset class="opt-group dv-share"><legend>Where these apply</legend><label class="chk"><input type="checkbox" data-dvshare="${part}" ${SH[part] ? raw('checked') : ''}>Use these on every device I sign in on</label>
     <p class="hint">Off (the usual): only this device. On: any phone, tablet or computer where you sign in and tick this too gets them.</p></fieldset>`;
-  const SECS = [['Text and colours', html`${G.size}${G.space}${G.contrast}${G.theme}${share('text')}`], ['Page layout', html`${G.width}${G.lines}${G.layout}${G.navside}${G.navopen}${share('layout')}`],
+  const SECS = [['Text and colours', html`${G.size}${G.space}${G.contrast}${G.theme}${share('text')}`], ['Page layout', html`${G.width}${G.lines}${G.notes}${G.layout}${G.navside}${G.navopen}${share('layout')}`],
     ['Units', G.units], ['Identify', G.idmode], ['Reading aloud', html`${speak}${share('read')}`], ['Photos and touch', html`${G.photofit}${G.swipe}${share('photos')}`], ['Keyboard and voice', html`${G.keys}${G.vsearch}${share('keys')}`]];
   const keep = DVSCROLL; DVSCROLL = 0;
   modal(html`<form method="dialog" class="dv-form">
@@ -127,18 +128,18 @@ const RD_ICON = raw('<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden
 function addReadButtons() {
   if (!canSpeak()) { foldMeasure(); return; }
   const app = document.getElementById('app');
+  // 1.56.5: not on the small Settings cards, a sentence and a button each, where Read aloud squeezed the title onto three lines
   app.querySelectorAll('section.blk > h2, section.blk > header.sec-head > h2, section.needs > h2, section.cond h2').forEach(h => {
-    const sec = h.closest('section'); if (!sec || sec.querySelector(':scope > .rd-btn, :scope > header > .rd-btn, :scope > .sec-tools > .rd-btn, :scope > header > .sec-tools > .rd-btn')) return;
+    const sec = h.closest('section'); if (!sec || sec.matches('.set-card:not(.set-health)') || sec.querySelector(':scope > .rd-btn, :scope > header > .rd-btn, :scope > .sec-tools > .rd-btn, :scope > header > .sec-tools > .rd-btn')) return;
     const name = h.textContent.trim();
     sec.classList.add('has-rd');
-    const b = rend(html`<button class="btn ghost small rd-btn noprint" type="button" data-act="readsec" aria-label="Read the ${name} section aloud">${RD_ICON}<span>Read aloud</span></button>`);
+    const b = rend(html`<button class="btn ghost small rd-btn noprint" type="button" data-act="readsec" aria-label="Read aloud: the ${name} section">${RD_ICON}<span>Read aloud</span></button>`);
     const tools = sec.querySelector(':scope > .sec-tools, :scope > header > .sec-tools');      // 1.42.0: beside Show or hide
     if (tools) tools.insertAdjacentHTML('afterbegin', b); else h.insertAdjacentHTML('afterend', b);
   });
   foldMeasure();
   const h1 = app.querySelector('h1');
-  if (h1 && !app.querySelector('.rd-page')) h1.insertAdjacentHTML('afterend', rend(html`<p class="rd-page noprint"><button class="btn ghost small" type="button" data-act="readpage">${RD_ICON}<span>Read this page aloud</span></button>
-    <span class="hint">Shortcut: R. Press Escape to stop.</span></p>`));
+  if (h1 && !app.querySelector('.rd-page')) h1.insertAdjacentHTML('afterend', rend(html`<p class="rd-page noprint"><button class="btn ghost small" type="button" data-act="readpage" aria-keyshortcuts="R">${RD_ICON}<span>Read this page aloud</span></button></p>`));   // 1.56.5: the R and Escape keys are under Display and the keyboard list, not beside every page title
 }
 // ---------- 1.42.0: every section on every page can be folded shut, and stays so ----------
 // Each section in the Navigation menu gets a "Hide" / "Show" button beside its title (a section that already folds by its own
@@ -148,6 +149,15 @@ const FOLDS = (() => { try { return JSON.parse(localStorage.getItem('plantdb.fol
 const foldPage = () => { const h = (location.hash || '#/').split('?')[0]; return /^#\/plant\//.test(h) ? '#/plant' : h; };
 const foldKey = t => t.replace(/\(\s*[\d,]+\s*\)/g, '').replace(/[\d][\d,.]*/g, '#').replace(/\s+/g, ' ').trim().toLowerCase();
 function foldSave() { try { localStorage.setItem('plantdb.folds', JSON.stringify(FOLDS)); } catch (e) { /* this visit only */ } }
+// 1.57.0: a plant page is long (about 20 sections). The reference sections start folded on a device that has never folded anything on
+// a plant page, so the details, care and requests come first; Show opens each, and what you fold or open is remembered as before.
+// (Not in the automated checks, which read every section: navigator.webdriver; plant_folds_check turns it on.)
+const PLANT_REF_FOLDED = ['plant identification', 'about this plant', 'uses, partners and propagation', 'temperature', 'humidity', 'sunlight',
+  'water and soil', 'nutrients', 'pests and diseases', 'timeline', 'page history'];
+(() => { try {
+  if (localStorage.getItem('plantdb.foldseed') || FOLDS['#/plant'] || (navigator.webdriver && !localStorage.getItem('plantdb.foldseedtest'))) return;
+  FOLDS['#/plant'] = PLANT_REF_FOLDED.slice(); localStorage.setItem('plantdb.foldseed', '1'); foldSave();
+} catch (e) { /* storage blocked: every section open */ } })();
 function foldIsSet(text) { return (FOLDS[foldPage()] || []).includes(foldKey(text)); }
 function foldRemember(text, on) {
   const pg = foldPage(), k = foldKey(text), list = (FOLDS[pg] || []).filter(x => x !== k);
@@ -167,6 +177,60 @@ function foldBtn(it, open) {
   return rend(html`<button class="btn ghost small sec-fold noprint" type="button" data-act="secfold" data-for="${it.id}" aria-expanded="${open ? 'true' : 'false'}"
     aria-label="${open ? 'Hide' : 'Show'} the ${it.text} section"><span aria-hidden="true">${open ? '▾' : '▸'}</span> <span>${open ? 'Hide' : 'Show'}</span></button>`);
 }
+// ---------- 1.57.0: notes on request (Display: "Notes under buttons and boxes: Show them when I ask") ----------
+// Each small note (.hint) becomes a Note button that opens it in place. It also opens while the mouse is over the control it belongs
+// to (or the note), and when a finger rests on that control for half a second. The words stay in the page, so screen readers read them.
+const NOTE_SEL = '.hint, label.f > small';      // the small notes: hints, and the note under a field's name
+function notesPass(root) {
+  if (document.documentElement.dataset.notes !== 'ask') return;
+  (root || document).querySelectorAll('.hint:not([data-note]), label.f > small:not([data-note])').forEach(n => {
+    n.dataset.note = '1'; n.setAttribute('role', 'button'); n.setAttribute('tabindex', '0'); n.setAttribute('aria-expanded', 'false');
+  });
+}
+function noteToggle(n, open) {
+  const on = open == null ? !n.classList.contains('note-open') : open;
+  n.classList.toggle('note-open', on); n.setAttribute('aria-expanded', on ? 'true' : 'false');
+}
+const noteFor = el => { const box = el.closest('label, .f, .row, li, fieldset, .chk, p'); return box && (box.querySelector(':scope > .hint') || (box.matches('label.f') && box.querySelector(':scope > small')) || (box.nextElementSibling && box.nextElementSibling.matches('.hint') ? box.nextElementSibling : null)); };
+document.addEventListener('click', e => {
+  if (document.documentElement.dataset.notes !== 'ask') return;
+  if (NOTEHOLD.swallow) { NOTEHOLD.swallow = false; e.preventDefault(); e.stopPropagation(); return; }
+  const n = e.target.closest(NOTE_SEL); if (!n || e.target.closest('a,button,input,select,textarea')) return;
+  if (!n.dataset.note) notesPass(n.parentElement);   // drawn after the page: becomes a Note button now
+  noteToggle(n); e.stopPropagation(); e.preventDefault();   // in a field's label, opening the note does not also jump to the field
+}, true);
+document.addEventListener('keydown', e => {
+  if (document.documentElement.dataset.notes !== 'ask') return;
+  const n = e.target.closest && e.target.closest('[data-note]');
+  if (n && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); noteToggle(n); }
+  else if (e.key === 'Escape' && n) noteToggle(n, false);
+});
+const NOTEHOLD = { t: 0, swallow: false };
+document.addEventListener('pointerdown', e => {
+  if (document.documentElement.dataset.notes !== 'ask' || e.pointerType !== 'touch') return;
+  const n = noteFor(e.target); if (!n) return;
+  clearTimeout(NOTEHOLD.t);
+  NOTEHOLD.t = setTimeout(() => { noteToggle(n, true); NOTEHOLD.swallow = true; setTimeout(() => { NOTEHOLD.swallow = false; }, 800); }, 550);
+}, { passive: true });
+['pointerup', 'pointercancel', 'pointermove'].forEach(k => document.addEventListener(k, e => { if (k !== 'pointermove' || Math.abs(e.movementX) + Math.abs(e.movementY) > 6) clearTimeout(NOTEHOLD.t); }, { passive: true }));
+document.addEventListener('prefs', () => { if (document.documentElement.dataset.notes === 'ask') notesPass(); });
+// 1.58.0 (November 12 review, item 11): a table that scrolls inside its box could not be scrolled from the keyboard when it holds links or buttons (the browser
+// then leaves the box itself out of the Tab order): the long weather log, the lights compared, and any table on a narrow screen. A box that scrolls gets a place in
+// the Tab order, the role of a region and a name (its table's caption), so the arrow keys scroll it; one that fits loses them again.
+function scrollBoxes(root) {
+  (root || document).querySelectorAll('.tbl-wrap').forEach(w => {
+    const scrolls = w.scrollWidth > w.clientWidth + 1 || w.scrollHeight > w.clientHeight + 1;
+    if (scrolls && !w.dataset.scrolls) {
+      const cap = w.querySelector('caption');
+      w.dataset.scrolls = '1'; w.tabIndex = 0; w.setAttribute('role', 'region');
+      w.setAttribute('aria-label', (cap ? cap.textContent.trim() : 'Table') + '. Scroll it with the arrow keys.');
+    } else if (!scrolls && w.dataset.scrolls) { delete w.dataset.scrolls; w.removeAttribute('tabindex'); w.removeAttribute('role'); w.removeAttribute('aria-label'); }
+  });
+}
+let SCROLLBOX_T = 0;
+window.addEventListener('resize', () => { clearTimeout(SCROLLBOX_T); SCROLLBOX_T = setTimeout(() => scrollBoxes(), 200); });
+document.addEventListener('prefs', () => setTimeout(() => scrollBoxes(), 50));          // a larger text size can make a table scroll
+
 function addFoldButtons() {
   NAVITEMS.forEach(it => {
     if (it.top || !it.id) return;
@@ -187,10 +251,33 @@ function addFoldButtons() {
     else { keep.classList.add('sec-keep'); title.insertAdjacentHTML('afterend', tools.replace('sec-tools', 'sec-tools sec-inline')); }   // a title further in
     const rd = sec.querySelector(':scope > .rd-btn'); const tl = sec.querySelector('.sec-tools');
     if (rd && tl) tl.insertAdjacentElement('afterbegin', rd);
+    if (title) title.classList.add('fold-click');           // 1.56.3: the title folds it too
     if (foldIsSet(it.text)) foldSet(it, true, false);
+  });
+  // 1.56.3 (Ethan, November 10): a section that folds by its title bar (Today's and Fertilizer's groups, Turn the pots) shows Hide/Show
+  // at the right of the bar like every other section's. 1.56.4: it only looks like a button: the whole title bar is the one control
+  // (a button inside it was a control inside a control, which screen readers report as a fault), and it says open or closed itself.
+  document.querySelectorAll('main details.grp').forEach(d => {
+    const s = d.querySelector(':scope > summary'); if (!s || s.querySelector('.det-fold')) return;
+    s.insertAdjacentHTML('beforeend', rend(html`<span class="sec-tools det-tools noprint" aria-hidden="true"><span class="btn ghost small sec-fold det-fold"></span></span>`));
+    const b = s.querySelector('.det-fold');
+    const label = () => { b.innerHTML = rend(html`<span>${d.open ? '▾' : '▸'}</span> <span>${d.open ? 'Hide' : 'Show'}</span>`); };
+    d.addEventListener('toggle', label);
+    label();
   });
   foldMeasure();
 }
+// 1.56.3: pressing a section's title (or its title bar) does what its Show/Hide button does; buttons and links in the bar keep their own
+document.addEventListener('click', e => {
+  const t = e.target; if (!(t instanceof Element)) return;
+  if (t.closest('a,button,input,select,textarea,label,summary,[data-act],[data-ed],[contenteditable]')) return;
+  if (String(window.getSelection && window.getSelection()) !== '') return;              // selecting the words is not a press
+  const head = t.closest('.fold-click, header.sec-head, h1, h2, h3'); if (!head) return;
+  if (head.matches('h1,h2,h3') && head.nextElementSibling && head.nextElementSibling.classList.contains('sec-bare')) { head.nextElementSibling.querySelector('.sec-fold').click(); return; }
+  const sec = head.closest('.has-fold'); if (!sec) return;
+  if (!(head.classList.contains('fold-click') || (head.matches('header.sec-head') && head.querySelector('.fold-click')))) return;
+  const b = sec.querySelector('.sec-fold'); if (b) b.click();
+});
 function foldParts(it) {           // what hides: everything in the section beside the path down to its title, or what follows a bare title
   const t = foldTarget(it); if (!t) return [];
   if (t.bare) { const out = []; let n = t.bare.nextElementSibling; while (n && !n.matches('h1,h2') && !n.querySelector('h2') && !n.matches('section,details.blk')) { if (!n.classList.contains('sec-tools')) out.push(n); n = n.nextElementSibling; } return out; }
@@ -213,13 +300,40 @@ function foldOpenFor(el) {         // the menu or a section button goes to a fol
   const it = NAVITEMS.find(x => x.el === el || (x.head && x.head === el) || x.el.contains(el));
   if (it && !it.top && foldParts(it).some(c => c.classList.contains('fold-hid'))) foldSet(it, false, true);
 }
+function titleWidth(t) {           // the width a title takes on one line
+  const css = t.style.cssText; t.style.whiteSpace = 'nowrap'; t.style.width = 'max-content'; t.style.paddingRight = '0';
+  const w = t.getBoundingClientRect().width; t.style.cssText = css; return w;
+}
 function foldMeasure() {           // room on the title's right for its buttons
+  const level = (t, tl) => { const lh = parseFloat(getComputedStyle(t).lineHeight) || t.offsetHeight; return (Math.min(lh, t.offsetHeight) - tl.offsetHeight) / 2; };
   document.querySelectorAll('#app .has-fold').forEach(sec => {
     const tl = sec.querySelector(':scope > .sec-tools'); if (!tl) return;
-    sec.style.setProperty('--tools-w', Math.ceil(tl.getBoundingClientRect().width + 14) + 'px');
+    // 1.56.4: the buttons sit beside the title, level with its first line, whenever the title keeps at least 16 rem and over half the
+    // width; otherwise they go on the line under it, at the right. Either way they stay put when the section is folded or opened.
+    let t = tl.previousElementSibling; while (t && t.matches('.rd-page')) t = t.previousElementSibling;    // the plant's name has Read this page aloud under it
+    const w = Math.ceil([...tl.children].reduce((a, c) => a + c.getBoundingClientRect().width, 0) + 8 * (tl.children.length - 1) + 14);
+    const room = sec.clientWidth - w, rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const isT = !!(t && t.matches('h1,h2,h3'));
+    const beside = isT && (room >= Math.max(16 * rem, sec.clientWidth * 0.5) || titleWidth(t) <= room);
+    sec.classList.toggle('tools-beside', beside);
+    sec.style.setProperty('--tools-w', w + 'px');
+    tl.style.top = beside ? Math.max(0, t.offsetTop + level(t, tl)) + 'px' : '';
+  });
+  // 1.56.4: a title with no section of its own (Fertilizer's "Today" box) has its Hide/Show at the right of the title, not on a line under it
+  // 1.57.0: and so does a title further into its section (the label card's "Name and details")
+  document.querySelectorAll('#app .sec-bare, #app .sec-inline').forEach(tl => {
+    const t = tl.previousElementSibling; tl.style.marginTop = ''; tl.style.marginBottom = ''; if (!t || !t.matches('h1,h2,h3')) return;
+    t.style.paddingRight = '';
+    const w = Math.ceil([...tl.children].reduce((a, c) => a + c.getBoundingClientRect().width, 0) + 8 * (tl.children.length - 1) + 14), host = t.parentElement.clientWidth;
+    if (host - w < Math.max(16 * (parseFloat(getComputedStyle(document.documentElement).fontSize) || 16), host * 0.5) && titleWidth(t) > host - w) return;
+    t.style.paddingRight = w + 'px';
+    const mb = parseFloat(getComputedStyle(t).marginBottom) || 0;
+    const lv = level(t, tl), th = tl.offsetHeight;
+    tl.style.marginTop = (lv - t.offsetHeight - mb) + 'px'; tl.style.marginBottom = (t.offsetHeight + mb - lv - th) + 'px';
   });
 }
 window.addEventListener('resize', () => { clearTimeout(foldMeasure.t); foldMeasure.t = setTimeout(foldMeasure, 200); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => foldMeasure());   // 1.56.4: titles change height once their font has loaded
 // the text a sighted reader would see: no buttons, form controls, icons, hidden parts or closed details
 function readableText(root) {
   const out = [];
@@ -463,13 +577,74 @@ const mb = n => n >= 1073741824 ? (n / 1073741824).toFixed(1) + ' GB' : n >= 104
 const BK_FREQ_WORDS = { '6h': 'Every 6 hours', '12h': 'Every 12 hours', daily: 'Every day', '3d': 'Every 3 days', weekly: 'Every week' };
 const BK_KIND = { manual: 'Made by you', auto: 'Automatic', update: 'Before an update' };
 let BK = null;
+// 1.58.0: the weather history's own backup, in pieces (plantdb/wxbackup.py)
+let WB = null;
+const wbDate = s => s ? parseYmd(s).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+const WB_FREQ_WORDS = { daily: 'Every day', '3d': 'Every 3 days', weekly: 'Every week', '2w': 'Every 2 weeks', monthly: 'Every month' };
+function wbJobHtml(j) {
+  if (!j || (!j.running && !j.finished)) return '';
+  if (j.running) return html`<p class="notice">${{ make: 'Backing up the weather history', combine: 'Combining the pieces', fill: 'Putting missing weather back' }[j.what] || 'Working'}… the first time this takes up to a minute.</p>`;
+  return j.ok ? html`<p class="notice ok">Finished ${when(j.finished)}: ${j.text}.</p>` : html`<p class="notice bad">It failed: ${j.error}</p>`;
+}
+async function wbPoll() {
+  const el = document.getElementById('wx-job'); if (!el) return;
+  let j; try { j = await api('GET', '/api/backups/weather/job'); } catch (e) { return; }
+  el.innerHTML = rend(wbJobHtml(j));
+  if (j.running) setTimeout(wbPoll, 1500); else if (location.hash.startsWith('#/backups')) { toast(j.ok ? j.text : 'The weather backup failed', !j.ok); route(); }
+}
+function wbHtml(W, hourOpt) {
+  const S = W.settings, n = W.pieces.length, good = W.pieces.filter(p => !p.broken), newest = good[0], L = W.live;
+  const num = x => Number(x).toLocaleString();
+  return html`<section class="blk" id="bk-wx"><h2>Weather history</h2>
+    <p class="muted">The weather history is most of the database${L.rows ? ` (${num(L.rows)} hourly readings, ${wbDate(L.first)} to ${wbDate(L.last)})` : ''}, and it changes little from day to day. So it has a backup of its own, in pieces, saved in the <strong>weather</strong> folder inside the backups folder. The first piece holds everything. Each later piece holds only the days that are new or have changed. All the pieces together are the whole history.</p>
+    <p class="${newest ? 'notice ok' : 'notice'}" role="status">${newest ? html`Newest piece: <strong>${when(newest.created_at)}</strong>. ${n} piece${n === 1 ? '' : 's'}, ${mb(W.total_bytes)} in all.`
+        : S.enabled ? 'No weather backup yet. The first piece is made within a few minutes of the app starting, or press the button below.' : 'The weather history has no backup of its own.'}
+      ${W.last ? html` Last run ${when(W.last)}${W.result ? html`: ${W.result.charAt(0).toLowerCase() + W.result.slice(1)}` : ''}.` : ''}
+      ${W.covered ? ' The other backups leave the weather out, which is why they are small.' : !S.enabled ? ' The other backups carry the weather.'
+        : newest ? ' It has not run for a while, so the other backups carry the weather until it does.' : ' Until the first piece is made, the other backups still carry the weather.'}</p>
+    <form data-form="wbset"><label class="chk-row" style="border:0"><input type="checkbox" name="enabled" ${S.enabled ? raw('checked') : ''}><span>Back up the weather history by itself</span></label>
+      <div class="field-grid">
+        <label class="f">How often<select name="freq">${W.freqs.map(f => html`<option value="${f}" ${S.freq === f ? raw('selected') : ''}>${WB_FREQ_WORDS[f]}</option>`)}</select></label>
+        <label class="f">At about<select name="hour">${[...Array(24).keys()].map(h => html`<option value="${h}" ${+S.hour === h ? raw('selected') : ''}>${hourOpt(h)}</option>`)}</select></label></div>
+      <p class="hint">A run with nothing new makes no file. Past ${W.combine_at} pieces they are combined into one by themselves. If you turn this off, the other backups carry the whole weather history again, in every one.</p>
+      <button class="btn" type="submit">Save weather backup settings</button></form>
+    <div class="row" style="margin-top:1rem"><button class="btn" type="button" data-act="wbrun" data-what="make">Back up the weather now</button>
+      <button class="btn ghost" type="button" data-act="wbrun" data-what="combine" ${good.length < 2 ? raw('disabled') : ''}>Combine the pieces into one</button>
+      <button class="btn ghost" type="button" data-act="wbrun" data-what="fill" ${good.length ? '' : raw('disabled')}>Put missing weather back from the pieces</button></div>
+    <p class="hint">Combining writes one new piece with everything, checks it, and only then removes the old ones. Putting back adds the days the record lacks; it never changes or removes weather the record has.</p>
+    <div id="wx-job" role="status" aria-live="polite">${wbJobHtml(W.job)}</div>
+    ${n ? html`<details class="grp"><summary><h3>The pieces (${n})</h3></summary><div class="tbl-wrap"><table class="tbl"><caption class="sr">Pieces of the weather backup, newest first</caption>
+      <thead><tr><th scope="col">Made</th><th scope="col">Holds</th><th scope="col" class="num">Size</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
+      ${W.pieces.map(p => html`<tr><th scope="row">${when(p.created_at)}<div class="hint">${p.kind === 'full' ? 'Everything up to then' : 'What was new or changed'}</div></th>
+        <td>${p.broken ? html`<strong>Damaged file</strong>` : html`${num(p.rows)} hourly readings, ${num(p.days)} day summaries<div class="hint">${wbDate(p.first)} to ${wbDate(p.last)}</div>`}</td>
+        <td class="num">${mb(p.bytes)}</td><td><a class="btn small" href="/api/backups/weather/${enc(p.file)}" download aria-label="Download the piece ${p.file}">Download</a></td></tr>`)}</tbody></table></div></details>` : ''}
+  </section>`;
+}
 let CP = null;
+// 1.58.0: what the owner should know about how safe the backups are (the keys come from backup_notes() in backups.py)
+function bkNote(n, short) {
+  const key = n.key || n;
+  if (key === 'off') return 'Automatic backups are turned off.';
+  if (key === 'photos') return short ? 'Automatic backups leave out your photos.'
+    : `Automatic backups leave out your photos (${n.photos} photo${n.photos === 1 ? '' : 's'}, ${mb(n.bytes)}). ${n.last ? `The newest backup that has them was made ${when(n.last)}.` : 'No backup has them yet.'}`;
+  if (key === 'one-drive') return short ? 'Every backup is on the same drive as the plant record.'
+    : 'Every backup is on the same drive as the plant record itself. If that drive fails, or the plant-database folder is deleted by mistake, the record and all of its backups go together.';
+  return '';
+}
+function bkNotesHtml(notes) {
+  return (notes || []).map(n => html`<div class="notice bad bk-note" role="note"><p><strong>${bkNote(n)}</strong></p><div class="row">
+    ${n.key === 'photos' ? html`<button class="btn" type="button" data-act="bkphotoson">Include the photos from now on</button>`
+      : n.key === 'off' ? html`<button class="btn" type="button" data-act="bkautoon">Turn automatic backups on</button>`
+      : html`<a class="btn" href="#/backups?sec=bk-copies">How to keep a copy on another drive</a>`}</div></div>`);
+}
 function copiesHtml(C) {          // 1.33.0: the second copy of each backup
   const st = C.status || {};
   return html`<section class="blk" id="bk-copies"><h2>Second copy</h2>
-    <p>Backups are on this PC's drive. A second copy of each new backup can also go to another drive, and to another computer over Tailscale (your girlfriend's PC, say), as soon as the backup is made. The newest ${C.keep} are kept in the folder, the newest 20 on the other computer.</p>
+    <p>Backups are on this PC's drive. A second copy of each new backup can also go to another drive, and to another computer over Tailscale (a family member's PC, say), as soon as the backup is made. The newest ${C.keep} are kept in the folder, the newest 20 on the other computer.</p>
     <h3>Another drive</h3>
-    ${C.dir_ok ? html`<p><span aria-hidden="true">✓</span> Copies go to <code>${C.dir_env || 'backups-copy, next to the data folder'}</code>${C.dir_files.length ? ` (${C.dir_files.length} there now).` : ' (none there yet).'}${!C.dir_env ? ' That is the same drive: to use another one, put <code>PLANTDB_COPY_DIR=D:\\PlantBackups</code> (your folder) in the <code>.env</code> file next to docker-compose.yml, then run the updater or <code>docker compose up -d</code>.' : ''}</p>`
+    ${C.dir_ok && C.dir_env ? html`<p><span aria-hidden="true">✓</span> Copies go to <code>${C.dir_env}</code>${C.dir_files.length ? ` (${C.dir_files.length} there now).` : ' (none there yet).'}</p>`
+      : C.dir_ok ? html`<p><span aria-hidden="true">!</span> <strong>Copies go to <code>backups-copy</code>, next to the data folder${C.dir_files.length ? ` (${C.dir_files.length} there now)` : ''}. That is the same drive as the record, so it protects nothing if the drive fails.</strong></p>
+        <p>To send them to another drive: make a folder on it (an inside drive or a USB one), open the file named <code>.env</code> next to docker-compose.yml in Notepad (make it if it is not there), add the line <code>PLANTDB_COPY_DIR=D:\\PlantBackups</code> with your own folder, save, then run <strong>Update Plant Database.cmd</strong> or <code>docker compose up -d</code>. The README has the steps under "A second copy of each backup".</p>`
       : html`<p class="muted">No folder is mapped. Put <code>PLANTDB_COPY_DIR=D:\\PlantBackups</code> (a folder on another drive) in the <code>.env</code> file next to docker-compose.yml, then run <code>docker compose up -d</code>.</p>`}
     <h3>Another computer</h3>
     <form data-form="bkcopies" class="f-grid" autocomplete="off">
@@ -481,20 +656,21 @@ function copiesHtml(C) {          // 1.33.0: the second copy of each backup
 }
 async function viewBackups() {
   if (ME().role !== 'owner') return { title: 'Backups', html: html`<h1>Backups</h1><p class="notice">Backups are looked after by ${ME().owner_name}. They hold a copy of everything, so only the owner can make, download or restore them.</p>` };
-  [BK, CP] = await Promise.all([api('GET', '/api/backups'), api('GET', '/api/backups/copies').catch(() => null)]);
+  [BK, CP, WB] = await Promise.all([api('GET', '/api/backups'), api('GET', '/api/backups/copies').catch(() => null), api('GET', '/api/backups/weather').catch(() => null)]);
   const S = BK.settings, hourOpt = h => new Date(2026, 0, 1, h).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   const where = BK.mounted ? 'the backups folder inside your plant-database folder' : 'data\\backups inside your plant-database folder';
   const last = BK.backups[0];
   return {
     title: 'Backups',
     html: html`<h1>Backups</h1>
-    <p class="muted">A backup is a zip with a complete copy of the database (plants, change log, weather history, feeding log, settings) and, if you choose, all the photos. Backups are saved in ${where}, so they survive updates. Copy a few to another drive now and then.</p>
+    <p class="muted">A backup is a zip with a complete copy of the database (plants, change log, feeding log, settings${WB && WB.covered ? '' : ', weather history'}) and, if you choose, all the photos.${WB && WB.covered ? html` The weather history has <a href="#bk-wx" data-act="jumpsec" data-sec="bk-wx">a backup of its own</a>.` : ''} Backups are saved in ${where}, so they survive updates. Copy a few to another drive now and then.</p>
     <p class="${last ? 'notice ok' : 'notice'}" role="status">${last ? html`Latest backup: <strong>${when(last.created_at)}</strong> (${BK_KIND[last.kind]}, ${mb(last.bytes)}).` : 'No backups yet. Make one now.'}
-      ${S.enabled ? ` Automatic backups: ${BK_FREQ_WORDS[S.freq].toLowerCase()}${['daily', '3d', 'weekly'].includes(S.freq) ? ' at about ' + hourOpt(S.hour) : ''}.` : ' Automatic backups are off.'}</p>
+      ${S.enabled ? ` Automatic backups: ${BK_FREQ_WORDS[S.freq].toLowerCase()}${['daily', '3d', 'weekly'].includes(S.freq) ? ' at about ' + hourOpt(S.hour) : ''}${S.photos ? ', with the photos' : ''}.` : ' Automatic backups are off.'}</p>
+    ${bkNotesHtml(BK.notes)}
     <section class="blk"><h2>Back up now</h2>
       <form data-form="bknow"><div class="field-grid">
         <label class="f">Note (optional)<input type="text" name="note" maxlength="300" placeholder="For example: before repotting day"></label></div>
-        <label class="chk-row" style="border:0"><input type="checkbox" name="photos"><span>Include the photos (adds about ${mb(BK.photo_bytes)})</span></label>
+        <label class="chk-row" style="border:0"><input type="checkbox" name="photos" ${BK.photo_bytes <= 1073741824 ? raw('checked') : ''}><span>Include the photos (adds about ${mb(BK.photo_bytes)})</span></label>
         <div class="row"><button class="btn" type="submit">Back up now</button></div></form>
       <div id="bk-job" role="status" aria-live="polite">${bkJobHtml(BK.job)}</div></section>
     <section class="blk"><h2>Automatic backups</h2>
@@ -502,23 +678,25 @@ async function viewBackups() {
         <div class="field-grid">
           <label class="f">How often<select name="freq">${BK.freqs.map(f => html`<option value="${f}" ${S.freq === f ? raw('selected') : ''}>${BK_FREQ_WORDS[f]}</option>`)}</select></label>
           <label class="f">At about<small>For daily, 3-day and weekly backups</small><select name="hour">${[...Array(24).keys()].map(h => html`<option value="${h}" ${+S.hour === h ? raw('selected') : ''}>${hourOpt(h)}</option>`)}</select></label>
-          <label class="f">Keep this many automatic backups<small>Older automatic ones are deleted. Your own backups are never deleted automatically.</small><input type="number" name="keep" min="1" max="365" value="${S.keep}"></label></div>
-        <label class="chk-row" style="border:0"><input type="checkbox" name="photos" ${S.photos ? raw('checked') : ''}><span>Include the photos in automatic backups</span></label>
-        <p class="hint">The database is ${mb(BK.db_bytes)} (most of it is weather history); a backup zip is usually a third to a half of that. Backups now use ${mb(BK.total_bytes)}; ${mb(BK.free_bytes)} free. The app must be running for automatic backups; a missed one runs when it next starts.</p>
+          <label class="f">Keep this many automatic backups<small>Older automatic ones are deleted. Of the backups made before an update, the newest ${BK.keep_updates} are kept. Your own backups are never deleted automatically.</small><input type="number" name="keep" min="1" max="365" value="${S.keep}"></label></div>
+        <label class="chk-row" style="border:0"><input type="checkbox" name="photos" ${S.photos ? raw('checked') : ''}><span>Include the photos in automatic backups (about ${mb(BK.photo_bytes)} in each)</span></label>
+        <p class="hint">The database is ${mb(BK.db_bytes)} (most of it is weather history${WB && WB.covered ? ', which these backups leave out: it has its own, below' : ''}); ${WB && WB.covered ? 'a backup zip without photos is a few MB' : 'a backup zip is usually a third to a half of that'}. Backups now use ${mb(BK.total_bytes)}; ${mb(BK.free_bytes)} free. The app must be running for automatic backups; a missed one runs when it next starts.</p>
         <button class="btn" type="submit">Save automatic backup settings</button></form></section>
+    ${WB ? wbHtml(WB, hourOpt) : ''}
     ${CP ? copiesHtml(CP) : ''}
     <section class="blk"><h2>Your backups (${BK.backups.length})</h2>
       ${BK.backups.length ? html`<div class="tbl-wrap"><table class="tbl"><caption class="sr">Backups, newest first</caption><thead><tr><th scope="col">Made</th><th scope="col">Type</th><th scope="col" class="num">Size</th><th scope="col">Contents</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
         ${BK.backups.map(b => html`<tr><th scope="row">${when(b.created_at)}${b.note ? html`<div class="hint">${b.note}</div>` : ''}</th><td>${BK_KIND[b.kind]}${b.by && b.kind !== 'auto' ? html`<div class="hint">${b.by}</div>` : ''}</td>
-          <td class="num">${mb(b.bytes)}</td><td>${b.broken ? html`<strong>Damaged file</strong>` : html`Database${b.photos ? ' and photos' : ''}${b.plants != null ? `, ${b.plants} plants` : ''}${b.version ? html`<div class="hint">App version ${b.version}</div>` : ''}`}</td>
+          <td class="num">${mb(b.bytes)}</td><td>${b.broken ? html`<strong>Damaged file</strong>` : html`Database${b.photos ? ' and photos' : ''}${b.weather === false ? ', without the weather history' : ''}${b.plants != null ? `, ${b.plants} plants` : ''}${b.version ? html`<div class="hint">App version ${b.version}</div>` : ''}`}</td>
           <td><div class="row" style="gap:.4rem"><a class="btn small" href="/api/backups/${enc(b.file)}" download aria-label="Download the backup ${b.file}">Download</a>${!b.broken && ME().role === 'owner' ? html`<button class="btn small ghost" type="button" data-act="bkrestore" data-file="${b.file}" data-made="${when(b.created_at)}" data-plants="${b.plants == null ? '' : b.plants}" data-photos="${b.photos ? '1' : ''}">Restore</button>` : ''}<button class="btn small danger" type="button" data-act="bkdel" data-file="${b.file}" aria-label="Delete the backup ${b.file}">Delete</button></div></td></tr>`)}</tbody></table></div>` : html`<div class="empty">No backups yet.</div>`}</section>
     <section class="blk"><h2>Restoring a backup</h2>
       <ol><li>Stop the app (in the plant-database folder): <span class="code">docker compose down</span></li>
         <li>Rename the current <span class="code">data\\plants.db</span> to <span class="code">plants-old.db</span> (keep it until you are sure).</li>
         <li>Open the backup zip and copy <span class="code">plants.db</span> into the <span class="code">data</span> folder. If the backup has a <span class="code">photos</span> folder, copy its files into <span class="code">data\\photos</span>.</li>
         <li>Start the app: <span class="code">docker compose up -d</span></li></ol>
+      <p class="hint">A backup that says "without the weather history" has none in it. Restored by hand like this, the app puts the weather back from the pieces above a few minutes after it starts. The Restore button in the list keeps your weather as it is.</p>
       <p class="hint">The README has these steps as cmd.exe, PowerShell and bash commands.</p></section>`,
-    after: () => { if (BK.job && BK.job.running) bkPoll(); },
+    after: () => { if (BK.job && BK.job.running) bkPoll(); if (WB && WB.job && WB.job.running) wbPoll(); },
   };
 }
 function bkJobHtml(j) {
@@ -537,7 +715,7 @@ async function bkPoll() {
 function labelCard(p, base, withLink) {
   return html`<div class="lblwrap"><div class="lbl"><img src="/api/plants/${enc(p.code)}/qr.svg?base=${enc(base)}" alt="QR code for ${p.code}" width="96" height="96" loading="lazy">
     <div><span class="code">${p.code}</span><b>${p.common_name}</b><span class="sci latin">${p.scientific_name || ''}</span></div></div>
-    ${withLink ? html`<a class="btn small ghost noprint lbl-open" href="#/plant/${enc(p.code)}" aria-label="Open the page for ${p.code} ${p.common_name}">Open plant page</a>` : ''}</div>`;
+    ${withLink ? html`<a class="btn small ghost noprint lbl-open" href="#/plant/${enc(p.code)}" aria-label="Open plant page: ${p.code} ${p.common_name}">Open plant page</a>` : ''}</div>`;
 }
 async function viewLabels() {
   const [list, st] = await Promise.all([api('GET', '/api/plants'), api('GET', '/api/settings')]);
@@ -568,15 +746,15 @@ function placeLabels(base) {
   const card = (q, name, sub, href, aria) => html`<div class="lblwrap"><div class="lbl"><img src="/api/where/qr.svg?${q}&base=${enc(base)}" alt="QR code for ${name}" width="96" height="96" loading="lazy">
       <div><b>${name}</b><span class="sci">${sub}</span></div></div>
     <a class="btn small ghost noprint lbl-open" href="${href}" aria-label="${aria}">Show its plants</a></div>`;
-  const cards = homes.flatMap(h => h.areas.flatMap(a => [card('area=' + a.id, a.name, `${a.site}${multi ? ', ' + h.home.name : ''} · ${a.plants} plant${a.plants === 1 ? '' : 's'}`, `#/plants?area=${a.id}`, `Show the plants in ${a.name}`),
-    ...(a.spots || []).map(sp => card('spot=' + sp.id, sp.name, `${a.name}${multi ? ', ' + h.home.name : ''} · ${sp.plants} plant${sp.plants === 1 ? '' : 's'}`, `#/plants?spot=${sp.id}`, `Show the plants at ${sp.name}, ${a.name}`))]));
+  const cards = homes.flatMap(h => h.areas.flatMap(a => [card('area=' + a.id, a.name, `${a.site}${multi ? ', ' + h.home.name : ''} · ${a.plants} plant${a.plants === 1 ? '' : 's'}`, `#/plants?area=${a.id}`, `Show its plants: ${a.name}`),
+    ...(a.spots || []).map(sp => card('spot=' + sp.id, sp.name, `${a.name}${multi ? ', ' + h.home.name : ''} · ${sp.plants} plant${sp.plants === 1 ? '' : 's'}`, `#/plants?spot=${sp.id}`, `Show its plants: ${sp.name}, ${a.name}`))]));
   return cards.length ? html`<div class="lsheet">${cards}</div>` : html`<p class="muted">No rooms or spots yet. Add them under <a href="#/where">Rooms and spots</a>.</p>`;
 }
 
 // ---------- audit log page: every change to every record, with filters (1.10.0; was the Change log page) ----------
 let AUDOPEN = false;             // 1.39.1: the audit filters box stays open for the visit once you open it
 document.addEventListener('toggle', e => { if (e.target && e.target.id === 'aud-fbox') AUDOPEN = e.target.open; }, true);
-const AUD = { f: { q: '', plant: '', who: '', kind: '', field: '', from: '', to: '', order: 'desc' }, offset: 0, limit: 100, facets: null, total: 0, t: null };
+const AUD = { f: { q: '', plant: '', who: '', kind: '', field: '', from: '', to: '', order: 'desc' }, offset: 0, limit: 100, facets: null, total: 0, t: null, seq: 0 };
 try { const s = JSON.parse(localStorage.getItem('plantdb.auditf') || '{}'); Object.keys(AUD.f).forEach(k => { if (typeof s[k] === 'string') AUD.f[k] = s[k]; }); } catch (e) { /* defaults */ }
 const audSave = () => { try { localStorage.setItem('plantdb.auditf', JSON.stringify(AUD.f)); } catch (e) { /* not remembered */ } };
 function audQS(extra) {
@@ -627,11 +805,15 @@ function audWords() {
   if (f.from) w.push('from ' + midDay(f.from)); if (f.to) w.push('to ' + midDay(f.to));
   return w.join(', ');
 }
+// 1.58.0: only the answer to the latest search is shown. Two choices made one after the other start two searches, and the first one's
+// answer can arrive last (it is the longer list); it then replaced the list while the filters and the summary named the second choice.
 async function audLoad(focusSel) {
   const box = document.getElementById('aud-list'); if (!box) return;
+  const my = ++AUD.seq;
   let r;
   try { r = await api('GET', '/api/audit/search?' + audQS({ limit: AUD.limit, offset: AUD.offset })); }
-  catch (e) { box.innerHTML = rend(html`<p class="notice bad">Could not load the audit log: ${e.message}</p>`); return; }
+  catch (e) { if (my === AUD.seq) box.innerHTML = rend(html`<p class="notice bad">Could not load the audit log: ${e.message}</p>`); return; }
+  if (my !== AUD.seq) return;
   AUD.total = r.total;
   const end = Math.min(r.offset + r.entries.length, r.total), words = audWords();
   document.getElementById('aud-sum').textContent = r.total ? `Showing ${(r.offset + 1).toLocaleString()} to ${end.toLocaleString()} of ${r.total.toLocaleString()} ${r.total === 1 ? 'change' : 'changes'}${words ? ' ' + words : ''}.` : `No changes${words ? ' ' + words : ''}.`;
@@ -714,16 +896,19 @@ async function conPoll() {
   finally { CON.busy = false; }
 }
 // 1.26.0: on phones (narrow windows) the list of pages folds behind one "Pages" button, which names the page you are on
+function topMoreFold() { const top = document.querySelector('header.top'), m = document.getElementById('more-btn'); if (top) top.classList.remove('more-open'); if (m) m.setAttribute('aria-expanded', 'false'); }
 function pagesMenu(open) {
   const b = document.getElementById('pages-btn'), top = document.querySelector('header.top'); if (!b || !top) return;
   const cur = document.querySelector('#main-nav a[aria-current=page]'), c = document.getElementById('pages-cur');
   const sub = document.querySelector('#sub-nav:not([hidden]) a[aria-current=page]'), word = a => a.childNodes[0].textContent.trim();
-  if (c) c.textContent = (cur ? word(cur) : 'Plants') + (sub && cur && word(sub) !== word(cur) ? ', ' + word(sub) : '');   // 1.29.0: the section and its page, without the wishlist alert count
+  const narrow = document.documentElement.dataset.narrow === '1';     // 1.56.5: on a narrow screen just the page, so it fits beside Search and More
+  if (c) c.textContent = narrow && sub ? word(sub) : (cur ? word(cur) : 'Plants') + (sub && cur && word(sub) !== word(cur) ? ', ' + word(sub) : '');   // 1.29.0: the section and its page, without the wishlist alert count
   b.setAttribute('aria-expanded', open ? 'true' : 'false'); top.classList.toggle('pages-open', !!open);
 }
 document.addEventListener('keydown', e => {      // Escape folds the list of pages again and goes back to its button
   const top = document.querySelector('header.top');
   if (e.key === 'Escape' && top && top.classList.contains('pages-open') && top.contains(document.activeElement)) { pagesMenu(false); const b = document.getElementById('pages-btn'); if (b) b.focus(); }
+  if (e.key === 'Escape' && top && top.classList.contains('more-open') && top.contains(document.activeElement)) { topMoreFold(); const b = document.getElementById('more-btn'); if (b) b.focus(); }
 });
 function pinLayout() {           // phones: the buttons pinned to the bottom of the screen stack up instead of covering each other
   const r = document.documentElement, tab = conEl('nav-tab'), corner = conEl('corner'), job = conEl('job-badge');
@@ -735,13 +920,27 @@ function pinLayout() {           // phones: the buttons pinned to the bottom of 
   }
   // 1.42.0: Display sits at the bottom of the Navigation menu; on a page with no sections (no menu) it stays in the corner
   const disp = conEl('display-btn'), foot = conEl('sn-foot'), inCorner = r.dataset.navempty === '1' && r.dataset.narrow !== '1';
-  if (disp && foot && corner) { if (inCorner && disp.parentNode !== corner) corner.append(disp); else if (!inCorner && disp.parentNode !== foot) foot.append(disp); }
+  // 1.57.0: on such a page it goes in the top bar, beside Search, where it covers nothing (in the corner it hid the end of tables)
+  const acts = document.querySelector('header.top .top-acts');
+  if (disp && foot && acts) { if (inCorner && disp.parentNode !== acts) acts.prepend(disp); else if (!inCorner && disp.parentNode !== foot) foot.append(disp); }
   r.dataset.tabup = '0'; if (tab) tab.style.bottom = '';
   if (r.dataset.narrow !== '1' || !corner) { r.style.removeProperty('--pin-h'); if (job) job.style.bottom = ''; return; }
   const cr = corner.getBoundingClientRect();
   r.style.setProperty('--pin-h', Math.round(cr.height) + 'px');
   if (job) job.style.bottom = Math.round(innerHeight - cr.top + 8) + 'px';
 }
+// 1.57.0: on a phone, the Navigation and Display bar at the bottom slips away while you scroll down the page and comes back as soon
+// as you scroll up (or reach the end), so it does not take that space the whole time. Never while it has the focus.
+let BARY = 0;
+window.addEventListener('scroll', () => {
+  const r = document.documentElement, y = window.scrollY, corner = document.getElementById('corner');
+  if (r.dataset.narrow !== '1' || !corner) { if (r.dataset.barhide) delete r.dataset.barhide; BARY = y; return; }
+  const end = y + innerHeight >= document.documentElement.scrollHeight - 40;
+  if (corner.contains(document.activeElement) || end || y < 80) delete r.dataset.barhide;
+  else if (y > BARY + 30) r.dataset.barhide = '1';
+  else if (y < BARY - 10) delete r.dataset.barhide;
+  if (Math.abs(y - BARY) > 10) BARY = y;
+}, { passive: true });
 function conLayout() {
   pinLayout();
   const c = conEl('console'), r = document.documentElement; if (!c) return;

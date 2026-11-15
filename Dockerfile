@@ -9,6 +9,8 @@ RUN pip install --no-compile --progress-bar off --disable-pip-version-check -r r
 COPY app/ /app/
 # The release number: shown in the app header, at /api/version and on the image in Docker Desktop.
 COPY VERSION /app/VERSION
+COPY CHANGELOG.md /app/CHANGELOG.md
+# 1.55.0: the running version's entry is shown on Today as "What's new"
 ARG PLANTDB_VERSION=unknown
 LABEL org.opencontainers.image.title="Plant database" org.opencontainers.image.version=$PLANTDB_VERSION
 VOLUME /data

@@ -24,6 +24,8 @@ if os.environ.get('PLANTDB_WEATHER', '1') == '1':
     threading.Thread(target=weather_loop, daemon=True).start()
 if os.environ.get('PLANTDB_PUSH', '1') == '1':
     threading.Thread(target=push_loop, daemon=True).start()           # 1.33.0: cold nights and what is due, as notifications
+if os.environ.get('PLANTDB_UPDATES', '1') == '1' and not MIRROR:
+    threading.Thread(target=updates_loop, daemon=True).start()        # 1.55.0: asks GitHub twice a day whether a newer release is out
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 8080)))

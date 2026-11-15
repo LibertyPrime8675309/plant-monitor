@@ -36,7 +36,7 @@ with sync_playwright() as pw:
     check(all(h in links for h in heads), f'every section title on the page is in the menu ({len(heads)} sections, {len(links)} links)')
     pg.locator('#sidenav').get_by_role('link', name='Name and details').click(); pg.wait_for_timeout(900)
     t = pg.evaluate("document.getElementById('details').getBoundingClientRect().top"); pt = pg.evaluate("document.getElementById('pane-r').getBoundingClientRect().top")
-    check(abs(t - pt) < 120 and pg.evaluate("document.activeElement && document.activeElement.tagName") == 'H1', 'Name and details scrolls the card into view and moves focus to the plant name')
+    check(abs(t - pt) < 120 and pg.evaluate("document.activeElement && document.activeElement.matches('#details h2')"), 'Name and details scrolls the card into view and moves focus to its title (1.56.5: the plant\'s name is above the photos)')
     pg.screenshot(path=os.path.join(OUT, 'swipe-1-menu.png'))
     pg.locator('#sidenav button[data-act=navtoggle]').click(); pg.wait_for_timeout(600)
     row = [x.strip() for x in pg.locator('#jumprow button').all_inner_texts()]
@@ -79,6 +79,7 @@ with sync_playwright() as pw:
     swipe(ph, cdp, 320, 500, 90, 510)
     check(ph.evaluate('location.hash') == '#/plant/P-001', 'with swiping turned off in Display, a swipe does nothing')
     ph.evaluate("PlantPrefs.set('swipe', '1')")
+    ph.evaluate("window.scrollBy(0, -80)"); ph.wait_for_timeout(400)  # 1.57.0: the bottom bar slips away while scrolling down; a little up brings it back
     ph.locator('#nav-tab').click(); ph.wait_for_timeout(400)          # 1.42.0: Display is at the bottom of the Navigation menu
     ph.locator('#display-btn').click(); ph.wait_for_timeout(500)
     check(ph.locator('dialog fieldset', has=ph.locator('legend', has_text='Swipe between plants')).count() == 1, 'Display has a Swipe between plants setting')

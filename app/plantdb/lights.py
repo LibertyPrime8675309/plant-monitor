@@ -127,7 +127,9 @@ def light_dict(r, used=0):
             'specs': d, 'points': [{'distance_in': x, 'ppfd': y, 'area_sqft': a} for x, y, a in pts], 'min_in': dmin, 'max_in': dmax,
             'max_dli': dli_of(ppfd_at(pts, dmin), 16) if pts else None, 'reach': light_reach(d, pts),
             'room_light': 'room light' in (d.get('kind') or '').lower(),
-            'photo': d.get('photo'), 'chart': d.get('chart'), 'updated_by': r['updated_by'] or r['created_by'], 'updated_at': r['updated_at'] or r['created_at']}
+            'photo': d.get('photo'), 'chart': d.get('chart'), 'updated_by': r['updated_by'] or r['created_by'], 'updated_at': r['updated_at'] or r['created_at'],
+            'mount': d.get('mount'), 'mount_words': mount_words(d.get('mount')),      # 1.56.0 (PLAN.md step 8a): how it holds
+            'status': r['status'] if 'status' in r.keys() else 'owned'}               # 1.56.0 (PLAN.md step 10b)
 
 def light_reach(d, pts):
     """1.41.0: what one of this light can give, within the distances its maker (or Claude) measured: the most light (its
@@ -139,22 +141,35 @@ def light_reach(d, pts):
     return {'near_in': pts[0][0], 'far_in': pts[-1][0], 'ppfd_max': round(hi), 'ppfd_min': round(lo, 1), 'dim_min': dims[0],
             'dli12': [dli_of(lo, 12), dli_of(hi, 12)], 'dli_any': [dli_of(lo, 8), dli_of(hi, 16)], 'one_point': len(pts) == 1}
 
+def stack_factor(area, units, need):
+    """1.56.1: how many lights' worth reach the plants when a spot has several of a light. Side by side over plants that need
+    the room, each lights its own patch at the same strength; over plants that fit under fewer of them, their light adds up
+    on the same leaves. So: all the area they light, spread over the larger of one light's area and the pots' room, between
+    1 and the number of lights. With no area figures for the light, they are taken to shine on the same plants."""
+    if units <= 1: return 1.0
+    if not area: return float(units)
+    return max(1.0, min(float(units), units * area / max(area, need or 0)))
+
 def spot_eval(c, s, L, plants):
     d = light_specs(L) if L is not None else {}
     pts = light_points(d)
-    p = ppfd_at(pts, s['distance_in']) if pts else None
-    dl = dli_of(p, s['hours'], s['dim_pct']) if p else None
+    p1 = ppfd_at(pts, s['distance_in']) if pts else None
     area = area_at(pts, s['distance_in']) if pts else None
     rows, need = [], 0.0
+    for r in plants: need += plant_foot(c, r)
+    f = stack_factor(area, s['units'], need)
+    p = p1 * f if p1 else None
+    dl = dli_of(p, s['hours'], s['dim_pct']) if p else None
     for r in plants:
         n = plant_need(r)
-        need += plant_foot(c, r)
         v = light_verdict(dl, n and n['lo'], n and n['hi'])
         rows.append({'code': r['code'], 'name': r['common_name'], 'lo': n and n['lo'], 'hi': n and n['hi'], 'verdict': v, 'verdict_word': LIGHT_VERDICT[v],
-                     'photo': plant_photo(c, r['id'])})
+                     'photo': plant_photo(c, r['id']), 'height_in': r['height_in'] if 'height_in' in r.keys() else None})
     cover = round(area * s['units'], 1) if area else None
-    return {'ppfd': round(p) if p else None, 'dli': dl, 'area_sqft': cover, 'plants': rows, 'room_needed_sqft': round(need, 1),
-            'crowded': bool(cover and need > cover * LIGHT_ROOM * 1.1), 'timer_note': light_timer_note(d, s['hours']) if L is not None else ''}
+    lit = round(area * s['units'] / f, 1) if area else None              # overlapping lights light less floor, more strongly
+    return {'ppfd': round(p) if p else None, 'dli': dl, 'area_sqft': lit, 'plants': rows, 'room_needed_sqft': round(need, 1),
+            'crowded': bool(cover and need > cover * LIGHT_ROOM * 1.1), 'timer_note': light_timer_note(d, s['hours']) if L is not None else '',
+            'units': s['units'], 'stack': round(f, 2), 'area_known': bool(area)}
 
 def plant_photo(c, pid):
     r = c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC, id LIMIT 1', (pid,)).fetchone()
@@ -294,13 +309,18 @@ def lights_state(c):
     assigned = {code for codes in assign.values() for code in codes}
     outdoor = outdoor_dli(c)
     out_spots = []
+    others = [(o['name'], light_mount(o)) for o in lights if o['count'] > 0]
+    pphoto = place_photo_map(c)
     for s in spots:
         ps = [r for r in (c.execute('SELECT * FROM plants WHERE code=?', (code,)).fetchone() for code in assign.get(s['id'], [])) if r]
         L = byid.get(s['light_id'])
         ev = spot_eval(c, s, L, ps)
         out_spots.append({'id': s['id'], 'name': s['name'], 'light_id': s['light_id'], 'light': L['name'] if L else 'A light that was removed',
-                          'place_id': s['place_id'], 'place': place_label(c, s['place_id']),
+                          'place_id': s['place_id'], 'place': place_label(c, s['place_id']), 'place_photo': pphoto.get(s['place_id']),
                           'units': s['units'], 'distance_in': s['distance_in'], 'hours': s['hours'], 'dim_pct': s['dim_pct'], 'notes': s['notes'],
+                          'level': s['level'] or '', 'holder': s['holder'] or '',
+                          'fit': spot_fit(c, s, L, ps, [x for x in others if L is None or x[0] != L['name']]),     # 1.56.0 (PLAN.md step 8d): can it be put there
+                          'checked': spot_checked(c, s),                                                        # 1.56.0 (8e): set up and checked
                           'steps': step_down(L, s, ps, outdoor) if L else [], **ev})
     plan, unplaced = light_plan(c, lights, used, assigned)
     for p in plan:
@@ -311,20 +331,27 @@ def lights_state(c):
     # 1.41.0: a plant that does not fit its spot is pointed at one of your other spots that would suit it
     for sp in out_spots:
         for p in sp['plants']: p['better'] = better_spot(out_spots, p, sp['id'])
-    lights_out = [light_dict(L, used.get(L['id'], 0)) for L in lights]
+    lights_out = [light_dict(L, used.get(L['id'], 0)) for L in lights if L['status'] == 'owned' or used.get(L['id'])]   # 1.56.0: others are on Compare lights
     for Ld in lights_out:      # how many of the plants that need a light this one could serve, at some setting within its range
         rg = Ld['reach']
         Ld['suits'] = sum(1 for x in cands if x['need'] and rg and x['need']['lo'] <= rg['dli_any'][1] and x['need']['hi'] >= rg['dli_any'][0]) if rg else 0
-    places = [p | {'spots': [s['id'] for s in out_spots if s['place_id'] == p['id']]} for p in light_places(c)]
+    def lv(pid):                                          # 1.56.0: how many levels, and each lower level's clear height, for the spot dialog
+        sp, room = place_rows(c, pid); sh = {**(sheet_of(room) if room is not None else {}), **(sheet_of(sp) if sp is not None else {})}
+        return {'levels': sh.get('levels'), 'gaps_in': sh.get('gaps_in') or ([sh['gap_in']] * (sh['levels'] - 1) if sh.get('gap_in') and sh.get('levels') else [])}
+    places = [p | {'spots': [s['id'] for s in out_spots if s['place_id'] == p['id']], 'photo': pphoto.get(p['id']), 'words': place_words(c, p['id']), **lv(p['id'])} for p in light_places(c)]
     return {'lights': lights_out, 'spots': out_spots, 'plan': plan, 'unplaced': unplaced, 'places': places,
             'candidates': cands, 'assigned': {code: sid for sid, codes in assign.items() for code in codes}, 'outdoor_dli': outdoor,
-            'verdicts': LIGHT_VERDICT}
+            'verdicts': LIGHT_VERDICT, 'mount_kinds': MOUNT_KINDS, 'points': POINTS, 'holders': {k: v[0] for k, v in HOLDERS.items()}}
 
 def better_spot(spots, p, here=None):
     """One of your other spots whose light would suit this plant (verdict Good), nearest its needs' middle, or None."""
     if p.get('verdict') in ('good', 'unknown', None) or p.get('lo') is None: return None
     mid = (p['lo'] + p['hi']) / 2
-    fits = [s for s in spots if s['id'] != here and s.get('dli') is not None and light_verdict(s['dli'], p['lo'], p['hi']) == 'good']
+    def placeable(s):          # 1.56.0 (PLAN.md step 8d): not a spot whose light does not fit there, nor one whose level it is too tall for
+        f = s.get('fit') or {}
+        if f.get('status') == 'nofit' and any(x['kind'] == 'nofit' for x in f.get('lines') or []): return False
+        return not (p.get('height_in') and f.get('clear_in') and p['height_in'] >= f['clear_in'])
+    fits = [s for s in spots if s['id'] != here and s.get('dli') is not None and light_verdict(s['dli'], p['lo'], p['hi']) == 'good' and placeable(s)]
     if not fits: return None
     s = min(fits, key=lambda s: abs(s['dli'] - mid))
     return {'id': s['id'], 'name': s['name'], 'dli': s['dli']}
@@ -341,7 +368,7 @@ def best_setting(c, L, units, plants):
     foot = sum(plant_foot(c, r) for r in plants)
     best = None
     for dist in range(int(math.ceil(dmin)), int(math.floor(dmax)) + 1):
-        p = ppfd_at(pts, dist); area = area_at(pts, dist)
+        area = area_at(pts, dist); p = ppfd_at(pts, dist) * stack_factor(area, units, foot)       # 1.56.1: several lights add up
         crowded = bool(area and foot > area * units * LIGHT_ROOM * 1.1)
         for h in LIGHT_HOURS:
             for dim in dims:
@@ -407,8 +434,10 @@ def lights_preview():
             Lo = c.execute('SELECT * FROM lights WHERE id=?', (o['light_id'],)).fetchone()
             pts = light_points(light_specs(Lo)) if Lo else []
             pp = ppfd_at(pts, o['distance_in']) if pts else None
-            others.append({'id': o['id'], 'name': o['name'], 'dli': dli_of(pp, o['hours'], o['dim_pct']) if pp else None})
+            ops = [r for r in (c.execute('SELECT * FROM plants WHERE code=?', (x,)).fetchone() for (x,) in c.execute('SELECT plant_code FROM light_assign WHERE spot_id=?', (o['id'],))) if r]
+            others.append({'id': o['id'], 'name': o['name'], 'dli': dli_of(pp, o['hours'], o['dim_pct']) if pp else None, 'fit': spot_fit(c, o, Lo, ops) if Lo else None})
         for p in ev['plants']: p['better'] = better_spot(others, p, here)
+    ev['fit'] = spot_fit(c, s, L, ps)          # 1.56.0 (PLAN.md step 8d)
     return jsonify(ev)
 
 def spot_fields(b, partial=False):
@@ -421,7 +450,12 @@ def spot_fields(b, partial=False):
     place = b.get('place')
     try: place = int(place) if place not in (None, '', 'null') else None
     except (TypeError, ValueError): abort(400, 'Choose a room or shelf from the list')
-    return {'name': name, 'units': units, 'distance_in': dist, 'hours': hours, 'dim_pct': dim, 'notes': str(b.get('notes', '')).strip()[:300], 'place_id': place}
+    level = str(b.get('level') or '')
+    if level not in ('', 'top', 'lower') and not re.fullmatch(r'L([1-9]|1[0-9])', level): abort(400, 'Choose which level: the top, or a level counted from the bottom')
+    holder = str(b.get('holder') or '')
+    if holder not in ('',) + tuple(HOLDERS): abort(400, 'Choose what the bulb screws into: a clamp lamp, a lamp with a base, or a socket on a cord')
+    return {'name': name, 'units': units, 'distance_in': dist, 'hours': hours, 'dim_pct': dim, 'notes': str(b.get('notes', '')).strip()[:300], 'place_id': place,
+            'level': level, 'holder': holder}      # 1.56.0 (PLAN.md step 8): which level of a shelf, and what a bulb screws into
 
 def spot_text(s, light_name, c=None):
     where = place_label(c, s['place_id']) if c is not None and s['place_id'] else None
@@ -453,6 +487,7 @@ def check_place(c, pid):
 def set_spot_plants(c, sid, spot_name, codes, who):
     old = {x for (x,) in c.execute('SELECT plant_code FROM light_assign WHERE spot_id=?', (sid,))}
     new = set(codes)
+    for code in sorted(new ^ old): home_check(c, code)          # 1.58.0: which light a plant is under follows the plant's home
     for code in sorted(new - old):
         r = c.execute('SELECT id, code FROM plants WHERE code=?', (code,)).fetchone()
         if not r: abort(400, f'There is no plant {code}')
@@ -479,8 +514,8 @@ def light_spot_add():
     return jsonify(id=sid), 201
 
 def make_spot(c, s, L, codes, who):
-    sid = c.execute('INSERT INTO light_spots(name,light_id,units,distance_in,hours,dim_pct,notes,place_id,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
-                    (s['name'], L['id'], s['units'], s['distance_in'], s['hours'], s['dim_pct'], s['notes'], s['place_id'], who, now())).lastrowid
+    sid = c.execute('INSERT INTO light_spots(name,light_id,units,distance_in,hours,dim_pct,notes,place_id,level,holder,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)',
+                    (s['name'], L['id'], s['units'], s['distance_in'], s['hours'], s['dim_pct'], s['notes'], s['place_id'], s.get('level') or '', s.get('holder') or '', who, now())).lastrowid
     audit_only(c, 'light', 'light_spot', None, spot_text(s, L['name'], c), who, 'Grow light spot set up: ' + spot_text(s, L['name'], c))
     set_spot_plants(c, sid, s['name'], codes, who)
     return sid
@@ -533,8 +568,8 @@ def light_spot_one(i):
     L = c.execute('SELECT * FROM lights WHERE id=?', (int(_num(b, 'light', 1, 1e9, 'Light', required=True)),)).fetchone()
     if not L: abort(400, 'Choose one of your lights')
     check_place(c, s['place_id'])
-    c.execute('UPDATE light_spots SET name=?,light_id=?,units=?,distance_in=?,hours=?,dim_pct=?,notes=?,place_id=?,updated_by=?,updated_at=? WHERE id=?',
-              (s['name'], L['id'], s['units'], s['distance_in'], s['hours'], s['dim_pct'], s['notes'], s['place_id'], who, now(), i))
+    c.execute('UPDATE light_spots SET name=?,light_id=?,units=?,distance_in=?,hours=?,dim_pct=?,notes=?,place_id=?,level=?,holder=?,updated_by=?,updated_at=? WHERE id=?',
+              (s['name'], L['id'], s['units'], s['distance_in'], s['hours'], s['dim_pct'], s['notes'], s['place_id'], s['level'], s['holder'], who, now(), i))
     a, z = spot_text(old, L0[0] if L0 else 'light', c), spot_text(s, L['name'], c)
     if a != z: audit_only(c, 'light', 'light_spot', a, z, who, 'Grow light spot changed: ' + z)
     if 'plants' in b: set_spot_plants(c, i, s['name'], [str(x) for x in b.get('plants') or []], who)

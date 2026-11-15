@@ -21,7 +21,7 @@ def status(m, url, body=None):
 T = lambda: call('GET', '/api/turning')
 plants = {p['code']: p for p in call('GET', '/api/plants')}
 t0 = T(); listed = {p['code'] for p in t0['plants']}
-inside = {c for c, p in plants.items() if p['site'] in ('Indoors', 'Covered porch')}
+inside = {c for c, p in plants.items() if p['site'] in ('Indoors', 'Covered porch') and not p.get('home_id')}      # not the Baraboo orchid (batch C9)
 check(t0['every'] == 14 and listed == inside and all(p['state'] == 'never' for p in t0['plants']),
       f'a fresh install lists the {len(inside)} plants indoors or on the covered porch, every 14 days, none turned yet')
 check(not listed & {c for c, p in plants.items() if p['site'] == 'Outdoors'}, 'plants out in the open are not on the list')
@@ -86,7 +86,14 @@ with sync_playwright() as p:
     pg.select_option('select[data-act=turnevery]', '10'); pg.wait_for_timeout(1500)
     check(T()['every'] == 10 and pg.locator('select[data-act=turnevery]').input_value() == '10', 'choosing 10 days saves it')
     nv = pg.locator('.tn-never [data-act=turnedall]')
-    pg.locator('.tn-never > summary').click()
+    # 1.56.3 (Ethan, November 10): a group that folds by its title bar shows Show/Hide at the right of the bar too. 1.56.4: only the
+    # bar is a control (no button inside it), so screen readers hear one control that says open or closed
+    fb = pg.locator('.tn-never > summary .det-fold')
+    check(fb.count() == 1 and 'Show' in fb.inner_text() and pg.locator('.tn-never > summary button').count() == 0
+          and fb.locator('xpath=ancestor::*[@aria-hidden="true"]').count() == 1, 'the folded group shows Show, and the bar is the one control')
+    x0 = fb.bounding_box()['x']; fb.click(); pg.wait_for_timeout(200)
+    check(pg.locator('.tn-never').evaluate('d => d.open') and 'Hide' in fb.inner_text() and abs(fb.bounding_box()['x'] - x0) < 1,
+          'pressing it opens the group, it says Hide, and it stays where it was')
     n_never = T()['counts']['never']
     nv.click(); pg.wait_for_selector('dialog[open]')
     check(f'Mark {n_never} pots as turned today?' in pg.inner_text('dialog[open]'), 'I turned all ... asks first')
@@ -130,7 +137,9 @@ with sync_playwright() as p:
         check(pg.locator('#tn-plant-btn').count() == 0 and pg.locator('#tn-plant').count() == 0, f'a plant out in the open ({out_code}) gets nothing about turning')
     pg.goto(BASE + f'/#/plant/{a}'); pg.wait_for_timeout(2500)
     pg.evaluate("document.querySelector('.quick').scrollIntoView({block: 'center'})"); pg.wait_for_timeout(200)
-    pg.locator('.quick').screenshot(path=os.path.join(OUT, 'turning-5-plant.png'))
+    pg.locator('.quick').screenshot(path=os.path.join(OUT, 'turning-5-plant.png'))                # the button, beside Watered today
+    pg.evaluate("document.querySelector('#quick-more').scrollIntoView({block: 'center'})"); pg.wait_for_timeout(200)
+    pg.locator('#quick-more').screenshot(path=os.path.join(OUT, 'turning-5-plant-line.png'))      # 1.58.0: its line, in the box for the rest of the care
     pg.evaluate("document.documentElement.dataset.role = 'viewer'")
     check(pg.locator('#tn-plant-btn:visible').count() == 0, 'people who can only view do not see Turned today')
     pg.evaluate("document.documentElement.dataset.role = 'owner'")

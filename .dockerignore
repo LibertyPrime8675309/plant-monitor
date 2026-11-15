@@ -1,10 +1,12 @@
 data
 backups
+plant-updates
 dev
 docs
 .git
 .github
 **/__pycache__
 *.md
+!CHANGELOG.md
 *.zip
 tailscale/state

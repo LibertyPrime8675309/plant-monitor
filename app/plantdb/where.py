@@ -187,7 +187,7 @@ def place_climate(c, L):
     return out
 
 def place_brief(L):
-    return {k: L.get(k) for k in ('id', 'name', 'tz', 'is_home', 'enabled', 'plants_here', 'country', 'units', 'season')}   # 1.48.0: a home is a site
+    return {k: L.get(k) for k in ('id', 'name', 'tz', 'is_home', 'enabled', 'plants_here', 'country', 'units', 'season', 'tended')}   # 1.48.0: a home is a site; 1.58.0: tended
 
 def tzinfo(name):
     try:
@@ -240,7 +240,7 @@ def http_json(url, tries=3):
                 WX_JOB['retries'] = WX_JOB.get('retries', 0) + 1
                 _wait(NET_RETRY_WAITS[attempt], f'Open-Meteo was busy (HTTP {e.code}); trying again'); continue
             raise OMError(e.code, reason)
-        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError, ValueError) as e:
+        except (urllib.error.URLError, TimeoutError, ConnectionError, OSError, ValueError):
             # the connection dropped part-way (for example "UNEXPECTED_EOF_WHILE_READING"), timed out, or came back garbled
             if attempt < len(NET_RETRY_WAITS):
                 WX_JOB['retries'] = WX_JOB.get('retries', 0) + 1
@@ -249,17 +249,17 @@ def http_json(url, tries=3):
 
 # ---------------------------------------------------------------- 1.29.0: Rooms and spots (the lists behind a plant's place)
 def where_list(c):
-    H = home_place(c)
     cnt_a = {k: n for k, n in c.execute("SELECT area_id, COUNT(*) FROM plants WHERE status='active' GROUP BY area_id")}
     cnt_s = {k: n for k, n in c.execute("SELECT spot_id, COUNT(*) FROM plants WHERE status='active' AND spot_id IS NOT NULL GROUP BY spot_id")}
     lights_at = {k: n for k, n in c.execute('SELECT place_id, COUNT(*) FROM light_spots WHERE place_id IS NOT NULL GROUP BY place_id')}
+    pph = place_photo_map(c)                   # 1.56.0: the main photo of each room and shelf
     out = []
     for h in homes(c):
         hid = None if h['is_home'] else h['id']
         areas = c.execute('SELECT * FROM areas WHERE ' + ('home_id IS NULL' if hid is None else 'home_id=?') + ' ORDER BY side DESC, sort, id', (() if hid is None else (hid,))).fetchall()
         out.append({'home': place_brief(h), 'areas': [{'id': a['id'], 'side': a['side'], 'name': a['name'], 'sheltered': bool(a['sheltered']), 'site': site_of(a['side'], a['sheltered']),
-                    'plants': cnt_a.get(a['id'], 0), 'lights': lights_at.get(-a['id'], 0),
-                    'spots': [{'id': sp['id'], 'name': sp['name'], 'plants': cnt_s.get(sp['id'], 0), 'lights': lights_at.get(sp['id'], 0)}
+                    'plants': cnt_a.get(a['id'], 0), 'lights': lights_at.get(-a['id'], 0), 'photo': pph.get(-a['id']), 'sheet': sheet_words(sheet_of(a)),
+                    'spots': [{'id': sp['id'], 'name': sp['name'], 'plants': cnt_s.get(sp['id'], 0), 'lights': lights_at.get(sp['id'], 0), 'photo': pph.get(sp['id']), 'sheet': sheet_words(sheet_of(sp))}
                               for sp in c.execute('SELECT * FROM spots WHERE area_id=? ORDER BY sort, id', (a['id'],))]} for a in areas]})
     return out
 
@@ -271,6 +271,7 @@ def where_area_delete(c, aid, who):
     ids = [r[0] for r in c.execute('SELECT id FROM spots WHERE area_id=?', (aid,))]
     for sid in ids: c.execute('UPDATE light_spots SET place_id=NULL WHERE place_id=?', (sid,))
     c.execute('UPDATE light_spots SET place_id=NULL WHERE place_id=?', (-aid,))
+    place_photos_drop(c, 'area_id=?', aid)                 # 1.56.0: its photos and its shelves' photos
     c.execute('DELETE FROM spots WHERE area_id=?', (aid,)); c.execute('DELETE FROM areas WHERE id=?', (aid,))
     audit_only(c, 'where', 'area', a['name'], None, who, f'Area or room removed: {a["name"]}'); c.commit()
     return jsonify(ok=True)
@@ -279,11 +280,19 @@ def where_spot_delete(c, sid, who):
     sp = c.execute('SELECT s.*, a.name AS area FROM spots s JOIN areas a ON a.id=s.area_id WHERE s.id=?', (sid,)).fetchone()
     if not sp: abort(404, 'That spot is not in the list')
     n = c.execute('SELECT COUNT(*) FROM plants WHERE spot_id=?', (sid,)).fetchone()[0]
+    for (pid,) in c.execute('SELECT id FROM plants WHERE spot_id=?', (sid,)).fetchall(): home_check(c, pid)   # 1.58.0: removing a spot moves the plants in it
     c.execute('UPDATE plants SET spot_id=NULL WHERE spot_id=?', (sid,)); c.execute('UPDATE light_spots SET place_id=? WHERE place_id=?', (-sp['area_id'], sid))
+    place_photos_drop(c, 'spot_id=?', sid)
     c.execute('DELETE FROM spots WHERE id=?', (sid,))
     audit_only(c, 'where', 'spot', f'{sp["area"]}, {sp["name"]}', None, who, f'Spot removed: {sp["area"]}, {sp["name"]}' + (f' ({n} plant{"s" if n != 1 else ""} there now just say {sp["area"]})' if n else ''))
     c.commit()
     return jsonify(ok=True, plants=n)
+
+def place_photos_drop(c, where, v):
+    for (f,) in c.execute(f'SELECT file FROM place_photos WHERE {where}', (v,)).fetchall():
+        try: os.remove(os.path.join(PHOTO_DIR, f))
+        except OSError: pass
+    c.execute(f'DELETE FROM place_photos WHERE {where}', (v,))
 
 def where_name(b, what):
     n = re.sub(r'\s+', ' ', str(b.get('name', ''))).strip()[:60]
@@ -346,6 +355,35 @@ def where_spot_one(sid):
     audit_only(c, 'where', 'spot', f'{sp["area"]}, {sp["name"]}', f'{sp["area"]}, {name}', who, f'Spot renamed: {sp["area"]}, {name}'); c.commit()
     return jsonify(homes=where_list(c))
 
+@app.route('/api/where/order', methods=['POST'])
+def where_order():
+    """1.58.0 (Ethan, November 13, 2026: watering by room and spot): {kind: 'area' | 'spot', id, dir: 'up' | 'down'}. Moves a room
+    one place among the rooms on its side of its home, or a spot among its room's spots. Today lists the plants to water in this
+    order, so it can follow the way a round is walked. Rooms and spots used to stay in the order they were made."""
+    c = db(); who = editor(); b = request.get_json(silent=True) or {}
+    kind, way = b.get('kind'), b.get('dir')
+    if kind not in ('area', 'spot') or way not in ('up', 'down'): abort(400, 'kind must be area or spot, and dir up or down')
+    try: i = int(b.get('id'))
+    except (TypeError, ValueError): abort(400, 'id must be a number')
+    if kind == 'area':
+        a = c.execute('SELECT * FROM areas WHERE id=?', (i,)).fetchone()
+        if not a: abort(404, 'That area is not in the list')
+        rows = c.execute('SELECT id, name FROM areas WHERE side=? AND ' + ('home_id IS NULL' if a['home_id'] is None else 'home_id=?') + ' ORDER BY sort, id',
+                         (a['side'],) + (() if a['home_id'] is None else (a['home_id'],))).fetchall()
+        name = a['name']
+    else:
+        sp = c.execute('SELECT s.*, a.name AS area FROM spots s JOIN areas a ON a.id=s.area_id WHERE s.id=?', (i,)).fetchone()
+        if not sp: abort(404, 'That spot is not in the list')
+        rows = c.execute('SELECT id, name FROM spots WHERE area_id=? ORDER BY sort, id', (sp['area_id'],)).fetchall()
+        name = f'{sp["area"]}, {sp["name"]}'
+    ids = [r['id'] for r in rows]; k = ids.index(i); j = k - 1 if way == 'up' else k + 1
+    moved = 0 <= j < len(ids)
+    if moved:
+        ids[k], ids[j] = ids[j], ids[k]
+        for n, x in enumerate(ids): c.execute(f"UPDATE {'areas' if kind == 'area' else 'spots'} SET sort=? WHERE id=?", (n + 1, x))     # only this group is compared with itself
+        audit_only(c, 'where', 'order', str(k + 1), str(j + 1), who, f'{name} moved {way} in the order of rooms and spots'); c.commit()
+    return jsonify(homes=where_list(c), moved=moved)
+
 def spot_guess(text):
     """'Black bench, yard' -> 'Black bench'; 'On the pallet shelf by the door' -> 'Pallet shelf by the door'."""
     t = re.split(r'[,;(]| - ', str(text or ''))[0].strip()
@@ -354,27 +392,51 @@ def spot_guess(text):
 
 @app.route('/api/where/sort', methods=['GET', 'POST'])
 def where_sort():
-    """GET: each "Spot (where exactly)" text of plants with no spot yet, with a suggested spot name. POST {items: [{text, area_id, name}]}
-    makes the spots (or uses ones already there) and puts those plants in them. The text itself is kept."""
+    """1.56.3, from Ethan (November 10): "Plants without a spot". Its job is to put every plant on a spot from the list (one already
+    there, or a new one), not only to make spots. GET: the active plants with no spot yet, grouped by what is written on them
+    ("Spot (where exactly)", or nothing) and their area, each group with a suggested spot: one of that area's spots when the words
+    name it, else a new name made from the words. POST {items: [{text, from_area_id, area_id, spot_id | name, codes?}]}: the plants
+    of that group (only `codes`, when given) go to the spot chosen, or to a spot of that name in the area (made if it is not there).
+    The words written on a plant stay as they are."""
     c = db()
     if request.method == 'GET':
         out = {}
-        for r in c.execute("SELECT code, common_name, location, area_id FROM plants WHERE status='active' AND spot_id IS NULL AND TRIM(COALESCE(location,''))<>'' ORDER BY location"):
-            k = (r['location'].strip(), r['area_id'])
-            out.setdefault(k, {'text': k[0], 'area_id': k[1], 'name': spot_guess(k[0]), 'plants': []})['plants'].append({'code': r['code'], 'name': r['common_name']})
+        spots = {}
+        for sp in c.execute('SELECT id, area_id, name FROM spots').fetchall(): spots.setdefault(sp['area_id'], []).append(sp)
+        for r in c.execute("SELECT id, code, common_name, location, area_id FROM plants WHERE status='active' AND spot_id IS NULL ORDER BY TRIM(COALESCE(location,''))='', location, code"):
+            k = ((r['location'] or '').strip(), r['area_id'])
+            if k not in out:
+                guess = spot_guess(k[0]) if k[0] else ''
+                named = [sp for sp in spots.get(k[1], []) if guess and (sp['name'].lower() == guess.lower() or sp['name'].lower() in k[0].lower())]
+                hit = max(named, key=lambda sp: (sp['name'].lower() == guess.lower(), len(sp['name'])), default=None)     # the fullest name the words contain
+                out[k] = {'text': k[0], 'area_id': k[1], 'name': hit['name'] if hit else guess, 'spot_id': hit['id'] if hit else None, 'plants': []}
+            out[k]['plants'].append({'code': r['code'], 'name': r['common_name'], 'photo': plant_photo(c, r['id'])})     # 1.56.1: a small photo of each
         return jsonify(items=list(out.values()))
-    b = request.get_json(silent=True) or {}; who = editor(); n = 0
+    b = request.get_json(silent=True) or {}; who = editor(); n = 0; made = []
     for it in b.get('items') or []:
-        name = re.sub(r'\s+', ' ', str(it.get('name') or '')).strip()[:60]
-        if not name: continue
-        a = c.execute('SELECT * FROM areas WHERE id=?', (int(it.get('area_id') or 0),)).fetchone()
+        try: aid = int(it.get('area_id') or 0)
+        except (TypeError, ValueError): continue
+        a = c.execute('SELECT * FROM areas WHERE id=?', (aid,)).fetchone()
         if not a: continue
-        sp = c.execute('SELECT id FROM spots WHERE area_id=? AND name=?', (a['id'], name)).fetchone()
-        sid = sp[0] if sp else c.execute('INSERT INTO spots(area_id,name,sort,created_by,created_at) VALUES(?,?,(SELECT COALESCE(MAX(sort),0)+1 FROM spots),?,?)', (a['id'], name, who, now())).lastrowid
-        for r in c.execute("SELECT * FROM plants WHERE status='active' AND spot_id IS NULL AND TRIM(location)=? AND area_id IS ?", (str(it.get('text') or '').strip(), a['id'])).fetchall():
-            apply_changes(c, r, {'spot_id': sid, 'area_id': a['id']}, who, 'update', f'Put in the spot {a["name"]}, {name}'); n += 1
+        sp = None
+        if it.get('spot_id'):
+            sp = c.execute('SELECT id, name FROM spots WHERE id=? AND area_id=?', (int(it['spot_id']), a['id'])).fetchone()
+            if not sp: abort(400, f'That spot is not in {a["name"]}')
+        else:
+            name = re.sub(r'\s+', ' ', str(it.get('name') or '')).strip()[:60]
+            if not name: continue
+            sp = c.execute('SELECT id, name FROM spots WHERE area_id=? AND name=? COLLATE NOCASE', (a['id'], name)).fetchone()     # "hutch" is the Hutch already there
+            if not sp:
+                sid = c.execute('INSERT INTO spots(area_id,name,sort,created_by,created_at) VALUES(?,?,(SELECT COALESCE(MAX(sort),0)+1 FROM spots),?,?)', (a['id'], name, who, now())).lastrowid
+                sp = {'id': sid, 'name': name}; made.append(f'{a["name"]}, {name}')
+        frm = it.get('from_area_id', a['id'])          # the area the plants are in now: the one chosen may be another (the 1.56.0 bug)
+        q = "SELECT * FROM plants WHERE status='active' AND spot_id IS NULL AND TRIM(COALESCE(location,''))=? AND area_id IS ?"
+        codes = it.get('codes')
+        for r in c.execute(q, (str(it.get('text') or '').strip(), frm)).fetchall():
+            if codes is not None and r['code'] not in codes: continue
+            apply_changes(c, r, {'spot_id': sp['id'], 'area_id': a['id']}, who, 'update', f'Put in the spot {a["name"]}, {sp["name"]}'); n += 1
     c.commit()
-    return jsonify(moved=n, homes=where_list(c))
+    return jsonify(moved=n, made=made, homes=where_list(c))
 
 def light_fields(b, old=None):
     d = dict(old or {})
@@ -384,7 +446,8 @@ def light_fields(b, old=None):
     if 'watts' in b: d['watts'] = _num(b, 'watts', 0, 2000, 'Watts')
     if 'points' in b:                  # "12 in 719, 24 in 234 ..." or "12: 719 (0.5 sq ft)"
         pts = []
-        for part in re.split(r'[,;\n]+', str(b.get('points') or '')):
+        text = re.sub(r'(?<=\d),(?=\d{3}(?!\d))', '', str(b.get('points') or ''))   # 1.56.2: "2,496" is two thousand four hundred and ninety-six
+        for part in re.split(r'[,;\n]+', text):
             nums = [float(x) for x in re.findall(r'\d+(?:\.\d+)?', part)]
             if not part.strip(): continue
             if len(nums) < 2: abort(400, f'"{part.strip()}" needs a distance in inches and a PPFD, like "12 in 719"')
@@ -394,6 +457,31 @@ def light_fields(b, old=None):
     if 'model' in b: d['model'] = str(b.get('model') or '').strip()[:80]       # 1.13.1: the maker's model number
     if 'timer' in b: d['timer'] = str(b.get('timer') or '').strip()[:120]
     if 'dimming' in b: d['dimming'] = sorted({int(x) for x in re.findall(r'\d+', str(b.get('dimming') or '')) if 0 < int(x) <= 100}) or [100]
+    for k, n in (('brand', 60), ('url', 400), ('cri', 20)):          # 1.56.0 (PLAN.md step 10b): what a listing gives
+        if k in b:
+            v = str(b.get(k) or '').strip()[:n]
+            if k == 'url' and v and not re.match(r'^https?://', v): abort(400, 'The link must start with http:// or https://')
+            if v: d[k] = v
+            else: d.pop(k, None)
+    if 'kelvin' in b: d['kelvin'] = int(_num(b, 'kelvin', 1000, 10000, 'Colour temperature (K)') or 0) or None
+    if 'price' in b:
+        d['price'] = _num(b, 'price', 0, 100000, 'Price')
+        if d['price'] is None: d.pop('price_on', None)
+        else:
+            on = str(b.get('price_on') or '')[:10] or local_today(db()).isoformat()   # 1.56.5: today where the plants are (it was UTC: tomorrow on a Texas evening)
+            try: date.fromisoformat(on)
+            except ValueError: abort(400, 'The date of the price must be a date')
+            d['price_on'] = on
+    if 'direction' in b:
+        v = str(b.get('direction') or '')
+        if v not in ('', 'down', 'side', 'angled'): abort(400, 'Choose down, sideways or at an angle')
+        d['direction'] = v or None
+    for k in ('timer_repeats', 'timer_keeps', 'needs_socket'):
+        if k in b: d[k] = None if b.get(k) in (None, '') else b.get(k) in (True, 1, '1', 'true', 'yes')
+    if 'mount' in b:                   # 1.56.0 (PLAN.md step 8a): how it holds (fit.py)
+        m = mount_clean(b.get('mount'))
+        if m: d['mount'] = m
+        else: d.pop('mount', None)
     return name, count, str(b.get('fixture', '')).strip()[:600], str(b.get('notes', '')).strip()[:2000], d      # 1.29.0: longer, so batch text is never cut
 
 def light_text(name, count, fixture):
@@ -403,12 +491,16 @@ def light_text(name, count, fixture):
 def light_add():
     """A light you have: {name, count, watts, points, kind, timer, dimming, fixture, notes}"""
     c = db()
-    name, count, fixture, notes, d = light_fields(request.get_json(silent=True) or {})
+    b = request.get_json(silent=True) or {}
+    status = str(b.get('status') or 'owned')                   # 1.56.0 (PLAN.md step 10b): a light you are considering has none yet
+    if status not in ('owned', 'considering'): abort(400, 'A new light is one you have or one you are considering')
+    if status == 'considering': b = {**b, 'count': 0}
+    name, count, fixture, notes, d = light_fields(b)
     if c.execute('SELECT 1 FROM lights WHERE name=?', (name,)).fetchone(): abort(409, f'"{name}" is already in your lights')
     who = editor()
-    lid = c.execute('INSERT INTO lights(lkey,name,data,count,fixture,notes,sort,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?)',
-                    (None, name, json.dumps(d), count, fixture, notes, 1000, who, now())).lastrowid
-    audit_only(c, 'light', 'light', None, light_text(name, count, fixture), who, 'Grow light added: ' + light_text(name, count, fixture))
+    lid = c.execute('INSERT INTO lights(lkey,name,data,count,fixture,notes,sort,status,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)',
+                    (None, name, json.dumps(d), count, fixture, notes, 1000, status, who, now())).lastrowid
+    audit_only(c, 'light', 'light', None, light_text(name, count, fixture), who, ('Grow light being considered: ' if status == 'considering' else 'Grow light added: ') + light_text(name, count, fixture))
     c.commit()
     return jsonify(id=lid), 201
 
@@ -427,6 +519,7 @@ def light_one(i):
         return jsonify(ok=True)
     b = {'name': old['name'], 'count': old['count'], 'fixture': old['fixture'] or '', 'notes': old['notes'] or '', **(request.get_json(silent=True) or {})}   # 1.29.0: one field at a time
     name, count, fixture, notes, d = light_fields(b, light_specs(old))
+    if old['status'] != 'owned' and count: abort(400, 'Use "Bought it" to say how many you have of a light you were considering')
     if c.execute('SELECT 1 FROM lights WHERE name=? AND id<>?', (name, i)).fetchone(): abort(409, f'"{name}" is already in your lights')
     c.execute('UPDATE lights SET name=?,count=?,fixture=?,notes=?,data=?,updated_by=?,updated_at=? WHERE id=?', (name, count, fixture, notes, json.dumps(d), who, now(), i))
     a, z = light_text(old['name'], old['count'], old['fixture']), light_text(name, count, fixture)

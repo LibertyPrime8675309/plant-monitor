@@ -16,6 +16,11 @@ with sync_playwright() as p:
     pg.click('a[href="#/new"]'); pg.wait_for_timeout(1500)
     check(pg.locator('form[data-form=new]').count() == 1 and 'Something went wrong' not in pg.inner_text('main'), 'Add a plant opens the form')
     check(pg.locator('[name=__side][value=out]').is_checked(), 'the plant starts as Outside (1.29.0: Inside or outside, then the area)')
+    bg = lambda v: pg.locator(f'[name=__side][value={v}] + span').evaluate('e => getComputedStyle(e).backgroundColor')
+    check(pg.locator('[name=__side] + span').count() == 2 and bg('out') != bg('in'), '1.56.4: Outside and Inside are buttons, and the chosen one looks different')
+    pg.locator('label:has([name=__side][value=in])').click(); pg.wait_for_timeout(200)
+    check(pg.locator('[name=__side][value=in]').is_checked() and bg('in') != bg('out'), 'pressing Inside chooses it and shows it')
+    pg.locator('label:has([name=__side][value=out])').click(); pg.wait_for_timeout(200)
     pg.fill('input[name=common_name]', 'Test basil'); pg.click('form[data-form=new] button[type=submit]'); pg.wait_for_timeout(2000)
     code = pg.evaluate('location.hash').split('/')[-1]
     r = json.loads(urllib.request.urlopen(BASE + '/api/plants/' + code).read())

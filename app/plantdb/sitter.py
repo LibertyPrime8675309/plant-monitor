@@ -60,7 +60,9 @@ def sitter_sheet(c, from_s, to_s, group_s, started=False):
         plants.append({'code': r['code'], 'name': r['common_name'], 'scientific': r['scientific_name'], 'site': w['site'], 'spot': r['location'] or '', 'photo': ph[0] if ph else None,
                        'every': w['every'], 'why': w['why'], 'state': w['state'], 'next': w['next'], 'visits': visits,
                        'water_notes': r['water_notes'] or '', 'damage_below': r['temp_damage_below'], 'damage_above': r['temp_damage_above'],
-                       'winter_plan': r['winter_plan'] or '', 'open_sky': w['site'] == 'Outdoors'})
+                       'winter_plan': r['winter_plan'] or '', 'open_sky': w['site'] == 'Outdoors' and w.get('action', 'water') == 'water',
+                       'action': w.get('action', 'water'),            # 1.56.0: a semi-hydro pot is topped up, a water-only one gets fresh water
+                       'action_words': {'topup': 'Semi-hydro: top up the water to the line (it does not dry out between)', 'waterchange': 'In water only: pour out the old water and fill with fresh'}.get(w.get('action'), '')})
     order = {s: i for i, s in enumerate(SITES)}
     walk = {p['code']: (order.get(p['site'], 9), p['spot'].lower(), p['code']) for p in plants}     # one walk round: place, then spot
     plants.sort(key=lambda p: walk[p['code']])
@@ -72,10 +74,17 @@ def sitter_sheet(c, from_s, to_s, group_s, started=False):
         at = [{'code': x['code'], 'name': x['name'], 'level': x['level'], 'damage': x['damage'], 'lethal': x['lethal'], 'site': x['site']}
               for x in n['plants'] if x['code'] in want]
         if at: nights.append({'date': n['date'], 'low': n['low'], 'plants': at})
+    # 1.56.0 (PLAN.md step 8b): a photo of each room or shelf the plants on the sheet are on, so the sitter can find them
+    pph, places, seen = place_photo_map(c), [], set()
+    for p in plants:
+        r = rows[p['code']]
+        for pid in ((r['spot_id'],) if r['spot_id'] else ()) + ((-r['area_id'],) if r['area_id'] else ()):
+            if pid in seen or not pph.get(pid): continue
+            seen.add(pid); places.append({'label': place_label(c, pid), 'photo': pph[pid]}); break
     out_days = [{'date': d, 'high': (fc.get(d) or {}).get('high'), 'low': (fc.get(d) or {}).get('low'),
                  'plants': sorted(v, key=lambda k: walk[k])} for d, v in days.items()]
     return dict(today=today.isoformat(), start=d0.isoformat(), end=d1.isoformat(), group=group, days=out_days,
-                before=sorted(before, key=lambda k: walk[k]), plants=plants, nights=nights, rain_counts_in=RAIN_COUNTS_IN,
+                before=sorted(before, key=lambda k: walk[k]), plants=plants, nights=nights, rain_counts_in=RAIN_COUNTS_IN, places=places,
                 forecast_to=max(fc) if fc else None)
 
 # ---------------------------------------------------------------- 1.49.0: the sheet by link
@@ -201,7 +210,7 @@ def share_photo(token, name):
     c = db(); sitter_tables(c)
     r = share_row(c, token)
     D = share_sheet_data(c, r)
-    if os.path.basename(name) not in {p.get('photo') for p in D['plants'] if p.get('photo')}: abort(404)
+    if os.path.basename(name) not in {p.get('photo') for p in D['plants'] + D.get('places', []) if p.get('photo')}: abort(404)
     return thumb(os.path.basename(name))
 
 @app.route(SHARE_PATH + '/<token>/style.css')

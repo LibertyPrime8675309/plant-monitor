@@ -1,5 +1,6 @@
 // ---------- 1.37.0: a year in review ----------
 // One page per year (#/review?year=2026), one card per plant: how its year went, from the logs the app already keeps.
+'use strict';
 let RV = { sort: 'worse', only: '' };
 function rvLine(p) {
   const bits = [];
@@ -48,7 +49,7 @@ async function viewReview(qs) {
       </div><p class="row noprint"><button class="btn ghost" type="button" data-act="print">Print this review</button></p>
     <div class="verdict-box" role="status"><p><strong>${T.plants} plants in ${D.year}: ${T.new} new, ${T.archived} archived, ${T.better} got better, ${T.worse} got worse.</strong>
       ${T.photos} photos, ${T.water} waterings, ${T.fed} feedings, ${T.moves} moves and ${T.answered} requests answered. The weather at ${D.place}: ${W.days ? `${W.cold_nights} night${W.cold_nights === 1 ? '' : 's'} at or below ${tF(32)}${W.coldest != null ? ` (coldest ${tF(W.coldest)})` : ''} and ${W.hot_days} day${W.hot_days === 1 ? '' : 's'} above ${tF(86)}${W.hottest != null ? ` (hottest ${tF(W.hottest)})` : ''}, over ${W.days} days of history` : 'no weather history for this year'}.</p></div>
-    ${list.length ? html`<div class="rv-grid">${list.map(p => rvCard(p, D.year))}</div>` : html`<p class="muted">No plants match.</p>`}
+    ${list.length ? html`<h2 class="sr">Each plant's year</h2><div class="rv-grid">${list.map(p => rvCard(p, D.year))}</div>` : html`<p class="muted">No plants match.</p>`}
     <p class="hint">■ a hard year (health got worse, or 3 or more cold nights outside below its damage point); ✓ got better; ● steady. Cold nights and hot days count only while the plant was outside or on the porch, as far as the log knows.</p>`,
   };
 }

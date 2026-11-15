@@ -483,7 +483,7 @@ function factsHtml(f, box) {
         ${f.attracts.length ? html`<h3>Brings in</h3><ul class="fact-list">${f.attracts.map(x => html`<li><strong>${x.what}:</strong> ${x.why}</li>`)}</ul>` : ''}</div>` : ''}
       <div><h3>Good partners</h3>${f.partners_good.length ? html`<ul class="fact-list">${f.partners_good.map(partner)}</ul>` : html`<p class="muted">None noted.</p>`}
         <h3>Keep apart from</h3>${f.partners_bad.length ? html`<ul class="fact-list">${f.partners_bad.map(partner)}</ul>` : html`<p class="muted">None noted.</p>`}</div>
-      <div><h3>${fungus ? 'Growing it' : 'Propagation'}</h3>${f.propagation.length ? html`<ul class="fact-list">${f.propagation.map(x => html`<li><strong>${x.method}</strong>${x.when ? html` (${x.when})` : ''}: ${x.how}</li>`)}</ul>` : html`<p class="muted">Not noted.</p>`}
+      <div><h3>${fungus ? 'Growing it' : 'Propagation'}</h3>${f.propagation.length ? html`<ul class="fact-list">${f.propagation.map(x => html`<li><strong>${x.method}</strong>${fungus ? '' : guideLink(x.method)}${x.when ? html` (${x.when})` : ''}: ${x.how}</li>`)}</ul>` : html`<p class="muted">Not noted.</p>`}
         ${fungus ? '' : html`<h3>Breeding</h3>${f.breeding.text ? html`<p>${f.breeding.text}</p>` : ''}
           ${same.length ? html`<p>${factYours(same, 'Your plants of the same species:')}</p>` : ''}
           ${other.length ? html`<p>${factYours(other, `Your plants it may cross with (${[genus].concat(f.breeding.cross_genera || []).map(g => g.charAt(0).toUpperCase() + g.slice(1)).join(' or ')}):`)}</p>` : ''}
@@ -524,7 +524,9 @@ function slips(h) {
     </article>`;
   });
 }
-// 1.29.0: the plant's main details, edited right on its page (the rest is under "Edit this page")
+// 1.29.0: the plant's main details, edited right on its page (the rest is under "Edit this page"). 1.56.5: they read as text, and
+// "Change these details" opens the boxes (the page read like a form before)
+let PLEDIT = null;                     // the code of the plant whose details are open to change
 function plantEdHtml(p) {
   const ed = k => raw(`data-ed="plant" data-id="${esc(p.code)}" data-k="${k}"`);
   const txt = (k, label, max) => html`<label class="f">${label}<input type="text" maxlength="${max || 200}" value="${p[k] || ''}" ${ed(k)}></label>`;
@@ -532,7 +534,7 @@ function plantEdHtml(p) {
   const hs = HOMES(), conts = k => ((META && META.containers) || []).filter(x => x.kind === k);
   const sel = (k, label, opts, cur) => html`<label class="f">${label}<select ${ed(k)}>${opts.map(([v, l]) => html`<option value="${v}" ${String(v) === String(cur == null ? '' : cur) ? raw('selected') : ''}>${l}</option>`)}</select></label>`;
   const areas = WHERE().map(h => [h, h.areas]).filter(([h]) => HOMES().length < 2 || String(plantHome(p).id) === String(h.home.id)).flatMap(([h, as]) => as.map(x => [x.id, `${x.side === 'out' ? 'Outside' : 'Inside'}: ${x.name}`]));
-  return html`<div class="field-grid pl-ed noprint" data-pver="${p.version}" data-section-skip>
+  return html`<div class="field-grid pl-ed noprint" id="pl-ed" data-pver="${p.version}" data-section-skip ${PLEDIT === p.code ? '' : raw('hidden')}>
     ${txt('common_name', 'Common name', 120)}${txt('scientific_name', 'Scientific name', 200)}${txt('aliases', 'Other names / cultivar')}${txt('plant_type', 'Plant type', 120)}
     ${hs.length > 1 ? sel('home_id', 'Home', hs.map(h => [h.is_home ? '' : h.id, h.name]), p.home_id || '') : ''}
     ${sel('area_id', 'Area or room', areas, p.area_id)}
@@ -540,13 +542,18 @@ function plantEdHtml(p) {
     ${txt('location', 'More about where', 200)}${txt('container', 'Container', 200)}
     ${sel('pot_id', 'Pot', [['', 'None chosen']].concat(conts('pot').map(x => [x.id, `${x.name} (${x.free} of ${x.qty} free)`])), p.pot_id || '')}
     ${sel('tray_id', 'Catch tray', [['', 'None chosen']].concat(conts('tray').map(x => [x.id, `${x.name} (${x.free} of ${x.qty} free)`])), p.tray_id || '')}
+    <label class="f">Height now, with its pot (${lenU()})<input type="number" inputmode="decimal" min="0" step="any" value="${p.height_in == null ? '' : lenF(p.height_in, false)}" ${ed('height_in')}></label>
     <label class="f">ID confidence (%)<input type="number" inputmode="numeric" min="0" max="100" step="1" value="${p.id_confidence == null ? '' : p.id_confidence}" ${ed('id_confidence')}></label>
     ${sel('winter_plan', 'Winter plan', (META.winter_plans || []).map(x => [x, x]), p.winter_plan)}
     ${sel('health_rating', 'Health', (META.health || []).map(x => [x, x]), p.health_rating)}
     <p class="hint wide">Change any of these by typing or choosing; each saves when you leave it. Everything else is under "Edit this page".</p></div>`;
 }
+// 1.58.0 (Ethan, November 13, 2026: the first screen): the care buttons come straight after the plant's name, with a short line on watering
+// (the reasons are in Water and soil); they were a pane and a half down on a computer and four screens down on a phone. Previous and Next,
+// their filters and the layout switch share one row, so the two halves are taller. What feature modules add about care (repotting,
+// turning, pests) goes in a box of its own where the buttons used to be (#quick-more; quickMore() in features.js).
 async function viewPlant(code) {
-  const [p, h, cur, st] = await Promise.all([api('GET', '/api/plants/' + enc(code)), api('GET', '/api/plants/' + enc(code) + '/history'), loadCond(), api('GET', '/api/settings').catch(() => ({}))]);
+  const [p, h, cur, st] = await Promise.all([api('GET', '/api/plants/' + enc(code) + '?fill=1'), api('GET', '/api/plants/' + enc(code) + '/history'), loadCond(), api('GET', '/api/settings').catch(() => ({}))]);   // 1.53.0: fill=1 reads the species' facts for empty fields
   CUR = { p, h, base: st.base_url || location.origin };
   HEATV = await loadHeat(p);                     // 1.36.0: the summer heat for this plant (cached for 10 minutes per place and temperature)
   SNSDAYS = await api('GET', '/api/sensors/days?days=60&plant=' + enc(code)).catch(() => null);   // 1.36.0: the soil moisture day by day, for the timeline and the calendar
@@ -555,31 +562,34 @@ async function viewPlant(code) {
   const archived = p.status === 'archived';
   const pot = contById(p.pot_id), tray = contById(p.tray_id);
   const dl = [['Also known as', p.aliases], ['Plant type', p.plant_type], ['Home', HOMES().length > 1 ? plantHome(p).name : ''], ['Where', whereWords(p)], ['More about where', p.location], ['Container', p.container],
-    ['Pot', pot ? html`<a href="#/pots">${pot.name}</a> (${pot.size})` : ''], ['Catch tray', tray ? html`<a href="#/pots">${tray.name}</a> (${tray.size})` : '']].filter(x => x[1]);
+    ['Pot', pot ? html`<a href="#/pots">${pot.name}</a> (${pot.size})` : ''], ['Catch tray', tray ? html`<a href="#/pots">${tray.name}</a> (${tray.size})` : ''], ['Height now, with its pot', p.height_in == null ? '' : lenF(p.height_in)]].filter(x => x[1]);
   const single = document.documentElement.dataset.layout === 'single';
   return {
     title: p.common_name,
-    html: html`${pnavBlock(p.code)}<p class="crumb"><a href="#/plants">All plants</a>
-      <button class="btn ghost small noprint" type="button" data-act="layout">${single ? 'Show photos and details side by side' : 'Switch to one column'}</button></p>
+    // 1.56.5: the plant's name comes first, then Previous / Next (they came first, and on a phone the name was a screen further down)
+    html: html`<header class="pl-head"><h1>${p.common_name}</h1><p class="sci latin">${p.scientific_name || 'Scientific name not set'}</p></header>
+    ${careQuick(p)}
+    <div class="pl-navrow noprint"><a class="btn small ghost" href="#/plants">All plants</a>${pnavBlock(p.code)}
+      <button class="btn ghost small pl-layout" type="button" data-act="layout">${single ? 'Show photos and details side by side' : 'Switch to one column'}</button></div>
     ${archived ? html`<div class="notice">This record is archived. It is hidden from the main list.</div>` : ''}
     <div class="plant">
-      <div class="pane" id="pane-l" tabindex="0" role="region" aria-label="Photos"><div id="photopanel" data-section="Photos">${photoPanel(p)}</div></div>
+      <div class="pane" id="pane-l" tabindex="0" role="region" aria-label="Photos"><section class="ph-sec" data-section="Photos"><h2 class="ph-title">Photos</h2><div id="photopanel">${photoPanel(p)}</div></section></div>
       <div class="pane" id="pane-r" tabindex="0" role="region" aria-label="Details">
         <nav class="jump noprint" id="jumprow" aria-label="Jump to a section"></nav>
-        <div class="label" id="details" data-section="Name and details">
-          <div class="l-top"><b>${p.code}</b><span>Page version ${p.version}</span><span>Updated ${timeEl(p.updated_at)} by ${p.updated_by}</span></div>
-          <div class="l-body"><h1>${p.common_name}</h1><p class="sci latin">${p.scientific_name || 'Scientific name not set'}</p>
-            ${canChange() ? plantEdHtml(p) : ''}
+        <div class="label${PLEDIT === p.code ? ' pl-editing' : ''}" id="details" data-section="Name and details">
+          <div class="l-top"><b>${p.code}</b><a href="#history" data-act="jumpsec" data-sec="history">Page history</a></div>
+          <div class="l-body"><h2 class="l-title">Name and details</h2>
+            ${canChange() ? html`<p class="row noprint pl-edrow"><button class="btn small" type="button" data-act="pledit" aria-controls="pl-ed" aria-expanded="${PLEDIT === p.code ? 'true' : 'false'}">${PLEDIT === p.code ? 'Done changing' : 'Change these details'}</button></p>${plantEdHtml(p)}` : ''}
             <dl><dt id="site-lbl">Location</dt><dd>${sitePicker(p)}</dd>
-              ${canChange() ? '' : html`${dl.map(x => html`<dt>${x[0]}</dt><dd>${x[1]}</dd>`)}
-              <dt>ID confidence</dt><dd>${p.id_confidence == null ? 'Not rated' : p.id_confidence + '%'}</dd>`}
-              <dt>Winter plan</dt><dd>${planTag(p.winter_plan)}</dd><dt>Health</dt><dd>${healthTag(p.health_rating)}</dd>
+              ${dl.map(x => html`<dt class="ro">${x[0]}</dt><dd class="ro">${x[1]}</dd>`)}
+              <dt class="ro">ID confidence</dt><dd class="ro">${p.id_confidence == null ? 'Not rated' : p.id_confidence + '%'}</dd>
+              <dt class="ro">Winter plan</dt><dd class="ro">${planTag(p.winter_plan)}</dd><dt class="ro">Health</dt><dd class="ro">${healthTag(p.health_rating)}</dd>
               <dt>Groups</dt><dd id="pl-groups">${groupsOf(p.code).length ? groupsOf(p.code).map((g, i) => html`${i ? ', ' : ''}<a href="#/group/${g.id}">${g.name}</a>`) : 'None yet'}
                 <button class="btn small ghost noprint" type="button" data-act="plgroups">Change groups</button></dd></dl>
             <div class="row acts noprint"><a class="btn" href="#/plant/${enc(p.code)}/edit">Edit this page</a>
               <button class="btn ghost" type="button" data-act="archive" data-to="${archived ? '0' : '1'}">${archived ? 'Move back to the main list' : 'Archive'}</button></div></div>
         </div>
-        ${careQuick(p)}
+        <div class="quick-more noprint" id="quick-more" role="group" aria-label="More about this plant's care"></div>
 
         ${frostNote(p)}${needsBox(p)}
         ${condCard(p, cur)}${adviceBlock(p, cur)}
@@ -636,7 +646,7 @@ async function viewPlant(code) {
         <section class="blk" id="timeline"><h2>Timeline</h2><div id="tl-box" data-code="${p.code}"><p class="loading">Loading the timeline</p></div></section>
 
         <section class="blk" id="history"><h2>Page history</h2>
-          <p class="muted">Created ${timeEl(p.created_at)} by ${p.created_by}. Every save makes a new version and keeps the old one.</p>
+          <p class="muted">Version ${p.version}, updated ${timeEl(p.updated_at)} by ${p.updated_by}. Created ${timeEl(p.created_at)} by ${p.created_by}. Every save makes a new version and keeps the old one.</p>
           ${slips(h)}</section>
       </div>
     </div>`,

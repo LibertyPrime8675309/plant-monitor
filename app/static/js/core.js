@@ -111,7 +111,6 @@ const r1 = n => Math.round(n * 10) / 10;           // avoids 3.7000000000000003
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
 const PLAN_CLASS = { 'Move indoors': 'p-move', 'Protect outside': 'p-protect', 'Hardy outside': 'p-hardy', 'Seasonal die-back': 'p-die', 'Annual': 'p-annual' };
-const PLAN_COLOR = { 'Move indoors': 'var(--cyan)', 'Protect outside': 'var(--ochre)', 'Hardy outside': 'var(--moss)', 'Seasonal die-back': 'var(--ink-2)', 'Annual': 'var(--ink-2)' };
 const HEALTH_CLASS = { Good: 'h-good', Fair: 'h-fair', Poor: 'h-poor', Critical: 'h-critical' };
 const HEALTH_COLOR = { Good: 'var(--moss)', Fair: 'var(--ochre)', Poor: 'var(--madder)', Critical: 'var(--critical)' };
 const HEALTH_ORDER = { Critical: 0, Poor: 1, Fair: 2, Good: 3 };
@@ -130,7 +129,10 @@ const ME = () => (META && META.me) || { via: 'local', role: 'owner', name: '', l
 const viaTS = () => ME().via === 'tailscale';
 function paintWho() {
   const n = viaTS() ? ME().name : getName(), el = document.getElementById('who-name');
-  if (el) el.textContent = viaTS() ? 'Signed in as ' + n : n ? 'Editing as ' + n : 'Set your name';
+  if (el) {
+    el.textContent = viaTS() ? 'Signed in as ' + n : n ? 'Editing as ' + n : 'Set your name';
+    el.parentNode.setAttribute('aria-label', el.textContent + (viaTS() ? '. People and your name' : '. Change who is editing'));      // 1.58.0: the spoken name starts with the words shown
+  }
   document.documentElement.dataset.role = ME().role;
   topSoon();
 }
@@ -172,6 +174,30 @@ async function api(method, url, body, form) {
   else { QGEN++; QC.clear(); PFLY.clear(); }
   return d;
 }
+// 1.56.5: after an update the server answers with its new version. The page reloads once by itself, so the new version is all there
+// (it took two or three reloads by hand). With a box being typed in or a window open it asks instead, so nothing typed is lost.
+const PAGE_VERSION = (document.querySelector('meta[name=app-version]') || {}).content || '';
+function newerApp(v) {
+  if (!v || !PAGE_VERSION || v === PAGE_VERSION || newerApp.seen === v) return;
+  newerApp.seen = v;
+  let again = false; try { again = sessionStorage.getItem('plantdb.reloadedFor') === v; } catch (e) { /* no storage: ask */ }
+  const a = document.activeElement, busy = !!document.querySelector('dialog[open]') || !!(a && a.matches && a.matches('input:not([type=checkbox]):not([type=radio]),textarea,select,[contenteditable]'));
+  if (!again && !busy) {
+    try { sessionStorage.setItem('plantdb.reloadedFor', v); } catch (e) { /* reload anyway */ }
+    toast(`Version ${v} is installed. Opening it now.`);
+    setTimeout(() => location.reload(), 1200);
+    return;
+  }
+  document.querySelectorAll('.nv-bar').forEach(x => x.remove());
+  document.body.insertAdjacentHTML('afterbegin', rend(html`<div class="notice nv-bar noprint" role="status"><span>Version ${v} is installed. Reload to use it${busy ? ' (finish what you are typing first)' : ''}.</span>
+    <button class="btn small" type="button" data-act="reloadnow">Reload now</button></div>`));
+}
+
+// 1.56.5: what a viewer may still send, from the server's own lists (the page kept its own copy, which missed "Got it" on What's new)
+function viewerMay(url) {
+  const path = url.split('?')[0], ok = ME().viewer_ok || { posts: ['/api/identify', '/api/me/prefs', '/api/voice', '/api/whatsnew/seen'], prefixes: ['/api/push/'] };
+  return path === '/api/me' || ok.posts.includes(path) || ok.prefixes.some(p => path.startsWith(p));
+}
 async function apiNet(method, url, body, form, m) {     // m.took: how long the server said it took to make the answer (ms)
   if (method === 'GET' && /^\/api\/fungi\/NEW-/i.test(url)) {        // 1.24.0: a find made offline that is not sent yet
     const f = await idbGet('finds', decodeURIComponent(url.split('/')[3].split('?')[0]));
@@ -181,7 +207,7 @@ async function apiNet(method, url, body, form, m) {     // m.took: how long the 
   const opts = { method, headers: {} };
   if (PLACE) opts.headers['X-Place'] = PLACE;
   if (method !== 'GET') opts.headers['X-Editor'] = cleanName(viaTS() ? ME().name : getName()) || 'Unknown';
-  if (method !== 'GET' && ME().role === 'viewer' && url !== '/api/me' && url !== '/api/me/prefs' && !url.startsWith('/api/identify?') && !url.startsWith('/api/push/')) {      // the server refuses these too; this just says so sooner
+  if (method !== 'GET' && ME().role === 'viewer' && !viewerMay(url)) {      // the server refuses these too; this just says so sooner
     const e = new Error(`You can look at everything, but changes are turned off for you. Ask ${ME().owner_name || 'the owner'} if you would like to edit.`); e.status = 403; throw e;
   }
   if (form) opts.body = form;
@@ -197,6 +223,7 @@ async function apiNet(method, url, body, form, m) {     // m.took: how long the 
     throw new Error(navigator.onLine ? 'Cannot reach the plant server. Check that the container is running.' : 'You are offline. This needs a connection to the plant server.');
   }
   if (method === 'GET') offSeen(r.headers.get('X-Offline-Saved'));
+  if (!r.headers.get('X-Offline-Saved')) newerApp(r.headers.get('X-App-Version'));
   if (m) m.took = +r.headers.get('X-Took-Ms') || null;
   let data = null;
   try { data = await r.json(); } catch (e) { /* not json */ }
@@ -207,6 +234,14 @@ async function apiNet(method, url, body, form, m) {     // m.took: how long the 
   }
   if (method === 'GET' && /^\/api\/fungi\?status=(active|all)/.test(url) && data && data.finds) data.finds = (await offPendingFinds()).concat(data.finds);
   return data;
+}
+
+// 1.57.0: a new page puts the focus on its title, so a screen reader says which page opened (it went to the whole page area)
+function focusTitle(app) {
+  const h = app.querySelector('h1');
+  if (!h) { app.focus({ preventScroll: true }); return; }
+  if (!h.hasAttribute('tabindex')) h.setAttribute('tabindex', '-1');
+  h.focus({ preventScroll: true });
 }
 
 // ---------- location: the place whose weather this browser uses (1.11.0) ----------
@@ -288,32 +323,92 @@ async function placeAdd(i) {
 async function viewWhere() {
   const d = await api('GET', '/api/where'); let S = { items: [] }; try { S = await api('GET', '/api/where/sort'); } catch (e) { /* none */ }
   if (META) META.where = d.homes;
+  WHAREAS = d.homes.flatMap(h => h.areas);                     // 1.56.3: the spots each area offers in Plants without a spot
   const can = canChange(), multi = d.homes.length > 1;
-  const areaHtml = a => html`<li class="wh-area" data-aid="${a.id}">
+  // 1.58.0: Move up and Move down put rooms and spots in the order a round is walked; Today lists the plants to water in that order
+  const mv = (kind, x, i, n) => !can || n < 2 ? '' : html`${i > 0 ? html`<button class="btn small ghost" type="button" data-act="whmove" data-kind="${kind}" data-id="${x.id}" data-dir="up" data-name="${x.name}" aria-label="Move up: ${x.name}">Move up</button>` : ''}
+    ${i < n - 1 ? html`<button class="btn small ghost" type="button" data-act="whmove" data-kind="${kind}" data-id="${x.id}" data-dir="down" data-name="${x.name}" aria-label="Move down: ${x.name}">Move down</button>` : ''}`;
+  const areaHtml = (a, ai, an) => html`<li class="wh-area" data-aid="${a.id}">
     <div class="wh-row"><label class="f wh-name">${a.side === 'out' ? 'Area' : 'Room'}<input type="text" maxlength="60" value="${a.name}" data-ed="area" data-id="${a.id}" data-k="name" ${can ? '' : raw('readonly')}></label>
       <label class="chk"><input type="checkbox" data-ed="area" data-id="${a.id}" data-k="sheltered" ${a.sheltered ? raw('checked') : ''} ${can ? '' : raw('disabled')}>${a.side === 'out' ? 'Roof overhead (like a covered porch)' : 'Heated (not a garage or shed)'}</label>
       <span class="muted">${a.plants} plant${a.plants === 1 ? '' : 's'}${a.lights ? `, ${a.lights} light spot${a.lights === 1 ? '' : 's'}` : ''}. Counts as: ${a.site}.</span>
-      ${can ? html`<button class="btn small ghost wh-del" type="button" data-act="whareadel" data-id="${a.id}" data-name="${a.name}">Remove ${a.name}</button>` : ''}</div>
-    <ul class="wh-spots">${a.spots.map(sp => html`<li><label class="f">Spot<input type="text" maxlength="60" value="${sp.name}" data-ed="spot" data-id="${sp.id}" data-k="name" ${can ? '' : raw('readonly')}></label>
-      <span class="muted">${sp.plants} plant${sp.plants === 1 ? '' : 's'}</span>${can ? html`<button class="btn small ghost" type="button" data-act="whspotdel" data-id="${sp.id}" data-name="${sp.name}" aria-label="Remove the spot ${sp.name}">Remove</button>` : ''}</li>`)}
+      ${mv('area', a, ai, an)}${can ? html`<button class="btn small ghost wh-del" type="button" data-act="whareadel" data-id="${a.id}" data-name="${a.name}">Remove ${a.name}</button>` : ''}</div>
+    <ul class="wh-spots">${a.spots.map((sp, si) => html`<li><label class="f">Spot<input type="text" maxlength="60" value="${sp.name}" data-ed="spot" data-id="${sp.id}" data-k="name" ${can ? '' : raw('readonly')}></label>
+      <span class="muted">${sp.plants} plant${sp.plants === 1 ? '' : 's'}${sp.sheet ? `. ${sp.sheet[0].toUpperCase() + sp.sheet.slice(1)}.` : ''}</span>
+      <button class="btn small ghost" type="button" data-act="ltplace" data-id="${sp.id}" aria-label="Measurements and photos of ${sp.name}">Measurements and photos</button>${mv('spot', sp, si, a.spots.length)}${can ? html`<button class="btn small ghost" type="button" data-act="whspotdel" data-id="${sp.id}" data-name="${sp.name}" aria-label="Remove the spot ${sp.name}">Remove</button>` : ''}</li>`)}
       ${can ? html`<li><form class="row wh-add" data-form="whspotadd" data-aid="${a.id}"><label class="f">New spot in ${a.name}<input type="text" name="name" maxlength="60" placeholder="${a.side === 'out' ? 'Pallet shelf' : 'Brown hutch'}"></label><button class="btn small" type="submit">Add spot</button></form></li>` : ''}</ul></li>`;
-  const sideHtml = (h, side) => html`<section class="blk wh-side"><h3>${side === 'out' ? 'Outside' : 'Inside'}</h3><ul class="wh-areas">${h.areas.filter(a => a.side === side).map(areaHtml)}</ul>
+  const sideHtml = (h, side) => html`<section class="blk wh-side"><h3>${side === 'out' ? 'Outside' : 'Inside'}</h3><ul class="wh-areas">${h.areas.filter(a => a.side === side).map((a, i, all) => areaHtml(a, i, all.length))}</ul>
     ${can ? html`<form class="row wh-add" data-form="whareaadd" data-home="${h.home.is_home ? '' : h.home.id}" data-side="${side}"><label class="f">New ${side === 'out' ? 'area outside' : 'room inside'}<input type="text" name="name" maxlength="60" placeholder="${side === 'out' ? 'Patio' : 'Dining room'}"></label>
       <label class="chk"><input type="checkbox" name="sheltered" ${side === 'in' ? raw('checked') : ''}>${side === 'out' ? 'Roof overhead' : 'Heated'}</label><button class="btn small" type="submit">Add ${side === 'out' ? 'area' : 'room'}</button></form>` : ''}</section>`;
   return { title: 'Rooms and spots', html: html`<h1>Rooms and spots</h1>
     <p>Where plants go at each home: outside or inside, then the area or room, then the spot in it. Choose them on each plant's page. Rename anything here by typing over it; it saves when you leave the box. A room or shelf for grow lights is chosen from the same list.</p>
     <p class="hint">"Roof overhead" and "Heated" decide how frost warnings and watering treat the plants there: outside with a roof counts as a covered porch, and inside without heat counts as a garage or shed.</p>
-    ${S.items.length && can ? html`<section class="blk" id="wh-sort"><h2>Spots to sort out (${S.items.length})</h2>
-      <p>These plants have a "Spot (where exactly)" written on them but no spot from the list yet. Check each suggested spot name and area, change any you like, then press <strong>Make these spots</strong>. The words written on the plant stay as they are.</p>
-      <div class="tbl-wrap"><table class="tbl"><caption class="sr">Spots to sort out</caption><thead><tr><th scope="col">Written on the plant</th><th scope="col">Plants</th><th scope="col">Spot name</th><th scope="col">Area or room</th></tr></thead><tbody>
-      ${S.items.map((it, i) => html`<tr><th scope="row">${it.text}</th><td>${it.plants.map((x, k) => html`${k ? ', ' : ''}<a href="#/plant/${enc(x.code)}">${x.code}</a>`)}</td>
-        <td><label class="sr" for="whs-n${i}">Spot name for "${it.text}"</label><input type="text" id="whs-n${i}" maxlength="60" value="${it.name}" data-whs="${i}" data-k="name"></td>
-        <td><label class="sr" for="whs-a${i}">Area for "${it.text}"</label><select id="whs-a${i}" data-whs="${i}" data-k="area">${d.homes.map(h => html`<optgroup label="${h.home.name}">${h.areas.map(a => html`<option value="${a.id}" ${a.id === it.area_id ? raw('selected') : ''}>${a.side === 'out' ? 'Outside' : 'Inside'}: ${a.name}</option>`)}</optgroup>`)}</select></td></tr>`)}</tbody></table></div>
-      <p class="row"><button class="btn" type="button" data-act="whsort">Make these spots</button></p></section>` : ''}
+    ${can ? html`<p class="hint">Today lists the plants to water spot by spot, in the order shown here. <strong>Move up</strong> and <strong>Move down</strong> put the rooms and spots in the order you walk.</p>` : ''}
+    ${S.items.length && can ? html`<section class="blk" id="wh-sort"><h2 tabindex="-1">Plants without a spot (${S.items.reduce((n, it) => n + it.plants.length, 0)})</h2>
+      <p>These plants are not on a spot from your list yet. For each group, choose the area and one of its spots, or <strong>A new spot</strong> and its name, then press <strong>Put in this spot</strong>. Untick a plant to leave it for later. <strong>Put them all in their spots</strong> at the bottom does every group at once. What is written on a plant ("Spot (where exactly)") stays as it is.</p>
+      <ul class="whs-list">${S.items.map((it, i) => whsCard(it, i, d.homes))}</ul>
+      <p class="row"><button class="btn" type="button" data-act="whsort">Put them all in their spots</button></p></section>` : ''}
     ${d.homes.map(h => html`<section class="blk wh-home"><h2>${multi ? h.home.name : 'Your home'}${h.home.is_home && multi ? ' (main home)' : ''}</h2><div class="wh-sides">${sideHtml(h, 'out')}${sideHtml(h, 'in')}</div></section>`)}`,
     after: () => { WHSORT = S.items; } };
 }
-let WHSORT = [];
+let WHSORT = [], WHAREAS = [];
+// 1.56.3 (Ethan, November 10): "Plants without a spot". Each group of plants with the same words written on them (or none):
+// its plants, ticked; the area; one of that area's spots or a new one; and Put in this spot.
+function whsSpotOpts(aid, spotId, name) {
+  const a = WHAREAS.find(x => x.id === +aid), sps = a ? a.spots : [];
+  const pick = spotId || (sps.find(sp => name && sp.name.toLowerCase() === name.toLowerCase()) || {}).id || 'new';
+  return html`${sps.map(sp => html`<option value="${sp.id}" ${String(sp.id) === String(pick) ? raw('selected') : ''}>${sp.name}</option>`)}<option value="new" ${pick === 'new' ? raw('selected') : ''}>A new spot…</option>`;
+}
+function whsCard(it, i, homes) {
+  const isNew = !it.spot_id && !(WHAREAS.find(x => x.id === it.area_id) || { spots: [] }).spots.some(sp => it.name && sp.name.toLowerCase() === it.name.toLowerCase());
+  return html`<li class="whs-card" id="whs-${i}"><h3>${it.text ? html`Written on ${it.plants.length === 1 ? 'it' : 'them'}: "${it.text}"` : 'Nothing written on them'}</h3>
+    <fieldset class="whs-plants"><legend>Plants (${it.plants.length})</legend>${it.plants.map(x => html`<div class="whs-plant"><label><input type="checkbox" checked data-whs="${i}" data-k="code" value="${x.code}">
+      ${x.photo ? html`<img src="${thumbUrl(x.photo)}" alt="" loading="lazy" width="48" height="48">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}<span>${x.name} <span class="muted">${x.code}</span></span></label>
+      <a href="#/plant/${enc(x.code)}" class="whs-open">Open ${x.code}</a></div>`)}</fieldset>
+    <div class="whs-pick">
+      <label class="f">Area or room<select data-whs="${i}" data-k="area">${homes.map(h => html`<optgroup label="${h.home.name}">${h.areas.map(a => html`<option value="${a.id}" ${a.id === it.area_id ? raw('selected') : ''}>${a.side === 'out' ? 'Outside' : 'Inside'}: ${a.name}</option>`)}</optgroup>`)}</select></label>
+      <label class="f">Spot<select data-whs="${i}" data-k="spot">${whsSpotOpts(it.area_id, it.spot_id, it.name)}</select></label>
+      <label class="f" ${isNew ? '' : raw('hidden')} data-whsnew="${i}">Name of the new spot<input type="text" maxlength="60" value="${it.name}" data-whs="${i}" data-k="name"></label>
+    </div>
+    <p class="row"><button class="btn" type="button" data-act="whsone" data-i="${i}">Put in this spot</button></p></li>`;
+}
+function whsItem(i) {
+  const it = WHSORT[i], q = k => document.querySelector(`[data-whs="${i}"][data-k=${k}]`); if (!it || !q('area')) return null;
+  const codes = [...document.querySelectorAll(`[data-whs="${i}"][data-k=code]:checked`)].map(x => x.value);
+  const spot = q('spot').value;
+  return { text: it.text, from_area_id: it.area_id, area_id: +q('area').value, codes, ...(spot === 'new' ? { name: q('name').value } : { spot_id: +spot }) };
+}
+// 1.58.0 (Ethan, November 12): Put in this spot redraws the page, which used to undo the area, spot, name and ticks chosen in every
+// other group. They are noted first and put back afterwards, matched by group (its area and what is written on it), since the
+// groups' places in the list change when one is done.
+const whsKey = it => `${it.area_id}|${it.text || ''}`;
+function whsKeep(skip) {
+  const out = {};
+  WHSORT.forEach((it, i) => {
+    const q = k => document.querySelector(`[data-whs="${i}"][data-k=${k}]`); if (i === skip || !q('area')) return;
+    out[whsKey(it)] = { area: q('area').value, spot: q('spot').value, name: q('name') ? q('name').value : null,
+      off: [...document.querySelectorAll(`[data-whs="${i}"][data-k=code]:not(:checked)`)].map(x => x.value) };
+  });
+  return out;
+}
+function whsRestore(kept) {
+  WHSORT.forEach((it, i) => {
+    const k = kept[whsKey(it)], q = n => document.querySelector(`[data-whs="${i}"][data-k=${n}]`), area = q('area'), sel = q('spot');
+    if (!k || !area || !sel) return;
+    if ([...area.options].some(o => o.value === k.area)) area.value = k.area;
+    if (q('name') && k.name !== null) q('name').value = k.name;
+    sel.innerHTML = rend(whsSpotOpts(area.value, null, k.name));
+    if ([...sel.options].some(o => o.value === k.spot)) sel.value = k.spot;
+    const nf = document.querySelector(`[data-whsnew="${i}"]`); if (nf) nf.hidden = sel.value !== 'new';
+    document.querySelectorAll(`[data-whs="${i}"][data-k=code]`).forEach(b => { if (k.off.includes(b.value)) b.checked = false; });
+  });
+}
+document.addEventListener('change', e => {
+  const t = e.target; if (!t.dataset || t.dataset.whs === undefined) return;
+  const i = t.dataset.whs, sel = document.querySelector(`[data-whs="${i}"][data-k=spot]`), nf = document.querySelector(`[data-whsnew="${i}"]`);
+  if (t.dataset.k === 'area' && sel) sel.innerHTML = rend(whsSpotOpts(t.value, null, (document.querySelector(`[data-whs="${i}"][data-k=name]`) || {}).value));
+  if ((t.dataset.k === 'area' || t.dataset.k === 'spot') && sel && nf) nf.hidden = sel.value !== 'new';
+});
 
 // 1.29.0: Pots and trays: each kind you have, how many, and which plants use them
 const CT_MAT = ['Terracotta', 'Thin plastic', 'Thick plastic'];
@@ -383,8 +478,8 @@ async function edSend(el, v) {
   if (kind === 'area') { const r = await api('PUT', '/api/where/areas/' + id, { [k]: val }); if (META) META.where = r.homes; return null; }
   if (kind === 'spot') { const r = await api('PUT', '/api/where/spots/' + id, { [k]: val }); if (META) META.where = r.homes; return null; }
   if (kind === 'plant') {
-    const box = el.closest('[data-pver]'), was = el.dataset.was;
-    const r = await api('PUT', '/api/plants/' + enc(id), { base_version: +box.dataset.pver, base_values: { [k]: was }, fields: { [k]: v } });
+    const box = el.closest('[data-pver]'), conv = x => k === 'height_in' && x !== '' && x != null ? String(lenIn(x)) : x, was = conv(el.dataset.was);    // 1.56.0: a height typed in cm is kept in inches
+    const r = await api('PUT', '/api/plants/' + enc(id), { base_version: +box.dataset.pver, base_values: { [k]: was }, fields: { [k]: conv(v) } });
     box.dataset.pver = r.version; if (CUR && CUR.p && CUR.p.code === id) CUR.p = r;
     if (r.conflicts) toast('Someone else changed this plant too. Their other changes are kept.');
     if (['home_id', 'area_id', 'spot_id', 'pot_id', 'tray_id', 'winter_plan', 'health_rating', 'common_name', 'scientific_name', 'id_confidence'].includes(k)) {
@@ -435,7 +530,7 @@ async function jobsDialog() {               // 1.32.0: the background jobs, in o
       ${j.total ? html` <span class="muted">(${j.done} of ${j.total})</span>` : ''}<br><small class="muted">Started ${when(j.started)}</small></li>`)}</ul>` : html`<p class="muted">Nothing is running.</p>`}
     <h3>On a schedule</h3>
     <ul class="job-list">${d.schedule.map(s => html`<li><strong>${s.word}</strong>: ${s.every}.${s.next ? ` Next ${/^\d{4}-/.test(s.next) ? when(s.next) : s.next}.` : ''} Last ${ago(s.last)}.
-      ${owner && ['weather', 'shops', 'backup'].includes(s.kind) ? html` <button class="btn ghost small" type="button" data-act="jobrun" data-kind="${s.kind}">Run now</button>` : ''}</li>`)}</ul>
+      ${owner && ['weather', 'shops', 'backup', 'wxbackup'].includes(s.kind) ? html` <button class="btn ghost small" type="button" data-act="jobrun" data-kind="${s.kind}">Run now</button>` : ''}</li>`)}</ul>
     <h3>Finished (${d.done.length})</h3>
     ${d.done.length ? html`<ul class="job-list">${d.done.map(j => html`<li><span aria-hidden="true">${j.ok ? '✓' : '✗'}</span> <strong>${j.word}</strong>${j.label ? `: ${j.label}` : ''}, ${j.ok ? 'done' : 'failed'}${j.text ? `: ${j.text}` : ''}
       <br><small class="muted">${when(j.finished)}, ${j.seconds != null ? `${j.seconds} s` : ''}</small></li>`)}</ul>` : html`<p class="muted">Nothing has finished since the app started.</p>`}
@@ -472,11 +567,15 @@ async function loadHealth() {
   const ok = (good, text) => html`<li class="${good ? 'hl-ok' : 'hl-bad'}"><span aria-hidden="true">${good ? '✓' : '!'}</span> ${text}</li>`;
   const oldAge = ts => ts && (Date.now() - new Date(ts)) > 2 * 86400e3;
   const lowDisk = H.free_bytes != null && H.free_bytes < 2e9;
-  const copyGood = H.copy.at && !/failed/.test(H.copy.dir + H.copy.receiver) && (H.copy.dir || H.copy.receiver);
+  const copyGood = H.copy.at && !/failed/.test(H.copy.dir + H.copy.receiver) && (H.copy.dir || H.copy.receiver) && H.copy.away !== false;   // 1.58.0: a copy beside the data is not a second copy
+  const notes = (H.backup_notes || []).filter(n => n.key !== 'one-drive');
   box.innerHTML = rend(html`<ul class="hl">
     <li><span aria-hidden="true">●</span> Version ${H.version}${H.db_version && H.db_version !== H.version ? ` (the database was last opened by ${H.db_version})` : ''}, running as ${H.runs_as || 'the app'}. ${H.plants} plants, ${H.photos} photos, ${H.readings.toLocaleString()} readings${H.sensors ? ` from ${H.sensors} sensor${H.sensors === 1 ? '' : 's'}` : ''}.</li>
+    ${H.journal && H.journal.note ? html`<li><span aria-hidden="true">●</span> Saving mode: ${(H.journal.mode || '').toUpperCase()}. ${H.journal.note}</li>` : ''}
     ${ok(H.backup.last && !oldAge(H.backup.last), H.backup.last ? `Last backup ${when(H.backup.last)}${/^\d{4}-/.test(H.backup.next) ? ', next ' + when(H.backup.next) : ''}.` : H.backup.every === 'turned off' ? 'Automatic backups are turned off.' : 'No automatic backup yet.')}
-    ${ok(copyGood, H.copy.at ? `Second copy ${when(H.copy.at)}: ${[H.copy.dir ? 'folder ' + H.copy.dir : '', H.copy.receiver ? 'other computer ' + H.copy.receiver : ''].filter(Boolean).join('; ') || 'nowhere set up'}.` : 'No second copy of a backup yet (Backups page).')}
+    ${notes.map(n => ok(false, html`${bkNote(n)} <a href="#/backups">Backups</a>`))}
+    ${H.copy.away === false ? ok(false, html`${bkNote('one-drive')} <a href="#/backups?sec=bk-copies">How to keep a copy on another drive</a>`)
+      : ok(copyGood, H.copy.at ? `Second copy ${when(H.copy.at)}: ${[H.copy.dir ? 'folder ' + H.copy.dir : '', H.copy.receiver ? 'other computer ' + H.copy.receiver : ''].filter(Boolean).join('; ') || 'nowhere set up'}.` : 'No second copy of a backup yet (Backups page).')}
     ${ok(H.weather.last && !oldAge(H.weather.last), H.weather.last ? `Weather updated ${when(H.weather.last)}.` : 'No weather update yet.')}
     ${ok(true, H.shops.last ? `Stores checked ${when(H.shops.last)} (${H.shops.every}).` : `Stores not checked yet (${H.shops.every}).`)}
     ${ok(!H.problems, H.problems ? `${H.problems} problem${H.problems === 1 ? '' : 's'} to look at.` : 'No problems.')}
@@ -487,12 +586,10 @@ function viewSettings() {
   const card = (title, text, btn) => html`<section class="blk set-card"><h2>${title}</h2><p>${text}</p><div class="row">${btn}</div></section>`;
   return { title: 'Settings', after: () => { api('GET', '/api/problems').then(d => { const n = document.getElementById('prob-n'); if (n && d.open) n.textContent = ` (${d.open})`; }).catch(() => {}); loadHealth(); }, html: html`<h1>Settings</h1>
     <p class="muted">Plant record version <strong>${META.version}</strong>${META.runs_as ? `, running as ${META.runs_as}` : ''}. The version number is also always beside the name at the top of the page.</p>
+    <p>Offline use, Backups and the Audit log are in the row of pages above: <a href="#/offline">Offline use</a>, <a href="#/backups">Backups</a>, <a href="#/history">Audit log</a>.</p>
     <div class="set-grid">
-    ${card('You and the people who use the app', owner ? 'Your name in the audit log, and who can view, edit or own the app.' : 'Your name in the audit log, and what you are allowed to do.', html`<button class="btn" type="button" data-act="who">${owner ? 'Open people and names' : 'Open your name'}</button>`)}
+    ${card('People and your name', owner ? 'Your name in the audit log, and who can view, edit or own the app.' : 'Your name in the audit log, and what you are allowed to do.', html`<button class="btn" type="button" data-act="who">${owner ? 'Open people and names' : 'Open your name'}</button>`)}
     ${card('Display', 'Text size, colours, page layout, reading aloud, photos, touch and keyboard. Also on the Display button at the bottom of every page.', html`<button class="btn" type="button" data-act="display">Open Display settings</button>`)}
-    ${card('Offline use', 'Keep a copy of the plants on a phone or tablet, and see changes waiting to be sent.', html`<a class="btn" href="#/offline">Open Offline use</a>`)}
-    ${card('Backups', 'Copies of the database and photos, made by hand or on a schedule.', html`<a class="btn" href="#/backups">Open Backups</a>`)}
-    ${card('Audit log', 'Every change anyone has made, with filters and a download.', html`<a class="btn" href="#/history">Open the Audit log</a>`)}
     ${card('Homes and places', 'Where plants live, and the places whose weather is tracked.', html`<a class="btn" href="#/weather?sec=places">Open Homes and places</a>`)}
     ${card('Stores and keys', 'The stores Shopping checks, the eBay and Etsy keys, and the Pl@ntNet and Claude keys for Identify.', html`<a class="btn" href="#/shopping/stores">Stores</a><a class="btn ghost" href="#/identify">Keys (Identify page)</a>`)}
     ${card('Notifications', 'Messages on your phone or computer, even when the app is closed: cold nights, Shopping alerts, what is due today, and requests from Claude. Chosen for your own sign-in.', html`<button class="btn" type="button" data-act="notify" aria-haspopup="dialog">Open Notifications</button>`)}
@@ -546,6 +643,8 @@ dlg.addEventListener('click', e => { if (DLGDOWN && e.target === dlg && outsideD
 function modal(content, cls) {
   dlg.className = cls || '';
   dlg.innerHTML = rend(content);
+  notesPass(dlg);                                   // 1.57.0: notes on request, in windows too
+  setTimeout(() => scrollBoxes(dlg), 0);            // 1.58.0: a table that scrolls in a window can be scrolled by keyboard (measured once the window is open)
   const h2 = dlg.querySelector('h2');               // the window is named by its heading, for screen readers
   if (h2) { h2.id = h2.id || 'dlg-title'; dlg.setAttribute('aria-labelledby', h2.id); } else dlg.removeAttribute('aria-labelledby');
   return new Promise(res => {
@@ -671,7 +770,7 @@ async function route() {
   if (parts[0] !== 'fungi' || parts[1] !== 'new') MUFILL = null;
   const nav = parts[0] === 'winter' || parts[0] === 'frost' || parts[0] === 'inside' || parts[0] === 'outside' ? 'winter' : parts[0] === 'weather' || parts[0] === 'sensors' ? 'weather' : parts[0] === 'fertilizer' ? 'fertilizer' : parts[0] === 'lights' ? 'lights' : parts[0] === 'photos' ? 'photos' : parts[0] === 'labels' ? 'labels' : parts[0] === 'history' || parts[0] === 'audit' ? 'history' : parts[0] === 'backups' ? 'backups' : parts[0] === 'groups' || parts[0] === 'group' ? 'groups' : parts[0] === 'identify' ? 'identify' : parts[0] === 'library' || parts[0] === 'species' || parts[0] === 'wishlist' || parts[0] === 'around' ? 'library' : parts[0] === 'fungi' ? 'fungi' : parts[0] === 'offline' || parts[0] === 'decisions' ? 'offline' : parts[0] === 'today' || !parts.length ? 'today' : 'plants';
   navMark(parts[0] === 'weather' && qs.get('sec') === 'places' ? 'places' : FEAT.pages[parts[0]] ? (FEAT.pages[parts[0]].nav || parts[0]) : ['pots', 'where', 'settings', 'new', 'wishlist', 'frost', 'inside', 'outside', 'around', 'decisions', 'review'].includes(parts[0]) ? parts[0] : parts[0] === 'share' ? 'photos' : parts[0] === 'shopping' || parts[0] === 'store' ? 'shopping' : nav);   // 1.46.0: registered pages (features.js) say which link is theirs
-  pagesMenu(false);
+  pagesMenu(false); topMoreFold();
   wlBadge();
   // 1.30.0: the screen changes at once. If the page is not ready in a moment, its name shows with "Loading"; a page opened before
   // shows what was saved from last time, and is checked again just after (see QC above)
@@ -753,8 +852,8 @@ async function route() {
     featAdds(parts);                              // 1.46.0: what feature modules add to this page once it is on screen (features.js); they rebuild Navigation when done
     if (parts[0] === 'weather' && qs.get('sec') === 'places') setTimeout(() => { const t = document.getElementById('sec-places'); if (t) { scrollToSection(t); navFlash(t); } }, 300);   // 1.29.0: Homes and places
     else if (qs.get('sec')) { const go2 = () => { const t = document.getElementById(qs.get('sec')); if (t) { scrollToSection(t); navFlash(t); } }; setTimeout(go2, 300); setTimeout(go2, 1500); }   // 1.36.0: #/plant/P-001?sec=inside opens the page at that section
-    buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); setTimeout(() => { buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); }, 1200);
-    if (h !== lastPath) { if (!(wentBack && !qs.get('sec') && scrollBack(h))) window.scrollTo(0, 0); app.focus({ preventScroll: true }); NAVPIN = -1; navActive(); }
+    buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); scrollBoxes(); setTimeout(() => { buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); scrollBoxes(); }, 1200);
+    if (h !== lastPath) { if (!(wentBack && !qs.get('sec') && scrollBack(h))) window.scrollTo(0, 0); focusTitle(app); NAVPIN = -1; navActive(); }
     else if (fresh && keepY) window.scrollTo(0, keepY);
     lastPath = h;
     timingKeep(myTiming, t0, tData, performance.now());
@@ -831,10 +930,19 @@ function topFit() {
   if (was) top.classList.add('pages-open');
   r.dataset.toptall = top.offsetHeight > innerHeight * 0.2 ? '1' : '0';
 }
+// 1.57.0: when the top bar is too tall to stay put, the Navigation menu starts under it and moves up as it scrolls away (it ran from
+// the top of the window, beside a top bar pushed over to make room)
+function navTop() {
+  const r = document.documentElement, top = document.querySelector('.top');
+  if (r.dataset.toptall === '1' && r.dataset.narrow !== '1' && top) r.style.setProperty('--nav-top', Math.max(0, Math.round(top.getBoundingClientRect().bottom)) + 'px');
+  else r.style.removeProperty('--nav-top');
+}
+window.addEventListener('scroll', () => { if (document.documentElement.dataset.toptall === '1' && !navTop.f) navTop.f = requestAnimationFrame(() => { navTop.f = 0; navTop(); }); }, { passive: true });
 function navLayout() {
   const r = document.documentElement, top = document.querySelector('.top');
   topFit();
   r.style.setProperty('--top-h', (r.dataset.narrow === '1' || r.dataset.toptall === '1' ? 0 : (top ? top.getBoundingClientRect().height : 64)) + 'px');   // on phones the top bar scrolls away
+  navTop();
   const open = navOpen();
   r.dataset.navopen = open ? '1' : '0';
   const side = window.PlantPrefs.get().navside;
@@ -866,7 +974,7 @@ function buildSideNav() {
   // 1.14.1: every section title (h2) plus any part marked data-section="Its name", in page order, so new sections join by themselves
   const seen = new Set();
   app.querySelectorAll('h2, [data-section]').forEach(h => {
-    if (h.closest('dialog,.chart-card,#sidenav') || !h.offsetParent) return;
+    if (h.closest('dialog,.chart-card,#sidenav') || !h.offsetParent || h.classList.contains('sr')) return;   // 1.57.0: a heading only for screen readers is not a section
     const marked = h.matches("[data-section]"), sec = marked ? h : (h.closest('section') || h);
     if (seen.has(sec) || (!marked && sec.closest("[data-section]") && sec.closest("[data-section]") !== sec)) return;
     seen.add(sec);

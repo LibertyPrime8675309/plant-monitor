@@ -104,19 +104,51 @@ function drawGrid() {
   if (!document.getElementById('grid')) { drawPnav(); return; }
   const r = filteredPlants();
   const pool = ALL.filter(statusOk).length;
-  const led = document.querySelector('.ledger'); if (led) led.innerHTML = rend(ledger());
   const mf = document.querySelector('#more-f > summary'); if (mf) { const n = moreOn(); mf.textContent = 'More filters' + (n ? ` (${n} on)` : ''); }
-  const gt = document.getElementById('g-title'); if (gt) gt.textContent = G.status === 'archived' ? 'Archived plants' : 'Outdoor plants';
-  const wa = document.getElementById('wa-btn'); if (wa) { const n = r.filter(p => !isArch(p)).length; wa.textContent = `Water all ${n} shown`; wa.disabled = !n; }
+  const gt = document.getElementById('g-title'); if (gt) gt.textContent = G.status === 'archived' ? 'Archived plants' : 'All plants';
+  const wa = document.getElementById('wa-btn');
+  if (wa) {                                   // 1.58.0: one home at a time, and never a home cared for outside the app
+    const W = waterAllList(), n = W.list.length;
+    wa.textContent = W.home ? `Water all ${n} shown at ${W.home.name}` : `Water all ${n} shown`; wa.disabled = !n;
+    const why = document.getElementById('wa-why'); if (why) why.textContent = W.untended ? `Plants at ${W.home.name} are cared for outside the app.` : n ? '' : (W.home ? `No plants at ${W.home.name} are shown.` : 'No plants are shown.');
+    const hint = document.getElementById('wa-hint'); if (hint) hint.textContent = waterAllWords(W);
+  }
   document.getElementById('count').textContent = `${r.length} of ${pool} ${G.status === 'archived' ? 'archived ' : G.status === 'all' ? '' : 'active '}plants shown`;
   document.getElementById('grid').innerHTML = r.length
     ? rend(r.map(sheet))
     : rend(html`<div class="empty" style="grid-column:1/-1"><p>No plants match these filters.</p><button class="btn ghost" type="button" data-act="clearfilters">Clear filters</button></div>`);
 }
-function ledger() {
-  const n = pl => ALL.filter(p => statusOk(p) && p.winter_plan === pl).length;
-  return html`${META.winter_plans.map(pl => html`<button type="button" data-act="plan" data-plan="${pl}" style="--bar:${PLAN_COLOR[pl]}" aria-pressed="${String(G.plan === pl)}"><b>${n(pl)}</b>${pl}</button>`)}`;
+// ---------- 1.58.0 (Ethan, November 13, 2026: option A of the previews): All plants starts with its plants ----------
+// The first plant was 867 px down a 1080 screen and 2.4 screens down a phone: a title, a line of counts, three buttons, five winter-plan
+// tiles, the filters, a count and Water all with its explanation all came first. Now: the count beside the title; one row of tools
+// (search, home, where, winter plan, sort); one row of small buttons (more filters, what needs you, Water all); then the plants.
+// On a phone only the search box stays out: the lists go in "More filters" and the buttons in "More to do here". The page is drawn
+// for the width it has; when the window crosses the narrow width (a turned tablet, a new text size) it is drawn again.
+let PL_NARROW = null, plRz = 0;
+function plantsHead({ needN, fcN, todoN, lowN }) {
+  const narrow = PL_NARROW = document.documentElement.dataset.narrow === '1';
+  const planN = pl => ALL.filter(p => statusOk(p) && p.winter_plan === pl).length;
+  const lists = html`${homeFilter()}${siteFilter()}<label>Winter plan<select data-f="pnplan"><option value="">Any</option>${META.winter_plans.map(pl => html`<option value="${pl}" ${G.plan === pl ? raw('selected') : ''}>${pl} (${planN(pl)})</option>`)}</select></label>
+    <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>`;
+  const needs = html`<button type="button" class="btn small ${G.needs ? '' : 'ghost'}" data-act="needs" aria-pressed="${String(G.needs)}">${G.needs ? 'Showing plants that need something from you' : 'Plants that need something from you'} (${needN})</button>`;
+  const acts = html`<button type="button" class="btn small ghost" data-act="forclaude"><span>Copy my answers for Claude${fcN ? html`<span class="fc-n"> (${fcN} new)</span>` : ''}</span></button>
+    ${todoN ? html`<a class="btn small ghost" href="#/photos">${todoN} to photograph</a>` : ''}
+    <span class="water-all noprint"><button class="btn small ghost" type="button" data-act="waterall" id="wa-btn" aria-describedby="wa-why wa-hint">Water all</button><span class="why" id="wa-why"></span>
+      <details class="pl-what"><summary>What Water all does</summary><span class="hint" id="wa-hint"></span></details></span>`;
+  const more = html`<label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
+      ${groupFilter()}${statusFilter()}
+      <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70% (${lowN})</label>`;
+  return html`<div class="hero pl-hero"><div class="pl-title"><h1 id="g-title">${G.status === 'archived' ? 'Archived plants' : 'All plants'}</h1><p id="count" class="muted" aria-live="polite"></p></div>
+      <a class="btn" href="#/new">Add a plant</a></div>
+    <div class="filters filters-main pl-tools" id="pl-tools"><label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>${narrow ? '' : lists}</div>
+    ${placeChip()}
+    <div class="pl-row needs-bar">${moreFilters(html`${narrow ? lists : ''}${more}`,
+        (G.health ? 1 : 0) + (G.group ? 1 : 0) + (G.status !== 'active' ? 1 : 0) + (G.low ? 1 : 0) + (narrow ? (G.plan ? 1 : 0) + (G.site ? 1 : 0) + (G.home ? 1 : 0) : 0))}
+      ${narrow ? html`<details class="more-f pl-acts"><summary>More to do here</summary><div class="row">${needs}${acts}</div></details>` : html`${needs}${acts}`}</div>`;
 }
+const plRedraw = () => { if (PL_NARROW === null || !document.getElementById('pl-tools') || (document.documentElement.dataset.narrow === '1') === PL_NARROW) return;
+  clearTimeout(plRz); plRz = setTimeout(() => { if (document.getElementById('pl-tools')) route(); }, 150); };
+window.addEventListener('resize', plRedraw); document.addEventListener('prefs', plRedraw);
 async function viewGallery(qs) {
   if (qs && (qs.get('spot') || qs.get('area'))) {       // 1.34.0: from a room or shelf label: just that place, nothing else filtered
     Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '', status: 'active', site: '', home: '', area: qs.get('area') || '', spot: qs.get('spot') || '' }, Object.fromEntries(MORE_KEYS.map(k => [k, ''])));
@@ -132,26 +164,8 @@ async function viewGallery(qs) {
   const pend = (await offOps()).filter(o => o.url === '/api/plants' && o.method === 'POST' && !o.failed);   // 1.38.0: plants added without a connection
   return {
     title: '',
-    html: html`${pend.length ? html`<p class="notice off-note noprint" role="note"><strong>${pend.length} new plant${pend.length === 1 ? '' : 's'} waiting to be sent:</strong> ${pend.map(o => (o.body.fields || {}).common_name || o.temp).join(', ')}. ${pend.length === 1 ? 'It gets' : 'They get'} a page here once the plant server can be reached. <a href="#/offline">Offline page</a></p>` : ''}<div class="hero"><div><h1 id="g-title">${G.status === 'archived' ? 'Archived plants' : 'Outdoor plants'}</h1>
-      <p class="muted">${META.counts.plants} plants, ${META.counts.photos} photos. Weather for ${placeName()}.</p></div>
-      <a class="btn" href="#/new">Add a plant</a></div>
-    <div class="needs-bar row" role="group" aria-label="What Claude needs from you">
-      <button type="button" class="btn small ${G.needs ? '' : 'ghost'}" data-act="needs" aria-pressed="${String(G.needs)}" title="Questions, checks, photos and ID details Claude is waiting for">${G.needs ? 'Showing plants that need something from you' : 'Plants that need something from you'} (${needN})</button>
-      <button type="button" class="btn small ghost" data-act="forclaude"><span>Copy my answers for Claude${fcN ? html`<span class="fc-n"> (${fcN} new)</span>` : ''}</span></button>
-      ${todoN ? html`<a class="btn small ghost" href="#/photos">${todoN} to photograph</a>` : ''}</div>
-    <div class="ledger" role="group" aria-label="Filter by winter plan">${ledger()}</div>
-    <div class="filters filters-main">
-      <label>Search<input type="search" data-f="q" value="${G.q}" placeholder="Name, code, location"></label>
-      ${homeFilter()}${siteFilter()}
-      <label>Sort by<select data-f="sort">${Object.entries(SORTS).map(([k, v]) => html`<option value="${k}" ${G.sort === k ? raw('selected') : ''}>${v}</option>`)}</select></label>
-    </div>
-    ${placeChip()}${moreFilters(html`<label>Health<select data-f="health"><option value="">Any</option>${META.health.map(h => html`<option ${G.health === h ? raw('selected') : ''}>${h}</option>`)}</select></label>
-      ${groupFilter()}${statusFilter()}
-      <label class="chk"><input type="checkbox" data-f="low" ${G.low ? raw('checked') : ''}>ID confidence under 70% (${lowN})</label>`, (G.health ? 1 : 0) + (G.group ? 1 : 0) + (G.status !== 'active' ? 1 : 0) + (G.low ? 1 : 0))}
-    <p id="count" class="muted" aria-live="polite"></p>
-    <div class="water-all noprint"><button class="btn ghost" type="button" data-act="waterall" id="wa-btn">Water all</button>
-      <span class="hint">Marks every plant shown (with the filters above) as watered today. Plants already watered today are skipped.</span></div>
-    <div class="grid" id="grid"></div>
+    html: html`${pend.length ? html`<p class="notice off-note noprint" role="note"><strong>${pend.length} new plant${pend.length === 1 ? '' : 's'} waiting to be sent:</strong> ${pend.map(o => (o.body.fields || {}).common_name || o.temp).join(', ')}. ${pend.length === 1 ? 'It gets' : 'They get'} a page here once the plant server can be reached. <a href="#/offline">Offline page</a></p>` : ''}${plantsHead({ needN, fcN, todoN, lowN })}
+    <h2 class="sr">The plants</h2><div class="grid" id="grid"></div>
     ${archN ? html`<p class="hint" style="margin-top:2rem">${archN} archived plant${archN === 1 ? ' is' : 's are'} hidden from this list. Choose <strong>Show: Active and archived</strong> in the filters to see ${archN === 1 ? 'it' : 'them'} too.</p>` : ''}`,
     after: drawGrid,
   };
@@ -242,6 +256,21 @@ const homeOk = p => !G.home || !homeById(G.home) || String(plantHome(p).id) === 
 // (the same rule as plants_at() on the server), and whether a plant is one of them
 const placeHomeId = () => (META && META.place && META.place.plants_here && homeById(META.place.id)) ? META.place.id : mainHome().id;
 const atPlace = p => HOMES().length < 2 || String(plantHome(p).id) === String(placeHomeId());
+// 1.58.0: watering many plants at once counts the plants at one home only: the one chosen in the Home filter, else the home in use.
+// A home marked "cared for outside the app" (Homes and places) is never watered in bulk; a plant there can still be logged on its page.
+const homeTended = h => !h || h.tended !== false;
+const careHome = () => (G.home && homeById(G.home)) || homeById(placeHomeId()) || mainHome();
+function waterAllList() {
+  const shown = filteredPlants().filter(p => !isArch(p));
+  if (HOMES().length < 2) return { list: shown, home: null, away: 0, untended: false };
+  const h = careHome(), here = shown.filter(p => String(plantHome(p).id) === String(h.id)), untended = !homeTended(h);
+  return { list: untended ? [] : here, home: h, away: shown.length - here.length, untended };
+}
+function waterAllWords(W) {
+  if (!W.home) return 'Marks every plant shown (with the filters above) as watered today. Plants already watered today are skipped.';
+  if (W.untended) return `Choose another home in the Home filter to water its plants. To log care at ${W.home.name} again, change it on Homes and places.`;
+  return `Marks the plants shown at ${W.home.name} as watered today.${W.away ? ` The ${W.away} shown at other homes ${W.away === 1 ? 'is' : 'are'} left out: choose a home in the Home filter to water ${W.away === 1 ? 'it' : 'those'}.` : ''} Plants already watered today are skipped.`;
+}
 function homeFilter() {
   if (HOMES().length < 2) return '';
   return html`<label>Home<select data-f="home"><option value="">All homes</option>${HOMES().map(h => html`<option value="${h.id}" ${String(G.home) === String(h.id) ? raw('selected') : ''}>${h.name}</option>`)}</select></label>`;
@@ -290,7 +319,7 @@ async function viewGroups() {
       <p class="noprint"><button class="btn" type="button" data-act="grpaddall">Add all ${sug.length} suggested groups</button></p>
       <ul class="grp-list">${sug.map((x, i) => html`<li class="grp-card"><h3>${x.name}</h3><p>Plants join when ${x.rule_words}.</p>
         <p><strong>${x.count} plants</strong>: ${nameList(x.codes)}</p>
-        <p class="noprint"><button class="btn small" type="button" data-act="grpaddsug" data-i="${i}" aria-label="Add the group ${x.name}">Add this group</button></p></li>`)}</ul></section>` : ''}
+        <p class="noprint"><button class="btn small" type="button" data-act="grpaddsug" data-i="${i}" aria-label="Add this group: ${x.name}">Add this group</button></p></li>`)}</ul></section>` : ''}
     <section class="blk" id="grp-how"><h2>How groups work</h2><ul>
       <li><strong>Smart groups</strong> have a rule, such as "Genus is Philodendron" or "Location is Indoors". Plants that fit join by themselves, and leave when they stop fitting.</li>
       <li><strong>Hand-picked groups</strong> hold the plants you choose. Add or take out plants on the group's page or on a plant's own page.</li>
@@ -419,11 +448,16 @@ function careKinds() {
 }
 async function groupCare() {
   const d = CURG; if (!d || !(await needName())) return;
+  // 1.58.0: a group can hold plants at several homes; only those at the home in use (and cared for in the app) start ticked
+  const homeOf = c => plantHome(PCODES.get(c)), hereH = homeById(placeHomeId()) || mainHome();
+  const ticked = HOMES().length < 2 ? d.codes : d.codes.filter(c => String(homeOf(c).id) === String(hereH.id) && homeTended(homeOf(c)));
+  const away = d.codes.length - ticked.length, awayHomes = [...new Set(d.codes.filter(c => !ticked.includes(c)).map(c => homeOf(c).name))].join(', ');
   const r = await modal(html`<form method="dialog"><h2>Log care for ${d.name}</h2>
     <label class="f">What did you do?<select name="kind">${careKinds()}</select></label>
     <label class="f">When<input type="date" name="day" value="${todayStr()}" max="${todayStr()}"></label>
     <label class="f">Note (optional)<input type="text" name="note" maxlength="500" placeholder="For example: repotted in the aroid mix"></label>
-    ${tickList(d.codes, d.codes, 'For these plants')}
+    ${away ? html`<p class="hint" id="gc-away">${away === 1 ? 'One of these plants is' : `${away} of these plants are`} at ${homeTended(hereH) ? awayHomes : `${awayHomes}, cared for outside the app`}, so ${away === 1 ? 'it starts' : 'they start'} unticked. Tick ${away === 1 ? 'it' : 'them'} if you cared for ${away === 1 ? 'it' : 'them'} too.</p>` : ''}
+    ${tickList(d.codes, ticked, 'For these plants')}
     <div class="row"><button class="btn" value="ok">Save for the ticked plants</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`, 'wide');
   if (r !== 'ok') return;
   const f = dlg.querySelector('form'), codes = tickedCodes(f);

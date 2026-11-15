@@ -95,10 +95,7 @@ def remind_get(c, rid):
     remind_tables(c)
     r = c.execute('SELECT * FROM plant_reminders WHERE id=? AND removed_at IS NULL', (rid,)).fetchone()
     if not r: abort(404, 'That reminder is not there any more')
-    u = getattr(g, 'user', None)                       # an editor limited to some homes: reminders of plants elsewhere are not theirs to change
-    if u and u.get('role') == 'editor' and u.get('edit_homes') and r['plant_code']:
-        h = plant_home_of(c, r['plant_code'])
-        if h is not None and h not in u['edit_homes']: abort(403, f"{r['plant_code']} is at another home, so you cannot change its reminders.")
+    home_check(c, r['plant_code'])                     # a plant's reminder follows the plant: an editor limited to other homes is stopped here (a reminder for no plant is anyone's)
     return r
 
 def remind_audit(c, r, field, old, new, note):

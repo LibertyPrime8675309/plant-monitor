@@ -81,6 +81,7 @@ with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED) as z:
         for f in files:
             if rel == '.' and (f in SKIP_TOP or f.endswith('.zip')): continue
             if f.endswith('.pyc'): continue
+            if rel == 'plant-updates' and f != 'README.txt': continue      # 1.58.0: update files hold details of the plants; only the folder and its note travel
             full_path = os.path.join(d, f); arc = os.path.join('plant-database', os.path.relpath(full_path, ROOT))
             z.write(full_path, arc)
     for keep in ('data/.gitkeep', 'backups/.gitkeep'):

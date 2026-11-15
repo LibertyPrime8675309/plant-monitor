@@ -83,7 +83,7 @@ const HMAP_RANGE = { temp: ['temp_ideal_low', 'temp_ideal_high'], humidity: ['hu
 
 // ---------- edit and create ----------
 const GROUPS = [
-  ['Names and place', ['common_name', 'scientific_name', 'aliases', 'plant_type', 'home_id', 'area_id', 'spot_id', 'location', 'container', 'pot_id', 'tray_id']],
+  ['Names and place', ['common_name', 'scientific_name', 'aliases', 'plant_type', 'home_id', 'area_id', 'spot_id', 'location', 'container', 'pot_id', 'tray_id', 'height_in']],
   ['Identification', ['id_confidence', 'id_basis', 'id_alternatives', 'id_improve']],
   ['About this plant', ['growth_habit', 'kingdom', 'taxon_order', 'family', 'genus', 'height_ground', 'width_ground', 'height_pot', 'width_pot', 'growth_rate', 'lifespan',
     'zone_low', 'zone_high', 'zone_notes', 'heat_zone_high', 'heat_zone_low', 'heat_zone_source', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'pet_safety', 'propagation', 'sources']],
@@ -94,7 +94,7 @@ const GROUPS = [
   ['Nutrients', ['fertilizer', 'npk_ratio', 'fert_strength', 'nutrients', 'fert_from_month', 'fert_to_month', 'fert_every_days']],
   ['Winter plan', ['winter_plan', 'winter_summary', 'winter_triggers', 'winter_steps', 'indoor_setup']],
   ['Health', ['health_rating', 'health_summary', 'health_observations', 'health_steps']],
-  ['Pests and diseases', ['pests_watch', 'pest_steps', 'pests_current', 'pests_found', 'leaf_type', 'pot_size']],
+  ['Pests and diseases', ['pests_watch', 'pest_steps', 'pests_current', 'pests_found', 'browse_risk', 'leaf_type', 'pot_size']],
   ['Notes', ['notes']],
 ];
 const HINTS = {
@@ -109,18 +109,21 @@ const HINTS = {
   pests_found: 'One per line, from: Spider mites, Mealybugs, Scale, Aphids, Whiteflies, Thrips, Ants, Fungus gnats, Root mealybugs, Slugs or snails, Pill bugs or earwigs, Other. The plant page has tick boxes for these.',
   npk_ratio: 'Three numbers for nitrogen, phosphate and potash, such as 3-1-2. The Fertilizer page finds your closest fertilizer.',
   fert_strength: 'How strong to mix it. The Fertilizer page works out the amount per gallon from this.',
+  browse_risk: 'How likely rabbits, rats and mice are to eat this plant. Leave it empty to use the usual for this kind of plant. The page Pests that eat plants uses it.',
   pet_safety: 'Used by the Pets filter on the Plants page. "Safe for pets" only where the ASPCA lists the plant as non-toxic.',
   home_id: 'Where the plant lives. Weather, frost warnings and watering for a home only list its own plants.',
   heat_zone_high: 'AHS heat zone, 1 to 12: the hottest it is listed for, such as 12.', heat_zone_low: 'AHS heat zone, 1 to 12: the coolest it is listed for, such as 1.', heat_zone_source: 'Where the range came from: a title, a | and the web address.',
   zone_low: 'USDA zone, such as 9b or 10. The page compares it with the zone where you are.', zone_high: 'USDA zone, such as 11.',
   height_ground: 'For example 6 to 10 ft.', height_pot: 'For example 3 to 5 ft.', propagation: 'One method per line.',
   sources: 'One per line: a title, a | and the web address, for example "NC State Extension: Aloe vera | https://...".',
+  height_in: 'Today, from the surface the pot stands on to the top of the plant. The Grow lights page uses it to check the plant fits under a shelf or a light.',
   leaf_type: 'Decides which pest treatments suit it before it comes inside.', pot_size: 'Whether the pot can be soaked in a bucket or tub.', health_steps: 'One step per line, in order.', indoor_setup: 'One item per line.',
 };
 const rangeOf = n => (META.int_ranges && META.int_ranges[n]) || (META.num_ranges && META.num_ranges[n]) || [-60, 150];
 // 1.47.0: a plant's temperatures are kept in °F and shown and typed in the person's unit (Display, Units); submitForm() converts back
 const TEMP_FIELDS = ['temp_ideal_low', 'temp_ideal_high', 'temp_damage_below', 'temp_lethal_below', 'temp_damage_above', 'soil_temp_low', 'soil_temp_high'];
 const tempLabel = s => String(s).replace(/\((°?F)\)/, '(' + tU() + ')');
+const LEN_FIELDS = ['height_in'];                  // 1.56.0: kept in inches, shown and typed in the person's length unit
 function fieldInput(f, val) {
   const hint = HINTS[f.name] || (f.kind === 'list' ? 'One item per line.' : '');
   const wide = (f.kind === 'long' || f.kind === 'list') ? 'wide' : '';
@@ -128,6 +131,7 @@ function fieldInput(f, val) {
   let inp;
   const isTemp = TEMP_FIELDS.includes(f.name);
   if (isTemp) { f = { ...f, label: tempLabel(f.label) }; if (v !== '') v = tNum(v); }
+  if (LEN_FIELDS.includes(f.name)) { f = { ...f, label: String(f.label).replace('(in)', '(' + lenU() + ')') }; if (v !== '') v = lenF(v, false); }
   if (f.kind === 'long' || f.kind === 'list') inp = html`<textarea name="${f.name}" rows="${f.kind === 'list' ? 5 : 4}">${v}</textarea>`;
   else if (f.kind === 'int' && isTemp) { const mm = rangeOf(f.name); inp = html`<input type="number" inputmode="decimal" step="${unitsGet().temp === 'c' ? '0.5' : '1'}" min="${tNum(mm[0])}" max="${tNum(mm[1])}" name="${f.name}" value="${v}">`; }
   else if (f.kind === 'int') { const mm = rangeOf(f.name); inp = html`<input type="number" inputmode="numeric" step="1" min="${mm[0]}" max="${mm[1]}" name="${f.name}" value="${v}">`; }
@@ -167,7 +171,7 @@ function whereInputs(aid, p) {
   const all = WHERE().flatMap(h => h.areas), a = all.find(x => String(x.id) === String(aid)) || null;
   const hid = p ? p.home_id : (NEWFILL && NEWFILL.home_id) || '', side = a ? a.side : ((p && ['Indoors', 'Garage or shed'].includes(p.site)) ? 'in' : 'out');
   return html`<fieldset class="f wide where-f"><legend>Where it is</legend>
-    <div class="opts" role="radiogroup" aria-label="Inside or outside">${[['out', 'Outside'], ['in', 'Inside']].map(([k, l]) => html`<label class="chk"><input type="radio" name="__side" value="${k}" data-f="whereside" ${k === side ? raw('checked') : ''}>${l}</label>`)}</div>
+    <div class="opts" role="radiogroup" aria-label="Inside or outside">${[['out', 'Outside'], ['in', 'Inside']].map(([k, l]) => html`<label><input type="radio" name="__side" value="${k}" data-f="whereside" ${k === side ? raw('checked') : ''}><span>${l}</span></label>`)}</div>
     <label class="f">Area or room<small>Change the list on <a href="#/where">Rooms and spots</a>.</small><select name="area_id" data-f="wherearea">${whereAreaOpts(hid, side, aid)}</select></label>
     <label class="f">Spot<select name="spot_id">${whereSpotOpts(a ? a.id : (whereHome(hid).areas.find(x => x.side === side) || {}).id, p ? p.spot_id : '')}</select></label></fieldset>`;
 }
@@ -197,9 +201,9 @@ function viewForm(p) {
       ${isNew && NEWFILL ? html`<p class="notice ok" role="note">${NEWFILL.__from}: the names are filled in${NEWFILL.__pic ? ', and the picture is added when you save' : ''}. Check them before saving.</p>` : ''}
       ${isNew ? html`<fieldset><legend>Photos</legend><div class="field-grid">
         <label class="f wide">Photos<small>Optional. Take them now or choose them from your photos; the first one becomes the main photo. With a photo, the common name can wait: a stand-in name is used until the photo is checked.</small><input type="file" name="__photos" accept="image/*" multiple data-f="newphotos"></label>
-        <p class="row wide"><button class="btn ghost" type="button" data-act="newfill" id="newfill-btn" disabled>Fill in the names from the first photo</button></p>
+        <p class="row wide"><button class="btn ghost" type="button" data-act="newfill" id="newfill-btn" disabled aria-describedby="newfill-why">Fill in the names from the first photo</button><span class="why" id="newfill-why">Add a photo below first.</span></p>
         <div id="newfill-st" class="hint wide" role="status" aria-live="polite">Choose a photo, then the names can be filled in from it${ID.keys && ID.keys.plantnet ? ' (this computer and Pl@ntNet)' : ''}.</div></div></fieldset>` : ''}
-      ${GROUPS.map(([title, names]) => html`<fieldset><legend>${title}</legend><div class="field-grid">${names.map(n => fieldInput(F[n], p ? p[n] : NEWFILL && NEWFILL[n] ? NEWFILL[n] : (n === 'winter_plan' ? 'Move indoors' : n === 'health_rating' ? 'Fair' : '')))}</div></fieldset>`)}
+      ${GROUPS.map(([title, names]) => html`<fieldset><legend>${title}</legend><div class="field-grid fg-form">${names.map(n => fieldInput(F[n], p ? p[n] : NEWFILL && NEWFILL[n] ? NEWFILL[n] : (n === 'winter_plan' ? 'Move indoors' : n === 'health_rating' ? 'Fair' : '')))}</div></fieldset>`)}
       ${isNew ? '' : html`<fieldset><legend>Change note</legend><label class="f">What did you change, and why?<small>Optional. It appears in the page history.</small><input type="text" name="__note" maxlength="300"></label></fieldset>`}
       <div id="form-err"></div>
       <div class="sticky-save"><button class="btn" type="submit">${isNew ? 'Add plant' : 'Save changes'}</button>
@@ -390,7 +394,7 @@ async function viewEdit(code) { return viewForm(await api('GET', '/api/plants/' 
 async function submitForm(form) {
   if (!(await needName())) return;
   const fd = new FormData(form), fields = {};
-  META.fields.forEach(f => { let v = fd.get(f.name); if (v === null) return; if (TEMP_FIELDS.includes(f.name) && v !== '') v = String(Math.round(tIn(v))); fields[f.name] = v; });   // 1.29.0: a field not on the form (Location now follows the area) is left out; 1.47.0: temperatures typed in the person's unit go back to whole °F
+  META.fields.forEach(f => { let v = fd.get(f.name); if (v === null) return; if (TEMP_FIELDS.includes(f.name) && v !== '') v = String(Math.round(tIn(v))); if (LEN_FIELDS.includes(f.name) && v !== '') v = String(lenIn(v)); fields[f.name] = v; });   // 1.29.0: a field not on the form (Location now follows the area) is left out; 1.47.0: temperatures typed in the person's unit go back to whole °F
   const err = document.getElementById('form-err'); err.innerHTML = '';
   const btn = form.querySelector('[type=submit]'); btn.disabled = true;
   try {

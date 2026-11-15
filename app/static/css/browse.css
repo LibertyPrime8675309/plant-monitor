@@ -1,0 +1,16 @@
+/* Pests that eat plants (js/browse.js, plantdb/browse.py): prototype proto/browse-risk. One file per feature. */
+.br-plant strong{font-weight:700}
+.br-plant a{margin-left:.3rem}
+.br-plant .btn{margin-left:0}
+.br-sights{list-style:none;margin:.4rem 0;padding:0}
+.br-sight{margin:.5rem 0;padding:.4rem .6rem;border:1px solid var(--line);border-radius:8px}
+.br-pics{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.4rem}
+.br-pics img{border-radius:6px;object-fit:cover}
+.br-dlg fieldset{border:1px solid var(--line);border-radius:8px;padding:.4rem .8rem .6rem;margin:0 0 .8rem;min-width:0}
+.br-dlg legend{font-weight:600;padding:0 .3rem;overflow-wrap:anywhere}
+.br-dlg .f{max-width:100%}
+.br-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(11rem,1fr));gap:.4rem}
+.br-pick .chk{display:flex;align-items:center;gap:.4rem;font-weight:400}
+.br-pick img{border-radius:6px;object-fit:cover}
+html[data-role=viewer] :is([data-act=brseen], [data-act=brrisk], [data-act=brdel]){display:none!important}
+.job .br-usual{white-space:normal;overflow-wrap:anywhere;display:inline}
