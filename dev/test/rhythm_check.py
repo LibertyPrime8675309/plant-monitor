@@ -105,10 +105,11 @@ with sync_playwright() as p:
     check(pg.locator(f'#rh-match .job[data-code="{a}"]').count() == 1, 'the plant moves to About right')
     pg.locator('.undo-toast [data-undo=undo]').click(); pg.wait_for_timeout(1800)
     # Make all of these match (his answer of November 15): a second plant watered sooner, then one button for the list
-    water(inside[1], [3, 3, 3, 3]); pg.goto(BASE + '/#/weather'); pg.goto(BASE + '/#/rhythm'); pg.wait_for_selector('#rh-often')
+    water(inside[1], [3, 3, 3, 3]); pg.goto(BASE + '/#/rhythm'); pg.reload(); pg.wait_for_selector('#rh-often')      # a reload, so the page asks again instead of using the answer it had
     often = lambda: [p for p in R()['plants'] if p['state'] == 'often' and p['suggest']]
     n_all = len(often())
-    check(n_all >= 2 and pg.inner_text('#rh-often [data-act=rhall]') == f'Make all {n_all} of these match', f'the list of {n_all} has one button for all of them')
+    check(n_all >= 2 and until(pg, lambda: pg.locator('#rh-often [data-act=rhall]').count() == 1 and pg.inner_text('#rh-often [data-act=rhall]') == f'Make all {n_all} of these match'),
+          f'the list of {n_all} has one button for all of them')
     pg.click('#rh-often [data-act=rhall]'); pg.locator('dialog[open] button:has-text("Make them match")').click()
     check(until(pg, lambda: not often()) and until(pg, lambda: 'now match how often you water' in pg.inner_text('#toasts')), 'after asking, it sets every reminder in the list and says so')
     pg.locator('.undo-toast [data-undo=undo]').click()
