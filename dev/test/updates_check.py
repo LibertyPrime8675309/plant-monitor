@@ -95,6 +95,7 @@ with sync_playwright() as p:
           'a change the page no longer agrees with needs a decision, and starts on "Keep what it says now"')
     check('Nothing to do' in pg.locator('#upd-c5').inner_text() and 'already says this' in pg.locator('#upd-c5').inner_text() and pg.locator('#upd-c5 input').count() == 0, 'a change the page already has says so, with nothing to tick')
     check('Left out' in pg.locator('#upd-c6').inner_text() and 'A name it does not have' in pg.locator('#upd-c6').inner_text() and pg.locator('#upd-c6 input').count() == 0, 'a change for a plant the record does not have under that code and name is left out, and says why')
+    check(pg.locator('.upd-plant', has=pg.locator('#upd-c6')).locator('.upd-ph').inner_text().strip() == 'No photo', 'a block with no picture to show says "No photo" in words')
     nw = pg.locator('#upd-c8')
     check('A new page for this plant' in nw.inner_text() and nw.locator('.upd-pics img').count() == 2 and until(pg, lambda: nw.locator('.upd-pics img').first.evaluate('i => i.complete && i.naturalWidth > 0')),
           'a new page shows the photos that come with it')
@@ -214,6 +215,23 @@ with sync_playwright() as p:
     bar = ph.evaluate("() => { const b = document.querySelector('.upd-bar'), k = [...b.querySelectorAll('button')].filter(e => e.offsetParent); return [k.length, document.querySelector('.upd-no-end button').offsetParent !== null]; }")
     check(bar == [1, True], 'on a phone the bar holds the one button, and Change nothing ends the page')
     ph.screenshot(path=os.path.join(OUT, 'updates-phone.png'), full_page=True)
+    # the same page at the largest text: a name keeps its words whole, a tag stays in its box, and nothing is cut off at the side
+    big = br.new_page(viewport={'width': 384, 'height': 740}); big.on('pageerror', lambda e: errs.append(str(e)))
+    big.add_init_script("localStorage.setItem('plantdb.editor','Updates Test');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
+    big.goto(ph.url); big.wait_for_selector('.upd-plants', timeout=30000)
+    m = big.evaluate("""() => { const rem = parseFloat(getComputedStyle(document.documentElement).fontSize), out = { rem, side: document.documentElement.scrollWidth - innerWidth, names: [], tags: [], indent: [] };
+      document.querySelectorAll('.upd-plant').forEach(a => { const h = a.querySelector('h3').getBoundingClientRect(), p = a.querySelector('.upd-ph').getBoundingClientRect(), c = a.getBoundingClientRect();
+        out.names.push([Math.round(h.width), h.width >= 9 * rem - 1, h.top >= p.bottom - 2, h.right <= c.right + 1]); });
+      document.querySelectorAll('.upd-tag').forEach(t => { const r = t.getBoundingClientRect(), b = t.closest('.upd-ch').getBoundingClientRect(); out.tags.push(r.right <= b.right + 1 && r.left >= b.left - 1); });
+      document.querySelectorAll('.upd-vals:not(.upd-flat)').forEach(v => out.indent.push(getComputedStyle(v).marginLeft));
+      return out; }""")
+    check(m['rem'] > 28 and m['side'] <= 1, 'at the largest text a file\'s changes still fit a phone with no sideways scrolling')
+    check(m['names'] and all(wide and under and inside for _, wide, under, inside in m['names']), f'there a plant\'s name goes under its picture and has the card\'s width, so no word is broken in the middle ({m["names"]})')
+    check(m['tags'] and all(m['tags']), 'and "Needs your decision" stays inside its box')
+    check(m['indent'] and set(m['indent']) == {'0px'}, 'and what a change says starts at the card\'s edge, where the card is too narrow to indent it')
+    big.screenshot(path=os.path.join(OUT, 'updates-phone-bigtext.png'), full_page=True)
+    usual = ph.evaluate("""() => [...document.querySelectorAll('.upd-plant')].map(a => { const h = a.querySelector('h3').getBoundingClientRect(), p = a.querySelector('.upd-ph').getBoundingClientRect(); return h.left >= p.right && h.top < p.bottom; })""")
+    check(usual and all(usual), 'at the usual text the name stays beside the picture')
     br.close()
 check(not errs, 'no script errors' + (': ' + '; '.join(errs[:3]) if errs else ''))
 print(f"\n{'FAILED' if fails else 'passed'}: {len(fails)} of the checks failed" if fails else '\nAll update file checks passed')

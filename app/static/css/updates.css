@@ -3,7 +3,10 @@
 html:not([data-role=owner]) a[href="#/updates"]{display:none!important}      /* the owner's page: the menu shows it to nobody else */
 .upd-file{border:var(--bw) solid var(--line);border-radius:8px;background:var(--sheet);padding:.55rem .9rem;margin:0 0 .8rem}
 .upd-file p{margin:.25rem 0}
-.upd-file p>.btn{margin-left:.6rem}
+/* a button after a sentence (the file's name, Today's line): the space before it belongs to the sentence, so a button that starts a
+   new line starts at the left edge */
+.upd-fhead>span,.upd-today p>span{padding-right:.5rem}
+.upd-fhead .btn,.upd-today .btn{margin:.25rem 0}
 .upd-file .row{margin-top:.5rem}
 .upd-wait{list-style:none;padding:0;margin:.4rem 0 1rem;max-width:none}
 .upd-wait>li{margin:0 0 .7rem}
@@ -29,20 +32,28 @@ html:not([data-role=owner]) a[href="#/updates"]{display:none!important}      /* 
 .upd-conf>p,.upd-idle>p{margin:.2rem 0}
 .upd-conf>.hint,.upd-idle>.hint{margin-left:0}
 .upd-idle{color:var(--ink-2)}
-.upd-tag{margin-left:.4rem}
+.upd-what{display:flex;flex-wrap:wrap;gap:.15rem .5rem;align-items:baseline}
+.upd-tag{white-space:normal}                    /* at the largest text on a phone the tag is wider than its box: it may take two lines */
 .upd-pick{border:0;padding:0;margin:.35rem 0}
 .upd-pick label{display:flex;gap:.6rem;align-items:flex-start;padding:.3rem 0;cursor:pointer;font-weight:400}
 /* every plant on one page: its picture beside its changes */
 .upd-plants{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,34rem),1fr));gap:.9rem 1.2rem;align-items:start;margin-bottom:.4rem}
 .upd-plant{border:var(--bw) solid var(--line);border-radius:8px;background:var(--sheet);padding:.7rem .85rem;display:grid;grid-template-columns:9rem minmax(0,1fr);gap:.2rem 1rem;align-items:start}
-.upd-ph img,.upd-ph .job-nophoto{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:6px;background:var(--line)}
+.upd-ph img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:6px;background:var(--line)}
+.upd-noph{display:grid;place-items:center;aspect-ratio:4/3;border:var(--bw) dashed var(--line);border-radius:6px;color:var(--ink-2);font-size:.95rem;text-align:center;padding:.2rem}   /* no picture: a box that says so, not a block of colour */
 .upd-body{min-width:0;overflow-wrap:anywhere}
 section.blk .upd-body h3,.upd-body h3{margin:0 0 .3rem;font-size:1.2rem}
 .upd-body h3 .muted{font-family:var(--sans);font-size:1rem;font-weight:400;white-space:nowrap}
-html[data-narrow="1"] .upd-plant{grid-template-columns:5.5rem minmax(0,1fr);gap:.3rem .7rem;padding:.6rem .65rem}
+/* A narrow screen: the name beside a smaller picture while a word fits there, and under the picture when it does not (the largest
+   text on a phone left the name a third of the card, and broke it letter by letter). The changes take the card's whole width. */
+html[data-narrow="1"] .upd-plant{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem .7rem;padding:.6rem .65rem}
+html[data-narrow="1"] .upd-ph{flex:0 0 5.5rem}
 html[data-narrow="1"] .upd-body{display:contents}
-html[data-narrow="1"] .upd-body h3{align-self:center;margin:0}
-html[data-narrow="1"] .upd-body .upd-list{grid-column:1/-1}
+html[data-narrow="1"] .upd-body h3{flex:1 1 9rem;margin:0;overflow-wrap:break-word}
+html[data-narrow="1"] .upd-body .upd-list{flex:1 0 100%}
+/* a card too narrow for its text (a phone from about 150% text): what a change says starts at the card's edge, not under its label */
+.upd-plant{container-type:inline-size}
+@container (max-width:15rem){.upd-vals,.upd-ch>.hint{margin-left:0}}
 /* before a file is chosen, and after the changes are made */
 .upd-choose{max-width:46rem;border:var(--bw) solid var(--line);border-radius:8px;background:var(--sheet);padding:.7rem .9rem;margin:.6rem 0 1.2rem}
 .upd-choose .row{margin:.6rem 0 .1rem}
@@ -57,4 +68,3 @@ html[data-narrow="1"] .upd-bar .btn{flex:1 1 auto;padding-left:.6rem;padding-rig
 html[data-narrow="1"] .upd-bar .upd-no{display:none}        /* a phone: the bar holds the one button, and Change nothing ends the page */
 html:not([data-narrow="1"]) .upd-no-end{display:none}
 .upd-no-end{margin:.8rem 0 0}
-.upd-today .btn{margin-left:.5rem}

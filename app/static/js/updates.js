@@ -68,14 +68,14 @@ function updPlant(g) {                // a plant with its picture and its change
   const x0 = g.items[0], isNew = x0.kind === 'new', known = !isNew && g.items.some(x => x.state !== 'out' || x.photo);
   const ph = isNew ? (x0.photos[0] ? updPicUrl(x0.photos[0]) : '') : x0.photo ? thumbUrl(x0.photo) : '';
   return html`<article class="upd-plant" aria-labelledby="upd-p-${g.key}">
-    <div class="upd-ph">${ph ? html`<img src="${ph}" alt="" loading="lazy" width="240" height="180">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}</div>
+    <div class="upd-ph">${ph ? html`<img src="${ph}" alt="" loading="lazy" width="240" height="180">` : html`<span class="upd-noph">No photo</span>`}</div>
     <div class="upd-body"><h3 id="upd-p-${g.key}">${known ? html`<a href="#/plant/${enc(x0.code)}">${x0.name}</a>` : x0.name} <span class="muted">${isNew ? 'No page yet' : x0.code}</span></h3>
       <ul class="upd-list">${g.items.map(updChange)}</ul></div></article>`;
 }
 function updReview() {                // every plant on one page, each with its picture and its changes, ticked to begin with
   const F = UPD.file, need = UPD.items.filter(x => x.state === 'conflict'), doing = UPD.items.filter(updDoing).length, can = UPD.items.some(x => x.state === 'ready');
   return html`<h1>Updates from Claude</h1>
-    <div class="upd-file"><p><strong>${F.name}</strong>${F.made ? `, made ${longDay(F.made)}` : ''}. <a class="btn small ghost" href="#/updates">Choose another file</a></p>
+    <div class="upd-file"><p class="upd-fhead"><span><strong>${F.name}</strong>${F.made ? `, made ${longDay(F.made)}` : ''}.</span> <a class="btn small ghost" href="#/updates">Choose another file</a></p>
       ${F.about ? html`<p><span class="upd-k">Claude's note:</span> ${F.about}</p>` : ''}</div>
     <p class="upd-sum" id="upd-sum" role="status">${updSumWords()}</p>
     <p class="hint upd-safe">Nothing is changed until you press the button that makes the changes.</p>
@@ -142,9 +142,9 @@ addFeature({
   pages: { updates: { view: viewUpdates, nav: 'updates', section: 'plants', label: 'Updates from Claude', href: '#/updates', after: 'facts' } },
   today: [{ id: 'upd-today', order: 6,                    // one line for the owner when a file from Claude is waiting in its folder
     load: async () => { if (ME().role !== 'owner') return null; const L = await api('GET', '/api/updates'); const w = L.waiting.filter(x => !x.bad); return w.length ? w : null; },
-    html: w => html`<div class="notice upd-today" id="upd-today"><p><strong>${w.length === 1 ? 'Plant updates from Claude are waiting' : `${w.length} files of plant updates from Claude are waiting`}:</strong>
+    html: w => html`<div class="notice upd-today" id="upd-today"><p><span><strong>${w.length === 1 ? 'Plant updates from Claude are waiting' : `${w.length} files of plant updates from Claude are waiting`}:</strong>
       ${w.length === 1 ? html`${w[0].name}, ${updN(w[0].changes, 'change', 'changes')} for ${updN(w[0].plants, 'plant', 'plants')}.` : html`${w.reduce((a, x) => a + x.changes, 0)} changes in all.`}
-      Nothing is changed until you have looked. <a class="btn small" href="${w.length === 1 ? '#/updates/' + enc(w[0].id) : '#/updates'}">Look at the changes</a></p></div>` }],
+      Nothing is changed until you have looked.</span> <a class="btn small" href="${w.length === 1 ? '#/updates/' + enc(w[0].id) : '#/updates'}">Look at the changes</a></p></div>` }],
 });
 Object.assign(acts, {
   updall(el) { UPD.items.forEach(x => { if (x.state === 'ready') x.on = el.dataset.on === '1'; }); updRedraw(); },
