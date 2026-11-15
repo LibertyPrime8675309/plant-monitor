@@ -114,3 +114,30 @@ def test_propagation_is_a_kind_of_notification_and_goes_once_a_day(monkeypatch):
         assert S.prop_push(d, datetime(2026, 11, 15, 10, 0)) is None and len(sent) == 1, 'once a day'
         d.commit()
     finally: d.close()
+
+
+# ---------------------------------------------------------------- the Library's seed facts (batch D2)
+def test_every_seed_fact_has_a_source_with_an_address_and_steps_a_seed_lot_can_have():
+    import json, os
+    b = json.load(open(os.path.join(os.path.dirname(S.__file__), 'seed', 'batches', 'batchD2.json'), encoding='utf-8'))
+    rows = b['facts_add']
+    assert len(rows) == 11 and len({r['name'] for r in rows}) == 11
+    for r in rows:
+        assert r['field'] == 'about_seed' and r['source_kind'] == 'reference' and r['confidence'] in ('certain', 'likely') and 'https://' in r['source'], r['name']
+        assert (r['confidence'] == 'certain') == ('note' not in r), r['name'] + ': a fact marked likely says why'
+        v = r['value']
+        assert v['text'].endswith('.') and len(v['text']) < 700 and isinstance(v['steps'], list)
+        for s in v['steps']:
+            assert s['kind'] in S.STAGE_KINDS and 1 <= s['days'] <= 365, r['name']
+            if 'days_low' in s: assert s['days_low'] <= s['days'] <= s['days_high']
+            if 'temp_low' in s: assert 32 <= s['temp_low'] < s['temp_high'] <= 45
+
+def test_a_seed_lot_finds_its_species_seed_fact_by_name_or_by_its_parent():
+    with S.app.test_client() as c:
+        f = c.get('/api/propagations/seedfacts?name=Quercus shumardii').get_json()
+        assert f['found'] and f['steps'][0]['kind'] == 'cold' and f['steps'][0]['label'] and (f['steps'][0]['days_low'], f['steps'][0]['days_high']) == (30, 90)
+        assert c.get('/api/propagations/seedfacts?name=asclepias tuberosa').get_json()['found'], 'a name typed in small letters is found too'
+        assert c.get('/api/propagations/seedfacts?name=Nothing known').get_json() == {'found': False}
+        assert c.get('/api/propagations/seedfacts').get_json() == {'found': False}
+        code = c.get('/api/plants').get_json()[0]['code']
+        assert 'found' in c.get(f'/api/propagations/seedfacts?parent={code}').get_json()

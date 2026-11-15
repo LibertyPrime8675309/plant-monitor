@@ -558,3 +558,31 @@ def prop_push(c, at=None):
     push_send(c, 'prop', title, body, '#/propagating', tag='prop')
     return title, body
 PUSH_CLOCK.append(prop_push)
+
+# ---------------------------------------------------------------- what the Library knows about starting a species from seed (November 15, 2026)
+def seed_fact(c, name='', parent=''):
+    """The accepted `about_seed` fact for a species (by its name, or a parent plant's), ready for the Start page: {name, text, steps,
+    keep, source, confidence, note}, or None. Steps keep only the kinds a seed lot has; temperatures are in °F."""
+    sci = (name or '').strip()
+    if not sci and parent:
+        r = c.execute('SELECT scientific_name FROM plants WHERE code=?', (parent,)).fetchone()
+        sci = (r[0] or '').strip() if r else ''
+    if not sci: return None
+    row = facts_of(c, sci[:1].upper() + sci[1:], parent or None).get('about_seed')
+    if not row: return None
+    try: v = json.loads(row['value'])
+    except ValueError: return None
+    if not isinstance(v, dict): return None
+    steps = []
+    for s in v.get('steps') or []:
+        if isinstance(s, dict) and s.get('kind') in STAGE_KINDS:
+            steps.append({k: s.get(k) for k in ('kind', 'days', 'days_low', 'days_high', 'temp_low', 'temp_high')} | {'label': STAGE_KINDS[s['kind']]})
+    return {'name': sci, 'key': row['key'], 'text': str(v.get('text') or ''), 'steps': steps, 'keep': str(v.get('keep') or ''), 'source': row['source'],
+            'confidence': row['confidence'], 'note': row['note'] or ''}
+
+@app.route('/api/propagations/seedfacts')
+def propagation_seedfacts():
+    """GET ?name=Quercus shumardii or ?parent=P-007: what the Library says about starting it from seed, or {found: false}."""
+    c = prop_db()
+    f = seed_fact(c, request.args.get('name') or '', (request.args.get('parent') or '').strip().upper())
+    return jsonify(dict(found=True, **f) if f else {'found': False})

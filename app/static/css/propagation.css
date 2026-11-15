@@ -34,3 +34,5 @@
 .prp-test-row{display:flex;flex-wrap:wrap;gap:0 1rem} .prp-test-row .f{flex:1 1 11rem;min-width:0}
 html[data-role=viewer] :is([data-act^=prp], form[data-form^=prp], .prp-photoadd, .prp-test, .prp-count, .prp-note, .prp-stageadd, #prp-edit, #prp-record, #prp-pot){display:none!important}
 .prp-job .job-txt>div.muted{white-space:normal}
+
+.prp-lib{max-width:60rem}.prp-lib h3{margin:.1rem 0 .4rem}.prp-lib .prp-src{overflow-wrap:anywhere}

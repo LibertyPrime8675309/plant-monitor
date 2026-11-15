@@ -1,0 +1,210 @@
+{
+ "id": "D2",
+ "created": "2026-11-15",
+ "author": "Claude (Ethan, November 15: Library facts for seed, the next step of the seed-lot idea)",
+ "_": "How to start eleven kinds of plant from seed, each with its source, as accepted facts of the field about_seed. Propagation reads them when a seed lot is started. Nothing about any plant page changes. D2 sorts after D1.",
+ "facts_add": [
+  {
+   "name": "Quercus rubra",
+   "kind": "plant",
+   "field": "about_seed",
+   "value": {
+    "text": "Northern red oak is in the red oak group. Its acorns sprout best after a cold, moist spell of 1 to 3 months (30 to 90 days) at about 34 to 41°F, in damp peat or sand in a bag in the fridge, unless you sow them outdoors in the fall. Then sow. Do not let the acorns dry out.",
+    "steps": [
+     {
+      "kind": "cold",
+      "days": 60,
+      "days_low": 30,
+      "days_high": 90,
+      "temp_low": 34,
+      "temp_high": 41
+     }
+    ],
+    "keep": "Never let the acorns dry out."
+   },
+   "source": "NC State Extension, \"Overcoming Seed Dormancy: Trees and Shrubs\" | https://content.ces.ncsu.edu/overcoming-seed-dormancy-trees-and-shrubs ; Iowa State University Extension, \"How do I germinate acorns?\" | https://yardandgarden.extension.iastate.edu/faq/how-do-i-germinate-acorns",
+   "source_kind": "reference",
+   "confidence": "certain"
+  },
+  {
+   "name": "Quercus shumardii",
+   "kind": "plant",
+   "field": "about_seed",
+   "value": {
+    "text": "Shumard oak is in the red oak group. Its acorns sprout best after a cold, moist spell of 1 to 3 months (30 to 90 days) at about 34 to 41°F, in damp peat or sand in a bag in the fridge, unless you sow them outdoors in the fall. Then sow. Do not let the acorns dry out.",
+    "steps": [
+     {
+      "kind": "cold",
+      "days": 60,
+      "days_low": 30,
+      "days_high": 90,
+      "temp_low": 34,
+      "temp_high": 41
+     }
+    ],
+    "keep": "Never let the acorns dry out."
+   },
+   "source": "NC State Extension, \"Overcoming Seed Dormancy: Trees and Shrubs\" | https://content.ces.ncsu.edu/overcoming-seed-dormancy-trees-and-shrubs ; Iowa State University Extension, \"How do I germinate acorns?\" | https://yardandgarden.extension.iastate.edu/faq/how-do-i-germinate-acorns",
+   "source_kind": "reference",
+   "confidence": "likely",
+   "note": "The sources speak of the red (black) oak group and of northern red and pin oak by name, not of this species."
+  },
+  {
+   "name": "Quercus buckleyi",
+   "kind": "plant",
+   "field": "about_seed",
+   "value": {
+    "text": "Texas red oak is in the red oak group. Its acorns sprout best after a cold, moist spell of 1 to 3 months (30 to 90 days) at about 34 to 41°F, in damp peat or sand in a bag in the fridge, unless you sow them outdoors in the fall. Then sow. Do not let the acorns dry out.",
+    "steps": [
+     {
+      "kind": "cold",
+      "days": 60,
+      "days_low": 30,
+      "days_high": 90,
+      "temp_low": 34,
+      "temp_high": 41
+     }
+    ],
+    "keep": "Never let the acorns dry out."
+   },
+   "source": "NC State Extension, \"Overcoming Seed Dormancy: Trees and Shrubs\" | https://content.ces.ncsu.edu/overcoming-seed-dormancy-trees-and-shrubs ; Iowa State University Extension, \"How do I germinate acorns?\" | https://yardandgarden.extension.iastate.edu/faq/how-do-i-germinate-acorns",
+   "source_kind": "reference",
+   "confidence": "likely",
+   "note": "The sources speak of the red (black) oak group and of northern red and pin oak by name, not of this species."
+  },
+  {
+   "name": "Quercus alba",
+   "kind": "plant",
+   "field": "about_seed",
+   "value": {
+    "text": "White oak is in the white oak group. Its acorns need no cold step: sow them as soon as you can after collecting. The root comes out in the fall and the shoot in spring. They do not store well, so keep them cool and moist until they are sown.",
+    "steps": [],
+    "keep": "Sow at once. Keep cool and moist until then."
+   },
+   "source": "USDA NRCS, tree seed handling and storage (chapter 6), \"Oaks, white oak group\" | https://www.nrcs.usda.gov/sites/default/files/2022-09/Chapter%206.pdf ; NC State Extension, \"Overcoming Seed Dormancy: Trees and Shrubs\" | https://content.ces.ncsu.edu/overcoming-seed-dormancy-trees-and-shrubs",
+   "source_kind": "reference",
+   "confidence": "certain"
+  },
+  {
+   "name": "Quercus stellata",
+   "kind": "plant",
+   "field": "about_seed",
+   "value": {
+    "text": "Post oak is in the white oak group. Its acorns need no cold step: sow them as soon as you can after collecting. The root comes out in the fall and the shoot in spring. They do not store well, so keep them cool and moist until they are sown.",
+    "steps": [],
+    "keep": "Sow at once. Keep cool and moist until then."
+   },
+   "source": "USDA NRCS, tree seed handling and storage (chapter 6), \"Oaks, white oak group\" | https://www.nrcs.usda.gov/sites/default/files/2022-09/Chapter%206.pdf",
+   "source_kind": "reference",
+   "confidence": "likely",
+   "note": "The source speaks of the white oak group, not of this species by name."
+  },
+  {
+   "name": "Quercus macrocarpa",
+   "kind": "plant",
+   "field": "about_seed",
+   "value": {
+    "text": "Bur oak is in the white oak group. Its acorns need no cold step: sow them as soon as you can after collecting. The root comes out in the fall and the shoot in spring. They do not store well, so keep them cool and moist until they are sown. Sources differ for bur oak: Iowa State University says its acorns there need 30 to 60 days of cold before they sprout, so a fall sowing outdoors covers both.",
+    "steps": [],
+    "keep": "Sow at once. Keep cool and moist until then."
+   },
+   "source": "USDA NRCS, tree seed handling and storage (chapter 6), \"Oaks, white oak group\" | https://www.nrcs.usda.gov/sites/default/files/2022-09/Chapter%206.pdf ; Iowa State University Extension, \"How do I germinate acorns?\" | https://yardandgarden.extension.iastate.edu/faq/how-do-i-germinate-acorns",
+   "source_kind": "reference",
+   "confidence": "likely",
+   "note": "The USDA guide treats bur oak with the white oaks (no cold step); Iowa State gives it 30 to 60 days of cold."
+  },
+  {
+   "name": "Quercus virginiana",
+   "kind": "plant",
+   "field": "about_seed",
+   "value": {
+    "text": "Live oak acorns need no treatment. Sow them at once, outdoors or in a deep pot for the long first root: they lose the power to sprout quickly once they dry.",
+    "steps": [],
+    "keep": "Sow at once. They do not keep."
+   },
+   "source": "Lady Bird Johnson Wildflower Center, plant database: Quercus virginiana | https://www.wildflower.org/plants/result.php?id_plant=quvi",
+   "source_kind": "reference",
+   "confidence": "certain"
+  },
+  {
+   "name": "Quercus fusiformis",
+   "kind": "plant",
+   "field": "about_seed",
+   "value": {
+    "text": "Escarpment live oak acorns need no treatment. Sow them at once, outdoors or in a deep pot for the long first root: they lose the power to sprout quickly once they dry.",
+    "steps": [],
+    "keep": "Sow at once. They do not keep."
+   },
+   "source": "Lady Bird Johnson Wildflower Center, plant database: Quercus virginiana | https://www.wildflower.org/plants/result.php?id_plant=quvi",
+   "source_kind": "reference",
+   "confidence": "likely",
+   "note": "The source is the page for Quercus virginiana, which this oak was long treated as a variety of."
+  },
+  {
+   "name": "Dermatophyllum secundiflorum",
+   "kind": "plant",
+   "field": "about_seed",
+   "value": {
+    "text": "Texas mountain laurel seed has a very hard coat. Nick it with a knife or wear a spot through the red coat with a file or sandpaper, then soak it overnight in water that was boiled and left to cool until warm. Sow after the soil has warmed; treated seed comes up within about two weeks. Use a deep pot for the long first root. The seeds are poisonous: keep them from children and pets.",
+    "steps": [
+     {
+      "kind": "scarify",
+      "days": 1
+     },
+     {
+      "kind": "soak",
+      "days": 1
+     }
+    ],
+    "keep": "Store dry and cool. The seeds are poisonous."
+   },
+   "source": "Lady Bird Johnson Wildflower Center, Ask Mr. Smarty Plants: \"How to Propagate Mountain Laurel by Seed\" | https://w.wildflower.org/expert/show.php?id=86",
+   "source_kind": "reference",
+   "confidence": "certain"
+  },
+  {
+   "name": "Lupinus texensis",
+   "kind": "plant",
+   "field": "about_seed",
+   "value": {
+    "text": "Texas bluebonnet seed has a hard coat, so many seeds wait a year or more. Scratching or nicking the coat (scarifying) lets water in and gives far more sprouts the first season. No cold step is needed. Sow in the fall in full sun and poor, well-drained soil.",
+    "steps": [
+     {
+      "kind": "scarify",
+      "days": 1
+     }
+    ],
+    "keep": "Store dry."
+   },
+   "source": "Lady Bird Johnson Wildflower Center, \"How to Grow Texas Bluebonnets\" | https://www.wildflower.org/learn/how-to/grow-bluebonnets",
+   "source_kind": "reference",
+   "confidence": "certain"
+  },
+  {
+   "name": "Asclepias tuberosa",
+   "kind": "plant",
+   "field": "about_seed",
+   "value": {
+    "text": "Butterfly milkweed seed sprouts best after a cold, moist spell. Soak the seed for several hours or overnight, then keep it in a bag of barely damp mix in the fridge for at least two weeks; 30 days gives the best result. Look every day or two, since some sprout in the bag, and sow those at once.",
+    "steps": [
+     {
+      "kind": "soak",
+      "days": 1
+     },
+     {
+      "kind": "cold",
+      "days": 30,
+      "days_low": 14,
+      "days_high": 30,
+      "temp_low": 34,
+      "temp_high": 41
+     }
+    ],
+    "keep": "Store dry and cool."
+   },
+   "source": "Lady Bird Johnson Wildflower Center, \"How to Germinate Milkweeds\" | https://www.wildflower.org/learn/how-to/how-to-germinate-milkweeds",
+   "source_kind": "reference",
+   "confidence": "certain"
+  }
+ ]
+}

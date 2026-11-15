@@ -48,5 +48,5 @@ Then open http://localhost:8080/#/propagating.
 5. Answered November 15 (yes), and built: one phone message at 8 in the morning when a step ends or is next, or an attempt is due a look. "Propagation" is a kind each person can turn off.
 6. Answered November 15: breeding crosses later.
 7. Answered November 15: later, as proposals you accept.
-8. From the Seed lots idea, step 1 is now whole (the lot with its test, sowing, sprouting and photos). Still not built: Library facts for seed (such as how long an oak's acorns need cold), Identify examples from seed photos, and counting days from a fridge or heat-mat sensor. Which next?
+8. Answered November 15 (Library facts next, the other two later), and built: the Library holds how to start eleven species from seed, each with its source (batch D2), and the Start page offers them with **Use these steps**. Still not built: Identify examples from seed photos, and counting days from a fridge or heat-mat sensor. More species can be added as facts on the Library's species pages or by a later batch.
 9. A seed lot's sprouting rate is on its own page. Should "What your attempts show" give seeds a sprouting rate too, beside "became plants"?

@@ -222,6 +222,26 @@ with sync_playwright() as p:
     cc.goto(BASE + '/#/propagating/new?method=seed'); cc.wait_for_selector('form[data-form=prpnew]')
     check(cc.input_value('input[name=l_cold]') == '1' and cc.input_value('input[name=h_cold]') == '5' and 'Lowest °C' in cc.inner_text('form[data-form=prpnew] .prp-steps'), 'the Start page offers its usual temperatures in °C too')
     cc.close()
+    # the Library's seed facts on the Start page (batch D2): looked up by the species typed, with its source, and a button that fills in the steps
+    sf = call('GET', '/api/propagations/seedfacts?name=Quercus%20shumardii')
+    check(sf['found'] and [(x['kind'], x['days_low'], x['days_high'], x['temp_low'], x['temp_high']) for x in sf['steps']] == [('cold', 30, 90, 34, 41)] and 'ncsu.edu' in sf['source'] and sf['confidence'] == 'likely',
+          'the Library knows a Shumard oak\'s acorns want 30 to 90 days of cold at 34 to 41°F, with its source, marked likely')
+    check(call('GET', '/api/propagations/seedfacts?name=Quercus%20virginiana')['steps'] == [] and not call('GET', '/api/propagations/seedfacts?name=Monstera%20deliciosa')['found'],
+          'a live oak has no steps, and a species the Library has nothing on says so')
+    pg.goto(BASE + '/#/propagating/new?method=seed'); pg.wait_for_selector('form[data-form=prpnew]')
+    SP = 'form[data-form=prpnew] input[name=species]'
+    def typed(name, want):                     # the page may draw once more after it opens, which empties the box: type again until it holds
+        if pg.input_value(SP) != name: pg.fill(SP, name); pg.locator(SP).blur()
+        return want()
+    check(until(pg, lambda: typed('Quercus shumardii', lambda: pg.locator('#prp-seedfacts .prp-lib').count() == 1)) and 'cold and moist (stratification), 30 to 90 days at 34 to 41°F' in pg.inner_text('#prp-seedfacts')
+          and pg.locator('#prp-seedfacts a[href^="https://content.ces.ncsu.edu"]').count() == 1 and 'Likely, not certain' in pg.inner_text('#prp-seedfacts'),
+          'typing the species shows what the Library says, the steps in words, a link to the source, and that it is likely, not certain: ' + pg.inner_text('#prp-seedfacts')[:160])
+    pg.click('#prp-seedfacts [data-act=prpseeduse]')
+    check(pg.is_checked('input[name=s_cold]') and pg.input_value('input[name=d_cold]') == '60' and pg.input_value('input[name=l_cold]') == '34' and pg.input_value('input[name=h_cold]') == '41'
+          and not pg.is_checked('input[name=s_soak]'), 'Use these steps ticks the cold step with 60 days at 34 to 41 and leaves the others unticked')
+    spoken(pg, 'the Start page with the Library box')
+    pg.screenshot(path=os.path.join(OUT, 'propagation-9-library.png'), full_page=True)
+    check(until(pg, lambda: typed('Monstera deliciosa', lambda: 'has nothing yet on starting Monstera deliciosa' in pg.inner_text('#prp-seedfacts'))), 'a species with no seed fact gets a plain line, not an empty box')
     # the family tree
     pg.goto(BASE + '/#/propagating/family'); pg.wait_for_selector('#prp-tree')
     tree_text = pg.inner_text('#prp-tree')

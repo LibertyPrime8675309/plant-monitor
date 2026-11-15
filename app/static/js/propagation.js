@@ -13,6 +13,24 @@ const PRP_SITES = ['Indoors', 'Covered porch', 'Outdoors', 'Garage or shed'];
 const PRP_STEP_ORDER = ['scarify', 'soak', 'warm', 'cold', 'light', 'dry'];
 const prpPieces = p => p.method === 'seed' ? prpPl(p.count, 'seed', 'seeds') : prpPl(p.count, 'piece', 'pieces');
 const prpInWater = p => /water/i.test(p.medium || '');
+// What the Library knows about starting this species from seed (facts of the field about_seed), offered on the Start page
+let PRP_SEED = null;
+const prpStepWords = st => st.label.toLowerCase() + (st.days_low && st.days_high && st.days_low !== st.days_high ? `, ${st.days_low} to ${st.days_high} days` : st.days > 1 ? `, ${st.days} days` : '')
+  + (st.temp_low != null && st.temp_high != null ? ` at ${tF(st.temp_low, false)} to ${tF(st.temp_high)}` : '');
+const prpSources = src => String(src || '').split(' ; ').map((x, i) => { const [t, u] = x.split(' | '); return html`${i ? '; ' : ''}${u && /^https:\/\//.test(u) ? html`<a href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>` : t}`; });
+async function prpSeedLook(f) {
+  const box = document.getElementById('prp-seedfacts'); if (!box || !f) return;
+  const e = f.elements, name = e.species.value.trim(), parent = e.parent_code.value;
+  if (e.method.value !== 'seed' || (!name && !parent)) { PRP_SEED = null; box.innerHTML = ''; return; }
+  let d;
+  try { d = await api('GET', '/api/propagations/seedfacts?' + (name ? 'name=' + enc(name) : 'parent=' + enc(parent))); } catch (x) { PRP_SEED = null; box.innerHTML = ''; return; }
+  PRP_SEED = d.found ? d : null;
+  box.innerHTML = rend(d.found ? html`<div class="notice prp-lib"><h3>From the Library: starting ${d.name} from seed</h3><p>${d.text}</p>
+      <p><strong>${d.steps.length ? 'Steps: ' + d.steps.map(prpStepWords).join('; then ') + '.' : 'No treatment steps.'}</strong></p>
+      <p class="prp-src">Source: ${prpSources(d.source)}.${d.confidence !== 'certain' ? html` <span>Likely, not certain${d.note ? ': ' + d.note : '.'}</span>` : ''}</p>
+      ${d.steps.length ? html`<p><button class="btn small" type="button" data-act="prpseeduse">Use these steps</button></p>` : ''}</div>`
+    : name ? html`<p class="hint">The Library has nothing yet on starting ${name} from seed. Tick the steps you know it needs.</p>` : '');
+}
 const prpToF = v => Math.round(tIn(v));          // a temperature typed in the person's unit, as the whole °F the server keeps
 // "12 sprouted (60% of the 20 sown)": from the seeds sown when a sowing is written down, else from the whole lot
 const prpSprouted = p => `${p.sprouted} sprouted` + (p.sprout_pct == null ? '' : ` (${p.sprout_pct}% of the ${p.sprout_of} ${p.sown ? 'sown' : 'in the lot'})`);
@@ -102,14 +120,15 @@ async function prpViewNew(qs) {
   const opt = (v, t, sel) => html`<option value="${v}" ${sel ? raw('selected') : ''}>${t}</option>`;
   return {
     title: 'Start a propagation',
+    after: () => prpSeedLook(document.querySelector('form[data-form=prpnew]')),      // a page opened for a plant and the way "Seed" looks its species up at once
     html: html`<h1>Start a propagation</h1>
     <p class="muted">Write down what you did while you remember it. Only the way and how many are needed; the rest helps you learn what works.</p>
     <form data-form="prpnew" class="prp-form" novalidate>
       <div class="field-grid">
-        <label class="f">Way<select name="method">${Object.entries(P.methods).map(([k, m]) => opt(k, m.label, k === method))}</select></label>
-        <label class="f">Taken from<select name="parent_code">${opt('', 'No plant of mine (seed from outside, or a gift)', !parent)}${plants.map(p => opt(p.code, `${p.code} ${p.common_name}`, p.code === parent))}</select></label>
+        <label class="f">Way<select name="method" data-act="prpseed">${Object.entries(P.methods).map(([k, m]) => opt(k, m.label, k === method))}</select></label>
+        <label class="f">Taken from<select name="parent_code" data-act="prpseed">${opt('', 'No plant of mine (seed from outside, or a gift)', !parent)}${plants.map(p => opt(p.code, `${p.code} ${p.common_name}`, p.code === parent))}</select></label>
         <label class="f">Name it (or leave to be named for you)<input type="text" name="title" maxlength="120" autocomplete="off"></label>
-        <label class="f">Species, if not from a plant above<input type="text" name="species" maxlength="120" autocomplete="off"></label>
+        <label class="f">Species, if not from a plant above<input type="text" name="species" maxlength="120" autocomplete="off" data-act="prpseed"></label>
         <label class="f">How many pieces or seeds<input type="number" name="count" min="1" max="5000" step="1" value="1" inputmode="numeric"></label>
         <label class="f">Started on<input type="date" name="started_on" value="${today}" max="${today}"></label>
         <label class="f">What it sits in<input type="text" name="medium" maxlength="120" placeholder="Water, perlite, sphagnum, bark mix" autocomplete="off"></label>
@@ -121,6 +140,7 @@ async function prpViewNew(qs) {
         <label class="f">Seeds: collected where<input type="text" name="collected_at" maxlength="300" autocomplete="off"></label>
       </div>
       <label class="f">Notes<textarea name="notes" rows="3" maxlength="2000"></textarea></label>
+      <div id="prp-seedfacts" role="status" aria-live="polite"></div>
       <fieldset class="prp-steps"><legend>Treatment steps, for seeds that need them</legend>
         <p class="hint">Tick the steps in the order they are done. The days and temperatures are only starting points: change them to suit the plant. Each step starts when you press Start on its page, and Today tells you when it ends.</p>
         ${PRP_STEP_ORDER.map(k => html`<div class="prp-step-row"><label class="chk"><input type="checkbox" name="s_${k}"> ${P.stage_kinds[k]}</label>
@@ -274,6 +294,19 @@ Object.assign(acts, {
     if ((st === 'failed' || st === 'gave_away') && !(await confirmBox(st === 'failed' ? 'Mark it as not working?' : 'Mark it as given away?', 'It moves to Finished and counts in "What your attempts show". You can mark it going again.', 'Yes', false))) return;
     await guard(async () => { await api('POST', `/api/propagations/${id}/status`, { status: st }); toast('Saved'); await prpAfter(id); });
   },
+  prpseeduse(el) {                       // fill the step boxes from the Library's fact; nothing is saved until Start it
+    const f = el.closest('form'), d = PRP_SEED; if (!f || !d) return;
+    for (const k of PRP_STEP_ORDER) {
+      const st = d.steps.find(x => x.kind === k), e = f.elements;
+      e['s_' + k].checked = !!st;
+      if (!st) continue;
+      if (st.days != null) e['d_' + k].value = st.days;
+      if (st.temp_low != null) e['l_' + k].value = tNum(st.temp_low);
+      if (st.temp_high != null) e['h_' + k].value = tNum(st.temp_high);
+    }
+    toast('Steps filled in from the Library. Change anything that does not suit your seed.');
+    const first = d.steps.length && f.elements['s_' + d.steps[0].kind]; if (first) first.focus();
+  },
   async prpphotodel(el) {
     if (!(await needName())) return;
     if (!(await confirmBox('Remove this photo?', 'It is taken off this page. The file is kept in the photos_deleted folder.', 'Remove it', true))) return;
@@ -285,6 +318,7 @@ Object.assign(acts, {
     await guard(async () => { await api('DELETE', '/api/propagations/' + el.dataset.id); toast('Removed'); location.hash = '#/propagating'; });
   },
 });
+Object.assign(changeActs, { prpseed(el) { prpSeedLook(el.form); } });
 Object.assign(formActs, {
   async prpnew(f) {
     if (!(await needName())) return;
