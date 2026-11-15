@@ -74,6 +74,13 @@ def world():
         x = d.execute("SELECT code, location, area_id FROM plants WHERE status='active' AND spot_id IS NULL AND COALESCE(home_id, ?)=? AND code<>? ORDER BY code LIMIT 1", (main, main, F)).fetchone()
         W['loose'] = {'code': x['code'], 'text': (x['location'] or '').strip(), 'area': x['area_id']}      # a plant at the main home with no spot yet
         d.execute("INSERT INTO readings(ts, source, device, temp_f) VALUES(?, 'sensor', 'limit-probe', 70)", (S.now(),)); d.commit()
+        # a propagation of the plant at the main home, with a step and an entry; and a seed lot with no parent plant
+        r = c.post('/api/propagations', json={'method': 'seed', 'parent_code': F, 'count': 4, 'stages': [{'kind': 'cold', 'days': 30}]}, headers=OWN); assert r.status_code == 201, r.get_data(as_text=True)
+        W['prop'] = r.get_json()['id']; W['prop_stage'] = d.execute('SELECT id FROM prop_stages WHERE prop_id=?', (W['prop'],)).fetchone()[0]
+        r = c.post(f"/api/propagations/{W['prop']}/events", json={'kind': 'check'}, headers=OWN); assert r.status_code == 201, r.get_data(as_text=True)
+        W['prop_event'] = r.get_json()['id']
+        r = c.post('/api/propagations', json={'method': 'seed', 'species': 'Quercus', 'title': 'Acorns from the park', 'count': 3}, headers=OWN); assert r.status_code == 201, r.get_data(as_text=True)
+        W['prop_free'] = r.get_json()['id']
         W['version'] = c.get(f'/api/plants/{F}').get_json()['version']
         W['counts'] = counts(d)
         d.close()
@@ -151,6 +158,22 @@ def test_a_limited_editor_cannot_change_a_plant_at_another_home_by_any_route(wor
     refused(c, 'several_create', 'POST', '/api/plants/several', json={'plants': [{'fields': {'common_name': 'Stray', 'home_id': W['main']}}]})
     mine_v = c.get(f"/api/plants/{W['mine']}").get_json()['version']
     refused(c, 'update_plant', 'PUT', f"/api/plants/{W['mine']}", json={'base_version': mine_v, 'fields': {'home_id': W['main']}})
+    # --- propagation: an attempt follows its parent plant, and a plant potted up from a lot with no parent lands at the main home
+    P = W['prop']
+    refused(c, 'propagations', 'POST', '/api/propagations', json={'method': 'stem', 'parent_code': F, 'count': 1})
+    refused(c, 'propagation_one', 'PUT', f'/api/propagations/{P}', json={'notes': 'changed'})
+    refused(c, 'propagation_one', 'PUT', f"/api/propagations/{W['prop_free']}", json={'parent_code': F})
+    refused(c, 'propagation_one', 'DELETE', f'/api/propagations/{P}')
+    refused(c, 'propagation_event', 'POST', f'/api/propagations/{P}/events', json={'kind': 'check'})
+    refused(c, 'propagation_event_undo', 'DELETE', f"/api/propagations/events/{W['prop_event']}")
+    refused(c, 'propagation_stage_add', 'POST', f'/api/propagations/{P}/stages', json={'kind': 'soak'})
+    refused(c, 'propagation_stage', 'PUT', f"/api/propagations/stages/{W['prop_stage']}", json={'action': 'start'})
+    refused(c, 'propagation_stage', 'DELETE', f"/api/propagations/stages/{W['prop_stage']}")
+    refused(c, 'propagation_status', 'POST', f'/api/propagations/{P}/status', json={'status': 'failed'})
+    refused(c, 'propagation_promote', 'POST', f'/api/propagations/{P}/promote', json={})
+    refused(c, 'propagation_promote', 'POST', f"/api/propagations/{W['prop_free']}/promote", json={'common_name': 'Oak seedling'})
+    card = c.get(f'/api/propagations/{P}', headers=OWN).get_json()
+    assert card['status'] == 'active' and len(card['events']) == 1 and len(card['stages']) == 1 and not card['stages'][0]['started_on'], 'nothing about the attempt changed'
     # --- and nothing about the plant changed
     d = conn()
     assert c.get(f'/api/plants/{F}').get_json()['version'] == W['version']

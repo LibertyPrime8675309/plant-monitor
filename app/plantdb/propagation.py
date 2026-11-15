@@ -93,8 +93,12 @@ def to_int(v, what, lo, hi, none_ok=False):
     return n
 
 def prop_row(c, pid):
+    """An attempt, by its id. It follows its parent plant: in a request that changes something, an editor limited to some homes is
+    stopped here when the parent is at another home (home_check does nothing for a request that only reads). An attempt with no
+    parent plant belongs to no home."""
     r = c.execute('SELECT * FROM propagations WHERE id=?', (pid,)).fetchone()
     if not r: abort(404, 'propagation not found')
+    home_check(c, r['parent_code'])
     return r
 
 def plant_name(c, code):
@@ -329,6 +333,7 @@ COPY_FROM_PARENT = ('scientific_name', 'aliases', 'plant_type', 'family', 'genus
 
 def prop_make_plant(c, f, who):
     """The steps of adding a plant (plants.create_plant), for a plant made here: the next P-code, its first version, the audit row."""
+    home_check_new(c, f.get('home_id'))                 # a new plant lands only at a home this person may change (the parent's, else the main one)
     n = c.execute("SELECT COALESCE(MAX(CAST(SUBSTR(code,3) AS INTEGER)),0)+1 FROM plants").fetchone()[0]
     code, ts = f'P-{n:03d}', now()
     f = place_sync(c, None, dict(f))
