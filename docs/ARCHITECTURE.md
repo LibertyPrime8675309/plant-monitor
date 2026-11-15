@@ -79,3 +79,4 @@ Read the file for the part you are changing. Each holds the notes as they were w
 | `offline.md` | **Offline use on phones and tablets.** 1.24.0 (offline use) |
 | `own-pages.md` | **Features with files of their own: voice search, frost dates, repotting, the sitter sheet, care cards.** Search by voice (prototype proto/voice-search); Frost dates (1.45.0, prototype #65); Repotting (1.50.0, prototype #70 rebuilt on the registry); Plant-sitter sheet (1.43.0, prototype #41); Care cards (1.19.0, 1.20.0) |
 | `releases-and-tests.md` | **Releases, and how old records and built images are tested.** The release rhythm (1.55.0, PLAN.md step 7); Old records and built images are tested (1.58.0; November 12 review, item 6) |
+| `issues.md` | **The Issue tracker and Check for updates (1.58.0).** A report and what it carries; pictures; the owner's page; where the buttons are; Check for updates; why a device showed an old version |
