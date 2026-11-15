@@ -140,6 +140,7 @@ with sync_playwright() as p:
     pg.goto(BASE + '/#/weather'); pg.goto(BASE + '/#/missing'); pg.wait_for_selector('#ms-acquired_on')
     row = pg.locator(f'#ms-light .job[data-code="{lp}"]'); row.locator('input').fill('Bright shade'); row.locator('button[type=submit]').click()
     check(until(pg, lambda: call('GET', '/api/plants/' + lp)['light_summary'] == 'Bright shade') and until(pg, lambda: lp not in codes(M(), 'light')), 'Light typed on the list is saved as the plant\'s Light line')
+    until(pg, lambda: pg.locator(f'#ms-light .job[data-code="{lp}"]').count() == 0)    # the page has drawn again after the Light save, so the date form carries the plant's new version
     row = pg.locator(f'#ms-acquired_on .job[data-code="{lp}"]')
     check(row.locator('input').get_attribute('type') == 'date' and row.locator('label').inner_text() == 'Date acquired', 'Date acquired is a date box with its label')
     row.locator('input').fill('2024-05-17'); row.locator('button[type=submit]').click()
