@@ -31,6 +31,14 @@ The filter row on the Plants page narrows the list. Every filter is remembered i
 - **Sort by:** code, health, ID confidence, recently updated, name, or group.
 - **Needs something from you** and **ID confidence under 70%.**
 
+## Date acquired (from 1.58.0)
+Every plant page has a **Date acquired**: the day the plant came to you.
+
+- **Set it** on **Edit this page**, under **Names and place**, or on **Add a plant**. It is a date box, so you can type the date or choose it from the calendar. If you only know the month, choose its first day. If you do not know, leave it empty.
+- **See it** on the plant's page with its other details, such as "May 17, 2024 (2 years and 6 months ago)". A page with no date does not show the line.
+- A date in the future is refused. Changing it is in the page history like any other edit, and Undo there puts the old date back.
+- An update file from Claude can set it too (field `acquired_on`, written as `2024-05-17`).
+
 ## Previous and next plant (from 1.7.5)
 
 Every plant page has **Previous Plant** and **Next Plant** buttons, each showing the name and code of the plant it leads to. On a wide screen they sit in the margins either side of the page; on smaller screens and phones they sit at the top of the page, under the plant's name (from 1.56.5 the name comes first).

@@ -395,6 +395,7 @@ Each page below is a file in the `manual` folder. When the app says "see README"
 ### Your plants and their pages: `manual/plants.md`
 - Photos on the Plants page, and the main photo
 - Plants page filters
+- Date acquired
 - Previous and next plant
 - Location: outdoors or indoors
 - Plant timeline
