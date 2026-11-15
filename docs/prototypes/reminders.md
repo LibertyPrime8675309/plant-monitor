@@ -61,7 +61,10 @@ Then open http://127.0.0.1:8080/#/reminders. The focused check is `python3 dev/t
 - Backups include it like any other table. It is not yet in **Download all data (JSON)** (see the questions).
 
 ## Open questions for Ethan
-Answered on November 15, 2026 and **still to build**: a phone notification on a reminder's morning (1, yes); Done working offline (2, yes); reminders in the calendar file and the download (5, yes).
+Answered on November 15, 2026 and built:
+- **A phone notification (1).** At 8 in the morning at each home, one message with the reminders due that day or still waiting ("Reminder for today at Round Rock: Look for roots (Pothos)"). "Your own reminders" is a kind each person can turn off under Notifications. Nothing is sent on a day with none.
+- **Done with no connection (2).** Done waits in the outbox and is sent when the server answers again, dated the day it was pressed; the reminder leaves Today and the Reminders page at once. The lists are the ones the device saved when Today or Reminders was last open while connected ("Keep a copy on this device" does not fetch them ahead). Tomorrow, A week later, Change and Add still need a connection.
+- **The calendar file and the download (5).** Each open reminder is an all-day entry on its day in the calendar file (a late one on today), with the same alert time as feeding days. The JSON download has a `reminders` list.
 1. **Phone notifications.** Should a reminder also send a notification to your phone on its morning (like the cold-night ones), or is Today enough? It would be a new choice under Notifications.
 2. **Offline.** Right now a reminder can only be added or ticked off while the app can reach your PC. Should Done work offline from the garden, like Watered does, and be sent later?
 3. **Plant-sitter sheet.** Answered November 15: no, reminders are yours and stay off the sitter sheet.

@@ -12,3 +12,4 @@ A note to yourself with a date: "Check the cutting for roots", "Spray again for 
 - **Each reminder** has **Done**, **A week later** (moves it to a week from today) and **Change** (the words, the date, how often it repeats, or **Remove it**).
 - **Done lately** on the Reminders page lists the last 30 days, with **Not done yet** to put one back.
 - Every reminder added, moved, done or removed is in the Audit log, with the plant it is for. People who can only view see reminders but not the buttons. Reminders follow the home you are looking at.
+- **Since November 15, 2026:** a late or due reminder has **Tomorrow** and **A week later**; the Today block sits near the top, before Water; your phone gets one message at 8 in the morning when reminders are due (turn "Your own reminders" off under Notifications if you do not want it); **Done** works with no connection and is sent later; reminders are in the calendar file and in the JSON download.

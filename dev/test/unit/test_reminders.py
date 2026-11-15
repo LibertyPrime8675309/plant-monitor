@@ -52,3 +52,45 @@ def test_add_done_repeat_and_take_back():
         notes = [a.get('note') or '' for a in c.get('/api/audit?n=20').get_json()]
         assert any(n.startswith('Reminder set for') for n in notes) and any(n.startswith('Reminder removed') for n in notes)
         assert c.post('/api/reminders', json={'text': 'x', 'due_on': today, 'plant': 'P-9999'}, headers=ED).status_code == 404
+
+# ---------------------------------------------------------------- November 15, 2026: the notification, the calendar file, the download, Done on an earlier day
+OWN2 = {'X-Editor': 'Unit test'}
+
+def test_the_morning_message_names_one_reminder_or_counts_several():
+    one = [{'text': 'Look for roots', 'plant_name': 'Pothos', 'plant_code': 'P-001'}]
+    assert S.remind_push_words(one, 'Round Rock') == ('Reminder for today at Round Rock', 'Look for roots (Pothos)')
+    many = one + [{'text': 'Buy potting mix', 'plant_name': None, 'plant_code': None}] * 5
+    title, body = S.remind_push_words(many, 'Round Rock')
+    assert title == '6 reminders for today at Round Rock' and body.startswith('Look for roots (Pothos); Buy potting mix') and body.endswith('…')
+
+def test_reminders_is_a_kind_of_notification_a_person_can_turn_off():
+    assert ('remind', 'Your own reminders', 'On the morning a reminder of yours is due.') in S.PUSH_EXTRA_KINDS and S.remind_push in S.PUSH_CLOCK
+    with S.app.test_client() as c:
+        kinds = [k['key'] for k in c.get('/api/push').get_json()['kinds']]
+        assert kinds[-1] == 'remind' and 'cold' in kinds, kinds
+
+def test_a_reminder_is_in_the_calendar_file_on_its_day_and_in_the_download():
+    with S.app.test_client() as c:
+        with S.app.app_context(): today = S.local_today(S.db())
+        soon = (today + timedelta(days=9)).isoformat()
+        r = c.post('/api/reminders', json={'text': 'Repot the fig', 'due_on': soon}, headers=OWN2); assert r.status_code == 200
+        rid = r.get_json()['id']
+        ev = [e for e in c.get('/api/calendar').get_json()['events'] if e['kind'] == 'remind' and e['uid'] == f'remind-{rid}']
+        assert len(ev) == 1 and ev[0]['date'] == soon and ev[0]['title'] == 'Reminder: Repot the fig'
+        ics = c.get('/api/calendar.ics').get_data(as_text=True)
+        assert f'UID:remind-{rid}@' in ics and 'SUMMARY:Reminder: Repot the fig' in ics and 'DTSTART;VALUE=DATE:' + soon.replace('-', '') in ics and 'CATEGORIES:Plants,Reminder' in ics
+        rows = c.get('/api/export.json').get_json()['reminders']
+        assert any(x['id'] == rid and x['text'] == 'Repot the fig' for x in rows)
+        c.post(f'/api/reminders/{rid}/done', json={}, headers=OWN2)
+        assert not [e for e in c.get('/api/calendar').get_json()['events'] if e.get('uid') == f'remind-{rid}'], 'a done one leaves the calendar'
+
+def test_done_pressed_offline_keeps_the_day_it_was_pressed():
+    with S.app.test_client() as c:
+        with S.app.app_context(): today = S.local_today(S.db())
+        was = (today - timedelta(days=2)).isoformat()
+        rid = c.post('/api/reminders', json={'text': 'Water the seedlings', 'due_on': today.isoformat(), 'repeat_days': 7}, headers=OWN2).get_json()['id']
+        with S.app.app_context(): d = S.db(); d.execute('UPDATE plant_reminders SET due_on=? WHERE id=?', (was, rid)); d.commit()      # it came due two days ago
+        assert c.post(f'/api/reminders/{rid}/done', json={'done_on': (today + timedelta(days=1)).isoformat()}, headers=OWN2).status_code == 400
+        assert c.post(f'/api/reminders/{rid}/done', json={'done_on': 'yesterday'}, headers=OWN2).status_code == 400
+        r = c.post(f'/api/reminders/{rid}/done', json={'done_on': was}, headers=OWN2)
+        assert r.status_code == 200 and r.get_json()['next'] == (today + timedelta(days=5)).isoformat(), 'the next one counts from the day it was done'

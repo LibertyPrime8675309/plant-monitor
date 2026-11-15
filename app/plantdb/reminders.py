@@ -154,6 +154,12 @@ def reminder_done(rid):
     today = local_today(c)
     if request.method == 'POST':
         if r['done_at']: return jsonify({'ok': True, 'next': None, 'already': True})
+        b = request.get_json(silent=True) or {}
+        if b.get('done_on'):                          # pressed offline on an earlier day and sent now: done on the day it was pressed
+            try: d = date.fromisoformat(str(b['done_on']))
+            except ValueError: abort(400, 'done_on must be a date')
+            if d > today or d < today - timedelta(days=60): abort(400, 'done_on must be within the last 60 days')
+            today = d
         nxt = None
         if r['repeat_days']:
             due = (today + timedelta(days=int(r['repeat_days']))).isoformat()
@@ -172,3 +178,53 @@ def reminder_done(rid):
     remind_audit(c, r, 'reminder_done', r['done_on'], None, f"Reminder not done after all: {r['text']}")
     c.commit()
     return jsonify({'ok': True})
+
+
+# ---------------------------------------------------------------- his answers of November 15, 2026: a notification, the calendar file, the download
+PUSH_EXTRA_KINDS.append(('remind', 'Your own reminders', 'On the morning a reminder of yours is due.'))
+
+def remind_due_rows(c, day):
+    """The open reminders at the home in use that are due on or before `day` (an ISO date)."""
+    w, args = remind_here(c)
+    return c.execute('SELECT r.*, p.common_name AS plant_name FROM plant_reminders r LEFT JOIN plants p ON p.code=r.plant_code '
+                     'WHERE r.removed_at IS NULL AND r.done_at IS NULL AND r.due_on<=?' + w + ' ORDER BY r.due_on, r.id', [day] + args).fetchall()
+
+def remind_push_words(rows, place):
+    """Pure: the title and body of the morning message. rows: dicts or Rows with text, plant_name, plant_code."""
+    n = len(rows)
+    say = lambda r: r['text'] + (f" ({r['plant_name'] or r['plant_code']})" if r['plant_code'] else '')
+    if n == 1: return f'Reminder for today at {place}', say(rows[0])[:200]
+    return f'{n} reminders for today at {place}', ('; '.join(say(r) for r in rows[:4]) + ('…' if n > 4 else ''))[:300]
+
+def remind_push(c):
+    """At 8 in the morning, local time, for each home: the reminders due today or still waiting, once a day. Nothing is sent on a
+    day with none."""
+    remind_tables(c)
+    for H in homes(c):
+        local = datetime.now(tzinfo(H['tz']))
+        if local.hour < 8: continue
+        day = local.date().isoformat()
+        with place_for(H['id']): rows = remind_due_rows(c, day)
+        if not rows or not push_once(c, f'remind:{H["id"]}:{day}', 2): continue
+        title, body = remind_push_words(rows, H['name'].split(',')[0])
+        push_send(c, 'remind', title, body, '#/reminders', H['id'], tag='remind')
+PUSH_CLOCK.append(remind_push)
+
+def remind_ics(c, today, end):
+    """All-day entries for the calendar file: each open reminder at the home in use, on its day (a late one on today)."""
+    remind_tables(c)
+    out = []
+    for r in remind_due_rows(c, end.isoformat()):
+        day = max(r['due_on'], today.isoformat())
+        what = r['text'] + (f" ({r['plant_name'] or r['plant_code']})" if r['plant_code'] else '')
+        rep = '' if not r['repeat_days'] else ' It repeats: ' + remind_repeat_word(r['repeat_days']).lower() + ', counted from the day you press Done.'
+        out.append({'kind': 'remind', 'word': 'Reminder', 'uid': f'remind-{r["id"]}', 'date': day, 'title': 'Reminder: ' + what,
+                    'desc': f'A reminder you wrote in Plant record: {what}.' + (' It was due ' + r['due_on'] + '.' if r['due_on'] < day else '') + rep + ' Press Done on Today or on the Reminders page.',
+                    'plants': [r['plant_code']] if r['plant_code'] else [], 'path': '#/reminders'})
+    return out
+ICS_EXTRA.append(remind_ics)
+
+def remind_export(c):
+    remind_tables(c)
+    return [dict(r) for r in c.execute('SELECT * FROM plant_reminders ORDER BY id')]
+EXPORT_EXTRA['reminders'] = remind_export

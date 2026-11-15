@@ -2,9 +2,15 @@
 is due, Done (with a repeat), "Not done yet", "A week later", Change and Remove, viewers, at laptop and phone width, light and dark,
 with large text. Start the mock server with a fresh data folder, then: python3 dev/test/reminders_check.py
 Screenshots: dev/tmp/shots/reminders-*.png"""
-import json, os, sys, urllib.request
+import json, os, signal, subprocess, sys, urllib.request
 from datetime import date, timedelta
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from waits import until
+def server(up):
+    """Pauses the mock server (no answer at all, like a phone with no signal) or lets it go on, as offline_check.py does."""
+    for pid in subprocess.run(['pgrep', '-f', 'dev/test/mock_' + 'server'], capture_output=True, text=True).stdout.split():
+        os.kill(int(pid), signal.SIGCONT if up else signal.SIGSTOP)
 BASE = 'http://127.0.0.1:8080'
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
 fails, errs = [], []
@@ -96,6 +102,25 @@ with sync_playwright() as p:
     pg.click('dialog[open] button[value=ok]'); pg.wait_for_timeout(1500)
     check(not any(r['id'] == x['id'] for r in R()['open']), 'Remove it (after asking) takes it off the list')
     check(any((a.get('note') or '').startswith('Reminder removed') for a in call('GET', '/api/audit?n=30')), 'and the audit log has it')
+    # the calendar file and the download hold the reminders (his answers of November 15)
+    z = call('POST', '/api/reminders', {'text': 'Turn the compost', 'due_on': today})
+    cal = [e for e in call('GET', '/api/calendar')['events'] if e['kind'] == 'remind']
+    check(any(e['title'] == 'Reminder: Turn the compost' and e['date'] == today for e in cal), 'a reminder is an all-day entry in the calendar file, on its day')
+    check(any(x['text'] == 'Turn the compost' for x in call('GET', '/api/export.json')['reminders']), 'and the JSON download lists the reminders')
+    # Done with no connection: it leaves Today at once, waits on the device, and is sent when the server answers again
+    pg.goto(BASE + '/#/weather'); pg.goto(BASE + '/#/'); pg.wait_for_selector(f'#today-remind [data-rm="{z["id"]}"]', timeout=15000)
+    pg.wait_for_timeout(2500)                      # the service worker has saved the answers Today asked for
+    try:
+        pg.context.set_offline(True); server(False)
+        pg.click(f'#today-remind [data-rm="{z["id"]}"] [data-act=rmdone]')
+        gone = until(pg, lambda: pg.locator(f'#today-remind [data-rm="{z["id"]}"]').count() == 0, 40000)
+        check(gone, 'with the server out of reach, Done takes the reminder off Today at once')
+        check(until(pg, lambda: 'to send' in pg.inner_text('#net'), 15000), 'and the top bar says a change is waiting to be sent: ' + pg.inner_text('#net'))
+    finally:
+        server(True); pg.context.set_offline(False)
+    pg.evaluate("window.dispatchEvent(new Event('online'))")
+    sent = until(pg, lambda: next(r for r in call('GET', '/api/reminders')['done'] if r['id'] == z['id']) is not None if any(r['id'] == z['id'] for r in call('GET', '/api/reminders')['done']) else False, 60000)
+    check(sent and next(r for r in R()['done'] if r['id'] == z['id'])['done_on'] == today, 'when the server answers again the Done is sent, dated the day it was pressed')
     # keyboard: Tab reaches Add a reminder and Enter opens the window
     pg.goto(BASE + '/#/reminders'); pg.wait_for_selector('#rm-due')
     pg.focus('[data-act=rmnew]'); pg.keyboard.press('Enter'); pg.wait_for_selector('dialog[open] form.rm-dlg')

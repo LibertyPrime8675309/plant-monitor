@@ -117,14 +117,18 @@ async function rmFind(id) {
   const R = await api('GET', '/api/reminders' + (CUR && document.getElementById('care-plant') ? '?plant=' + enc(CUR.p.code) : ''));
   return R.open.find(x => String(x.id) === String(id)) || R.done.find(x => String(x.id) === String(id));
 }
+OFF_OK.push(['POST', /^\/api\/reminders\/\d+\/done$/]);          // Done can wait for a connection (his answer of November 15)
 Object.assign(acts, {
   async rmnew(el) { await rmDialog(null, el.dataset.code || null); },
   async rmedit(el) { const r = await guard(() => rmFind(el.dataset.id)); if (r) await rmDialog(r); },
   async rmdone(el) {
     if (!(await needName())) return;
     await guard(async () => {
-      const x = await api('POST', `/api/reminders/${el.dataset.id}/done`);
-      toast('Done.' + (x && x.next ? ` It comes back ${relDay(x.next)}.` : '') + ' "Not done yet" on the Reminders page puts it back.');
+      const id = +el.dataset.id, x = await api('POST', `/api/reminders/${id}/done`, { done_on: todayStr() });
+      if (x && x.offline) {            // no connection: it waits in the outbox, and the saved lists drop it so it leaves Today and the page at once
+        for (const u of await offCachedUrls(/^\/api\/reminders(\?|$)/)) await offPatch(u, j => { if (j && j.open) j.open = j.open.filter(r => r.id !== id); });
+        toast('Done.');
+      } else toast('Done.' + (x && x.next ? ` It comes back ${relDay(x.next)}.` : '') + ' "Not done yet" on the Reminders page puts it back.');
       await rmAfter();
     });
   },
