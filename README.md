@@ -461,3 +461,5 @@ Each page below is a file in the `manual` folder. When the app says "see README"
 
 ### How often you water (prototype): `manual/water-rhythm.md`
 - How often you water (prototype)
+### Missing details (prototype): `manual/missing-details.md`
+- Missing details (prototype)
