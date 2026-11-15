@@ -25,6 +25,14 @@ os.environ.setdefault('PLANTDB_ASPCA_MIN', '3')
 # PLANTDB_COPY_DIR names another drive), so the pages can say that it is the same drive
 os.environ.setdefault('PLANTDB_COPY_MOUNT', os.path.join(os.path.dirname(os.path.abspath(os.environ.get('DATA_DIR', '/data'))), 'backups-copy-mock'))
 os.makedirs(os.environ['PLANTDB_COPY_MOUNT'], exist_ok=True)
+# 1.58.0: the folder Claude saves plant update files into (docker-compose maps ./plant-updates to /plant-updates). Beside the data folder
+# here, and emptied when the server starts, so a check finds only the files it put there itself. PLANTDB_PLANT_UPDATES_DIR names another
+# folder, which is left as it is.
+if not os.environ.get('PLANTDB_PLANT_UPDATES_DIR'):
+    import shutil
+    os.environ['PLANTDB_PLANT_UPDATES_DIR'] = os.path.join(os.path.dirname(os.path.abspath(os.environ.get('DATA_DIR', '/data'))), 'plant-updates-mock')
+    shutil.rmtree(os.environ['PLANTDB_PLANT_UPDATES_DIR'], ignore_errors=True)
+os.makedirs(os.environ['PLANTDB_PLANT_UPDATES_DIR'], exist_ok=True)
 os.environ.setdefault('PLANTDB_ASPCA_URL', os.environ['PLANTDB_VISION_URL'] + '/mock/aspca')                       # 1.23.0: pet safety lists
 sys.path.insert(0,os.environ.get('APPDIR', os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'app')))
 import server as S
