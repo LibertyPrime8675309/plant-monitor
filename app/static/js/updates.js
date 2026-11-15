@@ -1,7 +1,7 @@
 /* Plant record front end: updates from Claude that arrive as a file (1.58.0; plantdb/updates.py). One of the files loaded in order by
    index.html (js/manifest.json); they share one scope. Plain JavaScript, no inline handlers (the server's content policy forbids them).
 
-   Ethan's choices of November 13 and 14, 2026: corrections and new pages come as one small file that Claude saves on his computer,
+   Ethan's choices of November 13 and 14, 2026: corrections, photos and new pages come as one small file that Claude saves on his computer,
    and this page shows every change in it before anything is changed. The layout he chose from the previews: every plant on one page,
    each with its picture and its changes, ticked to begin with; a change the page no longer agrees with needs his decision and stays
    as it is unless he chooses Claude's. Today says when a file is waiting.
@@ -113,7 +113,7 @@ function updDone(B) {
 function updStart(L) {
   const good = L.waiting.filter(w => !w.bad), bad = L.waiting.filter(w => w.bad);
   return html`<h1>Updates from Claude</h1>
-    <p>When Claude has corrections or new pages for your plants, it saves one small file on this computer and tells you its name. You see every change and decide before anything is changed, and nothing about your plants leaves this computer.</p>
+    <p>When Claude has corrections, photos or new pages for your plants, it saves one small file on this computer and tells you its name. You see every change and decide before anything is changed, and nothing about your plants leaves this computer.</p>
     ${good.length ? html`<h2>Waiting for you (${good.length})</h2>
       <ul class="upd-wait">${good.map(w => html`<li class="upd-file"><p><strong>${w.name}</strong>${w.made ? `, made ${longDay(w.made)}` : ''}: ${updN(w.changes, 'change', 'changes')} for ${updN(w.plants, 'plant', 'plants')}.</p>
         ${w.about ? html`<p><span class="upd-k">Claude's note:</span> ${w.about}</p>` : ''}
