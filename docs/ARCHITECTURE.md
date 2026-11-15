@@ -81,3 +81,4 @@ Read the file for the part you are changing. Each holds the notes as they were w
 | `releases-and-tests.md` | **Releases, and how old records and built images are tested.** The release rhythm (1.55.0, PLAN.md step 7); Old records and built images are tested (1.58.0; November 12 review, item 6) |
 | `water-rhythm.md` | **How often you water (prototype).** How often you water (prototype proto/water-rhythm) |
 | `reminders.md` | **Your own reminders (prototype).**  |
+| `propagation.md` | **Propagation (prototype).** Propagation (prototype, proto/propagation) |

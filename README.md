@@ -465,3 +465,5 @@ Each page below is a file in the `manual` folder. When the app says "see README"
 - Missing details (prototype)
 ### Your own reminders (prototype): `manual/reminders.md`
 - Your own reminders (prototype)
+### Propagation (prototype): `manual/propagation.md`
+- Propagation (prototype)
