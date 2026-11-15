@@ -98,6 +98,12 @@
 .ly-lvb-good circle{fill:var(--moss)}
 .ly-lvb-dim circle,.ly-lvb-bright circle{fill:var(--ochre)}
 .ly-lvb-too_dim circle,.ly-lvb-too_bright circle{fill:var(--madder)}
+/* a plant no drawn light reaches keeps the grey disc, with a dash; in the list the same in words */
+.ly-lv-none{color:var(--ink-2);white-space:normal}
+/* the wall the front view is looking at, as a heavy edge in the top view (weight, not colour, says it) */
+.ly-wallmark{stroke:var(--cyan);stroke-linecap:square;pointer-events:none}
+.ly-fig .ly-wall{display:flex;flex-wrap:wrap;align-items:center;gap:.2rem .6rem;margin:.35rem 0 .2rem;font-weight:700;min-width:0;max-width:100%}
+.ly-fig .ly-wall select{width:auto;max-width:100%;margin-top:0}
 .ly-name{fill:var(--ink);stroke:var(--sheet);paint-order:stroke;stroke-linejoin:round;font-family:var(--sans);font-weight:700}
 .ly-it.is-dim{opacity:.2;pointer-events:none}
 .ly-lab.is-dim{display:none}

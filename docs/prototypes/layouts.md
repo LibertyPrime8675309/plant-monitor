@@ -12,7 +12,7 @@ The record already holds most of what such a drawing needs: each shelf's measure
   - Rooms and spots has a **Lay it out** button on every room, area and spot, which becomes **Open its layout** once it has one.
 - **Everything is a box**, in inches or centimetres as you read them: how far from the left, how far from the back, how far off the floor, and how wide, deep and tall. A pot is round from above. So the same things are seen and moved in two drawings:
   - **Top view**, looking down;
-  - **Front view**, from the front, with the floor at the bottom;
+  - **Front view**, from the front, with the floor at the bottom. In a room it looks at **one wall at a time** (below);
   - or **Both**. On a tall shelf the front view runs down the left and the top view of one level sits large beside it.
 - **What can be on it:** a plant (one of yours, or a plant with no page yet), a grow light from your list, a shelf or furniture (one of your shelves as a block or level by level, or a board or table you describe), something else (a humidifier, a fan, a chair), and an **area to keep clear** (a walkway, a door, a vent).
 - **Moving a thing**, three ways, so no mouse is needed:
@@ -23,13 +23,21 @@ The record already holds most of what such a drawing needs: each shelf's measure
   - A plant dragged onto the block in the top view, or carried onto it by the arrow keys, stands on it: on the lowest level that has the room for it and nothing in its way, else on the top. Dragged off, it goes down to the floor.
   - **Stands on** lists the floor, every shelf in the room and each level of a shelf that has them. Choosing one puts the plant there.
   - A plant too tall for its level is told so, and by how much. From the front such a shelf is its boards, open between them.
+- **A shelf carries what is on it** (Ethan, November 15, 2026: "Plants should be carried with shelves"). Move a shelf, a table or anything else, by dragging, by the arrow keys or by typing, and what stands on it (on any of its levels) or hangs under it goes with it, and so does what stands on those. It is one change: Undo puts all of them back together. A thing locked in place stays where it is.
+- **In a room, the front view looks at one wall at a time** (Ethan, November 15, 2026: "focus its perspective on one wall at a time, to reduce screen clutter").
+  - It starts at the back wall and draws only the things at that wall. **Front view looks at**, above that drawing, chooses the back, left, right or front wall, or every wall at once, and says how many things each has.
+  - A thing is at a wall when it is within 6 in of it, or nearer to it than to any other wall, so every thing is in some wall's view. What stands on a shelf is wherever the shelf is. A thing in a corner is at both walls.
+  - A wall is looked at from inside the room: left and right are your left and right as you face it, the words under the drawing say which way the room runs, and the arrow keys and dragging follow.
+  - Choosing a thing takes the front view to its wall. In the top view the wall looked at has a heavy edge.
+  - Where two names along the floor would run into each other, the nearer thing keeps its name and the other keeps its number.
+  - The layout of one shelf or spot keeps its whole front view.
 - **The grid:** squares of ½, 1, 2, 3, 6 or 12 in (or 1 to 30 cm), with a heavier line each foot. **Snap to the grid** and **Show the grid** can each be turned off.
 - **Sizes:** drag the square on the chosen thing's corner, or type its width, depth and height. **Size and name** changes the space itself. A plant with no pot or height in the record starts at a guess, and its boxes say so.
 - **What it marks**, as you go and while a thing is being dragged:
   - **Overlap** and **Sticks out** (a problem): two things take up the same room, or a thing is past a side, the top or the floor of the space. A plant too tall for its level overlaps the shelf above it.
   - **Tight**: a plant is closer to something, beside it or above it, than the room to leave around a plant (1 in to start with; you set it).
   - **Close to a light**: the top of a plant is closer to the light over it than that light's figures go.
-  - **Too dim**, **A bit dim**, **A bit bright** and **Too bright**: the lights drawn here give a plant less, or more, light than its page says it needs (below). Every plant the lights reach also carries the sign Grow lights uses (▼▼ ▼ ✓ ▲ ▲▲) in that verdict's colour: red, amber or green.
+  - **Too dim**, **A bit dim**, **A bit bright** and **Too bright**: the lights drawn here give a plant less, or more, light than its page says it needs (below). Once a grow light is drawn, every plant carries a sign: the one Grow lights uses (▼▼ ▼ ✓ ▲ ▲▲) in that verdict's colour, red, amber or green, or a grey dash (–) when no light drawn reaches it.
   - **In an area to keep clear**, **Nothing under it** (a pot in the air), and **More than you own** (three of a light drawn when you own two).
   - Every mark is bars across the thing and a sign (✗ or !) as well as a colour, and each is a sentence in **To look at**, on the thing's own boxes, in the list of everything on the layout and in what a screen reader is told.
 - **Also:** Undo (each change made on this visit, newest first, and Ctrl+Z on the drawing), Turn a quarter, Make a copy, Lock in place, Take it off the layout, **Smaller** and **Larger** (remembered for each layout), each plant's photo on its pot, and a line on a plant's own page saying which layouts it is drawn on.
@@ -83,6 +91,12 @@ The list of layouts:
 
 ![The Layouts page](layouts/laptop-list.png)
 
+A room's front view, one wall at a time: the back wall, then the left wall of the same room (its "Front" and "Back" are under the drawing):
+
+![The front view looking at the back wall](layouts/laptop-wall-back.png)
+
+![The front view looking at the left wall](layouts/laptop-wall-left.png)
+
 Phone, dark mode, large text (one view at a time; nothing scrolls sideways):
 
 ![Phone, dark, large text: the top view](layouts/phone-dark-big-top.png) ![Phone, dark, large text: the front view](layouts/phone-dark-big-front.png)
@@ -106,7 +120,7 @@ Then open http://127.0.0.1:8080/#/layouts, press **Start a layout** and choose *
 - `app/static/js/layouts.js` does the drawing (SVG), the moving, the snapping and the looking for trouble, because those must answer while a thing is dragged. `lyFindings()` is the one place that decides what overlaps, sticks out or may be a problem; `lyLight()` works out each plant's light, with the same sums as `lights.py` (`lyPar` is its `_loglog`, `lyVerdict` its `light_verdict`); `lyRecTo()` says where the drawing puts a plant in the record; `lyMeasure()` decides how large each view is drawn and how the views are set out for the width of the page. One `addFeature()` call adds the page, the buttons on Rooms and spots and the line on a plant's page.
 - **How the light is worked out**, so it can be checked: the light comes from a light's underside if it hangs and from its top if it stands. Its figure is read off its maker's chart at the straight-line distance to the top of the plant (no closer than the chart can be trusted for), then multiplied by the square of (how far below ÷ how far away), so a plant as far to the side as it is below gets half of what that distance gives. That times the hours and the brightness is the daily light; the lights add up.
 - `app/static/css/layouts.css`, `dev/test/layouts_check.py`, `dev/test/unit/test_layouts.py`, and cases in `dev/test/unit/test_home_limit.py`.
-- Shared lines: one in `js/manifest.json`, one in `run_checks.py`, the CHANGELOG and README entries, and the IDEAS entry.
+- Shared lines: one in `js/manifest.json`, one in `run_checks.py`, the CHANGELOG and IDEAS entries, one line in the README's list of manual pages and one row in the table at the end of `docs/ARCHITECTURE.md`. The guide is `manual/layouts.md`; the notes are `docs/architecture/layouts.md`.
 - **Three dimensions later:** a place and a size in three directions is everything a view from a corner needs, so a third view can be added without changing what is stored.
 
 ## What is not done
@@ -114,10 +128,8 @@ Then open http://127.0.0.1:8080/#/layouts, press **Start a layout** and choose *
 - The light is said in words and numbers; it is not yet drawn (for example as the pool of light under each lamp).
 - Daylight from windows, and the shade one plant casts on another, are not counted.
 - Grow lights keeps its own spots (which plants are under which light, at what distance). A layout does not change them, and Grow lights does not read layouts yet: Ethan has said it should (below), and that is the next piece of work, in a pull request of its own.
-- Moving a shelf on a room's layout does not carry the plants that stand on it.
-- From the front, a room is crowded: a thing at the front hides the things behind it, and the names along the floor run into each other. In a room the top view is the one to work in; the front view suits one shelf unit.
 - A layout does not change a shelf's measurements in the record when you resize its boards.
-- Choosing several things at once, lining things up, and Redo.
+- Choosing several things at once, and lining things up.
 - A layout cannot be changed offline.
 
 ## What Ethan said (November 15, 2026)
@@ -135,6 +147,16 @@ Then open http://127.0.0.1:8080/#/layouts, press **Start a layout** and choose *
 - **Which light marks:** "I like the color coding marks a lot so having them present for more would be preferred." A bit dim and a bit bright are marks now, and every plant the lights reach carries the light's coloured sign.
 - **Should Grow lights read a shelf's layout?** "Yes." Not built here: it changes the Grow lights page, so it comes as its own pull request with a preview first.
 
+## What Ethan said in the evening of November 15, 2026
+"1. Yes 2. Bottom shelf is good. Let's fix the 3 "not right yet" items. Plants should be carried with shelves. The front view should focus its perspective on one wall at a time, to reduce screen clutter. Can you look deeper into the failed step?"
+
+- **A grey sign for a plant no light reaches:** built (a grey dash).
+- **Dropped onto a shelf, the lowest level it fits on:** stays as built.
+- **Plants carried with shelves:** built, for anything that stands on or hangs under a thing that is moved.
+- **The front view of one wall at a time:** built.
+- **The step that failed once in four runs.** The fault was in the check, not in the page. The step typed two boxes, waited for the "Overlap" mark, and then read where the plant was. The first box alone already makes the two plants overlap, so when that box's save was slow the step read the place before the second box had been taken. With every save held back 400 ms the step failed 10 times in 10, on the page as it was and as it is; at the usual speed it failed 2 times in 10 in a loop. The step now waits for the place and the mark together.
+  - The first fix (reading a typed box before waiting for earlier saves) did not cause or cure that failure, but it closed a real fault: with one save on its way and two more boxes typed behind it, the page as it was lost a typed value 10 times in 10; now it keeps each one. The check has a step for it.
+
 ## Questions for Ethan
-1. **Plants no light reaches.** A plant that the drawn lights do not reach carries no light sign, because it may have a window. Should it carry a grey sign that says "no light drawn reaches it"?
-2. **Dropping onto a shelf.** A plant dropped onto a shelf goes to the lowest level it fits on. Is that the level you would want first, or the top?
+1. **Things in the middle of a room.** A sofa or a floor lamp out in the room is drawn in the view of the wall it is nearest to. Is that right, or should things far from every wall have a view of their own?
+2. **The front view follows the chosen thing.** Choose a thing at another wall and the front view turns to that wall. Is that what you want, or should it stay on the wall you picked until you change it?

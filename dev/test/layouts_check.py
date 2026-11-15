@@ -154,6 +154,25 @@ with sync_playwright() as p:
       return [[a.x, a.y, a.z], [b.x, b.y, b.z], [c.x, c.y, c.z]]; }}""")
     check(put[0][2] == 0 and put[0][0] >= 31 and put[1] == [0, 0, 11] and put[2][2] == 8.5, f'a new thing goes where it fits: beside the big pot on the floor, on the board when it is too tall for under it, a light up under the chosen board ({put})')
 
+    # ---- what a thing carries when it is moved, and which walls a thing is at (asked directly)
+    car = pg.evaluate(f"""() => {{ const T = {THING}, lv = [{{ n: 1, name: 'Level 1 (bottom)', z: 0.75, room: 20 }}, {{ n: 2, name: 'Level 2', z: 21.5, room: 30 }}, {{ n: 3, name: 'Level 3 (top)', z: 60, room: null }}];
+      const L = {{ width_in: 100, depth_in: 80, height_in: 90, clear_in: 1, grid_in: 1, items: [T(1, 'shelf', 10, 0, 0, 30, 12, 60, {{ levels: lv, board_in: 0.75 }}),
+        T(2, 'plant', 12, 2, 0.75, 6, 6, 8), T(3, 'plant', 20, 2, 21.5, 6, 6, 8), T(4, 'light', 10, 4, 19.25, 30, 2, 1.5),          // on its level 1, on its level 2, a strip up under level 2's board
+        T(5, 'other', 60, 44, 0, 20, 20, 30), T(6, 'other', 62, 46, 30, 8, 8, 10), T(7, 'plant', 63, 47, 40, 4, 4, 6),               // a table, a box on it, a plant on the box
+        T(8, 'plant', 72, 50, 30, 6, 6, 8, {{ locked: true }}), T(9, 'plant', 2, 30, 0, 6, 6, 10), T(10, 'zone', 58, 42, 0, 30, 30, 40), T(11, 'other', 0, 0, 0, 8, 8, 20)] }};
+      const ids = a => a.map(t => t.id).sort((x, y) => x - y), I = n => L.items[n - 1];
+      const rs = lyCarryStart(L, I(1)), was = {{ ...I(1) }}; I(1).x += 5; I(1).z += 2; lyCarryMove(I(1), was, rs); const moved = [2, 3, 4].map(n => [I(n).x, I(n).z]); Object.assign(I(1), was); rs.forEach(r => Object.assign(r.it, r.was));
+      const st = lyStandOpts(L, I(5)).map(o => o.w);
+      return {{ shelf: ids(lyRiders(L, I(1))), table: ids(lyRiders(L, I(5))), plant: ids(lyRiders(L, I(9))), zone: ids(lyRiders(L, I(10))), moved, onbox: st.some(w => w.startsWith('other 6')),
+        walls: [1, 3, 4, 5, 7, 9, 11].map(n => lyWallsOf(L, I(n)).join('+')), back: [...lyWallSet(L, 'back')].sort((x, y) => x - y), all: lyWallSet(L, 'all'),
+        across: ['back', 'right', 'front', 'left'].map(f => [lyAc(L, I(1), f), lyAw(I(1), f), lyAcrossW(L, f)]), near: ['back', 'right', 'front', 'left'].map(f => lyNear(L, I(1), f)) }}; }}""")
+    check(car['shelf'] == [2, 3, 4] and car['table'] == [6, 7] and car['plant'] == [] and car['zone'] == [] and car['moved'] == [[17, 2.75], [25, 23.5], [15, 21.25]] and not car['onbox'],
+          f"a shelf carries what stands on its levels and the strip under one of its boards; a table carries the box on it and the plant on the box, and not a thing locked in place; each goes as far as the shelf goes; \"Stands on\" does not offer what the thing itself carries ({car['shelf']} {car['table']} {car['moved']})")
+    check(car['walls'] == ['back', 'back', 'back', 'front', 'front', 'left', 'back+left'] and car['back'] == [1, 2, 3, 4, 11] and car['all'] is None,
+          f"a thing is at the wall it is within 6 in of, else at the nearest; what stands on a thing or hangs under it is at that thing's wall; a thing in a corner is at both walls ({car['walls']} {car['back']})")
+    check(car['across'] == [[10, 30, 100], [0, 12, 80], [60, 30, 100], [68, 12, 80]] and car['near'] == [12, 90, 80, 40],
+          f"looking at each wall, a thing is drawn from your left as you face it: the back wall as the top view has it, the right wall from back to front, the front wall from right to left, the left wall from front to back ({car['across']})")
+
     # ---- a shelf's own button on Rooms and spots starts its layout from its measurements
     pg.goto(BASE + '/#/where'); pg.wait_for_selector('#ly-wherelink', timeout=20000)
     link = pg.locator(f'a.ly-wh[href="#/layouts?place={spot["id"]}"]')
@@ -167,7 +186,8 @@ with sync_playwright() as p:
     check(until(pg, lambda: pg.evaluate('LY.d.items.length') == 4) and pg.evaluate("LY.d.items.every(i => i.kind === 'shelf' && i.locked)") and pg.evaluate("LY.d.items.map(i => i.z)") == [0, 23.75, 37.5, 65.25],
           'the layout opens with four locked boards at the heights its measurements give')
     lid = pg.evaluate('LY.d.id')
-    check(pg.locator('svg.ly-svg[data-live]').count() == 2 and pg.locator('#ly-v-both').is_checked(), 'a shelf opens with the top view and the front view together')
+    check(pg.locator('svg.ly-svg[data-live]').count() == 2 and pg.locator('#ly-v-both').is_checked() and pg.locator('#ly-wall').count() == 0 and pg.locator('.ly-lvb').count() == 0,
+          "a shelf opens with the top view and the front view together; its front view is the whole shelf (no wall to choose), and with no light drawn nothing carries a light sign")
     check(pg.locator('#ly-tray').is_visible() and pg.locator('#ly-tray .ly-row').count() == 3, 'the three plants that stand there are listed as not drawn yet')
     pg.click('[data-act=lytray][data-all]')
     check(until(pg, lambda: pg.evaluate('LY.d.items.length') == 7), 'Put all 3 on the layout puts them on')
@@ -202,7 +222,9 @@ with sync_playwright() as p:
     # ---- typing a place; things that overlap are marked in both drawings and said
     pick(a); tb = it(pg, b); was = it(pg, a); undos = pg.evaluate('LY.undo.length')
     for k, val in (('x', tb['x'] - 1), ('y', 1)): pg.fill(f'#ly-f-{k}', str(val)); pg.press(f'#ly-f-{k}', 'Tab')
-    check(until(pg, lambda: pg.evaluate('LY.F.map(f => f.kind)') == ['overlap']) and (it(pg, a)['x'], it(pg, a)['y']) == (tb['x'] - 1, 1), f'typed nearly onto the place of another plant, the two overlap ({pg.evaluate("LY.F.map(f => f.kind + " " + f.text)")} {it(pg, a)} {tb})')
+    # (the two overlap as soon as the first box is taken; the second box waits for the first one's save. So this waits for the place
+    #  and the mark together: waiting for the mark alone, and then looking at the place, failed whenever that save was slow.)
+    check(until(pg, lambda: (it(pg, a)['x'], it(pg, a)['y']) == (tb['x'] - 1, 1) and pg.evaluate('LY.F.map(f => f.kind)') == ['overlap']), f'typed nearly onto the place of another plant, the two overlap ({pg.evaluate("LY.F.map(f => f.kind + " " + f.text)")} {it(pg, a)} {tb})')
     check(all(pg.locator(f'svg.ly-svg[data-view={vw}] g.ly-it.is-hard').count() == 2 for vw in ('top', 'front')) and pg.locator('#ly-find-body .ly-f-hard').count() == 1 and 'Overlap' in pg.inner_text('#ly-find-body')
           and '1 problem' in pg.inner_text('#ly-status') and pg.locator('.ly-list .ly-row.is-hard').count() == 2, 'both are marked in both drawings, in the list, in "To look at" and at the top of the page')
     check(pg.evaluate("getComputedStyle(document.querySelector('svg.ly-svg[data-view=top] g.ly-it.is-hard .ly-hatch-h')).display") != 'none'
@@ -299,7 +321,8 @@ with sync_playwright() as p:
           and pg.locator(f'.ly-list .ly-row[data-id="{a}"] .lv-too_dim').count() == 1 and 'too dim' in pg.inner_text(f'.ly-list .ly-row[data-id="{a}"]'),
           'under the weak strip it is "Too dim", in the words and the sign Grow lights uses, beside its boxes, in "To look at" and in the list')
     check(pg.locator(f'svg.ly-svg[data-view=front] g.ly-lab[data-id="{a}"] .ly-lvb-too_dim').count() == 1 and pg.locator(f'svg.ly-svg[data-view=front] g.ly-lab[data-id="{a}"] .ly-lvb').text_content().strip() == '▼▼'
-          and pg.locator(f'svg.ly-svg[data-view=front] g.ly-lab[data-id="{c3}"] .ly-lvb').count() == 0, "on the drawing the plant carries the light's sign beside its mark; a plant the strip does not reach carries none")
+          and pg.locator(f'svg.ly-svg[data-view=front] g.ly-lab[data-id="{c3}"] .ly-lvb-none').text_content().strip() == '–' and 'No light reaches it' in pg.inner_text(f'.ly-list .ly-row[data-id="{c3}"] .ly-lv-none'),
+          "on the drawing the plant carries the light's sign beside its mark; a plant the strip does not reach carries a grey dash, and its line in the list says no light reaches it")
     shot(pg, '5-light')
     pg.fill('#ly-f-h', '12'); pg.press('#ly-f-h', 'Tab')
     check(clean() and until(pg, lambda: '9.5 in above its top' in pg.inner_text('#ly-p-light') and 'Closer than' not in pg.inner_text('#ly-p-light')), 'at 12 in tall, with 9.5 in under the strip, it is not too close')
@@ -328,7 +351,7 @@ with sync_playwright() as p:
     pg.click('#ly-undo')
     check(until(pg, lambda: call('GET', f'/api/plants/{bcode}')['height_in'] is None) and until(pg, lambda: pg.locator('#ly-tallsave').count() == 1), 'and Undo takes it off the page again')
     pg.click('#ly-marks summary'); pg.click('#ly-keyhelp summary')
-    check(pg.locator('#ly-marks li').count() == 6 and 'A sign for its light' in pg.inner_text('#ly-marks') and pg.locator('#ly-marks li').first.is_visible() and 'Too dim' in pg.inner_text('#ly-marks') and 'Page Down' in pg.inner_text('#ly-keyhelp') and 'Ctrl+Y' in pg.inner_text('#ly-keyhelp'), 'What the marks mean and Keys for the drawing open lists, in words')
+    check(pg.locator('#ly-marks li').count() == 7 and 'A sign for its light' in pg.inner_text('#ly-marks') and 'A grey dash' in pg.inner_text('#ly-marks') and 'A heavy edge' in pg.inner_text('#ly-marks') and pg.locator('#ly-marks li').first.is_visible() and 'Too dim' in pg.inner_text('#ly-marks') and 'Page Down' in pg.inner_text('#ly-keyhelp') and 'Ctrl+Y' in pg.inner_text('#ly-keyhelp'), 'What the marks mean and Keys for the drawing open lists, in words')
     pg.click('#ly-marks summary'); pg.click('#ly-keyhelp summary')
 
     # ---- an area to keep clear, something else, a copy, a quarter turn
@@ -478,6 +501,67 @@ with sync_playwright() as p:
     pg.keyboard.press('Control+z'); until(pg, lambda: pg.evaluate("LY.d.items.filter(i => i.kind === 'plant').length") == 1)
     rp3 = pg.evaluate("LY.d.items.find(i => i.kind === 'plant').id"); pg.keyboard.press('Control+z')
     check(until(pg, lambda: it(pg, rp3)['h'] == 10), 'and an older change is still taken back on the thing that was put back')
+    # ---- a shelf carries what stands on it: by the arrow keys, by dragging, and back with Undo
+    sb, sp = it(pg, block['id']), it(pg, rp3)
+    pick(block['id']); pg.locator(f'svg.ly-svg[data-view=top] g.ly-it[data-id="{block["id"]}"]').focus(); pg.keyboard.press('ArrowRight'); pg.keyboard.press('ArrowDown')
+    both = lambda dx, dy: (it(pg, block['id'])['x'], it(pg, block['id'])['y'], it(pg, rp3)['x'], it(pg, rp3)['y'], it(pg, rp3)['z']) == (sb['x'] + dx, sb['y'] + dy, sp['x'] + dx, sp['y'] + dy, sp['z'])
+    check(until(pg, lambda: both(1, 1)) and until(pg, lambda: (saved(rid, rp3)['x'], saved(rid, block['id'])['x']) == (sp['x'] + 1, sb['x'] + 1)) and 'moved with it' in pg.inner_text('#ly-say')
+          and 'on Level 3 of Tall Brown Shelf' in pg.evaluate(f'lyWhere(LY.d, lyItem({rp3}))') and pg.evaluate('LY.F.length') == 0,
+          f"""the shelf moved by the arrow keys carries the plant on its third level with it, on the page and in the record of the layout ({it(pg, block["id"])} {it(pg, rp3)} {pg.inner_text('#ly-say')} {pg.evaluate('LY.F.map(f => f.text)')})""")
+    check('it carries' in pg.locator('#ly-undo').get_attribute('aria-label'), 'Undo says that it would put back the shelf and what it carries')
+    pg.click('#ly-undo')
+    check(until(pg, lambda: both(0, 0)) and until(pg, lambda: (saved(rid, rp3)['x'], saved(rid, block['id'])['x']) == (sp['x'], sb['x'])), 'Undo puts the shelf and the plant back together')
+    pg.click('#ly-redo')
+    check(until(pg, lambda: both(1, 1)) and until(pg, lambda: saved(rid, rp3)['y'] == sp['y'] + 1), 'and Redo moves them together again')
+    pg.click('#ly-undo'); until(pg, lambda: both(0, 0))
+    pg.evaluate("(() => { const r = document.querySelector('svg.ly-svg[data-view=top]').getBoundingClientRect(); window.scrollBy(0, r.top - 190); })()"); pg.wait_for_timeout(150)
+    edge = pg.evaluate("i => { const r = document.querySelector(`svg.ly-svg[data-view=top] g.ly-it[data-id='${i}'] .ly-shape`).getBoundingClientRect(); return [r.x + 7, r.y + r.height / 2]; }", block['id'])
+    S = pg.evaluate('LY.Sv.top'); drag(pg, edge, 6 * S, 10 * S)
+    check(until(pg, lambda: both(6, 10)) and until(pg, lambda: (saved(rid, rp3)['x'], saved(rid, rp3)['y']) == (sp['x'] + 6, sp['y'] + 10)), f'dragged, the shelf carries the plant too ({it(pg, block["id"])} {it(pg, rp3)})')
+    pg.click('#ly-undo'); until(pg, lambda: both(0, 0))
+
+    # ---- the front view of a room looks at one wall, and draws only what is at that wall
+    pg.click('#ly-v-both', force=True); until(pg, lambda: pg.locator('svg.ly-svg[data-view=front]').count() == 1)
+    front = lambda sel='g.ly-it': pg.locator(f'svg.ly-svg[data-view=front] {sel}')
+    total = pg.evaluate('LY.d.items.length'); nb = pg.evaluate("lyWallSet(LY.d, 'back').size")
+    check(pg.input_value('#ly-wall') == 'back' and 'the back wall' in pg.inner_text('figure[data-view=front] figcaption') and pg.evaluate("document.getElementById('ly-wall').selectedOptions[0].textContent") == f'Back wall: {nb} things' 
+          and front().count() == nb < total and pg.locator('svg.ly-svg[data-view=top] .ly-wallmark').count() == 1 and len(pg.evaluate("[...document.querySelectorAll('#ly-wall option')].map(o => o.textContent)")) == 5,
+          f'in a room the front view starts at the back wall and draws the {nb} of {total} things that are there; the top view marks that wall with a heavy edge; a list offers the four walls and every wall at once')
+    pick(rp3); pg.select_option('#ly-f-on', 'floor'); until(pg, lambda: it(pg, rp3)['z'] == 0)
+    for k, val in (('y', 60), ('x', pg.evaluate('LY.d.width_in') - 8)): pg.fill(f'#ly-f-{k}', str(val)); pg.press(f'#ly-f-{k}', 'Tab')
+    check(until(pg, lambda: (it(pg, rp3)['x'], it(pg, rp3)['y']) == (pg.evaluate('LY.d.width_in') - 8, 60) and pg.input_value('#ly-wall') == 'right') and front(f'g.ly-it[data-id="{rp3}"]').count() == 1
+          and 'the right wall' in pg.inner_text('figure[data-view=front] figcaption') and front().count() == pg.evaluate("lyWallSet(LY.d, 'right').size") and front('.ly-selmark').count() == 1,
+          'the chosen plant moved over to the right wall: the front view goes to that wall with it')
+    front(f'g.ly-it[data-id="{rp3}"]').focus(); pg.keyboard.press('ArrowRight')
+    check(until(pg, lambda: (it(pg, rp3)['x'], it(pg, rp3)['y']) == (pg.evaluate('LY.d.width_in') - 8, 61)) and 'Back' in pg.inner_text('figure[data-view=front] .ly-edge-row'), 'facing the right wall, Right arrow takes it toward the front of the room, which is on your right there')
+    pg.keyboard.press('ArrowLeft'); until(pg, lambda: it(pg, rp3)['y'] == 60)
+    c0 = pg.evaluate("i => { const g = document.querySelector(`svg.ly-svg[data-view=front] g.ly-it[data-id='${i}']`); g.scrollIntoView({ block: 'center' }); const r = g.querySelector('.ly-shape').getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }", rp3)
+    drag(pg, c0, -5 * pg.evaluate('LY.Sv.front'), 0)
+    check(until(pg, lambda: (it(pg, rp3)['x'], it(pg, rp3)['y'], it(pg, rp3)['z']) == (pg.evaluate('LY.d.width_in') - 8, 55, 0)), f'dragged to the left in that view, it goes toward the back of the room and stays on the floor ({it(pg, rp3)})')
+    pg.select_option('#ly-wall', 'left')
+    lefts = pg.evaluate("[...lyWallSet(LY.d, 'left')]")
+    check(until(pg, lambda: 'the left wall' in pg.inner_text('figure[data-view=front] figcaption')) and front().count() == len(lefts) and front(f'g.ly-it[data-id="{rp3}"]').count() == 0 and front('.ly-selmark').count() == 0
+          and pg.evaluate('LY.sel') == rp3 and 'left wall' in pg.inner_text('#ly-say'), 'another wall chosen from the list: its things are drawn, the chosen plant stays chosen and is not in that view, and the change is said')
+    if lefts:
+        lw = lefts[0]; y0 = it(pg, lw)['y']; front(f'g.ly-it[data-id="{lw}"]').focus(); pg.keyboard.press('ArrowLeft')
+        check(until(pg, lambda: it(pg, lw)['y'] == y0 + 1), 'facing the left wall, Left arrow takes a thing toward the front of the room, which is on your left there')
+        pg.keyboard.press('ArrowRight'); until(pg, lambda: it(pg, lw)['y'] == y0)
+    pick(rp3)
+    check(until(pg, lambda: pg.input_value('#ly-wall') == 'right') and front(f'g.ly-it[data-id="{rp3}"]').count() == 1, 'choosing the plant again brings the front view back to its wall')
+    pg.select_option('#ly-wall', 'all')
+    check(until(pg, lambda: front().count() == total) and pg.locator('svg.ly-svg[data-view=top] .ly-wallmark').count() == 0 and 'wall' not in pg.inner_text('figure[data-view=front] figcaption strong'), 'Every wall at once draws everything, as before')
+    shot(pg, '6d-walls')
+    pg.select_option('#ly-wall', 'back'); pg.click('#ly-v-top', force=True); until(pg, lambda: pg.locator('svg.ly-svg[data-view=front]').count() == 0)
+    check(pg.locator('#ly-wall').count() == 0, 'with the top view alone there is no wall to choose')
+
+    # boxes typed one after another while an earlier save is still on its way are each kept as typed (each box is read when it is
+    # left: read after the wait, a box could by then have been filled in again from the thing as it was)
+    pg.evaluate("(() => { window.lyRealApi = api; api = async (m, u, ...more) => { if (m === 'PUT' && u.startsWith('/api/layouts/items/')) await new Promise(r => setTimeout(r, 400)); return lyRealApi(m, u, ...more); }; })()")
+    pick(rp3); p0 = it(pg, rp3)
+    for k, val in (('x', p0['x'] + 1), ('y', p0['y'] + 2), ('x', p0['x'] + 3)): pg.fill(f'#ly-f-{k}', str(val)); pg.press(f'#ly-f-{k}', 'Tab')
+    check(until(pg, lambda: (saved(rid, rp3)['x'], saved(rid, rp3)['y']) == (p0['x'] + 3, p0['y'] + 2), 8000) and (it(pg, rp3)['x'], it(pg, rp3)['y']) == (p0['x'] + 3, p0['y'] + 2),
+          f"three boxes typed while saves are slow: each is kept as typed, on the page and in the record ({it(pg, rp3)}, {saved(rid, rp3)['x']}, {saved(rid, rp3)['y']})")
+    pg.evaluate('(async () => { await LY.q; api = lyRealApi; })()')
     shot(pg, '6c-room')
     call('PUT', f"/api/plants/{away[0]['code']}", {'base_version': call('GET', f"/api/plants/{away[0]['code']}")['version'], 'fields': {'height_in': None}})
     call('DELETE', f'/api/layouts/{rid}')
