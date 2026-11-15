@@ -534,3 +534,27 @@ def propagation_results():
     species = [dict(species=k, **stats(g), ways=sorted({p['method_label'] for p in g})) for k, g in spec.items()]
     species.sort(key=lambda s: (-s['attempts'], s['species'].lower()))
     return jsonify(ways=ways, species=species, finished=len(finished), going=len(items) - len(finished))
+
+# ---------------------------------------------------------------- a phone notification (his answer of November 15, 2026)
+PUSH_EXTRA_KINDS.append(('prop', 'Propagation', 'On a morning when a treatment step ends or is next, or a cutting or seed lot is due a look.'))
+
+def prop_push_words(items):
+    """Pure: the title and body of the morning message. items: cards (prop_card) that have something due."""
+    n = len(items)
+    say = lambda p: f"{p['title']}: {p['due'][0]['words'][:1].lower() + p['due'][0]['words'][1:]}"
+    return f'Propagation: {n} to look at today', ('; '.join(say(p) for p in items[:4]) + ('…' if n > 4 else ''))[:300]
+
+def prop_push(c, at=None):
+    """At 8 in the morning by the main home's clock: one message when a step ends or is next, or an attempt is due a look.
+    Nothing is sent on a day with nothing due, or before anyone has started an attempt. `at`: the local time, for the tests."""
+    if not c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='propagations'").fetchone(): return None
+    H = home_place(c)
+    local = at or datetime.now(tzinfo(H['tz']))
+    if local.hour < 8: return None
+    with place_for(H['id']): _today, items = prop_list(c)
+    due = [p for p in items if p['status'] in ('active', 'ready') and p['due']]
+    if not due or not push_once(c, f'prop:{local.date().isoformat()}', 2): return None
+    title, body = prop_push_words(due)
+    push_send(c, 'prop', title, body, '#/propagating', tag='prop')
+    return title, body
+PUSH_CLOCK.append(prop_push)

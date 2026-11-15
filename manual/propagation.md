@@ -14,3 +14,10 @@ Tracks cuttings, layers, grafts, divisions, offsets, spores and seeds from the f
 - **What your attempts show.** For each way and each plant: pieces tried, how many became plants, and the middle number of days to a first sign (roots, sprouts, a graft holding). Only finished attempts count.
 - **Who can change it.** Editors; people who can only view see everything and no buttons.
 - **Not in this prototype:** photos on an attempt, reminders by push notification, finding attempts in Search by their name, the Library facts and Identify examples for seeds (docs/IDEAS.md, "Seed lots"), and the fridge and heat-mat temperature spots with counted days.
+- **Since November 15, 2026:**
+  - **Seed lots.** A lot of seed keeps when and where it was collected, a **float or cut test** (how many you tried and how many were sound; the ones that failed can come off the lot in the same step), how many you **sowed** and how many **sprouted**. Its page then says, for example, "21 sprouted (62% of the 34 sown)".
+  - **Photos** on any attempt: the seed, the cut, the first roots, each with an optional line saying what it shows.
+  - **Temperatures follow your Units setting.** A cold step of 34 to 41°F reads 1 to 5°C if you chose Celsius, and you type them in your unit.
+  - **A plant grown from seed that came from elsewhere is generation 1.**
+  - **Your phone gets one message at 8 in the morning** on a day when a treatment step ends or is next, or a cutting or seed lot is due a look. Turn "Propagation" off under Notifications if you do not want it.
+  - A person who may change only some homes cannot change an attempt whose parent plant is at another home.

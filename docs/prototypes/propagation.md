@@ -45,7 +45,7 @@ Then open http://localhost:8080/#/propagating.
 2. Photos on an attempt are built (November 15). Photos on each single check are not: do you want them?
 3. Answered November 15: a plant from seed that came from elsewhere is generation 1.
 4. Answered November 15: no link in the top bar; it stays reachable from Today, the guide, plant pages and Search.
-5. Answered November 15 (yes): phone notifications for steps and checks. Not built yet.
+5. Answered November 15 (yes), and built: one phone message at 8 in the morning when a step ends or is next, or an attempt is due a look. "Propagation" is a kind each person can turn off.
 6. Answered November 15: breeding crosses later.
 7. Answered November 15: later, as proposals you accept.
 8. From the Seed lots idea, step 1 is now whole (the lot with its test, sowing, sprouting and photos). Still not built: Library facts for seed (such as how long an oak's acorns need cold), Identify examples from seed photos, and counting days from a fridge or heat-mat sensor. Which next?

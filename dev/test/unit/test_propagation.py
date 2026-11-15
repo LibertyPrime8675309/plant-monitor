@@ -88,3 +88,29 @@ def test_photos_of_an_attempt_are_kept_and_a_removed_one_goes_to_the_bin_folder(
         assert not os.path.exists(os.path.join(S.PHOTO_DIR, ph[0]['file'])) and os.path.exists(os.path.join(S.TRASH_DIR, ph[0]['file'])), 'the file is kept in photos_deleted'
         assert c.delete(f"/api/propagations/{lot['id']}", headers=OWN).get_json() == {'removed': True}
         assert os.path.exists(os.path.join(S.TRASH_DIR, ph[1]['file'])), 'removing the record keeps its photos in photos_deleted too'
+
+# ---------------------------------------------------------------- the morning notification
+def test_the_morning_message_counts_what_is_due_and_names_the_first():
+    items = [{'title': 'Shumard oak acorns', 'due': [{'words': 'Cold, moist (stratify) ends today'}]}, {'title': 'Pothos, stem cuttings', 'due': [{'words': 'Look at it: last looked 8 days ago'}]}]
+    assert S.prop_push_words(items) == ('Propagation: 2 to look at today', 'Shumard oak acorns: cold, moist (stratify) ends today; Pothos, stem cuttings: look at it: last looked 8 days ago')
+
+def test_propagation_is_a_kind_of_notification_and_goes_once_a_day(monkeypatch):
+    import sqlite3
+    from datetime import datetime
+    import plantdb.propagation as P
+    assert any(k[0] == 'prop' for k in S.PUSH_EXTRA_KINDS) and S.prop_push in S.PUSH_CLOCK
+    with S.app.test_client() as c:
+        code = c.get('/api/plants').get_json()[0]['code']
+        r = c.post('/api/propagations', json={'method': 'stem', 'parent_code': code, 'count': 2, 'started_on': (S.date.today() - S.timedelta(days=20)).isoformat()}, headers=OWN); assert r.status_code == 201
+        assert 'prop' in [k['key'] for k in c.get('/api/push').get_json()['kinds']]
+    sent = []
+    monkeypatch.setattr(P, 'push_send', lambda c, kind, title, body, url='#/', home_id=None, logins=None, tag=None: sent.append((kind, title, url)))
+    d = sqlite3.connect(S.DB_PATH); d.row_factory = sqlite3.Row
+    try:
+        d.execute("DELETE FROM settings WHERE key LIKE 'push_sent:prop:%'"); d.commit()
+        assert S.prop_push(d, datetime(2026, 11, 15, 7, 0)) is None and not sent, 'not before 8 in the morning'
+        got = S.prop_push(d, datetime(2026, 11, 15, 9, 0))
+        assert got and got[0].startswith('Propagation: ') and sent and sent[0][0] == 'prop' and sent[0][2] == '#/propagating'
+        assert S.prop_push(d, datetime(2026, 11, 15, 10, 0)) is None and len(sent) == 1, 'once a day'
+        d.commit()
+    finally: d.close()
