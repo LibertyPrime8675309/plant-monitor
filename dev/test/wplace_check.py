@@ -214,7 +214,17 @@ with sync_playwright() as p:
         last = len(heads(ph, PD)) - 1; go.select_option(f'wpl-due-{last}')
         check(until(ph, lambda: ph.evaluate('document.activeElement && document.activeElement.id') == f'wpl-due-{last}') and go.input_value() == '', 'choosing a spot puts the focus on that spot\'s tile, and the list is ready for the next choice')
     ph.locator('select[data-act=waterpics]').select_option('small')
-    check(until(ph, lambda: row()[1] < 3 or row()[0] == 3) and not ph.evaluate('document.documentElement.scrollWidth > innerWidth + 1'), 'Small is three across on a phone')
+    # Small on a phone: a card stays wide enough for a long word of a name, so it is two across, as Medium is, and no name is broken inside a word
+    until(ph, lambda: ph.evaluate("document.querySelector('#today-water > .wpl').dataset.pics") == 'small')
+    small = ph.evaluate("""() => { const rem = parseFloat(getComputedStyle(document.documentElement).fontSize), cs = [...document.querySelectorAll('#today-water .wpl-card')]; let broken = [];
+      cs.forEach(c => { const a = c.querySelector('.wpl-nml a'), tn = a && [...a.childNodes].find(x => x.nodeType === 3); if (!tn) return; const t = tn.textContent;
+        if (t.split(/[\\s\\/-]+/).some(w => w.length > 13)) return;              // a word longer than any ordinary one may still have to break
+        const range = document.createRange(); let last = null;
+        for (let i = 0; i < t.length; i++) { range.setStart(tn, i); range.setEnd(tn, i + 1); const rc = range.getClientRects()[0]; if (!rc) continue;
+          if (last !== null && Math.abs(rc.top - last) > 4 && i > 0 && !/[\\s\\/(-]/.test(t[i - 1]) && !/\\s/.test(t[i])) { broken.push(t); break; } last = rc.top; } });
+      return { n: cs.length, least: Math.min(...cs.map(c => c.getBoundingClientRect().width)) / rem, broken }; }""")
+    check(row()[0] == 2 and small['n'] > 5 and small['least'] >= 8.3 and not small['broken'] and not ph.evaluate('document.documentElement.scrollWidth > innerWidth + 1'),
+          f'Small on a phone keeps a card as wide as a long word: two across, and no name is broken inside a word ({small["least"]:.1f} rem; {small["broken"][:2]})')
     ph.locator('select[data-act=waterpics]').select_option('large')
     check(until(ph, lambda: row()[0] == 1) and not ph.evaluate('document.documentElement.scrollWidth > innerWidth + 1'), 'Large is one across')
     ph.locator('select[data-act=waterpics]').select_option('medium')

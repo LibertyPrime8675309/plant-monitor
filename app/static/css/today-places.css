@@ -12,11 +12,14 @@ html[data-narrow="1"] .wpl-order>.btn{padding-left:.6rem;padding-right:.6rem}
    held within the list alone, it was pushed off the screen while the list's first rows were on it. */
 .wpl{display:contents}
 /* The size of the pictures (Small, Medium, Large; kept on each device) is the width of a card: the width it would like (--cw), and a
-   number of cards across (--n) that a narrow screen still gets while a card stays at least --lo wide. So a phone has 3, 2 or 1 across,
-   a tablet held upright 5, 4 or 3, and a 2560 x 1440 monitor at 150% has 11, 8 or 6; with large text a card keeps the room its words need. */
+   number of cards across (--n) that a narrow screen still gets while a card stays at least --lo wide. A tablet held upright has 5, 4
+   or 3 across, and a 2560 x 1440 monitor at 150% has 11, 8 or 6; with large text a card keeps the room its words need.
+   A card is never narrower than a long word of a plant's name: "Dieffenbachia" is 6.9rem in the name's type and a card's edges take
+   1rem, so Small is 8.4rem and no less. Three across on a phone (6.9rem) broke a third of the names inside a word, so a phone has
+   2 across at Small as at Medium, and 1 at Large. */
 .wpl-grid{--cw:10.5rem;--lo:9rem;--n:2;display:grid;gap:.6rem;margin:0 0 .9rem;
   grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--cw),max(var(--lo),calc((100% - (var(--n) - 1) * .6rem) / var(--n) - .5px))),1fr))}      /* (- .5px: a width that fits exactly can round to one card fewer) */
-.wpl[data-pics=small] .wpl-grid{--cw:8rem;--lo:5.8rem;--n:3}
+.wpl[data-pics=small] .wpl-grid{--cw:8.4rem;--lo:8.4rem;--n:1}
 .wpl[data-pics=large] .wpl-grid{--cw:14rem;--lo:14rem;--n:1}
 .wpl-in,.wpl-in>.wpl-cards{display:contents}
 .wpl-head{display:flex;flex-direction:column;gap:.45rem;border:3px solid var(--ink);border-radius:6px;background:var(--sheet);padding:.45rem .55rem .55rem;min-width:0}
