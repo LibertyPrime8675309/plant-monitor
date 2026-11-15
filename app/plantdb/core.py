@@ -357,6 +357,7 @@ def init_db():
     c.executescript(BROWSE_SCHEMA)                # 1.57.0: pests seen eating a plant, with pictures as evidence (browse.py)
     c.executescript(UPDATES_SCHEMA)               # 1.58.0: update files from Claude that were brought in or set aside (updates.py)
     c.executescript(MIXES_SCHEMA)                 # 1.56.0 (PLAN.md step 9): amendments, recipes, what is in each pot (mixes.py)
+    c.executescript(ISSUES_SCHEMA)                # 1.58.0: problem reports from any page, and the owner's Issue tracker (issues.py)
     if 'status' not in {r[1] for r in c.execute('PRAGMA table_info(lights)')}:     # 1.56.0 (PLAN.md step 10b): owned, considering, no longer used
         c.execute("ALTER TABLE lights ADD COLUMN status TEXT NOT NULL DEFAULT 'owned'")
     wl = {r[1] for r in c.execute('PRAGMA table_info(wishlist)')}
@@ -906,9 +907,9 @@ def owner_name(c):
     r = c.execute("SELECT name FROM people WHERE role='owner' ORDER BY first_seen LIMIT 1").fetchone()
     return r[0] if r else 'the owner'
 
-OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people', '/api/updates')        # any request (the people list shows everyone's login; 1.58.0: update files from Claude are the owner's to bring in)
+OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people', '/api/updates', '/api/issues')        # any request (the people list shows everyone's login; 1.58.0: update files from Claude are the owner's to bring in)
 OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/areas', '/api/shops', '/api/problems', '/api/backups/restore', '/api/jobs')   # changes only
-VIEWER_POSTS = ('/api/identify', '/api/me/prefs', '/api/voice', '/api/whatsnew/seen')   # 1.55.0: "Got it" on What's new is the person's own setting   # 1.18.0: asks this computer what a picture shows; 1.29.0: your own settings; search by voice: words from a recording. None changes the plants
+VIEWER_POSTS = ('/api/identify', '/api/me/prefs', '/api/voice', '/api/whatsnew/seen', '/api/report')   # 1.55.0: "Got it" on What's new is the person's own setting   # 1.18.0: asks this computer what a picture shows; 1.29.0: your own settings; search by voice: words from a recording. None changes the plants
 VIEWER_PREFIXES = ('/api/push/',)                   # 1.33.0: your own devices and notification choices
 
 def edit_homes_of(r):
