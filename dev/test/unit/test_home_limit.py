@@ -79,6 +79,10 @@ def world():
         W['prop'] = r.get_json()['id']; W['prop_stage'] = d.execute('SELECT id FROM prop_stages WHERE prop_id=?', (W['prop'],)).fetchone()[0]
         r = c.post(f"/api/propagations/{W['prop']}/events", json={'kind': 'check'}, headers=OWN); assert r.status_code == 201, r.get_data(as_text=True)
         W['prop_event'] = r.get_json()['id']
+        from PIL import Image
+        pic = io.BytesIO(); Image.new('RGB', (40, 30), 'green').save(pic, 'JPEG'); pic.seek(0)
+        r = c.post(f"/api/propagations/{W['prop']}/photos", data={'files': [(pic, 'a.jpg')]}, headers=OWN, content_type='multipart/form-data'); assert r.status_code == 201, r.get_data(as_text=True)
+        W['prop_photo'] = r.get_json()['photos'][0]['id']
         r = c.post('/api/propagations', json={'method': 'seed', 'species': 'Quercus', 'title': 'Acorns from the park', 'count': 3}, headers=OWN); assert r.status_code == 201, r.get_data(as_text=True)
         W['prop_free'] = r.get_json()['id']
         W['version'] = c.get(f'/api/plants/{F}').get_json()['version']
@@ -170,10 +174,12 @@ def test_a_limited_editor_cannot_change_a_plant_at_another_home_by_any_route(wor
     refused(c, 'propagation_stage', 'PUT', f"/api/propagations/stages/{W['prop_stage']}", json={'action': 'start'})
     refused(c, 'propagation_stage', 'DELETE', f"/api/propagations/stages/{W['prop_stage']}")
     refused(c, 'propagation_status', 'POST', f'/api/propagations/{P}/status', json={'status': 'failed'})
+    refused(c, 'propagation_photos', 'POST', f'/api/propagations/{P}/photos', data={'files': [(io.BytesIO(b'x'), 'a.jpg')]}, content_type='multipart/form-data')
+    refused(c, 'propagation_photo', 'DELETE', f"/api/propagations/photos/{W['prop_photo']}")
     refused(c, 'propagation_promote', 'POST', f'/api/propagations/{P}/promote', json={})
     refused(c, 'propagation_promote', 'POST', f"/api/propagations/{W['prop_free']}/promote", json={'common_name': 'Oak seedling'})
     card = c.get(f'/api/propagations/{P}', headers=OWN).get_json()
-    assert card['status'] == 'active' and len(card['events']) == 1 and len(card['stages']) == 1 and not card['stages'][0]['started_on'], 'nothing about the attempt changed'
+    assert card['status'] == 'active' and len(card['events']) == 1 and len(card['stages']) == 1 and not card['stages'][0]['started_on'] and len(card['photos']) == 1, 'nothing about the attempt changed'
     # --- and nothing about the plant changed
     d = conn()
     assert c.get(f'/api/plants/{F}').get_json()['version'] == W['version']

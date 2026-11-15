@@ -10,6 +10,9 @@ The guide (guide.py, #/guide) says how each way of making new plants is done. Th
 - A seed lot is a propagation of the way "seed". Its treatment is an ordered list of stages (`prop_stages`): soak, nick the coat,
   warm and moist, cold and moist, light. Each stage has a length in days and a temperature range, is started and finished by hand,
   and tells Today when it ends. The numbers offered are only starting points, every one editable.
+- A seed lot also keeps what was done with the seed: a float or cut test (`test`: how many were tried and how many were sound) and
+  sowing (`sown`, with a number). Its sprouting rate is counted from the seeds sown, or from the whole lot when no sowing is written down.
+- Any attempt can have photos (`prop_photos`): the seed, the cut, the roots. They are saved like a plant's photos and belong to the attempt.
 - When a piece is ready, "Pot it up" makes a real plant with its own P-code (`prop_make_plant`, the same steps as adding a plant),
   copies what describes the species from the parent, and links the two (`prop_children`). One propagation can make several
   plants (a tray of seedlings); it finishes by itself when every piece is a plant.
@@ -38,8 +41,10 @@ METHODS = {
     'seed':     dict(label='Seed', guide='gd-seed', check=7, marks=('sprouted',), ready='Seedlings with true leaves'),
 }
 EVENT_WORD = {'check': 'Checked, no change', 'water': 'Changed the water', 'callus': 'Callus formed', 'roots': 'Roots seen', 'shoot': 'New growth',
-              'union': 'Graft holding', 'sprouted': 'Sprouted', 'lost': 'Lost', 'note': 'Note'}
-COUNTED = ('sprouted', 'lost')          # events that carry a number
+              'union': 'Graft holding', 'sprouted': 'Sprouted', 'lost': 'Lost', 'sown': 'Sown', 'test': 'Seed test', 'note': 'Note'}
+COUNTED = ('sprouted', 'lost', 'sown')  # events that carry a number
+SEED_ONLY = ('sown', 'test')            # events only a seed lot has
+TEST_HOW = {'float': 'Float test', 'cut': 'Cut test'}      # a seed test: n2 seeds tried, n of them sound
 STAGE_KINDS = {'soak': 'Soak in water', 'scarify': 'Nick or sand the seed coat', 'warm': 'Warm and moist', 'cold': 'Cold and moist (stratification)',
                'light': 'Needs light to sprout', 'dry': 'Dry rest'}
 # starting points only: (days, low °F, high °F). The species decides; every one is editable and the guide says where it came from.
@@ -58,8 +63,12 @@ CREATE TABLE IF NOT EXISTS propagations(
 CREATE INDEX IF NOT EXISTS propagations_parent ON propagations(parent_code);
 CREATE TABLE IF NOT EXISTS prop_events(
   id INTEGER PRIMARY KEY AUTOINCREMENT, prop_id INTEGER NOT NULL, on_date TEXT NOT NULL, kind TEXT NOT NULL, text TEXT NOT NULL DEFAULT '',
-  n INTEGER, by TEXT, at TEXT NOT NULL);
+  n INTEGER, by TEXT, at TEXT NOT NULL, n2 INTEGER, how TEXT);
 CREATE INDEX IF NOT EXISTS prop_events_prop ON prop_events(prop_id, on_date);
+CREATE TABLE IF NOT EXISTS prop_photos(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, prop_id INTEGER NOT NULL, file TEXT NOT NULL, caption TEXT NOT NULL DEFAULT '', taken_at TEXT,
+  added_by TEXT, added_at TEXT NOT NULL);
+CREATE INDEX IF NOT EXISTS prop_photos_prop ON prop_photos(prop_id, id);
 CREATE TABLE IF NOT EXISTS prop_stages(
   id INTEGER PRIMARY KEY AUTOINCREMENT, prop_id INTEGER NOT NULL, sort INTEGER NOT NULL DEFAULT 0, kind TEXT NOT NULL, days INTEGER NOT NULL,
   temp_low INTEGER, temp_high INTEGER, started_on TEXT, ended_on TEXT, note TEXT NOT NULL DEFAULT '');
@@ -73,7 +82,11 @@ def prop_db():
     """The connection, with the tables made (once for each database; they are not in init_db so this stays one file)."""
     c = db()
     if DB_PATH not in _READY:
-        c.executescript(PROP_SCHEMA); c.commit(); _READY.add(DB_PATH)
+        c.executescript(PROP_SCHEMA)
+        have = {r[1] for r in c.execute('PRAGMA table_info(prop_events)')}       # a record made by an earlier build of the prototype
+        for col, kind in (('n2', 'INTEGER'), ('how', 'TEXT')):
+            if col not in have: c.execute(f'ALTER TABLE prop_events ADD COLUMN {col} {kind}')
+        c.commit(); _READY.add(DB_PATH)
     return c
 
 def prop_iso(v, what, today=None, future=False):
@@ -119,7 +132,12 @@ def prop_card(c, r, today):
     """Everything one attempt needs to be drawn: its numbers, stages, what to do next, and the plants it made."""
     m = METHODS.get(r['method'], METHODS['stem'])
     events = [dict(e) for e in c.execute('SELECT * FROM prop_events WHERE prop_id=? ORDER BY on_date DESC, id DESC', (r['id'],))]
-    for e in events: e['word'] = EVENT_WORD.get(e['kind'], e['kind'])
+    for e in events:
+        e['word'] = EVENT_WORD.get(e['kind'], e['kind'])
+        if e['kind'] == 'test':                    # "Float test: 18 of 24 sound"
+            e['word'] = TEST_HOW.get(e['how'], 'Seed test'); e['result'] = f"{e['n']} of {e['n2']} sound"
+            e['sound_pct'] = round(100 * e['n'] / e['n2']) if e['n2'] else None
+    photos = [dict(x) for x in c.execute('SELECT id, file, caption, taken_at, added_at FROM prop_photos WHERE prop_id=? ORDER BY id', (r['id'],))]
     stages = [dict(s) for s in c.execute('SELECT * FROM prop_stages WHERE prop_id=? ORDER BY sort, id', (r['id'],))]
     for s in stages:
         s['label'] = STAGE_KINDS.get(s['kind'], s['kind'])
@@ -130,6 +148,9 @@ def prop_card(c, r, today):
             for k in c.execute('SELECT * FROM prop_children WHERE prop_id=? ORDER BY id', (r['id'],))]
     sprouted = sum(e['n'] or 0 for e in events if e['kind'] == 'sprouted')
     lost = sum(e['n'] or 0 for e in events if e['kind'] == 'lost')
+    sown = sum(e['n'] or 0 for e in events if e['kind'] == 'sown')
+    tests = [e for e in events if e['kind'] == 'test']
+    of = sown or r['count']                      # sprouting is counted from the seeds sown, else from the whole lot
     seen = max([e['on_date'] for e in events if e['kind'] != 'note'] + [r['started_on']])
     every = check_days(r)
     active = r['status'] in ('active', 'ready')
@@ -153,7 +174,9 @@ def prop_card(c, r, today):
              status_word=STATUSES.get(r['status'], r['status']), parent_name=plant_name(c, r['parent_code']), parent_photo=prop_photo(c, r['parent_code']) if r['parent_code'] else None,
              days=(today - date.fromisoformat(r['started_on'])).days, events=events, stages=stages, children=kids, sprouted=sprouted, lost=lost,
              check_every=every, last_seen=seen, needs=needs, due=[n for n in needs if n['due']], is_seed=r['method'] == 'seed',
-             left=max(0, r['count'] - len(kids) - lost))
+             left=max(0, r['count'] - len(kids) - lost), photos=photos, sown=sown, tests=tests,
+             sprout_of=of, sprout_pct=round(100 * sprouted / of) if sprouted and of else None,
+             last_test=tests[0] if tests else None)
     return d
 
 def prop_list(c):
@@ -215,6 +238,8 @@ def propagation_one(pid):
     if request.method == 'DELETE':
         if c.execute('SELECT 1 FROM prop_children WHERE prop_id=?', (pid,)).fetchone():
             abort(409, 'This made plants, so it stays as their history. Mark it finished instead.')
+        for (f,) in c.execute('SELECT file FROM prop_photos WHERE prop_id=?', (pid,)).fetchall(): prop_photo_bin(f)
+        c.execute('DELETE FROM prop_photos WHERE prop_id=?', (pid,))
         c.execute('DELETE FROM prop_events WHERE prop_id=?', (pid,)); c.execute('DELETE FROM prop_stages WHERE prop_id=?', (pid,)); c.execute('DELETE FROM propagations WHERE id=?', (pid,))
         prop_audit(c, 'propagation', r['code'], None, f'Removed {r["code"]}: {r["title"]}', r['parent_code'])
         c.commit(); return jsonify(removed=True)
@@ -240,18 +265,36 @@ def propagation_one(pid):
 
 @app.route('/api/propagations/<int:pid>/events', methods=['POST'])
 def propagation_event(pid):
-    """{kind: check|water|callus|roots|shoot|union|sprouted|lost|note, n?, text?, on_date?}. Sprouted and Lost carry a number."""
+    """{kind: check|water|callus|roots|shoot|union|sprouted|lost|sown|test|note, n?, text?, on_date?}. Sprouted, Lost and Sown carry a
+    number. A seed test is {kind: 'test', how: float | cut, tested, sound, discard?}: how many seeds were tried and how many were sound;
+    with `discard` the ones that failed also come off the lot as lost (floaters thrown out, seeds cut open)."""
     c = prop_db(); r = prop_row(c, pid); today = local_today(c)
     b = request.get_json(silent=True) or {}
     kind = str(b.get('kind') or '')
     if kind not in EVENT_WORD: abort(400, 'kind must be one of: ' + ', '.join(EVENT_WORD))
-    n = to_int(b.get('n'), 'How many', 1, 5000, none_ok=kind not in COUNTED) if kind in COUNTED or b.get('n') not in (None, '') else None
+    if kind in SEED_ONLY and r['method'] != 'seed': abort(400, 'Only a seed lot has that')
     text = str(b.get('text') or '').strip()[:500]
     if kind == 'note' and not text: abort(400, 'Write the note')
     on = prop_iso(b.get('on_date') or today.isoformat(), 'Date', today)
-    if on < r['started_on']: abort(400, 'That is before it started')
-    cur = c.execute('INSERT INTO prop_events(prop_id,on_date,kind,text,n,by,at) VALUES(?,?,?,?,?,?,?)', (pid, on, kind, text, n, editor(), now()))
-    prop_audit(c, 'event', None, EVENT_WORD[kind] + (f' ({n})' if n else ''), f'{r["code"]}: {EVENT_WORD[kind].lower()}{" " + str(n) if n else ""}', r['parent_code'])
+    if on < r['started_on'] and not (kind == 'test' and r['collected_on'] and on >= r['collected_on']): abort(400, 'That is before it started')
+    n2 = how = None; extra = []
+    if kind == 'test':
+        how = str(b.get('how') or 'float')
+        if how not in TEST_HOW: abort(400, 'A seed test is a float test or a cut test')
+        n2 = to_int(b.get('tested'), 'How many were tested', 1, 5000); n = to_int(b.get('sound'), 'How many were sound', 0, n2)
+        said = f'{TEST_HOW[how].lower()}, {n} of {n2} sound'
+        if b.get('discard') and n2 > n: extra.append(('lost', n2 - n, f'Failed the {TEST_HOW[how].lower()}'))
+    else:
+        n = to_int(b.get('n'), 'How many', 1, 5000, none_ok=kind not in COUNTED) if kind in COUNTED or b.get('n') not in (None, '') else None
+        said = f'{EVENT_WORD[kind].lower()}{" " + str(n) if n else ""}'
+    if kind == 'sown':
+        had = sum(e[0] or 0 for e in c.execute("SELECT n FROM prop_events WHERE prop_id=? AND kind='sown'", (pid,)))
+        if had + n > r['count']: abort(400, f'That makes {had + n} sown, more than the {r["count"]} in the lot. Change "How many" under Change the details first.')
+    who = editor()
+    cur = c.execute('INSERT INTO prop_events(prop_id,on_date,kind,text,n,by,at,n2,how) VALUES(?,?,?,?,?,?,?,?,?)', (pid, on, kind, text, n, who, now(), n2, how))
+    for k2, m2, t2 in extra:
+        c.execute('INSERT INTO prop_events(prop_id,on_date,kind,text,n,by,at) VALUES(?,?,?,?,?,?,?)', (pid, on, k2, t2, m2, who, now()))
+    prop_audit(c, 'event', None, said[:1].upper() + said[1:], f'{r["code"]}: {said}', r['parent_code'])
     c.commit()
     return jsonify(id=cur.lastrowid, card=prop_card(c, prop_row(c, pid), today)), 201
 
@@ -264,6 +307,41 @@ def propagation_event_undo(eid):
     prop_audit(c, 'event', EVENT_WORD.get(e['kind'], e['kind']), None, f'{r["code"]}: took back "{EVENT_WORD.get(e["kind"], e["kind"]).lower()}" from {e["on_date"]}', r['parent_code'])
     c.commit()
     return jsonify(card=prop_card(c, r, local_today(c)))
+
+# ---------------------------------------------------------------- photos of an attempt
+def prop_photo_bin(name):
+    """A removed photo's file goes to photos_deleted, as a plant's does: nothing of his is ever deleted outright."""
+    src = os.path.join(PHOTO_DIR, name)
+    if os.path.exists(src): os.makedirs(TRASH_DIR, exist_ok=True); shutil.move(src, os.path.join(TRASH_DIR, name))
+
+@app.route('/api/propagations/<int:pid>/photos', methods=['POST'])
+def propagation_photos(pid):
+    """Pictures of the seed, the cut or the roots (form field `files`, with an optional `caption`). Saved as a plant's photos are
+    (shrunk, with the place the picture was taken removed)."""
+    c = prop_db(); r = prop_row(c, pid)
+    files = request.files.getlist('files')
+    if not files: abort(400, 'Choose at least one photo')
+    if c.execute('SELECT COUNT(*) FROM prop_photos WHERE prop_id=?', (pid,)).fetchone()[0] + len(files) > 40: abort(400, 'An attempt holds up to 40 photos')
+    who, cap = editor(), str(request.form.get('caption') or '').strip()[:200]
+    names = []
+    for f in files:
+        raw = f.read()
+        taken = exif_info(raw)[2]
+        name = save_image(_Upload(raw, f.filename)); names.append(name)
+        c.execute('INSERT INTO prop_photos(prop_id,file,caption,taken_at,added_by,added_at) VALUES(?,?,?,?,?,?)', (pid, name, cap, taken, who, now()))
+    prop_audit(c, 'photo', None, ', '.join(names), f'{r["code"]}: {len(names)} photo(s) added', r['parent_code'])
+    c.commit()
+    return jsonify(prop_card(c, r, local_today(c))), 201
+
+@app.route('/api/propagations/photos/<int:phid>', methods=['DELETE'])
+def propagation_photo(phid):
+    c = prop_db(); ph = c.execute('SELECT * FROM prop_photos WHERE id=?', (phid,)).fetchone()
+    if not ph: abort(404, 'photo not found')
+    r = prop_row(c, ph['prop_id'])
+    c.execute('DELETE FROM prop_photos WHERE id=?', (phid,)); prop_photo_bin(ph['file'])
+    prop_audit(c, 'photo', ph['file'], None, f'{r["code"]}: photo removed (file kept in photos_deleted)', r['parent_code'])
+    c.commit()
+    return jsonify(prop_card(c, r, local_today(c)))
 
 def add_stage(c, pid, s, i):
     kind = str((s or {}).get('kind') or '')

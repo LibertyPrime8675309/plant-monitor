@@ -13,10 +13,24 @@ const PRP_SITES = ['Indoors', 'Covered porch', 'Outdoors', 'Garage or shed'];
 const PRP_STEP_ORDER = ['scarify', 'soak', 'warm', 'cold', 'light', 'dry'];
 const prpPieces = p => p.method === 'seed' ? prpPl(p.count, 'seed', 'seeds') : prpPl(p.count, 'piece', 'pieces');
 const prpInWater = p => /water/i.test(p.medium || '');
+// "12 sprouted (60% of the 20 sown)": from the seeds sown when a sowing is written down, else from the whole lot
+const prpSprouted = p => `${p.sprouted} sprouted` + (p.sprout_pct == null ? '' : ` (${p.sprout_pct}% of the ${p.sprout_of} ${p.sown ? 'sown' : 'in the lot'})`);
+function prpPhotos(c, can) {      // pictures of the seed, the cut or the roots
+  return html`<section class="blk" id="prp-photos"><h2>Photos (${c.photos.length})</h2>
+    <div class="prp-photos">${c.photos.length ? c.photos.map((ph, i) => html`<figure><a href="/photos/${ph.file}" aria-label="${'Open photo ' + (i + 1) + ' at full size'}"><img src="${thumbUrl(ph.file)}" alt="${c.title + ', photo ' + (i + 1) + (ph.caption ? ': ' + ph.caption : '')}" loading="lazy"></a>
+        <figcaption>${ph.caption || 'Photo ' + (i + 1)}${ph.taken_at || ph.added_at ? html` <span class="muted">${prpDate(String(ph.taken_at || ph.added_at).slice(0, 10))}</span>` : ''}</figcaption>
+        ${can ? html`<button class="btn ghost small noprint" type="button" data-act="prpphotodel" data-phid="${ph.id}" data-id="${c.id}" aria-label="${'Remove photo ' + (i + 1)}">Remove</button>` : ''}</figure>`)
+      : html`<p class="muted">No photo yet.${can ? ' A picture of the seed, the cut or the first roots helps you compare next time.' : ''}</p>`}</div>
+    ${can ? html`<form class="prp-photoadd noprint" data-form="prpphotos" data-id="${c.id}">
+      <label class="f">What the photos show (optional)<input type="text" name="caption" maxlength="200" autocomplete="off" placeholder="Acorns after the float test"></label>
+      <label class="f">Choose photos<input type="file" name="files" accept="image/*" multiple required></label>
+      <button class="btn small" type="submit">Add the photos</button></form>` : ''}</section>`;
+}
 
 function prpWords(p) {      // one line that says what it is and how it is going
   const bits = [p.method_label + (p.parent_code ? ` from ${p.parent_name || p.parent_code}` : ''), prpPieces(p), `started ${relDay(p.started_on)}`];
-  if (p.sprouted) bits.push(`${p.sprouted} sprouted`);
+  if (p.sown) bits.push(`${p.sown} sown`);
+  if (p.sprouted) bits.push(prpSprouted(p));
   if (p.lost) bits.push(`${p.lost} lost`);
   if (p.children.length) bits.push(prpPl(p.children.length, 'plant made', 'plants made'));
   return bits.join(', ') + '.';
@@ -24,9 +38,9 @@ function prpWords(p) {      // one line that says what it is and how it is going
 function prpNeedBtns(p, n) {      // the button for one thing that is due
   const id = p.id;
   if (n.kind === 'stage_end') return html`<button class="btn small" type="button" data-act="prpstage" data-do="done" data-sid="${n.stage}" data-id="${id}" aria-label="${'Step finished for ' + p.title}">Step finished</button>`;
-  if (n.kind === 'stage_start') return html`<button class="btn small" type="button" data-act="prpstage" data-do="start" data-sid="${n.stage}" data-id="${id}" aria-label="${'Started the next step for ' + p.title}">Started it today</button>`;
+  if (n.kind === 'stage_start') return html`<button class="btn small" type="button" data-act="prpstage" data-do="start" data-sid="${n.stage}" data-id="${id}" aria-label="${'Started it today: the next step for ' + p.title}">Started it today</button>`;
   return html`${prpInWater(p) ? html`<button class="btn small" type="button" data-act="prpevent" data-kind="water" data-id="${id}" aria-label="${'Changed the water for ' + p.title}">Changed the water</button>` : ''}
-    <button class="btn small ghost" type="button" data-act="prpevent" data-kind="check" data-id="${id}" aria-label="${'Looked at ' + p.title + ', no change'}">Looked, no change</button>`;
+    <button class="btn small ghost" type="button" data-act="prpevent" data-kind="check" data-id="${id}" aria-label="${'Looked, no change: ' + p.title}">Looked, no change</button>`;
 }
 function prpRow(p, withBtns) {
   const dueNeeds = p.needs.filter(n => n.due);
@@ -139,7 +153,7 @@ async function prpViewOne(id) {
     html: html`<p class="noprint"><a href="#/propagating">All propagation</a></p>
     <h1>${c.title}</h1>
     <div class="verdict-box" role="status"><p><strong>${c.status_word}.</strong> ${c.method_label} from ${parentName}. ${prpPieces(c)}, started ${prpDate(c.started_on)} (${prpPl(c.days, 'day', 'days')} ago).
-      ${c.method === 'seed' && c.sprouted ? ` ${c.sprouted} sprouted.` : ''}${c.lost ? ` ${c.lost} lost.` : ''}${c.medium ? ` In ${c.medium}.` : ''}${c.place ? ` At ${c.place}.` : ''}
+      ${c.sown ? ` ${c.sown} sown.` : ''}${c.method === 'seed' && c.sprouted ? ` ${prpSprouted(c)}.` : ''}${c.lost ? ` ${c.lost} lost.` : ''}${c.last_test ? ` ${c.last_test.word}: ${c.last_test.result}${c.last_test.sound_pct == null ? '' : ' (' + c.last_test.sound_pct + '%)'}.` : ''}${c.collected_on || c.collected_at ? ` Collected${c.collected_on ? ' ' + prpDate(c.collected_on) : ''}${c.collected_at ? ' at ' + c.collected_at : ''}.` : ''}${c.medium ? ` In ${c.medium}.` : ''}${c.place ? ` At ${c.place}.` : ''}
       <a class="noprint" href="#/guide?sec=${c.guide}">How to do it</a></p></div>
     ${open && c.due.length ? html`<section class="blk" id="prp-now" data-prop="${id}"><h2>To do now</h2><ul class="jobs">${prpRow(c, true)}</ul></section>` : ''}
     <section class="blk" id="prp-steps"><h2>Treatment steps (${c.stages.length})</h2>
@@ -150,11 +164,21 @@ async function prpViewOne(id) {
         <label class="f">Lowest °F<input type="number" name="temp_low" min="-20" max="140" inputmode="numeric"></label>
         <label class="f">Highest °F<input type="number" name="temp_high" min="-20" max="140" inputmode="numeric"></label></div>
         <button class="btn small" type="submit">Add the step</button></form>` : ''}</section>
+    ${prpPhotos(c, can)}
     ${can && open ? html`<section class="blk noprint" id="prp-record"><h2>Record what happened</h2>
       <p class="row">${c.marks.map(m => m.kind === 'sprouted' ? '' : html`<button class="btn small" type="button" data-act="prpevent" data-kind="${m.kind}" data-id="${id}">${m.word}</button>`)}
         ${prpInWater(c) ? html`<button class="btn small" type="button" data-act="prpevent" data-kind="water" data-id="${id}">Changed the water</button>` : ''}
         <button class="btn small ghost" type="button" data-act="prpevent" data-kind="check" data-id="${id}">Looked, no change</button></p>
-      ${c.method === 'seed' ? html`<form data-form="prpcount" class="prp-count" data-id="${id}"><label class="f">How many sprouted<input type="number" name="n" min="1" max="${c.count}" step="1" inputmode="numeric" required></label>
+      ${c.method === 'seed' ? html`<form data-form="prptest" class="prp-test" data-id="${id}"><fieldset><legend>Float or cut test</legend>
+        <p class="hint">A float test: sound seed sinks in water and most floaters are empty. A cut test: cut a few open and count the ones that are firm and filled. Either one tells you how many to expect.</p>
+        <div class="prp-test-row"><label class="f">Which test<select name="how"><option value="float">Float test</option><option value="cut">Cut test</option></select></label>
+          <label class="f">How many were tested<input type="number" name="tested" min="1" max="5000" step="1" inputmode="numeric" required></label>
+          <label class="f">How many were sound<input type="number" name="sound" min="0" max="5000" step="1" inputmode="numeric" required></label></div>
+        <label class="chk"><input type="checkbox" name="discard" checked> Take the ones that failed off the lot (thrown out or cut open)</label>
+        <p><button class="btn small ghost" type="submit">Record the test</button></p></fieldset></form>
+      <form data-form="prpcount" class="prp-count" data-id="${id}"><label class="f">How many were sown<input type="number" name="n" min="1" max="${Math.max(1, c.count - c.sown)}" step="1" inputmode="numeric" required></label>
+        <input type="hidden" name="kind" value="sown"><button class="btn small ghost" type="submit">Record sowing</button></form>
+      <form data-form="prpcount" class="prp-count" data-id="${id}"><label class="f">How many sprouted<input type="number" name="n" min="1" max="${c.count}" step="1" inputmode="numeric" required></label>
         <input type="hidden" name="kind" value="sprouted"><button class="btn small" type="submit">Record sprouts</button></form>` : ''}
       ${lostForm}
       <form data-form="prpnote" class="prp-note" data-id="${id}"><label class="f">Add a note<input type="text" name="text" maxlength="500" autocomplete="off" required></label><button class="btn small ghost" type="submit">Save the note</button></form>
@@ -164,7 +188,7 @@ async function prpViewOne(id) {
         ${c.method === 'seed' ? html`<button class="btn small ghost" type="button" data-act="prpstatus" data-st="done" data-id="${id}">Finished: no more will come</button>` : ''}</p></section>` : ''}
     ${can && !open && c.status !== 'done' ? html`<p class="noprint"><button class="btn small" type="button" data-act="prpstatus" data-st="active" data-id="${id}">Mark it going again</button></p>` : ''}
     ${can && open && c.left > 0 ? html`<section class="blk noprint" id="prp-pot"><h2>Pot it up as a new plant</h2>
-      <p class="hint">${prpPl(c.left, 'piece is', 'pieces are')} not a plant yet. Each one potted up gets its own page and P-code, linked to ${c.parent_code ? c.parent_name || c.parent_code : 'this attempt'} in the family tree. What suits the species (light, water, temperatures) is copied from the parent plant.</p>
+      <p class="hint">${c.method === 'seed' ? prpPl(c.left, 'seed is', 'seeds are') : prpPl(c.left, 'piece is', 'pieces are')} not a plant yet. Each ${c.method === 'seed' ? 'seedling' : 'one'} potted up gets its own page and P-code, linked to ${c.parent_code ? c.parent_name || c.parent_code : 'this attempt'} in the family tree. What suits the species (light, water, temperatures) is copied from the parent plant.</p>
       <form data-form="prppromote" data-id="${id}"><div class="field-grid">
         <label class="f">Its name<input type="text" name="common_name" maxlength="120" value="${c.parent_name || c.species || ''}" autocomplete="off" required></label>
         <label class="f">Scientific name (optional)<input type="text" name="scientific_name" maxlength="160" value="${c.parent_code ? '' : c.species || ''}" autocomplete="off"></label>
@@ -175,7 +199,7 @@ async function prpViewOne(id) {
       ${c.children.length ? html`<ul>${c.children.map(k => html`<li><a href="#/plant/${enc(k.code)}">${k.name}</a> <span class="muted">${k.code}, potted ${prpDate(k.made_on)}</span></li>`)}</ul>` : html`<p class="muted">None yet.</p>`}
       <p class="noprint"><a href="#/propagating/family">Family tree</a></p></section>
     <section class="blk" id="prp-history"><h2>What happened (${c.events.length})</h2>
-      ${c.events.length ? html`<ul class="prp-events">${c.events.map(e => html`<li><strong>${e.word}${e.n ? ' ' + e.n : ''}</strong>, ${prpDate(e.on_date)}${e.text ? ': ' + e.text : ''}
+      ${c.events.length ? html`<ul class="prp-events">${c.events.map(e => html`<li><strong>${e.word}${e.kind === 'test' ? ': ' + e.result : e.n ? ' ' + e.n : ''}</strong>, ${prpDate(e.on_date)}${e.text ? ': ' + e.text : ''}
         ${can ? html`<button class="btn small ghost noprint" type="button" data-act="prpundo" data-eid="${e.id}" data-id="${id}" aria-label="${'Take back ' + e.word + ' of ' + prpDate(e.on_date)}">Take back</button>` : ''}</li>`)}</ul>` : html`<p class="muted">Nothing recorded yet.</p>`}</section>
     ${can ? html`<details class="grp noprint" id="prp-edit"><summary><h2>Change the details</h2></summary>
       <form data-form="prpedit" data-id="${id}"><div class="field-grid">
@@ -188,7 +212,8 @@ async function prpViewOne(id) {
         <label class="f">Rooting hormone<input type="text" name="hormone" maxlength="120" value="${c.hormone}"></label>
         <label class="f">Where it is<input type="text" name="place" maxlength="120" value="${c.place}"></label>
         <label class="f">Look every (days)<input type="number" name="check_every" min="1" max="120" value="${c.check_every}"></label>
-        <label class="f">Collected where<input type="text" name="collected_at" maxlength="300" value="${c.collected_at}"></label></div>
+        <label class="f">Seeds: collected on<input type="date" name="collected_on" value="${c.collected_on || ''}" max="${todayD}"></label>
+        <label class="f">Seeds: collected where<input type="text" name="collected_at" maxlength="300" value="${c.collected_at}"></label></div>
         <label class="f">Notes<textarea name="notes" rows="3" maxlength="2000">${c.notes}</textarea></label>
         <label class="f">How it ended<textarea name="outcome_note" rows="2" maxlength="2000">${c.outcome_note}</textarea></label>
         <p class="row"><button class="btn" type="submit">Save changes</button></p></form>
@@ -248,6 +273,11 @@ Object.assign(acts, {
     if ((st === 'failed' || st === 'gave_away') && !(await confirmBox(st === 'failed' ? 'Mark it as not working?' : 'Mark it as given away?', 'It moves to Finished and counts in "What your attempts show". You can mark it going again.', 'Yes', false))) return;
     await guard(async () => { await api('POST', `/api/propagations/${id}/status`, { status: st }); toast('Saved'); await prpAfter(id); });
   },
+  async prpphotodel(el) {
+    if (!(await needName())) return;
+    if (!(await confirmBox('Remove this photo?', 'It is taken off this page. The file is kept in the photos_deleted folder.', 'Remove it', true))) return;
+    await guard(async () => { await api('DELETE', '/api/propagations/photos/' + el.dataset.phid); toast('Photo removed'); await prpAfter(); });
+  },
   async prpremove(el) {
     if (!(await needName())) return;
     if (!(await confirmBox('Remove this record?', 'Its history is deleted. It is kept in the change log.', 'Remove it', true))) return;
@@ -277,7 +307,21 @@ Object.assign(formActs, {
   async prpcount(f) {
     if (!(await needName())) return;
     const id = f.dataset.id, kind = f.elements.kind.value;
-    await guard(async () => { await api('POST', `/api/propagations/${id}/events`, { kind, n: f.elements.n.value }); toast(kind === 'lost' ? 'Saved: lost' : 'Saved: sprouted'); await prpAfter(id); });
+    await guard(async () => { await api('POST', `/api/propagations/${id}/events`, { kind, n: f.elements.n.value }); toast(kind === 'lost' ? 'Saved: lost' : kind === 'sown' ? 'Saved: sown' : 'Saved: sprouted'); await prpAfter(id); });
+  },
+  async prptest(f) {
+    if (!(await needName())) return;
+    const id = f.dataset.id, e = f.elements;
+    if (+e.sound.value > +e.tested.value) { toast('More were sound than were tested. Check the two numbers.'); e.sound.focus(); return; }
+    await guard(async () => { const r = await api('POST', `/api/propagations/${id}/events`, { kind: 'test', how: e.how.value, tested: e.tested.value, sound: e.sound.value, discard: e.discard.checked });
+      toast(`${r.card.last_test.word} saved: ${r.card.last_test.result}`); await prpAfter(id); });
+  },
+  async prpphotos(f) {
+    if (!(await needName())) return;
+    const id = f.dataset.id, files = [...f.elements.files.files];
+    if (!files.length) return;
+    const fd = new FormData(); files.forEach(x => fd.append('files', x, x.name || 'photo.jpg')); fd.append('caption', f.elements.caption.value);
+    await guard(async () => { await api('POST', `/api/propagations/${id}/photos`, null, fd); toast(files.length === 1 ? 'Photo added' : `${files.length} photos added`); await prpAfter(); });
   },
   async prpstageadd(f) {
     if (!(await needName())) return;

@@ -6,6 +6,14 @@ python3 dev/test/propagation_check.py      Screenshots: dev/tmp/shots/propagatio
 import json, os, sys, urllib.error, urllib.request
 from datetime import date, timedelta
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from waits import until
+import re
+_src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'names_check.py'), encoding='utf-8').read()      # the same two rules as the `names` check, on this prototype's own pages
+NAMES, CONTRAST = (re.search(r"^%s = r'''(.*?)'''" % k, _src, re.S | re.M).group(1) for k in ('NAMES', 'CONTRAST'))
+def spoken(pg, where):
+    bad = pg.evaluate(NAMES); low = pg.evaluate(CONTRAST)
+    check(not bad and not low, f'{where}: every control\'s spoken name holds the words it shows, and all text is at 7 to 1' + ('' if not bad and not low else ': ' + '; '.join((bad + low)[:4])))
 BASE = 'http://127.0.0.1:8080'
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
 fails, errs = [], []
@@ -95,6 +103,14 @@ check(status('PUT', f'/api/propagations/stages/{sid[2]}', dict(action='done')) =
 call('POST', f"/api/propagations/{s['id']}/events", dict(kind='sprouted', n=6, on_date=iso(1)))
 c5 = call('GET', f"/api/propagations/{s['id']}")
 check(c5['sprouted'] == 6 and c5['left'] == 20, 'six sprouted is counted; the lot has not made plants yet')
+# ---- a seed lot keeps what was done with the seed: a float or cut test, sowing, and sprouting counted from the seeds sown
+t1 = call('POST', f"/api/propagations/{s['id']}/events", dict(kind='test', how='float', tested=20, sound=16, discard=True))['card']
+check(t1['last_test']['word'] == 'Float test' and t1['last_test']['result'] == '16 of 20 sound' and t1['last_test']['sound_pct'] == 80 and t1['lost'] == 4 and t1['left'] == 16,
+      'a float test keeps how many were tried and how many were sound, and the floaters come off the lot')
+t2 = call('POST', f"/api/propagations/{s['id']}/events", dict(kind='sown', n=16))['card']
+check(t2['sown'] == 16 and t2['sprout_of'] == 16 and t2['sprout_pct'] == 38, 'with 16 sown, the 6 sprouts are 38% of those sown (not of the 20 collected)')
+check(status('POST', f"/api/propagations/{s['id']}/events", dict(kind='sown', n=5)) == 400 and status('POST', f"/api/propagations/{s['id']}/events", dict(kind='test', how='cut', tested=3, sound=4)) == 400
+      and status('POST', f"/api/propagations/{a['id']}/events", dict(kind='sown', n=1)) == 400, 'no more can be sown than the lot holds, no more sound than tested, and a cutting has no sowing')
 sp = call('POST', f"/api/propagations/{s['id']}/promote", dict(common_name='Red oak seedling', scientific_name='Quercus rubra', site='Outdoors'))
 check(sp['card']['status'] == 'active' and sp['card']['children'][0]['name'] == 'Red oak seedling' and call('GET', f"/api/plants/{sp['code']}")['scientific_name'] == 'Quercus rubra',
       'a seed lot with no parent plant makes a named plant and stays open for more seedlings')
@@ -119,6 +135,12 @@ g2 = call('GET', f"/api/propagations/{g['id']}")
 check(g2['title'] == 'Renamed cutting' and g2['hormone'] == 'Powder' and g2['check_every'] == 3 and status('PUT', f"/api/propagations/{g['id']}", dict(count=0)) == 400, 'details can be changed, with the same checks')
 check(call('DELETE', f"/api/propagations/{g['id']}") == dict(removed=True) and status('GET', f"/api/propagations/{g['id']}") == 404, 'a record that made nothing can be removed')
 h = call('POST', '/api/propagations', dict(method='stem', parent_code=parent, count=3, started_on=iso(9), medium='Water'))        # due today, for the pictures
+lot = call('POST', '/api/propagations', dict(method='seed', species='Quercus shumardii', title='Shumard oak acorns', count=24, started_on=iso(3), collected_on=iso(5), collected_at='under the big oak by the trail',
+                                             stages=[dict(kind='cold', days=60)]))                                            # an open seed lot, for the page
+from PIL import Image
+PICS = []
+for i, colour in enumerate(((120, 84, 50), (70, 110, 60))):
+    f = os.path.join(OUT, f'propagation-seed-{i}.jpg'); Image.new('RGB', (640, 480), colour).save(f, 'JPEG'); PICS.append(f)
 due_n = A()['counts']['due']
 with sync_playwright() as p:
     br = p.chromium.launch()
@@ -163,6 +185,31 @@ with sync_playwright() as p:
     kid = call('GET', f'/api/propagations/{nid}')['children']
     check(len(kid) == 1 and 'Potted up as' in pg.inner_text('#toasts') and kid[0]['code'] in pg.inner_text('#prp-made'), 'Pot it up makes the plant, says its code, and lists it under Plants made')
     check(call('GET', f"/api/plants/{kid[0]['code']}")['site'] == 'Covered porch', 'in the place chosen')
+    # a seed lot's page: the float test, sowing, photos
+    lp = f"/#/propagating/{lot['id']}"
+    pg.goto(BASE + lp); until(pg, lambda: pg.inner_text('main h1').startswith('Shumard oak acorns') and pg.locator('#prp-photos').count() == 1)
+    check('Collected' in pg.inner_text('.verdict-box') and 'under the big oak by the trail' in pg.inner_text('.verdict-box'), 'a seed lot says when and where the seed was collected')
+    pg.select_option('form[data-form=prptest] select[name=how]', 'float'); pg.fill('form[data-form=prptest] input[name=tested]', '24'); pg.fill('form[data-form=prptest] input[name=sound]', '20')
+    pg.click('form[data-form=prptest] button[type=submit]')
+    check(until(pg, lambda: 'Float test: 20 of 24 sound (83%)' in pg.inner_text('.verdict-box')) and 'Float test: 20 of 24 sound' in pg.inner_text('#prp-history') and call('GET', f"/api/propagations/{lot['id']}")['lost'] == 4,
+          'the float test is saved with both numbers, shown at the top and in what happened, and the four floaters come off the lot')
+    pg.fill('form[data-form=prpcount]:has(input[value=sown]) input[name=n]', '20'); pg.click('form[data-form=prpcount]:has(input[value=sown]) button[type=submit]')
+    check(until(pg, lambda: '20 sown.' in pg.inner_text('.verdict-box')), 'sowing is recorded with its number')
+    pg.fill('form[data-form=prpcount]:has(input[value=sprouted]) input[name=n]', '5'); pg.click('form[data-form=prpcount]:has(input[value=sprouted]) button[type=submit]')
+    check(until(pg, lambda: '5 sprouted (25% of the 20 sown)' in pg.inner_text('.verdict-box')), 'sprouts are counted from the seeds sown: 5 of 20 is 25%')
+    pg.fill('form[data-form=prpphotos] input[name=caption]', 'Acorns after the float test'); pg.set_input_files('form[data-form=prpphotos] input[name=files]', PICS)
+    pg.click('form[data-form=prpphotos] button[type=submit]')
+    check(until(pg, lambda: pg.locator('#prp-photos figure').count() == 2) and pg.inner_text('#prp-photos h2') == 'Photos (2)', 'two photos are added to the attempt')
+    alts = pg.locator('#prp-photos img').evaluate_all('els => els.map(e => e.alt)')
+    check(all(a.startswith('Shumard oak acorns, photo ') and a.endswith('Acorns after the float test') for a in alts) and until(pg, lambda: pg.evaluate("[...document.querySelectorAll('#prp-photos img')].every(i => i.complete && i.naturalWidth > 0)")),
+          'each photo loads and says what it shows')
+    pg.screenshot(path=os.path.join(OUT, 'propagation-8-seedlot.png'), full_page=True)
+    spoken(pg, 'a seed lot\'s page')
+    for route, wait in (('/#/propagating', '#prp-going'), ('/#/propagating/new', 'form[data-form=prpnew]'), ('/#/propagating/family', '#prp-tree'), ('/#/', '#today-prop')):
+        pg.goto(BASE + route); pg.wait_for_selector(wait); pg.wait_for_timeout(500); spoken(pg, route)
+    pg.goto(BASE + lp); until(pg, lambda: pg.inner_text('main h1').startswith('Shumard oak acorns') and pg.locator('#prp-photos').count() == 1)
+    pg.locator('#prp-photos [data-act=prpphotodel]').first.click(); pg.locator('dialog[open] button:has-text("Remove it")').click()
+    check(until(pg, lambda: pg.locator('#prp-photos figure').count() == 1) and len(call('GET', f"/api/propagations/{lot['id']}")['photos']) == 1, 'Remove takes a photo off the page after asking')
     # the family tree
     pg.goto(BASE + '/#/propagating/family'); pg.wait_for_selector('#prp-tree')
     tree_text = pg.inner_text('#prp-tree')
@@ -181,15 +228,20 @@ with sync_playwright() as p:
     pg.goto(BASE + '/#/search'); pg.wait_for_timeout(300)
     call('POST', '/api/propagations', dict(method='stem', parent_code=parent, count=2, started_on=iso(12), medium='Water'))     # something due, so Today shows the section
     # phone, light and dark with large text
-    for name, disp in (('phone-light', {}), ('phone-dark-big', {'theme': 'dark', 'size': '160'})):
+    for name, disp in (('phone-light', {}), ('phone-dark-big', {'theme': 'dark', 'size': '160'}), ('phone-largest', {'size': '190'})):
         ph = br.new_page(viewport={'width': 390, 'height': 844}, device_scale_factor=2)
         ph.on('pageerror', lambda e: errs.append(str(e)))
         ph.add_init_script("localStorage.setItem('plantdb.editor','Prop Test');localStorage.setItem('plantdb.display', JSON.stringify(%s))" % json.dumps(disp))
-        for route, wait, tag in (('/#/propagating', '#prp-going', 'list'), (f"/#/propagating/{s['id']}", '#prp-steps', 'one'), ('/#/propagating/new', 'form[data-form=prpnew]', 'new'), ('/#/propagating/family', '#prp-tree', 'family'), ('/#/', '#today-prop', 'today')):
+        for route, wait, tag in (('/#/propagating', '#prp-going', 'list'), (f"/#/propagating/{s['id']}", '#prp-steps', 'one'), (f"/#/propagating/{lot['id']}", '#prp-photos', 'seedlot'), ('/#/propagating/new', 'form[data-form=prpnew]', 'new'), ('/#/propagating/family', '#prp-tree', 'family'), ('/#/', '#today-prop', 'today')):
             ph.goto(BASE + route); ph.wait_for_selector(wait); ph.wait_for_timeout(700)
             over = ph.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth')
             check(over <= 0, f'{name}, {tag}: nothing scrolls sideways ({over}px)')
-            if tag in ('one', 'family', 'new'):
+            if tag == 'seedlot':
+                cut = ph.evaluate("""() => [...document.querySelectorAll('#prp-photos img, form[data-form=prptest] input, form[data-form=prptest] select, form[data-form=prpphotos] input, #prp-record button')]
+                    .filter(e => { const r = e.getBoundingClientRect(); return r.width && (r.left < -1 || r.right > innerWidth + 1); }).length""")
+                check(cut == 0, f'{name}, seed lot: no photo, box or button is cut off at the edge ({cut})')
+            if name == 'phone-dark-big' and tag in ('seedlot', 'list', 'family'): spoken(ph, f'{name}, {tag}')
+            if tag in ('one', 'family', 'new', 'seedlot'):
                 ph.screenshot(path=os.path.join(OUT, f'propagation-7-{tag}-{name}.png'))
         ph.close()
     # people who can only view do not see the buttons
