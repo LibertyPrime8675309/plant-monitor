@@ -40,7 +40,7 @@
   - `weather_runs`
   - `locations`: weather places; one is "home".
   - `settings`: key/value. Includes `frost_done` (plants ticked off for a cold night) and `claude_copied_at` (when "Copy my answers for Claude" last ran).
-- **Field kinds:** text, long, list (one item per line), int, num and enum. Enums are winter plan, health and site (where the plant is: Outdoors, Covered porch, Indoors, Garage or shed). `norm()` validates, and `INT_RANGES` / `NUM_RANGES` bound the numbers.
+- **Field kinds:** text, long, list (one item per line), int, num, enum and date (1.58.0: a day kept as `YYYY-MM-DD` or empty, never in the future; `acquired_on` is the first). Enums are winter plan, health and site (where the plant is: Outdoors, Covered porch, Indoors, Garage or shed). `norm()` validates, and `INT_RANGES` / `NUM_RANGES` bound the numbers.
 - **Edits:**
   - `apply_changes()` writes only the changed fields, then `bump()` raises the page version and writes a snapshot plus audit rows.
   - `PUT /api/plants/<code>` needs `base_version` and refuses stale edits with a 409.
