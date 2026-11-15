@@ -102,6 +102,14 @@ def layout_boards(sheet):
         z += LAYOUT_BOARD_IN + (gaps[i] if i < n - 1 else 0)
     return out, round(z, 2)
 
+def layout_levels(sheet):
+    """The levels of one of the record's shelves, for a shelf drawn as one block on a room's layout: [{n, name, z, room}], the bottom
+    one first. z is the height of that level's top above the foot of the shelf, and room the clear height above it (none for the top
+    level). The page lets a plant stand on any of them (js/layouts.js, lySurf). [] when the measurements do not give the levels."""
+    boards, _ = layout_boards(sheet)
+    return [{'n': i + 1, 'name': b['name'], 'z': round(b['z'] + LAYOUT_BOARD_IN, 2),
+             'room': round(boards[i + 1]['z'] - b['z'] - LAYOUT_BOARD_IN, 2) if i + 1 < len(boards) else None} for i, b in enumerate(boards)]
+
 def layout_start(c, area, spot):
     """What a layout of a room or area (spot None) or of a shelf would start with: {width_in, depth_in, height_in, items, notes}.
     A shelf: its own width and depth, its levels as boards when its measurements give them, and room above the top level. A room:
@@ -150,7 +158,8 @@ def layout_item_dict(c, it):
     gone is set when the record no longer has it, and the name it had when it was drawn is kept.
     A plant also carries what its page says: its height (page_h; it is that tall here too), the daily light it needs (need) and
     where the record has it (rec, a place number, and rec_label). A light carries its maker's figures (pts: [inches, PAR, sq ft]),
-    the brightness steps it has (dims), and the hours and brightness it is drawn with. A shelf carries its place's name (place)."""
+    the brightness steps it has (dims), and the hours and brightness it is drawn with. A shelf carries its place's name (place),
+    and its levels when its measurements give them (levels, layout_levels), so a plant can be put on one of them."""
     d = {k: it[k] for k in ('id', 'kind', 'name', 'shape', 'x', 'y', 'z', 'w', 'd', 'h', 'notes', 'sort')}
     d.update(locked=bool(it['locked']), plant=it['plant_code'], light_id=it['light_id'], spot_id=it['spot_id'], gone=False)
     if it['kind'] == 'light':
@@ -171,10 +180,10 @@ def layout_item_dict(c, it):
             d.update(name=L['name'], near_in=near, far_in=far, owned=L['count'], pts=[list(p) for p in pts],
                      dims=sorted({int(x) for x in (specs.get('dimming') or [100]) if 0 < int(x) <= 100} | {100}, reverse=True))
     elif it['spot_id']:
-        sp = c.execute('SELECT name FROM spots WHERE id=?', (it['spot_id'],)).fetchone()
+        sp = c.execute('SELECT * FROM spots WHERE id=?', (it['spot_id'],)).fetchone()
         if sp is None: d['gone'] = True
         else:
-            d.update(name=sp[0], place=place_label(c, it['spot_id']))
+            d.update(name=sp['name'], place=place_label(c, it['spot_id']), levels=layout_levels(sheet_of(sp)), board_in=LAYOUT_BOARD_IN)
             own = c.execute('SELECT id FROM layouts WHERE spot_id=? AND id<>? ORDER BY id LIMIT 1', (it['spot_id'], it['layout_id'])).fetchone()
             d['layout_id'] = own[0] if own else None                      # this shelf's own layout, to open from here
     return d

@@ -28,7 +28,10 @@ const LY_PREF = 'plantdb.layouts';                 // this device's own choices:
 const lyPref = () => { try { return JSON.parse(localStorage.getItem(LY_PREF) || '{}') || {}; } catch (e) { return {}; } };
 const lyPrefSave = p => { try { localStorage.setItem(LY_PREF, JSON.stringify({ ...lyPref(), ...p })); } catch (e) { /* this visit only */ } };
 const lyPrefEach = p => { const each = lyPref().each || {}; each[LY.d.id] = { ...(each[LY.d.id] || {}), ...p }; lyPrefSave({ each }); };       // kept for each layout: its view and the size of its drawing
-const LY_WORD = { outside: 'Sticks out', overlap: 'Overlap', zone: 'In an area to keep clear', tight: 'Tight', floating: 'Nothing under it', nearlight: 'Close to a light', dim: 'Too dim', bright: 'Too bright', count: 'More than you own' };
+const LY_WORD = { outside: 'Sticks out', overlap: 'Overlap', zone: 'In an area to keep clear', tight: 'Tight', floating: 'Nothing under it', nearlight: 'Close to a light', toodim: 'Too dim', dim: 'A bit dim', bright: 'A bit bright', toobright: 'Too bright', count: 'More than you own' };
+// A plant's light against what it needs is a mark of its own kind (Ethan, November 15, 2026: marks for more than too dim and too bright).
+const LY_LV = { too_dim: 'toodim', dim: 'dim', bright: 'bright', too_bright: 'toobright' }, lyIsLv = k => k === 'toodim' || k === 'dim' || k === 'bright' || k === 'toobright';
+const LY_LV_SIGN = { too_dim: '▼▼', dim: '▼', good: '✓', bright: '▲', too_bright: '▲▲', unknown: '?' };       // as Grow lights has them (LV_ICON in js/lights.js)
 const LY_NAMES = { other: ['Humidifier', 'Fan', 'Heater', 'Heat mat', 'Sensor', 'Table', 'Chair', 'Watering can', 'Storage box'], zone: ['Walkway', 'Door', 'Window', 'Heating vent', 'Outlet'] };
 const r2 = n => Math.round(n * 100) / 100;
 const lyNum = n => String(Math.round(n * 1000) / 1000);
@@ -51,23 +54,44 @@ function lyPlan(a, b) {
   const dx = Math.max(a.x - b.x - b.w, b.x - a.x - a.w), dy = Math.max(a.y - b.y - b.d, b.y - a.y - a.d);
   return dx > 0 || dy > 0 ? Math.hypot(Math.max(dx, 0), Math.max(dy, 0)) : Math.max(dx, dy);
 }
-// Up and down: the gap between two things, or minus how much height they share.
-const lyUp = (a, b) => Math.max(a.z - b.z - b.h, b.z - a.z - a.h);
 const lyNm = it => `${it.name} (${it.sort})`;       // the number is the one drawn on it
+// ---------- shelves with levels ----------
+// One of the record's shelves drawn as a block on a room's layout carries its levels when its measurements give them (levels:
+// [{ n, name, z: the height of that level's top above the block's foot, room: the clear height above it, none for the top one }]).
+// Such a block is not solid: its boards are, and a thing may stand on any of them, with the room between them open.
+//   lyLv(b)      its levels (none for anything else)
+//   lySolids(b)  a thing's solid parts, as { z, h }; every part has the thing's own footprint
+//   lySurf(b)    the places on it to stand: { b, n (0 for a plain top), z, room, name }
+//   lyRoom(t, b) how much room thing t has above it before the nearest part of b over it: { gap, name }, or null
+const lyLv = b => (b.kind === 'shelf' && b.levels && b.levels.length ? b.levels.filter(v => v.z <= b.h + 0.05) : []);
+const lySolids = b => { const lv = lyLv(b), t = b.board_in || 0.75; return lv.length ? lv.map(v => ({ z: b.z + v.z - t, h: t, lv: v })) : [b]; };
+const lySurf = b => { const lv = lyLv(b); return lv.length ? lv.map(v => ({ b, n: v.n, z: r2(b.z + v.z), room: v.room, name: `${v.name} of ${lyNm(b)}` })) : [{ b, n: 0, z: r2(b.z + b.h), room: null, name: lyNm(b) }]; };
+const lyOnSurf = (a, b) => lySurf(b).find(q => Math.abs(q.z - a.z) < 0.05) || null;      // the surface of b that a stands on
+function lyRoom(t, b) {
+  let best = null;
+  for (const q of lySolids(b)) if (q.z >= t.z + t.h - LY_EPS && (!best || q.z < best.q.z)) best = { q };
+  return best ? { gap: best.q.z - t.z - t.h, name: best.q.lv ? `${best.q.lv.name} of ${lyNm(b)}` : lyNm(b) } : null;
+}
+// Up and down: the gap between two things (between their nearest solid parts), or minus how much height they share.
+function lyUp(a, b) {
+  let m = Infinity;
+  for (const p of lySolids(a)) for (const q of lySolids(b)) m = Math.min(m, Math.max(p.z - q.z - q.h, q.z - p.z - p.h));
+  return m;
+}
 const lySizeWords = it => lyRound(it) ? `${lenF(it.w)} across, ${lenF(it.h)} tall` : `${lenF(it.w, false)} by ${lenF(it.d, false)} by ${lenF(it.h)}`;
 // What a thing stands on: 'floor', the thing whose top it rests on, or null (it is in the air, or reaches into something).
 function lyUnder(L, a) {
   if (Math.abs(a.z) < 0.05) return 'floor';
-  return L.items.find(b => b !== a && b.kind !== 'zone' && b.kind !== 'light' && lyPlan(a, b) < -LY_EPS && Math.abs(b.z + b.h - a.z) < 0.05) || null;
+  return L.items.find(b => b.id !== a.id && b.kind !== 'zone' && b.kind !== 'light' && lyPlan(a, b) < -LY_EPS && lySolids(b).some(q => Math.abs(q.z + q.h - a.z) < 0.05)) || null;
 }
 // What a thing hangs under: 'top' (the top of the space), the thing whose underside its top touches, or null.
 function lyOver(L, a) {
   if (Math.abs(a.z + a.h - L.height_in) < 0.05) return 'top';
-  return L.items.find(b => b !== a && b.kind !== 'zone' && lyPlan(a, b) < -LY_EPS && Math.abs(b.z - a.z - a.h) < 0.05) || null;
+  return L.items.find(b => b.id !== a.id && b.kind !== 'zone' && lyPlan(a, b) < -LY_EPS && lySolids(b).some(q => Math.abs(q.z - a.z - a.h) < 0.05)) || null;
 }
 function lyWhere(L, a) {
   const u = lyUnder(L, a), o = a.kind === 'light' && !u ? lyOver(L, a) : null;
-  const up = o === 'top' ? 'at the top of the space' : o ? `under ${lyNm(o)}` : u === 'floor' ? 'on the floor' : u ? `on ${lyNm(u)}` : `${lenF(r1(a.z))} off the floor`;
+  const up = o === 'top' ? 'at the top of the space' : o ? `under ${lyNm(o)}` : u === 'floor' ? 'on the floor' : u ? `on ${(lyOnSurf(a, u) || { name: lyNm(u) }).name}` : `${lenF(r1(a.z))} off the floor`;
   return `${lenF(r1(a.x))} from the left, ${lenF(r1(a.y))} from the back, ${up}`;
 }
 // ---------- light from the drawing ----------
@@ -110,9 +134,11 @@ function lyLightOn(L, pl, li) {
   out.far = !!li.far_in && dist > li.far_in + LY_EPS; out.close = dist < near - LY_EPS;
   out.by = L.items.find(b => {                          // a board or other thing that the straight line from the light to the plant's top goes through
     if (b === li || b === pl || (b.kind !== 'shelf' && b.kind !== 'other')) return false;
-    const lo = Math.max(b.z, top), hi = Math.min(b.z + b.h, src); if (hi - lo < LY_EPS) return false;
-    const t = ((lo + hi) / 2 - top) / up;
-    return lyInPlan(b, cx + (sx - cx) * t, cy + (sy - cy) * t);
+    return lySolids(b).some(q => {
+      const lo = Math.max(q.z, top), hi = Math.min(q.z + q.h, src); if (hi - lo < LY_EPS) return false;
+      const t = ((lo + hi) / 2 - top) / up;
+      return lyInPlan(b, cx + (sx - cx) * t, cy + (sy - cy) * t);
+    });
   }) || null;
   return out;
 }
@@ -190,7 +216,8 @@ function lyTallHtml(it) {                               // under a plant's size 
 }
 function lyTallSave(it) {                               // the height drawn is right as it is (a guess that was good, or one typed before its page lost it): it goes on the page
   const id = it.id; lyPageH(it, it.h); LY.tall = id;
-  lyUndoPush(`${it.name}: height saved on its page`, 'height saved', async () => { const t = lyItem(id); if (!t) return; lyPageH(t, null); LY.tall = null; lyDrawAll(); await lySaveItem(t, t, { page_h: null }); });
+  const page = h => async () => { const t = lyItem(lyCur(id)); if (!t) return; lyPageH(t, h == null ? null : t.h); LY.tall = null; lyDrawAll(); await lySaveItem(t, t, { page_h: h == null ? null : t.h }); };
+  lyUndoPush(`${it.name}: height saved on its page`, 'height saved', page(null), page(true));
   lyPanel(); lyLists(); lySay(`${it.name} is now ${lenF(it.h)} tall on its page. Undo takes that back.`);
   lySaveItem(it, it, { page_h: it.h });
   const b = document.getElementById('ly-f-h'); if (b) b.focus({ preventScroll: true });
@@ -206,7 +233,8 @@ function lyPageH(it, h) {                               // what the plant's page
 //   nearlight        the top of a plant is closer to the light over it than the nearest distance the light's figures give (3 in for a light with none)
 //   tight            a plant is closer to something than the room to leave around a plant (clear_in), beside it or above it
 //   floating         a plant or other thing has nothing under it
-//   dim, bright      a plant the drawn lights reach gets much less, or much more, light from them than its page says it needs (lyLight)
+//   toodim, dim, bright, toobright   a plant the drawn lights reach gets less, or more, light from them than its page says it needs,
+//                    by a lot or by a little (lyLight)
 //   count            more of one light are drawn than are owned
 // The answer also carries the light each plant gets (its own `light`: lyLight), worked out once for the marks and the words.
 function lyFindings(L) {
@@ -231,7 +259,11 @@ function lyFindings(L) {
       if (p < -LY_EPS && v < -LY_EPS) out.push({ kind: 'zone', ids: [t.id, z.id], text: `${lyNm(t)} is in the area to keep clear, ${lyNm(z)}.` });
       continue;
     }
-    if (p < -LY_EPS && v < -LY_EPS) { out.push({ kind: 'overlap', hard: true, ids: [a.id, b.id], text: `${lyNm(a)} and ${lyNm(b)} overlap by ${lenF(r1(Math.min(-p, -v)))}.` }); continue; }
+    if (p < -LY_EPS && v < -LY_EPS) {                    // on a level of a shelf and reaching into the level above: said as what it is
+      const [t, sh] = lyLv(b).length ? [a, b] : lyLv(a).length ? [b, a] : [null, null], on = t && lyOnSurf(t, sh);
+      out.push({ kind: 'overlap', hard: true, ids: [a.id, b.id], text: on && on.room != null && t.h > on.room + LY_EPS ? `${lyNm(t)} is too tall for ${on.name} by ${lenF(r1(t.h - on.room))}.` : `${lyNm(a)} and ${lyNm(b)} overlap by ${lenF(r1(Math.min(-p, -v)))}.` });
+      continue;
+    }
     const [pl, li] = a.kind === 'plant' && b.kind === 'light' ? [a, b] : b.kind === 'plant' && a.kind === 'light' ? [b, a] : [null, null];
     if (pl && p < LY_EPS && li.z >= pl.z + pl.h - LY_EPS) {                 // a plant with a light straight over it
       const gap = li.z - pl.z - pl.h, near = li.near_in || 3;
@@ -240,23 +272,23 @@ function lyFindings(L) {
     }
     if (!clear || (a.kind !== 'plant' && b.kind !== 'plant')) continue;
     if (v < -LY_EPS && p < clear - LY_EPS) out.push({ kind: 'tight', ids: [a.id, b.id], text: p < 0.05 ? `${lyNm(a)} and ${lyNm(b)} touch.` : `${lyNm(a)} and ${lyNm(b)} are ${lenF(r1(p))} apart.` });
-    else if (p < -LY_EPS && v < clear - LY_EPS) {                           // one over the other: a plant with little room above it
-      const [lo, hi] = a.z <= b.z ? [a, b] : [b, a];
-      if (lo.kind === 'plant') out.push({ kind: 'tight', ids: [lo.id, hi.id], text: v < 0.05 ? `The top of ${lyNm(lo)} touches ${lyNm(hi)}.` : `There is ${lenF(r1(v))} between the top of ${lyNm(lo)} and ${lyNm(hi)}.` });
+    else if (p < -LY_EPS) for (const [lo, hi] of [[a, b], [b, a]]) {          // one over the other: a plant with little room above it
+      const r = lo.kind === 'plant' ? lyRoom(lo, hi) : null;
+      if (r && r.gap < clear - LY_EPS) out.push({ kind: 'tight', ids: [lo.id, hi.id], text: r.gap < 0.05 ? `The top of ${lyNm(lo)} touches ${r.name}.` : `There is ${lenF(r1(r.gap))} between the top of ${lyNm(lo)} and ${r.name}.` });
     }
   }
   const stuck = new Set(out.filter(f => f.hard).flatMap(f => f.ids));
   for (const a of items) {
     if ((a.kind !== 'plant' && a.kind !== 'other') || a.z < 0.05 || stuck.has(a.id)) continue;
-    let under = null;
-    for (const b of items) if (b !== a && solid(b) && lyPlan(a, b) < -LY_EPS && b.z + b.h <= a.z + 0.05 && (!under || b.z + b.h > under.z + under.h)) under = b;
-    const gap = a.z - (under ? under.z + under.h : 0);
+    let under = null, at = 0;
+    for (const b of items) if (b !== a && solid(b) && lyPlan(a, b) < -LY_EPS) for (const q of lySolids(b)) if (q.z + q.h <= a.z + 0.05 && q.z + q.h > at) { at = q.z + q.h; under = b; }
+    const gap = a.z - at;
     if (gap > 0.05) out.push({ kind: 'floating', ids: [a.id], text: `${lyNm(a)} has nothing under it: it is ${lenF(r1(gap))} above ${under ? lyNm(under) : 'the floor'}.` });
   }
   const light = lyLight(L);
   for (const [id, x] of light) {
-    if (x.verdict !== 'too_dim' && x.verdict !== 'too_bright') continue;
-    out.push({ kind: x.verdict === 'too_dim' ? 'dim' : 'bright', ids: [id], text: `${lyNm(items.find(a => a.id === id))} gets about ${lyMol(x.dli)} from the lights drawn here, and needs ${fmt(x.need.lo, 1)} to ${fmt(x.need.hi, 1)}.` });
+    if (!LY_LV[x.verdict]) continue;
+    out.push({ kind: LY_LV[x.verdict], ids: [id], text: `${lyNm(items.find(a => a.id === id))} gets about ${lyMol(x.dli)} from the lights drawn here, and needs ${fmt(x.need.lo, 1)} to ${fmt(x.need.hi, 1)}.` });
   }
   const drawn = {};
   for (const a of items) if (a.kind === 'light' && a.light_id) (drawn[a.light_id] = drawn[a.light_id] || []).push(a);
@@ -279,8 +311,38 @@ function lyFree(L, t, margin) {
     const p = lyPlan(t, b), v = lyUp(t, b);
     if (p < -LY_EPS && v < -LY_EPS) return false;                 // this keeps a new thing out of an area to keep clear, too
     if (b.kind === 'zone' || t.kind === 'zone' || !margin) return true;
-    return !(v < -LY_EPS && p < margin - LY_EPS) && !(p < -LY_EPS && v < margin - LY_EPS && b.z >= t.z + t.h - LY_EPS);
+    const r = p < -LY_EPS ? lyRoom(t, b) : null;
+    return !(v < -LY_EPS && p < margin - LY_EPS) && !(r && r.gap < margin - LY_EPS);
   });
+}
+// Puts a thing on one place to stand (q: from lySurf, or null for the floor). Already over that shelf, it keeps its place and
+// changes height; else it goes to the first place on it that is clear, from the back left; else to its back left corner, and the
+// marks say what it runs into.
+function lyPutOn(L, it, q) {
+  const z = r2(q ? q.z : 0);
+  if (!q || lyInPlan(q.b, it.x + it.w / 2, it.y + it.d / 2)) return { ...it, z };
+  const T = { ...L, items: L.items.filter(b => b.id !== it.id) }, g = Math.max(+L.grid_in || 1, 0.5), step = g * Math.max(1, Math.floor(Math.min(it.w, it.d) / (2 * g))), s = q.b;
+  for (const margin of it.kind === 'plant' && +L.clear_in ? [+L.clear_in, 0] : [0])
+    for (let y = Math.max(s.y, 0); y + it.d <= s.y + s.d + LY_EPS; y += step) for (let x = Math.max(s.x, 0); x + it.w <= s.x + s.w + LY_EPS; x += step) {
+      const t = { ...it, x: r2(x), y: r2(y), z }; if (lyFree(T, t, margin)) return t;
+    }
+  return { ...it, x: r2(Math.max(s.x, 0)), y: r2(Math.max(s.y, 0)), z };
+}
+// A thing that rests on something goes with what is under it when it is moved sideways (dragged or stepped in the top view, or its
+// place typed). was: the thing before the move. Still over what it stood on, it keeps its height. Over another shelf or thing, it
+// goes onto it: on a shelf with levels, the lowest level it fits on with nothing in its way, else the lowest it is not too tall
+// for, else the top. Over nothing, it goes down to the floor. A thing in the air (a hanging light, a basket) keeps its height, and
+// so do a shelf, an area to keep clear, and a thing whose middle has left the space. This is how a plant is dropped onto a shelf.
+function lyLand(L, it, was) {
+  if (it.kind === 'zone' || it.kind === 'shelf') return;
+  const u = lyUnder(L, was); if (!u) return;
+  const cx = it.x + it.w / 2, cy = it.y + it.d / 2;
+  if (cx < -LY_EPS || cy < -LY_EPS || cx > L.width_in + LY_EPS || cy > L.depth_in + LY_EPS) return;
+  if (u !== 'floor' && lyInPlan(u, cx, cy)) return;
+  const b = L.items.filter(q => q.id !== it.id && (q.kind === 'shelf' || q.kind === 'other') && lyInPlan(q, cx, cy)).sort((p, q) => p.w * p.d - q.w * q.d)[0];
+  if (!b) { it.z = 0; return; }
+  const T = { ...L, items: L.items.filter(q => q.id !== it.id) }, all = lySurf(b), fits = all.filter(q => q.room == null || it.h <= q.room + LY_EPS);
+  it.z = (fits.find(q => lyFree(T, { ...it, z: q.z }, 0)) || fits[0] || all[all.length - 1]).z;
 }
 // Where a new thing goes: the first place it is clear of everything, level by level from the bottom (the floor, then the top of
 // each shelf or other thing), from the back left corner across. on: a shelf to try first (the one chosen on the drawing). A thing
@@ -288,18 +350,18 @@ function lyFree(L, t, margin) {
 // free it goes to the back left corner of that shelf, or of the space, and the marks say what it runs into.
 function lyPlace(L, it, on, hangs) {
   const g = Math.max(+L.grid_in || 1, 0.5), step = g * Math.max(1, Math.floor(Math.min(it.w, it.d) / (2 * g)));
-  const tops = L.items.filter(b => (b.kind === 'shelf' || b.kind === 'other') && b !== on).sort((a, b) => a.z + a.h - b.z - b.h);
-  const levels = hangs ? [on || null] : it.kind === 'zone' ? [null] : (on ? [on, null] : [null]).concat(tops);
-  for (const margin of it.kind === 'plant' && +L.clear_in ? [+L.clear_in, 0] : [0]) for (const s of levels) {
-    const x0 = s ? Math.max(s.x, 0) : 0, y0 = s ? Math.max(s.y, 0) : 0, x1 = s ? s.x + s.w : L.width_in, y1 = s ? s.y + s.d : L.depth_in;
-    const z = hangs ? (s ? s.z : L.height_in) - it.h : (s ? s.z + s.h : 0);
+  const tops = L.items.filter(b => (b.kind === 'shelf' || b.kind === 'other') && b !== on).flatMap(lySurf).sort((a, b) => a.z - b.z);
+  const levels = hangs ? [on ? { b: on } : null] : it.kind === 'zone' ? [null] : (on ? lySurf(on).concat([null]) : [null]).concat(tops);      // each a place to stand (lySurf), or null for the floor
+  for (const margin of it.kind === 'plant' && +L.clear_in ? [+L.clear_in, 0] : [0]) for (const q of levels) {
+    const s = q ? q.b : null, x0 = s ? Math.max(s.x, 0) : 0, y0 = s ? Math.max(s.y, 0) : 0, x1 = s ? s.x + s.w : L.width_in, y1 = s ? s.y + s.d : L.depth_in;
+    const z = hangs ? (s ? s.z : L.height_in) - it.h : (q ? q.z : 0);
     for (let y = y0; y + it.d <= y1 + LY_EPS; y += step) for (let x = x0; x + it.w <= x1 + LY_EPS; x += step) {
       const t = { ...it, x: r2(x), y: r2(y), z: r2(z) };
       if (lyFree(L, t, margin)) return t;
     }
   }
   const s = it.kind === 'zone' ? null : on || null;
-  return { ...it, x: s ? r2(Math.max(s.x, 0)) : 0, y: s ? r2(Math.max(s.y, 0)) : 0, z: r2(Math.max(0, hangs ? (s ? s.z : L.height_in) - it.h : s ? s.z + s.h : 0)) };
+  return { ...it, x: s ? r2(Math.max(s.x, 0)) : 0, y: s ? r2(Math.max(s.y, 0)) : 0, z: r2(Math.max(0, hangs ? (s ? s.z : L.height_in) - it.h : s ? lySurf(s)[0].z : 0)) };
 }
 // The level being shown in the top view, when one is chosen: the things standing on that shelf, up to the next shelf above it.
 function lyDim(L, level) {
@@ -348,9 +410,10 @@ function lyDrawnStep(L, S) {                            // the squares drawn: th
   return step;
 }
 const lyItTf = (L, it, view) => `translate(${lyNum(it.x)} ${lyNum(view === 'top' ? it.y : L.height_in - it.z - it.h)})`;
-const lyItCls = (it, o) => `ly-it ly-k-${it.kind}${o.state.get(it.id) ? ' is-' + o.state.get(it.id) : ''}${o.sel === it.id ? ' is-sel' : ''}${it.locked ? ' is-locked' : ''}${o.dim && o.dim.has(it.id) ? ' is-dim' : ''}${o.can && !it.locked ? ' can-move' : ''}`;
+const lyItCls = (it, o) => `ly-it ly-k-${it.kind}${lyLv(it).length ? ' ly-open' : ''}${o.state.get(it.id) ? ' is-' + o.state.get(it.id) : ''}${o.sel === it.id ? ' is-sel' : ''}${it.locked ? ' is-locked' : ''}${o.dim && o.dim.has(it.id) ? ' is-dim' : ''}${o.can && !it.locked ? ' can-move' : ''}`;
+const lyTopOf = it => (lyLv(it).length ? it.z + lyLv(it)[0].z : it.z + it.h);      // seen from above, a shelf with levels is drawn under what stands in it
 function lyItLabel(L, it, F) {
-  const mine = (F || []).filter(f => f.ids.includes(it.id)), said = mine.some(f => f.kind === 'dim' || f.kind === 'bright');       // a plant marked too dim is already told its light
+  const mine = (F || []).filter(f => f.ids.includes(it.id)), said = mine.some(f => lyIsLv(f.kind));       // a plant marked for its light is already told it
   return `${it.sort}. ${it.name}, ${(L.kinds || LYL.kinds)[it.kind].toLowerCase()}. ${lySizeWords(it)}. ${lyWhere(L, it)}.${it.locked ? ' Locked in place.' : ''}${said ? '' : lyLightWords(L, F, it)}${mine.length ? ' ' + mine.map(f => f.text).join(' ') : ''}`;
 }
 // One thing in one view, in pixels: its size, the disc its number sits in, and where that disc goes. A pot's number is in its
@@ -374,7 +437,7 @@ const lyAlong = it => (it.kind === 'light' ? [0.3, 0.7, 0.15, 0.85, 0.4, 0.6] : 
 function lyLabSpots(L, view, o) {
   const out = new Map(), taken = [], faint = it => !!(o.dim && o.dim.has(it.id));
   const all = L.items.filter(it => !faint(it)).map(it => ({ it, g: lyGeo(it, view, o), x: it.x * o.S, y: (view === 'top' ? it.y : L.height_in - it.z - it.h) * o.S }));
-  for (const { it, g, x, y } of all) if (!g.along) { taken.push([x + g.bx, y + g.by, g.br]); if (o.state.get(it.id)) taken.push([x + g.fx, y + g.fy, g.br]); }
+  for (const { it, g, x, y } of all) if (!g.along) { taken.push([x + g.bx, y + g.by, g.br]); if (o.state.get(it.id)) taken.push([x + g.fx, y + g.fy, g.br]); const lv = lyLvAt(it, g, o); if (lv) taken.push([x + lv.x, y + lv.y, g.br]); }
   for (const { it, g, x, y } of all) if (g.along) {
     const clear = f => taken.every(([tx, ty, tr]) => Math.hypot(tx - x - g.wpx * f, ty - y - g.hpx / 2) > tr + g.br + 1), tries = lyAlong(it), f = tries.find(clear) || tries[0];
     out.set(it.id, f); taken.push([x + g.wpx * f, y + g.hpx / 2, g.br]);
@@ -395,17 +458,28 @@ function lyItemInner(L, it, view, o) {
     ${shape('ly-shape', `stroke-width="${u(2.5)}"${it.kind === 'zone' || it.kind === 'light' ? ` stroke-dasharray="${u(7)} ${u(4)}"` : ''}`)}
     ${photo ? html`<clipPath id="${cid}">${shape('ly-clip')}</clipPath><image class="ly-photo" href="${thumbUrl(it.photo)}" width="${lyNum(w)}" height="${lyNum(h)}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${cid})"/>${shape('ly-rim', `stroke-width="${u(2.5)}"`)}` : ''}
     ${it.kind === 'zone' ? shape('ly-zfill', `fill="url(#ly-z-${o.id})"`) : ''}
+    ${top ? '' : lyLv(it).map(v => html`<rect class="ly-board" y="${lyNum(h - v.z)}" width="${lyNum(w)}" height="${lyNum(it.board_in || 0.75)}"/>`)}
     ${it.kind === 'light' && Math.min(wpx, hpx) >= 1.3 * rem ? html`<g class="ly-sun" transform="translate(${lyNum(w / 2)} ${lyNum(h / 2)})"><circle r="${u(0.22 * rem)}"/><circle class="ly-rays" r="${u(0.45 * rem)}" stroke-width="${u(0.2 * rem)}" stroke-dasharray="${u(0.12 * rem)} ${u(0.233 * rem)}"/></g>` : ''}
     ${shape('ly-hatch ly-hatch-h', `fill="url(#ly-hh-${o.id})"`)}${shape('ly-hatch ly-hatch-s', `fill="url(#ly-hs-${o.id})"`)}`;
 }
+// A plant's light, as the sign Grow lights gives it, in that verdict's colour: where the thing's mark would be when it has none,
+// else beside the mark (or under it on a narrow thing). Only for a plant the drawn lights reach.
+function lyLvAt(it, g, o) {
+  const x = it.kind === 'plant' && !o.mini && o.F && o.F.light && o.F.light.any ? o.F.light.get(it.id) : null;
+  if (!x || !x.reached || !LY_LV_SIGN[x.verdict]) return null;
+  const marked = !!o.state.get(it.id), wide = g.wpx >= 6.2 * g.br;
+  return { v: x.verdict, x: marked && wide ? g.fx - 2 * g.br - 2 : g.fx, y: marked && !wide ? g.fy + 2 * g.br + 2 : g.fy };
+}
+const lyLvKey = (it, o) => { const x = it.kind === 'plant' && o.F && o.F.light && o.F.light.any ? o.F.light.get(it.id) : null; return x && x.reached ? `${x.verdict}${o.state.get(it.id) ? '!' : ''}` : ''; };
 function lyItemLab(L, it, view, o) {
-  const { w, h, wpx, hpx, br, inside, far, bx, by, fx, fy } = lyGeo(it, view, o), u = n => lyNum(n / o.S), fs = 0.8 * o.rem;
+  const g = lyGeo(it, view, o), { w, h, wpx, hpx, br, inside, far, bx, by, fx, fy } = g, u = n => lyNum(n / o.S), fs = 0.8 * o.rem, lv = lyLvAt(it, g, o);
   // its name along its lower edge: in the middle, or for a shelf seen from above, from the left as far as its number in the corner
   const chars = Math.floor((wpx - 8 - (far ? 2 * br + 8 : 0)) / (fs * 0.56)), named = !o.mini && chars >= 4 && hpx >= (inside && !far ? 2 * br + 8 : 0) + fs * 1.5;
   const name = named ? (it.name.length > chars ? it.name.slice(0, chars - 1).trimEnd() + '…' : it.name) : '';
   return html`${o.mini ? '' : html`<g class="ly-badge" transform="translate(${u(bx)} ${u(by)})"><circle r="${u(br)}" stroke-width="${u(1.5)}"/><text font-size="${u(Math.min(fs, br * 1.3))}" text-anchor="middle" dominant-baseline="central">${it.sort}</text></g>`}
     <g class="ly-flag" transform="translate(${u(fx)} ${u(fy)})"><circle r="${u(br)}" stroke-width="${u(1.5)}"/>
       <text class="ly-flag-h" font-size="${u(br * 1.4)}" text-anchor="middle" dominant-baseline="central">✗</text><text class="ly-flag-s" font-size="${u(br * 1.5)}" text-anchor="middle" dominant-baseline="central">!</text></g>
+    ${lv ? html`<g class="ly-lvb ly-lvb-${lv.v}" transform="translate(${u(lv.x)} ${u(lv.y)})"><circle r="${u(br)}" stroke-width="${u(1.5)}"/><text font-size="${u(br * (LY_LV_SIGN[lv.v].length > 1 ? 0.82 : 1.25))}" text-anchor="middle" dominant-baseline="central">${LY_LV_SIGN[lv.v]}</text></g>` : ''}
     ${name ? html`<text class="ly-name" x="${far ? u(6) : lyNum(w / 2)}" y="${lyNum(h - 6 / o.S)}" font-size="${u(fs)}" stroke-width="${u(4)}" text-anchor="${far ? 'start' : 'middle'}">${name}</text>` : ''}`;
 }
 const lyLabCls = (it, o) => lyItCls(it, o).replace('ly-it', 'ly-lab');
@@ -429,7 +503,7 @@ function lySvg(L, view, o) {
   if (!o.along) o = { ...o, along: lyLabSpots(L, view, o) };
   const step = lyDrawnStep(L, S), major = step * lyMajor(step);
   const faint = it => !!(o.dim && o.dim.has(it.id));
-  const order = L.items.slice().sort((a, b) => faint(b) - faint(a) || (b.kind === 'zone') - (a.kind === 'zone') || (top ? a.z + a.h - b.z - b.h : a.y + a.d - b.y - b.d) || a.sort - b.sort);
+  const order = L.items.slice().sort((a, b) => faint(b) - faint(a) || (b.kind === 'zone') - (a.kind === 'zone') || (top ? lyTopOf(a) - lyTopOf(b) : a.y + a.d - b.y - b.d) || a.sort - b.sort);
   const sel = o.live && o.sel != null ? L.items.find(x => x.id === o.sel) : null;
   const stop = lyTabStop(L, o);                         // the one thing in this drawing that Tab lands on
   const pat = (id, size, cls, sw, oy) => html`<pattern id="${id}" width="${lyNum(size)}" height="${lyNum(size)}" y="${lyNum(oy)}" patternUnits="userSpaceOnUse"><path class="${cls}" d="M ${lyNum(size)} 0 H 0 V ${lyNum(size)}" fill="none" stroke-width="${u(sw)}"/></pattern>`;
@@ -444,7 +518,7 @@ function lySvg(L, view, o) {
     ${top ? '' : html`<line class="ly-floor" x1="${lyNum(-m)}" x2="${lyNum(W + m)}" y1="${lyNum(V)}" y2="${lyNum(V)}" stroke-width="${u(5)}"/>`}
     ${order.map(it => html`<g class="${lyItCls(it, o)}" data-id="${it.id}" transform="${lyItTf(L, it, view)}" ${o.live && !(o.dim && o.dim.has(it.id))
       ? raw(`tabindex="${it.id === stop ? 0 : -1}" role="button" aria-pressed="${o.sel === it.id}" aria-describedby="ly-keys" aria-label="${esc(lyItLabel(L, it, o.F))}"`) : raw('aria-hidden="true"')}>${lyItemInner(L, it, view, o)}</g>`)}
-    ${order.map(it => html`<g class="${lyLabCls(it, o)}" data-id="${it.id}" transform="${lyItTf(L, it, view)}" aria-hidden="true">${lyItemLab(L, it, view, o)}</g>`)}
+    ${order.map(it => html`<g class="${lyLabCls(it, o)}" data-id="${it.id}" data-lv="${lyLvKey(it, o)}" transform="${lyItTf(L, it, view)}" aria-hidden="true">${lyItemLab(L, it, view, o)}</g>`)}
     ${sel ? lySelMark(L, sel, view, o) : ''}
   </svg>`;
 }
@@ -518,7 +592,7 @@ const lyViewNow = () => LY.view === 'both' && lyNarrow() ? LY.fview : LY.view;
 async function viewLayout(id, qs) {
   const d = await api('GET', `/api/layouts/${enc(id)}?_=${Date.now()}`), p = lyPref(), mine = (p.each || {})[d.id] || {}, same = LY && LY.d.id === d.id;
   LY = { d, sel: same ? LY.sel : null, fview: same ? LY.fview : 'top', view: ['top', 'front', 'both'].includes(mine.view) ? mine.view : d.area_id && !d.spot_id ? 'top' : 'both', zoom: clamp(+mine.zoom || 1, 0.5, 4), level: same ? LY.level : 'auto',
-    grid: p.grid !== false, photos: p.photos !== false, more: !!p.more, undo: same ? LY.undo : [], lastLv: same ? LY.lastLv : 0, Sv: { top: 1, front: 1 }, mv: {}, mode: 'one', order: ['top', 'front'], rem: 16, F: [], q: Promise.resolve() };
+    grid: p.grid !== false, photos: p.photos !== false, more: !!p.more, undo: same ? LY.undo : [], redo: same ? LY.redo : [], ids: same ? LY.ids : new Map(), lastLv: same ? LY.lastLv : 0, Sv: { top: 1, front: 1 }, mv: {}, mode: 'one', order: ['top', 'front'], rem: 16, F: [], q: Promise.resolve() };
   const sel = +qs.get('sel'); if (sel && d.items.some(x => x.id === sel)) LY.sel = sel;
   if (LY.sel && !lyItem(LY.sel)) LY.sel = null;
   return { title: d.name + ' layout', html: html`<p class="crumb ly-crumb"><span><a class="noprint" href="#/layouts">All layouts</a> <span class="muted" id="ly-sub"></span></span></p>
@@ -532,7 +606,8 @@ async function viewLayout(id, qs) {
         <section class="blk" id="ly-find"><h2>To look at</h2><div id="ly-find-body"></div>
           <details class="ly-fold ly-key" id="ly-marks"><summary class="btn small ghost"><span>What the marks mean</span></summary><ul>
             <li><strong><span aria-hidden="true">✗ </span>A cross and close bars:</strong> it overlaps something, or sticks out of the space.</li>
-            <li><strong><span aria-hidden="true">! </span>An exclamation mark and wide bars:</strong> something to look at. It is tight, close to a light, too dim or too bright under the lights drawn here, in an area to keep clear, or has nothing under it.</li>
+            <li><strong><span aria-hidden="true">! </span>An exclamation mark and wide bars:</strong> something to look at. It is tight, close to a light, in an area to keep clear, has nothing under it, or gets more or less light than it needs.</li>
+            <li><strong><span aria-hidden="true">▼▼ ▼ ✓ ▲ ▲▲ </span>A sign for its light:</strong> on each plant that the lights drawn here reach. Too dim, a bit dim, good, a bit bright, too bright, against what its page says it needs. Red is too much or too little, amber is a bit, green is good. A plant with no sign gets no light from the lights drawn.</li>
             <li><strong>A dashed outline:</strong> a grow light, with a sun in it, or an area to keep clear, with thin bars.</li>
             <li><strong>A ring round it:</strong> the chosen thing. The square on its corner changes its size.</li>
             <li><strong>Faint:</strong> on another level than the one the top view is showing.</li></ul></details>
@@ -541,7 +616,7 @@ async function viewLayout(id, qs) {
             <li><strong>Page Down</strong> and <strong>Page Up</strong> go to the next and the previous thing, and choose it.</li>
             <li><strong>The arrow keys</strong> move the thing one square; with <strong>Shift</strong>, five. In the front view, Up and Down stop at each shelf.</li>
             <li><strong>Enter</strong> or <strong>Space</strong> chooses the thing; <strong>Escape</strong> chooses nothing.</li>
-            <li><strong>Delete</strong> takes the thing off the layout. <strong>Ctrl+Z</strong> takes back the last change.</li></ul></details></section>
+            <li><strong>Delete</strong> takes the thing off the layout. <strong>Ctrl+Z</strong> takes back the last change, and <strong>Ctrl+Y</strong> does it again.</li></ul></details></section>
       </div>
     </div>
     <section class="blk" id="ly-things"><h2>On this layout</h2><div id="ly-things-body"></div></section>
@@ -644,7 +719,7 @@ function lyHead() {
 }
 function lyToolsDraw() {
   const box = document.getElementById('ly-tools'); if (!box) return;
-  const L = LY.d, can = lyCan(), view = lyViewNow(), cm = lenU() === 'cm', levels = lyLevels(L), last = LY.undo[LY.undo.length - 1];
+  const L = LY.d, can = lyCan(), view = lyViewNow(), cm = lenU() === 'cm', levels = lyLevels(L), last = LY.undo[LY.undo.length - 1], again = LY.redo[LY.redo.length - 1];
   const grids = (cm ? [1, 2, 5, 10, 20, 30].map(x => [r2(x / 2.54), `${x} cm`]) : L.grids.map(x => [x, x === 12 ? '1 ft' : `${x} in`]));
   if (!grids.some(([v]) => Math.abs(v - L.grid_in) < 0.006)) grids.push([L.grid_in, lenF(L.grid_in)]);
   const keep = document.activeElement && box.contains(document.activeElement) ? (document.activeElement.id || '') : '';
@@ -652,7 +727,8 @@ function lyToolsDraw() {
   box.innerHTML = rend(html`<fieldset class="ly-viewset"><legend class="sr">Which view to show</legend><div class="opts">${[['top', 'Top view'], ['front', 'Front view']].concat(lyNarrow() ? [] : [['both', 'Both']]).map(([v, w]) =>
       html`<label><input type="radio" name="lyview" id="ly-v-${v}" value="${v}" data-act="lyview" ${view === v ? raw('checked') : ''}><span>${w}</span></label>`)}</div></fieldset>
     ${can ? html`<button class="btn" type="button" id="ly-add" data-act="lyadd">Add something</button>
-      <button class="btn ghost" type="button" id="ly-undo" data-act="lyundo" ${last ? raw(`aria-label="${esc(`Undo: ${last.short}. ${last.label}`)}"`) : raw('disabled')}>${last ? `Undo: ${last.short}` : 'Undo'}</button>` : ''}
+      <button class="btn ghost" type="button" id="ly-undo" data-act="lyundo" ${last ? raw(`aria-label="${esc(`Undo: ${last.short}. ${last.label}`)}"`) : raw('disabled')}>${last ? `Undo: ${last.short}` : 'Undo'}</button>
+      <button class="btn ghost" type="button" id="ly-redo" data-act="lyredo" ${again ? raw(`aria-label="${esc(`Redo: ${again.short}. ${again.label}`)}"`) : raw('disabled')}>${again ? `Redo: ${again.short}` : 'Redo'}</button>` : ''}
     <span class="ly-zoom" role="group" aria-label="Size of the drawing"><button class="btn ghost" type="button" id="ly-zout" data-act="lyzoom" data-d="-1" aria-label="Smaller drawing" ${LY.zoom <= 0.5 ? raw('disabled') : ''}>Smaller</button>
       <button class="btn ghost" type="button" id="ly-zin" data-act="lyzoom" data-d="1" aria-label="Larger drawing" ${LY.zoom >= 4 ? raw('disabled') : ''}>Larger</button></span>
     <details class="ly-more" ${LY.more ? raw('open') : ''}><summary class="btn ghost" id="ly-more" data-act="lymore"><span>Grid and settings<span class="ly-more-now">: ${sq} squares, snapping ${L.snap ? 'on' : 'off'}</span></span></summary>
@@ -665,16 +741,20 @@ function lyToolsDraw() {
   if (keep) { const el = document.getElementById(keep); if (el && !el.disabled) el.focus({ preventScroll: true }); else { const b = document.getElementById('ly-add'); if (b) b.focus({ preventScroll: true }); } }
 }
 const lyFindLi = f => html`<li class="ly-f ${f.hard ? 'ly-f-hard' : 'ly-f-soft'}"><span><strong><span aria-hidden="true">${f.hard ? '✗' : '!'} </span>${LY_WORD[f.kind]}:</strong> ${f.text}</span></li>`;
-function lyStandOpts(L, a) {                            // what it could stand on where it is: the floor, and each shelf or other thing under it
-  return [{ v: 'floor', w: 'The floor', z: 0 }].concat(L.items.filter(b => b !== a && (b.kind === 'shelf' || b.kind === 'other') && lyPlan(a, b) < -LY_EPS)
-    .sort((x, y) => x.z + x.h - y.z - y.h).map(b => ({ v: String(b.id), w: lyNm(b), z: r2(b.z + b.h) })));
+// What a thing could stand on: the floor; every shelf on the layout, level by level where it has them, in the order of their
+// numbers; and each other thing that is under it where it is. Choosing one it is not over moves it there (lyPutOn).
+function lyStandOpts(L, a) {
+  return [{ v: 'floor', w: 'The floor', q: null }].concat(L.items.filter(b => b.id !== a.id && (b.kind === 'shelf' || (b.kind === 'other' && lyPlan(a, b) < -LY_EPS)))
+    .flatMap(lySurf).map(q => ({ v: `${q.b.id}:${q.n}`, w: q.name, q })));
 }
-function lyHangOpts(L, a) {                             // what a light could hang under where it is: the top of the space, and each thing over it
-  return [{ v: 'top', w: 'The top of the space', z: r2(L.height_in - a.h) }].concat(L.items.filter(b => b !== a && (b.kind === 'shelf' || b.kind === 'other') && lyPlan(a, b) < -LY_EPS && b.z - a.h >= -LY_EPS)
-    .sort((x, y) => x.z - y.z).map(b => ({ v: String(b.id), w: lyNm(b), z: r2(b.z - a.h) })));
+function lyHangOpts(L, a) {                             // what a light could hang under where it is: the top of the space, and each thing (or each level of a shelf) over it
+  return [{ v: 'top', w: 'The top of the space', z: r2(L.height_in - a.h) }].concat(L.items.filter(b => b.id !== a.id && (b.kind === 'shelf' || b.kind === 'other') && lyPlan(a, b) < -LY_EPS)
+    .flatMap(b => lySolids(b).map((q, n) => ({ b, q, n }))).filter(x => x.q.z - a.h >= -LY_EPS).sort((x, y) => x.q.z - y.q.z)
+    .map(x => ({ v: `${x.b.id}:${x.n}`, w: x.q.lv ? `${x.q.lv.name} of ${lyNm(x.b)}` : lyNm(x.b), z: r2(x.q.z - a.h) })));
 }
 function lyRestHtml(L, it, ro) {                        // the boxes that depend on what is under and over the thing, drawn again as it moves
-  const u = lyUnder(L, it), uv = u === 'floor' ? 'floor' : u ? String(u.id) : '', o = it.kind === 'light' ? lyOver(L, it) : null, ov = o === 'top' ? 'top' : o ? String(o.id) : '';
+  const u = lyUnder(L, it), on = u && u !== 'floor' ? lyOnSurf(it, u) : null, uv = u === 'floor' ? 'floor' : on ? `${u.id}:${on.n}` : '';
+  const o = it.kind === 'light' ? lyOver(L, it) : null, ov = o === 'top' ? 'top' : o ? `${o.id}:${lySolids(o).findIndex(q => Math.abs(q.z - it.z - it.h) < 0.05)}` : '';
   const sel = (id, k, label, opts, cur, none) => html`<label class="f">${label}<select id="${id}" data-act="lyset" data-k="${k}" ${ro}>${cur === '' ? html`<option value="" selected>${none}</option>` : ''}
     ${opts.map(x => html`<option value="${x.v}" ${x.v === cur ? raw('selected') : ''}>${x.w}</option>`)}</select></label>`;
   return html`${it.kind === 'zone' ? '' : sel('ly-f-on', 'on', 'Stands on', lyStandOpts(L, it), uv, it.kind === 'light' && ov ? 'Nothing: it hangs' : 'Nothing: it is in the air')}
@@ -726,10 +806,11 @@ function lyLists() {                                    // what to look at, ever
   fb.innerHTML = rend(F.length ? html`<ul class="ly-flist">${F.map(f => html`<li class="ly-f ${f.hard ? 'ly-f-hard' : 'ly-f-soft'}"><span><strong><span aria-hidden="true">${f.hard ? '✗' : '!'} </span>${LY_WORD[f.kind]}:</strong> ${f.text}</span>
       <button class="btn small ghost" type="button" data-act="lypick" data-id="${f.ids[0]}" aria-label="Show it: ${(lyItem(f.ids[0]) || {}).name || 'on the drawing'}">Show it</button></li>`)}</ul>`
     : html`<p class="muted">${L.items.length ? 'Nothing to look at: everything fits.' : 'Nothing yet.'}</p>`);
-  const tags = it => F.filter(f => lyMarked(f).includes(it.id)).map(f => f.kind).filter((k, i, a) => a.indexOf(k) === i).map(k => html` <span class="ly-tag ${['outside', 'overlap'].includes(k) ? 'ly-tag-hard' : 'ly-tag-soft'}"><span aria-hidden="true">${['outside', 'overlap'].includes(k) ? '✗' : '!'} </span>${LY_WORD[k]}</span>`);
+  const lvOf = it => { const x = it.kind === 'plant' && F.light.any ? F.light.get(it.id) : null; return x && x.reached && LY_LV_SIGN[x.verdict] ? html` ${lvTag(x.verdict, (L.verdicts || {})[x.verdict] || '')}` : ''; };
+  const tags = it => F.filter(f => lyMarked(f).includes(it.id) && !lyIsLv(f.kind)).map(f => f.kind).filter((k, i, a) => a.indexOf(k) === i).map(k => html` <span class="ly-tag ${['outside', 'overlap'].includes(k) ? 'ly-tag-hard' : 'ly-tag-soft'}"><span aria-hidden="true">${['outside', 'overlap'].includes(k) ? '✗' : '!'} </span>${LY_WORD[k]}</span>`);
   document.getElementById('ly-things-body').innerHTML = rend(L.items.length ? html`<ul class="ly-list">${L.items.map(it => html`<li class="ly-row${LY.sel === it.id ? ' is-sel' : ''}${st.get(it.id) ? ' is-' + st.get(it.id) : ''}" data-id="${it.id}">
       ${it.photo ? html`<img src="${thumbUrl(it.photo)}" alt="" loading="lazy">` : html`<span class="ly-nophoto ly-np-${it.kind}" aria-hidden="true"></span>`}
-      <div class="ly-row-main"><div class="ly-row-txt"><span class="ly-num" aria-hidden="true">${it.sort}</span> <strong>${it.plant && !it.gone ? html`<a href="#/plant/${enc(it.plant)}">${it.name}</a>` : it.name}</strong> <span class="muted">${L.kinds[it.kind]}${it.plant ? ', ' : ''}${it.plant ? html`<span class="code">${it.plant}</span>` : ''}</span>${tags(it)}
+      <div class="ly-row-main"><div class="ly-row-txt"><span class="ly-num" aria-hidden="true">${it.sort}</span> <strong>${it.plant && !it.gone ? html`<a href="#/plant/${enc(it.plant)}">${it.name}</a>` : it.name}</strong> <span class="muted">${L.kinds[it.kind]}${it.plant ? ', ' : ''}${it.plant ? html`<span class="code">${it.plant}</span>` : ''}</span>${tags(it)}${lvOf(it)}
         <br><span>${lySizeWords(it)}. ${lyWhere(L, it)[0].toUpperCase() + lyWhere(L, it).slice(1)}.${it.locked ? ' Locked in place.' : ''}${it.gone ? ' No longer in the record.' : ''}${lyLightLine(it)}</span></div>
       <button class="btn small ghost" type="button" data-act="lypick" data-id="${it.id}" aria-label="${LY.sel === it.id ? 'Chosen' : 'Choose'}: ${it.sort}, ${it.name}" ${LY.sel === it.id ? raw('aria-pressed="true"') : ''}>${LY.sel === it.id ? 'Chosen' : 'Choose'}</button></div></li>`)}</ul>`
     : html`<p class="muted">Nothing is on it yet.</p>`);
@@ -762,7 +843,7 @@ function lyRecDraw() {                                  // the plants drawn here
 }
 function lyDrawAll() { if (!lyOn()) return; LY.F = lyFindings(LY.d); lyHead(); lyToolsDraw(); lyDrawViews(); lyPanel(); lyLists(); }
 function lySay(text) { const el = document.getElementById('ly-say'); if (el && text) el.textContent = text; }
-const lySayIt = it => lySay(`${it.name}: ${lyWhere(LY.d, it)}.${LY.F.some(f => f.ids.includes(it.id) && (f.kind === 'dim' || f.kind === 'bright')) ? '' : lyLightLine(it)} ${LY.F.filter(f => f.ids.includes(it.id)).map(f => f.text).join(' ')}`);
+const lySayIt = it => lySay(`${it.name}: ${lyWhere(LY.d, it)}.${LY.F.some(f => f.ids.includes(it.id) && lyIsLv(f.kind)) ? '' : lyLightLine(it)} ${LY.F.filter(f => f.ids.includes(it.id)).map(f => f.text).join(' ')}`);
 
 // ---------- changing a layout ----------
 // A thing moved or changed size while being dragged or stepped: only what changed on the page is touched, so the thing keeps the
@@ -780,7 +861,9 @@ function lyLive(it, inner) {
     svg.querySelectorAll('g.ly-lab').forEach(g => {
       const t = lyItem(+g.dataset.id); if (!t) return;
       const cls = lyLabCls(t, o); if (g.getAttribute('class') !== cls) g.setAttribute('class', cls);
-      if (t === it) { g.setAttribute('transform', lyItTf(LY.d, t, view)); if (inner) g.innerHTML = rend(lyItemLab(LY.d, t, view, o)); }
+      const lv = lyLvKey(t, o), again = g.dataset.lv !== lv; if (again) g.dataset.lv = lv;                 // its light changed as something moved
+      if (t === it) g.setAttribute('transform', lyItTf(LY.d, t, view));
+      if ((t === it && inner) || again) g.innerHTML = rend(lyItemLab(LY.d, t, view, o));
     });
     const mark = svg.querySelector('.ly-selmark');
     if (mark && +mark.dataset.id === it.id) mark.outerHTML = rend(lySelMark(LY.d, it, view, o));
@@ -824,20 +907,26 @@ async function lyNotSaved(e, lid) {
   if (!LY || LY.d.id !== lid) return;
   try { await lyReload(); } catch (e2) { LY.stale = true; lyDrawAll(); }
 }
-// What can be taken back: label says it whole ("Fig moved"), short is the word on the Undo button ("moved").
-function lyUndoPush(label, short, fn) { LY.undo.push({ label, short, fn }); if (LY.undo.length > 40) LY.undo.shift(); lyToolsDraw(); }
+// What can be taken back, and done again: label says it whole ("Fig moved"), short is the word on the Undo button ("moved"),
+// undo takes it back and redo does it again. A new change empties what could be done again. A thing that was taken off and put
+// back has a new number in the record: LY.ids says which (lyCur), so older changes still find it.
+function lyUndoPush(label, short, undo, redo) { LY.undo.push({ label, short, undo, redo }); if (LY.undo.length > 40) LY.undo.shift(); LY.redo = []; lyToolsDraw(); }
+const lyCur = id => { while (LY.ids.has(id)) id = LY.ids.get(id); return id; };
 // A change to a thing is done: draw it properly (what is in front of what may have changed), keep it for Undo, and save it.
 // panel: 'full' draws the chosen thing's boxes again; otherwise they are only filled in, so a box being typed in keeps the keyboard.
 function lyCommit(it, was, what, panel) {
   const keys = LY_KEYS.filter(k => it[k] !== was[k]); if (!keys.length) return;
   const id = it.id, back = {}; keys.forEach(k => { back[k] = was[k]; });
   const tall = keys.includes('h') && lyPaged(it), pageWas = was.page_h == null ? null : was.page_h;      // a plant's height is saved on its page too, and Undo puts back what the page said
+  const fwd = {}; keys.forEach(k => { fwd[k] = it[k]; });
   if (tall) { lyPageH(it, it.h); LY.tall = id; }
-  LY.undo.push({ label: `${it.name} ${what}`, short: what, fn: async () => {
-    const t = lyItem(id); if (!t) return; const now = { ...t }; Object.assign(t, back); if (tall) { lyPageH(t, pageWas); LY.tall = null; }
-    lyDrawAll(); await lySaveItem(t, now, tall ? { page_h: pageWas } : null);
-  } });
+  const put = (vals, page) => async () => {              // its changed values as they were, or as they became; a plant's page height with them
+    const t = lyItem(lyCur(id)); if (!t) return; const now = { ...t }; Object.assign(t, vals); if (tall) { lyPageH(t, page); LY.tall = null; }
+    lyDrawAll(); await lySaveItem(t, now, tall ? { page_h: page } : null);
+  };
+  LY.undo.push({ label: `${it.name} ${what}`, short: what, undo: put(back, pageWas), redo: put(fwd, fwd.h) });
   if (LY.undo.length > 40) LY.undo.shift();
+  LY.redo = [];
   LY.F = lyFindings(LY.d); lyHead(); lyToolsDraw(); lyDrawViews();
   if (panel === 'full') lyPanel(); else lyPanelPatch();
   lyLists();
@@ -879,22 +968,35 @@ async function lyAddItems(specs, placed, where) {
   const before = new Set(L.items.map(x => x.id));
   await guard(async () => {
     const d = await api('POST', `/api/layouts/${L.id}/items`, { items: body }), added = d.items.filter(x => !before.has(x.id));
-    lyUndoPush(added.length === 1 ? `${added[0].name} put on` : `${added.length} things put on`, added.length === 1 ? 'put on' : `${added.length} put on`, async () => { for (const x of added) await api('DELETE', '/api/layouts/items/' + x.id); await lyReload(); });
+    let gone = [];                                        // while they are taken back: [the id each had, what it was]
+    lyUndoPush(added.length === 1 ? `${added[0].name} put on` : `${added.length} things put on`, added.length === 1 ? 'put on' : `${added.length} put on`,
+      async () => { gone = added.map(x => [x.id, lyItem(lyCur(x.id))]).filter(([, t]) => t).map(([i, t]) => [i, lySpec(t)]); for (const [i] of gone) await api('DELETE', '/api/layouts/items/' + lyCur(i)); await lyReload(); },
+      async () => {
+        if (!gone.length) return;
+        const had = new Set(LY.d.items.map(x => x.id)), r = await api('POST', `/api/layouts/${LY.d.id}/items`, { items: gone.map(([, spec]) => spec) }), back = r.items.filter(x => !had.has(x.id));
+        gone.forEach(([i], n) => { if (back[n]) LY.ids.set(lyCur(i), back[n].id); });
+        lyTake(r, back.length ? back[back.length - 1].id : undefined);
+      });
     lyTake(d, added.length ? added[added.length - 1].id : undefined);
     const last = added[added.length - 1];
     if (last) { lyFocusIt(last.id, LY.fview); lyShow(last.id); lySay(`${added.length === 1 ? last.name : added.length + ' things'} put on the layout. ${last.name}: ${lyWhere(LY.d, last)}.`); }
   });
 }
+async function lyTakeOff(it) {                          // off the layout, in the record and on the page
+  await api('DELETE', '/api/layouts/items/' + it.id);
+  LY.d.items = LY.d.items.filter(x => x !== it);
+  const p = it.plant && LY.d.plants.find(x => x.code === it.plant); if (p) p.on = false;
+  if (LY.sel === it.id) LY.sel = null;
+  if (LY.level === it.id) LY.level = 'auto';
+}
 async function lyRemove(it) {
   await lyFlush();
-  const spec = lySpec(it), name = it.name;
+  const name = it.name, id = it.id; let spec = lySpec(it);
   await guard(async () => {
-    await api('DELETE', '/api/layouts/items/' + it.id);
-    LY.d.items = LY.d.items.filter(x => x !== it);
-    const p = it.plant && LY.d.plants.find(x => x.code === it.plant); if (p) p.on = false;
-    if (LY.sel === it.id) LY.sel = null;
-    if (LY.level === it.id) LY.level = 'auto';
-    lyUndoPush(`${name} taken off`, 'taken off', async () => { const d = await api('POST', `/api/layouts/${LY.d.id}/items`, { items: [spec] }); lyTake(d); });
+    await lyTakeOff(it);
+    lyUndoPush(`${name} taken off`, 'taken off',
+      async () => { const had = new Set(LY.d.items.map(x => x.id)), d = await api('POST', `/api/layouts/${LY.d.id}/items`, { items: [spec] }), n = d.items.find(x => !had.has(x.id)); if (n) LY.ids.set(lyCur(id), n.id); lyTake(d); },
+      async () => { const t = lyItem(lyCur(id)); if (!t) return; spec = lySpec(t); await lyTakeOff(t); lyDrawAll(); });
     lyDrawAll(); toast(`Taken off the layout: ${name}. Undo puts it back.`);
     const b = document.getElementById('ly-add'); if (b) b.focus({ preventScroll: true });
   });
@@ -902,7 +1004,18 @@ async function lyRemove(it) {
 async function lyUndo() {
   await lyFlush();
   const u = LY.undo.pop(); if (!u) return;
-  await guard(async () => { await u.fn(); toast('Undone: ' + u.label); });
+  if (u.redo) LY.redo.push(u);                          // at once: a change made while this is still being saved empties Redo, and must not be followed by this
+  lyToolsDraw();
+  const ok = await guard(async () => { await u.undo(); toast('Undone: ' + u.label); return true; });
+  if (!ok && LY.redo.includes(u)) LY.redo.splice(LY.redo.indexOf(u), 1);
+  lyToolsDraw();
+}
+async function lyRedo() {                               // does again the change that Undo last took back
+  await lyFlush();
+  const u = LY.redo.pop(); if (!u) return;
+  LY.undo.push(u); lyToolsDraw();
+  const ok = await guard(async () => { await u.redo(); toast('Done again: ' + u.label); return true; });
+  if (!ok && LY.undo.includes(u)) LY.undo.splice(LY.undo.indexOf(u), 1);
   lyToolsDraw();
 }
 async function lyPutLayout(changes, label) {
@@ -910,7 +1023,7 @@ async function lyPutLayout(changes, label) {
   const L = LY.d, back = {}; Object.keys(changes).forEach(k => { back[k] = L[k]; });
   return guard(async () => {
     const d = await api('PUT', '/api/layouts/' + L.id, changes);
-    if (label) lyUndoPush(label, 'size and name', async () => { lyTake(await api('PUT', '/api/layouts/' + L.id, back)); });
+    if (label) lyUndoPush(label, 'size and name', async () => { lyTake(await api('PUT', '/api/layouts/' + L.id, back)); }, async () => { lyTake(await api('PUT', '/api/layouts/' + L.id, changes)); });
     lyTake(d); return true;
   });
 }
@@ -920,15 +1033,16 @@ async function lyPutLayout(changes, label) {
 // or down in the front view it stops on the way at anything it can stand on or hang under, so it lands on a shelf exactly.
 function lyStops(L, it) {                               // heights (of its bottom) at which it would rest on something or hang under something
   const s = [0, L.height_in - it.h];
-  for (const b of L.items) if (b !== it && b.kind !== 'zone' && lyPlan(it, b) < -LY_EPS) { s.push(b.z + b.h); if (it.kind === 'light') s.push(b.z - it.h); }
+  for (const b of L.items) if (b !== it && b.kind !== 'zone' && lyPlan(it, b) < -LY_EPS) for (const q of lySolids(b)) { s.push(q.z + q.h); if (it.kind === 'light') s.push(q.z - it.h); }
   return s.filter(z => z >= -LY_EPS);
 }
 function lyNudge(it, view, dx, dy, n) {
   const L = LY.d, g = +L.grid_in || 1, was = LY.nudge && LY.nudge.id === it.id ? LY.nudge.was : { ...it };
   const step = (v, d) => !d ? v : !L.snap ? v + d * g * n : (d > 0 ? Math.floor(v / g + 1e-6) + n : Math.ceil(v / g - 1e-6) - n) * g;
   const keepIn = (v, size, max) => clamp(v, Math.min(0, g - size), Math.max(0, max - Math.min(g, size)));        // some of it stays in the space
+  const before = { ...it };
   it.x = r2(keepIn(step(it.x, dx), it.w, L.width_in));
-  if (view === 'top') it.y = r2(keepIn(step(it.y, dy), it.d, L.depth_in));
+  if (view === 'top') { it.y = r2(keepIn(step(it.y, dy), it.d, L.depth_in)); lyLand(L, it, before); }
   else if (dy) {
     const from = it.z, to = clamp(step(it.z, -dy), 0, Math.max(0, L.height_in - Math.min(g, it.h)));
     const stop = lyStops(L, it).filter(z => (to > from ? z > from + LY_EPS && z < to - LY_EPS : z < from - LY_EPS && z > to + LY_EPS)).sort((a, b) => (to > from ? a - b : b - a))[0];
@@ -991,7 +1105,7 @@ function lyDragMove(e) {
   } else {
     const keepIn = (v, size, max) => clamp(v, Math.min(0, g - size), Math.max(0, max - Math.min(g, size)));
     it.x = r2(keepIn(snap(w.x + dx), it.w, L.width_in));
-    if (top) it.y = r2(keepIn(snap(w.y + dy), it.d, L.depth_in));
+    if (top) { it.y = r2(keepIn(snap(w.y + dy), it.d, L.depth_in)); it.z = w.z; lyLand(L, it, w); }       // dropped onto a shelf, it stands on it
     else {                                                      // up the screen is up off the floor; near something to stand on or hang under, it goes to it
       const free = clamp(w.z - dy, 0, Math.max(0, L.height_in - Math.min(g, it.h))), near = lyStops(L, it).map(z => [Math.abs(z - free), z]).sort((a, b) => a[0] - b[0])[0];
       it.z = r2(near && near[0] * LY.Sv.front <= 9 ? near[1] : clamp(snap(free), 0, L.height_in));
@@ -1015,8 +1129,7 @@ document.addEventListener('keydown', e => {
   if (!lyOn() || e.defaultPrevented || e.altKey || !e.target.closest) return;
   const g = e.target.closest('g.ly-it'); if (!g) return;
   const view = g.closest('svg').dataset.view, it = lyItem(+g.dataset.id); if (!it) return;
-  if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)) { e.preventDefault(); if (lyCan()) lyUndo(); return; }
-  if (e.ctrlKey || e.metaKey) return;
+  if (e.ctrlKey || e.metaKey) return;                     // Ctrl+Z and Ctrl+Y are heard by the whole page, below
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); lySelect(it.id, view, true); lySayIt(it); return; }
   if (e.key === 'Escape') { if (LY.sel != null) { e.preventDefault(); lyFlush(); lySelect(null); } return; }
   if (e.key === 'PageDown' || e.key === 'PageUp') {              // to the next or the previous thing, in the order of their numbers, and round again
@@ -1034,6 +1147,15 @@ document.addEventListener('keydown', e => {
   if (LY.sel !== it.id) lySelect(it.id, view);
   LY.fview = view;
   if (e.key === 'Delete') lyRemove(it); else lyNudge(it, view, dir[0], dir[1], e.shiftKey ? 5 : 1);
+});
+// Ctrl+Z takes back the last change and Ctrl+Y (or Ctrl+Shift+Z) does it again, anywhere on a layout's page except in a box where
+// typing has its own undo, or while a window is open.
+document.addEventListener('keydown', e => {
+  if (!lyOn() || e.defaultPrevented || e.altKey || !(e.ctrlKey || e.metaKey)) return;
+  const k = e.key.toLowerCase(), redo = k === 'y' || (k === 'z' && e.shiftKey); if (!redo && k !== 'z') return;
+  const t = e.target, typing = t && t.matches && t.matches('input:not([type=checkbox]):not([type=radio]):not([type=button]), textarea, [contenteditable]');
+  if (typing || document.querySelector('dialog[open]') || !lyCan()) return;
+  e.preventDefault(); if (redo) lyRedo(); else lyUndo();
 });
 document.addEventListener('focusout', e => {            // leaving a thing saves its moves, once the keyboard has landed where it was going (so that keeps it)
   if (!LY || !LY.nudge || !e.target.closest || !e.target.closest('g.ly-it')) return;
@@ -1139,6 +1261,7 @@ Object.assign(acts, {
   lynew: () => lyStartDialog(null),
   lyadd: () => lyAddDialog(),
   lyundo: () => lyUndo(),
+  lyredo: () => lyRedo(),
   async lyreload() { try { await lyReload(); toast('The layout is shown as it is saved.'); } catch (e) { toast(e.message, true); } },
   lymore() { LY.more = !LY.more; lyPrefSave({ more: LY.more }); lyToolsDraw(); const b = document.getElementById('ly-more'); if (b) b.focus({ preventScroll: true }); },
   lyspace: () => lySpaceDialog(),
@@ -1186,8 +1309,9 @@ Object.assign(acts, {
     await guard(async () => {
       const d = await api('POST', `/api/layouts/${L.id}/record`, { moves: list.map(x => ({ plant: x.it.plant, place: x.to.pid })) });
       const done = d.moved.filter(m => m.changed), back = done.filter(m => m.from != null).map(m => ({ plant: m.plant, place: m.from }));
+      const move = moves => async () => { lyTake((await api('POST', `/api/layouts/${LY.d.id}/record`, { moves })).layout); };
       if (back.length) lyUndoPush(done.length === 1 ? `${done[0].name} moved in the record` : `${done.length} plants moved in the record`, 'moved in the record',
-        async () => { lyTake((await api('POST', `/api/layouts/${LY.d.id}/record`, { moves: back })).layout); });
+        move(back), move(done.filter(m => m.from != null).map(m => ({ plant: m.plant, place: m.to }))));
       lyTake(d.layout);
       toast(done.length === 1 ? `Moved in your record: ${done[0].name} is now at ${done[0].to_label}. Undo puts it back.` : `${done.length} plants moved in your record. Undo puts them back.`);
       const b = document.getElementById('ly-undo'); if (b) b.focus({ preventScroll: true });
@@ -1209,22 +1333,24 @@ Object.assign(changeActs, {
   async lystep(el) { if (!(await needName()) || !(await lyPutLayout({ grid_in: +el.value }))) lyToolsDraw(); },
   lylevel(el) { LY.level = el.value === 'auto' ? 'auto' : +el.value || 0; lyDrawViews(); },
   async lyset(el) {                                     // a box of the chosen thing was changed: its place, its size, what it stands on, its shape, its lock, its name
+    const val = el.type === 'checkbox' ? el.checked : el.value;       // read now: while this waits for earlier saves, the boxes may be filled in again from the thing as it then is
     await lyFlush();
     const L = LY.d, it = lyItem(LY.sel), k = el.dataset.k; if (!it) return;
     if (!(await needName())) { lyPanel(); return; }
     const was = { ...it }; let what = 'moved', panel = '';
-    if (k === 'locked') { it.locked = el.checked; what = el.checked ? 'locked in place' : 'unlocked'; panel = 'full'; }
-    else if (k === 'shape') { it.shape = el.value; if (el.value === 'round') it.d = it.w; what = 'changed'; panel = 'full'; }
-    else if (k === 'name') { const n = el.value.trim().replace(/\s+/g, ' '); if (!n) { el.value = it.name; return; } it.name = n; what = 'renamed'; }
-    else if (k === 'hours') { const v = parseFloat(String(el.value).replace(',', '.')); if (el.value === '' || isNaN(v)) { el.value = it.hours; return; } it.hours = r2(clamp(v, 0, 24)); what = 'hours changed'; }
-    else if (k === 'dim_pct') { it.dim_pct = clamp(Math.round(+el.value) || 100, 1, 100); what = 'brightness changed'; }
-    else if (k === 'on' || k === 'under') { const o = (k === 'on' ? lyStandOpts(L, it) : lyHangOpts(L, it)).find(x => x.v === el.value); if (!o) return; it.z = o.z; panel = 'rest'; }
+    if (k === 'locked') { it.locked = val; what = val ? 'locked in place' : 'unlocked'; panel = 'full'; }
+    else if (k === 'shape') { it.shape = val; if (val === 'round') it.d = it.w; what = 'changed'; panel = 'full'; }
+    else if (k === 'name') { const n = val.trim().replace(/\s+/g, ' '); if (!n) { el.value = it.name; return; } it.name = n; what = 'renamed'; }
+    else if (k === 'hours') { const v = parseFloat(String(val).replace(',', '.')); if (val === '' || isNaN(v)) { el.value = it.hours; return; } it.hours = r2(clamp(v, 0, 24)); what = 'hours changed'; }
+    else if (k === 'dim_pct') { it.dim_pct = clamp(Math.round(+val) || 100, 1, 100); what = 'brightness changed'; }
+    else if (k === 'on') { const o = lyStandOpts(L, it).find(x => x.v === val); if (!o) return; const t = lyPutOn(L, it, o.q); it.x = t.x; it.y = t.y; it.z = t.z; panel = 'rest'; }
+    else if (k === 'under') { const o = lyHangOpts(L, it).find(x => x.v === val); if (!o) return; it.z = o.z; panel = 'rest'; }
     else {
-      const v = lenIn(el.value), size = 'wdh'.includes(k);
-      if (el.value === '' || isNaN(v) || (size && +v <= 0)) { el.value = lenF(it[k], false); return; }
+      const v = lenIn(val), size = 'wdh'.includes(k);
+      if (val === '' || isNaN(v) || (size && +v <= 0)) { el.value = lenF(it[k], false); return; }
       it[k] = r2(k === 'h' && lyPaged(it) ? clamp(+v, 0.5, 600) : size ? clamp(+v, 0.1, 2400) : clamp(+v, -2400, 4800));      // a plant's height goes on its page, which takes 0.5 to 600 in
       if (k === 'w' && lyRound(was)) it.d = it.w;
-      if (size) what = 'resized';
+      if (size) what = 'resized'; else if (k !== 'z') lyLand(L, it, was);
     }
     lyCommit(it, was, what, panel === 'full' ? 'full' : '');
     if (panel) { const again = document.getElementById(el.id); if (again) again.focus({ preventScroll: true }); }

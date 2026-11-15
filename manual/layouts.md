@@ -1,0 +1,33 @@
+# Room and shelf layouts
+
+Part of the Plant record manual. The README in the folder above has how to start, stop, update and back up the app, and the list of every manual page.
+
+## Room and shelf layouts (prototype)
+
+**Layouts** (Plants → Layouts, after Rooms and spots) draws a room, a porch or one shelf unit to scale, with your plants, grow lights and shelves on it, so you can move things about on the page before you move the real ones. It says how much light each plant gets where it is drawn. Moving a plant on a layout does not change where its page says it is until you press **Move it in the record**; a plant's height typed on a layout is saved on its page.
+
+- **Start a layout.** Choose one of your rooms, areas or shelves, or a space of your own, and give its width, depth and height. A shelf comes with its own size and its levels drawn as boards from **Measurements and photos**; a room starts at 12 by 10 ft (type its real size) with its shelves as blocks along the back wall. On **Rooms and spots**, every room, area and spot has **Lay it out**, which becomes **Open its layout** once it has one.
+- **Two drawings of the same things.** **Top view** looks down (the back at the top); **Front view** looks from the front (the floor at the bottom); **Both** shows them together. On a shelf unit the top view shows one level, the one the chosen thing is on, with the others faint; **Top view shows** in **Grid and settings** changes that.
+- **Add something.** A plant (tick any of yours, or name one you have not bought yet), a grow light from your list, one of your shelves or a board or table you describe, something else (a humidifier, a fan), or an **area to keep clear** such as a walkway or a door. A new thing goes in the first free place; choose a shelf on the drawing first to put it on that shelf, or a light under it. **Here, but not drawn yet** lists the plants the record has at that place, with **Put all on the layout**.
+- **Moving a thing.** Drag it; or choose it and use the arrow keys (one square, or five with Shift; in the front view, Up and Down stop on each shelf; Page Down and Page Up go to the next and the previous thing); or type **From the left**, **From the back** and **Off the floor** in **Chosen thing**; or pick what it **Stands on**. On a touch screen the first touch chooses a thing and the next one drags it.
+- **Putting a plant on a shelf in a room.** On a room's layout each of your shelves is one block, and it knows its levels from **Measurements and photos**.
+  - **Drop it there.** Drag a plant onto the shelf in the top view and it stands on it: on the lowest level that has the room for it and nothing in its way, or on the top if it is too tall for the levels. The arrow keys do the same when they carry it onto the shelf. Drag it off again and it goes down to the floor.
+  - **Stands on** lists the floor, every shelf in the room, and each level of a shelf that has them ("Level 2 of Tall Brown Shelf"). Choose one and the plant goes there: if it is already over that shelf it only changes level, and if not it goes to the first free place on it.
+  - A plant too tall for its level is marked, and told by how much. From the front, such a shelf is drawn as its boards, open between them.
+- **Sizes.** Drag the square on the chosen thing's corner, or type its width, depth and height. **Turn a quarter** swaps its width and depth. A plant with no pot from Pots and trays starts at a guessed width, and says so. **Size and name** changes the space.
+- **A plant's height** is the one on its page (**Height now, with its pot**). Change it on a layout and its page changes too, with a line in its History; change it on its page and every layout follows. A plant whose page has no height keeps the height drawn until you type one, or press **Save this height on its page**.
+- **Light here.** Choose a plant to read how much light it gets where it is drawn (mol/m² a day), from which lights, and whether that is **Too dim**, **A bit dim**, **Good**, **A bit bright** or **Too bright** for what its page says it needs: the same words and figures as Grow lights. Choose a light to set its **Hours a day** and **Brightness**. The number changes as you move the plant or the light. A shelf between a light and a plant shuts the light out. Daylight is not counted.
+- **Move it in the record.** **Somewhere else in your record**, under the lists, names the plants drawn on a layout that your record has in another place. **Move it in the record** puts one where the layout has it (that shelf; on a room's layout, the shelf it stands on, or the room); the button above the list moves all of them, and asks first. **Undo** puts them back.
+- **The grid.** **Grid and settings** has **Snap to the grid**, **Show the grid** and **Squares of** (½ in to 1 ft, or 1 to 30 cm).
+- **What it marks**, while you move things:
+  - **✗ Overlap** and **✗ Sticks out**: two things take up the same room, or a thing is past the edge of the space. A plant too tall for its level overlaps the shelf above.
+  - **! Tight**: a plant is closer to something than the room to leave around a plant (1 in to start with; change it in **Size and name**, or set 0 to turn it off).
+  - **! Close to a light**, **! In an area to keep clear**, **! Nothing under it** and **! More than you own**.
+  - **! Too dim**, **! A bit dim**, **! A bit bright** and **! Too bright**: the lights drawn give a plant less or more light than its page says it needs.
+  - **A sign for its light** on every plant that the drawn lights reach: ▼▼ too dim, ▼ a bit dim, ✓ good, ▲ a bit bright, ▲▲ too bright. Red is too much or too little, amber is a bit, green is good. A plant with no sign gets no light from the lights drawn.
+  - Each mark is bars across the thing and a sign as well as a colour, and is written as a sentence under **To look at**. **What the marks mean** lists them.
+- **Undo and Redo.** **Undo** takes back the changes made on this visit, newest first, and **Redo** does again what Undo took back. **Ctrl+Z** and **Ctrl+Y** do the same from anywhere on the page, except in a box you are typing in. A new change empties Redo.
+- **Also:** **Make a copy**, **Lock in place** and **Take it off the layout** are under the chosen thing's boxes; Delete on the drawing takes the chosen thing off. **Smaller** and **Larger** change the size of the drawing, and each layout remembers its own.
+- A plant's own page says which layouts it is drawn on.
+- People who can only view can look and choose a thing to read its place, its size and its light. Changing a layout needs a connection to the plant server.
+

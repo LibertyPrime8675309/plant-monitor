@@ -19,13 +19,17 @@ The record already holds most of what such a drawing needs: each shelf's measure
   - drag it (on a touch screen, the first touch chooses it and the next one drags it, so the page still scrolls);
   - the arrow keys, one square at a time, five with Shift; in the front view Up and Down stop on each shelf on the way. Each drawing is one stop for the Tab key, and Page Down and Page Up go from thing to thing;
   - type its place in the boxes beside the drawing, or choose what it **Stands on** (and for a light, what it **Hangs under**).
+- **Putting a plant on a shelf in a room** (Ethan, November 15, 2026). On a room's layout each of the record's shelves is one block that knows its levels from its measurements.
+  - A plant dragged onto the block in the top view, or carried onto it by the arrow keys, stands on it: on the lowest level that has the room for it and nothing in its way, else on the top. Dragged off, it goes down to the floor.
+  - **Stands on** lists the floor, every shelf in the room and each level of a shelf that has them. Choosing one puts the plant there.
+  - A plant too tall for its level is told so, and by how much. From the front such a shelf is its boards, open between them.
 - **The grid:** squares of ½, 1, 2, 3, 6 or 12 in (or 1 to 30 cm), with a heavier line each foot. **Snap to the grid** and **Show the grid** can each be turned off.
 - **Sizes:** drag the square on the chosen thing's corner, or type its width, depth and height. **Size and name** changes the space itself. A plant with no pot or height in the record starts at a guess, and its boxes say so.
 - **What it marks**, as you go and while a thing is being dragged:
   - **Overlap** and **Sticks out** (a problem): two things take up the same room, or a thing is past a side, the top or the floor of the space. A plant too tall for its level overlaps the shelf above it.
   - **Tight**: a plant is closer to something, beside it or above it, than the room to leave around a plant (1 in to start with; you set it).
   - **Close to a light**: the top of a plant is closer to the light over it than that light's figures go.
-  - **Too dim** and **Too bright**: the lights drawn here give a plant much less, or much more, light than its page says it needs (below).
+  - **Too dim**, **A bit dim**, **A bit bright** and **Too bright**: the lights drawn here give a plant less, or more, light than its page says it needs (below). Every plant the lights reach also carries the sign Grow lights uses (▼▼ ▼ ✓ ▲ ▲▲) in that verdict's colour: red, amber or green.
   - **In an area to keep clear**, **Nothing under it** (a pot in the air), and **More than you own** (three of a light drawn when you own two).
   - Every mark is bars across the thing and a sign (✗ or !) as well as a colour, and each is a sentence in **To look at**, on the thing's own boxes, in the list of everything on the layout and in what a screen reader is told.
 - **Also:** Undo (each change made on this visit, newest first, and Ctrl+Z on the drawing), Turn a quarter, Make a copy, Lock in place, Take it off the layout, **Smaller** and **Larger** (remembered for each layout), each plant's photo on its pot, and a line on a plant's own page saying which layouts it is drawn on.
@@ -38,6 +42,7 @@ The record already holds most of what such a drawing needs: each shelf's measure
   - **A plant's height.** A plant is as tall on a layout as its page says (**Height now, with its pot**). Type or drag a new height on a layout and it is saved on the plant's page, with a line in its History; change it on its page and every layout follows. A plant whose page has no height keeps the height drawn, and **Save this height on its page** puts it there.
   - **Where a plant is, when you say so.** Moving a plant on the drawing changes nothing in the record. **Somewhere else in your record** lists the plants drawn on a layout that the record has in another place, each with **Move it in the record**, and one button for all of them, which asks first. On a shelf's layout the plant goes to that shelf; on a room's layout, to the shelf it is drawn standing on, or to the room. Each move is a change on the plant's page like any other: a new version and a line in its History.
   - **Undo** takes both back: the height on the page, and the plants' places in the record.
+- **Undo and Redo** (Redo: Ethan, November 15, 2026). Undo takes back the changes of this visit, newest first; **Redo** does again what Undo took back; a new change empties Redo. Each has its button, and Ctrl+Z and Ctrl+Y work anywhere on the page except in a box being typed in.
 - Removing a layout removes the drawing and nothing else.
 - People who can only view see a layout and can choose a thing to read its place, its size, its light and where the record has it; they cannot change it. An editor limited to some homes changes the layouts of those homes only, and through a layout changes only plants at those homes.
 
@@ -65,6 +70,10 @@ Starting a layout from a shelf's **Lay it out** button, and adding things:
 The light a plant gets where it is drawn, in the chosen plant's boxes, and the hours and brightness of the chosen light:
 
 ![Light here: the chosen plant's light, from the strip over it](layouts/laptop-light.png) ![A light's hours a day and brightness](layouts/laptop-light-set.png)
+
+A plant put on a level of a shelf in a room, and "Stands on" with every shelf and level to choose from:
+
+![The chosen plant stands on Level 2 of the Tall Brown Shelf](layouts/laptop-stands-on.png)
 
 Plants drawn in a room that the record has somewhere else, with the buttons that move them in the record:
 
@@ -104,7 +113,8 @@ Then open http://127.0.0.1:8080/#/layouts, press **Start a layout** and choose *
 - A view in three dimensions.
 - The light is said in words and numbers; it is not yet drawn (for example as the pool of light under each lamp).
 - Daylight from windows, and the shade one plant casts on another, are not counted.
-- Grow lights keeps its own spots (which plants are under which light, at what distance). A layout does not change them, and Grow lights does not read layouts.
+- Grow lights keeps its own spots (which plants are under which light, at what distance). A layout does not change them, and Grow lights does not read layouts yet: Ethan has said it should (below), and that is the next piece of work, in a pull request of its own.
+- Moving a shelf on a room's layout does not carry the plants that stand on it.
 - A layout does not change a shelf's measurements in the record when you resize its boards.
 - Choosing several things at once, lining things up, and Redo.
 - A layout cannot be changed offline.
@@ -116,7 +126,14 @@ Then open http://127.0.0.1:8080/#/layouts, press **Start a layout** and choose *
 4. **Light from the drawing, or three dimensions, next?** Light from the drawing. Built; three dimensions is still to do.
 5. **The size of the drawing.** It seems good. Kept.
 
+## What Ethan said later on November 15, 2026
+- **"There should be a Redo button with Ctrl+Y."** Built.
+- **"Preview pictures are very blurry."** In the copy to try, each plant's picture had been shrunk to 184 pixels to keep the page small, and was then shown at two or three times that. The copy now carries the app's own pictures. The app itself was not affected.
+- **"When a plant is added to a room's layout there should be means of putting it on a shelf in the same room,"** by dropping it on the shelf and from "Stands on". Built, with each shelf's levels.
+- **Trying a height** (Undo afterwards): "This is enough currently."
+- **Which light marks:** "I like the color coding marks a lot so having them present for more would be preferred." A bit dim and a bit bright are marks now, and every plant the lights reach carries the light's coloured sign.
+- **Should Grow lights read a shelf's layout?** "Yes." Not built here: it changes the Grow lights page, so it comes as its own pull request with a preview first.
+
 ## Questions for Ethan
-1. **Trying a height.** A plant's height on a layout is now always the height on its page. To see whether a plant would still fit when it is taller, you type the taller height and press **Undo** afterwards. Is that enough, or do you want a way to try a height on a layout without it going on the page?
-2. **Which light marks.** Only **Too dim** and **Too bright** put a mark on a plant; "A bit dim" and "A bit bright" are said in words. And a plant no drawn light reaches is not marked at all, because it may have a window. Right, or should more be marked?
-3. **Grow lights and layouts.** Grow lights has its own spots: a light, a distance, hours, and the plants under it. A layout now holds the same things more exactly. Should Grow lights read a shelf's layout where there is one, so that you set a light up in one place only? That is a larger change, and would be its own piece of work.
+1. **Plants no light reaches.** A plant that the drawn lights do not reach carries no light sign, because it may have a window. Should it carry a grey sign that says "no light drawn reaches it"?
+2. **Dropping onto a shelf.** A plant dropped onto a shelf goes to the lowest level it fits on. Is that the level you would want first, or the top?

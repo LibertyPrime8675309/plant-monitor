@@ -67,6 +67,9 @@
 .ly-k-light>.ly-shape{fill:var(--ochre-soft);stroke:var(--ochre)}
 .ly-k-shelf>.ly-shape{fill:var(--line-2);stroke:var(--ink-2)}
 .ly-k-zone>.ly-shape{fill:none;stroke:var(--ink-2)}
+.ly-board{fill:var(--ink-2)}
+.ly-svg[data-view=front] .ly-open>.ly-shape{fill:none}            /* a shelf with levels, from the front: its boards and its outline, open between, so what stands in it shows and can be pressed */
+.ly-svg[data-view=top] .ly-open>.ly-shape{fill-opacity:.55}
 .ly-through .ly-k-shelf>.ly-shape{fill-opacity:.22}
 .ly-through .ly-lab.ly-k-shelf>.ly-name{display:none}            /* a shelf unit seen from above with every level showing: its boards are see-through */
 .ly-svg[data-view=top] .ly-k-light>.ly-shape{fill-opacity:.45}      /* a light seen from above is over the plants: they show through it */
@@ -89,6 +92,12 @@
 .ly-lab.is-soft>.ly-flag circle{fill:var(--ochre)}
 .ly-flag text{display:none;fill:var(--sheet);font-family:var(--sans);font-weight:700}
 .ly-lab.is-hard>.ly-flag .ly-flag-h,.ly-lab.is-soft>.ly-flag .ly-flag-s{display:inline}
+/* a plant's light, as Grow lights signs it: red too dim or too bright, amber a bit, green good (the sign says which, not the colour alone) */
+.ly-lvb circle{stroke:var(--sheet);fill:var(--ink-2)}
+.ly-lvb text{fill:var(--sheet);font-family:var(--sans);font-weight:700}
+.ly-lvb-good circle{fill:var(--moss)}
+.ly-lvb-dim circle,.ly-lvb-bright circle{fill:var(--ochre)}
+.ly-lvb-too_dim circle,.ly-lvb-too_bright circle{fill:var(--madder)}
 .ly-name{fill:var(--ink);stroke:var(--sheet);paint-order:stroke;stroke-linejoin:round;font-family:var(--sans);font-weight:700}
 .ly-it.is-dim{opacity:.2;pointer-events:none}
 .ly-lab.is-dim{display:none}
@@ -161,7 +170,7 @@
 .ly-wh{margin-left:.4rem}
 #ly-wherelink{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap}
 
-html[data-role=viewer] :is([data-act=lynew], [data-act=lyadd], [data-act=lyundo], [data-act=lyspace], [data-act=lydel], [data-act=lyturn], [data-act=lycopy], [data-act=lyrm], [data-act=lytray], [data-act=lyrec], [data-act=lytall], .ly-handle){display:none!important}
+html[data-role=viewer] :is([data-act=lynew], [data-act=lyadd], [data-act=lyundo], [data-act=lyredo], [data-act=lyspace], [data-act=lydel], [data-act=lyturn], [data-act=lycopy], [data-act=lyrm], [data-act=lytray], [data-act=lyrec], [data-act=lytall], .ly-handle){display:none!important}
 @media (forced-colors:active){
   .ly-svg{forced-color-adjust:none}
   .ly-f,.ly-tag,.ly-card,.ly-num{forced-color-adjust:none;color:CanvasText;background:Canvas;border-color:CanvasText}

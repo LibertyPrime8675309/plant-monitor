@@ -176,6 +176,23 @@ def test_the_routes_keep_a_layout_and_refuse_what_makes_no_sense(room):
         assert c.get(f"/api/plants/{P['code']}").get_json()['height_in'] == before['height_in'] and [x['id'] for x in c.get(f"/api/layouts?plant={P['code']}").get_json()['on']] == [other]
         assert c.delete(f'/api/layouts/{other}', headers=OWN).status_code == 200
 
+def test_a_shelf_drawn_as_a_block_in_a_room_carries_its_levels(room):
+    assert LY.layout_levels({'levels': 4, 'gaps_in': [23, 13, 27], 'width_in': 22, 'depth_in': 11}) == [
+        {'n': 1, 'name': 'Level 1 (bottom)', 'z': 0.75, 'room': 23}, {'n': 2, 'name': 'Level 2', 'z': 24.5, 'room': 13},
+        {'n': 3, 'name': 'Level 3', 'z': 38.25, 'room': 27}, {'n': 4, 'name': 'Level 4 (top)', 'z': 66.0, 'room': None}]
+    assert LY.layout_levels({'width_in': 30, 'depth_in': 20}) == [] and LY.layout_levels({'levels': 3, 'width_in': 30, 'depth_in': 20}) == [], 'a table, or a shelf whose level heights are not measured, has only its top'
+    with S.app.test_client() as c:
+        start = next(p for p in c.get('/api/layouts').get_json()['places'] if p['pid'] == -room['area'])['start']
+        lid = c.post('/api/layouts', json={'name': 'Levels test room', 'place': -room['area'], **{k: start[k] for k in ('width_in', 'depth_in', 'height_in', 'items')}}, headers=OWN).get_json()['id']
+        L = c.get(f'/api/layouts/{lid}').get_json()
+        by = {i['name']: i for i in L['items']}
+        shelf, table = by['Layout test shelf'], by['Layout test table']
+        assert [v['z'] for v in shelf['levels']] == [0.75, 24.5, 38.25, 66.0] and shelf['h'] == 66 and shelf['board_in'] == 0.75, 'the block is as tall as its top level, and says where each level is'
+        assert table['levels'] == [], 'a table has only its top'
+        r = c.post(f'/api/layouts/{lid}/items', json={'kind': 'other', 'name': 'Sofa', 'w': 60, 'd': 30, 'h': 30}, headers=OWN)
+        assert 'levels' not in r.get_json()['items'][-1], 'a thing that is not one of the record\'s shelves has none'
+        assert c.delete(f'/api/layouts/{lid}', headers=OWN).status_code == 200
+
 def test_a_layout_moves_plants_in_the_record_only_when_told_to(room):
     with S.app.test_client() as c:
         made = [c.post('/api/plants', json={'fields': {'common_name': name}}, headers=OWN).get_json()['code'] for name in ('Layout move fern', 'Layout move fig')]
