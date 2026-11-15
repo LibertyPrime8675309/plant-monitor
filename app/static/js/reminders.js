@@ -1,4 +1,4 @@
-/* Plant record front end: your own reminders (prototype proto/reminders). One of the files loaded in order by index.html
+/* Plant record front end: your own reminders. One of the files loaded in order by index.html
    (js/manifest.json); they share one scope. Plain JavaScript, no inline handlers (the server's content policy forbids them).
 
    A reminder is a note to yourself with a date, for one plant or for none: "Check the cutting for roots", "Spray again for

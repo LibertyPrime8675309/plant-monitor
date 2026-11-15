@@ -1,8 +1,8 @@
-# Missing details (prototype)
+# Missing details
 
 Part of the Plant record manual. The README in the folder above has how to start, stop, update and back up the app, and the list of every manual page.
 
-## Missing details (prototype)
+## Missing details
 
 Some pages need a detail about a plant to work for it, and quietly leave the plant out or use a guess without it. **Missing details** (the link on **All plants**, or Search for "missing") lists, detail by detail, the active plants at the home you are using that do not have it yet:
 

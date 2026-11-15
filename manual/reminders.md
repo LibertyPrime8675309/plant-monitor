@@ -1,8 +1,8 @@
-# Your own reminders (prototype)
+# Your own reminders
 
 Part of the Plant record manual. The README in the folder above has how to start, stop, update and back up the app, and the list of every manual page.
 
-## Your own reminders (prototype)
+## Your own reminders
 
 A note to yourself with a date: "Check the cutting for roots", "Spray again for mealybugs in 5 days", "Buy potting mix". **Today → Reminders** lists them.
 

@@ -1,4 +1,4 @@
-/* Plant record front end: how often you water (prototype, proto/water-rhythm). One of the files loaded in order by index.html; they
+/* Plant record front end: how often you water. One of the files loaded in order by index.html; they
    share one scope. Plain JavaScript, no inline handlers (the server's content policy forbids them).
 
    The watering reminder guesses a gap from the plant's soil moisture range and the weather. The care log knows what really happens.

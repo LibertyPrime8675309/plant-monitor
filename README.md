@@ -459,11 +459,11 @@ Each page below is a file in the `manual` folder. When the app says "see README"
 - What Claude needs from you: Copy my answers for Claude
 - Updates from Claude
 
-### How often you water (prototype): `manual/water-rhythm.md`
-- How often you water (prototype)
-### Missing details (prototype): `manual/missing-details.md`
-- Missing details (prototype)
-### Your own reminders (prototype): `manual/reminders.md`
-- Your own reminders (prototype)
-### Propagation (prototype): `manual/propagation.md`
-- Propagation (prototype)
+### How often you water: `manual/water-rhythm.md`
+- How often you water
+### Missing details: `manual/missing-details.md`
+- Missing details
+### Your own reminders: `manual/reminders.md`
+- Your own reminders
+### Propagation: `manual/propagation.md`
+- Propagation

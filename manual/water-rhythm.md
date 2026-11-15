@@ -1,8 +1,8 @@
-# How often you water (prototype)
+# How often you water
 
 Part of the Plant record manual. The README in the folder above has how to start, stop, update and back up the app, and the list of every manual page.
 
-## How often you water (prototype)
+## How often you water
 
 The watering reminder guesses how often to check each plant from its soil moisture range and the weather. Your care log knows how often you really water. **Today → How often you water** puts the two side by side.
 

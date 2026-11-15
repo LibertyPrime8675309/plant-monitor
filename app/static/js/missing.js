@@ -1,4 +1,4 @@
-/* Plant record front end: missing details (prototype, proto/missing-details). One of the files loaded in order by index.html; they
+/* Plant record front end: missing details. One of the files loaded in order by index.html; they
    share one scope. Plain JavaScript, no inline handlers (the server's content policy forbids them).
 
    Several pages need a detail about a plant to work for it (pot size, leaf type, height, the coldest it can take, how often to check

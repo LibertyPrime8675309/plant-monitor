@@ -1,4 +1,4 @@
-/* Plant record front end: propagation (prototype, proto/propagation). One of the files loaded in order by index.html; they share one scope.
+/* Plant record front end: propagation. One of the files loaded in order by index.html; they share one scope.
    Plain JavaScript, no inline handlers (the server's content policy forbids them). Every name here starts with prp. */
 'use strict';
 
