@@ -64,6 +64,8 @@ if (-not $AppFolder) { $AppFolder = Join-Path $ZipFolder 'plant-database' }
 if (-not $VersionsFolder) { $VersionsFolder = Join-Path $ZipFolder 'versions_plant-database' }   # 1.12.2: release zips and photo packs
 $LogFile = Join-Path $ZipFolder 'update-log.txt'
 # 1.12.1: settings kept in plant-database\.env (PLANTDB_PORT, PLANTDB_BIND and others), one NAME=value per line
+# 1.58.0: never update the test copy (tools/test-copy.ps1 makes and refreshes it itself)
+if (Test-Path (Join-Path $AppFolder 'TEST-COPY.txt')) { Write-Host "$AppFolder is the test copy. Use Refresh Test Copy.cmd for it; this updater is for your real Plant record." -ForegroundColor Yellow; exit 1 }
 $EnvFile = Join-Path $AppFolder '.env'
 function Get-EnvValue([string]$name) {
     if (-not (Test-Path $EnvFile)) { return $null }
@@ -319,7 +321,7 @@ try {
     }
 
     # keep this updater current: copy the newest copy of itself next to the zips
-    foreach ($n in @('update-plant-database.ps1', 'Update Plant Database.cmd')) {
+    foreach ($n in @('update-plant-database.ps1', 'Update Plant Database.cmd', 'test-copy.ps1', 'Start Test Copy.cmd', 'Refresh Test Copy.cmd', 'Stop Test Copy.cmd')) {   # 1.58.0: the test copy scripts too
         $newer = Join-Path (Join-Path $src 'tools') $n
         if (Test-Path $newer) { Copy-Item $newer (Join-Path $ZipFolder $n) -Force }
     }

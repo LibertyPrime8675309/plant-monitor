@@ -463,3 +463,4 @@ Each page below is a file in the `manual` folder. When the app says "see README"
 - Report a problem
 - The Issue tracker
 - Check for updates
+- Try a newer version in a test copy

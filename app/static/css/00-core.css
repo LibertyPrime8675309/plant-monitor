@@ -1749,6 +1749,7 @@ html[data-role=viewer] :is([data-act=offiduse],[data-act=newfill],[data-act=lted
 .rv-facts{padding-left:1.2rem;margin:.4rem 0 0;color:var(--ink-2)}
 .share-grid{display:flex;flex-wrap:wrap;gap:.8rem;margin:.6rem 0} .share-grid figure{margin:0;max-width:14rem} .share-grid img{width:100%;height:auto;border:1px solid var(--line)}
 .mirror-note{border-left-color:var(--ochre)}
+.test-note{border-left-color:var(--madder);background:var(--madder-soft);max-width:none}   /* 1.58.0: the test copy, on every page */
 @media print{.rv-grid{display:block}.rv-card{break-inside:avoid;margin-bottom:.8rem}}
 
 html[data-narrow="1"] .mi-head .pr-badge{white-space:normal;max-width:100%;display:inline-block;border-radius:8px}

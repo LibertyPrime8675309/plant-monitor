@@ -1,4 +1,4 @@
-# Reporting a problem, the Issue tracker and checking for updates
+# Reporting a problem, the Issue tracker, checking for updates and the test copy
 
 Part of the Plant record manual. The README in the folder above has how to start, stop, update and back up the app, and the list of every manual page.
 
@@ -77,3 +77,37 @@ Then one of:
 For the owner, **An update is ready** means a newer release is waiting to be installed on the PC with the updater (`Update Plant Database.cmd`), as Today also says.
 
 **Reload the app** is always in the window. A Home Screen app on an iPad or iPhone has no reload button of its own, so this is it. (The other way is to close the app in the app switcher and open it again.)
+
+## Try a newer version in a test copy (from 1.58.0)
+
+The **test copy** is a second Plant record beside your real one, for trying the newest work before it is released. It has its own folder (`plant-database-test`, next to `plant-database`), its own containers and its own copy of your data, and it answers at <http://localhost:8090>. Nothing you do there reaches your real Plant record. It sends no notifications, makes no backups (and so sends none to the second backup folder or another PC), does not check shops or ask about updates, and is not on Tailscale, so only this computer can open it. Every page in it says **Test copy**, and its browser tabs start with **TEST COPY**, so the two are never mixed up.
+
+Three files next to `Update Plant Database.cmd` look after it (the updater puts them there):
+
+- **Start Test Copy.cmd**: the first time, it fetches the newest work from GitHub (what has been merged since the last release), copies your data into the test copy, starts it and opens it. After that, it starts it again and opens it.
+- **Refresh Test Copy.cmd**: asks which version to try. Press Enter for the newest work, type a pull request number (such as `136`) to try something not merged yet, or a release (such as `1.57.0`). It then asks whether to copy your data again; the answer starts as No, so what you did in the test copy stays. A pull request is built on your PC, which takes a few minutes; the others are fetched ready-built.
+- **Stop Test Copy.cmd**: stops it. Your real Plant record keeps running.
+
+**Copying your data stops your real Plant record for about a minute**, so the copy is never taken halfway through a change. It asks first. The Identify model (about 5 GB) is not copied, so Identify is off in the test copy; add `-Identify` to copy it and turn it on.
+
+The updater never touches the test copy (a file named `TEST-COPY.txt` in its folder says what it is). To be rid of it, press Stop Test Copy and delete the `plant-database-test` folder.
+
+The same from a terminal in the Plants folder:
+
+Windows (cmd.exe):
+
+```
+powershell -ExecutionPolicy Bypass -File test-copy.ps1 -Action Refresh -Source 136 -NewData
+```
+
+Windows (PowerShell):
+
+```
+powershell -ExecutionPolicy Bypass -File .\test-copy.ps1 -Action Refresh -Source 136 -NewData
+```
+
+macOS / Linux (bash), with PowerShell 7 installed:
+
+```
+pwsh ./test-copy.ps1 -Action Refresh -Source 136 -NewData
+```
