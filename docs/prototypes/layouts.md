@@ -25,11 +25,21 @@ The record already holds most of what such a drawing needs: each shelf's measure
   - **Overlap** and **Sticks out** (a problem): two things take up the same room, or a thing is past a side, the top or the floor of the space. A plant too tall for its level overlaps the shelf above it.
   - **Tight**: a plant is closer to something, beside it or above it, than the room to leave around a plant (1 in to start with; you set it).
   - **Close to a light**: the top of a plant is closer to the light over it than that light's figures go.
+  - **Too dim** and **Too bright**: the lights drawn here give a plant much less, or much more, light than its page says it needs (below).
   - **In an area to keep clear**, **Nothing under it** (a pot in the air), and **More than you own** (three of a light drawn when you own two).
   - Every mark is bars across the thing and a sign (✗ or !) as well as a colour, and each is a sentence in **To look at**, on the thing's own boxes, in the list of everything on the layout and in what a screen reader is told.
 - **Also:** Undo (each change made on this visit, newest first, and Ctrl+Z on the drawing), Turn a quarter, Make a copy, Lock in place, Take it off the layout, **Smaller** and **Larger** (remembered for each layout), each plant's photo on its pot, and a line on a plant's own page saying which layouts it is drawn on.
-- **A layout is a drawing only.** Moving or resizing a plant on it changes nothing on the plant's page; removing a layout removes the drawing and nothing else.
-- People who can only view see a layout and can choose a thing to read its place and size; they cannot change it. An editor limited to some homes changes the layouts of those homes only.
+- **The light each plant gets where it is drawn** (Ethan, November 15, 2026). For each plant the page works out the daily light (mol/m² a day) from the grow lights drawn above it, and says it in the words Grow lights uses: **Too dim**, **A bit dim**, **Good**, **A bit bright**, **Too bright**.
+  - It uses each light's own figures from Grow lights, how far its underside is above the top of the plant, how far to the side the plant is, and the light's **Hours a day** and **Brightness**, which you set on the layout (a light starts with the setting of its Grow lights spot at that place, else 12 hours at full brightness).
+  - Straight under a light, the number is the one Grow lights gives for that light at that distance. Off to the side it is less. A shelf or other thing between the light and the plant shuts that light out. Several lights add up.
+  - The number follows the plant, or the light, while you drag it. It is in the chosen plant's boxes (**Light here**, with each light that reaches it), in the plant's line in the list, and in what a screen reader is told.
+  - Daylight is not counted: the drawing does not know your windows. So a plant is called too dim only when a drawn light reaches it (1 mol/m² a day, or it stands straight under one).
+- **Two things a layout changes in the record**, and nothing else (Ethan, November 15, 2026):
+  - **A plant's height.** A plant is as tall on a layout as its page says (**Height now, with its pot**). Type or drag a new height on a layout and it is saved on the plant's page, with a line in its History; change it on its page and every layout follows. A plant whose page has no height keeps the height drawn, and **Save this height on its page** puts it there.
+  - **Where a plant is, when you say so.** Moving a plant on the drawing changes nothing in the record. **Somewhere else in your record** lists the plants drawn on a layout that the record has in another place, each with **Move it in the record**, and one button for all of them, which asks first. On a shelf's layout the plant goes to that shelf; on a room's layout, to the shelf it is drawn standing on, or to the room. Each move is a change on the plant's page like any other: a new version and a line in its History.
+  - **Undo** takes both back: the height on the page, and the plants' places in the record.
+- Removing a layout removes the drawing and nothing else.
+- People who can only view see a layout and can choose a thing to read its place, its size, its light and where the record has it; they cannot change it. An editor limited to some homes changes the layouts of those homes only, and through a layout changes only plants at those homes.
 
 ## How it looks
 A shelf, laptop. The front view on the left; the top view shows the level of the chosen plant, with the other levels faint. One plant is too tall for its level (✗, close bars) and two are close to the strip above them (!, wide bars):
@@ -52,6 +62,14 @@ Starting a layout from a shelf's **Lay it out** button, and adding things:
 
 ![Start a layout, filled in from the shelf's measurements](layouts/laptop-start.png) ![Add to the layout](layouts/laptop-add.png)
 
+The light a plant gets where it is drawn, in the chosen plant's boxes, and the hours and brightness of the chosen light:
+
+![Light here: the chosen plant's light, from the strip over it](layouts/laptop-light.png) ![A light's hours a day and brightness](layouts/laptop-light-set.png)
+
+Plants drawn in a room that the record has somewhere else, with the buttons that move them in the record:
+
+![Somewhere else in your record](layouts/laptop-record.png)
+
 The list of layouts:
 
 ![The Layouts page](layouts/laptop-list.png)
@@ -68,28 +86,37 @@ Phone, dark mode, large text (one view at a time; nothing scrolls sideways):
 Then open http://127.0.0.1:8080/#/layouts, press **Start a layout** and choose **Tall Brown Shelf**. The focused check is `python3 dev/test/layouts_check.py` (or `python3 dev/test/run_checks.py layouts`); the unit tests are `dev/test/unit/test_layouts.py`.
 
 ## What it changes in the database
-- Two new tables, made the first time the page is used: `layouts` (name, home, the room or shelf it is of, width, depth, height, the size of a square, snapping, the room to leave around a plant, notes) and `layout_items` (the layout, what kind of thing, its name and shape, the plant, light or shelf it is in the record, its place and its size, locked).
+- Two new tables, made the first time the page is used: `layouts` (name, home, the room or shelf it is of, width, depth, height, the size of a square, snapping, the room to leave around a plant, notes) and `layout_items` (the layout, what kind of thing, its name and shape, the plant, light or shelf it is in the record, its place and its size, locked, and for a light its hours a day and brightness).
+- **A plant's `height_in`** changes when a height is given to it on a layout, and **a plant's home, area and spot** change when "Move it in the record" is pressed. Both go through `apply_changes()`, as an edit on the plant's own page does: a new version, History, the home limit.
 - No existing table or column changes. Nothing in `init_db()` changes, so an upgrade and a new install are the same as before. If this becomes a release, the two tables move into `init_db()`.
 - History gets a line when a layout is added, changed or removed and when a thing is put on one or taken off. It does not get a line for each move: who moved a thing last, and when, is kept on the thing.
 - A plant, light or shelf that is later archived or removed stays on the drawing under the name it had, marked "No longer in the record".
 
 ## How it is built
-- `app/plantdb/layouts.py` keeps the layouts, checks what it is given, and adds what only the record knows: what a layout of a place starts with (`layout_start`), how much room each plant and light probably takes (`layout_plant_size`, `layout_light_size`), and which plants are at the place. Routes: `/api/layouts`, `/api/layouts/<id>`, `/api/layouts/<id>/items`, `/api/layouts/items/<id>`.
-- `app/static/js/layouts.js` does the drawing (SVG), the moving, the snapping and the looking for trouble, because those must answer while a thing is dragged. `lyFindings()` is the one place that decides what overlaps, sticks out or may be a problem; `lyMeasure()` decides how large each view is drawn and how the views are set out for the width of the page. One `addFeature()` call adds the page, the buttons on Rooms and spots and the line on a plant's page.
+- `app/plantdb/layouts.py` keeps the layouts, checks what it is given, and adds what only the record knows: what a layout of a place starts with (`layout_start`), how much room each plant and light probably takes (`layout_plant_size`, `layout_light_size`), which plants are at the place, and for each drawn thing what the page needs for the light and the record (a plant's height on its page, its light needs and its place; a light's figures, hours and brightness). Routes: `/api/layouts`, `/api/layouts/<id>`, `/api/layouts/<id>/items`, `/api/layouts/items/<id>` (a plant's height goes on its page here: `layout_plant_height`), and `/api/layouts/<id>/record` (`layout_record`: moves plants in the record).
+- `app/static/js/layouts.js` does the drawing (SVG), the moving, the snapping and the looking for trouble, because those must answer while a thing is dragged. `lyFindings()` is the one place that decides what overlaps, sticks out or may be a problem; `lyLight()` works out each plant's light, with the same sums as `lights.py` (`lyPar` is its `_loglog`, `lyVerdict` its `light_verdict`); `lyRecTo()` says where the drawing puts a plant in the record; `lyMeasure()` decides how large each view is drawn and how the views are set out for the width of the page. One `addFeature()` call adds the page, the buttons on Rooms and spots and the line on a plant's page.
+- **How the light is worked out**, so it can be checked: the light comes from a light's underside if it hangs and from its top if it stands. Its figure is read off its maker's chart at the straight-line distance to the top of the plant (no closer than the chart can be trusted for), then multiplied by the square of (how far below ÷ how far away), so a plant as far to the side as it is below gets half of what that distance gives. That times the hours and the brightness is the daily light; the lights add up.
 - `app/static/css/layouts.css`, `dev/test/layouts_check.py`, `dev/test/unit/test_layouts.py`, and cases in `dev/test/unit/test_home_limit.py`.
 - Shared lines: one in `js/manifest.json`, one in `run_checks.py`, the CHANGELOG and README entries, and the IDEAS entry.
 - **Three dimensions later:** a place and a size in three directions is everything a view from a corner needs, so a third view can be added without changing what is stored.
 
 ## What is not done
 - A view in three dimensions.
-- How much light each plant gets where it is drawn. The drawing knows which light is over a plant and how far up (the plant's boxes say so); it does not yet work out the light from that light's chart, as Grow lights does for a spot.
-- Moving the plants in the record to match a layout you are happy with.
+- The light is said in words and numbers; it is not yet drawn (for example as the pool of light under each lamp).
+- Daylight from windows, and the shade one plant casts on another, are not counted.
+- Grow lights keeps its own spots (which plants are under which light, at what distance). A layout does not change them, and Grow lights does not read layouts.
+- A layout does not change a shelf's measurements in the record when you resize its boards.
 - Choosing several things at once, lining things up, and Redo.
 - A layout cannot be changed offline.
 
+## What Ethan said (November 15, 2026)
+1. **The name.** "Layouts" works fine. Kept.
+2. **Should a layout be able to change the record?** Yes. Built: **Move it in the record**, for one plant or all of them, with Undo.
+3. **A height typed on a layout.** Yes, save it to the record. Built: a plant has one height, on its page and on every layout.
+4. **Light from the drawing, or three dimensions, next?** Light from the drawing. Built; three dimensions is still to do.
+5. **The size of the drawing.** It seems good. Kept.
+
 ## Questions for Ethan
-1. **The name.** The page is "Layouts", under Plants. The app already says "Page layout" in Display and "Suggested layout" on Grow lights. Keep "Layouts", or would "Room and shelf plans" (or another name) be clearer?
-2. **Should a layout be able to change the record?** Today it is a drawing only. One button could move every plant drawn on a shelf's layout to that shelf in the record, once you are happy with it. Wanted, or keep the two apart?
-3. **Sizes.** A plant with no pot from Pots and trays and no height on its page starts at a guess (8 in across, 12 in tall) that its boxes own up to. When you type its real height on a layout, should that also be saved as "Height now, with its pot" on its page?
-4. **Light from the drawing.** Next, the layout could say for each plant how much light reaches it from the light drawn over it, in the words Grow lights uses. Is that the most useful next step, or is the view in three dimensions?
-5. **The size of the drawing.** It starts as large as the page's width and about a screen and a half of height allow, and **Larger** and **Smaller** change it for that layout. Is that the right starting size?
+1. **Trying a height.** A plant's height on a layout is now always the height on its page. To see whether a plant would still fit when it is taller, you type the taller height and press **Undo** afterwards. Is that enough, or do you want a way to try a height on a layout without it going on the page?
+2. **Which light marks.** Only **Too dim** and **Too bright** put a mark on a plant; "A bit dim" and "A bit bright" are said in words. And a plant no drawn light reaches is not marked at all, because it may have a window. Right, or should more be marked?
+3. **Grow lights and layouts.** Grow lights has its own spots: a light, a distance, hours, and the plants under it. A layout now holds the same things more exactly. Should Grow lights read a shelf's layout where there is one, so that you set a light up in one place only? That is a larger change, and would be its own piece of work.

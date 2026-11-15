@@ -156,6 +156,8 @@ def test_a_limited_editor_cannot_change_a_plant_at_another_home_by_any_route(wor
     refused(c, 'layout_items_add', 'POST', f"/api/layouts/{W['layout']}/items", json={'kind': 'other', 'name': 'Fan', 'w': 8, 'd': 8, 'h': 12})
     refused(c, 'layout_item_one', 'PUT', f"/api/layouts/items/{W['litem']}", json={'x': 5})
     refused(c, 'layout_item_one', 'DELETE', f"/api/layouts/items/{W['litem']}")
+    refused(c, 'layout_item_one', 'PUT', f"/api/layouts/items/{W['litem']}", json={'h': 9})          # a height given on a layout would go on the plant's page
+    refused(c, 'layout_record', 'POST', f"/api/layouts/{W['layout']}/record", json={'moves': [{'plant': F, 'place': -W['area']}]})
     L = c.get(f"/api/layouts/{W['layout']}").get_json()
     assert (L['width_in'], len(L['items']), L['items'][0]['x']) == (30, 1, 0) and len(c.get('/api/layouts').get_json()['layouts']) == 1
     # --- a new plant, or a move, lands only at the editor's homes
@@ -196,6 +198,25 @@ def test_the_same_editor_can_still_work_at_their_own_home(world):
     ok(c.post(f'/api/layouts/{lid}/items', json={'kind': 'plant', 'plant': M, 'w': 6, 'd': 6, 'h': 8}, headers=LIM, **TS))
     r = c.post(f'/api/layouts/{lid}/items', json={'kind': 'plant', 'plant': F, 'w': 6, 'd': 6, 'h': 8}, headers=LIM, **TS)
     assert r.status_code == 403 and 'You can change plants at' in r.get_data(as_text=True)
+    # on it, their own plant's height goes on its page, and the layout may move it in the record: within their home, not out of it
+    mine = c.get(f'/api/layouts/{lid}', headers=LIM, **TS).get_json()['items'][0]
+    was = c.get(f'/api/plants/{M}').get_json()
+    ok(c.put(f"/api/layouts/items/{mine['id']}", json={'h': 11}, headers=LIM, **TS))
+    assert c.get(f'/api/plants/{M}').get_json()['height_in'] == 11
+    ok(c.put(f"/api/layouts/items/{mine['id']}", json={'h': 8, 'page_h': was['height_in']}, headers=LIM, **TS))
+    ok(c.post(f'/api/layouts/{lid}/record', json={'moves': [{'plant': M, 'place': -area[0]}]}, headers=LIM, **TS))
+    r = c.post(f'/api/layouts/{lid}/record', json={'moves': [{'plant': M, 'place': W['spot']}]}, headers=LIM, **TS)
+    assert r.status_code == 403 and 'You can add or move plants at' in r.get_data(as_text=True)
+    now = c.get(f'/api/plants/{M}').get_json()
+    assert (now['area_id'], now['home_id'], now['height_in']) == (area[0], W['other'], was['height_in'])
+    if mine['rec'] and mine['rec'] != -area[0]: ok(c.post(f'/api/layouts/{lid}/record', json={'moves': [{'plant': M, 'place': mine['rec']}]}, headers=LIM, **TS))
+    # the owner draws a plant of the main home on it: the limited editor may move the drawing, and may not change that plant through it
+    r = c.post(f'/api/layouts/{lid}/items', json={'kind': 'plant', 'plant': F, 'w': 6, 'd': 6, 'h': 8}, headers=OWN); ok(r)
+    theirs = next(i for i in r.get_json()['items'] if i['plant'] == F)
+    ok(c.put(f"/api/layouts/items/{theirs['id']}", json={'x': 9}, headers=LIM, **TS))
+    refused(c, 'layout_item_one', 'PUT', f"/api/layouts/items/{theirs['id']}", json={'h': 9})
+    refused(c, 'layout_record', 'POST', f'/api/layouts/{lid}/record', json={'moves': [{'plant': F, 'place': -area[0]}]})
+    refused(c, 'layout_record', 'POST', f'/api/layouts/{lid}/record', json={'moves': [{'plant': M, 'place': -area[0]}, {'plant': F, 'place': -area[0]}]})
     ok(c.delete(f'/api/layouts/{lid}', headers=LIM, **TS))
 
 def test_an_editor_without_a_limit_and_the_owner_are_not_held_back(world):

@@ -1,7 +1,9 @@
 """Prototype (proto/layouts): layouts. What the record suggests for sizes (a plant's from its tray, its pot, its Pot size and its
 height; a light's from how it holds; a shelf's levels from its measurements), what a layout of a place starts with, and the
-routes: what they refuse, that a plant is on a layout once, that moving a plant on a layout changes nothing on its own page,
-that removing a layout removes the things drawn on it and nothing else, and that a viewer changes nothing.
+routes: what they refuse, that a plant is on a layout once, that moving a plant on a layout changes nothing on its own page
+while a height given there is saved on it, that a layout moves plants in the record only when told to, what a drawn light
+carries for the page to work out the light from, that removing a layout removes the things drawn on it and nothing else, and
+that a viewer changes nothing.
 What counts as overlapping or tight, the grid and the moving are the page's (js/layouts.js) and are checked in the browser
 (dev/test/layouts_check.py)."""
 import json, sqlite3
@@ -130,8 +132,16 @@ def test_the_routes_keep_a_layout_and_refuse_what_makes_no_sense(room):
         assert r.status_code == 200 and (r.get_json()['item']['x'], r.get_json()['item']['h'], r.get_json()['item']['name'], r.get_json()['item']['locked']) == (3.46, 15, P['name'], True)
         assert put(by['Humidifier']['id'], {'name': 'Mist maker'}).get_json()['item']['name'] == 'Mist maker'
         assert put(it['id'], {'w': -1}).status_code == 400 and put(it['id'], {'shape': 'star'}).status_code == 400 and put(987654, {'x': 1}).status_code == 404
+        # a plant's height given on a layout goes on its page too, with a line in its History; moving it changes nothing there
         after = c.get(f"/api/plants/{P['code']}").get_json()
-        assert (after['version'], after['spot_id'], after['height_in']) == (before['version'], before['spot_id'], before['height_in']), 'a plant moved and resized on a layout is not changed on its own page'
+        assert (after['version'], after['spot_id'], after['height_in']) == (before['version'] + 1, before['spot_id'], 15), 'the height typed on the layout is the height on its page'
+        assert r.get_json()['item']['page_h'] == 15
+        hist = c.get(f"/api/plants/{P['code']}/history").get_json()['audit'][0]
+        assert (hist['field'], hist['old_value'], hist['new_value'], hist['note']) == ('height_in', None, '15.0', 'Height set on the layout "Tall brown shelf"')
+        assert put(it['id'], {'x': 4, 'y': 2, 'w': 7}).status_code == 200 and put(it['id'], {'h': 15}).status_code == 200
+        assert c.get(f"/api/plants/{P['code']}").get_json()['version'] == before['version'] + 1, 'moving it, widening it, or giving the same height again changes nothing on its page'
+        assert put(it['id'], {'h': 700}).status_code == 400 and put(it['id'], {'h': 0.2}).status_code == 400, 'a height the page would refuse is refused here'
+        assert c.get(f'/api/layouts/{lid}').get_json()['items'][4]['h'] == 15 and c.get(f"/api/plants/{P['code']}").get_json()['height_in'] == 15
         # the layout itself
         r = c.put(f'/api/layouts/{lid}', json={'height_in': 96, 'grid_in': 2, 'snap': False, 'clear_in': 0}, headers=OWN)
         assert r.status_code == 200 and (r.get_json()['height_in'], r.get_json()['grid_in'], r.get_json()['snap'], r.get_json()['clear_in'], r.get_json()['name']) == (96, 2, False, 0, 'Tall brown shelf')
@@ -140,7 +150,16 @@ def test_the_routes_keep_a_layout_and_refuse_what_makes_no_sense(room):
         r = c.post('/api/layouts', json={'name': 'Spare room idea', 'width_in': 120, 'depth_in': 96, 'height_in': 96}, headers=OWN)
         assert r.status_code == 201 and r.get_json()['place'] is None and r.get_json()['items'] == []
         other = r.get_json()['id']
-        assert add({'kind': 'plant', 'plant': P['code'], 'w': 6, 'd': 6, 'h': 8}, other).status_code == 201
+        r = add({'kind': 'plant', 'plant': P['code'], 'w': 6, 'd': 6, 'h': 8}, other)
+        assert r.status_code == 201 and r.get_json()['items'][0]['h'] == 15, 'a plant is as tall on every layout as its page says'
+        assert c.get(f"/api/plants/{P['code']}").get_json()['height_in'] == 15, 'putting it on a layout does not change its page'
+        twin = r.get_json()['items'][0]['id']
+        assert put(twin, {'h': 18}).status_code == 200 and c.get(f'/api/layouts/{lid}').get_json()['items'][4]['h'] == 18, 'and a new height on one layout is its height on the other'
+        # Undo sends what the page said before: a number, or none for a page that had no height
+        r = put(twin, {'h': 8, 'page_h': before['height_in']})
+        assert r.status_code == 200 and (r.get_json()['item']['h'], r.get_json()['item']['page_h']) == (8, before['height_in'])
+        assert c.get(f"/api/plants/{P['code']}").get_json()['height_in'] == before['height_in']
+        assert c.get(f'/api/layouts/{lid}').get_json()['items'][4]['h'] == 15, 'with no height on its page, each layout keeps the height it was drawn with'
         on = c.get(f"/api/layouts?plant={P['code']}").get_json()['on']
         assert sorted(x['id'] for x in on) == sorted([lid, other]) and next(x for x in on if x['id'] == lid)['item'] == it['id']
         listed = c.get('/api/layouts').get_json()
@@ -154,8 +173,100 @@ def test_the_routes_keep_a_layout_and_refuse_what_makes_no_sense(room):
         d = conn()
         assert d.execute('SELECT COUNT(*) FROM layout_items WHERE layout_id=?', (lid,)).fetchone()[0] == 0 and d.execute('SELECT COUNT(*) FROM spots WHERE id=?', (shelf['pid'],)).fetchone()[0] == 1
         d.close()
-        assert c.get(f"/api/plants/{P['code']}").get_json()['version'] == before['version'] and [x['id'] for x in c.get(f"/api/layouts?plant={P['code']}").get_json()['on']] == [other]
+        assert c.get(f"/api/plants/{P['code']}").get_json()['height_in'] == before['height_in'] and [x['id'] for x in c.get(f"/api/layouts?plant={P['code']}").get_json()['on']] == [other]
         assert c.delete(f'/api/layouts/{other}', headers=OWN).status_code == 200
+
+def test_a_layout_moves_plants_in_the_record_only_when_told_to(room):
+    with S.app.test_client() as c:
+        made = [c.post('/api/plants', json={'fields': {'common_name': name}}, headers=OWN).get_json()['code'] for name in ('Layout move fern', 'Layout move fig')]
+        fern, fig = made
+        was = {x: c.get(f'/api/plants/{x}').get_json() for x in made}
+        lid = c.post('/api/layouts', json={'name': 'Move test shelf', 'place': room['shelf'], 'width_in': 22, 'depth_in': 11, 'height_in': 90,
+                                           'items': [{'kind': 'plant', 'plant': x, 'w': 6, 'd': 6, 'h': 8, 'x': 7 * i} for i, x in enumerate(made)]}, headers=OWN).get_json()['id']
+        L = c.get(f'/api/layouts/{lid}').get_json()
+        by = {i['plant']: i for i in L['items']}
+        home = -was[fern]['area_id']
+        assert by[fern]['rec'] == home and by[fern]['rec_label'] and L['pid'] == room['shelf'], 'each drawn plant says where the record has it'
+        assert not next(p for p in L['plants'] if p['code'] == fern)['here']
+        assert c.put(f"/api/layouts/items/{by[fern]['id']}", json={'x': 3, 'y': 2}, headers=OWN).status_code == 200
+        assert c.get(f'/api/plants/{fern}').get_json()['version'] == was[fern]['version'], 'drawing and moving a plant on a layout moves nothing in the record'
+        move = lambda moves, where=lid: c.post(f'/api/layouts/{where}/record', json={'moves': moves}, headers=OWN)
+        # what is refused, and that nothing moves when any one of them is refused
+        assert move([]).status_code == 400 and move([{'plant': 'P-99999', 'place': room['shelf']}]).status_code == 400 and move([{'plant': fern}]).status_code == 400
+        assert move([{'plant': fern, 'place': room['shelf']}, {'plant': fig, 'place': 987654}]).status_code == 400
+        other = c.get('/api/layouts').get_json()['places']; stray = next(p['pid'] for p in other if p['pid'] not in (room['shelf'], home))
+        loose = c.post('/api/plants', json={'fields': {'common_name': 'Layout move stray'}}, headers=OWN).get_json()['code']
+        r = move([{'plant': loose, 'place': room['shelf']}]); assert r.status_code == 400 and 'not on this layout' in r.get_json()['error']
+        assert all(c.get(f'/api/plants/{x}').get_json()['version'] == was[x]['version'] for x in made)
+        # the move: both plants are on the shelf in the record, each with a new version and a line that says where from
+        r = move([{'plant': fern.lower(), 'place': room['shelf']}, {'plant': fig, 'place': room['shelf']}])
+        assert r.status_code == 200, r.get_data(as_text=True)
+        out = r.get_json()
+        assert [(m['plant'], m['from'], m['to'], m['changed']) for m in out['moved']] == [(fern, home, room['shelf'], True), (fig, home, room['shelf'], True)]
+        assert out['moved'][0]['to_label'].endswith('Layout test shelf') and all(i['rec'] == room['shelf'] for i in out['layout']['items'])
+        assert all(p['here'] for p in out['layout']['plants'] if p['code'] in made)
+        now = c.get(f'/api/plants/{fern}').get_json()
+        assert (now['spot_id'], now['area_id'], now['version']) == (room['shelf'], room['area'], was[fern]['version'] + 1) and now['site'] != was[fern]['site'], 'its old Location follows the room, as on its own page'
+        note = c.get(f'/api/plants/{fern}/history').get_json()['audit'][0]['note']
+        assert note.startswith('Moved to Layout test room, Layout test shelf') and 'Move test shelf' in note
+        assert move([{'plant': fern, 'place': room['shelf']}]).get_json()['moved'][0]['changed'] is False, 'already there: nothing to change'
+        # to the room itself (no shelf), and back where it came from, as Undo sends it
+        assert move([{'plant': fig, 'place': -room['area']}]).status_code == 200 and c.get(f'/api/plants/{fig}').get_json()['spot_id'] is None
+        assert move([{'plant': fern, 'place': home}, {'plant': fig, 'place': home}]).status_code == 200
+        back = c.get(f'/api/plants/{fern}').get_json()
+        assert (back['spot_id'], back['area_id'], back['site']) == (was[fern]['spot_id'], was[fern]['area_id'], was[fern]['site'])
+        # an archived plant is not moved; a viewer moves nothing
+        assert c.post(f'/api/plants/{fig}/status', json={'archived': True}, headers=OWN).status_code == 200
+        assert move([{'plant': fig, 'place': room['shelf']}]).status_code == 400
+        c.get('/api/me', headers=TSO, **TS); c.get('/api/me', headers=VIEW, **TS)
+        assert c.post(f'/api/layouts/{lid}/record', json={'moves': [{'plant': fern, 'place': room['shelf']}]}, headers=VIEW, **TS).status_code == 403
+        assert c.get(f'/api/plants/{fern}').get_json()['spot_id'] is None and stray
+        for x in (fern, loose): assert c.post(f'/api/plants/{x}/status', json={'archived': True}, headers=OWN).status_code == 200
+        assert c.delete(f'/api/layouts/{lid}', headers=OWN).status_code == 200
+
+def test_a_drawn_light_carries_what_the_page_works_the_light_out_from(room):
+    with S.app.test_client() as c:
+        code = c.post('/api/plants', json={'fields': {'common_name': 'Layout light fern', 'dli_low': 6, 'dli_high': 12}}, headers=OWN).get_json()['code']
+        L = c.post('/api/layouts', json={'name': 'Light test shelf', 'place': room['shelf'], 'width_in': 22, 'depth_in': 11, 'height_in': 90}, headers=OWN).get_json()
+        lid = L['id']
+        light = next(x for x in L['lights'] if x['figures']); bare = {'kind': 'light', 'name': 'A lamp of my own', 'w': 5, 'd': 5, 'h': 6, 'z': 30}
+        assert (light['hours'], light['dim_pct']) == (12, 100) or light['hours'] > 0, 'what one of your lights would start with is said before it is added'
+        r = c.post(f'/api/layouts/{lid}/items', json={'items': [{'kind': 'light', 'light_id': light['id'], 'w': light['w'], 'd': light['d'], 'h': light['h'], 'z': 20}, bare,
+                                                                 {'kind': 'plant', 'plant': code, 'w': 6, 'd': 6, 'h': 8}, {'kind': 'other', 'name': 'Fan', 'w': 6, 'd': 6, 'h': 8}]}, headers=OWN)
+        assert r.status_code == 201, r.get_data(as_text=True)
+        mine, lamp, fern, fan = r.get_json()['items']
+        # one of your lights: its maker's figures, nearest first, its brightness steps, and the hours and brightness it is drawn with
+        d = conn(); spec = json.loads(d.execute('SELECT data FROM lights WHERE id=?', (light['id'],)).fetchone()[0]); d.close()
+        assert mine['pts'] and mine['pts'] == sorted(mine['pts']) and all(len(p) == 3 and p[0] > 0 and p[1] > 0 for p in mine['pts']) and len(mine['pts']) <= len(spec['ppfd'])
+        assert (mine['hours'], mine['dim_pct']) == (light['hours'], light['dim_pct']) and mine['dims'][0] == 100 and mine['dims'] == sorted(mine['dims'], reverse=True)
+        assert (lamp['pts'], lamp['hours'], lamp['dim_pct'], lamp['dims']) == ([], 12, 100, [100]), 'a light of your own naming has no figures to count'
+        assert fern['need'] == {'lo': 6, 'hi': 12, 'target': 8.4} and 'hours' not in fern and 'hours' not in fan
+        assert r.get_json()['verdicts']['too_dim'] == 'Too dim', 'the words are the ones Grow lights uses'
+        put = lambda iid, body: c.put(f'/api/layouts/items/{iid}', json=body, headers=OWN)
+        r = put(mine['id'], {'hours': 14.5, 'dim_pct': 50})
+        assert r.status_code == 200 and (r.get_json()['item']['hours'], r.get_json()['item']['dim_pct']) == (14.5, 50)
+        assert put(mine['id'], {'x': 2}).get_json()['item']['hours'] == 14.5, 'moving it keeps its setting'
+        assert put(mine['id'], {'hours': 25}).status_code == 400 and put(mine['id'], {'dim_pct': 0}).status_code == 400 and put(mine['id'], {'hours': 'all day'}).status_code == 400
+        assert put(mine['id'], {'hours': 0}).status_code == 200, 'a light may be drawn switched off'
+        assert 'hours' not in put(fan['id'], {'hours': 9}).get_json()['item'], 'only a light has hours'
+        # a light starts with the setting of a Grow lights spot that has it at this place
+        r = c.post('/api/lights/spots', json={'name': 'Layout test spot', 'light': light['id'], 'units': 1, 'distance': 12, 'hours': 9, 'dim': 100, 'place': room['shelf']}, headers=OWN)
+        assert r.status_code in (200, 201), r.get_data(as_text=True)
+        again = c.get(f'/api/layouts/{lid}').get_json()
+        assert next(x for x in again['lights'] if x['id'] == light['id'])['hours'] == 9
+        r = c.post(f'/api/layouts/{lid}/items', json={'kind': 'light', 'light_id': light['id'], 'w': 5, 'd': 5, 'h': 2, 'z': 40}, headers=OWN)
+        assert r.get_json()['items'][-1]['hours'] == 9 and r.get_json()['items'][0]['hours'] == 0, 'and one already drawn keeps its own'
+        d = conn(); sid = d.execute("SELECT id FROM light_spots WHERE name='Layout test spot'").fetchone()[0]; d.close()
+        assert c.delete(f'/api/lights/spots/{sid}', headers=OWN).status_code == 200
+        assert c.post(f'/api/plants/{code}/status', json={'archived': True}, headers=OWN).status_code == 200
+        assert c.delete(f'/api/layouts/{lid}', headers=OWN).status_code == 200
+
+def test_a_table_made_before_lights_had_hours_gains_them():
+    c = sqlite3.connect(':memory:'); c.row_factory = sqlite3.Row
+    c.executescript(LY.LAYOUT_SCHEMA.replace('  hours REAL, dim_pct INTEGER,\n', ''))
+    assert 'hours' not in {r[1] for r in c.execute('PRAGMA table_info(layout_items)')}
+    LY.layout_tables(c); LY.layout_tables(c)
+    assert {'hours', 'dim_pct'} <= {r[1] for r in c.execute('PRAGMA table_info(layout_items)')}
 
 def test_a_thing_whose_plant_was_archived_says_so_and_keeps_its_name():
     with S.app.test_client() as c:

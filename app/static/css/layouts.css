@@ -129,6 +129,14 @@
 .ly-row-txt{flex:1 1 11rem;min-width:0;overflow-wrap:break-word}
 .ly-row-txt .code,.ly-who .code,.ly-pick .code{white-space:nowrap}
 .ly-row .ly-tag{margin:.1rem 0}
+/* a plant's light where it is drawn, and where the record has it */
+.ly-light p{margin:.3rem 0}
+.ly-light:empty{display:none}
+.ly-lightlist{margin:.2rem 0 .4rem;padding-left:1.3rem}
+.ly-lightlist li{margin:.2rem 0;overflow-wrap:break-word}
+.ly-recline{margin:.5rem 0}
+.ly-recline:empty{display:none}
+.ly-recline .btn{display:block;margin-top:.4rem}
 
 /* the list of layouts */
 .ly-cards{list-style:none;padding:0;margin:1rem 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,17rem),1fr));gap:1.2rem 1.4rem}
@@ -153,7 +161,7 @@
 .ly-wh{margin-left:.4rem}
 #ly-wherelink{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap}
 
-html[data-role=viewer] :is([data-act=lynew], [data-act=lyadd], [data-act=lyundo], [data-act=lyspace], [data-act=lydel], [data-act=lyturn], [data-act=lycopy], [data-act=lyrm], [data-act=lytray], .ly-handle){display:none!important}
+html[data-role=viewer] :is([data-act=lynew], [data-act=lyadd], [data-act=lyundo], [data-act=lyspace], [data-act=lydel], [data-act=lyturn], [data-act=lycopy], [data-act=lyrm], [data-act=lytray], [data-act=lyrec], [data-act=lytall], .ly-handle){display:none!important}
 @media (forced-colors:active){
   .ly-svg{forced-color-adjust:none}
   .ly-f,.ly-tag,.ly-card,.ly-num{forced-color-adjust:none;color:CanvasText;background:Canvas;border-color:CanvasText}
