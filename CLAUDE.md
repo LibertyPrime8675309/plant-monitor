@@ -1,6 +1,6 @@
 # Plant record (plant-monitor): rules for Claude and other agents
 
-This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that runs in Docker Desktop on his Windows PC. It is being built to manage large plant collections at several sites around the world, to hold the knowledge about them, and to identify and log plants and mushrooms better over time. Today it has one site, Ethan's house in Round Rock, Texas, with about 80 potted plants and the local weather. `docs/PLAN.md` is the agreed order of work (November 2026): its first three steps come before any new feature. Read `docs/ARCHITECTURE.md` before changing code, and `docs/PROTOTYPING.md` before starting a prototype.
+This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that runs in Docker Desktop on his Windows PC. It is being built to manage large plant collections at several sites around the world, to hold the knowledge about them, and to identify and log plants and mushrooms better over time. Today it has one site, Ethan's house in Round Rock, Texas, with about 80 potted plants and the local weather. `docs/PLAN.md` is the agreed order of work (November 2026): its first three steps come before any new feature. Read `docs/ARCHITECTURE.md` before changing code (a short map; the detail for each area is in `docs/architecture/`, so read the file for the part you change), and `docs/PROTOTYPING.md` before starting a prototype.
 
 ## Who it is for
 - Accessibility is a requirement, to the standard a person with low vision needs:
@@ -14,7 +14,7 @@ This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that r
 - Write labels, buttons and help text in plain words, sentence case, active voice. Say what a button does ("Save changes", "Moved indoors").
 
 ## How Ethan works
-- **Commands:** whenever you give him a command, give it for **Windows cmd.exe, PowerShell and bash**, in that order. The same goes for the README.
+- **Commands:** whenever you give him a command, give it for **Windows cmd.exe, PowerShell and bash**, in that order. The same goes for the README and the manual.
 - **Releases** ship as a zip named `plant-database-v<version>-YYYYMMDD-HHMM.zip` (UTC), with all files inside a `plant-database/` folder, VERSION and CHANGELOG included. Build it with `python3 tools/make-release.py [new-version]`.
   - From 1.8.0 the release zip has no plant photos. They go in **photo packs**, one per upgrade batch (`dist/plant-database-photos-<batch>.zip`).
   - Packs never change once made, so send Ethan only the packs for batches that are new in that release.
@@ -27,7 +27,7 @@ This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that r
   - `VERSION`
   - the five version strings in `docker-compose.yml` (build arg, label, and the three ghcr.io image tags)
   - the top entry of `CHANGELOG.md` (written for Ethan, not for developers)
-  - the README section for anything he uses
+  - the manual page for anything he uses (`manual/*.md`, with its name in the list at the end of the README). The README itself holds only starting, stopping, updating, versions, where the data is and backups: keep it short
 - **Requests to Ethan:** keep reminding him of what Claude is waiting on at the end of replies, until he provides it. Open requests in the app and the "Still to photograph" list are not in these reminders: he handles those in the app himself (November 10, 2026).
 
 ## Rules for changes
@@ -70,4 +70,5 @@ This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that r
 - `dev/seed_src/`: scripts that built each upgrade batch from Ethan's photos; `plants_*.py` and `envdata.py` hold the plant data and care profiles
 - `dev/photos-raw/`: the photos those scripts read (already shrunk)
 - `dev/test/`: mock server and browser smoke test
-- `docs/`: architecture and the prototyping workflow
+- `docs/`: `ARCHITECTURE.md` (the short map), `architecture/` (the detail, one file per area), the plan, the ideas and the prototyping workflow. Not in a release.
+- `manual/`: how to use each part of the app, for Ethan. In a release, beside the README.

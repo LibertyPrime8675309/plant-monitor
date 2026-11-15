@@ -1507,6 +1507,10 @@ html[data-narrow="1"] #corner>button{flex:1 1 auto;justify-content:center;min-he
 html[data-narrow="1"] #corner #nav-tab{border:3px solid var(--ink);border-radius:0;left:auto;right:auto;bottom:auto;top:auto}
 html[data-narrow="1"] main{padding-bottom:calc(var(--pin-h,4rem) + 1.5rem)}
 html[data-narrow="1"] .sticky-save{bottom:var(--pin-h,4rem)}   /* 1.38.0: the Save bar sits above the bottom bar, not under it */
+/* 1.58.0: and it is held there from the top of the page. A bar is held only within its form, so on Add a plant, where the form starts
+   low on the first screen, the bar sat on the form's first line: half under the bottom bar until the page had scrolled a little way.
+   On a narrow screen the form is no box of its own, so the bar is held within the whole page. */
+html[data-narrow="1"] form:has(> .sticky-save){display:contents}
 html[data-narrow="1"] #job-badge{max-width:calc(100vw - 2rem)}
 html[data-narrow="1"] .ver{font-size:.8em;padding:.1em .35em}
 /* 1.26.0: tables too wide for the screen (app.js fitTables) become one box per row. The row's name is its title; each value follows
@@ -1613,6 +1617,7 @@ html[data-narrow="1"] .sub-in a{padding:.35rem .55rem;min-height:2.4rem}
 .wh-name{flex:1 1 14rem}
 .wh-spots{margin:.5rem 0 0 1.2rem}
 .wh-spots li{display:flex;flex-wrap:wrap;gap:.4rem 1rem;align-items:end;margin:.35rem 0}
+.wh-btns{display:flex;flex-wrap:wrap;gap:.4rem .6rem}      /* a spot's buttons keep together: beside its name where they fit, else all on the next line (one used to stay behind) */
 .wh-add{gap:.5rem;align-items:end;flex-wrap:wrap;margin-top:.5rem}
 .where-f{border:0;padding:0;margin:0}
 .where-f legend{font-weight:700;padding:0}
