@@ -25,7 +25,8 @@ plants = {p['code']: p for p in call('GET', '/api/plants')}
 r0 = R()
 check(r0['counts']['few'] == len(r0['plants']) and r0['plants'], f'a fresh install: all {len(r0["plants"])} plants have too few waterings to tell')
 today = date.fromisoformat(r0['today'])
-inside = sorted(c for c, p in plants.items() if p['site'] == 'Indoors' and p['status'] == 'active')
+in_soil = {w['code'] for w in call('GET', '/api/water')['plants'] if w.get('grow_kind', 'Soil mix') == 'Soil mix'}      # a pot kept in water has no "Checked: still moist" (1.56.0)
+inside = sorted(c for c, p in plants.items() if p['site'] == 'Indoors' and p['status'] == 'active' and c in in_soil)
 outside = sorted(c for c, p in plants.items() if p['site'] == 'Outdoors' and p['status'] == 'active')
 ev = {p['code']: p['every'] for p in r0['plants']}
 short = [c for c in inside if 5 <= ev.get(c, 99) <= 15]          # so three or four gaps of up to twice the reminder fit in the 120 days
