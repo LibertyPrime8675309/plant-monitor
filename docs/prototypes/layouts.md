@@ -115,6 +115,7 @@ Then open http://127.0.0.1:8080/#/layouts, press **Start a layout** and choose *
 - Daylight from windows, and the shade one plant casts on another, are not counted.
 - Grow lights keeps its own spots (which plants are under which light, at what distance). A layout does not change them, and Grow lights does not read layouts yet: Ethan has said it should (below), and that is the next piece of work, in a pull request of its own.
 - Moving a shelf on a room's layout does not carry the plants that stand on it.
+- From the front, a room is crowded: a thing at the front hides the things behind it, and the names along the floor run into each other. In a room the top view is the one to work in; the front view suits one shelf unit.
 - A layout does not change a shelf's measurements in the record when you resize its boards.
 - Choosing several things at once, lining things up, and Redo.
 - A layout cannot be changed offline.
