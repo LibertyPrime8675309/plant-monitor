@@ -552,6 +552,14 @@ function plantEdHtml(p) {
 // (the reasons are in Water and soil); they were a pane and a half down on a computer and four screens down on a phone. Previous and Next,
 // their filters and the layout switch share one row, so the two halves are taller. What feature modules add about care (repotting,
 // turning, pests) goes in a box of its own where the buttons used to be (#quick-more; quickMore() in features.js).
+// 1.58.0: "May 17, 2024 (2 years and 6 months ago)": the day a plant came to you, and how long you have had it
+function acquiredWords(ymd) {
+  const d = parseYmd(ymd), now = parseYmd(todayStr());
+  let months = (now.getFullYear() - d.getFullYear()) * 12 + now.getMonth() - d.getMonth() - (now.getDate() < d.getDate() ? 1 : 0);
+  const days = Math.round((now - d) / 864e5), y = Math.floor(months / 12), m = months % 12, pl = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+  const ago = days <= 0 ? 'today' : months < 1 ? pl(days, 'day') + ' ago' : (y ? pl(y, 'year') + (m ? ' and ' + pl(m, 'month') : '') : pl(m, 'month')) + ' ago';
+  return `${d.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })} (${ago})`;
+}
 async function viewPlant(code) {
   const [p, h, cur, st] = await Promise.all([api('GET', '/api/plants/' + enc(code) + '?fill=1'), api('GET', '/api/plants/' + enc(code) + '/history'), loadCond(), api('GET', '/api/settings').catch(() => ({}))]);   // 1.53.0: fill=1 reads the species' facts for empty fields
   CUR = { p, h, base: st.base_url || location.origin };
@@ -562,7 +570,7 @@ async function viewPlant(code) {
   const archived = p.status === 'archived';
   const pot = contById(p.pot_id), tray = contById(p.tray_id);
   const dl = [['Also known as', p.aliases], ['Plant type', p.plant_type], ['Home', HOMES().length > 1 ? plantHome(p).name : ''], ['Where', whereWords(p)], ['More about where', p.location], ['Container', p.container],
-    ['Pot', pot ? html`<a href="#/pots">${pot.name}</a> (${pot.size})` : ''], ['Catch tray', tray ? html`<a href="#/pots">${tray.name}</a> (${tray.size})` : ''], ['Height now, with its pot', p.height_in == null ? '' : lenF(p.height_in)]].filter(x => x[1]);
+    ['Pot', pot ? html`<a href="#/pots">${pot.name}</a> (${pot.size})` : ''], ['Catch tray', tray ? html`<a href="#/pots">${tray.name}</a> (${tray.size})` : ''], ['Height now, with its pot', p.height_in == null ? '' : lenF(p.height_in)], ['Date acquired', p.acquired_on ? acquiredWords(p.acquired_on) : '']].filter(x => x[1]);
   const single = document.documentElement.dataset.layout === 'single';
   return {
     title: p.common_name,

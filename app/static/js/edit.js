@@ -83,7 +83,7 @@ const HMAP_RANGE = { temp: ['temp_ideal_low', 'temp_ideal_high'], humidity: ['hu
 
 // ---------- edit and create ----------
 const GROUPS = [
-  ['Names and place', ['common_name', 'scientific_name', 'aliases', 'plant_type', 'home_id', 'area_id', 'spot_id', 'location', 'container', 'pot_id', 'tray_id', 'height_in']],
+  ['Names and place', ['common_name', 'scientific_name', 'aliases', 'plant_type', 'home_id', 'area_id', 'spot_id', 'location', 'container', 'pot_id', 'tray_id', 'height_in', 'acquired_on']],
   ['Identification', ['id_confidence', 'id_basis', 'id_alternatives', 'id_improve']],
   ['About this plant', ['growth_habit', 'kingdom', 'taxon_order', 'family', 'genus', 'height_ground', 'width_ground', 'height_pot', 'width_pot', 'growth_rate', 'lifespan',
     'zone_low', 'zone_high', 'zone_notes', 'heat_zone_high', 'heat_zone_low', 'heat_zone_source', 'native_range', 'conservation_status', 'invasive', 'bloom', 'fruit', 'danger_humans', 'danger_animals', 'pet_safety', 'propagation', 'sources']],
@@ -116,6 +116,7 @@ const HINTS = {
   zone_low: 'USDA zone, such as 9b or 10. The page compares it with the zone where you are.', zone_high: 'USDA zone, such as 11.',
   height_ground: 'For example 6 to 10 ft.', height_pot: 'For example 3 to 5 ft.', propagation: 'One method per line.',
   sources: 'One per line: a title, a | and the web address, for example "NC State Extension: Aloe vera | https://...".',
+  acquired_on: 'The day it came to you. If you only know the month, choose its first day; if you do not know, leave it empty.',
   height_in: 'Today, from the surface the pot stands on to the top of the plant. The Grow lights page uses it to check the plant fits under a shelf or a light.',
   leaf_type: 'Decides which pest treatments suit it before it comes inside.', pot_size: 'Whether the pot can be soaked in a bucket or tub.', health_steps: 'One step per line, in order.', indoor_setup: 'One item per line.',
 };
@@ -147,6 +148,7 @@ function fieldInput(f, val) {
     const hs = HOMES(); if (hs.length < 2 && !v) return '';
     inp = html`<select name="${f.name}" data-f="wherehome">${hs.map(h => html`<option value="${h.is_home ? '' : h.id}" ${(h.is_home ? !v : String(v) === String(h.id)) ? raw('selected') : ''}>${h.name}${h.is_home ? ' (main home)' : ''}</option>`)}</select>`;
   }
+  else if (f.kind === 'date') inp = html`<input type="date" name="${f.name}" value="${v}" min="1900-01-01" max="${todayStr()}">`;      // 1.58.0
   else if (f.kind === 'enum') {
     const opts = (META.enums && META.enums[f.name]) || (f.name === 'winter_plan' ? META.winter_plans : f.name === 'site' ? (META.sites || ['Outdoors', 'Indoors']) : META.health);
     const optional = (META.optional_enums || []).includes(f.name);
