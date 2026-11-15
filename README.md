@@ -458,3 +458,8 @@ Each page below is a file in the `manual` folder. When the app says "see README"
 ### Working with Claude: `manual/claude.md`
 - What Claude needs from you: Copy my answers for Claude
 - Updates from Claude
+
+### Reporting a problem and checking for updates: `manual/problems-and-updates.md`
+- Report a problem
+- The Issue tracker
+- Check for updates

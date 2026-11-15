@@ -165,6 +165,7 @@ Where everything lives, one line per page:
 | Settings | Offline decisions | Changes that clashed while offline | The Offline page |
 | Settings | Backups | Backups, restore, the second copy | Health of the app |
 | Settings | Audit log | Every change | Plant pages (History) |
+| Settings | Issue tracker (`#/issues`, the owner only; from 1.58.0) | Problem reports sent with Report a problem | The Settings card "Problems and ideas", Today's line |
 
 ### Summer heat for each plant
 

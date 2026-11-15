@@ -191,6 +191,7 @@ FREE = {
     'backups', 'backup_file', 'backup_restore', 'backup_settings_put', 'backup_copies_api', 'wx_backup_api', 'wx_backup_settings_put', 'asks_api', 'people', 'settings', 'jobs_run_now', 'problems_api',
     'identify_settings', 'library_settings', 'weather_settings', 'shops_api', 'shops_keys', 'ingest_regen', 'calendar_new_link',
     'updates_upload', 'updates_aside', 'updates_apply',          # update files from Claude: the owner's alone (OWNER_ONLY_PATHS), and each change goes through apply_changes()
+    'issue_report', 'issues_seen', 'issue_one', 'whatsnew_check',  # 1.58.0: a problem report is about the app, not a plant; the Issue tracker and asking GitHub for the newest release are the owner's
     # a person's own: name, settings, devices, "Got it"
     'me', 'me_prefs', 'push_device_rm', 'push_subscribe', 'push_test', 'whatsnew_seen', 'for_claude_copied',
     # knowledge about species, not about one plant

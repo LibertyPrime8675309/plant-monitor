@@ -585,7 +585,8 @@ function viewSettings() {
   const me = ME(), owner = me.role === 'owner';
   const card = (title, text, btn) => html`<section class="blk set-card"><h2>${title}</h2><p>${text}</p><div class="row">${btn}</div></section>`;
   return { title: 'Settings', after: () => { api('GET', '/api/problems').then(d => { const n = document.getElementById('prob-n'); if (n && d.open) n.textContent = ` (${d.open})`; }).catch(() => {}); loadHealth(); }, html: html`<h1>Settings</h1>
-    <p class="muted">Plant record version <strong>${META.version}</strong>${META.runs_as ? `, running as ${META.runs_as}` : ''}. The version number is also always beside the name at the top of the page.</p>
+    <p class="set-ver"><span class="muted">Plant record version <strong>${META.version}</strong>${META.runs_as ? `, running as ${META.runs_as}` : ''}. The version number is also always beside the name at the top of the page.</span>
+      <button class="btn small ghost" type="button" data-act="rlcheck" aria-haspopup="dialog">Check for updates</button></p>
     <p>Offline use, Backups and the Audit log are in the row of pages above: <a href="#/offline">Offline use</a>, <a href="#/backups">Backups</a>, <a href="#/history">Audit log</a>.</p>
     <div class="set-grid">
     ${card('People and your name', owner ? 'Your name in the audit log, and who can view, edit or own the app.' : 'Your name in the audit log, and what you are allowed to do.', html`<button class="btn" type="button" data-act="who">${owner ? 'Open people and names' : 'Open your name'}</button>`)}
@@ -628,6 +629,7 @@ function peoplePaint(P) { const b = document.getElementById('people-box'); if (b
 // ---------- toast, dialog ----------
 function toast(msg, isErr) {
   if (!isErr && Date.now() - OFF.queuedAt < 2500) { msg = String(msg).replace(/\.$/, '') + '. Kept on this device; it will be sent when you are back online.'; OFF.queuedAt = 0; }
+  if (isErr && typeof issNoteError === 'function') issNoteError(msg);        // 1.58.0: a problem report carries the last errors shown (issues.js)
   const t = document.createElement('div');
   t.className = 'toast' + (isErr ? ' err' : '');
   t.textContent = msg;
@@ -922,11 +924,20 @@ function topFit() {
     const a = nav.querySelector('a');
     if (a && (nav.offsetHeight > a.offsetHeight * 2.5 || top.offsetHeight > innerHeight * 0.2)) { r.dataset.pagesfold = '1'; r.dataset.topmode = ''; r.dataset.navrow = '0'; }
   };
-  r.dataset.topcompact = '0'; r.dataset.toptall = '0'; fit();
-  // 1.33.0: when Online, Location and Editing no longer fit beside the name, the Search button keeps only its icon and the Location
-  // button only its pin and place (their full names stay for screen readers) before the bar grows another row
+  // 1.58.0: on a wide page with no Navigation, "Report" (a problem; #report-top, issues.js) joins the buttons beside Display, but only
+  // if the bar then comes out exactly as it does without it: the same links, the same words on its buttons, the same height. So the
+  // bar is fitted without it first (data-toprep 0, which hides it), and then tried with it.
   const brand = top.querySelector('.brand'), acts = top.querySelector('.top-acts');
-  if (brand && acts && Math.abs(brand.getBoundingClientRect().top - acts.getBoundingClientRect().top) > 8) { r.dataset.topcompact = '1'; fit(); }
+  const whole = () => {
+    r.dataset.topcompact = '0'; fit();
+    // 1.33.0: when Online, Location and Editing no longer fit beside the name, the Search button keeps only its icon and the Location
+    // button only its pin and place (their full names stay for screen readers) before the bar grows another row
+    if (brand && acts && Math.abs(brand.getBoundingClientRect().top - acts.getBoundingClientRect().top) > 8) { r.dataset.topcompact = '1'; fit(); }
+    return [r.dataset.pagesfold, r.dataset.topmode, r.dataset.navrow, r.dataset.topcompact, top.offsetHeight].join();
+  };
+  r.dataset.toptall = '0'; r.dataset.toprep = '0';
+  const plain = whole();
+  if (r.dataset.navempty === '1' && document.getElementById('report-top')) { r.dataset.toprep = '1'; if (whole() !== plain) { r.dataset.toprep = '0'; whole(); } }
   if (was) top.classList.add('pages-open');
   r.dataset.toptall = top.offsetHeight > innerHeight * 0.2 ? '1' : '0';
 }

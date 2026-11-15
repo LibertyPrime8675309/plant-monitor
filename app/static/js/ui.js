@@ -954,6 +954,18 @@ function pinLayout() {           // phones: the buttons pinned to the bottom of 
   // 1.57.0: on such a page it goes in the top bar, beside Search, where it covers nothing (in the corner it hid the end of tables)
   const acts = document.querySelector('header.top .top-acts');
   if (disp && foot && acts) { if (inCorner && disp.parentNode !== acts) acts.prepend(disp); else if (!inCorner && disp.parentNode !== foot) foot.append(disp); }
+  // 1.58.0: Report a problem and Check for updates sit above Display at the foot of Navigation. A wide page with no sections has no
+  // Navigation, so there the pair goes to the foot of the page (#page-foot, after the content), and the top bar shows "Report" beside
+  // Display while it has the room (#report-top: topFit() in core.js decides). So both are on every page.
+  const more = conEl('sn-more'), pf = conEl('page-foot');
+  // Where the window is short for the text size (the largest text on a phone: under 40 lines of it), the pair would leave the list of
+  // sections three lines, so it goes after the list and scrolls with it, and only Display stays held at the bottom.
+  const tight = innerHeight / (parseFloat(getComputedStyle(r).fontSize) || 16) < 40;
+  if (more && foot && pf) {
+    if (inCorner) { if (more.parentNode !== pf) pf.append(more); }
+    else if (tight) { if (more.nextElementSibling !== foot) foot.before(more); }
+    else if (more.parentNode !== foot) foot.prepend(more);
+  }
   r.dataset.tabup = '0'; if (tab) tab.style.bottom = '';
   if (r.dataset.narrow !== '1' || !corner) { r.style.removeProperty('--pin-h'); if (job) job.style.bottom = ''; return; }
   const cr = corner.getBoundingClientRect();
