@@ -8,3 +8,8 @@
 .ms-in .btn{flex:0 0 auto}
 @media (max-width:640px){.ms-list .job-acts{min-width:0}.ms-form{width:100%}}
 html[data-role=viewer] .ms-form{display:none!important}
+
+.ms-off{display:flex;flex-wrap:wrap;gap:.3rem .8rem;align-items:center;margin:.6rem 0}
+.ms-later{margin-left:.4rem}
+#ms-plant span{padding-right:.5rem}
+html[data-role=viewer] :is([data-act=mslater], [data-act=msback]){display:none!important}

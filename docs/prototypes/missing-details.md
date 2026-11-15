@@ -61,11 +61,11 @@ Then open http://127.0.0.1:8080/#/missing. The focused check is `python3 dev/tes
 - `app/static/css/missing.css`: its own styles, and the rule that hides the boxes for viewers.
 - One line each in `js/manifest.json` and `dev/test/run_checks.py`; `dev/test/missing_check.py`.
 
-## Open questions for Ethan
-1. **Which details?** These seven are the ones a page leaves a plant out of, or guesses, without. Should any go (pet safety, say), or should others join (the ideal temperature range, humidity, light needs)?
-2. **"I don't know" or "Skip".** Some details you may not know for a plant yet (its height until you measure it). Would you like a **Not now** button that hides a plant from one list for a month? That would store a small list in settings.
-3. **A line on each plant's page**, such as "Missing: pot size and height. Fill them in", linking to that plant's gaps? It would sit under the plant's name.
-4. **On Today:** should a short "Missing details (3)" reminder show there, one plant at a time, or is the link on All plants enough?
-5. **Long lists:** Height has 100 plants. Is one long list fine with the jump buttons and Hide, or would you rather see 10 at a time with **Show 10 more**?
+## His answers (November 15, 2026), and what was built from them
+1. **Which details:** the seven stay, and two join: **Light** (the Light line of its page) and **Potting mix** (a pot with no mix written down; the button opens the plant's page, where What is in each pot records it). A **date acquired** was also wanted, but no page has a field for it yet: it needs a new field on every plant page first. Still to decide.
+2. **Not now:** each plant in a list has **Not now**, which leaves it off that one list for 30 days and changes nothing on its page. The list says how many are left off, with **Show them again**. Kept as one setting (`missing_later`).
+3. **On each plant's page:** a line under its name and care buttons, such as "Missing: pot size and height with its pot. Fill them in", linking to that plant's gaps.
+4. **Today:** no reminder there; the page and the line on All plants are enough.
+5. **Long lists:** ten plants at a time, with **Show 10 more** and "Showing 10 of 99".
 
 Reply on this pull request with changes, or say 'merge' when you are happy.

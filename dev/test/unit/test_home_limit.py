@@ -74,6 +74,8 @@ def world():
         x = d.execute("SELECT code, location, area_id FROM plants WHERE status='active' AND spot_id IS NULL AND COALESCE(home_id, ?)=? AND code<>? ORDER BY code LIMIT 1", (main, main, F)).fetchone()
         W['loose'] = {'code': x['code'], 'text': (x['location'] or '').strip(), 'area': x['area_id']}      # a plant at the main home with no spot yet
         d.execute("INSERT INTO readings(ts, source, device, temp_f) VALUES(?, 'sensor', 'limit-probe', 70)", (S.now(),)); d.commit()
+        # Missing details: the owner put the plant at the main home off one list
+        r = c.post('/api/missing/later', json={'plant': F, 'key': 'height_in'}, headers=OWN); assert r.status_code == 200, r.get_data(as_text=True)
         W['version'] = c.get(f'/api/plants/{F}').get_json()['version']
         W['counts'] = counts(d)
         d.close()
@@ -151,6 +153,10 @@ def test_a_limited_editor_cannot_change_a_plant_at_another_home_by_any_route(wor
     refused(c, 'several_create', 'POST', '/api/plants/several', json={'plants': [{'fields': {'common_name': 'Stray', 'home_id': W['main']}}]})
     mine_v = c.get(f"/api/plants/{W['mine']}").get_json()['version']
     refused(c, 'update_plant', 'PUT', f"/api/plants/{W['mine']}", json={'base_version': mine_v, 'fields': {'home_id': W['main']}})
+    # --- Missing details: putting a plant off a list, and bringing the put-off ones back, follow the plant
+    refused(c, 'missing_later_api', 'POST', '/api/missing/later', json={'plant': F, 'key': 'pot_size'})
+    refused(c, 'missing_later_api', 'DELETE', '/api/missing/later', json={'key': 'height_in'})
+    assert f'{F}:height_in' in S.missing_later(conn()) and f'{F}:pot_size' not in S.missing_later(conn()), 'nothing about the lists changed'
     # --- and nothing about the plant changed
     d = conn()
     assert c.get(f'/api/plants/{F}').get_json()['version'] == W['version']

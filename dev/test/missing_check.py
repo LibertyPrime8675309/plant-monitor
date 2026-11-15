@@ -4,6 +4,8 @@ person's units; the link on All plants; at laptop and phone width, light and dar
 fresh data folder, then:  python3 dev/test/missing_check.py      Screenshots: dev/tmp/shots/missing-*.png"""
 import json, os, sys, urllib.error, urllib.request
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from waits import until
 BASE = 'http://127.0.0.1:8080'
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
 fails, errs = [], []
@@ -22,8 +24,8 @@ def put(code, fields):
     return call('PUT', '/api/plants/' + code, {'base_version': p['version'], 'fields': fields})
 
 m0 = M()
-check([d['key'] for d in m0['details']] == ['pot_size', 'leaf_type', 'height_in', 'temp_damage_below', 'water', 'feed', 'pet_safety'],
-      'seven details, in a fixed order')
+check([d['key'] for d in m0['details']] == ['pot_size', 'leaf_type', 'height_in', 'temp_damage_below', 'water', 'feed', 'pet_safety', 'light', 'pot_mix'],
+      'nine details, in a fixed order')
 check(all(d['why'] and d['title'] for d in m0['details']), 'each says what it is for')
 plants = [p for p in call('GET', '/api/plants') if p.get('status', 'active') == 'active' and not p.get('home_id')]
 check(set(codes(m0, 'height_in')) == {p['code'] for p in plants if call('GET', '/api/plants/' + p['code']).get('height_in') in (None, '')}, 'Height lists exactly the plants with no height')
@@ -65,7 +67,7 @@ with sync_playwright() as p:
     m = M()
     for d in m['details']:
         n = len(d['plants'])
-        if n: check(pg.inner_text(f"#ms-{d['key']} h2") == f"{d['title']} ({n})" and pg.locator(f"#ms-{d['key']} .job").count() == n, f"{d['title']}: heading and {n} rows")
+        if n: check(pg.inner_text(f"#ms-{d['key']} h2") == f"{d['title']} ({n})" and pg.locator(f"#ms-{d['key']} .job").count() == min(n, 10), f"{d['title']}: heading ({n}) and the first {min(n, 10)} rows")
     check(pg.locator('.ms-jumps a').count() == sum(1 for d in m['details'] if d['plants']), 'a jump button for each detail with gaps')
     pg.screenshot(path=os.path.join(OUT, 'missing-1-top.png'))
     labels_ok = pg.evaluate("""[...document.querySelectorAll('.ms-form select, .ms-form input')].every(x => x.labels.length && x.getAttribute('aria-label').startsWith(x.labels[0].textContent.replace(/ \\(.*\\)$/, '')))""")
@@ -115,11 +117,29 @@ with sync_playwright() as p:
     pg.evaluate("document.documentElement.dataset.role = 'viewer'")
     check(pg.locator('.ms-form:visible').count() == 0, 'people who can only view see the list but not the boxes')
     pg.evaluate("document.documentElement.dataset.role = 'owner'")
+    # ten at a time, Not now, and the line on a plant's own page (his answers of November 15)
+    pg.goto(BASE + '/#/weather'); pg.goto(BASE + '/#/missing'); pg.wait_for_selector('#ms-height_in')
+    m = M(); nH = len(codes(m, 'height_in'))
+    check(nH > 10 and pg.locator('#ms-height_in .job').count() == 10 and f'Showing 10 of {nH}' in pg.inner_text('#ms-height_in'), f'a long list shows ten plants and says so (Height has {nH})')
+    pg.click('#ms-height_in [data-act=msmore]')
+    check(until(pg, lambda: pg.locator('#ms-height_in .job').count() == min(20, nH)) and pg.evaluate("(document.activeElement.closest('.job') || {dataset: {}}).dataset.code") == codes(m, 'height_in')[10],
+          'Show 10 more adds the next ten, and the keyboard goes to the first of them')
+    first = codes(m, 'height_in')[0]; v1 = call('GET', '/api/plants/' + first)['version']
+    pg.locator(f'#ms-height_in .job[data-code="{first}"] [data-act=mslater]').click()
+    check(until(pg, lambda: first not in codes(M(), 'height_in') and pg.locator(f'#ms-height_in .job[data-code="{first}"]').count() == 0) and 'left off this list for now' in pg.inner_text('#ms-height_in'),
+          'Not now takes the plant off that list, and the list says one is left off')
+    check(call('GET', '/api/plants/' + first)['version'] == v1 and 'Not now: Height with its pot' in pg.inner_text('#toasts'), 'nothing on its page changed, and a message says so')
+    pg.click('#ms-height_in [data-act=msback]')
+    check(until(pg, lambda: first in codes(M(), 'height_in')), 'Show them again puts it back')
+    pg.goto(BASE + f'/#/plant/{first}')
+    check(until(pg, lambda: pg.locator('#ms-plant').count() == 1) and 'height with its pot' in pg.inner_text('#ms-plant').lower() and pg.locator(f'#ms-plant a[href="#/missing?plant={first}"]').count() == 1,
+          'a plant\'s own page says what it is missing, with a link to fill it in')
+    check(pg.evaluate("!!document.querySelector('.quick + #ms-plant')"), 'under its name and care buttons')
     # one plant
     pg.goto(BASE + f'/#/missing?plant={e}'); pg.wait_for_selector(f'a[href="#/plant/{e}"]'); pg.wait_for_timeout(500)
     check(pg.locator('.job').count() == sum(1 for d in M('?plant=' + e)['details'] for _ in d['plants']) and 'Back to ' + e in pg.inner_text('main'), '#/missing?plant= shows one plant, with a link back to it')
     # phone, dark and large text
-    for name, disp in (('phone-light', {}), ('phone-dark-big', {'theme': 'dark', 'size': '160'})):
+    for name, disp in (('phone-light', {}), ('phone-dark-big', {'theme': 'dark', 'size': '160'}), ('phone-largest', {'size': '190'})):
         ph = br.new_page(viewport={'width': 390, 'height': 844}, device_scale_factor=2)
         ph.on('pageerror', lambda x: errs.append(str(x)))
         ph.add_init_script("localStorage.setItem('plantdb.editor','Missing Test');localStorage.setItem('plantdb.units', JSON.stringify({region: 'us'}));localStorage.setItem('plantdb.display', JSON.stringify(%s))" % json.dumps(disp))
