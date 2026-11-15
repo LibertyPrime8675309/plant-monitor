@@ -13,6 +13,7 @@ const PRP_SITES = ['Indoors', 'Covered porch', 'Outdoors', 'Garage or shed'];
 const PRP_STEP_ORDER = ['scarify', 'soak', 'warm', 'cold', 'light', 'dry'];
 const prpPieces = p => p.method === 'seed' ? prpPl(p.count, 'seed', 'seeds') : prpPl(p.count, 'piece', 'pieces');
 const prpInWater = p => /water/i.test(p.medium || '');
+const prpToF = v => Math.round(tIn(v));          // a temperature typed in the person's unit, as the whole °F the server keeps
 // "12 sprouted (60% of the 20 sown)": from the seeds sown when a sowing is written down, else from the whole lot
 const prpSprouted = p => `${p.sprouted} sprouted` + (p.sprout_pct == null ? '' : ` (${p.sprout_pct}% of the ${p.sprout_of} ${p.sown ? 'sown' : 'in the lot'})`);
 function prpPhotos(c, can) {      // pictures of the seed, the cut or the roots
@@ -124,8 +125,8 @@ async function prpViewNew(qs) {
         <p class="hint">Tick the steps in the order they are done. The days and temperatures are only starting points: change them to suit the plant. Each step starts when you press Start on its page, and Today tells you when it ends.</p>
         ${PRP_STEP_ORDER.map(k => html`<div class="prp-step-row"><label class="chk"><input type="checkbox" name="s_${k}"> ${P.stage_kinds[k]}</label>
           <label class="f">Days<input type="number" name="d_${k}" min="0" max="730" value="${P.stage_preset[k].days}" inputmode="numeric"></label>
-          <label class="f">Lowest °F<input type="number" name="l_${k}" min="-20" max="140" value="${P.stage_preset[k].low ?? ''}" inputmode="numeric"></label>
-          <label class="f">Highest °F<input type="number" name="h_${k}" min="-20" max="140" value="${P.stage_preset[k].high ?? ''}" inputmode="numeric"></label></div>`)}
+          <label class="f">Lowest ${tU()}<input type="number" name="l_${k}" min="${tNum(-20)}" max="${tNum(140)}" value="${P.stage_preset[k].low == null ? '' : tNum(P.stage_preset[k].low)}" inputmode="numeric"></label>
+          <label class="f">Highest ${tU()}<input type="number" name="h_${k}" min="${tNum(-20)}" max="${tNum(140)}" value="${P.stage_preset[k].high == null ? '' : tNum(P.stage_preset[k].high)}" inputmode="numeric"></label></div>`)}
       </fieldset>
       <p class="row"><button class="btn" type="submit">Start it</button> <a class="btn ghost" href="#/propagating">Cancel</a></p>
     </form>`,
@@ -134,7 +135,7 @@ async function prpViewNew(qs) {
 
 // ---------- one attempt ----------
 function prpStageRow(s, can, id) {
-  const temp = s.temp_low != null || s.temp_high != null ? `, ${s.temp_low ?? '?'} to ${s.temp_high ?? '?'}°F` : '';
+  const temp = s.temp_low != null || s.temp_high != null ? `, ${s.temp_low == null ? '?' : tF(s.temp_low, false)} to ${s.temp_high == null ? '?' : tF(s.temp_high, false)}${tU()}` : '';      // stored in °F, shown in the person's unit
   const state = s.state === 'done' ? `Finished ${prpDate(s.ended_on)}` : s.state === 'running' ? `Started ${prpDate(s.started_on)}; ends ${prpDate(s.ends_on)}` + (s.days_left < 0 ? ` (${prpPl(-s.days_left, 'day', 'days')} over)` : s.days_left === 0 ? ' (today)' : ` (${prpPl(s.days_left, 'day', 'days left')})`) : 'Not started';
   const b = (act, label, extra) => html`<button class="btn small ${extra || 'ghost'}" type="button" data-act="prpstage" data-do="${act}" data-sid="${s.id}" data-id="${id}" aria-label="${label + ': ' + s.label}">${label}</button>`;
   return html`<li class="prp-stage" data-sid="${s.id}"><strong>${s.label}</strong>, ${prpPl(s.days, 'day', 'days')}${temp}. <span class="${s.state === 'running' ? 'prp-run' : 'muted'}">${state}.</span>
@@ -161,8 +162,8 @@ async function prpViewOne(id) {
       ${can ? html`<form data-form="prpstageadd" class="prp-stageadd noprint" data-id="${id}"><div class="field-grid">
         <label class="f">Add a step<select name="kind">${Object.entries(P.stage_kinds).map(([k, v]) => html`<option value="${k}">${v}</option>`)}</select></label>
         <label class="f">Days<input type="number" name="days" min="0" max="730" step="1" inputmode="numeric" placeholder="Usual"></label>
-        <label class="f">Lowest °F<input type="number" name="temp_low" min="-20" max="140" inputmode="numeric"></label>
-        <label class="f">Highest °F<input type="number" name="temp_high" min="-20" max="140" inputmode="numeric"></label></div>
+        <label class="f">Lowest ${tU()}<input type="number" name="temp_low" min="${tNum(-20)}" max="${tNum(140)}" inputmode="numeric"></label>
+        <label class="f">Highest ${tU()}<input type="number" name="temp_high" min="${tNum(-20)}" max="${tNum(140)}" inputmode="numeric"></label></div>
         <button class="btn small" type="submit">Add the step</button></form>` : ''}</section>
     ${prpPhotos(c, can)}
     ${can && open ? html`<section class="blk noprint" id="prp-record"><h2>Record what happened</h2>
@@ -289,7 +290,7 @@ Object.assign(formActs, {
     if (!(await needName())) return;
     const b = prpBody(f);
     b.stages = PRP_STEP_ORDER.filter(k => f.elements['s_' + k].checked).map(k => { const s = { kind: k, days: f.elements['d_' + k].value };
-      if (f.elements['l_' + k].value !== '') s.temp_low = f.elements['l_' + k].value; if (f.elements['h_' + k].value !== '') s.temp_high = f.elements['h_' + k].value; return s; });
+      if (f.elements['l_' + k].value !== '') s.temp_low = prpToF(f.elements['l_' + k].value); if (f.elements['h_' + k].value !== '') s.temp_high = prpToF(f.elements['h_' + k].value); return s; });
     for (const k of Object.keys(b)) if (/^[sdlh]_/.test(k)) delete b[k];
     await guard(async () => { const r = await api('POST', '/api/propagations', b); toast('Started ' + r.code); location.hash = '#/propagating/' + r.id; });
   },
@@ -326,6 +327,7 @@ Object.assign(formActs, {
   async prpstageadd(f) {
     if (!(await needName())) return;
     const id = f.dataset.id, b = prpBody(f);
+    for (const k of ['temp_low', 'temp_high']) if (k in b) b[k] = prpToF(b[k]);
     await guard(async () => { await api('POST', `/api/propagations/${id}/stages`, b); toast('Step added'); await prpAfter(id); });
   },
   async prppromote(f) {

@@ -485,7 +485,7 @@ def tree_nodes(c, today):
         return node
     roots = [plant_node(code, 1, set()) for code in by_parent if code not in child_of]
     roots.sort(key=lambda n: n['code'])
-    outside = [dict(short(p), children=[plant_node(k['code'], 2, set()) for k in p['children']]) for p in rootless]
+    outside = [dict(short(p), children=[plant_node(k['code'], 1, set()) for k in p['children']]) for p in rootless]      # a plant from seed that came from elsewhere starts its own line: generation 1
     return roots, outside
 
 @app.route('/api/propagations/tree')

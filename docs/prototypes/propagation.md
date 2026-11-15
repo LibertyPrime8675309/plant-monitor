@@ -41,12 +41,12 @@ Then open http://localhost:8080/#/propagating.
 `dev/test/unit/test_propagation.py`; `dev/test/propagation_check.py` (96 checks: API, page, promotion with P-code, two generations, seed steps, the float test, sowing and photos on a seed lot's page, results math, phone width in the light and dark themes at 160% and at the largest text, spoken names and 7 to 1 contrast on its pages, view-only). `dev/test/unit/test_home_limit.py` tries every route of it against a plant at another home.
 
 ## Open questions for you
-1. Temperatures are entered in °F. Should they follow a Celsius setting if there is one?
+1. Answered November 15 (yes): temperatures follow the Units setting. They are kept in °F and shown and typed in °C by a person who chose it.
 2. Photos on an attempt are built (November 15). Photos on each single check are not: do you want them?
-3. Should seedlings from seed bought elsewhere count as "Generation 1", or start at 0 with no parent?
-4. Should Propagation get its own link in the top bar? It is reachable from Today, the guide, plant pages and Search for now.
-5. Push reminders for steps and checks, as other care kinds have?
-6. Breeding crosses (two parents, seed from a named cross) as a second pass?
-7. Results are not yet written into the facts table (Library). Do you want your own trial results to become facts about a species?
+3. Answered November 15: a plant from seed that came from elsewhere is generation 1.
+4. Answered November 15: no link in the top bar; it stays reachable from Today, the guide, plant pages and Search.
+5. Answered November 15 (yes): phone notifications for steps and checks. Not built yet.
+6. Answered November 15: breeding crosses later.
+7. Answered November 15: later, as proposals you accept.
 8. From the Seed lots idea, step 1 is now whole (the lot with its test, sowing, sprouting and photos). Still not built: Library facts for seed (such as how long an oak's acorns need cold), Identify examples from seed photos, and counting days from a fridge or heat-mat sensor. Which next?
 9. A seed lot's sprouting rate is on its own page. Should "What your attempts show" give seeds a sprouting rate too, beside "became plants"?

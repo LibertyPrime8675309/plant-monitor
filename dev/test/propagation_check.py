@@ -118,7 +118,7 @@ nameless = call('POST', '/api/propagations', dict(method='seed', count=3, starte
 check(status('POST', f"/api/propagations/{nameless['id']}/promote", dict()) == 400 and len(call('GET', '/api/plants')) == n_plants0 + 4, 'a seed lot with no parent and no species needs a name before it can make a plant')
 call('DELETE', f"/api/propagations/{nameless['id']}")
 out = next((o for o in call('GET', '/api/propagations/tree')['outside'] if o['code'] == s['code']), None)
-check(out and out['children'][0]['code'] == sp['code'], 'a seed lot with no parent plant appears under "from elsewhere" in the tree')
+check(out and out['children'][0]['code'] == sp['code'] and out['children'][0]['generation'] == 1, 'a seed lot with no parent plant appears under "from elsewhere" in the tree, and its seedling is generation 1')
 # ---- results: only finished attempts count
 call('POST', f"/api/propagations/{s['id']}/status", dict(status='done'))
 f2 = call('POST', '/api/propagations', dict(method='stem', parent_code=parent, count=4, started_on=iso(30)))
@@ -210,6 +210,18 @@ with sync_playwright() as p:
     pg.goto(BASE + lp); until(pg, lambda: pg.inner_text('main h1').startswith('Shumard oak acorns') and pg.locator('#prp-photos').count() == 1)
     pg.locator('#prp-photos [data-act=prpphotodel]').first.click(); pg.locator('dialog[open] button:has-text("Remove it")').click()
     check(until(pg, lambda: pg.locator('#prp-photos figure').count() == 1) and len(call('GET', f"/api/propagations/{lot['id']}")['photos']) == 1, 'Remove takes a photo off the page after asking')
+    # temperatures follow the Units setting: stored in °F, shown and typed in °C by a person who chose it
+    cc = br.new_page(viewport={'width': 1280, 'height': 900}); cc.on('pageerror', lambda e: errs.append(str(e)))
+    cc.add_init_script("localStorage.setItem('plantdb.editor','Prop Test');localStorage.setItem('plantdb.units', JSON.stringify({temp: 'c'}))")
+    cc.goto(BASE + lp); until(cc, lambda: cc.inner_text('main h1').startswith('Shumard oak acorns') and cc.locator('#prp-steps .prp-stage').count() == 1)
+    check('1 to 5°C' in cc.inner_text('#prp-steps .prp-stage') and '°F' not in cc.inner_text('#prp-steps'), 'with °C chosen, a cold step of 34 to 41°F reads 1 to 5°C')
+    cc.select_option('form[data-form=prpstageadd] select[name=kind]', 'warm'); cc.fill('form[data-form=prpstageadd] input[name=days]', '10')
+    cc.fill('form[data-form=prpstageadd] input[name=temp_low]', '21'); cc.fill('form[data-form=prpstageadd] input[name=temp_high]', '27'); cc.click('form[data-form=prpstageadd] button[type=submit]')
+    check(until(cc, lambda: cc.locator('#prp-steps .prp-stage').count() == 2) and [(x['temp_low'], x['temp_high']) for x in call('GET', f"/api/propagations/{lot['id']}")['stages']][1] == (70, 81),
+          'a step typed as 21 to 27°C is kept as 70 to 81°F')
+    cc.goto(BASE + '/#/propagating/new?method=seed'); cc.wait_for_selector('form[data-form=prpnew]')
+    check(cc.input_value('input[name=l_cold]') == '1' and cc.input_value('input[name=h_cold]') == '5' and 'Lowest °C' in cc.inner_text('form[data-form=prpnew] .prp-steps'), 'the Start page offers its usual temperatures in °C too')
+    cc.close()
     # the family tree
     pg.goto(BASE + '/#/propagating/family'); pg.wait_for_selector('#prp-tree')
     tree_text = pg.inner_text('#prp-tree')
