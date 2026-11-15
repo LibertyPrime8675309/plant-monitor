@@ -2,4 +2,5 @@
 .rh-plant{margin-top:.8rem;padding-top:.6rem;border-top:1px solid var(--line, currentColor)}
 .rh-plant h4{margin:0 0 .3rem;font-size:1em}
 .rh-plant .rh-acts{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
-html[data-role=viewer] :is([data-act=rhset], [data-act=rhclear]){display:none!important}
+html[data-role=viewer] :is([data-act=rhset], [data-act=rhclear], [data-act=rhall]){display:none!important}
+.rh-all{margin:.4rem 0 .6rem}

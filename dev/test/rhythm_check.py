@@ -6,6 +6,8 @@ Screenshots: dev/tmp/shots/rhythm-*.png"""
 import json, os, sys, urllib.error, urllib.request
 from datetime import date, timedelta
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from waits import until
 BASE, TS = 'http://127.0.0.1:8080', 'http://127.0.0.1:8081'
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
 fails, errs = [], []
@@ -46,8 +48,8 @@ water(m, [ev[m]] * 4)
 pa, pb, pm = one(a), one(b), one(m)
 check(pa['state'] == 'often' and pa['gap'] == 3 and pa['waterings'] == 6 and pa['gaps'] == [3, 4, 3, 4, 3],
       f'watered every 3 or 4 days against a reminder of {ev[a]}: "sooner", about every 3 days, with the gaps listed')
-check(pa['suggest'] and pa['suggest']['every'] == 3 and pa['suggest']['setting'] == 2,
-      'it offers a 3-day reminder, which indoors means "Check for water every" 2 days (2 x 1.5 rounds to 3)')
+check(pa['suggest'] and pa['suggest']['every'] == 3 and pa['suggest']['setting'] == 3 and not pa['exact'],
+      'it offers a 3-day reminder: indoors the number you pick is the number you get ("Check for water every" 3 days, no stretch)')
 check(pb['state'] == 'seldom' and pb['checks'] == 2, f'watered every {ev[b] * 2} days against {ev[b]}, found moist twice: "later", with the checks counted')
 check(pm['state'] == 'matches' and pm['suggest'] is None, 'watered on time: "about right", nothing offered')
 # a long gap (away, or not logged) is left out, not taken as the rhythm
@@ -63,11 +65,13 @@ check(po['site'] == 'Outdoors' and po['rain_days'] >= 0 and po['waterings'] == 1
 # make the reminder match, then undo it
 v0 = call('GET', f'/api/plants/{a}')['water_every_days']
 r = call('PUT', '/api/rhythm', {'plant': a, 'every': 3})['plants'][0]
-check(call('GET', f'/api/plants/{a}')['water_every_days'] == 2 and r['every'] == 3 and r['state'] == 'matches',
-      '"Remind me every 3 days" sets the field to 2 and the reminder is now every 3 days, about right')
+check(call('GET', f'/api/plants/{a}')['water_every_days'] == 3 and r['every'] == 3 and r['state'] == 'matches' and r['exact'],
+      '"Remind me every 3 days" sets the field to 3 and the reminder is now every 3 days, about right')
+wa = next(w for w in call('GET', '/api/water')['plants'] if w['code'] == a)
+check(wa['every'] == 3 and 'the gap you chose' in wa['weather'], 'Today\'s watering list uses the same 3 days for it, with no indoor stretch')
 check(any(x.get('plant_code') == a and 'How often you water' in (x.get('note') or '') for x in call('GET', '/api/audit?n=20')), 'the change is in the audit log')
-call('PUT', '/api/rhythm', {'plant': a, 'setting': v0})
-check(call('GET', f'/api/plants/{a}')['water_every_days'] == v0, 'Undo puts the field back as it was')
+call('PUT', '/api/rhythm', {'plant': a, 'setting': v0, 'exact': False})
+check(call('GET', f'/api/plants/{a}')['water_every_days'] == v0 and not one(a)['exact'] and one(a)['every'] == ev[a], 'Undo puts the field back as it was, and the indoor stretch with it')
 call('PUT', '/api/rhythm', {'plant': a, 'every': 3})
 call('PUT', '/api/rhythm', {'plant': a, 'every': None})
 check(call('GET', f'/api/plants/{a}')['water_every_days'] is None, '"Let the app work out the gap" empties the field')
@@ -96,10 +100,20 @@ with sync_playwright() as p:
     check('Found still moist 2 times' in pg.inner_text(f'#rh-seldom .job[data-code="{b}"]'), 'the "later" plant says it was found still moist twice')
     pg.screenshot(path=os.path.join(OUT, 'rhythm-1-page.png'), full_page=True)
     pg.locator(f'#rh-often .job[data-code="{a}"] [data-act=rhset]').click(); pg.wait_for_timeout(1800)
-    check(call('GET', f'/api/plants/{a}')['water_every_days'] == 2 and 'watering reminder now every 3 days' in pg.inner_text('#toasts'),
+    check(call('GET', f'/api/plants/{a}')['water_every_days'] == 3 and 'watering reminder now every 3 days' in pg.inner_text('#toasts'),
           'the button changes the reminder and says so, with Undo')
     check(pg.locator(f'#rh-match .job[data-code="{a}"]').count() == 1, 'the plant moves to About right')
     pg.locator('.undo-toast [data-undo=undo]').click(); pg.wait_for_timeout(1800)
+    # Make all of these match (his answer of November 15): a second plant watered sooner, then one button for the list
+    water(inside[1], [3, 3, 3, 3]); pg.goto(BASE + '/#/weather'); pg.goto(BASE + '/#/rhythm'); pg.wait_for_selector('#rh-often')
+    often = lambda: [p for p in R()['plants'] if p['state'] == 'often' and p['suggest']]
+    n_all = len(often())
+    check(n_all >= 2 and pg.inner_text('#rh-often [data-act=rhall]') == f'Make all {n_all} of these match', f'the list of {n_all} has one button for all of them')
+    pg.click('#rh-often [data-act=rhall]'); pg.locator('dialog[open] button:has-text("Make them match")').click()
+    check(until(pg, lambda: not often()) and until(pg, lambda: 'now match how often you water' in pg.inner_text('#toasts')), 'after asking, it sets every reminder in the list and says so')
+    pg.locator('.undo-toast [data-undo=undo]').click()
+    check(until(pg, lambda: len(often()) == n_all) and not any(p['exact'] for p in often()), 'Undo puts them all back as they were')
+    pg.goto(BASE + '/#/weather'); pg.goto(BASE + '/#/rhythm'); pg.wait_for_selector('#rh-often')
     check(call('GET', f'/api/plants/{a}')['water_every_days'] is None, 'Undo on the page puts it back (empty, as it was)')
     # the plant's own page
     pg.goto(BASE + f'/#/plant/{a}'); pg.wait_for_selector('#rh-plant', timeout=15000)
@@ -121,7 +135,7 @@ with sync_playwright() as p:
     check(pg.locator('#rh-plant').count() == 0, 'a plant with no waterings logged gets no line')
     pg.goto(BASE + '/#/rhythm'); pg.wait_for_selector('#rh-often')
     pg.evaluate("document.documentElement.dataset.role = 'viewer'")
-    check(pg.locator('[data-act=rhset]:visible, [data-act=rhclear]:visible').count() == 0, 'people who can only view do not see the buttons')
+    check(pg.locator('[data-act=rhset]:visible, [data-act=rhclear]:visible, [data-act=rhall]:visible').count() == 0, 'people who can only view do not see the buttons')
     for name, disp in (('phone-light', {}), ('phone-dark-big', {'theme': 'dark', 'size': '160'})):
         ph = br.new_page(viewport={'width': 390, 'height': 844}, device_scale_factor=2)
         ph.on('pageerror', lambda e: errs.append(str(e)))

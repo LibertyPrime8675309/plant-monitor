@@ -30,8 +30,11 @@ function rhWords(p, long) {
 function rhBtn(p) {
   if (!p.suggest || p.state === 'matches') return '';
   return html`<button class="btn small" type="button" data-act="rhset" data-code="${p.code}" data-name="${p.name}" data-every="${p.suggest.every}"
-    data-old="${p.own_setting == null ? '' : p.own_setting}" aria-label="${'Remind me every ' + p.suggest.every + ' days to check ' + p.name}">Remind me every ${rhDays(p.suggest.every)}</button>`;
+    data-old="${p.own_setting == null ? '' : p.own_setting}" data-exact="${p.exact ? '1' : ''}" aria-label="${'Remind me every ' + rhDays(p.suggest.every) + ' to check ' + p.name}">Remind me every ${rhDays(p.suggest.every)}</button>`;
 }
+// "Make all of these match": every plant in one list gets the reminder its own waterings suggest
+const rhAllBtn = (state, list) => { const n = list.filter(p => p.suggest).length;
+  return n > 1 ? html`<p class="noprint rh-all"><button class="btn small" type="button" data-act="rhall" data-state="${state}" aria-label="${'Make all ' + n + ' of these match: set each reminder to how often you water'}">Make all ${n} of these match</button></p>` : ''; };
 const rhRow = p => jobRow({ code: p.code, common_name: p.name, photo: p.photo }, rhWords(p, false), rhBtn(p));
 let RH = { min_gaps: 3, max_gap: 45 };
 async function viewRhythm() {
@@ -48,9 +51,11 @@ async function viewRhythm() {
       <p class="hint">From the last ${RH.window} days of the care log. "About every" is the middle gap between waterings, so one long or short gap does not move it. Rain of ${rainF(RH.rain_counts_in)} or more counts as a watering for plants whose Location is Outdoors.</p></div>
     <section class="blk" id="rh-often"><h2>Watered sooner than the reminder (${C.often})</h2>
       <p class="hint">The pot may dry faster than the app thinks (a small pot, a sunny window, a heater nearby), so a shorter reminder would suit it. Or it is watered before it needs it: push a finger into the mix first, and if it is still damp, press "Checked: still moist" instead.</p>
+      ${rhAllBtn('often', by('often'))}
       ${C.often ? html`<ul class="jobs">${by('often').map(rhRow)}</ul>` : html`<p class="muted">None.</p>`}</section>
     <section class="blk" id="rh-seldom"><h2>Watered later than the reminder (${C.seldom})</h2>
       <p class="hint">If the mix was still moist when the reminder came ("Found still moist"), a longer reminder suits it. If it was dry and the watering was simply late, keep the reminder as it is.</p>
+      ${rhAllBtn('seldom', by('seldom'))}
       ${C.seldom ? html`<ul class="jobs">${by('seldom').map(rhRow)}</ul>` : html`<p class="muted">None.</p>`}</section>
     <details class="grp" id="rh-match"><summary><h2>About right (${C.matches})</h2></summary>
       ${C.matches ? html`<ul class="jobs">${by('matches').map(rhRow)}</ul>` : html`<p class="muted">None yet.</p>`}</details>
@@ -73,23 +78,36 @@ async function rhAfter(code) {
 Object.assign(acts, {
   async rhset(el) {
     if (!(await needName())) return;
-    const code = el.dataset.code, name = el.dataset.name, n = +el.dataset.every, old = el.dataset.old === '' ? null : +el.dataset.old;
+    const code = el.dataset.code, name = el.dataset.name, n = +el.dataset.every, old = el.dataset.old === '' ? null : +el.dataset.old, exact = !!el.dataset.exact;
     await guard(async () => {
       const r = await api('PUT', '/api/rhythm', { plant: code, every: n });
       const p = r.plants[0];
       careUndoToast(`${name}: watering reminder now every ${rhDays(p ? p.every : n)}`, async () => {
-        await guard(async () => { await api('PUT', '/api/rhythm', { plant: code, setting: old }); toast('Undone. The watering reminder is back as it was.'); await rhAfter(code); });
+        await guard(async () => { await api('PUT', '/api/rhythm', { plant: code, setting: old, exact }); toast('Undone. The watering reminder is back as it was.'); await rhAfter(code); });
       }, code);
       await rhAfter(code);
     });
   },
+  async rhall(el) {
+    if (!(await needName())) return;
+    const list = RH.plants.filter(p => p.state === el.dataset.state && p.suggest);
+    if (!list.length) return;
+    if (!(await confirmBox(`Change the reminder for ${rhPl(list.length, 'plant', 'plants')}?`, 'Each one gets the gap its own waterings show. Every change is in that plant\'s history, and Undo in the message that follows puts them all back.', 'Make them match', false))) return;
+    await guard(async () => {
+      for (const p of list) await api('PUT', '/api/rhythm', { plant: p.code, every: p.suggest.every });
+      careUndoToast(`${rhPl(list.length, 'reminder', 'reminders')} now match how often you water`, async () => {
+        await guard(async () => { for (const p of list) await api('PUT', '/api/rhythm', { plant: p.code, setting: p.own_setting, exact: !!p.exact }); toast('Undone. The reminders are back as they were.'); await rhAfter(); });
+      });
+      await rhAfter();
+    });
+  },
   async rhclear(el) {
     if (!(await needName())) return;
-    const code = el.dataset.code, old = +el.dataset.old;
+    const code = el.dataset.code, old = +el.dataset.old, exact = !!el.dataset.exact;
     await guard(async () => {
       await api('PUT', '/api/rhythm', { plant: code, every: null });
       careUndoToast('The app works out the watering gap again', async () => {
-        await guard(async () => { await api('PUT', '/api/rhythm', { plant: code, setting: old }); toast('Undone.'); await rhAfter(code); });
+        await guard(async () => { await api('PUT', '/api/rhythm', { plant: code, setting: old, exact }); toast('Undone.'); await rhAfter(code); });
       }, code);
       await rhAfter(code);
     });
@@ -116,7 +134,7 @@ addFeature({
     },
     html: p => html`<div id="rh-plant" class="rh-plant"><h4>How often you water</h4><p>${rhWords(p, true)}</p>
       ${rhBtn(p) || p.own_setting != null ? html`<p class="rh-acts">${rhBtn(p)}
-        ${p.own_setting != null ? html`<button class="btn small ghost" type="button" data-act="rhclear" data-code="${p.code}" data-old="${p.own_setting}">Let the app work out the gap</button>` : ''}
+        ${p.own_setting != null ? html`<button class="btn small ghost" type="button" data-act="rhclear" data-code="${p.code}" data-old="${p.own_setting}" data-exact="${p.exact ? '1' : ''}">Let the app work out the gap</button>` : ''}
         <a class="btn small ghost" href="#/rhythm">All plants</a></p>` : html`<p><a href="#/rhythm">All plants</a></p>`}</div>`,
   },
 });

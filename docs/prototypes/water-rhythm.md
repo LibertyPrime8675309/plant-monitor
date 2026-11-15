@@ -46,10 +46,10 @@ Then open http://127.0.0.1:8080/#/rhythm. A fresh test copy has no waterings log
 - It reads the care log and the weather it already keeps.
 - The only thing it writes is the plant's existing "Check for water every (days)" field, and only when you press a button. That goes through the normal edit path, so it gets a page version, an Audit log line and can be undone from the plant's history.
 
-## Open questions for Ethan
-1. **Rounding indoors.** The app stretches the gap by half for plants indoors and rounds, so an indoor reminder can be 3, 4, 6, 8 or 9 days but never exactly 5 or 7. The button says what you will really get ("Remind me every 6 days" for a plant you water every 5). Should the indoor stretch be dropped for a plant once you have set its gap by hand from this page, so the number you pick is the number you get?
-2. **Today.** Should Today get a short line ("3 plants are watered well before their reminder") with a link here, or is the page in the Today row enough? Or would you rather have it under Care, which needs the Care row tidied first (it is full)?
-3. **Whole groups.** Would a "Make all of these match" button on each list be useful, or do you prefer to decide plant by plant?
-4. **The window.** 120 days mixes summer and autumn. Would you rather it looked at the last 60 days, so the comparison follows the season?
+## His answers (November 15, 2026), and what was built from them
+1. **Indoors, the number you pick is the number you get.** Choosing a gap on this page (or on the plant's page line) for an indoor plant sets "Check for water every" to that number and marks the plant, so the reminder no longer stretches it by half for being indoors. Today's watering list uses the same number. "Let the app work out the gap" and Undo take the mark off again. The mark is one setting (`water_exact`, a list of codes); a gap typed on the Edit page is stretched as before.
+2. **Today:** no line there; the page in the Today row is enough.
+3. **Whole groups:** each list has **Make all N of these match**. It asks first, changes each plant as the single button does, and one Undo puts them all back.
+4. **The window** stays at 120 days.
 
 Reply on this pull request with changes, or say "merge" when you are happy.

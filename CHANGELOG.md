@@ -123,7 +123,7 @@ Three new parts, released early (they were planned for December, January and Feb
 - **Add a light you are considering** from a listing, with its price and the date. **Try it in a spot** shows what each plant there would get from it against what it gets now, and whether it fits. **Bought it** moves it to Your lights without typing anything again. **No longer used** takes a light off Grow lights and keeps it on Compare lights.
 - Potting mixes is found by Search too.
 ## Unreleased: how often you water (prototype proto/water-rhythm)
-- **Today → How often you water** compares each plant's watering reminder with how often your care log says you really water it: watered sooner than the reminder, later, about right, or not enough logged yet. Rain counts for plants outdoors, as it does for the reminder.
+- **Today → How often you water** compares each plant's watering reminder with how often your care log says you really water it: watered sooner than the reminder, later, about right, or not enough logged yet. Rain counts for plants outdoors, as it does for the reminder. Since November 15: for an indoor plant the number you pick is the number you get (no stretch for being indoors once you have chosen), and each list has **Make all of these match**, with one Undo.
 - **Remind me every N days** makes the reminder match what you do, with Undo. It changes the plant's "Check for water every (days)", so the change is in its history.
 - **On a plant's page**, the Watering box says how often it has been watered, with the recent gaps and the same button.
 

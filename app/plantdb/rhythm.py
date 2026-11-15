@@ -9,7 +9,7 @@ plant field (water_every_days) through apply_changes(), so it has a page version
 {plant, every: null} empties the field again, so the app works the gap out from the soil moisture range as before."""
 from statistics import median
 from .core import *   # noqa: F401,F403
-from .care import RAIN_COUNTS_IN, water_base_days, water_factor, water_weather
+from .care import RAIN_COUNTS_IN, water_base_days, water_exact, water_factor, water_factor_for, water_weather
 
 ORDER = 60
 RHYTHM_WINDOW = 120         # days of care log to look at
@@ -54,6 +54,7 @@ def rhythm_report(c, code=None):
         if kind == 'check': checks[pc] = checks.get(pc, 0) + 1
         else: days.setdefault(pc, set()).add(d)
     rain = None
+    exact = water_exact(c)
     photo = lambda pid: (c.execute('SELECT file FROM photos WHERE plant_id=? ORDER BY is_primary DESC,id LIMIT 1', (pid,)).fetchone() or [None])[0]
     out = []
     for r in rows:
@@ -68,19 +69,20 @@ def rhythm_report(c, code=None):
         gaps_all = [(date.fromisoformat(b) - date.fromisoformat(a)).days for a, b in zip(ds, ds[1:])]
         gaps = [g for g in gaps_all if g <= RHYTHM_MAX_GAP]
         base, base_why = water_base_days(r)
-        f, f_why = water_factor(avg_high, site in INSIDE_SITES)
+        inside = site in INSIDE_SITES
+        f, f_why = water_factor_for(exact, r['code'], avg_high, inside)
         every = max(1, round(base * f))
         p = {'code': r['code'], 'name': r['common_name'], 'photo': photo(r['id']), 'site': site, 'every': every, 'base': base,
              'base_why': base_why, 'own_setting': r['water_every_days'], 'weather': f_why, 'factor': f,
              'waterings': len(own), 'rain_days': len(rained), 'first': ds[0] if ds else None, 'checks': checks.get(r['code'], 0),
-             'gaps': gaps[-8:], 'left_out': len(gaps_all) - len(gaps)}
+             'gaps': gaps[-8:], 'left_out': len(gaps_all) - len(gaps), 'exact': r['code'] in exact}
         if len(gaps) < RHYTHM_MIN_GAPS:
             p.update(state='few', gap=None, suggest=None)
         else:
             gap = median(gaps)
             n = max(1, round(gap))
             p.update(gap=round(gap, 1), state=rhythm_state(gap, every))
-            setting, gives = rhythm_setting_for(n, f)
+            setting, gives = rhythm_setting_for(n, 1.0 if inside else f)      # indoors the number you pick is the number you get (his answer of November 15): no stretch once it is set here
             p['suggest'] = {'every': gives, 'setting': setting} if gives != every else None
         out.append(p)
     order = {'often': 0, 'seldom': 1, 'matches': 2, 'few': 3}
@@ -98,17 +100,31 @@ def rhythm():
     if request.method == 'GET': return jsonify(rhythm_report(c, request.args.get('plant') or None))
     b = request.get_json(silent=True) or {}
     r = plant_row(c, str(b.get('plant') or ''))
-    if 'setting' in b:                       # Undo: put back exactly what the field held before (a number, or null for empty)
+    inside = (r['site'] or 'Outdoors') in INSIDE_SITES
+    def exact_set(on):                       # whether this plant's gap is taken as chosen, with no indoor stretch
+        e = water_exact(c)
+        if on == (r['code'] in e): return
+        (e.add if on else e.discard)(r['code']); set_setting(c, 'water_exact', json.dumps(sorted(e)))
+    if 'setting' in b:                       # Undo: put back exactly what the field held before (a number, or null for empty), and whether it was taken as chosen
         apply_changes(c, r, {'water_every_days': '' if b['setting'] is None else b['setting']}, editor(), 'update', 'How often you water: undone')
+        exact_set(bool(b.get('exact')))
     elif b.get('every') is None:
-        if r['water_every_days'] is None: return jsonify(rhythm_report(c, r['code']))
+        exact_set(False)
+        if r['water_every_days'] is None: c.commit(); return jsonify(rhythm_report(c, r['code']))
         apply_changes(c, r, {'water_every_days': ''}, editor(), 'update', 'How often you water: back to the app\'s own estimate')
+    elif inside:
+        try: n = int(b['every'])
+        except (TypeError, ValueError): abort(400, 'every must be a number of days')
+        if not 1 <= n <= 60: abort(400, 'every must be between 1 and 60 days')
+        exact_set(True)
+        if r['water_every_days'] != n:
+            apply_changes(c, r, {'water_every_days': n}, editor(), 'update', f'How often you water: reminder set to every {n} days, as chosen ("Check for water every" {n} days, with no stretch for being indoors)')
     else:
         try: n = int(b['every'])
         except (TypeError, ValueError): abort(400, 'every must be a number of days')
         if not 1 <= n <= 60: abort(400, 'every must be between 1 and 60 days')
         avg_high, _ = water_weather(c, local_today(c))
-        f, _ = water_factor(avg_high, (r['site'] or 'Outdoors') in INSIDE_SITES)
+        f, _ = water_factor(avg_high, False)
         setting, gives = rhythm_setting_for(n, f)
         apply_changes(c, r, {'water_every_days': setting}, editor(), 'update',
                       f'How often you water: reminder set to about every {gives} days ("Check for water every" {setting} days)')
