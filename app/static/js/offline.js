@@ -14,7 +14,8 @@ const OFF_OK = [                              // the changes that can wait for a
   ['PATCH', /^\/api\/photos\/\d+$/], ['DELETE', /^\/api\/photos\/\d+$/], ['POST', /^\/api\/outside\/porch$/],
   ['PUT', /^\/api\/plants\/[^/]+$/], ['POST', /^\/api\/plants\/[^/]+\/(site|status|photos)$/],
   ['POST', /^\/api\/fungi$/], ['PUT', /^\/api\/fungi\/[^/]+$/], ['POST', /^\/api\/fungi\/[^/]+\/(status|photos)$/], ['PATCH', /^\/api\/fungi\/photos\/\d+$/], ['DELETE', /^\/api\/fungi\/photos\/\d+$/],
-  ['PUT', /^\/api\/library\/notes$/], ['PUT', /^\/api\/wishlist$/], ['DELETE', /^\/api\/wishlist$/]];
+  ['PUT', /^\/api\/library\/notes$/], ['PUT', /^\/api\/wishlist$/], ['DELETE', /^\/api\/wishlist$/],
+  ['POST', /^\/api\/report$/]];               // 1.58.0: a problem report (issues.js): often written exactly when the connection is the problem
 const offQueueable = (m, url) => OFF_OK.some(([mm, re]) => mm === m && re.test(url.split('?')[0]));
 const offId = () => Date.now().toString(36) + '-' + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join('');
 let OFFDB = null;
@@ -63,6 +64,7 @@ function offWords(op) {                       // what a waiting change is, in wo
   if (/^\/api\/fungi\//.test(u)) return `${code}: edited ${Object.keys(b.fields || {}).join(', ') || 'details'}`;
   if (/^\/api\/reminders\/\d+\/done$/.test(u)) return 'A reminder marked done' + (b.done_on ? ` (${b.done_on})` : '');      // proto/reminders
   if (u === '/api/library/notes') return `Notes and tags for ${b.name}`;
+  if (u === '/api/report') { const t = ((op.form || []).find(p => p.k === 'notes') || {}).v || ''; return `A problem report${t ? ': ' + t.slice(0, 60) + (t.length > 60 ? '…' : '') : ''}`; }
   if (u === '/api/wishlist') return op.method === 'DELETE' ? `${b.name} taken off the wishlist` : `${b.name} on the wishlist`;
   return op.method + ' ' + u;
 }
@@ -98,7 +100,7 @@ async function offCareSeen(kind, codes, day, op) {
 const offWhen = r => (r && r.offline ? ' (kept on this device; sent when the plant server can be reached)' : '');   // 1.38.0: said in the message after a change made offline
 async function offFormParts(form) { return [...form.entries()].map(([k, v]) => (v instanceof Blob ? { k, blob: v, name: v.name || 'photo.jpg' } : { k, v: String(v) })); }
 async function offQueue(method, url, body, form) {
-  if (ME().role === 'viewer') { const e = new Error('You can only view, so nothing can be saved.'); e.status = 403; throw e; }
+  if (ME().role === 'viewer' && url.split('?')[0] !== '/api/report') { const e = new Error('You can only view, so nothing can be saved.'); e.status = 403; throw e; }   // 1.58.0: anyone may send a problem report
   const op = { id: offId(), seq: Date.now() + (OFF.k++) / 1000, method, url, body: body === undefined ? null : JSON.parse(JSON.stringify(body)), form: form ? await offFormParts(form) : null,
     who: cleanName(viaTS() ? ME().name : getName()) || 'Unknown', made: new Date().toISOString(), device: offDevice(), place: PLACE || null };
   const path = url.split('?')[0];

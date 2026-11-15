@@ -459,6 +459,10 @@ Each page below is a file in the `manual` folder. When the app says "see README"
 - What Claude needs from you: Copy my answers for Claude
 - Updates from Claude
 
+### Reporting a problem and checking for updates: `manual/problems-and-updates.md`
+- Report a problem
+- The Issue tracker
+- Check for updates
 ### How often you water: `manual/water-rhythm.md`
 - How often you water
 ### Missing details: `manual/missing-details.md`
