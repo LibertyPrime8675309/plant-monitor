@@ -24,8 +24,8 @@ def put(code, fields):
     return call('PUT', '/api/plants/' + code, {'base_version': p['version'], 'fields': fields})
 
 m0 = M()
-check([d['key'] for d in m0['details']] == ['pot_size', 'leaf_type', 'height_in', 'temp_damage_below', 'water', 'feed', 'pet_safety', 'light', 'pot_mix'],
-      'nine details, in a fixed order')
+check([d['key'] for d in m0['details']] == ['pot_size', 'leaf_type', 'height_in', 'temp_damage_below', 'water', 'feed', 'pet_safety', 'light', 'pot_mix', 'acquired_on'],
+      'ten details, in a fixed order')
 check(all(d['why'] and d['title'] for d in m0['details']), 'each says what it is for')
 plants = [p for p in call('GET', '/api/plants') if p.get('status', 'active') == 'active' and not p.get('home_id')]
 check(set(codes(m0, 'height_in')) == {p['code'] for p in plants if call('GET', '/api/plants/' + p['code']).get('height_in') in (None, '')}, 'Height lists exactly the plants with no height')
@@ -135,6 +135,15 @@ with sync_playwright() as p:
     check(until(pg, lambda: pg.locator('#ms-plant').count() == 1) and 'height with its pot' in pg.inner_text('#ms-plant').lower() and pg.locator(f'#ms-plant a[href="#/missing?plant={first}"]').count() == 1,
           'a plant\'s own page says what it is missing, with a link to fill it in')
     check(pg.evaluate("!!document.querySelector('.quick + #ms-plant')"), 'under its name and care buttons')
+    # Light and Date acquired are filled from the list too (a detail's box fills the right field of the plant's page)
+    lp = codes(M(), 'acquired_on')[0]; put(lp, {'light_summary': ''})
+    pg.goto(BASE + '/#/weather'); pg.goto(BASE + '/#/missing'); pg.wait_for_selector('#ms-acquired_on')
+    row = pg.locator(f'#ms-light .job[data-code="{lp}"]'); row.locator('input').fill('Bright shade'); row.locator('button[type=submit]').click()
+    check(until(pg, lambda: call('GET', '/api/plants/' + lp)['light_summary'] == 'Bright shade') and until(pg, lambda: lp not in codes(M(), 'light')), 'Light typed on the list is saved as the plant\'s Light line')
+    row = pg.locator(f'#ms-acquired_on .job[data-code="{lp}"]')
+    check(row.locator('input').get_attribute('type') == 'date' and row.locator('label').inner_text() == 'Date acquired', 'Date acquired is a date box with its label')
+    row.locator('input').fill('2024-05-17'); row.locator('button[type=submit]').click()
+    check(until(pg, lambda: call('GET', '/api/plants/' + lp)['acquired_on'] == '2024-05-17') and until(pg, lambda: lp not in codes(M(), 'acquired_on')), 'a date chosen on the list is saved as the plant\'s Date acquired')
     # one plant
     pg.goto(BASE + f'/#/missing?plant={e}'); pg.wait_for_selector(f'a[href="#/plant/{e}"]'); pg.wait_for_timeout(500)
     check(pg.locator('.job').count() == sum(1 for d in M('?plant=' + e)['details'] for _ in d['plants']) and 'Back to ' + e in pg.inner_text('main'), '#/missing?plant= shows one plant, with a link back to it')

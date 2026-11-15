@@ -115,6 +115,7 @@ FIELDS = [
     ('reservoir', 'enum', 'What holds its water'),                                                       # 1.56.0: drains freely, a tray, a catch pot, or the pot itself
     ('mix_wants', 'enum', 'Mix it wants'),                                                               # 1.56.0: fast-draining, balanced or moisture-holding (also a species fact)
     ('browse_risk', 'enum', 'Risk of being eaten by pests (set by you)'),                                # 1.57.0 (browse.py): empty = the usual for this kind of plant
+    ('acquired_on', 'date', 'Date acquired'),                                                            # 1.58.0: the day it came to you (YYYY-MM-DD, or empty)
 ]
 BROWSE_RISKS = ['Low', 'Moderate', 'High']
 GROW_KINDS = ['Soil mix', 'Semi-hydro', 'Water only']                       # 1.56.0 (PLAN.md step 9); empty means a soil mix
@@ -813,6 +814,14 @@ def norm(name, v):
             if r is None or not (r[0] or r[1]): abort(400, 'Home must be one of your homes (a place where plants live)')
             if r[0]: return None                     # the main home is stored as empty, so plants follow if another place becomes the main home
         return i
+    if kind == 'date':                                      # 1.58.0: a day, kept as YYYY-MM-DD; empty when not known
+        s = '' if v is None else str(v).strip()
+        if s == '': return ''
+        try: d = date.fromisoformat(s)
+        except ValueError: abort(400, f'{FIELD_LABEL[name]} must be a date, such as 2024-05-17')
+        if len(s) != 10 or d.year < 1900: abort(400, f'{FIELD_LABEL[name]} must be a date, such as 2024-05-17')
+        if d > date.today() + timedelta(days=1): abort(400, f'{FIELD_LABEL[name]} cannot be in the future')
+        return d.isoformat()
     s = '' if v is None else str(v).replace('\r\n', '\n').strip()
     if len(s) > 8000: abort(400, f'{FIELD_LABEL[name]} is too long')
     if kind == 'enum':

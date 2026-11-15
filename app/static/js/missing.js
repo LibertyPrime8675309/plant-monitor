@@ -12,7 +12,7 @@ const msRow = p => ({ code: p.code, common_name: p.name, photo: p.photo });
 function msControl(d, p) {
   const id = `ms-${d.key}-${p.code}`, lbl = d.title + ' for ' + p.name;
   const save = html`<button class="btn small" type="submit" aria-label="${'Save ' + lbl}">Save</button>`;
-  const form = (inner, unit) => html`<form class="ms-form" data-form="msave" data-code="${p.code}" data-key="${d.key}" data-version="${p.version}" data-name="${p.name}" data-title="${d.title}">
+  const form = (inner, unit) => html`<form class="ms-form" data-form="msave" data-code="${p.code}" data-key="${d.key}" data-field="${d.key === 'water' ? 'water_every_days' : d.fields[0]}" data-version="${p.version}" data-name="${p.name}" data-title="${d.title}">
     <label class="f" for="${id}">${d.title}${unit ? ` (${unit})` : ''}</label>
     <div class="ms-in">${inner}${save}</div></form>`;
   if (d.how === 'enum') return form(html`<select id="${id}" name="v" aria-label="${lbl}" required><option value="">Choose…</option>${d.options.map(o => html`<option>${o}</option>`)}</select>`);
@@ -20,6 +20,7 @@ function msControl(d, p) {
   if (d.how === 'temp') return form(html`<input id="${id}" name="v" type="number" step="1" min="${tU() === '°C' ? -50 : -60}" max="${tU() === '°C' ? 65 : 150}" required aria-label="${lbl + ', in degrees ' + (tU() === '°C' ? 'Celsius' : 'Fahrenheit')}">`, tU());
   if (d.how === 'days') return form(html`<input id="${id}" name="v" type="number" step="1" min="1" max="60" required aria-label="${lbl + ', every so many days'}">`, 'every so many days');
   if (d.how === 'text') return form(html`<input id="${id}" name="v" type="text" maxlength="200" required aria-label="${lbl}" placeholder="Bright shade, morning sun">`);
+  if (d.how === 'date') return form(html`<input id="${id}" name="v" type="date" min="1900-01-01" max="${todayStr()}" required aria-label="${lbl}">`);
   if (d.how === 'page') return html`<a class="btn small ghost" href="#/plant/${enc(p.code)}" aria-label="${'Open its page: ' + p.name + ', to write down its potting mix'}">Open its page</a>`;
   return html`<a class="btn small ghost" href="#/plant/${enc(p.code)}/edit" aria-label="${'Open Edit for ' + p.name}">Open Edit</a>`;
 }
@@ -64,7 +65,7 @@ Object.assign(formActs, {
     const key = form.dataset.key, code = form.dataset.code, v = form.elements.v.value;
     if (String(v).trim() === '') { form.elements.v.focus(); return; }
     if (key === 'height_in' && isNaN(+String(v).replace(',', '.'))) { toast('Type the height as a number, such as 14 or 14.5.', true); form.elements.v.focus(); return; }
-    const field = key === 'water' ? 'water_every_days' : key;
+    const field = form.dataset.field;                    // the plant field the box fills (a detail's key is not always a field's name: Light is light_summary)
     const sec = form.closest('section'), li = form.closest('li'), next = li && li.nextElementSibling, nextCode = next && next.dataset.code;
     await guard(async () => {
       let saved = true;

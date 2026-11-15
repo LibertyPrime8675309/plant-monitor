@@ -4,7 +4,7 @@ OWN = {'X-Editor': 'Unit test'}
 
 def row(**k):
     base = dict(pot_size='Small', leaf_type='Smooth', height_in=10, temp_damage_below=40, water_every_days=7, soil_moisture_low=None, fert_from_month=3, fert_to_month=9,
-                fert_every_days=30, fert_strength='', pet_safety='Safe', grow_kind='', light_summary='Bright shade')
+                fert_every_days=30, fert_strength='', pet_safety='Safe', grow_kind='', light_summary='Bright shade', acquired_on='2024-05-17')
     return dict(base, **k)
 
 def test_a_plant_with_everything_is_missing_nothing():
@@ -15,8 +15,15 @@ def test_light_and_the_potting_mix_are_details_too():
     assert S.missing_of(row(), has_mix=False) == ['pot_mix']
     assert S.missing_of(row(grow_kind='Water only', leaf_type=''), has_mix=False) == [], 'a plant kept in water has no mix and needs no leaf type'
 
-def test_the_list_has_nine_details_each_with_its_reason():
-    assert [d[0] for d in S.MISSING_DETAILS] == ['pot_size', 'leaf_type', 'height_in', 'temp_damage_below', 'water', 'feed', 'pet_safety', 'light', 'pot_mix']
+def test_a_plant_with_no_date_acquired_is_missing_it():
+    assert S.missing_of(row(acquired_on='')) == ['acquired_on'] and S.missing_of(row(acquired_on=None)) == ['acquired_on']
+
+def test_every_detail_with_a_box_fills_a_real_plant_field():
+    for key, fields, _t, _w, how in S.MISSING_DETAILS:
+        if how != 'page': assert fields and all(f in S.FIELD_KIND for f in fields), key
+
+def test_the_list_has_ten_details_each_with_its_reason():
+    assert [d[0] for d in S.MISSING_DETAILS] == ['pot_size', 'leaf_type', 'height_in', 'temp_damage_below', 'water', 'feed', 'pet_safety', 'light', 'pot_mix', 'acquired_on']
     assert all(d[2] and d[3] for d in S.MISSING_DETAILS)
 
 def test_not_now_takes_a_plant_off_one_list_and_changes_nothing_on_its_page():

@@ -23,11 +23,13 @@ MISSING_DETAILS = [
      'The feeding calendar and Today\'s Feed list need the months to feed and how often.', 'edit'),
     ('pet_safety', ('pet_safety',), 'Safety for pets',
      'The pets filter on All plants and the Safety for pets line on its page use it.', 'enum'),
-    # November 15, 2026 (his answer): two more. A date acquired is not one of them yet: no page has a field for it.
+    # November 15, 2026 (his answer): three more. The date came with the Date acquired field (1.58.0).
     ('light', ('light_summary',), 'Light',
      'Its page has no Light line without it, so nothing says how much sun or shade it wants.', 'text'),
     ('pot_mix', (), 'Potting mix',
      'What is in each pot works out how much water and air a pot holds from its mix. A pot with no mix written down is left out.', 'page'),
+    ('acquired_on', ('acquired_on',), 'Date acquired',
+     'Its page says how long you have had the plant. If you only know the month, choose its first day; if you do not know, press Not now.', 'date'),
 ]
 MISSING_LATER_DAYS = 30                 # "Not now" hides a plant from one list for this long
 

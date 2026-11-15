@@ -62,7 +62,7 @@ Then open http://127.0.0.1:8080/#/missing. The focused check is `python3 dev/tes
 - One line each in `js/manifest.json` and `dev/test/run_checks.py`; `dev/test/missing_check.py`.
 
 ## His answers (November 15, 2026), and what was built from them
-1. **Which details:** the seven stay, and two join: **Light** (the Light line of its page) and **Potting mix** (a pot with no mix written down; the button opens the plant's page, where What is in each pot records it). A **date acquired** was also wanted, but no page has a field for it yet: it needs a new field on every plant page first. Still to decide.
+1. **Which details:** the seven stay, and two join: **Light** (the Light line of its page) and **Potting mix** (a pot with no mix written down; the button opens the plant's page, where What is in each pot records it). **Date acquired** joined as the tenth once the field was on main (pull request 134): a date box, saved to the plant's page.
 2. **Not now:** each plant in a list has **Not now**, which leaves it off that one list for 30 days and changes nothing on its page. The list says how many are left off, with **Show them again**. Kept as one setting (`missing_later`).
 3. **On each plant's page:** a line under its name and care buttons, such as "Missing: pot size and height with its pot. Fill them in", linking to that plant's gaps.
 4. **Today:** no reminder there; the page and the line on All plants are enough.
