@@ -849,7 +849,9 @@ async function route() {
     if (my !== token) return;
     if (META && META.mirror && META.mirror.on) app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice vw-note mirror-note noprint" role="note"><strong>This is the mirror:</strong> a read-only copy${META.mirror.made ? ` of the backup made ${when(META.mirror.made)}` : META.mirror.at ? ` taken ${when(META.mirror.at)}` : ', waiting for its first backup'}${META.mirror.error ? ` (${META.mirror.error})` : ''}. Changes are turned off here; ${META.mirror.main ? html`make them in <a href="${META.mirror.main}">the main app</a>` : 'make them in the main app'}.</p>`));   // 1.37.0
     else if (ME().role === 'viewer') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice vw-note noprint" role="note"><strong>View only.</strong> You can look at everything here, but changes are turned off. Ask ${ME().owner_name} if you would like to edit.</p>`));
+    if (META && META.test_copy) app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice test-note noprint" role="note"><strong>Test copy.</strong> This is a copy for trying a newer version. Changes here never reach your real Plant record, and no notifications or backups are sent from it.</p>`));   // 1.58.0: tools/test-copy.ps1
     if (view.title) document.title = view.title + ' | Plant record'; else document.title = 'Plant record';
+    if (META && META.test_copy) document.title = 'TEST COPY: ' + document.title;
     if (view.after) view.after();
     featAdds(parts);                              // 1.46.0: what feature modules add to this page once it is on screen (features.js); they rebuild Navigation when done
     if (parts[0] === 'weather' && qs.get('sec') === 'places') setTimeout(() => { const t = document.getElementById('sec-places'); if (t) { scrollToSection(t); navFlash(t); } }, 300);   // 1.29.0: Homes and places
