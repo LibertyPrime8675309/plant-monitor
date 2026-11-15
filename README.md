@@ -514,9 +514,9 @@ Next time it starts from where the last copy ended, so nothing is sent twice. **
 
 ## Updates from Claude (from 1.58.0)
 
-When Claude has corrections or new pages for your plants, it saves one small file on this computer and tells you its name. You look through the changes and decide. Nothing is changed until you press the button.
+When Claude has corrections, photos or new pages for your plants, it saves one small file on this computer and tells you its name. You look through the changes and decide. Nothing is changed until you press the button.
 
-**Where the file goes.** Claude saves it in the folder `plant-updates`, inside your `plant-database` folder (beside `data` and `backups`). Its name starts with `plant-updates` and ends in `.json`, or `.zip` when new pages come with photos. The app only reads that folder. The files hold details of your plants, so they stay on this computer: they are not in a release and not on GitHub.
+**Where the file goes.** Claude saves it in the folder `plant-updates`, inside your `plant-database` folder (beside `data` and `backups`). Its name starts with `plant-updates` and ends in `.json`, or `.zip` when photos come with it. The app only reads that folder. The files hold details of your plants, so they stay on this computer: they are not in a release and not on GitHub.
 
 **Today tells you.** While a file is waiting, Today has a line near the top: "Plant updates from Claude are waiting", with the file's name, how many changes it holds, and **Look at the changes**.
 
@@ -529,7 +529,7 @@ When Claude has corrections or new pages for your plants, it saves one small fil
 - **Nothing to do:** the page already says it. **Left out:** the plant in the file is not in your record under that code and name, or the change is not one a file can make. Each says why.
 - **Make the N changes** makes the ticked changes, all together. **Change nothing** sets the file aside.
 
-**What a file can hold:** a change to something on a plant's page, a plant to move to the archive, a question for you (it joins **Needed from you** on that plant's page), and a new page, with its photos.
+**What a file can hold:** a change to something on a plant's page, a plant to move to the archive, a question for you (it joins **Needed from you** on that plant's page), photos for a page you already have, and a new page, with its photos. Photos are shown small with their captions in words; they join the page's photos, and the page's main picture stays as it is. A new page is made at your main home unless the file names another of your homes, and when you have more than one home the page says which ("Indoors, at Baraboo, WI"). A file that names a home your record does not have leaves that page out.
 
 **Afterwards.** The page lists what changed and what was left. Each change is in the plant's **Page history** and in the Audit log, signed "Claude" with the file's name, with the reason and your name as the one who accepted it. To take one back, open the plant's page, then Page history, and restore the version before it.
 

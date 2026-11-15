@@ -33,8 +33,10 @@ This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that r
 ## Rules for changes
 - **Never touch his data.** `data/` (database and photos) and `backups/` never go into git or a release. A new version must upgrade an existing database in place, safely and idempotently (`init_db()` adds columns and tables; see ARCHITECTURE).
 - **Changes to Ethan's own plants go in an update file (from 1.58.0), not in the code and never as hand edits to a database.** His plants' details stay out of the public repository.
-  - Write `plant-updates-YYYYMMDD-HHMM.json` (UTC; a `.zip` holding `updates.json` and `photos/` when a new page comes with pictures). The format is at the top of `app/plantdb/updates.py`: changes of kind `set`, `archive`, `ask` and `new`, each with a `why` in plain words.
+  - Write `plant-updates-YYYYMMDD-HHMM.json` (UTC; a `.zip` holding `updates.json` and `photos/` when pictures come with it). The format is at the top of `app/plantdb/updates.py`: changes of kind `set`, `archive`, `ask`, `photos` (pictures for a page he already has) and `new`, each with a `why` in plain words.
   - A change names its plant by the code it has **on his PC** and its name. A `set` states the value it expects to replace (`from`), so anything he edited himself needs his decision and is otherwise left alone.
+  - A new page at a home other than the main one names that home (`home`: its name as Homes and places has it). Without it the page is made at the main home.
+  - A file cannot yet log care, record a potting mix, add a home, change a page's main picture or ask about a page made in the same file. He does those in the app, or the format gains a kind first: a batch is not the way round it.
   - Check the file with `python3 tools/check-plant-updates.py FILE`, then save it into `plant-updates` inside his app folder on his PC (under 30 MB) and tell him its name. He looks through it on the Updates from Claude page; nothing changes until he accepts.
   - Never commit an update file: `plant-updates/` holds only its README in git, and a release leaves the rest out.
 - **Upgrade batches** (`app/seed/batches/*.json`) are for what every install needs (lights, amendments, stores, measurements, the plants a new install starts with), and for the batches already made.

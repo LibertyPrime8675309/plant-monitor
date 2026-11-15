@@ -1,7 +1,7 @@
 Plant updates from Claude
 =========================
 
-Claude saves a file here when it has corrections or new pages for your plants.
+Claude saves a file here when it has corrections, photos or new pages for your plants.
 Its name starts with "plant-updates" and ends in .json or .zip.
 
 The app reads this folder and never changes it. When a file is waiting, Today says

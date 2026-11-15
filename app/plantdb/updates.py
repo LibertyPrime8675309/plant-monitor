@@ -13,13 +13,19 @@ pictures:
        {"kind": "set", "code": "P-009", "name": "Peace lily", "field": "health_rating", "from": "Fair", "to": "Good", "why": "..."},
        {"kind": "archive", "code": "P-005", "name": "Sweet potato vine", "why": "..."},
        {"kind": "ask", "code": "P-014", "name": "Aloe vera", "text": "Is it still in the black pot?", "why": "..."},
-       {"kind": "new", "fields": {"common_name": "Hardy aloe, second pot", "scientific_name": "Aloiampelos striatula", "site": "Outdoors"},
+       {"kind": "photos", "code": "P-094", "name": "Monstera cutting", "photos": [{"file": "jar-1.jpg", "caption": "November 11: in its jar"}], "why": "..."},
+       {"kind": "new", "home": "Baraboo, WI", "fields": {"common_name": "Hardy aloe, second pot", "scientific_name": "Aloiampelos striatula", "site": "Outdoors"},
         "photos": [{"file": "aloe-1.jpg", "caption": "By the steps"}], "why": "..."}]}
 
 - A change names its plant by the code it has in this record **and** its name, as a batch entry does: with the code alone, a
   record numbered differently would get the change on the plant next door. With the name alone, the one plant of that name is meant.
 - `set` says the value it expects to replace (`from`). If the page says something else by now, it may be a change the owner made:
   it "needs your decision" and stays as it is unless he chooses Claude's.
+- `photos` adds pictures to a page that exists (the file is then a .zip). They are added the way Add photos adds them: written
+  again, so no location or camera details stay in them. The page's main picture stays as it is; a page with none takes the first.
+- A new page is made at the main home unless it names another (`home`: the home's name as Homes and places has it; never a row
+  number). A home the record does not have leaves the page out and says so: the first new page that travelled in a batch for a
+  second home would have landed in a room of the main one.
 - An accepted change goes through apply_changes() and bump(), like an edit: it is in the plant's page history and the Audit log,
   signed "Claude (<file name>)", and Page history can take it back.
 
@@ -41,13 +47,22 @@ UPD_FOLDER = os.environ.get('PLANTDB_PLANT_UPDATES_DIR') or ('/plant-updates' if
 UPD_INBOX = os.path.join(DATA_DIR, 'plant-updates')                 # files chosen on the page, until they are brought in or set aside
 UPD_MAX = 30 * 1024 * 1024                                    # a file saved to his computer from a chat is under 30 MB
 UPD_NAME = re.compile(r'^plant-updates[\w.\-]*\.(json|zip)$', re.I)
-UPD_KINDS = ('set', 'archive', 'ask', 'new')
+UPD_KINDS = ('set', 'archive', 'ask', 'new', 'photos')
 UPD_PHOTO = re.compile(r'^[\w][\w.\- ]{0,80}\.(jpe?g|png|webp)$', re.I)
 UPD_CACHE = {}                                                # path -> (mtime, size, what upd_read gave), so Today does not open every file each time
 
 def updates_tables(c): c.executescript(UPDATES_SCHEMA)        # init_db() runs this too; here for a database opened by an older mock
 
 def upd_clip(v, n): return str(v if v is not None else '').strip()[:n]
+
+def upd_pics(lst, have, bad):
+    """The photos a change names -> [{'file', 'caption'}]. Each must be one of the photos in the file; `bad` is what to say if not."""
+    if lst is not None and not isinstance(lst, list): raise ValueError(bad)
+    out = []
+    for p in (lst or [])[:60]:
+        if not isinstance(p, dict) or upd_clip(p.get('file'), 100) not in have: raise ValueError(bad)
+        out.append({'file': upd_clip(p.get('file'), 100), 'caption': upd_clip(p.get('caption'), 200)})
+    return out
 
 def upd_parse(raw, name):
     """The bytes of an update file -> {'id', 'name', 'made', 'about', 'changes', 'photos': [names in the zip]}. ValueError says, in
@@ -95,10 +110,11 @@ def upd_parse(raw, name):
             if not isinstance(f, dict) or not upd_clip(f.get('common_name'), 200): raise ValueError('A new page in the file has no common name.')
             if any(isinstance(v, (dict, list)) for v in f.values()): raise ValueError('A new page in the file gives a list where one value belongs.')
             ch['fields'] = {str(k)[:60]: v for k, v in f.items()}
-            ch['photos'] = []
-            for p in (x.get('photos') or [])[:60]:
-                if not isinstance(p, dict) or upd_clip(p.get('file'), 100) not in photos: raise ValueError('A new page in the file names a photo that is not in the file.')
-                ch['photos'].append({'file': upd_clip(p.get('file'), 100), 'caption': upd_clip(p.get('caption'), 200)})
+            ch['home'] = upd_clip(x.get('home'), 120)                                # the home it is at, by name; none: the main home
+            ch['photos'] = upd_pics(x.get('photos'), photos, 'A new page in the file names a photo that is not in the file.')
+        elif x['kind'] == 'photos':
+            ch['photos'] = upd_pics(x.get('photos'), photos, 'A change in the file adds a photo that is not in the file.')
+            if not ch['photos']: raise ValueError('A change in the file adds photos to a page, and names none.')
         changes.append(ch)
     return {'id': hashlib.sha256(raw).hexdigest()[:16], 'name': os.path.basename(name)[:120], 'made': made if re.match(r'^\d{4}-\d\d-\d\d$', made) else '',
             'about': upd_clip(d.get('about'), 2000), 'changes': changes, 'photos': photos}
@@ -151,6 +167,15 @@ def upd_plant(c, code, name):
     if r: return None, f'The file calls {code} "{name}". In your record {code} is "{r["common_name"]}", so this was left out.'
     return None, f'No plant in your record is {code + ", " if code else ""}"{name}", so this was left out.'
 
+def upd_home(c, name):
+    """The home a new page is for -> (the home as homes() gives it, or None; a note). No name means the main home. A file names a
+    home by its name, as it names a plant by its code and name: a row number means another home in another record."""
+    hs = homes(c)
+    if not name: return next((h for h in hs if h['is_home']), None), ''
+    m = [h for h in hs if str(h['name']).strip().casefold() == name.strip().casefold()]
+    if len(m) == 1: return m[0], ''
+    return None, f'The file puts this page at "{name}". Your record has {"more than one home" if m else "no home"} of that name, so this was left out.'
+
 def upd_value(field, v):
     """A value as the record would hold it -> (value, '') or (None, why it cannot be used)."""
     try: return norm(field, v), ''
@@ -178,7 +203,9 @@ def upd_review(c, u):
         k = x['kind']; d = {'i': i, 'kind': k, 'why': x['why'], 'state': 'ready', 'note': ''}
         if k == 'new':
             f = x['fields']; bad = [n for n in f if n not in FIELD_KIND or n in BATCH_ROW_IDS]
+            hm, hnote = upd_home(c, x.get('home') or '')
             d.update(name=upd_clip(f.get('common_name'), 200), sci=upd_clip(f.get('scientific_name'), 200), site=upd_clip(f.get('site'), 40) or 'Outdoors',
+                     home=hm['name'] if hm and (x.get('home') or len(homes(c)) > 1) else '',      # said where there is more than one home, or the file names one
                      photos=[p['file'] for p in x['photos']], captions=[p['caption'] for p in x['photos']],
                      fields=[[FIELD_LABEL[n], str(v)] for n, v in f.items() if n in FIELD_LABEL and n not in ('common_name', 'scientific_name', 'site') and v not in (None, '')][:12])
             for n, v in f.items():
@@ -186,6 +213,7 @@ def upd_review(c, u):
                 _, why = upd_value(n, v)
                 if why: d.update(state='out', note=why); break
             if bad: d.update(state='out', note='The file sets something a new page cannot be given: ' + ', '.join(bad[:4]) + '.')
+            elif d['state'] == 'ready' and hnote: d.update(state='out', note=hnote)
             elif d['state'] == 'ready' and d['photos'] and not upd_photos_ok(u, d['photos']): d.update(state='out', note='A photo that comes with this page cannot be read.')
             elif d['state'] == 'ready':
                 twin = c.execute("SELECT code FROM plants WHERE common_name=? AND status='active' LIMIT 1", (d['name'],)).fetchone()
@@ -195,6 +223,7 @@ def upd_review(c, u):
         d.update(code=r['code'] if r else x['code'], name=r['common_name'] if r else x['name'], photo=upd_photo_of(c, r['id']) if r else '', note=note)
         if k == 'set': d.update(field=x['field'], label=FIELD_LABEL.get(x['field'], x['field']), now=None, to=x['to']); d['from'] = x['from']
         if k == 'ask': d['text'] = x['text']
+        if k == 'photos': d.update(photos=[p['file'] for p in x['photos']], captions=[p['caption'] for p in x['photos']])
         if not r: d['state'] = 'out'
         elif k == 'set':
             f = x['field']; d['now'] = r[f] if f in FIELD_KIND else None
@@ -211,6 +240,8 @@ def upd_review(c, u):
             if r['status'] == 'archived': d.update(state='same', note='It is in the archive already.')
         elif k == 'ask':
             if c.execute('SELECT 1 FROM requests WHERE plant_code=? AND text=? AND done=0', (r['code'], x['text'])).fetchone(): d.update(state='same', note='This question is already on its page.')
+        elif k == 'photos':
+            if not upd_photos_ok(u, d['photos']): d.update(state='out', note='A photo that comes with this cannot be read.')
         out.append(d)
     return out
 
@@ -295,10 +326,30 @@ def updates_aside(fid):
     c.commit(); upd_forget(u)
     return jsonify(ok=True)
 
+def upd_save_photos(c, u, pics, pid, who, ts, written):
+    """The photos of a change, added to a plant's page the way Add photos adds them -> their new names. Each is written again, so no
+    location or camera details stay in it, and is added to `written` as it is saved, so that the caller can take them away again if
+    the changes are not kept. The page's main picture stays; a page with none takes the first."""
+    names = []
+    if not pics: return names
+    has = c.execute('SELECT 1 FROM photos WHERE plant_id=? AND is_primary=1', (pid,)).fetchone()
+    with zipfile.ZipFile(u['path']) as z:
+        for p in pics:
+            try: im = ImageOps.exif_transpose(Image.open(io.BytesIO(z.read('photos/' + p['file'])))).convert('RGB')
+            except Exception: abort(400, f'The photo {p["file"]} in the file cannot be read, so nothing was changed.')
+            im.thumbnail((1600, 1600)); name = f'up_{uuid.uuid4().hex[:16]}.jpg'
+            im.save(os.path.join(PHOTO_DIR, name), 'JPEG', quality=84, optimize=True); written.append(name)
+            c.execute('INSERT INTO photos(plant_id,file,caption,kind,is_primary,source_name,added_by,added_at) VALUES(?,?,?,?,?,?,?,?)',
+                      (pid, name, p['caption'] or p['file'][:80], 'plant', 0 if (has or names) else 1, p['file'], who, ts))
+            names.append(name)
+    return names
+
 def upd_new_plant(c, u, x, who, ts, note, written):
-    """A new page from an update file, made the way Add plants makes one, with the photos that came in the file -> its code.
-    Each photo file is added to `written` as it is saved, so that the caller can take them away again if the changes are not kept."""
+    """A new page from an update file, made the way Add plants makes one, at the home the file names (the main home if it names
+    none), with the photos that came in the file -> its code."""
     f = dict(x['fields'])
+    hm, _ = upd_home(c, x.get('home') or '')
+    if hm and not hm['is_home']: f['home_id'] = hm['id']                    # the main home is "no home given", as on every other page
     f['winter_plan'] = f.get('winter_plan') or 'Move indoors'; f['health_rating'] = f.get('health_rating') or 'Fair'; f['site'] = f.get('site') or 'Outdoors'
     f = place_sync(c, None, f)
     vals = {k: norm(k, f.get(k)) for k in FIELD_NAMES}
@@ -306,14 +357,7 @@ def upd_new_plant(c, u, x, who, ts, note, written):
     code = f'P-{n:03d}'
     cols = ['code'] + FIELD_NAMES + ['version', 'status', 'created_at', 'created_by', 'updated_at', 'updated_by']
     pid = c.execute(f"INSERT INTO plants({','.join(cols)}) VALUES({','.join('?' * len(cols))})", [code] + [vals[k] for k in FIELD_NAMES] + [1, 'active', ts, who, ts, who]).lastrowid
-    if x['photos']:
-        with zipfile.ZipFile(u['path']) as z:
-            for j, p in enumerate(x['photos']):
-                try: im = ImageOps.exif_transpose(Image.open(io.BytesIO(z.read('photos/' + p['file'])))).convert('RGB')     # written again: no location or camera details stay in it
-                except Exception: abort(400, f'The photo {p["file"]} in the file cannot be read, so nothing was changed.')
-                im.thumbnail((1600, 1600)); name = f'up_{uuid.uuid4().hex[:16]}.jpg'
-                im.save(os.path.join(PHOTO_DIR, name), 'JPEG', quality=84, optimize=True); written.append(name)
-                c.execute('INSERT INTO photos(plant_id,file,caption,kind,is_primary,source_name,added_by,added_at) VALUES(?,?,?,?,?,?,?,?)', (pid, name, p['caption'] or p['file'][:80], 'plant', 0 if j else 1, p['file'], who, ts))
+    upd_save_photos(c, u, x['photos'], pid, who, ts, written)
     c.execute('INSERT INTO plant_versions(plant_id,version,snapshot,changed_by,changed_at,summary) VALUES(?,?,?,?,?,?)', (pid, 1, json.dumps(snapshot(c, pid)), who, ts, note))
     c.execute('INSERT INTO audit_log(plant_id,plant_code,version,action,field,old_value,new_value,changed_by,changed_at,note) VALUES(?,?,?,?,?,?,?,?,?,?)', (pid, code, 1, 'create', None, None, None, who, ts, note))
     return code
@@ -335,6 +379,7 @@ def updates_apply(fid):
         for d in upd_review(c, u):
             x = u['changes'][d['i']]; i = d['i']
             res = {'i': i, 'kind': d['kind'], 'code': d.get('code') or '', 'name': d.get('name') or '', 'label': d.get('label') or '', 'did': 'left', 'note': d['note']}
+            if d['kind'] in ('photos', 'new'): res['n'] = len(x['photos'])       # how many photos came with it, for the page that says what was done
             go = (d['state'] == 'ready' and i in accept) or (d['state'] == 'conflict' and i in take)
             if d['state'] == 'same': res['did'] = 'same'
             elif d['state'] == 'out': res['did'] = 'out'
@@ -351,6 +396,10 @@ def updates_apply(fid):
                 elif d['kind'] == 'ask':
                     c.execute('INSERT OR IGNORE INTO requests(rkey,plant_code,kind,text,created_by,created_at) VALUES(?,?,?,?,?,?)', (f'upd:{fid}:{i}', d['code'], 'question', x['text'], who, ts))
                     audit_only(c, 'request', 'request', None, x['text'], who, f'Request added (update from Claude, {u["name"]}; accepted by {by})', None, d['code'])
+                elif d['kind'] == 'photos':
+                    r = c.execute('SELECT * FROM plants WHERE code=?', (d['code'],)).fetchone()
+                    names = upd_save_photos(c, u, x['photos'], r['id'], who, ts, made_files)
+                    bump(c, r['id'], r['code'], who, 'photo_add', (f'Added {len(names)} photo(s). ' + note)[:600], [('photo', None, nm) for nm in names])
                 elif d['kind'] == 'new':
                     res['code'] = upd_new_plant(c, u, x, who, ts, f'Record created from an update file ({u["name"]}; accepted by {by})', made_files)
                 res['did'] = 'made'

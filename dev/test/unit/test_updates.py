@@ -123,6 +123,11 @@ def test_a_new_page_comes_with_its_photos_and_a_failure_changes_nothing(folder, 
     (pack([{'kind': 'set', 'code': 'P-001', 'name': 'x', 'field': 'location', 'to': ['a']}]), 'a list where one value belongs'),
     (pack([{'kind': 'new', 'fields': {'scientific_name': 'No name'}}]), 'no common name'),
     (pack([{'kind': 'new', 'fields': {'common_name': 'x'}, 'photos': [{'file': 'missing.jpg'}]}], photos={}), 'a photo that is not in the file'),
+    (pack([{'kind': 'new', 'fields': {'common_name': 'x'}, 'photos': {'file': 'a.jpg'}}], photos={'photos/a.jpg': b'x'}), 'a photo that is not in the file'),
+    (pack([{'kind': 'photos', 'code': 'P-001', 'name': 'x', 'photos': [{'file': 'missing.jpg'}]}], photos={'photos/a.jpg': b'x'}), 'adds a photo that is not in the file'),
+    (pack([{'kind': 'photos', 'code': 'P-001', 'name': 'x', 'photos': [{'file': 'a.jpg'}]}]), 'adds a photo that is not in the file'),
+    (pack([{'kind': 'photos', 'code': 'P-001', 'name': 'x', 'photos': []}], photos={'photos/a.jpg': b'x'}), 'and names none'),
+    (pack([{'kind': 'photos', 'name': 'x', 'photos': [{'file': 'a.jpg'}]}], photos={'photos/a.jpg': b'x'}), 'does not say which plant'),
     (pack([], photos={'../evil.txt': b'x'}), 'not a photo of the update'),
     (pack([], photos={'photos/../../evil.jpg': b'x'}), 'not a photo of the update'),
     (pack([], photos={'photos/run.exe': b'x'}), 'not a photo of the update'),
@@ -138,6 +143,50 @@ def test_a_file_that_is_not_an_update_file_is_refused_in_plain_words(folder, raw
         (folder / 'plant-updates-bad.json').write_bytes(raw)
         w = c.get('/api/updates').get_json()['waiting']
         assert len(w) == 1 and words in w[0]['bad'] and w[0]['id'] == '', 'in the folder it is named, with the reason, and cannot be opened'
+
+def test_photos_join_a_page_that_exists(folder):
+    with S.app.test_client() as c:
+        a = plant(c, 'P-013'); had = {p['file'] for p in a['photos']}; main0 = [p['file'] for p in a['photos'] if p['is_primary']]; on_disk = set(os.listdir(S.PHOTO_DIR))
+        assert main0, 'the test wants a page that has a main picture'
+        fid = save(folder, pack([
+            {'kind': 'photos', 'code': 'P-013', 'name': a['common_name'], 'photos': [{'file': 'one.jpg', 'caption': 'November 11: in its jar'}, {'file': 'two.jpg', 'caption': ''}], 'why': 'You sent them on November 11.'},
+            {'kind': 'photos', 'code': 'P-013', 'name': 'Not its name', 'photos': [{'file': 'one.jpg', 'caption': ''}], 'why': ''},
+            {'kind': 'photos', 'code': 'P-013', 'name': a['common_name'], 'photos': [{'file': 'bad.jpg', 'caption': ''}], 'why': ''}],
+            photos={'photos/one.jpg': jpeg(), 'photos/two.jpg': jpeg((10, 20, 30)), 'photos/bad.jpg': b'this is not a picture'}), 'plant-updates-20261114-0900.zip')
+        it = c.get('/api/updates/' + fid).get_json()['items']
+        assert [x['state'] for x in it] == ['ready', 'out', 'out'] and it[0]['photos'] == ['one.jpg', 'two.jpg'] and it[0]['captions'] == ['November 11: in its jar', '']
+        assert 'cannot be read' in it[2]['note'] and c.get(f'/api/updates/{fid}/photo/one.jpg').mimetype == 'image/jpeg'
+        assert {p['file'] for p in plant(c, 'P-013')['photos']} == had and set(os.listdir(S.PHOTO_DIR)) == on_disk, 'looking adds nothing'
+        res = c.post(f'/api/updates/{fid}/apply', json={'accept': [0, 1, 2]}, headers=OWN).get_json()['before']
+        assert [(x['did'], x.get('n')) for x in res['result']] == [('made', 2), ('out', 1), ('out', 1)]
+        b = plant(c, 'P-013'); new = [p for p in b['photos'] if p['file'] not in had]
+        assert sorted(p['caption'] for p in new) == ['November 11: in its jar', 'two.jpg'] and all(os.path.exists(os.path.join(S.PHOTO_DIR, p['file'])) for p in new)
+        assert [p['file'] for p in b['photos'] if p['is_primary']] == main0, "the page's main picture stays as it was"
+        assert b['version'] == a['version'] + 1, 'one change, one new version'
+        h = [x for x in c.get('/api/plants/P-013/history').get_json()['audit'] if x['action'] == 'photo_add' and x['changed_by'] == 'Claude (plant-updates-20261114-0900.zip)']
+        assert len(h) == 2 and h[0]['note'].startswith('Added 2 photo(s). You sent them on November 11. (Update from Claude') and 'accepted by Owner' in h[0]['note']
+        for p in new: c.delete(f'/api/photos/{p["id"]}', headers=OWN)
+
+def test_a_new_page_is_made_at_the_home_the_file_names(folder):
+    with S.app.test_client() as c:
+        homes = c.get('/api/meta').get_json()['homes']; main = next(h for h in homes if h['is_home']); other = next(h for h in homes if not h['is_home'])
+        fid = save(folder, pack([
+            {'kind': 'new', 'home': other['name'].upper(), 'fields': {'common_name': 'Update test orchid', 'site': 'Indoors'}, 'why': ''},
+            {'kind': 'new', 'fields': {'common_name': 'Update test fern', 'site': 'Indoors'}, 'why': ''},
+            {'kind': 'new', 'home': 'A home the record does not have', 'fields': {'common_name': 'Update test moss'}, 'why': ''},
+            {'kind': 'new', 'fields': {'common_name': 'Update test ivy', 'home_id': other['id']}, 'why': ''}]), 'plant-updates-20261114-1000.json')
+        it = c.get('/api/updates/' + fid).get_json()['items']
+        assert [x['state'] for x in it] == ['ready', 'ready', 'out', 'out'] and it[0]['home'] == other['name'] and it[1]['home'] == main['name']
+        assert 'no home of that name' in it[2]['note'] and 'cannot be given' in it[3]['note'], 'a home is named, never numbered'
+        res = c.post(f'/api/updates/{fid}/apply', json={'accept': [0, 1, 2, 3]}, headers=OWN).get_json()['before']
+        assert [x['did'] for x in res['result']] == ['made', 'made', 'out', 'out']
+        orchid, fern = plant(c, res['result'][0]['code']), plant(c, res['result'][1]['code'])
+        d = sqlite3.connect(S.DB_PATH, timeout=30); d.row_factory = sqlite3.Row
+        area = lambda p: d.execute('SELECT home_id FROM areas WHERE id=?', (p['area_id'],)).fetchone()
+        assert orchid['home_id'] == other['id'] and area(orchid)['home_id'] == other['id'], 'the page, and the room it starts in, are at the home the file named'
+        assert not fern['home_id'] and not area(fern)['home_id'], 'a page with no home named is at the main home'
+        d.close()
+        for x in res['result'][:2]: c.post(f'/api/plants/{x["code"]}/status', json={'archived': True}, headers=OWN)
 
 def test_a_photo_that_is_not_a_picture_leaves_its_page_out(folder):
     with S.app.test_client() as c:

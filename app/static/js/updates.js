@@ -14,8 +14,9 @@
 const UPD = { file: null, items: [] };            // the file being looked at, and its changes with the ticks and choices made on the page
 const updDoing = x => x.state === 'ready' ? x.on : x.state === 'conflict' && x.take === 'claude';          // will this change be made?
 const updVal = v => v == null || v === '' ? html`<span class="muted">Not set</span>` : html`${String(v)}`;
-const updWhat = x => x.kind === 'set' ? x.label : x.kind === 'archive' ? 'Move this plant to the archive' : x.kind === 'ask' ? 'A question for you' : 'A new page for this plant';
 const updN = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+const updWhat = x => x.kind === 'set' ? x.label : x.kind === 'archive' ? 'Move this plant to the archive' : x.kind === 'ask' ? 'A question for you'
+  : x.kind === 'photos' ? `Add ${updN(x.photos ? x.photos.length : x.n || 0, 'photo', 'photos')} to its page` : 'A new page for this plant';
 const updGoWords = n => n === 1 ? 'Make the 1 change' : `Make the ${n} changes`;
 function updGroups(items) {           // the changes plant by plant, in the file's order; a new page is a plant of its own
   const m = new Map();
@@ -35,12 +36,18 @@ function updCount() {                 // after a tick or a choice: the summary a
   const b = document.getElementById('upd-go'); if (b) { b.textContent = updGoWords(doing); b.disabled = !doing; }       // (off: the line after it says why)
 }
 const updPicUrl = f => `/api/updates/${enc(UPD.file.id)}/photo/${enc(f)}`;
+function updPics(x, what) {           // the photos that come with a change, and their captions in words under them
+  const caps = x.captions.map(c => String(c || '').replace(/[.\s]+$/, '')).filter(Boolean);
+  return html`<ul class="upd-pics">${x.photos.map((f, k) => html`<li><img src="${updPicUrl(f)}" alt="Photo ${k + 1} of ${x.photos.length} ${what}${x.captions[k] ? ': ' + x.captions[k] : ''}" loading="lazy" width="120" height="120"></li>`)}</ul>
+    ${caps.length ? html`<p class="hint">${caps.length === 1 ? 'Caption' : 'Captions'}: ${caps.join('; ')}.</p>` : ''}`;
+}
 function updDetail(x) {               // what a change is, in full
   return x.kind === 'set' ? html`<p><span class="upd-k">Now:</span> ${updVal(x.now)}</p><p><span class="upd-k">Change to:</span> <strong>${updVal(x.to)}</strong></p>`
     : x.kind === 'ask' ? html`<p>${x.text}</p><p class="hint">It joins what Claude needs from you on this plant's page.</p>`
     : x.kind === 'archive' ? html`<p>It leaves the lists and Today. Nothing is deleted, and <strong>Move back to the main list</strong> on its page undoes it.</p>`
-    : html`<p>${x.sci ? html`<i class="latin">${x.sci}</i>. ` : ''}${x.site}. ${x.photos.length ? `${updN(x.photos.length, 'photo comes', 'photos come')} with it:` : 'No photos come with it.'}</p>
-      ${x.photos.length ? html`<ul class="upd-pics">${x.photos.map((f, k) => html`<li><img src="${updPicUrl(f)}" alt="Photo ${k + 1} of ${x.photos.length} for the new page${x.captions[k] ? ': ' + x.captions[k] : ''}" loading="lazy" width="120" height="120"></li>`)}</ul>` : ''}
+    : x.kind === 'photos' ? html`<p>${x.photos.length === 1 ? 'It joins' : 'They join'} the photos on this plant's page:</p>${updPics(x, 'to add')}`
+    : html`<p>${x.sci ? html`<i class="latin">${x.sci}</i>. ` : ''}${x.site}${x.home ? `, at ${x.home}` : ''}. ${x.photos.length ? `${updN(x.photos.length, 'photo comes', 'photos come')} with it:` : 'No photos come with it.'}</p>
+      ${x.photos.length ? updPics(x, 'for the new page') : ''}
       ${x.fields.length ? html`<p class="hint">${x.fields.map(([l, v]) => `${l}: ${v}`).join('. ')}.</p>` : ''}`;
 }
 function updChange(x) {               // one change: a tick box, a choice of two when it needs a decision, or a line saying why there is nothing to do
@@ -88,7 +95,7 @@ function updReview() {                // every plant on one page, each with its 
     <p class="row upd-no-end"><button class="btn ghost" type="button" data-act="updaside" data-id="${F.id}">Change nothing</button></p>`;      // a phone: the bar holds one button, and this one ends the page
 }
 // what a file did, once it has been brought in
-const UPD_DID = { set: x => x.label, ask: () => 'a question for you', archive: () => 'moved to the archive', new: () => 'page made, with its photos' };
+const UPD_DID = { set: x => x.label, ask: () => 'a question for you', archive: () => 'moved to the archive', new: x => x.n ? `page made, with ${updN(x.n, 'photo', 'photos')}` : 'page made', photos: x => `${updN(x.n || 0, 'photo', 'photos')} added` };
 function updDone(B) {
   const made = B.result.filter(x => x.did === 'made'), rest = B.result.filter(x => x.did !== 'made'), gs = updGroups(made);
   const whyNot = x => x.did === 'left' ? 'You left it as it was.' : x.note || 'Nothing to do.';

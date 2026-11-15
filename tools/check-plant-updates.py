@@ -16,7 +16,9 @@ try:
     with open(path, 'rb') as f: u = S.upd_parse(f.read(), name)
 except ValueError as e: sys.exit(f'NOT USABLE: {e}')
 kinds = collections.Counter(x['kind'] for x in u['changes'])
-print(f"{name}: {len(u['changes'])} changes ({', '.join(f'{n} {k}' for k, n in kinds.items()) or 'none'}), made {u['made'] or 'on no date given'}, {len(u['photos'])} photos.")
+WORDS = {'set': 'to set', 'archive': 'to archive', 'ask': 'to ask', 'photos': 'adding photos', 'new': 'new pages'}
+count = lambda n, one, many: f'{n} {one if n == 1 else many}'
+print(f"{name}: {count(len(u['changes']), 'change', 'changes')} ({', '.join(f'{n} {WORDS.get(k, k)}' for k, n in kinds.items()) or 'none'}), made {u['made'] or 'on no date given'}, {count(len(u['photos']), 'photo', 'photos')} in the file.")
 for x in u['changes']:
     if x['kind'] == 'set' and (x['field'] not in S.FIELD_KIND or x['field'] in S.BATCH_ROW_IDS): print(f"  WARNING: {x['code']} {x['name']}: \"{x['field']}\" is not something an update file can change; the app will leave it out.")
     if x['kind'] == 'new':

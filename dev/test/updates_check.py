@@ -163,6 +163,35 @@ with sync_playwright() as p:
     check(until(pg, lambda: pg.locator('.upd-plants').count() == 1), 'a file set aside can be chosen again')
     pg.locator('#upd-go').click()
     check(until(pg, lambda: pg.locator('.upd-done').count() == 1 and call('GET', '/api/plants/P-010')[1]['water_every_days'] == 9, 20000), 'and brought in then')
+    # photos for a page that exists, and a new page at a home that is not the main one
+    away = next(h for h in call('GET', '/api/meta')[1]['homes'] if not h['is_home'])
+    n14 = len(call('GET', '/api/plants/P-014')[1]['photos'])
+    pz = os.path.join(tmp, 'plant-updates-20261115-0900.zip')
+    with zipfile.ZipFile(pz, 'w', zipfile.ZIP_DEFLATED) as z:
+        z.writestr('updates.json', json.dumps({'format': 'plant-updates-1', 'made': '2026-11-15', 'about': 'The photos you sent.', 'changes': [
+            {'kind': 'photos', 'code': 'P-014', 'name': n('P-014'), 'photos': [{'file': 'pot-1.jpg', 'caption': 'November 15: the new pot.'}, {'file': 'pot-2.jpg', 'caption': 'From above'}], 'why': 'You sent them on November 15.'},
+            {'kind': 'new', 'home': away['name'], 'fields': {'common_name': 'Windowsill fern', 'site': 'Indoors'}, 'why': 'It lives at the other house.'}]}))
+        z.writestr('photos/pot-1.jpg', jpg((150, 110, 70))); z.writestr('photos/pot-2.jpg', jpg((90, 90, 120)))
+    pg.goto(BASE + '/#/updates'); pg.wait_for_selector('.upd-choose', timeout=20000)
+    pg.set_input_files('.upd-choose input[type=file]', pz); pg.locator('.upd-choose button[type=submit]').click()
+    check(until(pg, lambda: pg.locator('.upd-plants').count() == 1 and pg.locator('#upd-go').inner_text() == 'Make the 2 changes'), 'a file with photos for a page that exists shows its changes')
+    c0 = pg.locator('#upd-c0')
+    check(pg.get_by_label('Add 2 photos to its page', exact=True).is_checked() and c0.locator('.upd-pics img').count() == 2 and "They join the photos on this plant's page" in c0.inner_text()
+          and 'Captions: November 15: the new pot; From above.' in c0.inner_text() and until(pg, lambda: c0.locator('.upd-pics img').first.evaluate('i => i.complete && i.naturalWidth > 0')),
+          'the photos are shown with their captions in words, ticked to begin with')
+    check(c0.locator('.upd-pics img').first.get_attribute('alt') == 'Photo 1 of 2 to add: November 15: the new pot.', 'each photo is described for someone who cannot see it')
+    check(f'Indoors, at {away["name"]}.' in pg.locator('#upd-c1').inner_text(), 'a new page says which home it is for')
+    pg.screenshot(path=os.path.join(OUT, 'updates-photos.png'), full_page=True)
+    fid3 = pg.url.rsplit('/', 1)[1]
+    pg.locator('#upd-go').click()
+    check(until(pg, lambda: pg.locator('.upd-done').count() == 1 and '2 photos added' in pg.locator('main').inner_text() and 'page made.' in pg.locator('main').inner_text(), 20000),
+          'bringing it in says how many photos were added')
+    p14 = call('GET', '/api/plants/P-014')[1]
+    check(len(p14['photos']) == n14 + 2 and any(x['caption'] == 'November 15: the new pot.' for x in p14['photos']) and p14['photos'][0]['file'] == P['P-014']['photos'][0]['file'],
+          "the photos are on the plant's page with their captions, and its main picture is the one it had")
+    made = call('GET', '/api/updates/' + fid3)[1]['before']['result']
+    fern = call('GET', '/api/plants/' + made[1]['code'])[1]
+    check(fern['common_name'] == 'Windowsill fern' and fern['home_id'] == away['id'], 'and the new page is at the home the file named, not at the main one')
     # a file in Claude's folder set aside from the list, and looked at again
     with open(os.path.join(FOLDER, 'plant-updates-20261116-0700.json'), 'w') as f: json.dump({'format': 'plant-updates-1', 'made': '2026-11-16', 'about': '', 'changes': [
         {'kind': 'ask', 'code': 'P-012', 'name': n('P-012'), 'text': 'Has it flowered?', 'why': ''}]}, f)
