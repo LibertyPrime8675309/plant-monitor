@@ -1,0 +1,19 @@
+/* 1.58.0: more of a phone's first screen for the page (Ethan chose option 2 of three on November 15, 2026). On a narrow screen
+   (a phone, or an iPad held upright) the top bar keeps to one row: the page's name, Search and the three dots of More (still
+   spoken as More); the bottom bar has less padding; and the one-line cold warning is shorter, with its two buttons side by side.
+   At the largest text on a phone the page under its name went from no room at all on the first screen to about 300 px. */
+html[data-narrow="1"] .top:not(.more-open):not(.pages-open) .top-in{flex-wrap:nowrap;align-items:stretch;gap:.3rem;padding-top:.3rem;padding-bottom:.3rem}
+html[data-narrow="1"] .top:not(.more-open):not(.pages-open) .pages-btn{flex:1 1 0;min-width:0;text-align:left;justify-content:flex-start;overflow-wrap:anywhere;padding:.15em .4em}
+html[data-narrow="1"] .top:not(.more-open):not(.pages-open) .top-acts{flex:0 0 auto;gap:.3rem;margin-left:0}
+html[data-narrow="1"] .top:not(.more-open):not(.pages-open) .top-acts>*{padding:.15em .4em}
+html[data-narrow="1"] .top:not(.more-open) .more-btn{font-size:0;gap:0}   /* the three dots stay; "More" is still its spoken name */
+html[data-narrow="1"] .top:not(.more-open) .more-btn>span{font-size:1rem}
+html[data-narrow="1"] #corner{padding-top:.2rem;padding-bottom:calc(.2rem + env(safe-area-inset-bottom,0px))}
+html[data-narrow="1"] #corner>button{padding:.1em .45em}
+/* the one-line cold warning (on every page but Today) */
+html[data-narrow="1"] .fz-banner.fz-line{padding:.3rem .6rem;gap:.2rem .6rem;margin-bottom:.5rem}
+html[data-narrow="1"] .fz-banner.fz-line .fz-title{font-size:max(19.3px,.8rem);line-height:1.3;flex-basis:100%}   /* never smaller than it was at the usual text size (1.05rem of 18.4px) */
+html[data-narrow="1"] .fz-banner.fz-line .fz-do{font-size:1em}
+html[data-narrow="1"] .fz-banner.fz-line .row{display:flex;flex-wrap:nowrap;gap:.4rem;width:100%}
+html[data-narrow="1"] .fz-banner.fz-line .row .btn{font-size:max(15px,.75rem);padding:.2em .6em;min-height:44px;flex:1 1 auto;line-height:1.2}
+html[data-narrow="1"] .fz-banner.fz-line .row .btn.ghost{flex:0 0 auto}
