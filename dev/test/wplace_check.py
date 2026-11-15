@@ -74,17 +74,18 @@ with sync_playwright() as p:
     pg.keyboard.press('Enter')
     check(until(pg, lambda: pg.evaluate('document.activeElement.dataset.how') == 'water'), 'and it puts the focus on Watered')
     pg.screenshot(path=os.path.join(OUT, 'wplace-today.png'))
-    # the picture size: three sizes, kept on this device; the ticks stay
+    # the picture size: two sizes, kept on this device; the ticks stay
     size = pg.locator('select[data-act=waterpics]')
     across = lambda: pg.evaluate("s => getComputedStyle(document.querySelector(s + ' .wpl-grid')).gridTemplateColumns.split(' ').length", DUE)
     n_med = across()
-    check(size.input_value() == 'medium' and size.locator('option').all_inner_texts() == ['Small', 'Medium', 'Large'] and pg.locator('label.wpl-size').inner_text().startswith('Picture size'), 'Picture size starts at Medium, with Small and Large to choose')
+    check(size.input_value() == 'medium' and size.locator('option').all_inner_texts() == ['Medium', 'Large'] and pg.locator('label.wpl-size').inner_text().startswith('Picture size'), 'Picture size starts at Medium, with Large to choose')
     size.select_option('large')
     check(until(pg, lambda: across() < n_med) and bar.locator('.wpl-bar-n').inner_text() == '2 ticked', 'Large puts fewer, larger cards across, and the ticks stay')
-    n_large = across(); size.select_option('small')
-    check(until(pg, lambda: across() > n_med), 'Small puts more across')
-    size.select_option('large'); pg.reload(); pg.wait_for_selector(DUE + ' .wpl-card', timeout=30000)
+    n_large = across()
+    pg.reload(); pg.wait_for_selector(DUE + ' .wpl-card', timeout=30000)
     check(pg.locator('select[data-act=waterpics]').input_value() == 'large' and across() == n_large, 'the size is remembered on this device')
+    pg.evaluate("localStorage.setItem('plantdb.waterpics', 'small')"); pg.reload(); pg.wait_for_selector(DUE + ' .wpl-card', timeout=30000)
+    check(pg.locator('select[data-act=waterpics]').input_value() == 'medium' and across() == n_med, 'a device that had chosen the Small size, which is gone, gets Medium')
     check(pg.locator('#wpl-bar-due').is_hidden(), 'ticks are for this visit: loading the page again starts with none')
     pg.locator('select[data-act=waterpics]').select_option('medium')
     # Watered and Still moist for the ticked plants
@@ -213,9 +214,7 @@ with sync_playwright() as p:
         check(go.is_visible() and go.locator('option').count() == len(heads(ph, PD)) + 1, 'with three spots or more, a phone has one list to go to a spot')
         last = len(heads(ph, PD)) - 1; go.select_option(f'wpl-due-{last}')
         check(until(ph, lambda: ph.evaluate('document.activeElement && document.activeElement.id') == f'wpl-due-{last}') and go.input_value() == '', 'choosing a spot puts the focus on that spot\'s tile, and the list is ready for the next choice')
-    ph.locator('select[data-act=waterpics]').select_option('small')
-    # Small on a phone: a card stays wide enough for a long word of a name, so it is two across, as Medium is, and no name is broken inside a word
-    until(ph, lambda: ph.evaluate("document.querySelector('#today-water > .wpl').dataset.pics") == 'small')
+    # on a phone a card stays wide enough for a long word of a name, so no name is broken inside a word
     small = ph.evaluate("""() => { const rem = parseFloat(getComputedStyle(document.documentElement).fontSize), cs = [...document.querySelectorAll('#today-water .wpl-card')]; let broken = [];
       cs.forEach(c => { const a = c.querySelector('.wpl-nml a'), tn = a && [...a.childNodes].find(x => x.nodeType === 3); if (!tn) return; const t = tn.textContent;
         if (t.split(/[\\s\\/-]+/).some(w => w.length > 13)) return;              // a word longer than any ordinary one may still have to break
@@ -223,8 +222,8 @@ with sync_playwright() as p:
         for (let i = 0; i < t.length; i++) { range.setStart(tn, i); range.setEnd(tn, i + 1); const rc = range.getClientRects()[0]; if (!rc) continue;
           if (last !== null && Math.abs(rc.top - last) > 4 && i > 0 && !/[\\s\\/(-]/.test(t[i - 1]) && !/\\s/.test(t[i])) { broken.push(t); break; } last = rc.top; } });
       return { n: cs.length, least: Math.min(...cs.map(c => c.getBoundingClientRect().width)) / rem, broken }; }""")
-    check(row()[0] == 2 and small['n'] > 5 and small['least'] >= 8.3 and not small['broken'] and not ph.evaluate('document.documentElement.scrollWidth > innerWidth + 1'),
-          f'Small on a phone keeps a card as wide as a long word: two across, and no name is broken inside a word ({small["least"]:.1f} rem; {small["broken"][:2]})')
+    check(small['n'] > 5 and small['least'] >= 8.9 and not small['broken'],
+          f'a card on a phone is as wide as a long word needs, and no name is broken inside a word ({small["least"]:.1f} rem; {small["broken"][:2]})')
     ph.locator('select[data-act=waterpics]').select_option('large')
     check(until(ph, lambda: row()[0] == 1) and not ph.evaluate('document.documentElement.scrollWidth > innerWidth + 1'), 'Large is one across')
     ph.locator('select[data-act=waterpics]').select_option('medium')
