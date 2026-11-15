@@ -61,11 +61,12 @@ Then open http://127.0.0.1:8080/#/reminders. The focused check is `python3 dev/t
 - Backups include it like any other table. It is not yet in **Download all data (JSON)** (see the questions).
 
 ## Open questions for Ethan
+Answered on November 15, 2026 and **still to build**: a phone notification on a reminder's morning (1, yes); Done working offline (2, yes); reminders in the calendar file and the download (5, yes).
 1. **Phone notifications.** Should a reminder also send a notification to your phone on its morning (like the cold-night ones), or is Today enough? It would be a new choice under Notifications.
 2. **Offline.** Right now a reminder can only be added or ticked off while the app can reach your PC. Should Done work offline from the garden, like Watered does, and be sent later?
-3. **Plant-sitter sheet.** Should reminders due while you are away appear on the sitter sheet as one more thing to do?
-4. **"A week later"** is the one quick way to put a reminder off. Would "Tomorrow" be more useful there, or both?
+3. **Plant-sitter sheet.** Answered November 15: no, reminders are yours and stay off the sitter sheet.
+4. Answered November 15: both. A reminder has **Tomorrow** and **A week later**.
 5. **Download all data (JSON)** and the calendar file: should reminders go in them too?
-6. The Today block sits after Repotting and before Needed from you. Would you rather have it near the top, before Water?
+6. Answered November 15: near the top. The Today block is before Water (after a cold night and sensor alerts).
 
 Reply on this pull request with changes, or say "merge" when you are happy.

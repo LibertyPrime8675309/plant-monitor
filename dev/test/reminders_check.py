@@ -62,6 +62,8 @@ with sync_playwright() as p:
     check(pg.inner_text('#today-remind h2') == 'Reminders (2)', 'Today has "Reminders" with the two due (one late, one today)')
     check(pg.locator('.td-jumps a[data-sec=today-remind]').inner_text() == 'Reminders (2)', 'and a jump button for it')
     check('Buy potting mix' not in pg.inner_text('#today-remind'), "tomorrow's reminder is not on Today yet")
+    check(pg.evaluate("(() => { const r = document.getElementById('today-remind'), w = document.getElementById('today-water'); return !!r && (!w || !!(r.compareDocumentPosition(w) & Node.DOCUMENT_POSITION_FOLLOWING)); })()"),
+          'Reminders is near the top of Today, before Water')
     pg.locator('#today-remind').screenshot(path=os.path.join(OUT, 'reminders-4-today.png'))
     # Done, with a repeat
     rid = next(r['id'] for r in R()['open'] if r['text'] == 'Spray again for mealybugs')
@@ -70,9 +72,13 @@ with sync_playwright() as p:
     check(any(r['text'] == 'Spray again for mealybugs' and r['due_on'] == wk for r in R()['open']), 'Done on a weekly one sets the next for a week from today')
     check(pg.inner_text('#today-remind h2') == 'Reminders (1)', 'and Today counts one fewer')
     check(pg.evaluate("!!document.activeElement && document.activeElement.tagName === 'BUTTON'"), 'the focus lands on a button, not lost')
-    # A week later
-    pg.click(f'#today-remind [data-rm="{x["id"]}"] [data-act=rmlater]'); pg.wait_for_timeout(1500)
-    check(next(r for r in R()['open'] if r['id'] == x['id'])['due_on'] == wk, 'A week later on a late one moves it to a week from today')
+    # Tomorrow, then A week later
+    tm = (date.fromisoformat(today) + timedelta(days=1)).isoformat()
+    pg.click(f'#today-remind [data-rm="{x["id"]}"] [data-act=rmlater][data-days="1"]'); pg.wait_for_timeout(1500)
+    check(next(r for r in R()['open'] if r['id'] == x['id'])['due_on'] == tm and pg.locator('#today-remind').count() == 0, 'Tomorrow on a late one moves it to tomorrow, and it leaves Today')
+    call('PUT', f"/api/reminders/{x['id']}", {'due_on': today}); pg.goto(BASE + '/#/weather'); pg.goto(BASE + '/#/'); pg.wait_for_selector('#today-remind', timeout=15000)
+    pg.click(f'#today-remind [data-rm="{x["id"]}"] [data-act=rmlater][data-days="7"]'); pg.wait_for_timeout(1500)
+    check(next(r for r in R()['open'] if r['id'] == x['id'])['due_on'] == wk, 'A week later moves it to a week from today')
     check(pg.locator('#today-remind').count() == 0, 'with nothing due, Today has no Reminders section')
     # Not done yet, on the page
     pg.goto(BASE + '/#/reminders'); pg.wait_for_selector('#rm-done')

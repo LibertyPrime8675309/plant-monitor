@@ -22,7 +22,8 @@ const rmWho = r => r.created_by && r.created_by !== 'Unknown' ? ` Set by ${r.cre
 function rmBtns(r, small) {
   const what = r.text + (r.plant_name ? ', ' + r.plant_name : '');
   return html`<button class="btn small" type="button" data-act="rmdone" data-id="${r.id}" aria-label="${'Done: ' + what}">Done</button>
-    ${small ? '' : html`<button class="btn small ghost" type="button" data-act="rmlater" data-id="${r.id}" data-due="${r.due_on}" aria-label="${'Remind me in a week instead: ' + what}">A week later</button>`}
+    ${small ? '' : html`<button class="btn small ghost" type="button" data-act="rmlater" data-days="1" data-id="${r.id}" data-due="${r.due_on}" aria-label="${'Tomorrow: remind me then instead, ' + what}">Tomorrow</button>
+    <button class="btn small ghost" type="button" data-act="rmlater" data-days="7" data-id="${r.id}" data-due="${r.due_on}" aria-label="${'A week later: remind me then instead, ' + what}">A week later</button>`}
     <button class="btn small ghost" type="button" data-act="rmedit" data-id="${r.id}" aria-label="${'Change or remove: ' + what}">Change</button>`;
 }
 // One reminder as a row: the plant's photo and name when it is for a plant, else a plain box
@@ -129,7 +130,7 @@ Object.assign(acts, {
   },
   async rmlater(el) {
     if (!(await needName())) return;
-    const d = addDays(el.dataset.due > todayStr() ? el.dataset.due : todayStr(), 7);
+    const d = addDays(el.dataset.due > todayStr() ? el.dataset.due : todayStr(), +el.dataset.days || 7);      // counted from today for one that is late, from its own day for one still to come
     await guard(async () => { await api('PUT', '/api/reminders/' + el.dataset.id, { due_on: d }); toast('Moved to ' + relDay(d) + '.'); await rmAfter(); });
   },
   async rmundo(el) {
@@ -143,7 +144,7 @@ addFeature({
   name: 'reminders',
   pages: { reminders: { view: viewReminders, nav: 'reminders', section: 'today', label: 'Reminders', href: '#/reminders', after: 'repotting' } },
   today: {
-    id: 'today-remind', order: 69,                                   // after repotting (68), before needed from you (70)
+    id: 'today-remind', order: 25,                                   // near the top (his answer of November 15): after a cold night (10) and sensors (20), before Water (30)
     load: async () => { const R = await api('GET', '/api/reminders?done=0'); return R.counts.due ? R : null; },
     jump: R => `Reminders (${R.counts.due})`,
     html: R => html`<section class="blk" id="today-remind"><h2>Reminders (${R.counts.due})</h2>
