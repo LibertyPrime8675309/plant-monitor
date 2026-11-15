@@ -8,3 +8,11 @@
 .rl-new .btn.ghost{border-color:currentColor}
 .rl-fold>summary{cursor:pointer;min-height:2.75rem;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
 .rl-fold[open]>summary{margin-bottom:.3rem}
+
+/* 1.58.0: Check for updates (Settings, beside the version; the foot of Navigation) */
+.set-ver{display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center;max-width:none}
+.set-ver>span{flex:1 1 20rem;min-width:0}
+.notice.good{border-color:var(--moss);background:var(--moss-soft)}
+.rl-check{margin:0 0 .8rem}
+.rl-check-dlg .row{gap:.5rem;flex-wrap:wrap}
+dialog.rl-check-win{width:min(94vw,44rem)}

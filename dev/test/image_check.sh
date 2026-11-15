@@ -111,6 +111,7 @@ h=$(curl -fsS "$URL/api/health")
 printf '%s' "$h" | json "'ok   ' + str(d['runs_as'].get('text') if isinstance(d['runs_as'], dict) else d['runs_as']) + '. Saving mode: ' + str(d['journal']['mode']) + '.'"
 [ "$(curl -s -o /dev/null -w '%{http_code}' -H 'Host: evil.example:8080' "$URL/api/people")" = 403 ] || fail "it answers to a name that is not its own"
 [ "$(curl -fsS "$URL/api/updates" | json "str(d['folder']) + ' ' + str(len(d['waiting']))")" = 'True 0' ] || fail "it does not see the plant-updates folder that docker-compose.yml gives it"
+[ "$(curl -fsS "$URL/api/issues?brief=1" | json "str(d['fresh']) + ' ' + str(d['counts']['open'])")" = '0 0' ] || fail "the Issue tracker does not answer (its tables are made by init_db)"
 echo "ok   it sees the folder for update files from Claude, and nothing is waiting in it"
 echo "ok   it does not answer to a stranger's name"
 

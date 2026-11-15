@@ -1,0 +1,19 @@
+/* PREVIEW ONLY (proto/tight-controls): buttons no wider than their words, fields no wider than what they hold. Off unless the page
+   carries data-tight (set by the picture tool). */
+/* buttons: as wide as their words and a small margin, never under a fingertip, never stretched by their row */
+html[data-tight] main :is(.btn, button.btn, a.btn){flex-grow:0!important;flex-basis:auto!important;width:auto!important;max-width:100%;min-width:44px;align-self:flex-start;padding-left:.6em;padding-right:.6em;white-space:normal}
+html[data-tight] main .rd-page{margin:.1rem 0 .6rem}
+html[data-tight] main .fz-acts{flex-direction:row;flex-wrap:wrap;align-items:flex-start;min-width:0}
+html[data-tight] main :is(.row, .rd-page, .fz-acts, .quick-btns){justify-content:flex-start}
+/* a column of grid rows that held a button on its own line: let the button sit after the words when it fits */
+html[data-tight][data-narrow="1"] main li.fz-row{grid-template-columns:auto 1fr}
+/* fields: sized by what they hold, in letters, so they grow with the text size */
+html[data-tight] main input[type=number]{width:calc(7ch + 2.2em);max-width:100%}
+html[data-tight] main input[type=date]{width:auto;max-width:100%}
+html[data-tight] main select{width:auto;max-width:100%}
+html[data-tight] main input[type=text][maxlength]:not([maxlength="200"]):not([maxlength="300"]):not([maxlength="500"]){max-width:24ch}
+/* a grid of fields becomes a wrapping row, each field as wide as its box or its label's first words */
+html[data-tight] main .field-grid{display:flex;flex-wrap:wrap;align-items:flex-end;gap:0 1.4rem}
+html[data-tight] main .field-grid>label.f{flex:0 1 auto;max-width:100%}
+html[data-tight] main .field-grid>label.f:has(> :is(input[type=number], input[type=date], select)){max-width:min(100%,16em)}
+html[data-tight] main .field-grid>label.f:has(> :is(textarea, input[type=text]:not([maxlength]), input[type=url])), html[data-tight] main .field-grid>.wide{flex:1 1 100%}
