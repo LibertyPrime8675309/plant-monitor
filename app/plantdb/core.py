@@ -6,7 +6,7 @@ Everything lives in DATA_DIR (default /data): plants.db, photos/, cache/.
 Edits are versioned: every save bumps the plant's page version, writes a full snapshot
 to plant_versions and one row per changed field to audit_log (what / before / after / who / when).
 """
-import csv, gzip, hmac, html as html_mod, io, json, math, os, re, secrets, shutil, sqlite3, threading, time, urllib.error, urllib.parse, urllib.request, uuid
+import csv, gzip, hmac, html as html_mod, io, ipaddress, json, math, os, re, secrets, shutil, sqlite3, threading, time, urllib.error, urllib.parse, urllib.request, uuid
 from datetime import date, datetime, timedelta, timezone
 from urllib.parse import urlparse
 
@@ -110,9 +110,35 @@ FIELDS = [
     ('danger_humans', 'long', 'Dangers to people'), ('danger_animals', 'long', 'Dangers to pets and other animals'),
     ('propagation', 'list', 'Propagation'), ('sources', 'list', 'Sources'),
     ('pet_safety', 'enum', 'Safety for pets'),                                                          # 1.17.0, for the pets filter
+    ('height_in', 'num', 'Height now, with its pot (in)'),                                              # 1.56.0 (PLAN.md step 8c): for fitting it under a shelf or a light
+    ('grow_kind', 'enum', 'How it grows'),                                                               # 1.56.0 (PLAN.md step 9): soil mix, semi-hydro or water only
+    ('reservoir', 'enum', 'What holds its water'),                                                       # 1.56.0: drains freely, a tray, a catch pot, or the pot itself
+    ('mix_wants', 'enum', 'Mix it wants'),                                                               # 1.56.0: fast-draining, balanced or moisture-holding (also a species fact)
+    ('browse_risk', 'enum', 'Risk of being eaten by pests (set by you)'),                                # 1.57.0 (browse.py): empty = the usual for this kind of plant
 ]
-ENUMS = {'winter_plan': WINTER_PLANS, 'site': SITES, 'health_rating': HEALTH, 'leaf_type': LEAF_TYPES, 'pot_size': POT_SIZES, 'fert_strength': FERT_STRENGTHS, 'pet_safety': PET_SAFETY}
-OPTIONAL_ENUMS = ('leaf_type', 'pot_size', 'fert_strength', 'pet_safety')        # may be left as "Not set"
+BROWSE_RISKS = ['Low', 'Moderate', 'High']
+GROW_KINDS = ['Soil mix', 'Semi-hydro', 'Water only']                       # 1.56.0 (PLAN.md step 9); empty means a soil mix
+RESERVOIRS = ['Drains freely', 'A tray under it', 'A catch pot', 'The pot itself (no holes)']
+MIX_WANTS = ['Fast-draining', 'Balanced', 'Moisture-holding']
+MIXES_SCHEMA = '''
+CREATE TABLE IF NOT EXISTS amendments(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT UNIQUE, name TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'part',
+  grades TEXT NOT NULL DEFAULT '[]', holds_water INTEGER, airy INTEGER, lasts_months INTEGER, feeds INTEGER, ph INTEGER, weight INTEGER,
+  source TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '', created_by TEXT, created_at TEXT, updated_by TEXT, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS mix_recipes(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, notes TEXT NOT NULL DEFAULT '',
+  created_by TEXT, created_at TEXT, updated_by TEXT, updated_at TEXT);
+CREATE TABLE IF NOT EXISTS mix_parts(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, recipe_id INTEGER NOT NULL, amendment_id INTEGER NOT NULL, grade TEXT NOT NULL DEFAULT '',
+  parts REAL, amount TEXT NOT NULL DEFAULT '', sort INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS pot_mixes(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, plant_code TEXT NOT NULL, care_id INTEGER, mixed_on TEXT NOT NULL, recipe_id INTEGER,
+  parts TEXT NOT NULL DEFAULT '[]', top TEXT NOT NULL DEFAULT '', bottom TEXT NOT NULL DEFAULT '', notes TEXT NOT NULL DEFAULT '',
+  created_by TEXT, created_at TEXT);
+CREATE INDEX IF NOT EXISTS pot_mixes_code ON pot_mixes(plant_code, mixed_on);
+'''
+ENUMS = {'grow_kind': GROW_KINDS, 'reservoir': RESERVOIRS, 'mix_wants': MIX_WANTS, 'winter_plan': WINTER_PLANS, 'site': SITES, 'health_rating': HEALTH, 'leaf_type': LEAF_TYPES, 'pot_size': POT_SIZES, 'fert_strength': FERT_STRENGTHS, 'pet_safety': PET_SAFETY, 'browse_risk': BROWSE_RISKS}
+OPTIONAL_ENUMS = ('leaf_type', 'pot_size', 'fert_strength', 'pet_safety', 'grow_kind', 'reservoir', 'mix_wants', 'browse_risk')        # may be left as "Not set"
 FIELD_NAMES = [f[0] for f in FIELDS]
 FIELD_KIND = {f[0]: f[1] for f in FIELDS}
 FIELD_LABEL = {f[0]: f[2] for f in FIELDS}
@@ -124,7 +150,7 @@ INT_RANGES = {'id_confidence': (0, 100), 'temp_ideal_low': (-60, 150), 'temp_ide
               'soil_moisture_low': (0, 100), 'soil_moisture_high': (0, 100), 'soil_temp_low': (-40, 150), 'soil_temp_high': (-40, 150),
               'fert_from_month': (1, 12), 'fert_to_month': (1, 12), 'fert_every_days': (1, 365),
               'water_every_days': (1, 60)}
-NUM_RANGES = {'vpd_low': (0, 6), 'vpd_high': (0, 6), 'dli_low': (0, 80), 'dli_high': (0, 80), 'soil_ph_low': (0, 14), 'soil_ph_high': (0, 14)}
+NUM_RANGES = {'height_in': (0.5, 600), 'vpd_low': (0, 6), 'vpd_high': (0, 6), 'dli_low': (0, 80), 'dli_high': (0, 80), 'soil_ph_low': (0, 14), 'soil_ph_high': (0, 14)}
 
 def now():
     return datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
@@ -138,6 +164,14 @@ def db():
         c.execute('PRAGMA cache_size=-32768')        # 32 MB of page cache: the weather history is large
         g.db = c
     return g.db
+
+# 1.57.0: the settings table helpers (in weather.py until then)
+def setting(c, key, default=None):
+    r = c.execute('SELECT value FROM settings WHERE key=?', (key,)).fetchone()
+    return r[0] if r else default
+
+def set_setting(c, key, value):
+    c.execute('INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)', (key, value))
 
 @app.teardown_appcontext
 def close_db(_):
@@ -254,12 +288,44 @@ CREATE TABLE IF NOT EXISTS bulk_changes(
   done_by TEXT NOT NULL, done_at TEXT NOT NULL, undone_by TEXT, undone_at TEXT);
 """ % ',\n  '.join(f"{n} {SQLTYPE.get(k, 'TEXT')}" for n, k, _ in FIELDS)
 
+JOURNAL = {'mode': None, 'probe': None}   # 1.57.0: the journal mode in use, and what the WAL test found
+def wal_works():
+    """1.57.0: does WAL work in the data folder? Writes through one connection and reads through another, on a scratch database."""
+    path = os.path.join(os.path.dirname(DB_PATH), '.wal-probe.db')
+    try:
+        for f in (path, path + '-wal', path + '-shm'):
+            if os.path.exists(f): os.remove(f)
+        a = sqlite3.connect(path, timeout=5); b = None
+        try:
+            if a.execute('PRAGMA journal_mode=WAL').fetchone()[0].lower() != 'wal': raise RuntimeError('WAL was refused')
+            a.execute('CREATE TABLE t(x)'); a.execute('INSERT INTO t VALUES(42)'); a.commit()
+            b = sqlite3.connect(path, timeout=5)
+            if b.execute('SELECT x FROM t').fetchone() != (42,): raise RuntimeError('a second connection did not see the write')
+            a.execute('INSERT INTO t VALUES(43)'); a.commit()
+            if b.execute('SELECT COUNT(*) FROM t').fetchone()[0] != 2: raise RuntimeError('a second connection did not see a later write')
+        finally:
+            if b: b.close()
+            a.close()
+        JOURNAL['probe'] = 'WAL works in the data folder.'
+        return True
+    except Exception as e:
+        JOURNAL['probe'] = f'WAL was asked for but does not work in the data folder ({e}), so the app uses DELETE.'
+        return False
+    finally:
+        for f in (path, path + '-wal', path + '-shm'):
+            try: os.remove(f)
+            except OSError: pass
 NEWER_DB = {}        # 1.31.0: set when the database was last opened by a newer version than this one; the app then only says so
 def init_db():
     c = sqlite3.connect(DB_PATH, timeout=30)
     c.row_factory = sqlite3.Row
     # WAL can misbehave on Windows bind mounts; the default rollback journal is safe everywhere for a single-process home app.
-    c.execute('PRAGMA journal_mode=' + os.environ.get('PLANTDB_JOURNAL', 'DELETE'))
+    # 1.57.0: PLANTDB_JOURNAL=WAL (in .env) lets pages read while a save is being written. It is tried on a scratch copy first; if
+    # a second connection cannot see a write there (the shared-memory file does not work on this folder), the app stays on DELETE.
+    want = os.environ.get('PLANTDB_JOURNAL', 'DELETE').upper()
+    if want == 'WAL' and not wal_works(): want = 'DELETE'
+    if want not in ('DELETE', 'WAL', 'TRUNCATE', 'PERSIST'): want = 'DELETE'
+    JOURNAL['mode'] = c.execute('PRAGMA journal_mode=' + want).fetchone()[0]
     # 1.31.0: never let an older version change a database a newer one has already upgraded (its tables and columns would be
     # half understood, and its batches could run again). The app starts, but only to say which version to install.
     try:
@@ -287,6 +353,11 @@ def init_db():
     c.executescript(PUSH_SCHEMA)                  # 1.33.0: devices that get notifications
     c.executescript(SITTER_SCHEMA)                # 1.49.0: plant-sitter sheets shared by link, and the sitter's ticks
     c.executescript(KNOWLEDGE_SCHEMA)             # 1.53.0 (PLAN.md step 6a): one row per species fact, with its source (the facts table)
+    c.executescript(BROWSE_SCHEMA)                # 1.57.0: pests seen eating a plant, with pictures as evidence (browse.py)
+    c.executescript(UPDATES_SCHEMA)               # 1.58.0: update files from Claude that were brought in or set aside (updates.py)
+    c.executescript(MIXES_SCHEMA)                 # 1.56.0 (PLAN.md step 9): amendments, recipes, what is in each pot (mixes.py)
+    if 'status' not in {r[1] for r in c.execute('PRAGMA table_info(lights)')}:     # 1.56.0 (PLAN.md step 10b): owned, considering, no longer used
+        c.execute("ALTER TABLE lights ADD COLUMN status TEXT NOT NULL DEFAULT 'owned'")
     wl = {r[1] for r in c.execute('PRAGMA table_info(wishlist)')}
     for col, typ in (('max_price', 'REAL'), ('alert_stock', 'INTEGER NOT NULL DEFAULT 0'), ('search_words', "TEXT NOT NULL DEFAULT ''")):
         if col not in wl: c.execute(f'ALTER TABLE wishlist ADD COLUMN {col} {typ}')
@@ -310,9 +381,18 @@ def init_db():
     if 'country' not in lcols: c.execute("ALTER TABLE locations ADD COLUMN country TEXT NOT NULL DEFAULT ''")      # ISO code, 'US'
     if 'units' not in lcols: c.execute("ALTER TABLE locations ADD COLUMN units TEXT NOT NULL DEFAULT ''")          # a region key (UNIT_REGIONS) or '' for US
     if 'season' not in lcols: c.execute("ALTER TABLE locations ADD COLUMN season TEXT NOT NULL DEFAULT 'temperate'")   # temperate | mild | tropical
+    if 'tended' not in lcols: c.execute('ALTER TABLE locations ADD COLUMN tended INTEGER NOT NULL DEFAULT 1')   # 1.58.0: 0 = its plants are cared for outside the app; bulk watering leaves them out
     if 'edit_homes' not in {r[1] for r in c.execute('PRAGMA table_info(people)')}: c.execute("ALTER TABLE people ADD COLUMN edit_homes TEXT NOT NULL DEFAULT ''")   # 1.48.0: an editor limited to some homes (JSON list of ids; '' = all)
     c.execute("UPDATE locations SET country='US' WHERE country='' AND lat BETWEEN 24 AND 50 AND lon BETWEEN -125 AND -66")   # 1.48.0: a first guess for places in the lower 48; editable on Homes and places
     if 'place_id' not in {r[1] for r in c.execute('PRAGMA table_info(light_spots)')}: c.execute('ALTER TABLE light_spots ADD COLUMN place_id INTEGER')   # 1.13.1
+    lsc = {r[1] for r in c.execute('PRAGMA table_info(light_spots)')}           # 1.56.0 (PLAN.md step 8): which level, what a bulb screws into, set up and checked
+    for col, typ in (('level', "TEXT NOT NULL DEFAULT ''"), ('holder', "TEXT NOT NULL DEFAULT ''"), ('checked_at', 'TEXT'), ('checked_by', 'TEXT'), ('checked_note', 'TEXT'), ('checked_sig', 'TEXT')):
+        if col not in lsc: c.execute(f'ALTER TABLE light_spots ADD COLUMN {col} {typ}')
+    for tbl in ('areas', 'spots'):                                               # 1.56.0: a room's or shelf's measurements (fit.py)
+        if 'sheet' not in {r[1] for r in c.execute(f'PRAGMA table_info({tbl})')}: c.execute(f"ALTER TABLE {tbl} ADD COLUMN sheet TEXT NOT NULL DEFAULT ''")
+    c.execute('''CREATE TABLE IF NOT EXISTS place_photos(
+      id INTEGER PRIMARY KEY AUTOINCREMENT, area_id INTEGER NOT NULL, spot_id INTEGER, file TEXT NOT NULL, caption TEXT NOT NULL DEFAULT '',
+      is_primary INTEGER NOT NULL DEFAULT 0, added_by TEXT, added_at TEXT NOT NULL)''')                    # 1.56.0: photos of rooms and shelves
     migrate_places(c)
     where_seed(c)                                       # 1.29.0: areas and spots for every home
     if not c.execute('SELECT 1 FROM weather_runs LIMIT 1').fetchone():       # readings gathered before runs were logged (version 1.2)
@@ -364,12 +444,14 @@ def init_db():
     c.commit()
     repair_seed_photos(c)
     facts_migrate(c)                                    # 1.53.0: the facts table, loaded once from what the record already knows
+    backup_photos_once(c)                               # 1.58.0: automatic backups include the photos (a saved "no" is switched once)
     c.execute("INSERT OR REPLACE INTO settings(key,value) VALUES('db_version',?)", (APP_VERSION,)); c.commit()
     c.close()
 
-def find_plant(c, u):
-    """Find the plant an update is meant for. Photos are the most stable clue (codes shift if you added plants yourself);
-    otherwise the code must also still carry the expected name."""
+def find_plant(c, u, meant=None):
+    """Find the plant a batch entry is meant for. Photos are the most stable clue. Otherwise its code, and the plant must still carry the expected name when one is given.
+    A code in a batch file is the code a new install gives the plant: `meant` (batch_numbering) says which plant that is in this record, where someone may have added plants
+    of their own in between. A plant the owner added is not in it, and is found by the code it has here (1.58.0)."""
     files = u.get('photos') or []
     if files:
         ids = None
@@ -379,46 +461,109 @@ def find_plant(c, u):
         if ids and len(ids) == 1:
             return c.execute('SELECT * FROM plants WHERE id=?', (ids.pop(),)).fetchone()
         if not u.get('name'): return None
-    r = c.execute('SELECT * FROM plants WHERE code=?', (u['code'],)).fetchone() if u.get('code') else None
-    if r and (not u.get('name') or r['common_name'] == u['name']): return r
+    if not u.get('code'): return None
+    rows = []
+    if meant and u['code'] in meant: rows.append(c.execute('SELECT * FROM plants WHERE id=?', (meant[u['code']],)).fetchone())
+    rows.append(c.execute('SELECT * FROM plants WHERE code=?', (u['code'],)).fetchone())
+    for r in rows:
+        if r and (not u.get('name') or r['common_name'] == u['name']): return r
     return None
+
+CREATED_BY_BATCH = 'Record created from photos (%s)'           # the log line of a page a batch made; batch_numbering() reads it, so it must not change
+BATCH_ROW_IDS = ('home_id', 'area_id', 'spot_id', 'pot_id', 'tray_id')   # the numbers of rows in one record: they mean something else in another, so a batch cannot give
+                                                                # them (1.58.0: C9's orchid in Baraboo carried a room of the main home). `home_near` says the home.
+
+def batch_files():
+    """[(file name, batch)] in the order they apply."""
+    bdir = os.path.join(SEED_DIR, 'batches')
+    if not os.path.isdir(bdir): return []
+    return [(fn, json.load(open(os.path.join(bdir, fn), encoding='utf-8'))) for fn in sorted(os.listdir(bdir)) if fn.endswith('.json')]
+
+def batch_numbering(c, files=None):
+    """-> (meant, codes). The batch files number plants as a new install does: the first list's own codes, then each batch's new plants in the order they are made.
+    codes = {batch id: [the code each of its new plants has in the files]}; meant = {that code: the plant's id in this record}, for the pages that are here already.
+    In a record where someone added a plant of their own before a batch made its pages, those pages have later codes than the files say, and a batch entry that named one by
+    its code alone used to land on the neighbouring plant (found by the upgrade test, 1.58.0). What each batch made is in the log, in order; a batch whose log does not have
+    as many pages as its file is left out of `meant`, so its codes mean what they say, as before."""
+    meant, codes, n = {}, {}, 0
+    try: seed = json.load(open(os.path.join(SEED_DIR, 'seed.json'), encoding='utf-8'))
+    except (OSError, ValueError): seed = {}
+    for p in seed.get('plants', []):
+        m = re.match(r'P-(\d+)$', p.get('code') or '')
+        if m: n = max(n, int(m.group(1)))
+        r = c.execute('SELECT id FROM plants WHERE code=?', (p.get('code'),)).fetchone()
+        if r: meant[p['code']] = r[0]
+    for fn, b in (files if files is not None else batch_files()):
+        mine = codes[b['id']] = []
+        for p in b.get('plants', []):
+            n += 1; mine.append(f'P-{n:03d}')
+        if not mine or not c.execute('SELECT 1 FROM settings WHERE key=?', ('batch_applied:' + b['id'],)).fetchone(): continue
+        made = [x[0] for x in c.execute("SELECT plant_id FROM audit_log WHERE action='create' AND note=? ORDER BY id", (CREATED_BY_BATCH % b['id'],))]
+        if len(made) == len(mine): meant.update(zip(mine, made))
+    return meant, codes
+
+def batch_pot_mix(c, m, r, care_id, who, ts, label):
+    """Record what a pot is in from a batch ({mixed_on, parts: [{key, grade?, parts}], top?, bottom?, notes}); r is the plant's row.
+    Used by pot_mixes_add (by code, only where nothing is recorded) and by a new page's own pot_mix (C9)."""
+    am = {k: (i, n, ro) for i, k, n, ro in c.execute('SELECT id, key, name, role FROM amendments')}
+    parts = [{'amendment_id': am[x['key']][0], 'name': am[x['key']][1], 'role': am[x['key']][2], 'grade': x.get('grade', ''), 'parts': x.get('parts'), 'amount': x.get('amount', '')}
+             for x in m.get('parts', []) if x['key'] in am]
+    lay = lambda L: json.dumps({'amendment_id': am[L['key']][0], 'name': am[L['key']][1], 'grade': L.get('grade', ''), 'depth_in': L.get('depth_in')}) if L and L.get('key') in am else ''
+    c.execute('INSERT INTO pot_mixes(plant_code,care_id,mixed_on,parts,top,bottom,notes,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?)',
+              (r['code'], care_id, m.get('mixed_on') or ts[:10], json.dumps(parts), lay(m.get('top')), lay(m.get('bottom')), m.get('notes', ''), who, ts))
+    audit_only(c, 'mixes', 'pot_mix', None, ', '.join(f"{x['parts']:g} {x['name'].lower()}" for x in parts if x.get('parts')), who,
+               '%s (batch %s)' % ('Repotted' if care_id else 'What it is in', label), r['id'], r['code'])
 
 def apply_batches(c):
     """Apply seed/batches/*.json once each, so an existing database can receive new plants after an upgrade.
     Safe to run on every start: a batch is recorded in settings as batch_applied:<id> and never repeats.
     User edits are never overwritten: a field update only applies if the field still holds the value the batch expects."""
-    bdir = os.path.join(SEED_DIR, 'batches')
-    if not os.path.isdir(bdir): return
-    for fn in sorted(os.listdir(bdir)):
-        if not fn.endswith('.json'): continue
-        b = json.load(open(os.path.join(bdir, fn), encoding='utf-8'))
+    files = batch_files(); meant = codes = None
+    for fn, b in files:
         key = 'batch_applied:' + b['id']
         if c.execute('SELECT 1 FROM settings WHERE key=?', (key,)).fetchone(): continue
+        if meant is None: meant, codes = batch_numbering(c, files)      # 1.58.0: which plant each code in the files means in this record
         who, ts = b.get('author', 'Claude (batch)'), now()
-        label = b['id']; new_requests = []
+        label = b['id']; new_requests = []; made = []
         try:
             c.execute('BEGIN')
             for h in b.get('homes_add', []):                 # 1.28.0: another home where plants live (skipped if a place is already there)
                 r = c.execute('SELECT id FROM locations WHERE ABS(lat-?)<0.05 AND ABS(lon-?)<0.05', (h['lat'], h['lon'])).fetchone()
                 if r: c.execute('UPDATE locations SET plants_here=1 WHERE id=?', (r[0],)); continue
-                hid = c.execute('INSERT INTO locations(name,lat,lon,tz,enabled,is_home,plants_here,created_at) VALUES(?,?,?,?,1,0,1,?)',
-                                (h['name'], h['lat'], h['lon'], h['tz'], ts)).lastrowid
+                hid = c.execute('INSERT INTO locations(name,lat,lon,tz,enabled,is_home,plants_here,created_at,tended) VALUES(?,?,?,?,1,0,1,?,?)',
+                                (h['name'], h['lat'], h['lon'], h['tz'], ts, 0 if h.get('tended') is False else 1)).lastrowid
                 c.execute('UPDATE locations SET device=? WHERE id=?', (f'place-{hid}', hid))
                 audit_only(c, 'setting', 'weather_place', None, json.dumps(h), who, f'Home added ({label}): {h["name"]}')
+            for h in b.get('homes_update', []):              # 1.58.0: a home found by its place; each field says the value it expects to replace
+                r = c.execute('SELECT * FROM locations WHERE ABS(lat-?)<0.05 AND ABS(lon-?)<0.05', (h['lat'], h['lon'])).fetchone()
+                if not r: continue                                # not there (yet): nothing to change
+                for k, (old, new) in (h.get('fields') or {}).items():
+                    if k not in ('tended',): raise ValueError(f'homes_update cannot change {k}')
+                    if int(r[k]) != int(old): continue           # changed since (by hand on Homes and places): left alone
+                    c.execute(f'UPDATE locations SET {k}=? WHERE id=?', (int(new), r['id']))
+                    audit_only(c, 'setting', 'weather_place', json.dumps({k: old}), json.dumps({k: new}), who, f'{r["name"]}: ' + ('care is logged in the app' if new else 'cared for outside the app') + f' ({label})')
             for p in b.get('plants', []):
                 n = c.execute("SELECT COALESCE(MAX(CAST(SUBSTR(code,3) AS INTEGER)),0)+1 FROM plants").fetchone()[0]
                 code = f'P-{n:03d}'
                 cols = ['code'] + FIELD_NAMES + ['version', 'status', 'created_at', 'created_by', 'updated_at', 'updated_by']
+                tp = p['dated'] + 'T12:00:00Z' if p.get('dated') else ts      # C9: a page can carry the date it really dates from (the photos')
+                p = {k: v for k, v in p.items() if k not in BATCH_ROW_IDS}
+                if p.get('home_near'):                                          # C9: the home it lives at, found by its place (added by homes_add above)
+                    hm = c.execute('SELECT id FROM locations WHERE ABS(lat-?)<0.05 AND ABS(lon-?)<0.05', (p['home_near']['lat'], p['home_near']['lon'])).fetchone()
+                    if hm: p = {**p, 'home_id': hm[0]}
                 p = {**p, 'site': p.get('site') or 'Outdoors'}          # so later batches in the same start-up can expect it
-                vals = [code] + [p.get(k) for k in FIELD_NAMES] + [1, 'active', ts, who, ts, who]
+                vals = [code] + [p.get(k) for k in FIELD_NAMES] + [1, 'active', tp, who, tp, who]
                 pid = c.execute(f"INSERT INTO plants({','.join(cols)}) VALUES({','.join('?' * len(cols))})", vals).lastrowid
+                made.append(pid)
+                if len(made) <= len(codes.get(b['id'], [])): meant[codes[b['id']][len(made) - 1]] = pid     # this page, under the code the files know it by
                 for ph in p.get('photos', []):
                     copy_seed_photo(ph['file'])
                     c.execute("INSERT INTO photos(plant_id,file,caption,kind,is_primary,source_name,added_by,added_at) VALUES(?,?,?,?,?,?,?,?)",
-                              (pid, ph['file'], ph['caption'], 'plant', 1 if ph['primary'] else 0, ph.get('source'), who, ts))
+                              (pid, ph['file'], ph['caption'], 'plant', 1 if ph['primary'] else 0, ph.get('source'), who, tp))
                 # photos already in the database that belong to this new plant (they were on the wrong page): move them here
                 for mv in p.get('take_photos', []):
-                    old = c.execute('SELECT ph.id, ph.plant_id, p.code FROM photos ph JOIN plants p ON p.id=ph.plant_id WHERE ph.file=? AND p.code=?', (mv['file'], mv['from'])).fetchone()
+                    src = find_plant(c, {'code': mv['from'], 'name': mv.get('name')}, meant)
+                    old = c.execute('SELECT ph.id, ph.plant_id, p.code FROM photos ph JOIN plants p ON p.id=ph.plant_id WHERE ph.file=? AND p.id=?', (mv['file'], src['id'])).fetchone() if src else None
                     if not old: continue
                     has = c.execute('SELECT 1 FROM photos WHERE plant_id=? AND is_primary=1', (pid,)).fetchone()
                     c.execute('UPDATE photos SET plant_id=?, is_primary=?, caption=COALESCE(?, caption) WHERE id=?', (pid, 0 if has else 1, mv.get('caption'), old[0]))
@@ -426,13 +571,25 @@ def apply_batches(c):
                         c.execute('UPDATE photos SET is_primary=1 WHERE id=(SELECT MIN(id) FROM photos WHERE plant_id=?)', (old[1],))
                     bump(c, old[1], old[2], who, 'photo_move', 'Photo moved to %s, a different plant (%s)' % (code, label), [('photo', mv['file'], None)])
                 c.execute('INSERT INTO plant_versions(plant_id,version,snapshot,changed_by,changed_at,summary) VALUES(?,?,?,?,?,?)',
-                          (pid, 1, json.dumps(snapshot(c, pid)), who, ts, 'Initial record from photo analysis (%s)' % label))
+                          (pid, 1, json.dumps(snapshot(c, pid)), who, tp, 'Initial record from photo analysis (%s)' % label))
                 c.execute("INSERT INTO audit_log(plant_id,plant_code,version,action,field,old_value,new_value,changed_by,changed_at,note) VALUES(?,?,?,?,?,?,?,?,?,?)",
-                          (pid, code, 1, 'create', None, None, None, who, ts, 'Record created from photos (%s)' % label))
+                          (pid, code, 1, 'create', None, None, None, who, tp, CREATED_BY_BATCH % label))
+                # C9: a new page can come with its own care log and potting mix (a repot logged with the mix it was done with)
+                care_id = None
+                for cl in p.get('care', []):
+                    cid = c.execute('INSERT INTO care_log(plant_code,kind,done_on,note,created_by,created_at) VALUES(?,?,?,?,?,?)',
+                                    (code, cl['kind'], cl['done_on'], cl.get('note', ''), who, tp)).lastrowid
+                    if cl['kind'] == 'repot': care_id = cid
+                if p.get('pot_mix'): batch_pot_mix(c, p['pot_mix'], {'code': code, 'id': pid}, care_id, who, tp, label)
+                for q in p.get('requests', []):                 # questions for Ethan about this new page, shown on it until he answers
+                    if c.execute('INSERT OR IGNORE INTO requests(rkey,plant_code,kind,text,created_by,created_at) VALUES(?,?,?,?,?,?)',
+                                 (q['key'], code, q.get('kind', 'question'), q['text'], who, ts)).rowcount: new_requests.append({'plant_code': code, 'text': q['text']})
             # photos for plants that already exist
             for ph in b.get('existing_photos', []):
-                r = c.execute('SELECT * FROM plants WHERE code=?', (ph['code'],)).fetchone()
-                if not r: continue
+                r = find_plant(c, {'code': ph['code'], 'name': ph.get('name'), 'photos': ph.get('photos') or []}, meant)
+                if not r:
+                    audit_only(c, 'note', None, None, None, who, 'Batch %s could not find %s for a photo (%s), so it was skipped' % (label, ph.get('name') or ph['code'], ph['file']))
+                    continue
                 copy_seed_photo(ph['file'])
                 if ph.get('primary'): c.execute('UPDATE photos SET is_primary=0 WHERE plant_id=?', (r['id'],))
                 has = c.execute('SELECT 1 FROM photos WHERE plant_id=? AND is_primary=1', (r['id'],)).fetchone()
@@ -441,12 +598,13 @@ def apply_batches(c):
                 bump(c, r['id'], r['code'], who, 'photo_add', 'Photo added (%s): %s' % (label, ph['caption']), [('photo', None, ph['file'])])
             # guarded field updates
             for u in b.get('updates', []):
-                r = find_plant(c, u)
+                r = find_plant(c, u, meant)
                 if not r:
                     audit_only(c, 'note', None, None, None, who, 'Batch %s could not find %s (%s), so it was skipped' % (label, u.get('name') or u.get('code'), u.get('code')))
                     continue
                 todo, skipped = {}, []
                 for f, (old, new) in u['set'].items():
+                    if f in BATCH_ROW_IDS: raise ValueError(f'batch {label}: an update cannot set {f} (a row number of one record)')
                     cur = r[f] if r[f] is not None else ''
                     if str(cur) == str(old if old is not None else ''): todo[f] = new
                     else: skipped.append(f)
@@ -456,7 +614,7 @@ def apply_batches(c):
             for q in b.get('requests_add', []):
                 code = None
                 if q.get('code'):
-                    r = find_plant(c, {'code': q['code'], 'name': q.get('name'), 'photos': q.get('photos') or []})
+                    r = find_plant(c, {'code': q['code'], 'name': q.get('name'), 'photos': q.get('photos') or []}, meant)
                     if not r:
                         audit_only(c, 'note', None, None, None, who, 'Batch %s could not find %s for a request, so it was skipped' % (label, q['code']))
                         continue
@@ -465,7 +623,7 @@ def apply_batches(c):
                              (q['key'], code, q.get('kind', 'question'), q['text'], who, ts)).rowcount: new_requests.append({'plant_code': code, 'text': q['text']})
             # records found to be duplicates of another page: archived (hidden, nothing deleted; Move back to the main list undoes it)
             for a in b.get('archive', []):
-                r = find_plant(c, a)
+                r = find_plant(c, a, meant)
                 if not r or r['status'] == 'archived': continue
                 c.execute("UPDATE plants SET status='archived' WHERE id=?", (r['id'],))
                 bump(c, r['id'], r['code'], who, 'archive', a.get('note') or 'Archived (%s)' % label, [('status', r['status'], 'archived')])
@@ -508,6 +666,43 @@ def apply_batches(c):
                 if done:
                     c.execute('UPDATE shops SET ' + ', '.join(f'{k}=?' for k in done) + ' WHERE key=?', (*done.values(), r['key']))
                     audit_only(c, 'setting', 'shops', None, ', '.join(done), who, f'Store details added ({label}): {r["name"]}')
+            for a in b.get('amendments_add', []):              # 1.56.0 (PLAN.md step 9a): added once by key; Ethan's own changes stay
+                if c.execute('SELECT 1 FROM amendments WHERE key=? OR lower(name)=lower(?)', (a['key'], a['name'])).fetchone(): continue
+                c.execute('INSERT INTO amendments(key,name,role,grades,holds_water,airy,lasts_months,feeds,ph,weight,source,notes,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                          (a['key'], a['name'], a.get('role', 'part'), json.dumps(a.get('grades') or []), a.get('holds_water'), a.get('airy'), a.get('lasts_months'),
+                           a.get('feeds'), a.get('ph'), a.get('weight'), a.get('source', ''), a.get('notes', ''), who, ts))
+            for m in b.get('pot_mixes_add', []):               # 1.56.0 (9c): what a pot is in, only where nothing is recorded yet
+                r = find_plant(c, {'code': m['code'], 'name': m.get('name'), 'photos': m.get('photos') or []}, meant)
+                if not r:
+                    audit_only(c, 'note', None, None, None, who, 'Batch %s could not find %s for its potting mix, so it was skipped' % (label, m.get('name') or m['code'])); continue
+                if c.execute('SELECT 1 FROM pot_mixes WHERE plant_code=?', (r['code'],)).fetchone(): continue
+                batch_pot_mix(c, m, r, None, who, ts, label)
+            if b.get('place_sheets'): where_seed(c)              # 1.56.0 (PLAN.md step 8b): rooms and shelves are areas and spots by now
+            for ps in b.get('place_sheets', []):               # a room's or shelf's measurements, only where none are set (Ethan's own stay)
+                a = c.execute("SELECT * FROM areas WHERE side='in' AND home_id IS NULL AND name=?", (ps['room'],)).fetchone()
+                if not a: continue
+                row = c.execute('SELECT * FROM spots WHERE area_id=? AND name=?', (a['id'], ps['name'])).fetchone() if ps.get('name') else a
+                if not row or (row['sheet'] or '') not in ('', '{}'): continue
+                c.execute(f"UPDATE {'spots' if ps.get('name') else 'areas'} SET sheet=? WHERE id=?", (json.dumps(ps['sheet']), row['id']))
+                audit_only(c, 'where', 'place_sheet', None, ps['room'] + (', ' + ps['name'] if ps.get('name') else ''), who, f"Measurements added ({label}): {ps['room']}{', ' + ps['name'] if ps.get('name') else ''}")
+            for ps in b.get('place_sheets_update', []):        # 1.56.0: measurements field by field, each only if it still holds the old value
+                q = "SELECT s.* FROM spots s JOIN areas a ON a.id=s.area_id WHERE a.side=? AND a.home_id IS NULL" + (' AND a.name=?' if ps.get('room') else '')
+                names = {n.lower() for n in [ps.get('name') or ''] + ps.get('aka', []) if n}
+                rows = [r for r in c.execute(q, (ps.get('side', 'in'),) + ((ps['room'],) if ps.get('room') else ())).fetchall()
+                        if r['name'].strip().lower() in names or (ps.get('contains') and ps['contains'].lower() in r['name'].lower())]
+                if len(rows) != 1: continue                     # not there, or more than one could be meant: leave it to Ethan
+                row = rows[0]
+                try: d = json.loads(row['sheet'] or '{}') or {}
+                except ValueError: d = {}
+                done = []
+                for f, (old, new) in ps['set'].items():
+                    if json.dumps(d.get(f)) != json.dumps(old): continue
+                    if new is None: d.pop(f, None)
+                    else: d[f] = new
+                    done.append(f)
+                if done:
+                    c.execute('UPDATE spots SET sheet=? WHERE id=?', (json.dumps(d), row['id']))
+                    audit_only(c, 'where', 'place_sheet', None, row['name'], who, f"Measurements added ({label}): {row['name']}")
             for u in b.get('lights_update', []):                # guarded, like plant updates: only if the light still holds the old value
                 L = c.execute('SELECT * FROM lights WHERE lkey=?', (u['key'],)).fetchone()
                 if not L: continue
@@ -527,8 +722,10 @@ def apply_batches(c):
                 d = facts_clean(f['data'], f.get('kind', 'plant'))
                 c.execute('INSERT OR IGNORE INTO species_facts(key,name,kind,data,origin,written_by,written_at) VALUES(?,?,?,?,?,?,?)',
                           (f['key'].lower(), f['name'], f.get('kind', 'plant'), json.dumps(d), 'researched', who, ts))
-            for code, k in b.get('facts_link', {}).items():   # plants whose scientific name does not say which facts are theirs
-                c.execute('INSERT OR IGNORE INTO facts_link(code,key) VALUES(?,?)', (code, k.lower()))
+            fl = b.get('facts_link') or []                    # plants whose scientific name does not say which facts are theirs: {code: key}, or [{code, name, photos, key}]
+            for e in ([{'code': k, 'key': v} for k, v in fl.items()] if isinstance(fl, dict) else fl):
+                r = find_plant(c, e, meant)
+                if r: c.execute('INSERT OR IGNORE INTO facts_link(code,key) VALUES(?,?)', (r['code'], e['key'].lower()))
             for pre in b.get('to_photograph_done', []):
                 c.execute('UPDATE to_photograph SET done=1 WHERE done=0 AND label LIKE ?', (pre.replace('%', '') + '%',))
             for t in b.get('to_photograph_add', []):
@@ -568,6 +765,7 @@ def editor():
 def plant_row(c, code):
     r = c.execute('SELECT * FROM plants WHERE code=?', (code,)).fetchone()
     if not r: abort(404, 'plant not found')
+    home_check(c, r)                     # 1.58.0: in a request that changes something, an editor limited to some homes is stopped here
     return r
 
 def photos_for(c, pid):
@@ -630,6 +828,7 @@ def norm(name, v):
 
 def bump(c, pid, code, who, action, summary, changes=None):
     """Increment page version, write snapshot and audit rows. changes = [(field, old, new)]"""
+    home_check(c, pid)                   # 1.58.0: the home limit, where the plant is changed (see home_check)
     c.execute('UPDATE plants SET version=version+1, updated_at=?, updated_by=? WHERE id=?', (now(), who, pid))
     ver = c.execute('SELECT version FROM plants WHERE id=?', (pid,)).fetchone()[0]
     c.execute('INSERT INTO plant_versions(plant_id,version,snapshot,changed_by,changed_at,summary) VALUES(?,?,?,?,?,?)',
@@ -645,6 +844,8 @@ def audit_only(c, action, field, old, new, who, note, pid=None, code=None):
 
 def apply_changes(c, r, new_fields, who, action, note):
     ch = []
+    home_check(c, r)                                         # 1.58.0: the home limit, where the plant is changed
+    if 'home_id' in new_fields: home_check_new(c, new_fields.get('home_id'))     # and it cannot be moved to a home outside the limit
     new_fields = place_sync(c, r, dict(new_fields))          # 1.29.0
     for n, v in new_fields.items():
         if n not in FIELD_KIND: continue
@@ -696,7 +897,7 @@ def owner_name(c):
     r = c.execute("SELECT name FROM people WHERE role='owner' ORDER BY first_seen LIMIT 1").fetchone()
     return r[0] if r else 'the owner'
 
-OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people')        # any request (the people list shows everyone's login)
+OWNER_ONLY_PATHS = ('/api/backups', '/api/ingest', '/api/people', '/api/updates')        # any request (the people list shows everyone's login; 1.58.0: update files from Claude are the owner's to bring in)
 OWNER_ONLY_CHANGES = ('/api/settings', '/api/weather/settings', '/api/identify/settings', '/api/library/settings', '/api/library/areas', '/api/shops', '/api/problems', '/api/backups/restore', '/api/jobs')   # changes only
 VIEWER_POSTS = ('/api/identify', '/api/me/prefs', '/api/voice', '/api/whatsnew/seen')   # 1.55.0: "Got it" on What's new is the person's own setting   # 1.18.0: asks this computer what a picture shows; 1.29.0: your own settings; search by voice: words from a recording. None changes the plants
 VIEWER_PREFIXES = ('/api/push/',)                   # 1.33.0: your own devices and notification choices
@@ -712,6 +913,45 @@ def plant_home_of(c, code):
     r = c.execute("SELECT home_id FROM plants WHERE code=?", (str(code or '').strip().upper(),)).fetchone()
     if r is None: return None
     return int(r[0]) if r[0] else home_place(c)['id']
+
+def home_limit():
+    """The home ids this request's person may change plants at, when they are limited (an editor with people.edit_homes) and the
+    request is one that changes something; None otherwise (owners, editors without a limit, reading, batches, background jobs,
+    a sensor's or a plant-sitter's request)."""
+    if not has_request_context() or request.method in ('GET', 'HEAD', 'OPTIONS'): return None
+    u = g.get('user')
+    if not u or u.get('role') != 'editor': return None
+    return u.get('edit_homes') or None
+
+def home_words(c, allowed, code, h):
+    names = {x['id']: x['name'] for x in homes(c)}
+    return f"You can change plants at {', '.join(names.get(x, str(x)) for x in allowed)} only. {code} is at {names.get(h, 'another home')}."
+
+def home_check(c, plant):
+    """1.58.0: refuses (403) a change to a plant at a home this person may not change. `plant` is its row, its code or its id.
+    home_refusal() below reads the plant out of the request before the route runs, which misses every request that names the
+    plant another way (a photo's id, a care entry, a mix, a light spot). So the limit is also checked here, where a plant is
+    fetched for a change (plant_row) and where it is changed (apply_changes, bump, set_spot_plants), and by the few routes that
+    reach a plant's records without those. A route that changes a plant some new way must call this too:
+    test_every_route_that_changes_a_plant_keeps_the_home_limit tries each one."""
+    allowed = home_limit()
+    if not allowed or plant is None: return
+    if isinstance(plant, int): r = c.execute('SELECT code, home_id FROM plants WHERE id=?', (plant,)).fetchone()
+    elif isinstance(plant, str): r = c.execute('SELECT code, home_id FROM plants WHERE code=?', (plant.strip().upper(),)).fetchone()
+    else: r = plant
+    if r is None: return
+    h = int(r['home_id']) if r['home_id'] else home_place(c)['id']
+    if h not in allowed: abort(403, home_words(c, allowed, r['code'], h))
+
+def home_check_new(c, home_id):
+    """The same for a plant that is being added, or moved to another home: the home it would be at."""
+    allowed = home_limit()
+    if not allowed: return
+    try: h = int(home_id) if home_id not in (None, '', 0, '0') else home_place(c)['id']
+    except (TypeError, ValueError): h = home_place(c)['id']
+    if h not in allowed:
+        names = {x['id']: x['name'] for x in homes(c)}
+        abort(403, f"You can add or move plants at {', '.join(names.get(x, str(x)) for x in allowed)} only, not at {names.get(h, 'another home')}.")
 
 def home_refusal(u, c):
     """1.48.0 (PLAN.md step 4b): an editor limited to some homes may change plants only at those homes. The request's plant comes
@@ -758,7 +998,8 @@ def role_refusal(u):
 def me_dict(c):
     u = getattr(g, 'user', None) or {'via': 'local', 'login': None, 'name': '', 'role': 'owner'}
     return {'via': u['via'], 'login': u['login'], 'name': u['name'] if u['via'] == 'tailscale' else '', 'role': u['role'],
-            'role_word': ROLE_WORD[u['role']], 'owner_name': owner_name(c), 'edit_homes': u.get('edit_homes') or []}
+            'role_word': ROLE_WORD[u['role']], 'owner_name': owner_name(c), 'edit_homes': u.get('edit_homes') or [],
+            'viewer_ok': {'posts': list(VIEWER_POSTS), 'prefixes': list(VIEWER_PREFIXES)}}   # 1.56.5: the page checks against the same lists
 
 # ---------- units (1.47.0, PLAN.md step 4a) ----------
 # Everything is stored and sent in °F and inches. A person's units come from their 'units' setting (user_prefs, saved by the Display
@@ -934,8 +1175,54 @@ def people():
 def took_start():                   # 1.30.0: how long each answer takes to make, sent back as X-Took-Ms for the Debug page timings
     g.t0 = time.perf_counter()
 
+# ---- 1.58.0: what the internet may reach. Tailscale Funnel publishes a path of this computer's own port (README, "A calendar
+# link that works away from home" and "A plant-sitter sheet by link"), where every other request is the owner's. Tailscale marks
+# each request that came in through Funnel with this header and removes any copy the visitor sent, so a visitor cannot take it
+# off, and a request from this computer that carries it only loses access.
+FUNNEL_HEADER = 'Tailscale-Funnel-Request'
+SITTER_LINK = re.compile(r'^/share/[A-Za-z0-9_-]{20,}(/|$)')
+
+def from_funnel():
+    return bool(has_request_context() and request.headers.get(FUNNEL_HEADER))
+
+def public_link():
+    """The only two things reachable without being a person of this record: the subscribed calendar (calendar services cannot
+    type a password, so its link carries a private token, checked in frost.py) and a plant-sitter sheet (1.49.0: the long token
+    in the link is the key; sitter.py checks it on every route under it). A new public route must be added here."""
+    m = request.method
+    if request.path.startswith('/cal/'): return m in ('GET', 'HEAD')
+    return bool(SITTER_LINK.match(request.path)) and m in ('GET', 'HEAD', 'POST')
+
+# ---- 1.58.0: the names this computer's port answers to. On that port every request is the owner's, so a web page from somewhere
+# else must not be able to reach it through the browser by pointing a name of its own at 127.0.0.1 ("DNS rebinding"; the page
+# would then be the same site as far as the browser can tell, X-Editor and the Origin check included). Such a name is always a
+# public one, with dots in it. A plain number address, localhost, a single-word name (a PC on the home network) and names
+# ending in .local and the like cannot be pointed here by a stranger; anything else has to be listed in PLANTDB_HOSTS (commas,
+# in .env) or be the address saved for labels or for the calendar. People who come in through Tailscale are not checked this
+# way: they are let in by who they are, not by the port.
+LOCAL_SUFFIXES = ('.local', '.localhost', '.test', '.lan', '.home', '.home.arpa', '.internal', '.localdomain')   # .test and .localhost are reserved: nobody can own a name there (RFC 6761)
+EXTRA_HOSTS = {h.strip().lower().rstrip('.') for h in os.environ.get('PLANTDB_HOSTS', '').split(',') if h.strip()}
+
+def host_name():
+    h = (request.host or '').strip().lower()
+    if h.startswith('['): return h[1:h.index(']')] if ']' in h else h          # [::1]:8080
+    return (h.rsplit(':', 1)[0] if ':' in h else h).rstrip('.')
+
+def host_known():
+    h = host_name()
+    if not h or h == 'localhost' or '.' not in h or h.endswith(LOCAL_SUFFIXES) or h in EXTRA_HOSTS: return True
+    try: ipaddress.ip_address(h); return True
+    except ValueError: pass
+    c = db()
+    saved = [setting(c, 'base_url', '')]
+    try: saved.append(json.loads(setting(c, 'ics_options', '') or '{}').get('public_base', ''))
+    except ValueError: pass
+    return any(s and (urlparse(s).hostname or '').lower() == h for s in saved)
+
 @app.before_request
 def guard():
+    if from_funnel() and not public_link():        # 1.58.0: from the internet, a calendar or sitter link and nothing else
+        return Response('Not found', 404, {'Content-Type': 'text/plain; charset=utf-8'})
     if NEWER_DB:                     # 1.31.0: an older version on a newer database: every page says what to do, and nothing is changed
         msg = (f"This plant record was last opened by version {NEWER_DB['last']}, and this is the older version {NEWER_DB['this']}. "
                f"To keep your data safe it will not run. Install version {NEWER_DB['last']} or newer with the updater (Update Plant Database.cmd), "
@@ -952,15 +1239,17 @@ def guard():
         tok = setting(db(), 'ingest_token', '')
         if not tok or not hmac.compare_digest(request.headers.get('X-Ingest-Token', ''), tok): abort(403, 'missing or wrong X-Ingest-Token')
         return None
-    if request.path.startswith('/cal/') and request.method in ('GET', 'HEAD'):
-        return None                  # the subscribed calendar: calendar services cannot type a password, so its link carries a private token instead
-    if re.match(r'^/share/[A-Za-z0-9_-]{20,}(/|$)', request.path) and request.method in ('GET', 'HEAD', 'POST'):
-        return None                  # 1.49.0: the plant-sitter sheet by link: the long token in the link is the key (sitter.py checks it on every route there)
+    if public_link(): return None    # the calendar and plant-sitter links carry their own token (see public_link)
     if via_tailscale():
         g.user = ts_user()
         if g.user is None:
             return Response('Open Plant record from a device that is signed in to Tailscale as a person.', 403, {'Content-Type': 'text/plain; charset=utf-8'})
     else:
+        if not host_known():             # 1.58.0: not a name this computer answers to (see host_known)
+            return Response(f'Plant record on this computer does not answer to the name "{host_name()}". Open it at http://localhost:8080 here, '
+                            'or through its Tailscale address. If this is a name you gave this computer yourself, add the line '
+                            f'PLANTDB_HOSTS={host_name()} to the .env file next to docker-compose.yml and run the updater '
+                            '(README, "The names this computer answers to").', 403, {'Content-Type': 'text/plain; charset=utf-8'})
         if PASSWORD:
             a = request.authorization
             if not (a and hmac.compare_digest(a.password or '', PASSWORD)):
@@ -987,6 +1276,7 @@ def headers(resp):
     resp.headers['Permissions-Policy'] = 'geolocation=(self), microphone=(self), payment=(), usb=(), camera=(self)'   # 1.22.0: location for mushroom finds; microphone for search by voice
     resp.headers['Cross-Origin-Opener-Policy'] = 'same-origin'
     resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['X-App-Version'] = APP_VERSION     # 1.56.5: an open page sees at once that a new version is running, and reloads
     resp.headers['X-Frame-Options'] = 'DENY'
     resp.headers['Referrer-Policy'] = 'no-referrer'
     resp.headers['Content-Security-Policy'] = "default-src 'self'; img-src 'self' data: blob:; connect-src 'self' blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; frame-ancestors 'none'"

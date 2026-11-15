@@ -40,7 +40,7 @@ def changelog_entry(version=None):
     if not pick: return None
     lines = [l.strip() for l in pick[2].strip().splitlines() if l.strip()]
     lines = [re.sub(r'^[-*]\s+', '', l) for l in lines if not l.startswith('#')]
-    return {'version': pick[0], 'date': pick[1], 'lines': lines[:12]}
+    return {'version': pick[0], 'date': pick[1], 'lines': lines[:40]}      # 1.56.0: three steps in one release
 
 # ---- the newest release on GitHub, checked twice a day
 def check_latest(c=None):

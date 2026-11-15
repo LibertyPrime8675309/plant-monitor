@@ -51,10 +51,24 @@ def water_report(c, codes=None):
     plants = c.execute(q, at_args + list(codes or [])).fetchall()
     last = {}
     for code, kind, d in c.execute("SELECT plant_code, CASE WHEN kind IN ('prep_soak','prep_repot') THEN 'water' ELSE kind END AS k, MAX(done_on) "
-                                   "FROM care_log WHERE kind IN ('water','check','prep_soak','prep_repot') GROUP BY plant_code, k"):     # a soak or a repot waters the plant
+                                   "FROM care_log WHERE kind IN ('water','check','prep_soak','prep_repot','topup','flush','waterchange') GROUP BY plant_code, k"):     # a soak or a repot waters the plant
         last.setdefault(code, {})[kind] = d
+    hydro = hydro_every(c)                     # 1.56.0 (PLAN.md step 9): semi-hydro plants are topped up, water-only plants get fresh water
     out = []
     for r in plants:
+        gk = grow_kind(r)
+        if gk != 'Soil mix':
+            action = 'topup' if gk == 'Semi-hydro' else 'waterchange'
+            lw = max((d for k, d in last.get(r['code'], {}).items() if k in (('topup', 'flush', 'water') if action == 'topup' else ('waterchange', 'water'))), default=None)
+            every = int(r['water_every_days']) if r['water_every_days'] else hydro[action]
+            st = {'code': r['code'], 'every': every, 'base': every, 'why': 'set on this page' if r['water_every_days'] else ('a semi-hydro pot: top up the reservoir' if action == 'topup' else 'grows in water: pour out the old and add fresh'),
+                  'weather': '', 'site': r['site'] or 'Outdoors', 'last_water': lw, 'last_rain': None, 'rain_in': None, 'last_check': None,
+                  'action': action, 'action_word': CARE_KINDS[action], 'grow_kind': gk}
+            if not lw: st.update(state='unknown', next=None, overdue=None)
+            else:
+                nxt = date.fromisoformat(lw) + timedelta(days=every); od = (today - nxt).days
+                st.update(next=nxt.isoformat(), overdue=od, state='due' if od >= 0 else 'soon' if od == -1 else 'ok')
+            out.append(st); continue
         site = r['site'] or 'Outdoors'
         inside, open_sky = site in INSIDE_SITES, site == 'Outdoors'
         base, base_why = water_base_days(r)
@@ -64,7 +78,7 @@ def water_report(c, codes=None):
         lr = max((d for d in rain if open_sky and (not lw or d > lw)), default=None)
         start = max(x for x in (lw, lr) if x) if (lw or lr) else None
         st = {'code': r['code'], 'every': every, 'base': base, 'why': base_why, 'weather': f_why, 'site': site,
-              'last_water': lw, 'last_rain': lr, 'rain_in': rain.get(lr) if lr else None, 'last_check': lc}
+              'last_water': lw, 'last_rain': lr, 'rain_in': rain.get(lr) if lr else None, 'last_check': lc, 'action': 'water', 'action_word': 'Watered', 'grow_kind': 'Soil mix'}
         if not start:
             st.update(state='unknown', next=None, overdue=None)
         else:
@@ -75,6 +89,11 @@ def water_report(c, codes=None):
             st.update(next=nxt.isoformat(), overdue=od, state='due' if od >= 0 else 'soon' if od == -1 else 'ok')
         out.append(st)
     return {'today': today.isoformat(), 'avg_high': avg_high, 'rain': rain, 'rain_counts_in': RAIN_COUNTS_IN, 'plants': out}
+
+def home_today(c, home_id):
+    """1.58.0: today's date at a plant's home (home_id empty = the main home)."""
+    r = c.execute('SELECT tz FROM locations WHERE id=?', (home_id,)).fetchone() if home_id else None
+    return datetime.now(tzinfo(r[0] if r and r[0] else home_place(c)['tz'])).date()
 
 @app.route('/api/water')
 def water_api():
@@ -99,22 +118,28 @@ def care():
     codes = b.get('plants') or ([b['plant']] if b.get('plant') else [])
     if not isinstance(codes, list) or not codes: abort(400, 'Choose at least one plant')
     codes = list(dict.fromkeys(str(x) for x in codes))[:300]
-    day = str(b.get('done_on') or local_today(c).isoformat())
-    try: date.fromisoformat(day)
-    except ValueError: abort(400, 'done_on must look like 2026-10-23')
-    if day > local_today(c).isoformat(): abort(400, 'That date is in the future')
+    given = str(b.get('done_on') or '')
+    if given:
+        try: date.fromisoformat(given)
+        except ValueError: abort(400, 'done_on must look like 2026-10-23')
+        if given > local_today(c).isoformat(): abort(400, 'That date is in the future')
     note = str(b.get('note') or '').strip()[:500]
     if kind == 'note' and not note: abort(400, 'Write the note')
     who, ids, skipped = editor(), [], []
+    tz_of = {}
     for code in codes:
         r = plant_row(c, code)
+        # 1.58.0: "today" is the day where the plant lives (a Nevada City plant logged late on a Texas evening keeps its own date)
+        hid = r['home_id'] if 'home_id' in r.keys() else None
+        if hid not in tz_of: tz_of[hid] = home_today(c, hid).isoformat()
+        day = given or tz_of[hid]
         # 1.21.0: a plant is watered at most once a day, so "Water all" and a second press skip it instead of logging it twice
         if kind == 'water' and c.execute("SELECT 1 FROM care_log WHERE plant_code=? AND kind='water' AND done_on=?", (r['code'], day)).fetchone():
             skipped.append(r['code']); continue
         ids.append(c.execute('INSERT INTO care_log(plant_code,kind,done_on,note,created_by,created_at) VALUES(?,?,?,?,?,?)',
                              (r['code'], kind, day, note, who, now())).lastrowid)
         audit_only(c, 'care', 'care_log', None, f'{CARE_KINDS[kind]} {day}' + (f': {note}' if note else ''), who,
-                   CARE_KINDS[kind] + (f': {note}' if note else '') + ('' if day == local_today(c).isoformat() else f' (for {day_words(day)})'), r['id'], r['code'])
+                   CARE_KINDS[kind] + (f': {note}' if note else '') + ('' if day == tz_of[hid] else f' (for {day_words(day)})'), r['id'], r['code'])
     c.commit()
     return jsonify(ids=ids, skipped=skipped, water=water_report(c, codes)['plants']), 201
 
@@ -123,6 +148,7 @@ def care_one(i):
     c = db()
     old = c.execute('SELECT * FROM care_log WHERE id=?', (i,)).fetchone()
     if not old: abort(404, 'entry not found')
+    home_check(c, old['plant_code'])                 # 1.58.0: the entry follows its plant's home
     c.execute('DELETE FROM care_log WHERE id=?', (i,))
     r = c.execute('SELECT id FROM plants WHERE code=?', (old['plant_code'],)).fetchone()
     audit_only(c, 'care', 'care_log', f"{CARE_KINDS.get(old['kind'], old['kind'])} {old['done_on']}", None, editor(),

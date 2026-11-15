@@ -1,0 +1,183 @@
+{
+ "id": "C7",
+ "created": "2026-11-10",
+ "author": "Ethan's measurements of his shelves and tables (November 10, 2026)",
+ "place_sheets_update": [
+  {
+   "room": "Downstairs Living Room",
+   "name": "Tall Brown Shelf",
+   "set": {
+    "levels": [
+     null,
+     4
+    ],
+    "width_in": [
+     null,
+     22
+    ],
+    "depth_in": [
+     null,
+     11
+    ],
+    "top": [
+     null,
+     "nothing"
+    ],
+    "gaps_in": [
+     null,
+     [
+      23,
+      13,
+      27
+     ]
+    ],
+    "notes": [
+     "Two or more levels (Ethan, November 9). The levels take a 1 ft T5 strip but are not wide enough for the 2 ft T8. Measurements to come.",
+     "Four levels; the two middle ones can be moved up or down, or taken out (Ethan, November 10). The levels take a 1 ft T5 strip but are not wide enough for the 2 ft T8."
+    ]
+   }
+  },
+  {
+   "room": "Downstairs Living Room",
+   "name": "Short Brown Shelf",
+   "set": {
+    "levels": [
+     null,
+     2
+    ],
+    "width_in": [
+     null,
+     28
+    ],
+    "depth_in": [
+     null,
+     11
+    ],
+    "top": [
+     null,
+     "nothing"
+    ],
+    "gap_in": [
+     null,
+     25
+    ],
+    "notes": [
+     "Two or more levels (Ethan, November 9). Measurements to come.",
+     "Two levels (Ethan, November 10)."
+    ]
+   }
+  },
+  {
+   "room": "Downstairs Living Room",
+   "name": "Tall Black Shelf",
+   "set": {
+    "levels": [
+     null,
+     5
+    ],
+    "width_in": [
+     null,
+     23
+    ],
+    "depth_in": [
+     null,
+     9
+    ],
+    "top": [
+     null,
+     "nothing"
+    ],
+    "gap_in": [
+     null,
+     11
+    ]
+   }
+  },
+  {
+   "room": "Downstairs Living Room",
+   "name": "Large Brown Hutch",
+   "aka": [
+    "Hutch",
+    "Brown hutch"
+   ],
+   "set": {
+    "levels": [
+     null,
+     2
+    ],
+    "width_in": [
+     null,
+     44
+    ],
+    "depth_in": [
+     null,
+     13
+    ],
+    "top": [
+     null,
+     "nothing"
+    ],
+    "gap_in": [
+     null,
+     24
+    ]
+   }
+  },
+  {
+   "room": "Downstairs Living Room",
+   "name": "Side Table",
+   "set": {
+    "levels": [
+     1,
+     1
+    ],
+    "width_in": [
+     null,
+     26
+    ],
+    "depth_in": [
+     null,
+     9
+    ],
+    "top": [
+     "nothing",
+     "nothing"
+    ],
+    "notes": [
+     "One level with open space above (Ethan, November 9): a strip has nowhere to be fixed over it.",
+     "One level with open space above (Ethan, November 9): a strip has nowhere to be fixed over it."
+    ]
+   }
+  },
+  {
+   "side": "out",
+   "contains": "pallet",
+   "set": {
+    "levels": [
+     null,
+     3
+    ],
+    "width_in": [
+     null,
+     39
+    ],
+    "depth_in": [
+     null,
+     12
+    ],
+    "top": [
+     null,
+     "nothing"
+    ],
+    "gap_in": [
+     null,
+     14
+    ],
+    "notes": [
+     null,
+     "Three levels, outside (Ethan, November 10)."
+    ]
+   }
+  }
+ ]
+}

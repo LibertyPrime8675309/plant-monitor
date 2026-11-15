@@ -10,10 +10,12 @@
 
 /* Tokens. Everything is sized in rem so the Display settings (text size) scale the whole page, not only the text. */
 :root{
-  --paper:#f3f6f4; --sheet:#fff; --ink:#15222b; --ink-2:#3f5059; --line:#b9c7c1; --line-2:#dde5e1;
+  /* 1.58.0 (November 12 review, item 11): the muted ink, green, amber and red are a little darker, so that as text each reaches 7 to 1 on the page, on white and on
+     its own soft tint. They were 6.3 to 6.8 to 1 on the page (#3f5059, #2a6340, #7d5200, #9b2f22): health and winter-plan tags, "Damaged", Remove buttons. */
+  --paper:#f3f6f4; --sheet:#fff; --ink:#15222b; --ink-2:#3b4b54; --line:#b9c7c1; --line-2:#dde5e1;
   --cyan:#1b4b72; --cyan-ink:#fff; --cyan-soft:#e3edf5;
-  --moss:#2a6340; --moss-soft:#e1efe5; --ochre:#7d5200; --ochre-soft:#f6ead2;
-  --madder:#9b2f22; --madder-soft:#f6e1dd; --critical:#6f1230;
+  --moss:#255738; --moss-soft:#e1efe5; --ochre:#6a4600; --ochre-soft:#f6ead2;
+  --madder:#87291e; --madder-soft:#f6e1dd; --critical:#6f1230;
   --z-fatal-a:#0d2a43; --z-fatal-b:#1d4b70; --z-damage:#3d7db5; --z-cool:#b4d2ea; --z-ok:#4f9a68; --z-hot:#e3b45a; --z-heat:#c4621b;
   --top-bg:var(--cyan); --top-ink:var(--cyan-ink); --on-bad:#fff; --now:#a8005a;
   --s1:#2a78d6; --s2:#eb6834;
@@ -29,8 +31,8 @@
   :root:not([data-theme=light]){
     --paper:#0e2233; --sheet:#143049; --ink:#e9f1f5; --ink-2:#b2c4ce; --line:#3a5c77; --line-2:#244058;
     --cyan:#8cc4f0; --cyan-ink:#0e2233; --cyan-soft:#1b4262;
-    --moss:#7fd09a; --moss-soft:#1c4a35; --ochre:#e9bd6a; --ochre-soft:#4a3a14;
-    --madder:#f0a094; --madder-soft:#4e2623; --critical:#ff9db5;
+    --moss:#7fd09a; --moss-soft:#1c4a35; --ochre:#e9bd6a; --ochre-soft:#4a3a14; --on-ochre-link:#a9d6ff; --on-soft-link:#badcf6;
+    --madder:#f6b6ab; --madder-soft:#4c2522; --critical:#ff9db5;      /* 1.58.0: #4e2623 left the outline buttons in a cold-night warning at 6.9 to 1 */
     --z-damage:#4d8fc7; --z-cool:#2f5f87; --z-ok:#3f8a58; --z-hot:#b98a2e; --z-heat:#d9742a; --focus:#8cc4f0;
     --top-bg:#0a1a28; --top-ink:var(--ink); --on-bad:#150a0d; --now:#ff86c0; --s1:#3987e5; --s2:#d95926;
   }
@@ -43,8 +45,8 @@
 :root[data-theme=dark]{
   --paper:#0e2233; --sheet:#143049; --ink:#e9f1f5; --ink-2:#b2c4ce; --line:#3a5c77; --line-2:#244058;
   --cyan:#8cc4f0; --cyan-ink:#0e2233; --cyan-soft:#1b4262;
-  --moss:#7fd09a; --moss-soft:#1c4a35; --ochre:#e9bd6a; --ochre-soft:#4a3a14;
-  --madder:#f0a094; --madder-soft:#4e2623; --critical:#ff9db5;
+  --moss:#7fd09a; --moss-soft:#1c4a35; --ochre:#e9bd6a; --ochre-soft:#4a3a14; --on-ochre-link:#a9d6ff; --on-soft-link:#badcf6;
+  --madder:#f6b6ab; --madder-soft:#4c2522; --critical:#ff9db5;
   --z-damage:#4d8fc7; --z-cool:#2f5f87; --z-ok:#3f8a58; --z-hot:#b98a2e; --z-heat:#d9742a; --focus:#8cc4f0;
   --top-bg:#0a1a28; --top-ink:var(--ink); --on-bad:#150a0d; --now:#ff86c0; --s1:#3987e5; --s2:#d95926;
 }
@@ -102,14 +104,21 @@ main{max-width:80rem;margin:0 auto;padding:1.6rem 1.25rem 6rem;outline:none}
 .btn.ghost{background:transparent;color:var(--cyan)}
 .btn.danger{background:transparent;color:var(--madder);border-color:var(--madder)}
 .btn.small{padding:.4rem .85rem;font-size:1rem;min-height:2.5rem}
-.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn[disabled]{opacity:1;cursor:not-allowed;background:var(--sheet);color:var(--ink-2);border:2px dashed var(--ink-2)}   /* 1.57.0: readable when off (it was faded to half), dashed so it does not look like a choice */
+.why{color:var(--ink-2);font-size:1rem;align-self:center}   /* 1.57.0: why the button before it is off */
+:is(button,.btn):not([disabled]) + .why{display:none}
 .row{display:flex;gap:.75rem;flex-wrap:wrap;align-items:center}
 label.f{display:block;margin:0 0 1.2rem;font-weight:700}
 label.f small{display:block;font-weight:400;color:var(--ink-2);margin-top:.15rem;font-size:1rem}
 input[type=text],input[type=number],input[type=search],input[type=date],input[type=url],input[type=tel],input[type=email],input[type=password],select,textarea{width:100%;font:inherit;font-weight:400;color:var(--ink);background:var(--sheet);border:var(--bw) solid var(--ink-2);padding:.55rem .7rem;border-radius:0;margin-top:.35rem;min-height:2.75rem}
 textarea{min-height:7em;resize:vertical;line-height:1.5}
 input:focus-visible,select:focus-visible,textarea:focus-visible{outline:var(--ring) solid var(--focus);outline-offset:1px}
-input[type=checkbox],input[type=radio]{width:1.4rem;height:1.4rem;margin:0;accent-color:var(--cyan)}
+input[type=checkbox],input[type=radio]{width:max(1.4rem,28px);height:max(1.4rem,28px);margin:0;accent-color:var(--cyan);flex:none}   /* 1.56.5: at least 28 px (was 22 at normal text size); with large text the same as before, so a narrow column still fits its words */
+/* 1.56.5: a photo picker is a full-size button in the app's style (it was the browser's small "Choose Files" box) */
+input[type=file]{font:inherit;font-size:1rem;max-width:100%;padding:.2rem 0;color:var(--ink-2)}
+input[type=file]::file-selector-button{font:inherit;font-weight:700;color:var(--cyan-ink);background:var(--cyan);border:2px solid var(--cyan);padding:.55rem 1.1rem;min-height:2.75rem;margin:0 .8rem .2rem 0;cursor:pointer}
+input[type=file]::file-selector-button:hover{filter:brightness(1.12)}
+input[type=file]:focus-visible{outline:var(--ring) solid var(--focus);outline-offset:2px}
 .field-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(14rem,1fr));gap:0 1.4rem}
 fieldset{border:0;border-top:2px solid var(--ink);margin:2.2rem 0 0;padding:1rem 0 0}
 fieldset legend{font-family:var(--serif);font-weight:600;font-size:1.4rem;padding-right:.8rem}
@@ -124,12 +133,6 @@ fieldset legend{font-family:var(--serif);font-weight:600;font-size:1.4rem;paddin
 /* gallery */
 .hero{display:flex;justify-content:space-between;align-items:flex-end;gap:1rem;flex-wrap:wrap;margin-bottom:1rem}
 .hero p{margin:.4rem 0 0}
-.ledger{display:flex;gap:0;margin:1.2rem 0 1.4rem;flex-wrap:wrap}
-.ledger button{flex:1 1 9rem;font:inherit;text-align:left;background:var(--sheet);border:1px solid var(--line);border-bottom:.45rem solid var(--bar,var(--ink-2));padding:.6rem .8rem .5rem;cursor:pointer;color:var(--ink);margin:0 -1px -1px 0;min-height:4rem}
-.ledger button b{font-family:var(--serif);font-size:1.7rem;display:block;line-height:1.1}
-.ledger button[aria-pressed=true]{background:var(--bar,var(--ink));color:#fff;border-color:var(--bar,var(--ink))}
-:root[data-theme=dark] .ledger button[aria-pressed=true]{color:#0e2233}
-@media (prefers-color-scheme:dark){:root:not([data-theme=light]) .ledger button[aria-pressed=true]{color:#0e2233}}
 .filters{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,14rem),1fr));gap:.9rem;align-items:end;margin-bottom:1.8rem}
 html:not([data-narrow="1"]) .filters>label:first-child{grid-column:span 2}
 .filters label{font-weight:700}
@@ -140,7 +143,7 @@ html[data-narrow="1"] .filters label:first-child{grid-column:1/-1}
 .sheet{display:block;color:inherit;text-decoration:none}
 .sheet .mat{background:var(--sheet);padding:.5rem .5rem 0;border:1px solid var(--line);position:relative}
 .sheet .mat img{display:block;width:100%;aspect-ratio:4/5;object-fit:cover;background:var(--line-2)}
-.sheet .mat .nophoto{aspect-ratio:4/5;display:grid;place-items:center;color:var(--ink-2);background:var(--line-2)}
+.sheet .mat .nophoto{aspect-ratio:4/5;display:grid;place-items:center;color:var(--ink);background:var(--line-2)}   /* 1.58.0: the muted ink was 6 to 1 on this grey in the dark theme */
 .sheet .acc{position:absolute;left:0;top:.9rem;background:var(--ink);color:var(--paper);font-weight:700;font-size:1rem;padding:.05rem .65rem .05rem .55rem}
 .sheet .bar{height:.6rem;margin:.5rem -.5rem 0;background:var(--hb,var(--line))}
 .sheet .name{font-family:var(--serif);font-weight:600;font-size:1.25rem;line-height:1.25;margin:.65rem 0 0}
@@ -154,7 +157,7 @@ html[data-narrow="1"] .filters label:first-child{grid-column:1/-1}
 
 /* plant page: two panes that scroll on their own (the one under the pointer moves); Display settings can make it one column */
 .crumb{margin:0 0 .9rem;display:flex;gap:.8rem;align-items:center;flex-wrap:wrap;justify-content:space-between}
-.plant{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:2.4rem;align-items:start}
+.plant{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:2rem;align-items:start}   /* 1.57.0: a third for the photos, two thirds for the details (was 5:7), so section titles keep their buttons beside them */
 .plant>.pane{min-width:0}
 html[data-narrow="1"] .plant,html[data-layout=single] .plant{grid-template-columns:minmax(0,1fr);gap:1.6rem;max-width:60rem}
 html:not([data-layout=single]):not([data-narrow="1"]) .plant{height:var(--pane-h,80vh)}
@@ -282,6 +285,8 @@ section.blk h3{margin:1.4rem 0 .4rem}
 .notice{border-left:.4rem solid var(--ochre);background:var(--ochre-soft);padding:.7rem 1rem;max-width:68ch;margin:.8rem 0}
 .notice.bad{border-color:var(--madder);background:var(--madder-soft)}
 .notice.ok{border-color:var(--moss);background:var(--moss-soft)}
+/* 1.58.0: in the dark theme a link or an outline button on a tinted box (amber, green, blue, the cold-night warning) was 5.4 to 6.9 to 1; there it is a lighter blue */
+:is(.notice,.ask,.fz-banner,.sp-prev,.rule-prev) :is(a:not(.btn),.btn.ghost){color:var(--on-soft-link,var(--cyan))}
 
 /* dialog, toast */
 dialog{border:2px solid var(--ink);background:var(--sheet);color:var(--ink);padding:1.4rem;max-width:min(48rem,94vw);max-height:92vh;overflow:auto;width:100%}
@@ -486,7 +491,7 @@ html[data-navopen="1"][data-narrow="0"]:not([data-layout=single]) .plant .pane .
 html[data-width=wide]{--main-w:100vw}
 main{max-width:var(--main-w)}
 section.blk,section[id],h2[id]{scroll-margin-top:calc(var(--top-h) + .8rem)}
-#sidenav{position:fixed;top:var(--top-h);bottom:0;left:0;width:var(--nav-w);z-index:18;background:var(--sheet);border-right:2px solid var(--line);overflow:auto;padding:.9rem .9rem 0;display:none}
+#sidenav{position:fixed;top:var(--nav-top,var(--top-h));bottom:0;left:0;width:var(--nav-w);z-index:18;background:var(--sheet);border-right:2px solid var(--line);overflow:auto;padding:.9rem .9rem 0;display:none}
 /* 1.42.0: Display at the bottom of the Navigation menu, always in view while the menu is */
 .sn-foot{position:sticky;bottom:0;background:var(--sheet);border-top:2px solid var(--line);margin-top:1rem;padding:.7rem 0 .9rem}
 .sn-foot #display-btn{position:static;width:100%;justify-content:center;box-shadow:none}
@@ -504,7 +509,7 @@ html[data-navempty="1"][data-narrow="0"] #nav-tab{display:none}   /* 1.39.1: a p
 .sn-flash{outline:4px solid var(--ink);outline-offset:6px;border-radius:2px}
 #sn-list a[aria-current=true]{border-left-color:var(--ink);font-weight:700;background:var(--paper)}
 #sn-list .sn-sub a{padding-left:1.6rem;font-size:.92em}
-#nav-tab{position:fixed;top:calc(var(--top-h) + .8rem);left:0;z-index:18;background:var(--ink);color:var(--sheet);border:0;border-radius:0 .5rem .5rem 0;padding:.75rem 1rem;font:inherit;font-weight:700;cursor:pointer;min-height:2.75rem}
+#nav-tab{position:fixed;top:calc(var(--nav-top,var(--top-h)) + .8rem);left:0;z-index:18;background:var(--ink);color:var(--sheet);border:0;border-radius:0 .5rem .5rem 0;padding:.75rem 1rem;font:inherit;font-weight:700;cursor:pointer;min-height:2.75rem}
 html[data-navside=right] #nav-tab{left:auto;right:0;border-radius:.5rem 0 0 .5rem}
 #nav-tab:focus-visible,#sidenav a:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
 /* keep the page clear of the open menu when there is room; on narrow screens it covers the page until closed */
@@ -847,7 +852,7 @@ li.mi-item{border:2px solid var(--line);border-radius:8px;padding:.5rem .9rem;ma
 li.mi-item.mi-not{border-style:dashed;background:transparent}
 li.mi-item.mi-not .mi-title{font-weight:400}
 .mi-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:.3rem .7rem;align-items:center}
-.mi-head input[type=checkbox]{width:1.6rem;height:1.6rem;margin:0}
+.mi-head input[type=checkbox]{width:max(1.6rem,28px);height:max(1.6rem,28px);margin:0}
 .mi-title{font-weight:700;font-size:1.1rem;cursor:pointer;overflow-wrap:anywhere}
 .mi-body{padding-left:2.3rem}
 html[data-narrow="1"] .mi-head{grid-template-columns:auto minmax(0,1fr)}
@@ -1029,7 +1034,7 @@ html[data-role=viewer] :is(a[href="#/new"], a[href$="/edit"], .quick-btns, label
   [data-act=spotnew], [data-act=spotedit], [data-act=spotdel], [data-act=spotadd], [data-act=spotplanall], [data-act=growsug], [data-act=growadd], [data-act=grownew], [data-act=lightedit], [data-act=lightnew], [data-act=sevsave], form[data-form=sevgo], .add-mode, [data-act=libareaadd],
   [data-act=roomnew], [data-act=roomedit], [data-act=roomdel], [data-act=shelfnew],
   [data-act=buynew], [data-act=buyedit], [data-act=buygot], [data-act=sldone], [data-act=buyrm], [data-act=buywatch], [data-act=wlcheck], [data-act=storeedit], [data-act=storelookup],
-  [data-act=storenoterm], form[data-form=storenote]){display:none!important}
+  [data-act=storenoterm], form[data-form=storenote], [data-act=askset], [data-act=whmove]){display:none!important}
 /* only the owner changes the label address, places' settings and who is home */
 html:not([data-role=owner]) :is(form[data-form=base], form[data-form=wxloc], [data-act=placehome], [data-act=placedel], [data-act=placeonoff], [data-act=placeplants], [data-act=plchome]){display:none!important}
 .who-name{align-items:end;gap:.6rem;flex-wrap:wrap}
@@ -1125,7 +1130,7 @@ ul.srcs li{margin:.25rem 0;overflow-wrap:anywhere}
 .pc-tools h1{margin:.2rem 0 .5rem;overflow-wrap:anywhere}
 .pc-opts{border:2px solid var(--line);border-radius:8px;padding:1rem 1.1rem .4rem;margin:1rem 0 1.6rem;background:var(--sheet)}
 .pc-opt{display:flex;gap:.6rem;align-items:flex-start;margin:.35rem 0;min-height:2.5rem;cursor:pointer}
-.pc-opt input{width:1.4rem;height:1.4rem;margin:.15rem 0 0;flex:none;accent-color:var(--cyan)}
+.pc-opt input{width:max(1.4rem,28px);height:max(1.4rem,28px);margin:.15rem 0 0;flex:none;accent-color:var(--cyan)}
 .pc-cards{display:grid;gap:1.6rem}
 .pc-card{background:var(--sheet);color:var(--ink);border:2px solid var(--ink);border-radius:8px;padding:1.1rem 1.2rem;font-size:1.1rem;line-height:1.45;min-width:0}
 .pc-head{display:flex;gap:1rem;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;border-bottom:3px solid var(--ink);padding-bottom:.7rem;margin-bottom:.9rem}
@@ -1201,7 +1206,7 @@ html[data-narrow="1"] .pc-opts{padding:.7rem .7rem .2rem}
 .tick-find{margin:0;flex:1 1 12rem}
 .rule-row{border:var(--bw) solid var(--line);padding:.6rem .9rem;margin:0 0 .8rem;min-width:0}
 .rule-row legend{font-weight:700;padding:0 .3rem}
-.gset-tbl input[type=checkbox]{width:1.4rem;height:1.4rem}
+.gset-tbl input[type=checkbox]{width:max(1.4rem,28px);height:max(1.4rem,28px)}
 html[data-role=viewer] :is([data-act=grpnew], [data-act=grpedit], [data-act=grpdel], [data-act=grpaddsug], [data-act=grpaddall], [data-act=grprm],
   [data-act=grpcare], [data-act=grpmove], [data-act=grpset], [data-act=grpundo], [data-act=plgroups], #g-do){display:none!important}
 .rule-prev{border-left:.35rem solid var(--cyan);padding:.4rem .8rem;background:var(--cyan-soft)}
@@ -1215,14 +1220,15 @@ html:not([data-narrow="1"]) .more-f .filters>label:first-child{grid-column:auto}
 
 /* 1.18.0: Identify a plant (camera) and the plant library. The camera view is framed like a specimen on a herbarium sheet:
    corner marks, not a box, so the plant stays the biggest thing on the screen. */
-.id-cam,.lib-form{max-width:46rem}
+.lib-form{max-width:46rem}
+.id-cam>:not(h2):not(.sec-tools){max-width:46rem}   /* 1.56.4: the camera stays this wide, but its title runs the width of the page so Hide/Show sits at the right edge like every other section's */
 .id-sec>h2,#lib-res>h2{margin-top:2rem;margin-bottom:.7rem}
-.id-view{position:relative;background:var(--ink);aspect-ratio:4/3;max-height:70vh;margin:.4rem 0 .6rem;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.id-view{position:relative;background:#0b141a;aspect-ratio:4/3;max-height:70vh;margin:.4rem 0 .6rem;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .id-view video{width:100%;height:100%;object-fit:contain;display:block}
 .id-view::before,.id-view::after{content:"";position:absolute;width:2.2rem;height:2.2rem;border:4px solid #fff;pointer-events:none;mix-blend-mode:difference}
 .id-view::before{top:.8rem;left:.8rem;border-right:0;border-bottom:0}
 .id-view::after{bottom:.8rem;right:.8rem;border-left:0;border-top:0}
-.id-placeholder{position:absolute;color:#fff;font-weight:700;margin:0;font-size:1.2rem}
+.id-placeholder{position:absolute;color:#fff;font-weight:700;margin:0;font-size:1.2rem}   /* 1.58.0: the box behind it is dark in both themes. It was var(--ink), which is near-white in the dark theme: white words on a white box */
 .id-live{min-height:1.6em;font-weight:700;font-size:1.15rem;margin:0 0 .6rem}
 .id-btns .btn{flex:1 1 12rem}
 .id-file{position:relative;overflow:hidden}
@@ -1488,8 +1494,6 @@ html:is([data-narrow="1"],[data-pagesfold="1"]) .top #main-nav{display:flex;flex
 html[data-pagesfold="1"] .top-acts{flex-direction:row;flex-wrap:wrap;margin-left:auto}
 html[data-toptall="1"] .top{position:static}
 /* 1.33.0: a tall top bar scrolls with the page, so the open sections menu would cover its left end; keep the bar's contents clear of the menu */
-html[data-toptall="1"][data-navopen="1"][data-narrow="0"][data-navside=left] :is(.top-in,.sub-in){padding-left:calc(var(--nav-w) + 1rem)}
-html[data-toptall="1"][data-navopen="1"][data-narrow="0"][data-navside=right] :is(.top-in,.sub-in){padding-right:calc(var(--nav-w) + 1rem)}
 html[data-narrow="1"] .top-in,html[data-narrow="1"] main{padding-left:min(1.25rem,4vw);padding-right:min(1.25rem,4vw)}
 html[data-narrow="1"] .top-in{padding-top:.4rem;padding-bottom:.4rem;gap:.4rem}
 html[data-narrow="1"] .brand{font-size:1.2rem}
@@ -1586,7 +1590,7 @@ html[data-role=viewer] :is([data-act=wlcheck], [data-act=wldismiss]){display:non
 
 /* 1.29.0: the section's pages, on their own row under the top bar */
 .sub-in{display:flex;flex-wrap:wrap;gap:.2rem .3rem;padding:.15rem clamp(1rem,1.5vw,2rem) .35rem;border-top:1px solid color-mix(in srgb,var(--top-ink) 30%,transparent);
-  background:color-mix(in srgb,var(--top-bg) 88%,var(--top-ink))}
+  background:color-mix(in srgb,var(--top-bg) 92%,var(--top-ink))}   /* 1.56.5: 92% (was 88%) so its links reach 7:1 */
 .sub-in[hidden]{display:none}
 .sub-in a{color:var(--top-ink);text-decoration:none;padding:.4rem .75rem;border-bottom:4px solid transparent;min-height:2.6rem;display:inline-flex;align-items:center}
 .sub-in a:hover{border-color:color-mix(in srgb,var(--top-ink) 55%,transparent)}
@@ -1612,7 +1616,7 @@ html[data-narrow="1"] .sub-in a{padding:.35rem .55rem;min-height:2.4rem}
 .wh-add{gap:.5rem;align-items:end;flex-wrap:wrap;margin-top:.5rem}
 .where-f{border:0;padding:0;margin:0}
 .where-f legend{font-weight:700;padding:0}
-.where-f .opts{display:flex;gap:1.5rem;margin:.3rem 0 .5rem}
+.where-f .opts{display:flex;gap:.5rem;margin:.3rem 0 .5rem}   /* 1.56.4: the two choices are buttons that show which is chosen (they were bare words) */
 /* 1.29.0: Pots and trays */
 .ct-list{display:grid;gap:1rem}
 .ct-card{display:grid;grid-template-columns:minmax(0,14rem) minmax(0,1fr);gap:1rem;border:2px solid var(--line, #8a9a96);border-radius:8px;padding:1rem;background:var(--sheet)}
@@ -1655,7 +1659,7 @@ a[href^="tel:"]{white-space:nowrap}
    only by a background or a coloured border is drawn again here with system colours and a visible outline. */
 @media (forced-colors:active){
   :root{--ring:3px}
-  .btn,.ledger button,.tag,.tag-home,.sheet,.wl-item,.set-card,.notice,.toast,#console,dialog{forced-color-adjust:none;color:CanvasText;background:Canvas;border:2px solid CanvasText}
+  .btn,.tag,.tag-home,.sheet,.wl-item,.set-card,.notice,.toast,#console,dialog{forced-color-adjust:none;color:CanvasText;background:Canvas;border:2px solid CanvasText}
   .btn{color:ButtonText;background:ButtonFace;border-color:ButtonText}
   .btn:not(.ghost):not(.danger){background:ButtonText;color:ButtonFace}
   .btn.danger{border-style:double;border-width:4px}
@@ -1664,7 +1668,7 @@ a[href^="tel:"]{white-space:nowrap}
   .top,.sub-in,header.top nav a{background:Canvas;color:CanvasText}
   .top nav a[aria-current=page],#sub-nav a[aria-current=page]{outline:3px solid Highlight;outline-offset:-3px;text-decoration:underline}
   .opts span{forced-color-adjust:none;border:2px solid ButtonText;background:ButtonFace;color:ButtonText}
-  .opts input:checked+span,.ledger button[aria-pressed=true],.chips button[aria-pressed=true]{forced-color-adjust:none;background:Highlight;color:HighlightText;border-color:HighlightText;outline:3px solid CanvasText;outline-offset:2px;text-decoration:underline}
+  .opts input:checked+span,.chips button[aria-pressed=true]{forced-color-adjust:none;background:Highlight;color:HighlightText;border-color:HighlightText;outline:3px solid CanvasText;outline-offset:2px;text-decoration:underline}
   .toast,.undo-toast{background:Highlight;color:HighlightText;border:3px solid CanvasText}
   .undo-toast .btn{background:ButtonFace;color:ButtonText;border-color:ButtonText}
   .notice.bad,.bad-text{border-color:CanvasText;color:CanvasText;text-decoration:underline wavy}
@@ -1747,18 +1751,17 @@ html[data-narrow="1"] .mi-head .pr-badge{white-space:normal;max-width:100%;displ
 /* ---- 1.42.0: every section can be folded shut (Show or hide) ---- */
 .fold-hid{display:none!important}
 .has-fold{position:relative}
-.has-fold>.sec-tools{position:absolute;top:.3rem;right:0;display:flex;gap:.5rem;align-items:center;z-index:14}
+.has-fold>.sec-tools{position:static;display:flex;gap:.5rem;align-items:center;justify-content:flex-end;flex-wrap:wrap;margin:0 0 .6rem}   /* 1.56.4: under the title at the right when the title needs the width */
+.has-fold.tools-beside>.sec-tools{position:absolute;top:.3rem;right:0;margin:0;z-index:14}   /* beside it whenever there is room (ui.js foldMeasure decides) */
 .sec-tools .rd-btn{position:static;margin:0}
-.sec-fold{display:inline-flex;gap:.35rem;align-items:center;white-space:nowrap}
-.has-fold>:is(h1,h2,h3).sec-keep,main section.blk.has-rd.has-fold>h2,section.needs.has-rd.has-fold>h2{padding-right:var(--tools-w,7rem)}
+.sec-fold{display:inline-flex;gap:.35rem;align-items:center;justify-content:center;white-space:nowrap;min-width:5.6em}     /* 1.56.3: Show and Hide take the same room, so it does not shift */
+.has-fold.tools-beside>:is(h1,h2,h3).sec-keep,main section.blk.has-rd.has-fold.tools-beside>h2,section.needs.has-rd.has-fold.tools-beside>h2{padding-right:var(--tools-w,7rem)}
 .sec-head-row>.sec-tools{display:inline-flex;gap:.5rem;align-items:center;margin-left:auto}
 .sec-bare,.sec-inline{display:flex;justify-content:flex-end;gap:.5rem;margin:-.2rem 0 .5rem}
 section.has-fold[data-folded="1"]{padding-bottom:.3rem}
-html[data-narrow="1"] .has-fold>.sec-tools{position:static;margin:0 0 .6rem;flex-wrap:wrap}
-html[data-narrow="1"] .has-fold>:is(h1,h2,h3).sec-keep,html[data-narrow="1"] main section.blk.has-rd.has-fold>h2,html[data-narrow="1"] section.needs.has-rd.has-fold>h2{padding-right:0}
-@media (max-width:640px){.has-fold>.sec-tools{position:static;margin:0 0 .6rem;flex-wrap:wrap}.has-fold>:is(h1,h2,h3).sec-keep,main section.blk.has-rd.has-fold>h2{padding-right:0}}
 @media print{.fold-hid{display:revert!important}}
-.has-fold>.sec-tools:first-child{position:static;justify-content:flex-end;margin:0 0 .4rem}   /* a part with no title of its own (the photos) */
+.has-fold>.sec-tools:first-child{position:static;justify-content:flex-end;margin:0 0 .4rem}   /* a part with no title of its own */
+.ph-sec>h2.ph-title{margin:0 0 .5rem}   /* 1.56.4: the plant's photos have a title, so Hide/Show sits beside it as in every other section */
 
 /* ---- 1.42.0: Grow lights: the title and summary table stay at the top and fold as one; spots fold; plants two to a row ---- */
 .lt-top{position:sticky;top:var(--top-h);z-index:16;background:var(--paper);border-bottom:2px solid var(--line);padding:.2rem 0 .5rem;margin:0 0 1rem}
@@ -1781,6 +1784,11 @@ html[data-narrow="1"] table.lt-sum-tbl td::before{content:attr(data-h);display:b
 main section.blk>header.sec-head{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem 1rem;position:sticky;top:var(--top-h);z-index:13;background:var(--paper);margin:0 0 .6rem;padding:.45rem 0 .35rem}
 main section.blk>header.sec-head>h2{margin:0}
 header.sec-head>.sec-tools{margin-left:auto}
+/* 1.56.3: a title row with buttons beside the title (Your lights, Your light spots) keeps the line above it like every other
+   section, and its Read aloud and Show/Hide stay at the right end whether the section is open or folded: other buttons in the
+   row (Add a light, Compare lights) come before them, never after. */
+section.blk>header.sec-head{border-top:2px solid var(--ink);padding-top:.8rem}
+.sec-head-row>.sec-tools,header.sec-head>.sec-tools{order:99;margin-left:auto}
 .lt-spots{display:grid;gap:.7rem}
 details.lt-spot-fold{padding:0}
 details.lt-spot-fold>summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:1.2rem minmax(0,1fr);gap:.2rem .6rem;align-items:baseline;padding:.7rem 1rem}
@@ -1810,3 +1818,81 @@ ul.lt-plants.lt-two{grid-template-columns:repeat(auto-fit,minmax(max(min(100%,19
 .p-homes legend{font:inherit;font-weight:700;padding:0 .3rem}
 .p-homes .chk{display:inline-flex;align-items:center;gap:.4rem;margin:.1rem .9rem .1rem 0;font-weight:400}
 .p-homes small{display:block;color:var(--ink-2)}
+.sp-hide{display:flex;gap:.5rem;align-items:center;min-height:2.75rem;font-weight:400;margin-bottom:.5rem}     /* 1.56.1 */
+.whs-list{list-style:none;padding:0;margin:.6rem 0;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(30rem,100%),1fr));gap:1rem}   /* 1.56.3: Plants without a spot */
+.whs-card{border:2px solid var(--line);border-radius:8px;padding:.5rem .9rem;background:var(--sheet);min-width:0}
+.whs-card h3{margin:.2rem 0 .4rem;overflow-wrap:anywhere}
+.whs-plants{border:0;padding:0;margin:0 0 .4rem;display:grid;gap:.3rem;min-width:0}
+.whs-plants legend{font:inherit;font-weight:700;padding:0;margin-bottom:.3rem}
+.whs-plant{display:flex;flex-wrap:wrap;align-items:center;gap:.2rem 1rem}
+.whs-plant label{display:flex;gap:.6rem;align-items:center;min-height:2.75rem;font-weight:400;flex:1 1 14rem;min-width:0;overflow-wrap:anywhere}
+.whs-plant img,.whs-plant .job-nophoto{width:48px;height:48px;flex:0 0 48px;object-fit:cover;border-radius:6px}
+.whs-pick{display:flex;flex-wrap:wrap;gap:0 1rem}
+.whs-pick .f{flex:1 1 13rem;min-width:0}
+.whs-pick select,.whs-pick input{max-width:100%}
+.whs-card .row{margin:.2rem 0 .4rem}
+.sec-tools{flex-wrap:wrap;max-width:100%;justify-content:flex-end}   /* 1.56.3: on a phone with the largest text, Read aloud and Show/Hide wrap rather than overflow */
+.sec-head-row>.sec-tools,header.sec-head>.sec-tools{flex:0 0 auto}   /* 1.56.3: the title's other buttons give way, so Hide stays on the right edge */
+.fold-click,header.sec-head:has(.fold-click),main h2:has(+ .sec-bare){cursor:pointer}     /* 1.56.3: a title folds its section when pressed */
+details.grp>summary{flex-wrap:wrap;gap:.3rem 1rem}
+details.grp>summary>:is(h2,h3){flex:1 1 12rem;min-width:0;overflow-wrap:break-word}
+details.grp>summary>.det-tools{margin-left:auto}   /* on a phone with large text the button goes under the title, at the right */
+
+/* 1.56.5: Add a plant and Edit: at most three fields side by side, so help text is not squeezed into narrow columns, and
+   "Where it is" takes a row of its own with Inside or outside above its two lists */
+.field-grid.fg-form{grid-template-columns:repeat(auto-fit,minmax(min(19rem,100%),1fr))}
+.field-grid.fg-form>.where-f{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(19rem,100%),1fr));gap:0 1.4rem}
+.field-grid.fg-form>.where-f>.opts{grid-column:1/-1}
+
+/* 1.56.5: on a narrow screen the top bar is two short rows: the name, then Pages, Search and More. The pages of this section show
+   with the sections when Pages is open, and Online, Home and Editing when More is open. Offline always shows. */
+.more-btn{display:none;align-items:center;justify-content:center;gap:.35rem;background:transparent;color:inherit;border:2px solid color-mix(in srgb,var(--top-ink) 60%,transparent);padding:.25em .7em;font:inherit;font-weight:700;cursor:pointer;min-height:44px}
+.more-btn:hover{background:color-mix(in srgb,var(--top-ink) 14%,transparent)}
+.more-btn[aria-expanded=true]{background:var(--top-ink);color:var(--top-bg)}
+html[data-narrow="1"] .more-btn{display:inline-flex;flex:0 0 auto}
+html[data-narrow="1"] .pages-btn{flex:1 1 5rem;order:2;min-width:0}
+html[data-narrow="1"] .pages-btn .pg-l{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}   /* the menu sign and the page name; "Pages:" stays for screen readers */
+html[data-narrow="1"] .top #main-nav{order:5}
+html[data-narrow="1"] .top-acts{order:3;flex:0 1 auto;flex-wrap:nowrap;margin-left:auto}
+html[data-narrow="1"] .top-acts>.srch-btn{flex:0 0 auto}
+html[data-narrow="1"] .top:not(.more-open) .top-acts>:is(#net[data-state=online],#place-btn,.who){display:none}
+html[data-narrow="1"] .top.more-open .top-acts{flex:1 1 100%;flex-wrap:wrap;order:4}
+html[data-narrow="1"] .top.more-open .top-acts>.more-btn{order:-1}
+html[data-narrow="1"] .top:not(.pages-open) #sub-nav{display:none}
+
+/* 1.56.5: a plant page starts with its name */
+.pl-head{margin:0 0 .6rem}
+.pl-head h1{margin:0 0 .1rem}
+.pl-head .sci{font-size:1.3rem;margin:0 0 .4rem}
+.label .l-body>h2.l-title{font-size:1.35rem;margin:0 0 .6rem}
+html[data-narrow="1"] .pl-layout{display:none}   /* a narrow screen shows one column anyway */
+.label.pl-editing dl .ro{display:none}   /* 1.56.5: while the boxes are open, the same details are not shown twice */
+.pl-edrow{margin:0 0 .6rem}
+/* 1.56.5: on a narrow screen the filters are two to a row while they fit, and one to a row with very large text (the bigger tick
+   boxes no longer shrink, so "ID confidence under 70%" needs the width) */
+html[data-narrow="1"] .filters{grid-template-columns:repeat(auto-fill,minmax(min(100%,10.5rem),1fr))}
+.filters .chk{min-width:0}
+
+.nv-bar{position:sticky;top:0;z-index:60;display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:center;justify-content:space-between;margin:0;border-radius:0}   /* 1.56.5: a new version is installed */
+
+/* 1.57.0: on a page with no Navigation menu, Display sits in the top bar like Search (it floated over the page's corner) */
+.top-acts>#display-btn{position:static;box-shadow:none;background:transparent;color:inherit;border:2px solid color-mix(in srgb,var(--top-ink) 60%,transparent);padding:.25em .7em;min-height:44px;font-weight:700}
+.top-acts>#display-btn:hover{background:color-mix(in srgb,var(--top-ink) 14%,transparent)}
+.top-acts>#display-btn svg{width:1.1em;height:1.1em}
+.sheet .mat .nophoto.nophoto-none{aspect-ratio:auto;min-height:3rem;padding:.6rem;font-weight:400}   /* 1.57.0 */
+html[data-narrow="1"] #corner{transition:transform .2s ease}
+html[data-narrow="1"][data-barhide="1"] #corner{transform:translateY(calc(100% + 1.2rem))}   /* 1.57.0: slips away while you scroll down */
+@media (prefers-reduced-motion:reduce){html[data-narrow="1"] #corner{transition:none}}
+
+/* 1.57.0: notes on request (Display). A note shows as a small Note button until it is opened (pressed, held, or pointed at); its words
+   stay in the page at size 0, so screen readers still read them */
+html[data-notes=ask] :is(.hint,label.f>small):not(.note-open):not(:hover):not(:focus-visible){font-size:0!important;line-height:0;display:inline-flex;vertical-align:middle;margin:.15rem .3rem .15rem .4rem;padding:0;cursor:pointer;color:var(--cyan)}
+html[data-notes=ask] :is(.hint,label.f>small):not(.note-open):not(:hover):not(:focus-visible) *{font-size:0!important}
+html[data-notes=ask] :is(.hint,label.f>small):not(.note-open):not(:hover):not(:focus-visible)::before{content:"\24D8  Note";font-size:1rem;line-height:1.3;font-weight:700;border:2px solid currentColor;padding:.3rem .65rem;min-height:2.75rem;display:inline-flex;align-items:center;white-space:pre;border-radius:999px}
+html[data-notes=ask] :is(label,.f,.row,li,.chk):hover > :is(.hint,small[data-note]):not(.note-open){font-size:1rem!important;line-height:inherit;display:block;color:var(--ink-2)}
+html[data-notes=ask] :is(label,.f,.row,li,.chk):hover > :is(.hint,small[data-note]):not(.note-open)::before{content:none}
+html[data-notes=ask] :is(label,.f,.row,li,.chk):hover > :is(.hint,small[data-note]):not(.note-open) *{font-size:inherit!important}
+html[data-notes=ask] :is(.hint,label.f>small).note-open,html[data-notes=ask] :is(.hint,label.f>small):is(:hover,:focus-visible){cursor:pointer;display:block}
+html[data-notes=ask] :is(.hint,label.f>small):focus-visible{outline:var(--ring) solid var(--focus);outline-offset:2px}
+@media print{html[data-notes=ask] :is(.hint,label.f>small){font-size:1rem!important;line-height:inherit}html[data-notes=ask] :is(.hint,label.f>small)::before{content:none!important}html[data-notes=ask] :is(.hint,label.f>small) *{font-size:inherit!important}}
+#app h1[tabindex="-1"]:focus{outline:none}     /* 1.57.0: the title takes the focus after moving to a page, so a screen reader starts there; it is not a control, so no ring */

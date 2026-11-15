@@ -3,7 +3,7 @@
 This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that runs in Docker Desktop on his Windows PC. It is being built to manage large plant collections at several sites around the world, to hold the knowledge about them, and to identify and log plants and mushrooms better over time. Today it has one site, Ethan's house in Round Rock, Texas, with about 80 potted plants and the local weather. `docs/PLAN.md` is the agreed order of work (November 2026): its first three steps come before any new feature. Read `docs/ARCHITECTURE.md` before changing code, and `docs/PROTOTYPING.md` before starting a prototype.
 
 ## Who it is for
-- Ethan is visually impaired. Accessibility is a requirement:
+- Accessibility is a requirement, to the standard a person with low vision needs:
   - Large, scalable text (everything scales with the Display setting).
   - High contrast and light/dark themes.
   - Full keyboard use with visible focus.
@@ -22,32 +22,46 @@ This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that r
   - `--full` builds the old single zip with everything.
   - He installs it with the updater: `tools/Update Plant Database.cmd` / `update-plant-database.ps1`. It unzips over his folder, keeps `data/` and `backups/`, makes a backup first, pulls the release's images from ghcr.io (from 1.46.0; `images.yml` publishes them on every push to main, so **a release's version must be on main before he installs it**) and runs `docker compose up -d`. Building on his PC is only the fallback.
   - Zips go in `C:\Users\Ethan\Documents\Claude\Plants\versions_plant-database` (from 1.12.2; the updater moves any zip saved in `Plants` there). Save releases and photo packs straight into that folder. Files saved to his computer from a chat must be under 30 MB.
+- **Monthly releases (from December 2026, PLAN.md step 7):** a pull request for a feature merges when green **without** changing VERSION; its CHANGELOG lines go under the next version's heading, written `## 1.58.0 (coming December 1, 2026)`. Pushes between releases publish images tagged `main` only. On the first of the month a release pull request bumps the version (below) and dates the heading; merging it makes GitHub build the images and the release (`release.yml`), and the updater on Ethan's PC fetches it. Patches for something broken can go out between, the same way. Saving a zip into his folder is the fallback.
 - **Versions:** bump the patch number for fixes and small additions, the minor number for new features. Update all of these together:
   - `VERSION`
   - the five version strings in `docker-compose.yml` (build arg, label, and the three ghcr.io image tags)
   - the top entry of `CHANGELOG.md` (written for Ethan, not for developers)
   - the README section for anything he uses
-- **Requests to Ethan:** keep reminding him of what Claude is waiting on (open requests in the app and the "Still to photograph" list) at the end of replies, until he provides it.
+- **Requests to Ethan:** keep reminding him of what Claude is waiting on at the end of replies, until he provides it. Open requests in the app and the "Still to photograph" list are not in these reminders: he handles those in the app himself (November 10, 2026).
 
 ## Rules for changes
 - **Never touch his data.** `data/` (database and photos) and `backups/` never go into git or a release. A new version must upgrade an existing database in place, safely and idempotently (`init_db()` adds columns and tables; see ARCHITECTURE).
-- **Plant facts go in upgrade batches** (`app/seed/batches/*.json`), never as hand edits to a database.
+- **Changes to Ethan's own plants go in an update file (from 1.58.0), not in the code and never as hand edits to a database.** His plants' details stay out of the public repository.
+  - Write `plant-updates-YYYYMMDD-HHMM.json` (UTC; a `.zip` holding `updates.json` and `photos/` when pictures come with it). The format is at the top of `app/plantdb/updates.py`: changes of kind `set`, `archive`, `ask`, `photos` (pictures for a page he already has) and `new`, each with a `why` in plain words.
+  - A change names its plant by the code it has **on his PC** and its name. A `set` states the value it expects to replace (`from`), so anything he edited himself needs his decision and is otherwise left alone.
+  - A new page at a home other than the main one names that home (`home`: its name as Homes and places has it). Without it the page is made at the main home.
+  - A file cannot yet log care, record a potting mix, add a home, change a page's main picture or ask about a page made in the same file. He does those in the app, or the format gains a kind first: a batch is not the way round it.
+  - Check the file with `python3 tools/check-plant-updates.py FILE`, then save it into `plant-updates` inside his app folder on his PC (under 30 MB) and tell him its name. He looks through it on the Updates from Claude page; nothing changes until he accepts.
+  - Never commit an update file: `plant-updates/` holds only its README in git, and a release leaves the rest out.
+- **Upgrade batches** (`app/seed/batches/*.json`) are for what every install needs (lights, amendments, stores, measurements, the plants a new install starts with), and for the batches already made.
   - A field update states the value it expects to replace (`{field: [old, new]}`), so anything Ethan edited himself is left alone.
   - Batch files apply in **filename order**, once each. Name new ones so they sort last: `batch9d.json`, then `batchA1.json`. `batch10.json` would sort before `batch2.json`.
+  - **A code in a batch file is the code a new install gives the plant (1.58.0).** On Ethan's PC it is the same code only while he has added no plant of his own. So every entry that names a plant by its code (`updates`, `archive`, `requests_add`, `existing_photos`, `pot_mixes_add`, `facts_link`, `take_photos`) also gives its `name`, or `photos` that are on its page; a plant he added himself is named by the code it has on his PC plus its name. `dev/test/unit/test_batches.py` refuses a new file without them.
+  - A batch never gives a row number (`home_id`, `area_id`, `spot_id`, `pot_id`, `tray_id`): they mean something else in every record. `home_near` says the home. A script that copies a plant's row to start a new page must leave them out.
 - **Access (from 1.12.0).** People reach the app through its own Tailscale container: port 8081, with identity headers, roles owner/editor/viewer. This computer uses port 8080 (localhost only), and sensors use 8082 (readings only).
   - Any new route that changes data is refused for viewers automatically.
   - The exceptions are `VIEWER_POSTS` (`/api/identify`, `/api/me/prefs`) and `VIEWER_PREFIXES` (`/api/push/`): requests that change nothing of the plants, or only the person's own settings and devices.
   - Owner-only areas must be added to `OWNER_ONLY_PATHS` or `OWNER_ONLY_CHANGES` in `app/plantdb/core.py`.
+  - **Home limits (1.58.0):** an editor may be limited to some homes (`people.edit_homes`). A route that changes a plant, or a record that follows a plant, must get the plant with `plant_row()` or call `home_check()`; a new plant or a move calls `home_check_new()`. `dev/test/unit/test_home_limit.py` fails for a new route that changes data until it is tried there or listed in its `FREE` set.
   - Buttons that make changes must also be added to the viewer CSS block in `style.css`.
   - Never publish 8081, and never trust `Tailscale-User-*` headers on any other port.
+  - On 8080 everyone is the owner, so it answers only to names `host_known()` in `core.py` allows (1.58.0: `localhost`, number addresses, single-word and `.local` names, `PLANTDB_HOSTS`, the saved addresses). Tests and tools use `127.0.0.1` or `localhost`.
+  - **From the internet (1.58.0):** Funnel publishes `/cal` and `/share` of port 8080, where every other request is the owner's. A request marked `Tailscale-Funnel-Request` reaches only what `public_link()` in `core.py` allows (the calendar link and `/share/<token>`); a new public route must be added there, must check its own token, and must not live beside anything that changes data without one.
   - The container starts as root and `app/start.py` picks the user (10001 if it can write to the data folders, else root). Don't add `USER` to the Dockerfile, and keep gunicorn settings in `app/gunicorn.conf.py`.
 - **Mushrooms (from 1.22.0):** nothing in the app may say or suggest that a wild mushroom is edible or safe; IDs are always "leads, not proof". Front-end names for finds use the `mu` prefix (`fz` belongs to the frost checklist).
 - Keep the front end dependency-free (vanilla JS in `app/static/js/*.js`, loaded in the order `js/manifest.json` gives; one stylesheet in the browser, built by the server from `static/css/00-core.css` plus one file per feature) and compatible with the strict Content Security Policy: **no inline scripts or inline event handlers**. Actions use `data-act` / `data-f` / `data-form` attributes, handled by delegation in `static/js/events.js`. A feature module says what it adds with one `addFeature()` call (`static/js/features.js`: pages, Today blocks, additions to pages, care kinds); never wrap `viewToday` or `loadCarePlant`, and never watch the page with a MutationObserver to insert something.
 - **Test before shipping:**
   1. `python3 -m pytest dev/test/unit -q` (seconds).
   2. `python3 dev/test/run_checks.py` runs every browser check and the smoke test on a fresh mock server each (fake weather, no internet; about 90 minutes), or `run_checks.py lights shops` for a few. Look at the screenshots in `dev/tmp/shots/`. GitHub runs the same on every pull request (`.github/workflows/checks.yml`), and builds the three container images (`images.yml`). **Merge a pull request only when both are green.** The repository is public (November 7, 2026) and a branch rule on main requires the `unit`, `browser (n/4)` and `build (...)` checks, so a merge with a red check is refused.
-  3. For upgrades, also test on a copy of a database that has the previous version's batches applied.
-- Docker Hub is not reachable from Claude's sandbox. `docker compose config` works, a real image build does not, so say so when a change touches the Dockerfile.
+  3. Upgrades are tested by the unit tests (1.58.0): `test_upgrade.py` starts this version on the databases three old versions left behind (`dev/test/fixtures/`), with edits made by hand in them, and compares each with a new install. **After each release, make the fixture of that release and remove the one before it** (`dev/test/fixtures/make_upgrade_fixture.py` says how).
+  4. A browser check waits for what it expects with `until()` and `redrawn()` from `dev/test/waits.py`, not with a fixed pause. Convert a check when you change it.
+- Docker Hub is not reachable from Claude's sandbox. `docker compose config` works, a real image build does not, so say so when a change touches the Dockerfile. GitHub builds each image, starts it and asks it a few questions before it counts as built or is pushed (`dev/test/image_check.sh`, 1.58.0).
 
 ## Where things are
 - `app/`: the app (`server.py` is the entry point; the code is in `plantdb/`, one module per feature, `core.py` first; `static/js/*.js`, `static/style.css`, `static/index.html`, `static/prefs.js`, `seed/`)

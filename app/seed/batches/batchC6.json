@@ -1,0 +1,47 @@
+{
+ "id": "C6",
+ "created": "2026-11-10",
+ "author": "Claude (the listings in build_batchA3.py)",
+ "lights_update": [
+  {
+   "key": "sansi-gooseneck",
+   "set": {
+    "doubtful": [
+     null,
+     "the maker measured with all four heads aimed at one spot, and the figures look generous next to SANSI's own 10 W bulb"
+    ]
+   },
+   "note": "for Compare lights (step 10)"
+  },
+  {
+   "key": "sansi-30w",
+   "set": {
+    "doubtful": [
+     null,
+     "one line of the listing says 220 PPFD at 1 ft; its chart and text say 336"
+    ]
+   },
+   "note": "for Compare lights (step 10)"
+  },
+  {
+   "key": "sansi-80w",
+   "set": {
+    "timer_keeps": [
+     null,
+     false
+    ]
+   },
+   "note": "for Compare lights (step 10)"
+  },
+  {
+   "key": "sansi-tripod",
+   "set": {
+    "timer_keeps": [
+     null,
+     false
+    ]
+   },
+   "note": "for Compare lights (step 10)"
+  }
+ ]
+}

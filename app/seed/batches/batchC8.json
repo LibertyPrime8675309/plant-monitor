@@ -1,0 +1,106 @@
+{
+ "id": "C8",
+ "created": "2026-11-11",
+ "author": "Ethan's photos and checks of the variegated Monstera cutting (November 11, 2026)",
+ "existing_photos": [
+  {
+   "file": "img_c8_leaf_a.jpg",
+   "caption": "November 11: the cutting in water: a healthy green leaf with cream splashes and speckles",
+   "primary": false,
+   "source": "Ethan, November 11",
+   "code": "P-094"
+  },
+  {
+   "file": "img_c8_window.jpg",
+   "caption": "November 11: the cutting in water on the east window sill",
+   "primary": false,
+   "source": "Ethan, November 11",
+   "code": "P-094"
+  },
+  {
+   "file": "img_c8_leaves.jpg",
+   "caption": "November 11: the cutting: both leaves, one browned and sagging",
+   "primary": false,
+   "source": "Ethan, November 11",
+   "code": "P-094"
+  },
+  {
+   "file": "img_c8_leaf_dead.jpg",
+   "caption": "November 11: the browned leaf, from the front",
+   "primary": false,
+   "source": "Ethan, November 11",
+   "code": "P-094"
+  },
+  {
+   "file": "img_c8_under_dead.jpg",
+   "caption": "November 11: underside of the browned leaf",
+   "primary": false,
+   "source": "Ethan, November 11",
+   "code": "P-094"
+  },
+  {
+   "file": "img_c8_under_ok.jpg",
+   "caption": "November 11: underside of the healthier leaf",
+   "primary": false,
+   "source": "Ethan, November 11",
+   "code": "P-094"
+  },
+  {
+   "file": "img_c8_nub.jpg",
+   "caption": "November 11: the root nub, firm and green-tan",
+   "primary": false,
+   "source": "Ethan, November 11",
+   "code": "P-094"
+  },
+  {
+   "file": "img_c8_base.jpg",
+   "caption": "November 11: the cut end: dry callus, firm, no film",
+   "primary": false,
+   "source": "Ethan, November 11",
+   "code": "P-094"
+  },
+  {
+   "file": "img_c8_water.jpg",
+   "caption": "November 11: how far the stem sits in the water",
+   "primary": false,
+   "source": "Ethan, November 11",
+   "code": "P-094"
+  }
+ ],
+ "updates": [
+  {
+   "code": "P-094",
+   "name": "Monstera 'Thai Constellation' (left of the pole, speckled leaves)",
+   "photos": [
+    "img_b8_thai_pot1.jpg"
+   ],
+   "note": "Ethan, November 11: this plant came from the Baraboo coffee shop plant; the H-E-B tag is P-095's",
+   "set": {
+    "aliases": [
+     "Tag: H-E-B 'Monstera Thai Constellation, Monstera deliciosa'; Swiss cheese plant (variegated); 'Thai Constellation' left plant",
+     "Swiss cheese plant (variegated); 'Thai Constellation' left plant; from the Baraboo coffee shop plant (cut about July 31, 2026)"
+    ],
+    "container": [
+     "Grey plastic pot on a terracotta saucer, sphagnum moss and bark with lava rock, a plastic-mesh moss pole shared by both plants; H-E-B tag",
+     "Grey plastic pot on a terracotta saucer, sphagnum moss and bark with lava rock, a plastic-mesh moss pole shared by both plants; no tag (the H-E-B tag in the pot belongs to P-095)"
+    ],
+    "id_basis": [
+     "The H-E-B tag reads 'Monstera Thai Constellation, Monstera deliciosa', and the leaves match: heart-shaped juvenile Monstera leaves speckled and splashed with cream, on a moss pole in sphagnum. 'Thai Constellation' is the tissue-cultured variegated form of Monstera deliciosa with stable cream speckling.",
+     "Grown from a cutting of the mother plant at a coffee shop in Baraboo, Wisconsin (Ethan: cut about July 31, 2026). It has no tag of its own: the H-E-B tag in the pot belongs to P-095, which was bought in Round Rock. The leaves match 'Thai Constellation': heart-shaped juvenile Monstera leaves speckled and splashed with cream, on a moss pole in sphagnum. 'Thai Constellation' is the tissue-cultured variegated form of Monstera deliciosa with stable cream speckling."
+    ],
+    "id_improve": [
+     "Nothing needed: the tag and the leaves agree. A photo when the first split leaf opens would be nice for the record.",
+     "A tag or name from the Baraboo coffee shop, if they know it. A photo when the first split leaf opens would be nice for the record."
+    ],
+    "id_confidence": [
+     95,
+     75
+    ],
+    "notes": [
+     "Photographed indoors on November 5, 2026 (batch 3 of the indoor plants): two Thai Constellations share this pot and moss pole. This is the one whose leaves are mostly green with cream speckles (left of the pole in the wide shots). Which close-up belongs to which plant is Claude's guess from the variegation; move any photo that is on the wrong page.",
+     "Grown from a cutting taken around July 31, 2026 from the mother plant at a coffee shop in Baraboo, Wisconsin; it rooted in Round Rock and was potted (Ethan, November 11). On November 11 Ethan also photographed the cutting in a jar of filtered water on an east window sill (root nub, firm and odourless; one leaf browned and collapsed). Photographed indoors on November 5, 2026 (batch 3 of the indoor plants): two Thai Constellations share this pot and moss pole. This is the one whose leaves are mostly green with cream speckles (left of the pole in the wide shots). Which close-up belongs to which plant is Claude's guess from the variegation; move any photo that is on the wrong page."
+    ]
+   }
+  }
+ ]
+}

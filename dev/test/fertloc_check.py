@@ -57,8 +57,7 @@ call('PUT', '/api/plants/P-013', {'base_version': v + 1, 'fields': {'npk_ratio':
 # ---- the server: the place in use
 home = call('GET', '/api/meta')['place']
 check(home['is_home'] and home['name'], f"the home place to start with: {home['name']}")
-r = call('POST', '/api/places', {'name': 'Baraboo, WI', 'lat': 43.4711, 'lon': -89.7443, 'tz': 'America/Chicago'})
-pid = r['place']['id']
+pid = call('POST', '/api/places', {'name': 'Baraboo, WI', 'lat': 43.4711, 'lon': -89.7443, 'tz': 'America/Chicago', 'force': True})['place']['id']   # force: batch C9 already has a Baraboo home without weather
 for _ in range(40):
     time.sleep(1.5)
     if not call('GET', '/api/weather/job').get('running'): break
@@ -160,8 +159,9 @@ with sync_playwright() as pw:
         p2 = page((w, 800), {'size': size, 'theme': 'dark'})
         for u in ('#/plants', '#/fertilizer', '#/weather'):
             p2.goto(f'{BASE}/{u}'); p2.wait_for_timeout(2200)
+            if p2.locator('#more-btn').is_visible(): p2.locator('#more-btn').click(); p2.wait_for_timeout(300)   # 1.56.5: Home is behind More on a phone
             over = p2.evaluate('document.documentElement.scrollWidth - document.documentElement.clientWidth')
-            bw = p2.evaluate("(() => { const b = document.getElementById('place-btn').getBoundingClientRect(); return b.right <= innerWidth + 1 && b.left >= -1; })()")
+            bw = p2.evaluate("(() => { const b = document.getElementById('place-btn').getBoundingClientRect(); return b.width > 0 && b.right <= innerWidth + 1 && b.left >= -1; })()")
             check(over <= 2 and bw, f'phone {w}px, text {size}%, {u}: no sideways scrolling ({over}px), Location button fits')
         if size == '190':
             p2.locator('#place-btn').click(); p2.wait_for_timeout(500)

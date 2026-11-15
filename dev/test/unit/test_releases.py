@@ -100,6 +100,9 @@ def test_a_restore_counts_as_the_quarterly_test():
         assert r.status_code == 200 and r.get_json()['restore_tested_at']
         W = c.get('/api/whatsnew').get_json()
         assert W['restore']['due'] is False and W['restore']['days'] == 0 and W['restore']['last']
+        with S.app.app_context():
+            t = S.db().execute("SELECT note FROM audit_log WHERE action='backup' AND field='restore' ORDER BY id DESC LIMIT 1").fetchone()
+        assert t and 'True' not in t[0] and ('.zip' in t[0].split('from before is in')[-1] or 'No backup was made' in t[0]), '1.56.5: the Audit log names the backup made before the restore'
 
 def test_every_versions_changes_is_a_plain_page():
     with S.app.test_client() as c:

@@ -20,7 +20,8 @@ nobody but the owner accepts their own. The audit log keeps who did what. Mushro
 JSON) adds proposed rows only, never accepted ones."""
 import csv, io, json, os, re
 from .core import *   # noqa: F401,F403
-from .library import facts_keys, care_get, CARE_DIR, FACTS_FUNGUS_NO
+from .library import care_get, CARE_DIR
+from .speciesfacts import facts_keys, FACTS_FUNGUS_NO
 
 KNOWLEDGE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS facts(
@@ -45,7 +46,7 @@ FACT_FIELDS = [
     ('light_summary', 'text', 'Light', 'Light'), ('light_hours', 'text', 'Hours of light', 'Light'), ('light_notes', 'long', 'Light notes', 'Light'),
     ('par_low', 'int', 'Light, low (PAR)', 'Light'), ('par_high', 'int', 'Light, high (PAR)', 'Light'), ('dli_low', 'num', 'Daily light, low (DLI)', 'Light'), ('dli_high', 'num', 'Daily light, high (DLI)', 'Light'),
     ('water_notes', 'long', 'Watering', 'Water'), ('soil_moisture_low', 'int', 'Soil moisture, low (%)', 'Water'), ('soil_moisture_high', 'int', 'Soil moisture, high (%)', 'Water'),
-    ('soil_medium', 'long', 'Soil or potting mix', 'Soil'), ('soil_ph_low', 'num', 'Soil pH, low', 'Soil'), ('soil_ph_high', 'num', 'Soil pH, high', 'Soil'),
+    ('soil_medium', 'long', 'Soil or potting mix', 'Soil'), ('mix_wants', 'enum', 'Mix it wants', 'Soil'),     # 1.56.0 (PLAN.md step 9) ('soil_ph_low', 'num', 'Soil pH, low', 'Soil'), ('soil_ph_high', 'num', 'Soil pH, high', 'Soil'),
     ('soil_temp_low', 'int', 'Soil temperature, low (°F)', 'Soil'), ('soil_temp_high', 'int', 'Soil temperature, high (°F)', 'Soil'),
     ('fertilizer', 'text', 'Fertilizer', 'Feeding'), ('nutrients', 'long', 'Nutrients', 'Feeding'), ('npk_ratio', 'text', 'N-P-K ratio', 'Feeding'), ('fert_strength', 'enum', 'Fertilizer strength', 'Feeding'),
     ('fert_from_month', 'int', 'Feeding from (month)', 'Feeding'), ('fert_to_month', 'int', 'Feeding until (month)', 'Feeding'),

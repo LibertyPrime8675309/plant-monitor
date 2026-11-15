@@ -1,0 +1,189 @@
+{
+ "id": "C4",
+ "created": "2026-11-10",
+ "author": "Claude (the listings, and Ethan's note on mounting, Nov 9, 2026)",
+ "lights_update": [
+  {
+   "key": "sansi-80w",
+   "set": {
+    "mount": [
+     null,
+     {
+      "kind": "socket",
+      "points": "down",
+      "socket": "E26"
+     }
+    ]
+   },
+   "note": "how it holds (step 8)"
+  },
+  {
+   "key": "sansi-30w",
+   "set": {
+    "mount": [
+     null,
+     {
+      "kind": "socket",
+      "points": "down",
+      "socket": "E26"
+     }
+    ]
+   },
+   "note": "how it holds (step 8)"
+  },
+  {
+   "key": "sansi-10w",
+   "set": {
+    "mount": [
+     null,
+     {
+      "kind": "socket",
+      "points": "down",
+      "socket": "E26"
+     }
+    ]
+   },
+   "note": "how it holds (step 8)"
+  },
+  {
+   "key": "sansi-tripod",
+   "set": {
+    "mount": [
+     null,
+     {
+      "kind": "floor",
+      "points": "angled",
+      "height_lo": 33,
+      "height_hi": 58
+     }
+    ]
+   },
+   "note": "how it holds (step 8)"
+  },
+  {
+   "key": "sansi-gooseneck",
+   "set": {
+    "mount": [
+     null,
+     {
+      "kind": "clamp",
+      "points": "down",
+      "grip_in": 2,
+      "reach_in": 15.8
+     }
+    ]
+   },
+   "note": "how it holds (step 8)"
+  },
+  {
+   "key": "barrina-standing",
+   "set": {
+    "mount": [
+     null,
+     {
+      "kind": "surface",
+      "points": "side",
+      "footprint_in": 5,
+      "height_hi": 24
+     }
+    ]
+   },
+   "note": "how it holds (step 8)"
+  },
+  {
+   "key": "gooingtop-clip",
+   "set": {
+    "mount": [
+     null,
+     {
+      "kind": "clamp",
+      "points": "down"
+     }
+    ]
+   },
+   "note": "how it holds (step 8)"
+  },
+  {
+   "key": "barrina-t5",
+   "set": {
+    "mount": [
+     null,
+     {
+      "kind": "under",
+      "points": "down",
+      "length_in": 12
+     }
+    ]
+   },
+   "note": "how it holds (step 8)"
+  },
+  {
+   "key": "sansi-t8",
+   "set": {
+    "mount": [
+     null,
+     {
+      "kind": "under",
+      "points": "down",
+      "length_in": 24
+     }
+    ]
+   },
+   "note": "how it holds (step 8)"
+  },
+  {
+   "key": "sansi-pot-clip",
+   "set": {
+    "mount": [
+     null,
+     {
+      "kind": "clamp",
+      "points": "down",
+      "grip_in": 0.8,
+      "reach_in": 12.8,
+      "pot_rim": true
+     }
+    ]
+   },
+   "note": "how it holds (step 8)"
+  },
+  {
+   "key": "disk-light",
+   "set": {
+    "mount": [
+     null,
+     {
+      "kind": "none",
+      "points": "down"
+     }
+    ]
+   },
+   "note": "how it holds (step 8)"
+  }
+ ],
+ "place_sheets": [
+  {
+   "room": "Downstairs Living Room",
+   "name": "Side Table",
+   "sheet": {
+    "levels": 1,
+    "top": "nothing",
+    "notes": "One level with open space above (Ethan, November 9): a strip has nowhere to be fixed over it."
+   }
+  },
+  {
+   "room": "Downstairs Living Room",
+   "name": "Tall Brown Shelf",
+   "sheet": {
+    "notes": "Two or more levels (Ethan, November 9). The levels take a 1 ft T5 strip but are not wide enough for the 2 ft T8. Measurements to come."
+   }
+  },
+  {
+   "room": "Downstairs Living Room",
+   "name": "Short Brown Shelf",
+   "sheet": {
+    "notes": "Two or more levels (Ethan, November 9). Measurements to come."
+   }
+  }
+ ]
+}

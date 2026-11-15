@@ -70,6 +70,7 @@ const acts = {
   fertlog(el) {
     const o = {};
     if (el.dataset.code) o.codes = [el.dataset.code];
+    if (el.dataset.codes) o.codes = el.dataset.codes.split(',');          // 1.58.0: Today's "No feeding logged yet" part
     if (el.dataset.date) o.date = el.dataset.date;
     if (el.dataset.group === 'due') { const t = todayStr(); o.codes = FERT.plants.filter(p => fertState(p, entriesFor(p.code), t, fertCtx()).state === 'due').map(p => p.code); }
     return fertDialog(o);
@@ -218,11 +219,23 @@ const acts = {
     try { await navigator.clipboard.writeText('Problems from Plant record ' + (META && META.version) + ':\n' + PROBTEXT); if (m) m.textContent = 'Copied. Paste it into the chat with Claude.'; }
     catch (e) { if (m) m.textContent = 'Could not copy. Select the list and copy it yourself.'; }
   },
+  async bkphotoson() {               // 1.58.0: the Backups page's own warning: photos into automatic backups, with one press
+    if (!(await needName())) return;
+    await guard(async () => { await api('PUT', '/api/backups/settings', { photos: true }); toast('Photos are in automatic backups from now on'); route(); });
+  },
+  async bkautoon() {
+    if (!(await needName())) return;
+    await guard(async () => { await api('PUT', '/api/backups/settings', { enabled: true }); toast('Automatic backups are on'); route(); });
+  },
   async bkcopynow(el) {              // 1.33.0
     const m = document.getElementById('bk-copy-msg'); el.disabled = true; if (m) m.textContent = 'Copying…';
     try { const r = await api('POST', '/api/backups/copies', {}); const st = r.status || {}; if (m) m.textContent = `Done. Folder: ${st.dir || 'not set up'}. Other computer: ${st.receiver || 'not set up'}.`; }
     catch (e) { if (m) m.textContent = e.message; }
     el.disabled = false;
+  },
+  async wbrun(el) {                  // 1.58.0: the weather history's own backup: make a piece, combine them, or put missing days back
+    if (!(await needName())) return;
+    await guard(async () => { const r = await api('POST', '/api/backups/weather', { what: el.dataset.what }); if (!r.started) toast('A weather backup is already running', true); wbPoll(); });
   },
   async bkrestore(el) {              // 1.31.0: put a backup's database back in place
     if (!(await needName())) return;
@@ -230,14 +243,15 @@ const acts = {
       <p>The plant record goes back to how it was on <strong>${el.dataset.made}</strong>${el.dataset.plants ? ` (${el.dataset.plants} plants)` : ''}. Every plant, note, setting and log entry made since then is replaced by what the backup holds.</p>
       <ul><li>A backup of how things are now is made first, so this can be undone by restoring that one.</li>
         <li>Photos are never removed. ${el.dataset.photos ? 'Photos in the backup that are missing from your folder are put back.' : 'This backup has no photos; your photos stay as they are.'}</li>
-        <li>An older backup is brought up to this version on the way in.</li></ul>
+        <li>An older backup is brought up to this version on the way in.</li>
+        <li>The weather history is not lost: a backup that leaves it out keeps the weather the record has now.</li></ul>
       <div class="row"><button class="btn danger" value="ok">Restore it</button><button class="btn ghost" value="cancel" autofocus>Cancel</button></div></form>`);
     if (r !== 'ok') return;
     el.disabled = true; toast('Restoring. This takes a few seconds.');
     await guard(async () => {
       const x = await api('POST', '/api/backups/restore', { file: el.dataset.file });
       QC.clear(); PCODES_AT = 0; FROST = null; PGROUPS = null; META = null;
-      await modal(html`<form method="dialog"><h2>Restored</h2><p>${x.plants} plants are back as they were. ${x.photos_added ? `${x.photos_added} photos were put back. ` : ''}The database from before is kept as <code>${x.before}</code>.</p>
+      await modal(html`<form method="dialog"><h2>Restored</h2><p>${x.plants} plants are back as they were. ${x.photos_added ? `${x.photos_added} photos were put back. ` : ''}Weather history: ${x.weather || 'in the backup'}. The database from before is kept as <code>${x.before}</code>.</p>
         <div class="row"><button class="btn" value="ok" autofocus>Done</button></div></form>`);
       location.reload();
     });
@@ -250,14 +264,69 @@ const acts = {
   },
   needs() { G.needs = !G.needs; gSave(); route(); },
   edlong(el) { const w = el.closest('.ed-long'), l = w.querySelector('label'); l.hidden = false; const t = l.querySelector('textarea'); t.dataset.was = t.value; t.focus(); },
+  async whmove(el) {                 // 1.58.0: a room or a spot one place up or down; Today lists the plants to water in this order
+    if (!(await needName())) return;
+    const d = el.dataset;
+    await guard(async () => { const r = await api('POST', '/api/where/order', { kind: d.kind, id: +d.id, dir: d.dir }); META = await api('GET', '/api/meta');
+      toast(r.moved ? `${d.name} moved ${d.dir}` : `${d.name} is already ${d.dir === 'up' ? 'first' : 'last'}`); await route();
+      const sel = dir => `[data-act="whmove"][data-kind="${d.kind}"][data-id="${d.id}"][data-dir="${dir}"]`;        // keep the place: the same button, or the other one at an end
+      const b = document.querySelector(sel(d.dir)) || document.querySelector(sel(d.dir === 'up' ? 'down' : 'up')); if (b) b.focus(); });
+  },
+  async waterorder(el) {             // 1.58.0: Today's watering lists by room and spot, or most overdue first; remembered on this device
+    WATER_ORDER = el.dataset.order === 'late' ? 'late' : 'place';
+    try { localStorage.setItem('plantdb.waterorder', WATER_ORDER); } catch (e) { /* private window: for this visit only */ }
+    await route();
+    const b = document.querySelector(`[data-act="waterorder"][data-order="${WATER_ORDER}"]`); if (b) b.focus();
+  },
+  // 1.58.0 (November 14): the bar of a watering list, for the plants ticked in it (care.js: waterByPlace). Watered logs each plant's own
+  // kind, so a semi-hydro pot is topped up and a plant in water gets fresh water; Still moist is for the plants in soil.
+  async wtickdo(el) {
+    const wpl = el.closest('.wpl'), key = wpl.dataset.key, moist = el.dataset.how === 'check';
+    const ticks = [...wpl.querySelectorAll('input[data-act=wtick]:checked')].filter(t => !moist || t.dataset.kind === 'water'); if (!ticks.length) return;
+    if (!(await needName())) return;
+    const kinds = {}, done = {}; ticks.forEach(t => { const k = moist ? 'check' : t.dataset.kind; (kinds[k] = kinds[k] || []).push(t.dataset.code); });
+    await guard(async () => {
+      let ids = [], off = null;
+      try {
+        for (const [kind, codes] of Object.entries(kinds)) { const r = await api('POST', '/api/care', { plants: codes, kind }); ids = ids.concat((r && r.ids) || []); if (r && r.offline) off = r; done[kind] = codes; }
+      } finally {                         // what was saved before something failed is still said, and can still be undone
+        const codes = Object.values(done).flat();
+        if (codes.length) { codes.forEach(c => wticks(key).delete(c)); careUndoToast(wtickDone(done, (ticks.find(t => t.dataset.code === codes[0]) || ticks[0]).dataset.name) + offWhen(off), ids, codes[0]); await careRefresh(); wplFocus(key); }
+      }
+    });
+  },
+  wtickclear(el) {
+    const wpl = el.closest('.wpl'); wpl.querySelectorAll('input[data-act=wtick]:checked').forEach(t => { t.checked = false; }); wtickState(wpl);
+    const f = wpl.querySelector('input[data-act=wtick]'); if (f) f.focus({ preventScroll: true });        // the bar has gone, so the focus goes back to the list
+  },
+  wtickgo(el) { const b = el.closest('.wpl').querySelector('.wpl-bar button:not([hidden])'); if (b) b.focus(); },   // from a ticked card straight to the bar, for a keyboard
+  async askset(el) {                 // 1.58.0: the answer to "do you want reminders for care that was never logged" (asks.py)
+    if (!(await needName())) return;
+    const { kind, answer } = el.dataset, word = kind === 'feed' ? 'Feeding' : 'Flush and root-check';
+    await guard(async () => { ASKS = await api('PUT', '/api/asks', { kind, answer });
+      toast(answer === 'yes' ? `${word} reminders are on, counting from today` : `${word} reminders are off for plants with none logged`); route(); });
+  },
   async whareadel(el) { if (!(await needName())) return; if (!(await confirmBox(`Remove ${el.dataset.name}?`, 'Its spots are removed too. Plants must be moved out of it first.', 'Remove', true))) return;
     await guard(async () => { await api('DELETE', '/api/where/areas/' + el.dataset.id); META = await api('GET', '/api/meta'); toast('Removed'); route(); }); },
   async whspotdel(el) { if (!(await needName())) return; if (!(await confirmBox(`Remove the spot ${el.dataset.name}?`, 'Plants there keep their area or room; they just have no spot.', 'Remove', true))) return;
     await guard(async () => { await api('DELETE', '/api/where/spots/' + el.dataset.id); META = await api('GET', '/api/meta'); toast('Spot removed'); route(); }); },
-  async whsort() {
+  async whsort() {                                   // 1.56.3: every group at once
     if (!(await needName())) return;
-    const items = WHSORT.map((it, i) => ({ text: it.text, name: (document.querySelector(`[data-whs="${i}"][data-k=name]`) || {}).value || '', area_id: +(document.querySelector(`[data-whs="${i}"][data-k=area]`) || {}).value }));
-    await guard(async () => { const r = await api('POST', '/api/where/sort', { items }); META = await api('GET', '/api/meta'); toast(`${r.moved} plant${r.moved === 1 ? '' : 's'} put in their spots`); route(); });
+    const items = WHSORT.map((_, i) => whsItem(i)).filter(x => x && x.codes.length), kept = whsKeep(-1);   // 1.58.0: kept for any group left
+    await guard(async () => { const r = await api('POST', '/api/where/sort', { items }); META = await api('GET', '/api/meta');
+      toast(`${r.moved} plant${r.moved === 1 ? '' : 's'} put in their spots${r.made.length ? `. New spot${r.made.length === 1 ? '' : 's'}: ${r.made.join('; ')}` : ''}.`); await route(); whsRestore(kept);
+      const h = document.querySelector('#wh-sort h2'); if (h) h.focus(); });
+  },
+  async whsone(el) {                                 // 1.56.3: one group; the focus goes on to the next
+    if (!(await needName())) return;
+    const i = +el.dataset.i, item = whsItem(i); if (!item) return;
+    if (!item.codes.length) { toast('Tick at least one plant to put in this spot.', true); return; }
+    if (!item.spot_id && !String(item.name || '').trim()) { toast('Type the name of the new spot, or choose one of the spots.', true); return; }
+    const where = item.spot_id ? document.querySelector(`[data-whs="${i}"][data-k=spot] option:checked`).textContent : item.name.trim();
+    const kept = whsKeep(i);                         // 1.58.0: what was chosen in the other groups survives the redraw
+    await guard(async () => { const r = await api('POST', '/api/where/sort', { items: [item] }); META = await api('GET', '/api/meta');
+      toast(`${r.moved} plant${r.moved === 1 ? '' : 's'} put in ${where}${r.made.length ? ' (a new spot)' : ''}.`); await route(); whsRestore(kept);
+      const next = document.querySelector(`#whs-${i} [data-k=area]`) || document.querySelector('#wh-sort h2') || document.querySelector('main h1'); if (next) next.focus(); });
   },
   async ctadd(el) { if (!(await needName())) return;
     await guard(async () => { const x = await api('POST', '/api/containers', { kind: el.dataset.kind, name: el.dataset.kind === 'pot' ? 'New pot' : 'New catch tray', shape: 'circle', qty: 1 });
@@ -331,7 +400,18 @@ const acts = {
     navLayout(); fitPanes(); paintAllCharts();
     const f = open ? document.querySelector('#sn-list a') : document.getElementById('nav-tab'); if (f) f.focus();
   },
-  pages() { const b = document.getElementById('pages-btn'); const open = b && b.getAttribute('aria-expanded') !== 'true'; pagesMenu(open);
+  reloadnow() { location.reload(); },          // 1.56.5: a new version is installed
+  async pledit(el) {                     // 1.56.5: a plant's main details as text, or in boxes to change
+    const open = el.getAttribute('aria-expanded') !== 'true'; PLEDIT = open && CUR && CUR.p ? CUR.p.code : null;
+    if (!open) { await route(); const b = document.querySelector('[data-act=pledit]'); if (b) b.focus(); return; }   // drawn again with what was changed
+    const ed = document.getElementById('pl-ed'), box = document.getElementById('details');
+    if (ed) ed.hidden = false; if (box) box.classList.add('pl-editing');
+    el.setAttribute('aria-expanded', 'true'); el.textContent = 'Done changing';
+    const f = ed && ed.querySelector('input,select'); if (f) f.focus();
+  },
+  topmore(el) { const top = document.querySelector('header.top'), open = el.getAttribute('aria-expanded') !== 'true';    // 1.56.5: Online, Home and Editing behind More on a narrow screen
+    el.setAttribute('aria-expanded', open ? 'true' : 'false'); top.classList.toggle('more-open', open); if (open) { pagesMenu(false); const f = document.getElementById('net'); if (f) f.focus(); } },
+  pages() { const b = document.getElementById('pages-btn'); const open = b && b.getAttribute('aria-expanded') !== 'true'; pagesMenu(open); if (open) topMoreFold();
     if (open) { const a = document.querySelector('#main-nav a[aria-current=page]') || document.querySelector('#main-nav a'); if (a) a.focus(); } },
   navside() { window.PlantPrefs.set('navside', window.PlantPrefs.get().navside === 'left' ? 'right' : 'left'); navLayout(); fitPanes(); paintAllCharts(); },
   jump(el) {
@@ -476,7 +556,6 @@ const acts = {
   clearfilters() { Object.assign(G, { q: '', plan: '', health: '', low: false, needs: false, group: '', status: 'active', site: '', home: '', area: '', spot: '' }, Object.fromEntries(MORE_KEYS.map(k => [k, '']))); MOREOPEN = false; gSave(); route(); },
   clearplace() { G.area = ''; G.spot = ''; gSave(); route(); },
   heatf(el) { Object.assign(G, { q: '', needs: false, status: 'active', heat: el.dataset.heatf }); gSave(); go('#/plants'); },   // 1.36.0: from the Weather page's summer counts
-  plan(el) { G.plan = G.plan === el.dataset.plan ? '' : el.dataset.plan; document.querySelectorAll('.ledger button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.plan === G.plan))); drawGrid(); },
   pick(el) { PIDX = +el.dataset.i; repaintPhotos(); },
   zoom() { const c = curPhoto(); if (c) modal(html`<form method="dialog"><img src="${photoUrl(c.file)}" alt="${c.caption || CUR.p.common_name}"><p class="cap">${c.caption}</p><button class="btn" value="ok" autofocus>Close</button></form>`, 'photo'); },
   zoomloose(el) { modal(html`<form method="dialog"><img src="${photoUrl(el.dataset.file)}" alt="${el.dataset.cap}"><p class="cap">${el.dataset.cap}</p><button class="btn" value="ok" autofocus>Close</button></form>`, 'photo'); },
@@ -536,26 +615,30 @@ const acts = {
   async care(el) {
     if (!(await needName())) return;
     const k = el.dataset.kind, code = el.dataset.code;
-    await guard(async () => { const r = await api('POST', '/api/care', { plant: code, kind: k }); careUndoToast((k === 'water' ? 'Watered: ' : 'Checked, still moist: ') + el.dataset.name + offWhen(r), r && r.ids, code); await careRefresh(code); });
+    await guard(async () => { const r = await api('POST', '/api/care', { plant: code, kind: k }); careUndoToast((k === 'water' ? 'Watered: ' : k === 'check' ? 'Checked, still moist: ' : (CARE_WORD[k] || k) + ': ') + el.dataset.name + offWhen(r), r && r.ids, code); await careRefresh(code); });
   },
   async careall(el) {
     const codes = el.dataset.codes.split(',').filter(Boolean); if (!codes.length) return;
     if (!(await needName())) return;
     if (!(await confirmBox(`Mark ${codes.length} plants as watered today?`, 'Each one gets a "Watered" entry for today in its care log. You can remove any of them on the plant\'s page.', 'Mark as watered'))) return;
-    await guard(async () => { const r = await api('POST', '/api/care', { plants: codes, kind: el.dataset.kind }); careUndoToast(codes.length + ' plants marked as watered' + offWhen(r), r && r.ids); await careRefresh(); });
+    const wpl = el.closest('.wpl'), key = wpl ? wpl.dataset.key : el.closest('.wpl-order') ? 'due' : el.closest('#today-unlogged') ? 'unk' : '';     // 1.58.0: a watering list's own button
+    await guard(async () => { const r = await api('POST', '/api/care', { plants: codes, kind: el.dataset.kind }); careUndoToast(codes.length + ' plants marked as watered' + offWhen(r), r && r.ids); await careRefresh();
+      if (key) wplFocus(key); });        // the focus stays with the list, not on the first button of another part
   },
-  async waterall() {                    // 1.21.0: Plants page, every plant the filters show
-    const shown = filteredPlants().filter(p => !isArch(p)); if (!shown.length) return;
+  async waterall() {                    // 1.21.0: Plants page, every plant the filters show; 1.58.0: at one home (waterAllList)
+    const WAL = waterAllList(), shown = WAL.list;
+    if (WAL.untended) { toast(`Plants at ${WAL.home.name} are cared for outside the app, so Water all leaves them out. You can still log one on its own page.`); return; }
+    if (!shown.length) return;
     if (!(await needName())) return;
     await guard(async () => {
       const W = await api('GET', '/api/water'), done = new Set(W.plants.filter(w => w.last_water === W.today).map(w => w.code));
       const todo = shown.filter(p => !done.has(p.code)), skip = shown.length - todo.length;
       if (!todo.length) { toast(`All ${shown.length} plants shown were already watered today.`); return; }
       if (!(await confirmBox(`Mark ${todo.length} plant${todo.length === 1 ? '' : 's'} as watered today?`,
-        `These are the plants shown with your filters.${skip ? ` ${skip} of them ${skip === 1 ? 'was' : 'were'} already watered today and ${skip === 1 ? 'is' : 'are'} skipped.` : ''} Each gets a "Watered" entry for today in its care log.`, 'Mark as watered'))) return;
+        `These are the plants shown with your filters${WAL.home ? ` at ${WAL.home.name}` : ''}.${WAL.away ? ` The ${WAL.away} shown at other homes ${WAL.away === 1 ? 'is' : 'are'} left out.` : ''}${skip ? ` ${skip} of them ${skip === 1 ? 'was' : 'were'} already watered today and ${skip === 1 ? 'is' : 'are'} skipped.` : ''} Each gets a "Watered" entry for today in its care log.`, 'Mark as watered'))) return;
       const r = await api('POST', '/api/care', { plants: todo.map(p => p.code), kind: 'water' });
-      const nn = r.offline ? todo.length : r.ids.length;
-      careUndoToast(`${nn} plant${nn === 1 ? '' : 's'} marked as watered${skip ? ` (${skip} already watered today were skipped)` : ''}${offWhen(r)}`, r.ids);
+      const nn = r.offline ? todo.length : r.ids.length, sk = skip + (r.offline ? 0 : (r.skipped || []).length);   // the server also skips any it finds already watered
+      careUndoToast(`${nn} plant${nn === 1 ? '' : 's'} marked as watered${sk ? ` (${sk} already watered today ${sk === 1 ? 'was' : 'were'} skipped)` : ''}${offWhen(r)}`, r.ids);
     });
   },
   careother(el) { return careDialog(el.dataset.code, el.dataset.name); },
@@ -609,14 +692,22 @@ const acts = {
 document.addEventListener('change', e => { const el = e.target; if (el.dataset && el.dataset.dvshare && window.PlantSync) { window.PlantSync.share(el.dataset.dvshare, el.checked);
   toast(el.checked ? 'These settings now follow you to other devices' : 'These settings now stay on this device'); } }, true);
 const changeActs = {
+  // 1.58.0 (November 14): Today's watering cards: a tick, the list of spots on a phone, and the size of the pictures (kept on this device)
+  wtick(el) { wtickState(el.closest('.wpl')); },
+  wgo(el) { const t = el.value && document.getElementById(el.value); el.value = ''; if (t) { scrollToSection(t); navFlash(t); } },
+  waterpics(el) {
+    WATER_PICS = WATER_SIZES[el.value] ? el.value : 'medium';
+    try { localStorage.setItem('plantdb.waterpics', WATER_PICS); } catch (e) { /* private window: for this visit only */ }
+    document.querySelectorAll('.wpl[data-pics]').forEach(w => { w.dataset.pics = WATER_PICS; });      // only the width of a card changes, so nothing is drawn again and the ticks stay
+  },
   // 1.48.0: a home's country, units default or seasons (Homes and places)
   async placesite(el) {
     const k = el.dataset.k, v = el.value.trim();
     await guard(async () => {
       await api('PUT', '/api/places/' + el.dataset.id, { [k]: v });
       META = await api('GET', '/api/meta');
-      toast(k === 'country' ? 'Country saved' : k === 'units' ? 'Units for this home saved' : 'Seasons saved');
-      if (k !== 'country') { ROUTE_FRESH = true; await route(); }        // units and seasons change what pages show
+      toast(k === 'country' ? 'Country saved' : k === 'units' ? 'Units for this home saved' : k === 'tended' ? (v === '0' ? 'Care there is done outside the app' : 'Care there is logged in this app') : 'Seasons saved');
+      if (k !== 'country') { ROUTE_FRESH = true; await route(); }        // (and 1.58.0: care, which changes Water all)        // units and seasons change what pages show
       const n = document.querySelector(`[data-act=placesite][data-id="${el.dataset.id}"][data-k="${k}"]`); if (n) n.focus({ preventScroll: true });
     });
   },
@@ -709,6 +800,11 @@ const formActs = {
     if (!(await needName())) return;
     const f = form.elements;
     await guard(async () => { const r = await api('POST', '/api/backups', { photos: f.photos.checked, note: f.note.value.trim() }); if (!r.started) toast('A backup is already running', true); bkPoll(); });
+  },
+  async wbset(form) {
+    if (!(await needName())) return;
+    const f = form.elements;
+    await guard(async () => { await api('PUT', '/api/backups/weather/settings', { enabled: f.enabled.checked, freq: f.freq.value, hour: f.hour.value }); toast('Weather backup settings saved'); route(); });
   },
   async bkset(form) {
     if (!(await needName())) return;

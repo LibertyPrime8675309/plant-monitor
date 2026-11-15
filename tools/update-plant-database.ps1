@@ -138,6 +138,14 @@ function Download-Asset([string]$name) {
     $__pp = $ProgressPreference; $ProgressPreference = 'SilentlyContinue'
     try { Invoke-WebRequest -Uri $a.browser_download_url -OutFile ($dest + '.part') -Headers @{ 'User-Agent' = 'plant-database-updater' } -TimeoutSec 600 }
     finally { $ProgressPreference = $__pp }
+    # 1.56.5: check the file is whole and is the one GitHub published (its size, and its SHA-256 when GitHub gives one) before using it
+    $got = Get-Item ($dest + '.part')
+    if ($a.size -and $got.Length -ne [int64]$a.size) { Remove-Item ($dest + '.part') -Force; throw ("{0} arrived incomplete ({1:N0} of {2:N0} bytes). Run the updater again." -f $name, $got.Length, [int64]$a.size) }
+    if ("$($a.digest)" -match '^sha256:([0-9a-fA-F]{64})$') {
+        $want = $Matches[1].ToLower(); $have = (Get-FileHash -Algorithm SHA256 -Path ($dest + '.part')).Hash.ToLower()
+        if ($have -ne $want) { Remove-Item ($dest + '.part') -Force; throw ("{0} does not match the copy GitHub published (its checksum differs), so it was not used. Run the updater again." -f $name) }
+        Say ("Checked {0}: it matches the copy GitHub published." -f $name)
+    }
     Move-Item ($dest + '.part') $dest -Force
     return $true
 }

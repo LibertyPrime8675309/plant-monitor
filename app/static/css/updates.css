@@ -1,0 +1,70 @@
+/* 1.58.0 (Ethan, November 13 and 14, 2026): Updates from Claude (js/updates.js, plantdb/updates.py): a file of changes, shown plant by
+   plant to accept or leave. */
+html:not([data-role=owner]) a[href="#/updates"]{display:none!important}      /* the owner's page: the menu shows it to nobody else */
+.upd-file{border:var(--bw) solid var(--line);border-radius:8px;background:var(--sheet);padding:.55rem .9rem;margin:0 0 .8rem}
+.upd-file p{margin:.25rem 0}
+/* a button after a sentence (the file's name, Today's line): the space before it belongs to the sentence, so a button that starts a
+   new line starts at the left edge */
+.upd-fhead>span,.upd-today p>span{padding-right:.5rem}
+.upd-fhead .btn,.upd-today .btn{margin:.25rem 0}
+.upd-file .row{margin-top:.5rem}
+.upd-wait{list-style:none;padding:0;margin:.4rem 0 1rem;max-width:none}
+.upd-wait>li{margin:0 0 .7rem}
+.upd-k{font-weight:700;color:var(--ink-2);margin-right:.35rem}
+.upd-sum{font-weight:700;margin:.4rem 0 .6rem}
+.upd-safe{margin:0 0 .7rem}
+.upd-all{margin:0 0 .9rem}
+.upd-needs button.linkish{display:inline-block;margin-left:.9rem;text-align:left}
+.upd-list{list-style:none;padding:0;margin:0;max-width:none}
+.upd-ch{padding:.55rem 0 .5rem;margin:0;border-top:1px solid var(--line)}
+.upd-list>.upd-ch:first-child{border-top:0;padding-top:.15rem}
+.upd-tick{display:flex;gap:.6rem;align-items:flex-start;cursor:pointer;font-weight:400}
+.upd-tick input,.upd-pick input{width:max(1.5rem,28px);height:max(1.5rem,28px);margin:.05rem 0 0;flex:none}
+.upd-vals{margin:.2rem 0 0 2.4rem}
+.upd-vals.upd-flat{margin-left:0}
+.upd-vals p{margin:.1rem 0}
+.upd-ch>.hint{margin:.25rem 0 0 2.4rem}
+.upd-pics{list-style:none;padding:0;margin:.35rem 0 0;display:flex;flex-wrap:wrap;gap:.4rem;max-width:none}
+.upd-pics li{margin:0}
+.upd-pics img{display:block;width:6rem;height:6rem;object-fit:cover;border-radius:4px;background:var(--line)}
+/* a change that needs a decision: a box, a tag in words, and a choice of two. One with nothing to do says why, with no box to tick. */
+.upd-list>.upd-ch.upd-conf,.upd-conf{border:var(--bw) solid var(--ink);border-radius:6px;padding:.55rem .7rem;margin:.45rem 0;background:var(--paper)}
+.upd-conf>p,.upd-idle>p{margin:.2rem 0}
+.upd-conf>.hint,.upd-idle>.hint{margin-left:0}
+.upd-idle{color:var(--ink-2)}
+.upd-what{display:flex;flex-wrap:wrap;gap:.15rem .5rem;align-items:baseline}
+.upd-tag{white-space:normal}                    /* at the largest text on a phone the tag is wider than its box: it may take two lines */
+.upd-pick{border:0;padding:0;margin:.35rem 0}
+.upd-pick label{display:flex;gap:.6rem;align-items:flex-start;padding:.3rem 0;cursor:pointer;font-weight:400}
+/* every plant on one page: its picture beside its changes */
+.upd-plants{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,34rem),1fr));gap:.9rem 1.2rem;align-items:start;margin-bottom:.4rem}
+.upd-plant{border:var(--bw) solid var(--line);border-radius:8px;background:var(--sheet);padding:.7rem .85rem;display:grid;grid-template-columns:9rem minmax(0,1fr);gap:.2rem 1rem;align-items:start}
+.upd-ph img{display:block;width:100%;height:auto;aspect-ratio:4/3;object-fit:cover;border-radius:6px;background:var(--line)}
+.upd-noph{display:grid;place-items:center;aspect-ratio:4/3;border:var(--bw) dashed var(--line);border-radius:6px;color:var(--ink-2);font-size:.95rem;text-align:center;padding:.2rem}   /* no picture: a box that says so, not a block of colour */
+.upd-body{min-width:0;overflow-wrap:anywhere}
+section.blk .upd-body h3,.upd-body h3{margin:0 0 .3rem;font-size:1.2rem}
+.upd-body h3 .muted{font-family:var(--sans);font-size:1rem;font-weight:400;white-space:nowrap}
+/* A narrow screen: the name beside a smaller picture while a word fits there, and under the picture when it does not (the largest
+   text on a phone left the name a third of the card, and broke it letter by letter). The changes take the card's whole width. */
+html[data-narrow="1"] .upd-plant{display:flex;flex-wrap:wrap;align-items:center;gap:.3rem .7rem;padding:.6rem .65rem}
+html[data-narrow="1"] .upd-ph{flex:0 0 5.5rem}
+html[data-narrow="1"] .upd-body{display:contents}
+html[data-narrow="1"] .upd-body h3{flex:1 1 9rem;margin:0;overflow-wrap:break-word}
+html[data-narrow="1"] .upd-body .upd-list{flex:1 0 100%}
+/* a card too narrow for its text (a phone from about 150% text): what a change says starts at the card's edge, not under its label */
+.upd-plant{container-type:inline-size}
+@container (max-width:15rem){.upd-vals,.upd-ch>.hint{margin-left:0}}
+/* before a file is chosen, and after the changes are made */
+.upd-choose{max-width:46rem;border:var(--bw) solid var(--line);border-radius:8px;background:var(--sheet);padding:.7rem .9rem;margin:.6rem 0 1.2rem}
+.upd-choose .row{margin:.6rem 0 .1rem}
+.upd-old{padding-left:1.2rem;max-width:none}
+.upd-old li{margin:.35rem 0}
+.upd-old .btn{margin-left:.5rem}
+.upd-did{padding-left:1.2rem;columns:2 26rem;column-gap:2.5rem;max-width:none}
+.upd-did li{margin:.3rem 0;break-inside:avoid}
+.upd-bar{align-items:center}
+html[data-narrow="1"] .upd-bar{padding:.55rem 0;gap:.5rem}
+html[data-narrow="1"] .upd-bar .btn{flex:1 1 auto;padding-left:.6rem;padding-right:.6rem}
+html[data-narrow="1"] .upd-bar .upd-no{display:none}        /* a phone: the bar holds the one button, and Change nothing ends the page */
+html:not([data-narrow="1"]) .upd-no-end{display:none}
+.upd-no-end{margin:.8rem 0 0}

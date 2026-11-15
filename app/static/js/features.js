@@ -63,5 +63,8 @@ async function featAdds(parts, care) {
     if (a.where === 'inside') at.innerHTML = rend(h); else at.insertAdjacentHTML(a.where || 'afterend', rend(h));   // 'inside' fills a box the page left for it
     if (a.then) a.then(a.id ? document.getElementById(a.id) : at, d);
   }));
-  if (my === ADDS_RUN[kind] && todo.length && !care) { buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); }   // a new section joins Navigation with Show or hide
+  if (my === ADDS_RUN[kind] && todo.length && !care) { buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); scrollBoxes(); }   // a new section joins Navigation with Show or hide
 }
+// 1.58.0: where a feature adds its line about a plant's care (repotting, turning, pests). The care buttons are under the plant's name now,
+// and these lines have a box of their own in the details (#quick-more); on a page without that box they go with the buttons, as before.
+const quickMore = main => main.querySelector('#quick-more') || (b => b && b.parentElement)(main.querySelector('.quick-btns'));

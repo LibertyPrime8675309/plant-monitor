@@ -58,7 +58,7 @@ def test_a_plant_reads_the_species_facts_for_what_it_leaves_empty():
         r = t.put('/api/plants/P-003', json={'base_version': p['version'], 'fields': {'soil_medium': '', 'light_hours': ''}}, headers=H); assert r.status_code == 200
         q = t.get('/api/plants/P-003?fill=1').get_json()
         assert q['soil_medium'] == p['soil_medium'] and q['light_hours'] == p['light_hours'], 'shown from the species'
-        assert set(q['from_species']) == {'soil_medium', 'light_hours'} and q['from_species']['soil_medium']['source'].startswith(('Upgrade batch', 'The first plant list'))
+        assert set(q['from_species']) - {'mix_wants'} == {'soil_medium', 'light_hours'} and q['from_species']['soil_medium']['source'].startswith(('Upgrade batch', 'The first plant list'))
         assert t.get('/api/plants/P-003').get_json()['soil_medium'] == '', 'the plant itself stays empty: nothing was written'
         # the plant's own value always wins
         t.put('/api/plants/P-003', json={'base_version': q['version'], 'fields': {'soil_medium': 'My own gritty mix'}}, headers=H)

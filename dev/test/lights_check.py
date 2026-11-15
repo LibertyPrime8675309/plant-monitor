@@ -195,7 +195,22 @@ with sync_playwright() as p:
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and '404' not in m.text else None)
     pg.add_init_script("localStorage.setItem('plantdb.editor','Light Test')")
     pg.goto(LOCAL + '/#/lights'); pg.wait_for_timeout(2500)
-    check(pg.locator('#lt-rooms .lt-room').count() == 5 and 'Big Brown Hutch' in pg.inner_text('#lt-rooms') and 'Living room window' in pg.inner_text('#lt-rooms'), 'the page lists his rooms with the spot on its shelf')
+    check(pg.locator('#lt-rooms .lt-room').count() == 6 and 'Big Brown Hutch' in pg.inner_text('#lt-rooms') and 'Living room window' in pg.inner_text('#lt-rooms'), 'the page lists his rooms with the spot on its shelf')
+    # 1.56.3 (Ethan, November 10): each section has the line above its title, and Show/Hide stays put when it is pressed
+    secs = ['lt-lights', 'lt-spots', 'lt-rooms', 'lt-plan']
+    lined = pg.evaluate("ids => ids.map(id => { const s = document.getElementById(id), h = s.querySelector(':scope > header') || s.querySelector(':scope > h2'); return parseFloat(getComputedStyle(h).borderTopWidth) > 0; })", secs)
+    check(all(lined), f'every Grow lights section has the line above its title ({lined})')
+    xs = lambda: [round(pg.locator(f'#{s} .sec-fold').bounding_box()['x']) for s in secs]
+    before = xs()
+    for s_ in secs: pg.click(f'#{s_} .sec-fold'); pg.wait_for_timeout(150)
+    after = xs()
+    for s_ in secs: pg.click(f'#{s_} .sec-fold'); pg.wait_for_timeout(150)
+    check(before == after and len(set(before)) == 1, f'Show/Hide sits at the same place in every section, open or folded ({before} / {after})')
+    fd = lambda s: pg.locator(f'#{s}').get_attribute('data-folded')
+    for s_ in ('lt-lights', 'lt-rooms'):
+        pg.locator(f'#{s_} h2').first.click(); pg.wait_for_timeout(150); f1 = fd(s_)
+        pg.locator(f'#{s_} h2').first.click(); pg.wait_for_timeout(150)
+        check(f1 == '1' and fd(s_) == '0', f'pressing the {s_} title folds the section and pressing it again opens it')
     check('SANSI-80W-TEST' in pg.inner_text('#lt-lights') and pg.locator('#lt-lights .lt-ed:visible').count() == 0, '1.39.1: each light shows its model as text; the edit fields wait behind a button')
     pg.locator('[data-act=ltedit]').first.click(); pg.wait_for_timeout(300)
     check('Manufacturer model' in pg.inner_text('#lt-lights') and pg.locator('#lt-lights [data-k=model]').evaluate_all("els => els.some(e => e.value === 'SANSI-80W-TEST')"), 'each light shows its manufacturer model (1.29.0: in a box you can type in)')
@@ -254,7 +269,7 @@ with sync_playwright() as p:
     check(not any(p_['room'] == 'Test single-shelf room' for p_ in call('GET', '/api/lights')[1]['places']), 'and removes it')
     pg.evaluate('window.scrollTo(0, 0)')
     pg.click('#lt-plan [data-act=spotnew]'); pg.wait_for_timeout(1200)
-    check(pg.locator('dialog select[name=place] optgroup').count() == 5, 'the spot window offers the rooms and shelves (and the second home\'s room)')
+    check(pg.locator('dialog select[name=place] optgroup').count() == 6, 'the spot window offers the rooms and shelves (and the other homes\' rooms)')
     t1 = pg.inner_text('#sp-prev')
     pg.fill('dialog input[name=distance]', '40'); pg.wait_for_timeout(900)
     t2 = pg.inner_text('#sp-prev')
@@ -281,6 +296,11 @@ with sync_playwright() as p:
     pg.select_option('dialog [data-sp=show]', ''); pg.select_option('dialog [data-sp=sort]', 'need'); pg.wait_for_timeout(400)
     tg = [float(x) for x in pg.locator('ul.sp-plants li.sp-row').evaluate_all('els => els.map(e => e.dataset.target).filter(Boolean)')]
     check(tg == sorted(tg, reverse=True), 'Sort: most light needed first')
+    other = pg.locator('ul.sp-plants li.sp-row[data-other="1"]').count()
+    if other:                                    # 1.56.1: "Hide plants already in another spot" is on at first
+        check(pg.locator('dialog [data-sp=hide]').is_checked() and pg.locator('ul.sp-plants li.sp-row[data-other="1"]:visible').count() == 0
+              and f'{other} in another spot are hidden' in pg.inner_text('#sp-count'), f'plants already in another spot are hidden ({other})')
+    pg.uncheck('dialog [data-sp=hide]'); pg.wait_for_timeout(300)
     check('Showing %d of %d' % (rows.count(), rows.count()) in pg.inner_text('#sp-count'), 'it says how many are showing and ticked')
     pg.locator('ul.sp-plants li.sp-row input[name=plant]').nth(0).check(); pg.locator('ul.sp-plants li.sp-row input[name=plant]').nth(1).check(); pg.wait_for_timeout(300)
     pg.click('dialog [data-act=spotbest]'); pg.wait_for_timeout(1500)

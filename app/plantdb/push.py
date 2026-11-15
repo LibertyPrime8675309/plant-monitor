@@ -13,7 +13,8 @@ PUSH_KINDS = [('cold', 'Cold nights', 'When the forecast turns, and a reminder t
               ('shopping', 'Shopping alerts', 'A price at or under your limit, or something back in stock.'),
               ('due', 'Watering and feeding due', 'One message in the morning with what is due today.'),
               ('requests', 'Requests from Claude', 'When Claude adds a request in the app: a photo or an answer it needs.'),
-              ('sensors', 'Sensor alerts', 'A dry pot, dangerous cold at a sensor, or a sensor that has gone quiet: once a day each.')]   # 1.35.0
+              ('sensors', 'Sensor alerts', 'A dry pot, dangerous cold at a sensor, or a sensor that has gone quiet: once a day each.'),   # 1.35.0
+              ('cover', 'Cover plants at night', 'From 4 pm, once a day: the plants outside that rabbits, rats and mice are likely to eat (browse.py).')]   # 1.57.0
 PUSH_SUBJECT = 'mailto:plant-record@' + (os.environ.get('PLANTDB_PUSH_DOMAIN') or 'example.invalid')
 PUSH_SEND = {'fn': None}             # a stand-in sender for tests: fn(sub, payload) -> status
 
@@ -76,18 +77,44 @@ def push_cold(c):
         nights = [n for n in F.get('nights', []) if n.get('plants')]
         tz = tzinfo(H['tz']); local = datetime.now(tz)
         for n in nights:
-            d = n['date']; cnt = len(n['plants']); worst = n.get('worst') or 'watch'
-            word = {'danger': 'could die', 'damage': 'would be damaged', 'watch': 'are close calls'}.get(worst, 'are at risk')
+            d = n['date']
             when_ = 'tonight' if d == (local.date() + timedelta(days=1)).isoformat() else midday_word(d)
             if push_once(c, f'cold:{H["id"]}:{d}:new', 9):
-                push_send(c, 'cold', lambda u, n=n, when_=when_, H=H, cnt=cnt, word=word: (f'Cold night {when_}: {temp_text(round(n["low"]), u)} at {H["name"].split(",")[0]}', f'{cnt} plant{"s" if cnt != 1 else ""} outside {word}. Open the cold-night checklist.'), None, '#/frost', H['id'], tag=f'cold-{d}')
+                push_send(c, 'cold', lambda u, n=n, when_=when_, H=H: (f'Cold night {when_}: {temp_text(round(n["low"]), u)} at {H["name"].split(",")[0]}', f'Outside: {cold_words(n["counts"])}. Open the cold-night checklist.'), None, '#/frost', H['id'], tag=f'cold-{d}')
             night_of = date.fromisoformat(d) - timedelta(days=1)       # the night of a date is the evening before it
-            if local.date() == night_of and local.hour >= 15 and push_once(c, f'cold:{H["id"]}:{d}:eve', 3):
-                push_send(c, 'cold', lambda u, n=n, H=H, cnt=cnt: (f'Tonight: down to {temp_text(round(n["low"]), u)} at {H["name"].split(",")[0]}', f'{cnt} plant{"s" if cnt != 1 else ""} to bring in or cover this evening.'), None, '#/frost', H['id'], tag=f'cold-{d}')
+            body = cold_evening(n['plants'])
+            if body and local.date() == night_of and local.hour >= 15 and push_once(c, f'cold:{H["id"]}:{d}:eve', 3):
+                push_send(c, 'cold', lambda u, n=n, H=H, body=body: (f'Tonight: down to {temp_text(round(n["low"]), u)} at {H["name"].split(",")[0]}', body), None, '#/frost', H['id'], tag=f'cold-{d}')
+
+def cold_evening(plants):
+    """The words of the reminder on the evening before a cold night, or None when there is nothing left to do (1.58.0): plants ticked as covered for that night are
+    left out, and a night with close calls only says that nothing is forecast to be damaged (it said "N plants to bring in or cover this evening" for any night)."""
+    left = [x for x in plants if not x.get('done')]
+    if not left: return None
+    real = sum(1 for x in left if x['level'] != 'watch'); close = len(left) - real
+    if real: return f'{real} plant{"s" if real != 1 else ""} to bring in or cover this evening.' + (f' {close} more {"is a close call" if close == 1 else "are close calls"}.' if close else '')
+    return f'{close} close call{"s" if close != 1 else ""}: nothing is forecast to be damaged. Cover {"it" if close == 1 else "them"} to be safe.'
+
+def cold_words(k):
+    """What one night would do, in its own numbers: "3 plants could die, 8 would be damaged and 14 are close calls" (1.58.0: the message looked up a key the night
+    does not have, so every cold night read "are close calls", a freeze included)."""
+    parts = [f'{k["danger"]} could die' if k.get('danger') else '', f'{k["damage"]} would be damaged' if k.get('damage') else '',
+             f'{k["watch"]} {"is a close call" if k["watch"] == 1 else "are close calls"}' if k.get('watch') else '']
+    parts = [x for x in parts if x]
+    if not parts: return 'no plant is at risk'
+    n = next(k[x] for x in ('danger', 'damage', 'watch') if k.get(x))
+    parts[0] = parts[0].replace(' ', f' plant{"" if n == 1 else "s"} ', 1)
+    return parts[0] if len(parts) == 1 else ', '.join(parts[:-1]) + ' and ' + parts[-1]
 
 def midday_word(d):
     try: return date.fromisoformat(d).strftime('%A')
     except ValueError: return d
+
+def feed_due(c, codes, today):
+    """The plants to feed today, for the morning message. As on Today (1.58.0), a plant with no feeding ever logged has no reminder: it stayed "due" every day of
+    its season, so the message said "3 to feed" each morning for plants nobody had fed through the app. Once Today's question about feeding reminders is answered
+    yes (asks.py), such a plant counts from the day of the answer."""
+    return [p for d in ics_feed_days(c, today, today) for p in d['plants'] if p['code'] in codes and (p.get('last') or ask_started(c, 'feed', p['every'], today))]
 
 def push_due(c):
     """At 8 in the morning, local time, for each home: what is due today."""
@@ -100,11 +127,13 @@ def push_due(c):
             at, at_args = plants_at(c, H)
             codes = {r[0] for r in c.execute("SELECT code FROM plants WHERE status='active'" + at, at_args)}
             today = local.date()
-            feed = [p for d in ics_feed_days(c, today, today) for p in d['plants'] if p['code'] in codes]
+            feed = feed_due(c, codes, today)
         water = [p for p in W['plants'] if p['state'] == 'due']
         if not water and not feed: continue
         parts = []
-        if water: parts.append(f'{len(water)} to water')
+        if water:                                          # 1.56.0: semi-hydro pots are topped up, water-only plants get fresh water
+            n = {a: sum(1 for p in water if p.get('action', 'water') == a) for a in ('water', 'topup', 'waterchange')}
+            parts += [f'{n[a]} {w}' for a, w in (('water', 'to water'), ('topup', 'to top up'), ('waterchange', 'to give fresh water')) if n[a]]
         if feed: parts.append(f'{len(feed)} to feed')
         push_send(c, 'due', f'Today at {H["name"].split(",")[0]}: ' + ' and '.join(parts), ', '.join(p['code'] for p in (water + feed)[:8]) + ('…' if len(water) + len(feed) > 8 else ''), '#/today', H['id'], tag='due')
 
@@ -128,7 +157,7 @@ def push_loop():
             c = sqlite3.connect(DB_PATH, timeout=30); c.row_factory = sqlite3.Row
             try:
                 if c.execute('SELECT 1 FROM push_subs LIMIT 1').fetchone():
-                    push_cold(c); push_due(c); push_sensors(c)
+                    push_cold(c); push_due(c); push_sensors(c); push_cover(c)
             finally: c.close()
         except Exception as e: problem_exc('push', e, 'The notifications check failed')
         time.sleep(600)

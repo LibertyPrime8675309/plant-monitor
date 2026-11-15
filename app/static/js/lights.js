@@ -23,9 +23,11 @@ function ltRoomsBlock() {
     const self = ps.find(pl => !pl.name), shelves = ps.filter(pl => pl.name), here = self ? spotsAt(self) : '';
     return html`<section class="lt-room" aria-label="${room}"><div class="lt-room-head"><h3>${room}</h3>
       <span class="row noprint"><button class="btn small" type="button" data-act="shelfnew" data-room="${room}" aria-label="New shelf in ${room}">New Shelf</button>
-        ${self ? html`<button class="btn ghost small" type="button" data-act="roomedit" data-id="${self.id}" aria-label="Rename the room ${room}">Rename</button><button class="btn ghost small" type="button" data-act="roomdel" data-id="${self.id}" aria-label="Remove the room ${room}">Remove room</button>` : ''}</span></div>
+        ${self ? html`<button class="btn ghost small" type="button" data-act="roomedit" data-id="${self.id}" aria-label="Rename the room ${room}">Rename</button><button class="btn ghost small" type="button" data-act="roomdel" data-id="${self.id}" aria-label="Remove room: ${room}">Remove room</button>` : ''}</span></div>
+      ${self ? html`<div class="fit-place">${placeBits(self)}${self.words ? html`<p class="muted">${self.words}</p>` : ''}</div>` : ''}
       ${here ? html`<p class="muted">The room as a whole: ${here}</p>` : ''}
-      ${shelves.length ? html`<ul>${shelves.map(pl => html`<li><span><strong>${pl.name}</strong><br><span class="muted">${spotsAt(pl) || 'No light spot here yet'}</span></span>
+      ${shelves.length ? html`<ul>${shelves.map(pl => html`<li><span><strong>${pl.name}</strong><br><span class="muted">${spotsAt(pl) || 'No light spot here yet'}</span>${pl.words ? html`<br><span class="muted">${pl.words}</span>` : ''}
+          <span class="fit-place">${placeBits(pl)}</span></span>
         <span class="row noprint"><button class="btn ghost small" type="button" data-act="roomedit" data-id="${pl.id}" aria-label="Rename the shelf ${pl.name}">Rename</button><button class="btn ghost small" type="button" data-act="roomdel" data-id="${pl.id}" aria-label="Remove the shelf ${pl.name}">Remove</button></span></li>`)}</ul>`
         : html`<p class="muted">No shelves yet.</p>`}</section>`; })}</div>`;
 }
@@ -67,7 +69,7 @@ const LT_OPEN = (() => { try { return new Set(JSON.parse(localStorage.getItem('p
 document.addEventListener('toggle', e => { const d = e.target; if (d && d.classList && d.classList.contains('lt-spot-fold')) { if (d.open) LT_OPEN.add(d.dataset.id); else LT_OPEN.delete(d.dataset.id); try { localStorage.setItem('plantdb.ltspots', JSON.stringify([...LT_OPEN])); } catch (x) { /* this visit only */ } } }, true);
 function ltSpotBody(s, i, plan) {
   const L = ltLight(s.light_id);
-  return html`<p><strong>${s.light}</strong>: ${ltSetting(s)}.</p>
+  return html`${plan ? '' : html`${fitBlock(s.fit)}${checkedLine(s)}`}<p><strong>${s.light}</strong>: ${ltSetting(s)}.</p>
     <p>About <strong>${has(s.dli) ? s.dli : '?'} mol/m² a day</strong> at the leaves${has(s.ppfd) ? html` (${fmt(s.ppfd)} PAR while it is on)` : ''}${s.area_sqft ? html`, lighting about ${areaF(s.area_sqft)} well` : ''}.
       ${s.crowded ? html`<strong>Crowded:</strong> the pots take about ${areaF(s.room_needed_sqft)}, so the plants at the edge get less.` : ''}</p>
     ${s.timer_note ? html`<p class="hint">${s.timer_note}</p>` : ''}
@@ -75,7 +77,7 @@ function ltSpotBody(s, i, plan) {
     ${s.plants.length ? html`<ul class="lt-plants lt-two">${s.plants.map(p => ltPlantLi(p, p.better ? html`<span class="lt-better">It would suit <strong>${p.better.name}</strong> (about ${p.better.dli} mol/m² a day).</span>` : ''))}</ul>` : html`<p class="muted">No plants in this spot yet.</p>`}
     ${ltSteps(s.steps)}
     <div class="row noprint">${plan ? html`<button class="btn" type="button" data-act="spotnew" data-plan="${i}">Set up this spot</button>`
-      : html`<button class="btn ghost" type="button" data-act="spotadd" data-id="${s.id}" aria-label="Add plants to ${s.name}">Add plants</button><button class="btn ghost" type="button" data-act="spotedit" data-id="${s.id}" aria-label="Change ${s.name}">Change this spot</button><button class="btn ghost" type="button" data-act="spotdel" data-id="${s.id}" aria-label="Remove ${s.name}">Remove this spot</button>`}</div>`;
+      : html`<button class="btn ghost" type="button" data-act="spotadd" data-id="${s.id}" aria-label="Add plants to ${s.name}">Add plants</button><button class="btn ghost" type="button" data-act="spotedit" data-id="${s.id}" aria-label="Change this spot: ${s.name}">Change this spot</button><button class="btn ghost" type="button" data-act="spotdel" data-id="${s.id}" aria-label="Remove this spot: ${s.name}">Remove this spot</button>`}</div>`;
 }
 function ltSpotCard(s, i, plan) {
   if (plan) return html`<article class="lt-spot" aria-labelledby="lts-p${i}"><h3 id="lts-p${i}">${s.name}</h3>${ltSpotBody(s, i, true)}</article>`;
@@ -83,7 +85,8 @@ function ltSpotCard(s, i, plan) {
   return html`<details class="lt-spot lt-spot-fold" data-id="${s.id}" ${LT_OPEN.has(String(s.id)) ? raw('open') : ''}>
     <summary><h3 id="lts-s${i}">${s.name}</h3>
       <span class="lt-sum"><span><strong>Where:</strong> ${s.place || 'Not chosen yet'}</span><span><strong>${has(s.dli) ? s.dli : '?'} mol/m² per day</strong></span>
-        <span><strong>Plants:</strong> ${n}${off ? ` (${off} not in their range)` : ''}</span></span></summary>
+        <span><strong>Plants:</strong> ${n}${off ? ` (${off} not in their range)` : ''}</span>
+        ${s.fit ? html`<span class="fit-tag fit-${s.fit.status}"><span aria-hidden="true">${FIT_STATUS_ICON[s.fit.status] || ''}</span> ${s.fit.word}</span>` : ''}</span></summary>
     <div class="lt-spot-in">${ltSpotBody(s, i, false)}</div></details>`;
 }
 function ltLightCard(L) {
@@ -107,6 +110,7 @@ function ltLightCard(L) {
       ${S.timer ? html`<dt>Timer</dt><dd>${S.timer}</dd>` : ''}
       <dt>Brightness</dt><dd>${S.dimming && S.dimming.length > 1 ? S.dimming.map(x => x + '%').join(', ') : 'Full only'}</dd>
       ${S.size ? html`<dt>Size</dt><dd>${S.size}</dd>` : ''}
+      ${mountLine(L)}
     </dl>${edLong('light', L.id, 'notes', 'Notes', L.notes, canChange())}
     ${L.points.length ? html`<div class="tbl-wrap"><table class="tbl lt-ppfd"><caption>${S.estimated ? "Claude's estimates" : "Maker's figures"}: light under its centre</caption>
       <thead><tr><th scope="col">Distance</th><th scope="col" class="num">PAR (µmol/m²/s)</th><th scope="col" class="num">12 hours a day gives</th><th scope="col" class="num">Lights about</th></tr></thead>
@@ -194,13 +198,21 @@ function ltVerdict(dli, lo, hi) {          // the same rule as light_verdict() o
 function spotRow(c, x, others, inSpot) {
   const sid = LT.assigned[c.code], there = sid && sid !== x.id ? others[sid] : null, id = 'spp-' + c.code;
   return html`<li class="sp-row" data-code="${c.code}" data-name="${c.name.toLowerCase()}" data-lo="${c.need ? c.need.lo : ''}" data-hi="${c.need ? c.need.hi : ''}" data-target="${c.need ? c.need.target : ''}"
-      data-free="${sid ? '0' : '1'}" data-inside="${c.inside ? '1' : '0'}">
+      data-free="${sid ? '0' : '1'}" data-other="${sid && sid !== x.id ? '1' : '0'}" data-inside="${c.inside ? '1' : '0'}">
     <input type="checkbox" id="${id}" name="plant" value="${c.code}" ${inSpot.has(c.code) ? raw('checked') : ''}>
     ${c.photo ? html`<img src="${thumbUrl(c.photo)}" alt="" loading="lazy" width="56" height="56">` : html`<span class="sp-nophoto" aria-hidden="true"></span>`}
     <span class="sp-txt"><label for="${id}" class="nm">${c.name}</label>
       <span class="muted">${c.need ? `Needs ${fmt(c.need.lo, 1)} to ${fmt(c.need.hi, 1)} mol/m² a day.` : 'Light needs not set.'} ${c.inside ? 'Lives inside.' : 'Coming inside.'}${there ? ` Now in ${there}.` : ''}</span>
       <a href="#/plant/${enc(c.code)}" target="_blank" rel="noopener" aria-label="Open ${c.name}, ${c.code}, in a new tab">Open ${c.code}</a></span>
     <span class="sp-fit"></span></li>`;
+}
+// 1.56.0: the levels of the chosen shelf, counted from the bottom, each with its clear height when it is known
+function spotLevels(pid, cur) {
+  const pl = (LT && LT.places || []).find(p => String(p.id) === String(pid)), n = pl && pl.levels, o = (v, w) => html`<option value="${v}" ${v === (cur || '') ? raw('selected') : ''}>${w}</option>`;
+  if (n === 1) return html`${o('', 'Its one level')}`;                                   // 1.56.1: a table has nothing else to choose
+  if (!n) return html`${o('', 'One level, or not known')}${o('top', 'The top level')}${o('lower', 'A lower level (a shelf above it)')}`;
+  const lower = [...Array(n - 1).keys()].map(i => o('L' + (i + 1), `Level ${i + 1} from the bottom${pl.gaps_in[i] ? `, ${lenF(pl.gaps_in[i])} clear` : ''}`)).reverse();
+  return html`${o('', 'Not chosen yet')}${o('top', `The top level (level ${n})`)}${lower}${cur === 'lower' ? o('lower', 'A lower level (which one not said)') : ''}`;
 }
 async function spotDialog(x, opt) {
   if (!(await needName())) return;
@@ -214,6 +226,10 @@ async function spotDialog(x, opt) {
       <label class="f">Name<input type="text" name="name" maxlength="60" value="${x.name || ''}" required autofocus><small>A short name you will recognise, for example "Hutch, top shelf".</small></label>
       <label class="f">Where<select name="place"><option value="">Not chosen yet</option>${ltRooms().map(([room, ps]) => html`<optgroup label="${room}">${ps.map(pl => html`<option value="${pl.id}" ${pl.id === x.place_id ? raw('selected') : ''}>${pl.label}</option>`)}</optgroup>`)}</select>
         <small>Add rooms and shelves under "Rooms and shelves" on this page.</small></label>
+      <div class="field-grid">
+        <label class="f">Level<select name="level">${spotLevels(x.place_id, x.level)}</select>
+          <small>On a shelf with several levels: which one these plants are on.</small></label>
+        <label class="f" id="sp-holder-f" ${L && L.mount && L.mount.kind === 'socket' ? '' : raw('hidden')}>What the bulb screws into<select name="holder"><option value="">Not chosen yet</option>${Object.entries((LT && LT.holders) || {}).map(([k, l]) => html`<option value="${k}" ${x.holder === k ? raw('selected') : ''}>${l[0].toUpperCase() + l.slice(1)}</option>`)}</select></label></div>
       <label class="f">Light<select name="light">${ltOptions(x, L && L.id)}</select><small>A to Z. Each says its type, power, its most light (PAR) and how many are free.</small></label>
       <section class="sp-light" id="sp-light" aria-label="About this light">${spotLightCard(L, x)}</section>
       <div class="field-grid three"><label class="f">How many of this light<input type="number" name="units" min="1" max="50" step="1" value="${x.units || 1}" required><small>Side by side over these plants.</small></label>
@@ -223,6 +239,7 @@ async function spotDialog(x, opt) {
       <p class="row"><button class="btn ghost" type="button" data-act="spotbest">Best setting for the ticked plants</button></p>
       <p id="sp-best" class="sp-best" aria-live="polite"></p>
       <div id="sp-prev" class="sp-prev" aria-live="polite"></div>
+      <div id="sp-fitbox" aria-live="polite"></div>
       <fieldset class="opt-group sp-pick"><legend>Plants in this spot</legend>
         <p class="hint">Plants that live inside or are coming in. Ticking a plant that is in another spot moves it here. The tag on each says how this light, at this setting, suits it.</p>
         <div class="sp-tools">
@@ -230,6 +247,7 @@ async function spotDialog(x, opt) {
           <label class="f">Show<select data-sp="show"><option value="">All plants (${n})</option><option value="fit">Fits this setting</option><option value="near">Fits or nearly fits</option>
             <option value="free">Not in a spot yet</option><option value="ticked">Ticked for this spot</option><option value="inside">Lives inside</option><option value="coming">Coming inside</option></select></label>
           <label class="f">Sort<select data-sp="sort"><option value="name">Name, A to Z</option><option value="code">Code</option><option value="need">Most light needed first</option><option value="fit">Best fit first</option></select></label>
+          <label class="sp-hide"><input type="checkbox" data-sp="hide" ${spHideTaken() ? raw('checked') : ''}> Hide plants already in another spot</label>
         </div>
         <p id="sp-count" class="sp-count" role="status"></p>
         <ul class="sp-plants">${LT.candidates.map(c => spotRow(c, x, others, inSpot))}</ul></fieldset>
@@ -241,16 +259,21 @@ async function spotDialog(x, opt) {
     if ((await shown) !== 'ok') return;
     const f = dlg.querySelector('form'), v = k => f.elements[k].value;
     const body = { name: v('name'), place: v('place'), light: v('light'), units: v('units'), distance: lenIn(v('distance')), hours: v('hours'), dim: v('dim'), notes: v('notes'),     // 1.47.0: the distance is typed in the person's unit
+      level: v('level'), holder: ltLight(v('light')) && (ltLight(v('light')).mount || {}).kind === 'socket' ? v('holder') : '',      // 1.56.0 (PLAN.md step 8)
       plants: [...f.querySelectorAll('input[name=plant]:checked')].map(i => i.value) };
     try {
       if (editing) await api('PUT', '/api/lights/spots/' + x.id, body); else await api('POST', '/api/lights/spots', body);
       toast(editing ? 'Spot changed' : `Spot "${body.name.trim()}" set up`);
       route(); return;
-    } catch (e) { toast(e.message, true); x = { ...x, name: body.name, place_id: body.place ? +body.place : null, light_id: +body.light, units: +body.units, distance_in: +body.distance, hours: +body.hours, dim_pct: +body.dim, notes: body.notes, codes: body.plants }; }
+    } catch (e) { toast(e.message, true); x = { ...x, name: body.name, place_id: body.place ? +body.place : null, light_id: +body.light, units: +body.units, distance_in: +body.distance, hours: +body.hours, dim_pct: +body.dim, notes: body.notes, codes: body.plants, level: body.level, holder: body.holder }; }
   }
 }
+// 1.56.1: "Hide plants already in another spot", remembered on this device (plants ticked for this spot always show)
+const spHideTaken = () => { try { return localStorage.getItem('plantdb.sphide') !== '0'; } catch (e) { return true; } };
 function spotFilter() {
   const f = dlg.querySelector('form[data-spot]'); if (!f) return;
+  const hide = f.querySelector('[data-sp=hide]').checked;
+  try { localStorage.setItem('plantdb.sphide', hide ? '1' : '0'); } catch (e) { /* this visit only */ }
   const q = f.querySelector('[data-sp=q]').value.trim().toLowerCase(), show = f.querySelector('[data-sp=show]').value, sort = f.querySelector('[data-sp=sort]').value;
   const ul = f.querySelector('ul.sp-plants'), rows = [...ul.children], dli = SP && SP.dli;
   const num = (r, k) => r.dataset[k] === '' ? null : +r.dataset[k];
@@ -261,7 +284,8 @@ function spotFilter() {
     const ok = (!q || r.dataset.name.includes(q) || r.dataset.code.toLowerCase().includes(q)) &&
       (!show || (show === 'fit' && v === 'good') || (show === 'near' && ['good', 'dim', 'bright'].includes(v)) || (show === 'free' && (r.dataset.free === '1' || tick)) ||
        (show === 'ticked' && tick) || (show === 'inside' && r.dataset.inside === '1') || (show === 'coming' && r.dataset.inside === '0'));
-    r.hidden = !ok; if (ok) shown++;
+    const taken = hide && r.dataset.other === '1' && !tick;
+    r.hidden = !ok || taken; if (ok && !taken) shown++;
     r.querySelector('.sp-fit').innerHTML = has(dli) && v !== 'unknown' ? rend(lvTag(v, LIGHT_WORD[v])) : '';
   });
   const fitKey = r => { const t = num(r, 'target'); return t == null || !has(dli) ? 99 : Math.abs(Math.log(Math.max(dli, 0.01) / Math.max(t, 0.01))); };
@@ -270,28 +294,38 @@ function spotFilter() {
   const order = rows.slice().sort(cmp);
   if (order.some((r, i) => r !== rows[i])) order.forEach(r => ul.appendChild(r));      // appendChild moves; focus stays on a moved box
   const ticked = rows.filter(r => r.querySelector('input').checked).length;
-  f.querySelector('#sp-count').textContent = `Showing ${shown} of ${rows.length}. ${ticked} ticked for this spot.`;
+  const nTaken = hide ? rows.filter(r => r.dataset.other === '1' && !r.querySelector('input').checked).length : 0;
+  f.querySelector('#sp-count').textContent = `Showing ${shown} of ${rows.length}. ${ticked} ticked for this spot.${nTaken ? ` ${nTaken} in another spot are hidden.` : ''}`;
 }
 const LIGHT_WORD = { too_dim: 'Too dim', dim: 'A bit dim', good: 'Good', bright: 'A bit bright', too_bright: 'Too bright', unknown: 'Needs not set' };
 function spotPreview(now) {
   clearTimeout(SP && SP.t);
   const go = async () => {
     const f = dlg.querySelector('form[data-spot]'), out = document.getElementById('sp-prev'); if (!f || !out) return;
+    if (f.elements.place.value !== (SP.place ?? String(SP.x.place_id ?? ''))) {   // 1.56.0: a different shelf: its own levels
+      SP.place = f.elements.place.value; f.elements.level.innerHTML = rend(spotLevels(SP.place, f.elements.level.value));
+    }
     if (f.elements.light.value !== SP.light) {           // a different light: its own brightness steps and its card
       SP.light = f.elements.light.value; const L = ltLight(SP.light);
       f.elements.dim.innerHTML = rend(html`${spotDims(L, 100)}`);
       const card = document.getElementById('sp-light'); if (card) card.innerHTML = rend(spotLightCard(L, SP.x));
+      const hf = document.getElementById('sp-holder-f'); if (hf) hf.hidden = !(L && L.mount && L.mount.kind === 'socket');      // 1.56.0: only a bulb asks what it screws into
     }
     const q = new URLSearchParams({ light: f.elements.light.value, units: f.elements.units.value, distance: lenIn(f.elements.distance.value), hours: f.elements.hours.value, dim: f.elements.dim.value,
-      plants: [...f.querySelectorAll('input[name=plant]:checked')].map(i => i.value).join(','), spot: f.dataset.id || '' });
+      plants: [...f.querySelectorAll('input[name=plant]:checked')].map(i => i.value).join(','), spot: f.dataset.id || '',
+      place: f.elements.place.value, level: f.elements.level.value, holder: document.getElementById('sp-holder-f').hidden ? '' : f.elements.holder.value });
     try {
       const e = await api('GET', '/api/lights/preview?' + q.toString());
       SP.dli = e.dli; spotFilter();
       const ticked = e.plants.length, cover = e.area_sqft;
       out.innerHTML = rend(html`<p><strong>About ${has(e.dli) ? e.dli : '?'} mol/m² a day</strong> at the leaves${has(e.ppfd) ? `, ${fmt(e.ppfd)} PAR while it is on` : ''}${cover ? `, lighting about ${areaF(cover)}` : ''}.</p>
         ${ticked ? html`<p>${ticked} plant${ticked === 1 ? '' : 's'} ticked; their pots take about ${areaF(e.room_needed_sqft)}${cover ? ` of the ${fmt(cover, 1)} the light covers well` : ''}.${e.crowded ? ' Crowded: the plants at the edge get less.' : ''}</p>` : ''}
+        ${e.units > 1 ? html`<p class="hint">${e.stack >= e.units - 0.05 ? `The ${e.units} lights shine on the same plants, so their light adds up: about ${e.units} times one light${e.area_known ? '' : ' (this light has no area figures, so they are taken to be aimed at the same plants)'}.`
+          : e.stack > 1.05 ? `The ${e.units} lights overlap over these plants: about ${fmt(e.stack, 1)} times one light where the pots are.`
+          : `The ${e.units} lights sit side by side over plants that need the room, so they light more area at the strength of one.`}</p>` : ''}
         ${e.timer_note ? html`<p class="hint">${e.timer_note}</p>` : ''}
         ${e.plants.length ? html`<ul class="sp-verdicts">${e.plants.map(p => html`<li>${lvTag(p.verdict, p.verdict_word)} ${p.name} <span class="muted">(needs ${has(p.lo) ? `${fmt(p.lo, 1)} to ${fmt(p.hi, 1)}` : 'not set'})</span>${p.better ? html`. It would suit <strong>${p.better.name}</strong> (about ${p.better.dli}).` : ''}</li>`)}</ul>` : ''}`);
+      const fb = document.getElementById('sp-fitbox'); if (fb) fb.innerHTML = rend(html`<h3 class="sp-fit-h">Does it fit there?</h3>${fitBlock(e.fit)}`);      // 1.56.0 (PLAN.md step 8d)
     } catch (err) { out.innerHTML = rend(html`<p class="muted">${err.message}</p>`); }
   };
   if (now) go(); else SP.t = setTimeout(go, 250);
@@ -309,9 +343,11 @@ async function spotBest() {
   } catch (e) { say.textContent = e.message; }
 }
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.sp === 'q') e.preventDefault(); });   // Enter in the search box must not save the spot
+// 1.56.2: a number for a text box that is split on commas: no thousands separator, at most 2 decimals ("2496", "7.87")
+const plainNum = x => String(Math.round(+x * 100) / 100);
 async function lightDialog(L) {
   if (!(await needName())) return;
-  const S = (L && L.specs) || {}, pts = L ? L.points.map(p => `${fmt(p.distance_in, 2)} in ${fmt(p.ppfd, 2)}${p.area_sqft ? ` (${fmt(p.area_sqft, 2)} sq ft)` : ''}`).join(', ') : '';
+  const S = (L && L.specs) || {}, pts = L ? L.points.map(p => `${plainNum(p.distance_in)} in ${plainNum(p.ppfd)}${p.area_sqft ? ` (${plainNum(p.area_sqft)} sq ft)` : ''}`).join(', ') : '';
   let x = { name: L ? L.name : '', model: S.model || '', count: L ? L.count : 1, fixture: L ? L.fixture : '', notes: L ? L.notes : '', watts: S.watts == null ? '' : S.watts, points: pts,
     timer: S.timer || '', dimming: (S.dimming || [100]).join(', '), kind: S.kind || '' };
   for (;;) {

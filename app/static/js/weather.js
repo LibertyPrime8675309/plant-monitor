@@ -56,6 +56,12 @@ function chartCard(id, spec) {
       <tbody>${rows.map(t => html`<tr><td>${new Date(t).toLocaleString([], { dateStyle: 'medium', timeStyle: spec.daily ? undefined : 'short' })}</td>${look.map(m => html`<td class="num">${m.has(t) ? spec.fmt(m.get(t)) : ''}</td>`)}</tr>`)}</tbody></table></div>
       ${rows.length >= 400 ? html`<p class="hint">Showing the newest 400 rows.</p>` : ''}</details></section>`;
 }
+// 1.57.0: when none of the charts has a single reading in the period, one sentence says so (three empty boxes said it three times)
+function chartsEmpty(cards) {
+  const ids = [...rend(html`${cards}`).matchAll(/id="cb-([\w-]+)"/g)].map(m => m[1]);
+  return ids.length > 0 && ids.every(id => !CHARTS[id] || CHARTS[id].series.every(s => !s.pts.length));
+}
+const NO_READINGS = () => html`<p class="notice">No readings in this period yet. Online weather is added every hour, and your sensors' readings as they arrive; choose a longer period to see older ones.</p>`;
 function paintChart(id) {
   const sp = CHARTS[id], box = document.getElementById('cb-' + id), tip = document.getElementById('ct-' + id);
   if (!sp || !box) return;
@@ -330,7 +336,7 @@ function finishCharts(el, cards, sources, bucket, keepY, done, extraNote) {
   const dfmt = t => new Date(t).toLocaleDateString([], { dateStyle: 'medium' });
   const sum = document.getElementById('wx-sum');
   done(); el.className = 'cols-' + WX.cols;
-  el.innerHTML = rend(html`<div class="wx-grid">${cards.length ? cards : html`<p class="notice">Nothing chosen. Press "Choose what to chart" and tick at least one measurement.</p>`}</div>`);
+  el.innerHTML = rend(html`<div class="wx-grid">${!cards.length ? html`<p class="notice">Nothing chosen. Press "Choose what to chart" and tick at least one measurement.</p>` : chartsEmpty(cards) ? NO_READINGS() : cards}</div>`);
   if (sum) sum.textContent = (span ? `Data shown: ${dfmt(span[0])} to ${dfmt(span[1])}. ` : 'No data in this period. ') + (bucket === 'hour' ? 'One point per hour. ' : `One point per ${bucket} (${BUCKET_WORDS[bucket]} values). `) + (extraNote || '') + `${el.querySelectorAll('.chart-card').length} charts.`;
   const go = document.getElementById('wx-goto');
   if (go) go.innerHTML = rend(html`<option value="">Choose a chart</option>${[...el.querySelectorAll('.chart-card h3')].map(h => html`<option value="${h.closest('.chart-card').getAttribute('aria-labelledby')}">${h.textContent}</option>`)}`);
@@ -451,7 +457,7 @@ async function loadWxCharts() {
   const sum = document.getElementById('wx-sum');
   if (sum) sum.textContent = (span ? `Data shown: ${dfmt(span[0])} to ${dfmt(span[1])}. ` : 'No data in this period. ') + (bucket === 'hour' ? 'One point per hour. ' : `One point per ${bucket} (${BUCKET_WORDS[bucket]} values). `);
   done(); el.className = 'cols-' + WX.cols;
-  el.innerHTML = rend(html`<div class="wx-grid">${cards.length ? cards : html`<p class="notice">Nothing chosen. Press "Choose what to chart" and tick at least one measurement.</p>`}${s && s.points.length === 0 && want('sensor') ? html`<p class="hint">No sensor readings in this period yet.</p>` : ''}</div>`);
+  el.innerHTML = rend(html`<div class="wx-grid">${!cards.length ? html`<p class="notice">Nothing chosen. Press "Choose what to chart" and tick at least one measurement.</p>` : chartsEmpty(cards) ? NO_READINGS() : cards}${s && s.points.length === 0 && want('sensor') ? html`<p class="hint">No sensor readings in this period yet.</p>` : ''}</div>`);
   const go = document.getElementById('wx-goto');
   if (go) go.innerHTML = rend(html`<option value="">Choose a chart</option>${[...el.querySelectorAll('.chart-card h3')].map(h => html`<option value="${h.closest('.chart-card').getAttribute('aria-labelledby')}">${h.textContent}</option>`)}`);
   if (sum) sum.textContent += `${el.querySelectorAll('.chart-card').length} charts.`;
@@ -464,11 +470,12 @@ async function loadWxCharts() {
 // year it has (the cold-season pages are left out at a tropical home). Owner only, like the rest of a place's settings.
 const SEASON_WORDS = { temperate: 'A winter with frost', mild: 'A cool season, frost rare', tropical: 'Wet and dry seasons, no frost' };
 function siteCells(p) {
-  if (ME().role !== 'owner') return html`<div class="hint">${p.country ? p.country + '. ' : ''}${UNIT_WORDS.region[p.units || 'us']}. ${SEASON_WORDS[p.season || 'temperate']}.</div>`;
+  if (ME().role !== 'owner') return html`<div class="hint">${p.country ? p.country + '. ' : ''}${UNIT_WORDS.region[p.units || 'us']}. ${SEASON_WORDS[p.season || 'temperate']}.${p.tended === false ? ' Cared for outside the app.' : ''}</div>`;
   return html`<div class="site-set">
     <label class="f">Country<input type="text" maxlength="2" size="3" value="${p.country || ''}" data-act="placesite" data-id="${p.id}" data-k="country" aria-label="${'Country code for ' + p.name}"></label>
     <label class="f">Units there<select data-act="placesite" data-id="${p.id}" data-k="units" aria-label="${'Units at ' + p.name}">${Object.entries(UNIT_WORDS.region).map(([v, l]) => html`<option value="${v}" ${(p.units || 'us') === v ? raw('selected') : ''}>${l}</option>`)}</select></label>
-    <label class="f">Seasons<select data-act="placesite" data-id="${p.id}" data-k="season" aria-label="${'Seasons at ' + p.name}">${Object.entries(SEASON_WORDS).map(([v, l]) => html`<option value="${v}" ${(p.season || 'temperate') === v ? raw('selected') : ''}>${l}</option>`)}</select></label></div>`;
+    <label class="f">Seasons<select data-act="placesite" data-id="${p.id}" data-k="season" aria-label="${'Seasons at ' + p.name}">${Object.entries(SEASON_WORDS).map(([v, l]) => html`<option value="${v}" ${(p.season || 'temperate') === v ? raw('selected') : ''}>${l}</option>`)}</select></label>
+    ${p.is_home ? '' : html`<label class="f">Care<select data-act="placesite" data-id="${p.id}" data-k="tended" aria-label="${'Care at ' + p.name}"><option value="1" ${p.tended !== false ? raw('selected') : ''}>Logged in this app</option><option value="0" ${p.tended === false ? raw('selected') : ''}>Done outside the app</option></select><small>With "Done outside the app", Water all and a group's care leave its plants out. One plant can still be logged on its page.</small></label>`}</div>`;
 }
 function placesBlock(W) {
   const P = W.places || [];
@@ -653,6 +660,7 @@ async function loadWxTable() {
       <thead><tr><th scope="col">${lbl}</th>${T.source === 'sensor' ? html`<th scope="col">Device</th>` : ''}${T.kind === 'daily' ? html`<th scope="col">Status</th>` : ''}${cols.map(c => html`<th scope="col" class="num">${c.label}${c.unit ? html`<div class="hint">${c.unit}</div>` : ''}</th>`)}</tr></thead>
       <tbody>${T.rows.map(r => html`<tr><th scope="row">${T.kind === 'daily' ? dayLong(r.when) : r.when}</th>${T.source === 'sensor' ? html`<td>${r.device}</td>` : ''}${T.kind === 'daily' ? html`<td>${r.kind === 'forecast' ? 'Forecast' : 'Observed'}</td>` : ''}${cols.map(c => html`<td class="num">${wtCell(c.key, r[c.key], T.tz)}</td>`)}</tr>`)}</tbody></table></div>
       ${wtPager(T, 'bottom')}` : ''}`);
+  scrollBoxes(el);                                  // 1.58.0: the long table can be scrolled from the keyboard
 }
 function wtPager(T, where) {
   const off = c => c ? raw('disabled') : '';
@@ -696,20 +704,51 @@ function fzActBy(d) {
   return new Date(addDays(d, -1) + 'T12:00:00').toLocaleDateString([], { weekday: 'long' }) + ' evening';
 }
 function fzSig() { const F = FROST; return F && F.first ? [F.first.date, F.first.low, F.worst.date, F.worst.low, F.worst.counts.danger, F.worst.counts.damage, F.worst.counts.watch].join('|') : ''; }
+// 1.58.0 (November 12 review, item 8): each night says its own numbers, and the deadline is the first night that would hurt a plant.
+// The warning used the worst night's numbers with the first night's deadline: on a 61°F night with one close call it read "25 plants
+// ... Bring them in or cover them before dark today", and Today's button said "Cold night (25)".
+function fzList(k) {                // "3 could die, 8 would be damaged and 14 are close calls"
+  const parts = [k.danger ? `${k.danger} could die` : '', k.damage ? `${k.damage} would be damaged` : '', k.watch ? `${k.watch} ${k.watch === 1 ? 'is a close call' : 'are close calls'}` : ''].filter(Boolean);
+  return parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0];
+}
+function fzNights() {               // the nights with a plant on them: the first, the first that would damage or kill one, and what is not covered yet
+  const ns = ((FROST && FROST.nights) || []).filter(n => n.level), left = n => n ? n.plants.filter(x => !x.done).length : 0;
+  return { ns, first: ns[0] || null, act: ns.find(n => n.level !== 'watch') || null, left };
+}
+function fzToday() {                // for Today: what the next cold night needs, in a few words, and how many plants that is
+  const { ns, first, act, left } = fzNights(); if (!first) return { n: 0, bit: '' };
+  const open = ns.find(n => left(n)) || null;                       // the next night with a plant still to bring in or cover
+  if (!open) return { n: 0, bit: '', covered: true };
+  const close = n => `${left(n)} close call${left(n) === 1 ? '' : 's'} ${fzDay(n.date, true)}`;
+  const bit = open.level !== 'watch' ? `a cold night ${fzDay(open.date, true)}`
+    : act && left(act) && act.date > open.date ? `${close(open)} and a cold night ${fzDay(act.date, true)}` : close(open);
+  return { n: left(open), bit };
+}
 function frostBanner(inPage) {
   const F = FROST; if (!F || !F.first) return '';
   try { if (!inPage && localStorage.getItem('plantdb.frosthide') === fzSig()) return ''; } catch (e) { /* show it */ }
-  const W = F.worst, real = W.level !== 'watch', c = W.counts, sameNight = F.first.date === W.date;
-  const parts = [c.danger ? `${c.danger} could die` : '', c.damage ? `${c.damage} would be damaged` : '', c.watch ? `${c.watch} ${c.watch === 1 ? 'is a close call' : 'are close calls'}` : ''].filter(Boolean);
-  const list = parts.length > 1 ? parts.slice(0, -1).join(', ') + ' and ' + parts[parts.length - 1] : parts[0];
+  const W = F.worst, real = W.level !== 'watch', { first, act, left } = fzNights(); if (!first) return '';
+  const sameNight = first.date === W.date;
   const title = `${!real ? 'Cold night ahead' : W.low <= 36 ? 'Frost warning' : 'Cold warning'} for ${placeShort()}: down to ${tF(W.low)} ${fzDay(W.date, true)}`;
+  const by = act || first, n = by.plants.length, todo = left(by);       // the night to act before, and how many of its plants are not marked as covered
+  const what = !todo ? html`${n === 1 ? 'It is' : `All ${n} are`} marked as covered for ${fzDay(by.date, true)}.`
+    : !act ? html`None is forecast to be damaged: a close call is within ${tD(F.margin)} of a plant's damage point, and forecasts can miss by that much. To be safe, bring ${todo === 1 ? 'it' : 'them'} in or cover ${todo === 1 ? 'it' : 'them'} <strong>${fzActBy(by.date)}</strong>.`
+    : html`Bring ${sameNight || act.date !== first.date ? 'them' : 'those'} in or cover them <strong>${fzActBy(act.date)}</strong>${
+        act.date !== first.date ? ', before the first night that would damage a plant' : ''}.${todo < n ? ` ${n - todo} ${n - todo === 1 ? 'is' : 'are'} already marked as covered.` : ''}${
+        !sameNight && act.date === first.date ? ' The checklist says which night each of the others needs it by.' : ''}`;
+  // 1.58.0 (Ethan, November 13, 2026: the first screen): off Today the warning is one line with its two buttons, so a page starts with its own
+  // content; the numbers and the reasons are on the checklist it opens. On a phone the words are shorter still: the place is the home you are
+  // looking at, and "Hide" says the rest in its spoken name.
+  if (!inPage) { const nar = document.documentElement.dataset.narrow === '1';
+    return html`<section class="fz-banner fz-line ${real ? 'bad' : ''} noprint" aria-labelledby="fz-h">
+      <p class="fz-title" id="fz-h">${nar ? title.replace(` for ${placeShort()}`, '') : title}. <span class="fz-do">${todo ? html`${todo} plant${todo === 1 ? '' : 's'} to bring in or cover <strong>${fzActBy(by.date)}</strong>.` : `${n === 1 ? 'It is' : `All ${n} are`} marked as covered.`}</span></p>
+      <p class="row"><a class="btn small" href="#/frost">${nar ? 'Open the checklist' : 'Open the cold-night checklist'}</a>
+        <button class="btn small ghost" type="button" data-act="frosthide"${nar ? raw(' aria-label="Hide this warning until the forecast changes"') : ''}>${nar ? 'Hide' : 'Hide until the forecast changes'}</button></p></section>`; }
   // 1.34.0: on Today the warning is part of the page (a section with a heading, never hidden); elsewhere it is the banner above the page
-  return html`<${inPage ? 'div' : 'section'} class="fz-banner ${real ? 'bad' : ''} noprint" ${inPage ? '' : raw('aria-labelledby="fz-h"')}>
-    ${inPage ? html`<h2 class="fz-title">${title}</h2>` : html`<p class="fz-title" id="fz-h">${title}</p>`}
-    <p>Of your ${F.outdoor} plants outside, ${list} that night.${sameNight ? '' : ` The first cold night is ${fzDay(F.first.date, true)}, at ${tF(F.first.low)}.`}
-      Bring them in or cover them <strong>${fzActBy(F.first.date)}</strong>.</p>
-    <p class="row"><a class="btn" href="#/frost">Open the cold-night checklist</a>
-      ${inPage ? '' : html`<button class="btn ghost" type="button" data-act="frosthide">Hide until the forecast changes</button>`}</p></${inPage ? 'div' : 'section'}>`;
+  return html`<div class="fz-banner ${real ? 'bad' : ''} noprint"><h2 class="fz-title">${title}</h2>
+    <p>Of your ${F.outdoor} plants outside, ${fzList(W.counts)} that night.${sameNight ? '' : ` The first cold night is ${fzDay(first.date, true)}, at ${tF(first.low)}: ${fzList(first.counts)}${act && act.date !== first.date ? ', and nothing would be damaged' : ''}.`}
+      <span class="fz-do">${what}</span></p>
+    <p class="row"><a class="btn" href="#/frost">Open the cold-night checklist</a></p></div>`;
 }
 const FZ_DO = {
   'Move indoors': 'Bring it inside: a heated room, or the garage for a night or two.',

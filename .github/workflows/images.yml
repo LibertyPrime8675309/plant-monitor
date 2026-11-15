@@ -1,8 +1,10 @@
 # PLAN.md step 3: build the three container images on GitHub, so Ethan's PC is never the first place a Dockerfile fails.
 # Claude's sandbox cannot reach Docker Hub, so until this workflow existed an image was only ever built on his PC.
 #
-# On a pull request each image is built and thrown away (the build itself is the test). On a push to main the images
-# are also pushed to GitHub's registry under this repository, tagged with the release number from VERSION and "latest":
+# On a pull request each image is built, started and asked a few questions (dev/test/image_check.sh, from 1.58.0; before
+# that the build itself was the only test) and then thrown away. On a push to main the images that pass
+# are also pushed to GitHub's registry under this repository, tagged with the release number from VERSION and "latest"
+# (or, between releases, "main": see the ver step):
 #   ghcr.io/<owner>/plant-database:<version>, ...-vision:<version>, ...-speech:<version>
 # The repository and the packages are public (Ethan, November 7, 2026), so a PC pulls them with no login.
 # Layers are cached between runs (type=gha), so a run after a small change takes a few minutes, not the twenty the
@@ -29,27 +31,63 @@ jobs:
           - name: plant-database-speech
             dockerfile: speech/Dockerfile
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2                                                     # 1.56.5: to see whether this push changed VERSION
       - id: ver
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          echo "version=$(tr -d '[:space:]' < VERSION)" >> "$GITHUB_OUTPUT"
-          echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"   # registry names are lower case
-      - uses: docker/setup-buildx-action@v3
+          v=$(tr -d '[:space:]' < VERSION)
+          owner=${GITHUB_REPOSITORY_OWNER,,}                                 # registry names are lower case
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "owner=$owner" >> "$GITHUB_OUTPUT"
+          # 1.56.0 (the monthly rhythm, PLAN.md step 7): a push to main between releases carries the released VERSION. Its
+          # images must not replace that release's (a PC that pulls 1.55.0 must get 1.55.0), so once a release v<VERSION>
+          # exists, a push is tagged "main" and "main-<commit>" only. The push that changes VERSION is tagged with it and
+          # "latest", and release.yml then makes the release.
+          # 1.56.5: and only the push that changes VERSION. Two pull requests merged a minute apart (#99 then #100) both found no
+          # release yet, so the second one's images replaced 1.56.4's.
+          prev=$(git show HEAD^:VERSION 2>/dev/null | tr -d '[:space:]' || true)
+          if [ "$v" = "$prev" ] || gh release view "v$v" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "tags=ghcr.io/$owner/${{ matrix.name }}:main,ghcr.io/$owner/${{ matrix.name }}:main-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=ghcr.io/$owner/${{ matrix.name }}:$v,ghcr.io/$owner/${{ matrix.name }}:latest" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: docker/setup-buildx-action@v4
       - if: github.event_name == 'push'
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - uses: docker/build-push-action@v6
+      # 1.58.0 (November 12 review, item 6): the build alone is not the test. Nothing ever started what was built, and the
+      # failures that reached Ethan's PC were of that kind (1.12.0 could not write to its folders and restarted for ever).
+      # So the image is built and kept on this runner, dev/test/image_check.sh is run on it, and only then is it pushed
+      # (the second build step finds every layer already built, so it only pushes). The app image is started with this
+      # repository's own docker-compose.yml, asked a few questions, made to write a backup, and started a second time on its
+      # own data; the speech image decodes a second of sound; the picture checker loads its libraries. No model is downloaded.
+      - name: Build the image
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: ${{ matrix.dockerfile }}
           build-args: PLANTDB_VERSION=${{ steps.ver.outputs.version }}
-          push: ${{ github.event_name == 'push' }}
-          tags: |
-            ghcr.io/${{ steps.ver.outputs.owner }}/${{ matrix.name }}:${{ steps.ver.outputs.version }}
-            ghcr.io/${{ steps.ver.outputs.owner }}/${{ matrix.name }}:latest
+          load: true
+          tags: ${{ matrix.name }}:ci
           labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
           cache-from: type=gha,scope=${{ matrix.name }}
           cache-to: type=gha,scope=${{ matrix.name }},mode=max
+      - name: Start what was built and ask it a few questions
+        run: bash dev/test/image_check.sh ${{ matrix.name }} ${{ steps.ver.outputs.version }} ${{ matrix.name }}:ci
+      - name: Push it to GitHub's registry (a push to main only, and only an image that passed)
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          build-args: PLANTDB_VERSION=${{ steps.ver.outputs.version }}
+          push: true
+          tags: ${{ steps.ver.outputs.tags }}
+          labels: org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=${{ matrix.name }}
