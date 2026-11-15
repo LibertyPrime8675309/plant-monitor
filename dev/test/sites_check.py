@@ -83,7 +83,7 @@ with sync_playwright() as p:
           'at a tropical home, Care has no Winter plan, Cold-night checklist, Coming inside or Back outside, but keeps Fertilizer')
     pg.goto(LOCAL + '/#/'); pg.wait_for_selector('#today-needs', timeout=15000); pg.wait_for_timeout(1500)
     check(pg.locator('#today-cold, #today-inside, #fd-today, #bo-today, .fz-banner').count() == 0, 'Today has no cold blocks or frost banner there')
-    water_codes = pg.evaluate("[...document.querySelectorAll('#today-water .job, #today-unlogged .job')].map(e => e.dataset.code)")   # 1.57.0: and the plants with no watering logged
+    water_codes = pg.evaluate("[...document.querySelectorAll('#today-water .job, #today-unlogged .job, #today-water .wpl-card, #today-unlogged .wpl-card')].map(e => e.dataset.code)")   # 1.57.0: and the plants with no watering logged
     check(all(c in codes for c in water_codes), 'Today\'s water list has only Nevada City plants')
     needs = pg.inner_text('#today-needs')
     check('P-001' not in needs, 'Needed from you shows no Round Rock plant')
