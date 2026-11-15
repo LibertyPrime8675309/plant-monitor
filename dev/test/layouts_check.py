@@ -87,7 +87,7 @@ with sync_playwright() as p:
     # ---- a shelf's own button on Rooms and spots starts its layout from its measurements
     pg.goto(BASE + '/#/where'); pg.wait_for_selector('#ly-wherelink', timeout=20000)
     link = pg.locator(f'a.ly-wh[href="#/layouts?place={spot["id"]}"]')
-    check(link.count() == 1 and link.inner_text() == 'Lay it out' and link.get_attribute('aria-label') == 'Lay out Tall Brown Shelf', 'Rooms and spots: the shelf has a "Lay it out" button that names it')
+    check(link.count() == 1 and link.inner_text() == 'Lay it out' and link.get_attribute('aria-label') == 'Lay it out: Tall Brown Shelf', 'Rooms and spots: the shelf has a "Lay it out" button whose spoken name starts with those words and names the shelf')
     link.click(); pg.wait_for_selector('dialog[open] form[data-lystart]', timeout=20000)
     v = lambda n: pg.input_value(f'dialog[open] [name={n}]')
     check(v('name') == 'Tall Brown Shelf' and [v('width_in'), v('depth_in'), v('height_in')] == ['22', '11', '90'] and '4 levels' in pg.inner_text('#ly-st-items'),
@@ -297,7 +297,7 @@ with sync_playwright() as p:
     shot(pg, '7-list')
     pg.goto(BASE + '/#/where'); pg.wait_for_selector('#ly-wherelink', timeout=20000)
     link = pg.locator(f'a.ly-wh[href="#/layouts?place={spot["id"]}"]')
-    check(link.inner_text() == 'Open its layout', 'on Rooms and spots the shelf now says "Open its layout"')
+    check(link.inner_text() == 'Open its layout' and link.get_attribute('aria-label') == 'Open its layout: Tall Brown Shelf', 'on Rooms and spots the shelf now says "Open its layout"')
     link.click()
     check(until(pg, lambda: pg.url.endswith(f'#/layouts/{lid}')) and pg.locator('#ly-draw svg.ly-svg').count() >= 1, 'and that opens it')
     pcode = pg.evaluate("i => LY.d.items.find(x => x.id === i).plant", a)

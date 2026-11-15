@@ -518,8 +518,8 @@ function lyToolsDraw() {
       html`<label><input type="radio" name="lyview" id="ly-v-${v}" value="${v}" data-act="lyview" ${view === v ? raw('checked') : ''}><span>${w}</span></label>`)}</div></fieldset>
     ${can ? html`<button class="btn" type="button" id="ly-add" data-act="lyadd">Add something</button>
       <button class="btn ghost" type="button" id="ly-undo" data-act="lyundo" ${last ? raw(`aria-label="${esc(`Undo: ${last.short}. ${last.label}`)}"`) : raw('disabled')}>${last ? `Undo: ${last.short}` : 'Undo'}</button>` : ''}
-    <span class="ly-zoom" role="group" aria-label="Size of the drawing"><button class="btn ghost" type="button" id="ly-zout" data-act="lyzoom" data-d="-1" aria-label="Make the drawing smaller" ${LY.zoom <= 0.5 ? raw('disabled') : ''}>Smaller</button>
-      <button class="btn ghost" type="button" id="ly-zin" data-act="lyzoom" data-d="1" aria-label="Make the drawing larger" ${LY.zoom >= 4 ? raw('disabled') : ''}>Larger</button></span>
+    <span class="ly-zoom" role="group" aria-label="Size of the drawing"><button class="btn ghost" type="button" id="ly-zout" data-act="lyzoom" data-d="-1" aria-label="Smaller drawing" ${LY.zoom <= 0.5 ? raw('disabled') : ''}>Smaller</button>
+      <button class="btn ghost" type="button" id="ly-zin" data-act="lyzoom" data-d="1" aria-label="Larger drawing" ${LY.zoom >= 4 ? raw('disabled') : ''}>Larger</button></span>
     <details class="ly-more" ${LY.more ? raw('open') : ''}><summary class="btn ghost" id="ly-more" data-act="lymore"><span>Grid and settings<span class="ly-more-now">: ${sq} squares, snapping ${L.snap ? 'on' : 'off'}</span></span></summary>
       <div class="ly-more-in"><label class="chk ly-chk"><input type="checkbox" id="ly-snap" data-act="lysnap" ${L.snap ? raw('checked') : ''} ${can ? '' : raw('disabled')}>Snap to the grid</label>
         <label class="chk ly-chk"><input type="checkbox" id="ly-gridshow" data-act="lygridshow" ${LY.grid ? raw('checked') : ''}>Show the grid</label>
@@ -580,14 +580,14 @@ function lyPanelPatch() {                               // the chosen thing move
 function lyLists() {                                    // what to look at, everything on the layout, and the plants that are here but not drawn
   const L = LY.d, F = LY.F, can = lyCan(), st = lyState(F), fb = document.getElementById('ly-find-body'); if (!fb) return;
   fb.innerHTML = rend(F.length ? html`<ul class="ly-flist">${F.map(f => html`<li class="ly-f ${f.hard ? 'ly-f-hard' : 'ly-f-soft'}"><span><strong><span aria-hidden="true">${f.hard ? '✗' : '!'} </span>${LY_WORD[f.kind]}:</strong> ${f.text}</span>
-      <button class="btn small ghost" type="button" data-act="lypick" data-id="${f.ids[0]}" aria-label="Show ${(lyItem(f.ids[0]) || {}).name || 'it'} on the drawing">Show it</button></li>`)}</ul>`
+      <button class="btn small ghost" type="button" data-act="lypick" data-id="${f.ids[0]}" aria-label="Show it: ${(lyItem(f.ids[0]) || {}).name || 'on the drawing'}">Show it</button></li>`)}</ul>`
     : html`<p class="muted">${L.items.length ? 'Nothing to look at: everything fits.' : 'Nothing yet.'}</p>`);
   const tags = it => F.filter(f => lyMarked(f).includes(it.id)).map(f => f.kind).filter((k, i, a) => a.indexOf(k) === i).map(k => html` <span class="ly-tag ${['outside', 'overlap'].includes(k) ? 'ly-tag-hard' : 'ly-tag-soft'}"><span aria-hidden="true">${['outside', 'overlap'].includes(k) ? '✗' : '!'} </span>${LY_WORD[k]}</span>`);
   document.getElementById('ly-things-body').innerHTML = rend(L.items.length ? html`<ul class="ly-list">${L.items.map(it => html`<li class="ly-row${LY.sel === it.id ? ' is-sel' : ''}${st.get(it.id) ? ' is-' + st.get(it.id) : ''}" data-id="${it.id}">
       ${it.photo ? html`<img src="${thumbUrl(it.photo)}" alt="" loading="lazy">` : html`<span class="ly-nophoto ly-np-${it.kind}" aria-hidden="true"></span>`}
       <div class="ly-row-main"><div class="ly-row-txt"><span class="ly-num" aria-hidden="true">${it.sort}</span> <strong>${it.plant && !it.gone ? html`<a href="#/plant/${enc(it.plant)}">${it.name}</a>` : it.name}</strong> <span class="muted">${L.kinds[it.kind]}${it.plant ? ', ' : ''}${it.plant ? html`<span class="code">${it.plant}</span>` : ''}</span>${tags(it)}
         <br><span>${lySizeWords(it)}. ${lyWhere(L, it)[0].toUpperCase() + lyWhere(L, it).slice(1)}.${it.locked ? ' Locked in place.' : ''}${it.gone ? ' No longer in the record.' : ''}</span></div>
-      <button class="btn small ghost" type="button" data-act="lypick" data-id="${it.id}" aria-label="Choose ${it.sort}, ${it.name}" ${LY.sel === it.id ? raw('aria-pressed="true"') : ''}>${LY.sel === it.id ? 'Chosen' : 'Choose'}</button></div></li>`)}</ul>`
+      <button class="btn small ghost" type="button" data-act="lypick" data-id="${it.id}" aria-label="${LY.sel === it.id ? 'Chosen' : 'Choose'}: ${it.sort}, ${it.name}" ${LY.sel === it.id ? raw('aria-pressed="true"') : ''}>${LY.sel === it.id ? 'Chosen' : 'Choose'}</button></div></li>`)}</ul>`
     : html`<p class="muted">Nothing is on it yet.</p>`);
   const tray = L.plants.filter(p => p.here && !p.on), tb = document.getElementById('ly-tray');
   tb.hidden = !tray.length || !can;
@@ -595,7 +595,7 @@ function lyLists() {                                    // what to look at, ever
     ${tray.length > 1 ? html`<p><button class="btn small" type="button" data-act="lytray" data-all="1">Put all ${tray.length} on the layout</button></p>` : ''}
     ${tray.length > 12 ? raw(`<details class="ly-fold"><summary class="btn small ghost"><span>Show these ${tray.length} plants</span></summary>`) : ''}<ul class="ly-list">${tray.map(p => html`<li class="ly-row">${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : html`<span class="ly-nophoto" aria-hidden="true"></span>`}
       <div class="ly-row-main"><div class="ly-row-txt"><strong><a href="#/plant/${enc(p.code)}">${p.name}</a></strong> <span class="muted"><span class="code">${p.code}</span></span><br><span>${lySizeWords(p)}${p.guessed.length ? ' (a guess)' : ''}</span></div>
-      <button class="btn small ghost" type="button" data-act="lytray" data-code="${p.code}" aria-label="Put ${p.name} on the layout">Put it on</button></div></li>`)}</ul>${tray.length > 12 ? raw('</details>') : ''}`);
+      <button class="btn small ghost" type="button" data-act="lytray" data-code="${p.code}" aria-label="Put it on: ${p.name}">Put it on</button></div></li>`)}</ul>${tray.length > 12 ? raw('</details>') : ''}`);
 }
 function lyDrawAll() { if (!lyOn()) return; LY.F = lyFindings(LY.d); lyHead(); lyToolsDraw(); lyDrawViews(); lyPanel(); lyLists(); }
 function lySay(text) { const el = document.getElementById('ly-say'); if (el && text) el.textContent = text; }
@@ -1056,7 +1056,7 @@ addFeature({
     html: d => html`<p class="noprint" id="ly-wherelink"><a class="btn small ghost" href="#/layouts">Layouts</a> Draw a room or a shelf to scale and move things about on it${d.layouts.length ? ` (${d.layouts.length} so far)` : ''}.</p>`,
     then: (el, d) => {
       const has = new Map(d.places.map(p => [p.pid, p.layout_id]));
-      const link = (pid, name) => rend(html`<a class="btn small ghost ly-wh" href="#/layouts?place=${pid}" aria-label="${has.get(pid) ? 'Open the layout of' : 'Lay out'} ${name}">${has.get(pid) ? 'Open its layout' : 'Lay it out'}</a>`);
+      const link = (pid, name) => rend(html`<a class="btn small ghost ly-wh" href="#/layouts?place=${pid}" aria-label="${has.get(pid) ? 'Open its layout' : 'Lay it out'}: ${name}">${has.get(pid) ? 'Open its layout' : 'Lay it out'}</a>`);
       document.querySelectorAll('#app .wh-spots [data-act=ltplace][data-id]').forEach(b => { if (!b.parentElement.querySelector('.ly-wh')) b.insertAdjacentHTML('afterend', link(+b.dataset.id, b.getAttribute('aria-label').replace(/^Measurements and photos of /, ''))); });
       document.querySelectorAll('#app .wh-area[data-aid] > .wh-row').forEach(r => { const t = r.querySelector('span.muted'), n = r.querySelector('input[data-k=name]'); if (t && !r.querySelector('.ly-wh')) t.insertAdjacentHTML('afterend', link(-r.parentElement.dataset.aid, n ? n.value : 'this place')); });
     },
