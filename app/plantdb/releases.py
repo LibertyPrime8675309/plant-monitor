@@ -5,7 +5,9 @@ with the release zip and any new photo packs attached (.github/workflows/release
 before (images.yml). The updater on a PC asks GitHub for the newest release, downloads what the versions folder lacks, and
 installs it. One minor release a month, on the first; patches only for something broken.
 
-This module gives the app three small things, all shown on Today through the feature registry (js/releases.js):
+This module gives the app three small things, all shown on Today through the feature registry (js/releases.js), and the owner's
+half of "Check for updates" (1.58.0, /api/whatsnew/check below; the button is beside the version on Settings and at the foot of
+Navigation):
 - "What's new": the CHANGELOG entry for the version that is running, until the person says they have seen it (pref
   `seen_version`), so nobody has to go looking after an update.
 - "An update is ready": twice a day the app asks GitHub for the newest release (PLANTDB_UPDATES=0 turns it off; the
@@ -107,6 +109,23 @@ def whatsnew_seen():
     c.execute('INSERT OR REPLACE INTO user_prefs(login,key,value,updated_at) VALUES(?,?,?,?)', (prefs_login(c), 'seen_version', APP_VERSION, now()))
     c.commit()
     return jsonify(ok=True)
+
+@app.route('/api/whatsnew/check', methods=['POST'])
+def whatsnew_check():
+    """Check for updates (1.58.0), the owner's half: asks GitHub for the newest release now, instead of waiting for the twice-daily
+    look. {version: the one running, latest: {version, published, url} or None, newer: is it newer than the one running,
+    asked: was GitHub reached just now, off: asking is turned off}. With PLANTDB_UPDATES=0 GitHub is not asked and the last answer kept is given.
+    (The other half needs no route of its own: the page asks /api/version what the server runs and compares it with itself.)"""
+    c = db()
+    if ((getattr(g, 'user', None) or {}).get('role') or 'owner') != 'owner': abort(403, f'Only {owner_name(c)} can do this.')
+    on = os.environ.get('PLANTDB_UPDATES', '1') == '1' and not MIRROR
+    info = check_latest(c) if on else None
+    latest = info
+    if latest is None:
+        try: latest = json.loads(setting(c, 'latest_release', '') or 'null')
+        except ValueError: latest = None
+    return jsonify(version=APP_VERSION, asked=info is not None, off=not on, newer=bool(latest and newer(latest['version'], APP_VERSION)),
+                   latest={'version': latest['version'], 'published': latest.get('published', ''), 'url': latest.get('url', '')} if latest else None)
 
 @app.route('/api/whatsnew/all')
 def whatsnew_all():
