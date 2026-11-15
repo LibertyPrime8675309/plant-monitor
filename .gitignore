@@ -3,6 +3,9 @@ data/*
 !data/.gitkeep
 backups/*
 !backups/.gitkeep
+# update files from Claude hold details of the plants: they stay on the computer they were saved on (1.58.0)
+plant-updates/*
+!plant-updates/README.txt
 __pycache__/
 *.pyc
 # release zips are built from the repo, not stored in it

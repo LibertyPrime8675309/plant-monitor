@@ -162,6 +162,7 @@ function cmpDraw1() {
     list.innerHTML = rend(html`<div class="tbl-wrap wide cmp-wrap" id="cmp-wrap"><table class="tbl cmp-tbl"><caption class="sr">Lights compared at ${lenF(CMP.d.at)}, ${CMP.d.hours} hours a day</caption>
       <thead><tr>${th('name')}${shown.map(th)}<th scope="col"><span class="sr">Pick to compare</span></th></tr></thead>
       <tbody>${rows.map(r => html`<tr><th scope="row">${nameBtn(r)}</th>${shown.map(k => html`<td data-h="${cols[k].label}" ${k === 'source' ? raw(`title="${r.source_words.replace(/"/g, '&quot;')}"`) : ''}>${(cols[k].tv || cols[k].v)(r) || '—'}${k === 'source' && r.source === 'doubtful' ? html`<span class="sr">: ${r.source_words}</span>` : ''}</td>`)}<td>${pick(r)}</td></tr>`)}</tbody></table></div>`);
+    scrollBoxes(list);                              // 1.58.0: the wide table can be scrolled from the keyboard
   }
   cmpPickedDraw();
 }

@@ -548,6 +548,10 @@ function plantEdHtml(p) {
     ${sel('health_rating', 'Health', (META.health || []).map(x => [x, x]), p.health_rating)}
     <p class="hint wide">Change any of these by typing or choosing; each saves when you leave it. Everything else is under "Edit this page".</p></div>`;
 }
+// 1.58.0 (Ethan, November 13, 2026: the first screen): the care buttons come straight after the plant's name, with a short line on watering
+// (the reasons are in Water and soil); they were a pane and a half down on a computer and four screens down on a phone. Previous and Next,
+// their filters and the layout switch share one row, so the two halves are taller. What feature modules add about care (repotting,
+// turning, pests) goes in a box of its own where the buttons used to be (#quick-more; quickMore() in features.js).
 async function viewPlant(code) {
   const [p, h, cur, st] = await Promise.all([api('GET', '/api/plants/' + enc(code) + '?fill=1'), api('GET', '/api/plants/' + enc(code) + '/history'), loadCond(), api('GET', '/api/settings').catch(() => ({}))]);   // 1.53.0: fill=1 reads the species' facts for empty fields
   CUR = { p, h, base: st.base_url || location.origin };
@@ -564,8 +568,9 @@ async function viewPlant(code) {
     title: p.common_name,
     // 1.56.5: the plant's name comes first, then Previous / Next (they came first, and on a phone the name was a screen further down)
     html: html`<header class="pl-head"><h1>${p.common_name}</h1><p class="sci latin">${p.scientific_name || 'Scientific name not set'}</p></header>
-    ${pnavBlock(p.code)}<p class="crumb"><a href="#/plants">All plants</a>
-      <button class="btn ghost small noprint pl-layout" type="button" data-act="layout">${single ? 'Show photos and details side by side' : 'Switch to one column'}</button></p>
+    ${careQuick(p)}
+    <div class="pl-navrow noprint"><a class="btn small ghost" href="#/plants">All plants</a>${pnavBlock(p.code)}
+      <button class="btn ghost small pl-layout" type="button" data-act="layout">${single ? 'Show photos and details side by side' : 'Switch to one column'}</button></div>
     ${archived ? html`<div class="notice">This record is archived. It is hidden from the main list.</div>` : ''}
     <div class="plant">
       <div class="pane" id="pane-l" tabindex="0" role="region" aria-label="Photos"><section class="ph-sec" data-section="Photos"><h2 class="ph-title">Photos</h2><div id="photopanel">${photoPanel(p)}</div></section></div>
@@ -584,7 +589,7 @@ async function viewPlant(code) {
             <div class="row acts noprint"><a class="btn" href="#/plant/${enc(p.code)}/edit">Edit this page</a>
               <button class="btn ghost" type="button" data-act="archive" data-to="${archived ? '0' : '1'}">${archived ? 'Move back to the main list' : 'Archive'}</button></div></div>
         </div>
-        ${careQuick(p)}
+        <div class="quick-more noprint" id="quick-more" role="group" aria-label="More about this plant's care"></div>
 
         ${frostNote(p)}${needsBox(p)}
         ${condCard(p, cur)}${adviceBlock(p, cur)}

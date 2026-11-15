@@ -89,7 +89,16 @@ def review_api():
 # ---- 1.37.0: the share sheet target. The service worker normally answers this itself (it keeps the pictures on the device);
 # this is the fallback when there is no service worker (the first visit, or a browser without one): the pictures are added
 # as unassigned photos straight away.
-@app.route('/share', methods=['GET', 'POST'])
+# 1.58.0: it lives at /share-in. It was /share, the prefix Tailscale Funnel publishes for plant-sitter links, so anyone on the
+# internet could post pictures to it with no sign-in. Nothing under /share takes pictures now; /share itself only sends a
+# person on to the page (an installed app that still has the old address is answered by its service worker, as before).
+SHARE_IN = '/share-in'
+
+@app.route('/share')
+def share_page():
+    return Response('', 302, {'Location': '/#/share'})
+
+@app.route(SHARE_IN, methods=['GET', 'POST'])
 def share_target():
     if request.method == 'GET': return Response('', 302, {'Location': '/#/share'})
     c = db(); n = 0

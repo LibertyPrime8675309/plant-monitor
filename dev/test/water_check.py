@@ -5,6 +5,8 @@ else the home in use), never a home cared for outside the app (Baraboo, batch D1
 python3 dev/test/water_check.py      Screenshots: dev/tmp/shots/water-*.png"""
 import json, os, sys, urllib.request
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from waits import until
 BASE = 'http://127.0.0.1:8080'
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
 fails, errs = [], []
@@ -56,7 +58,9 @@ with sync_playwright() as p:
     multi = len(homes) > 1
     check(wa.inner_text() == (f'Water all {len(shown)} shown at {main["name"]}' if multi else f'Water all {len(shown)} shown') and len(shown) > 3,
           f'the Plants page has "{wa.inner_text()}": the plants the filters show at the home in use')
-    if away: check(f'The {len(away)} shown at other homes' in pg.inner_text('#wa-hint'), f'the note under it says the {len(away)} at other homes are left out ({away})')
+    if away:                                                    # 1.58.0: the note is behind "What Water all does", beside the button
+        pg.locator('details.pl-what > summary').click()
+        check(until(pg, lambda: f'The {len(away)} shown at other homes' in pg.inner_text('#wa-hint')), f'"What Water all does" says the {len(away)} at other homes are left out ({away})')
     before = watered() & set(shown)
     check(len(before) >= 1, f'some plants shown were already watered today ({sorted(before)})')
     wa.click(); pg.wait_for_selector('dialog[open]')

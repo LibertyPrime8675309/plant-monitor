@@ -275,6 +275,20 @@ If it doesn't load from the phone, Windows Firewall may be blocking port 8080. A
 
 Remove the line from `.env` and run `docker compose up -d` to close it again.
 
+### The names this computer answers to (from 1.58.0)
+
+On this computer's own address (`http://localhost:8080`) the app treats everyone as you, the owner. So that a web page from somewhere else cannot reach it through your browser by giving 127.0.0.1 a name of its own, the app answers there only to:
+
+- `localhost`, and number addresses such as `127.0.0.1` or `192.168.1.20`;
+- a single-word name, such as your PC's name on the home network, and names ending in `.local`, `.lan`, `.home`, `.home.arpa`, `.internal`, `.localhost` or `.test`;
+- the address saved for labels, and the public address saved for the calendar.
+
+Any other name gets a short page saying so. People who come in through Tailscale are not affected: they are let in by who they are. If you reach this computer's port under a name of your own with dots in it (through your own proxy, say), list it in `.env` and restart (several names: separate them with commas):
+
+- Windows (cmd.exe): `(echo PLANTDB_HOSTS=plants.myhouse.example)>>.env` then `docker compose up -d`
+- Windows (PowerShell): `Add-Content .env 'PLANTDB_HOSTS=plants.myhouse.example'; docker compose up -d`
+- bash: `echo 'PLANTDB_HOSTS=plants.myhouse.example' >> .env && docker compose up -d`
+
 ### If something doesn't work
 
 - **The address doesn't open:** check that Tailscale is on for that phone or computer. Run Set Up Remote Access again: it says what is missing.
@@ -335,7 +349,7 @@ On a phone the menu bar at the top scrolls away with the page (scroll back to th
 
 ### Read aloud and keyboard shortcuts (from 1.8.0)
 
-Every section has a **Read aloud** button. Your browser reads that section in its own voice, the section gets a dashed outline while it is read, and a big **Stop reading** button stays at the bottom of the screen. **Read this page aloud**, under the page title, reads the whole page (the R key does the same, and Escape stops; from 1.56.5 the reminder of those keys is here and in Display rather than beside every title). In **Display** you can hide the buttons, pick the **Reading speed** (slower to fastest) and the **Voice**, with **Try this voice**. In Microsoft Edge the "Natural" voices sound the most human.
+Every section has a **Read aloud** button (from 1.58.0 its spoken name starts with those words, "Read aloud: the Water section", so voice control finds it by what it shows; the same goes for every button whose name said more than its words). Your browser reads that section in its own voice, the section gets a dashed outline while it is read, and a big **Stop reading** button stays at the bottom of the screen. **Read this page aloud**, under the page title, reads the whole page (the R key does the same, and Escape stops; from 1.56.5 the reminder of those keys is here and in Display rather than beside every title). In **Display** you can hide the buttons, pick the **Reading speed** (slower to fastest) and the **Voice**, with **Try this voice**. In Microsoft Edge the "Natural" voices sound the most human.
 
 Keyboard shortcuts work on every page, except while you are typing in a box. **Display** can turn them off.
 
@@ -372,10 +386,12 @@ Every page has a menu down the side listing its sections (for example on the Wea
 
 ## Plants page filters
 
+From 1.58.0 the Plants page starts with its plants. The count ("101 of 101 active plants shown") sits beside the title. Under it is one row of tools: **Search**, **Home** (with more than one home), **Location**, **Winter plan** and **Sort by**. Under that is one row of small buttons: **More filters**, **Plants that need something from you**, **Copy my answers for Claude**, the photos still to take, and **Water all**. **What Water all does** opens its explanation. Then the plants. On a phone only the search box stays out: the lists are in **More filters** and the buttons are in **More to do here**. Before 1.58.0 the first plant was most of a screen down on a computer and more than two screens down on a phone.
+
 The filter row on the Plants page narrows the list. Every filter is remembered in this browser, and **Clear filters** resets them.
 
 - **Search:** name, code, location or plant type.
-- **Health** and **winter plan** (the coloured buttons above the filters).
+- **Winter plan:** a list in the row of tools, with how many plants have each plan (from 1.58.0; it was a row of five coloured buttons). **Health** is in More filters.
 - **Location (from 1.16.2):** outdoors, covered porch, indoors, or garage or shed.
 - **Group (from 1.16.0):** only the plants in one group.
 - **Show (from 1.16.2):** active plants only (the usual), active and archived together, or archived only. Archived plants say "Archived" on their card. Archiving hides a plant without deleting anything; **Move back to the main list** on its page undoes it.
@@ -408,13 +424,22 @@ On the **Winter plan** page each plant in "Plant by plant" has a **Moved indoors
 
 The **Today** page (the page the app opens on, from 1.34.0) lists what to do today, most urgent first:
 
-- **Water:** plants due or overdue for a check, each with **Watered** and **Still moist**, and **Watered all** for a whole round. "Check tomorrow" lists the next day's plants. "No watering logged yet" has one button, **I watered all today**, to start the reminders for all of them.
-- **Feed:** plants due for fertilizer today, with **Log feeding** (the same schedule as the Fertilizer page).
+- **Water:** plants due or overdue for a check, with **Watered** and **Still moist**, and **Watered all** for a whole round. "Check tomorrow" lists the next day's plants. "No watering logged yet" has one button, **I watered all today**, to start the reminders for all of them.
+  - From 1.58.0 the lists are grouped **by room and spot**, in the order of Rooms and spots, so you can water spot by spot. The cards are one run: a tile where each spot starts, with the spot's name and **Watered all N here**, then that spot's plants. Each plant is a card: its picture, its name and how late it is.
+  - **Press a picture to tick the plant** (the picture gets a tick, the word "Ticked" and a heavier border). **Watered** and **Still moist** for the ticked plants are in a bar that stays at the bottom of the screen while anything is ticked, with **Untick** to clear them. A ticked semi-hydro pot is topped up and a plant kept in water gets fresh water; Still moist is for the plants in soil. The ticks stay while you open a plant's page and come back, and start empty the next day.
+  - Press how late a plant is ("4 days overdue") to read the reason. Press its name to open its page.
+  - **Picture size** (Medium or Large), beside the order buttons, sets how large the pictures are. Each device remembers its own choice.
+  - With three spots or more, a phone has one list, **Go to a spot**, that goes straight to a spot.
+  - With a keyboard: Tab to a picture and press Space to tick it. From a ticked card, the next Tab is **Go to the buttons for the ticked plants**.
+  - **Most overdue first**, beside **By room and spot**, shows one row a plant with its reason and its own two buttons, as before 1.58.0. The choice is remembered on that device.
+  - To change the order of the spots, use **Move up** and **Move down** on Rooms and spots.
+- **Feed:** plants due for fertilizer today, with **Log feeding** (the same schedule as the Fertilizer page). From 1.58.0 a plant counts here once a feeding has been logged for it. For plants in their feeding season with no feeding ever logged, Today asks once, under **Feeding reminders**, whether you want reminders, with those plants folded under the question. **Yes, remind me** counts each plant from that day, so it comes up when its next feeding is due. **No reminders for these** keeps Today quiet about them. The Fertilizer page says where the answer stands and has a button to change it.
+- **Semi-hydro and water-only care:** a flush or a root check that is due. In the same way, for the ones never logged Today asks once, under **Flush and root-check reminders**; the Potting mixes page has the button to change the answer.
 - **Needed from you:** the open requests, with links to answer them.
 
-From 1.56.5 a part with nothing due (Turn the pots, Getting ready to come inside, Feed) is one line in the box at the top, "Nothing due today: …", instead of a part of its own. **What's new** shows in full the first time after an update; on later visits it is one line you can open, until you press **Got it**. **Going away? Make a plant-sitter sheet** is at the end of the page.
+From 1.56.5 a part with nothing due (Turn the pots, Getting ready to come inside, Feed) is one line in the box at the top, "Nothing due today: …", instead of a part of its own. From 1.58.0 the first sentence names only what there is (no "0 to feed"), and the **Cold night** button counts the plants of the next cold night that are not marked as covered yet. **What's new** shows in full the first time after an update; on later visits it is one line you can open, until you press **Got it**. **Going away? Make a plant-sitter sheet** is at the end of the page.
 
-Every plant page has **quick care buttons** under its label, big enough to use on a phone in the garden after scanning the plant's label: **Watered today**, **Checked: still moist**, **Log feeding**, **Add a photo** (opens the phone's camera) and **Log other care** (repotted, pruned, treated for pests, or a note, with a date). The line above them says when the plant was last watered and when to check it next. The plant's **Water and soil** section explains the reminder and has its **care log**, with a **Remove** button on each entry.
+Every plant page has **quick care buttons** straight under the plant's name (from 1.58.0; they were further down, under its label), big enough to use on a phone in the garden after scanning the plant's label: **Watered today**, **Checked: still moist**, **Log feeding**, **Add photos** (from the phone's camera or its photos) and **Log other care** (repotted, pruned, treated for pests, or a note, with a date). The line beside or above them is short from 1.58.0 ("Water: 4 days overdue. Watered Nov 2."): how late the plant is and what it last had. Under the buttons, **All plants**, **Previous Plant**, **Next Plant**, their filters and the layout switch share one row. What other parts of the app add about a plant's care (repotting, turning the pot, pests) is in a box of its own at the top of the details. The plant's **Water and soil** section explains the reminder and has its **care log**, with a **Remove** button on each entry.
 
 How the reminders work:
 
@@ -432,7 +457,9 @@ From 1.58.0, with more than one home, Water all waters the plants at **one home*
 
 ## Frost alert and cold-night checklist (from 1.8.0)
 
-When a night in the 7-day forecast would hurt a plant that is outside, a banner at the top of the page says how cold it will get and on which night, how many plants could die, would be damaged or are close calls, and when to act ("before dark today"). It is called "Frost warning" at 36°F or below and "Cold warning" above that, because the tropical plants are hurt at 50 to 60°F. **Hide until the forecast changes** hides it until the forecast gets colder or more plants are at risk. Plant pages show their own **Frost risk** note instead of the banner.
+When a night in the 7-day forecast would hurt a plant that is outside, a banner at the top of the page says how cold it will get and on which night, how many plants could die, would be damaged or are close calls, and when to act ("before dark today"). From 1.58.0 each night has its own numbers: the banner leads with the coldest night, then says what the first cold night would do if it is a different one, and the time to act is the evening before the first night that would damage a plant. A night with close calls only says that nothing is forecast to be damaged. Plants you marked as covered are not counted again. It is called "Frost warning" at 36°F or below and "Cold warning" above that, because the tropical plants are hurt at 50 to 60°F. **Hide until the forecast changes** hides it until the forecast gets colder or more plants are at risk. Plant pages show their own **Frost risk** note instead of the banner.
+
+From 1.58.0 the banner on pages other than Today is one line: the warning, how many plants to bring in or cover and by when, **Open the cold-night checklist** and **Hide until the forecast changes** (on a phone, **Open the checklist** and **Hide**). The numbers for each night are on Today and on the checklist.
 
 **Open the cold-night checklist** (on the banner, or on the Winter plan page) shows the next 7 nights, then each plant once, most urgent first, in three groups: **Bring inside**, **Cover or move to shelter**, and **Close calls** (within 3°F of the damage point). Each plant has **Moved indoors** (sets its Location to Indoors, so it leaves every list and warning) and **Covered for tonight** (ticks it off for its next cold night only, since covers go back on each night), with **Undo**. Each group also has a button for all its plants, which asks first. Tips for a cold night are at the bottom.
 
@@ -489,6 +516,33 @@ When Claude needs something to finish a plant's page (a check, a question, a pho
 **Copy my answers for Claude** is on the Plants page (it says how many answers are new, for example "(2 new)") and in "Needed from you" on each plant page. It puts everything you have done since you last copied into one message: your answers first, then changes to plant pages, photos added, feeding and care, and the "Still to photograph" list. Press **Copy message**, then paste it into your chat with Claude (Ctrl+V). **Save as a text file** puts the same message in your Downloads folder instead.
 
 Next time it starts from where the last copy ended, so nothing is sent twice. **What to include** can also be "The last 7 days", "The last 30 days" or "Everything", and **Also list what is still open** adds the open requests and photos, which helps when you start a new chat. Photos themselves can't go in the message, so attach any you want Claude to look at.
+
+## Updates from Claude (from 1.58.0)
+
+When Claude has corrections, photos or new pages for your plants, it saves one small file on this computer and tells you its name. You look through the changes and decide. Nothing is changed until you press the button.
+
+**Where the file goes.** Claude saves it in the folder `plant-updates`, inside your `plant-database` folder (beside `data` and `backups`). Its name starts with `plant-updates` and ends in `.json`, or `.zip` when photos come with it. The app only reads that folder. The files hold details of your plants, so they stay on this computer: they are not in a release and not on GitHub.
+
+**Today tells you.** While a file is waiting, Today has a line near the top: "Plant updates from Claude are waiting", with the file's name, how many changes it holds, and **Look at the changes**.
+
+**The page.** **Updates from Claude** is in the Plants menu. Opening a file shows:
+
+- The file's name, the day it was made, and Claude's note about it.
+- Every plant in one block, with its picture and its changes. Each change says what the page says **now**, what it would **change to**, and **why**.
+- A tick box on each change, ticked to begin with. Untick a change to leave it out. **Tick every change** and **Untick every change** do them all.
+- **Needs your decision:** a change to something that no longer says what the file expected, so it may be an edit you made yourself. It stays as it is unless you choose **Change it to Claude's**. A new page for a name your record already has needs a decision too.
+- **Nothing to do:** the page already says it. **Left out:** the plant in the file is not in your record under that code and name, or the change is not one a file can make. Each says why.
+- **Make the N changes** makes the ticked changes, all together. **Change nothing** sets the file aside.
+
+**What a file can hold:** a change to something on a plant's page, a plant to move to the archive, a question for you (it joins **Needed from you** on that plant's page), photos for a page you already have, and a new page, with its photos. Photos are shown small with their captions in words; they join the page's photos, and the page's main picture stays as it is. A new page is made at your main home unless the file names another of your homes, and when you have more than one home the page says which ("Indoors, at Baraboo, WI"). A file that names a home your record does not have leaves that page out.
+
+**Afterwards.** The page lists what changed and what was left. Each change is in the plant's **Page history** and in the Audit log, signed "Claude" with the file's name, with the reason and your name as the one who accepted it. To take one back, open the plant's page, then Page history, and restore the version before it.
+
+**Once.** A file is brought in once. Opening it again shows what it did. A file you set aside is listed under **Files you brought in before**; **Look at it again** brings it back while it is still in the folder. You can delete files from the `plant-updates` folder whenever you like.
+
+**A file kept somewhere else.** On the page, **Choose a file** takes an update file from anywhere on the computer.
+
+Only the owner sees this page, the files and Today's line.
 
 ## Current conditions and the "Now" marker
 
@@ -651,6 +705,8 @@ Feeding days and cold nights can go into Google, Outlook, Samsung or Apple calen
 ### Reaching the calendar from the internet with Tailscale Funnel
 
 Google Calendar, Outlook.com and iCloud fetch the link from the internet. Tailscale Funnel lets them reach the calendar link only (the `/cal/` path on port 8443), not the rest of Plant record. From 1.49.0 the plant-sitter sheet by link uses the same door for its `/share` path (see "Share the sheet by link"). Anything you share in your tailnet on port 443 with Tailscale Serve stays private.
+
+From 1.58.0 the app checks this itself as well. Tailscale marks every request that comes in from the internet through Funnel, and Plant record answers such a request only if it is the calendar link or a live plant-sitter link. Everything else gets "Not found", whatever the visitor sends with it. (Before 1.58.0, the address the phone's share sheet used sat under `/share` too, so a visitor who knew it could add pictures to your unassigned photos without signing in. If you run an older version with the `/share` Funnel on, turn that Funnel off until you update: the command is under "Share the sheet by link".)
 
 1. Turn on Funnel for the calendar, on the PC that runs Plant record. If Tailscale says Funnel or HTTPS is not turned on for your tailnet, open the link it shows, turn it on, and run the command again.
 
@@ -1278,10 +1334,15 @@ Cold nights and what is due are for the home you start on (People, Starts on). *
 
 **Backups, Second copy.** Each new backup is copied as soon as it is made:
 
-- **Another drive:** to the folder named by `PLANTDB_COPY_DIR` in the `.env` file next to `docker-compose.yml` (for example `PLANTDB_COPY_DIR=D:\PlantBackups`), after `docker compose up -d`. Until that is set, copies go to `backups-copy` next to the data folder, which is the same drive. The newest 10 are kept.
+- **Another drive:** to the folder named by `PLANTDB_COPY_DIR` in the `.env` file next to `docker-compose.yml` (for example `PLANTDB_COPY_DIR=D:\PlantBackups`), after `docker compose up -d`. Until that is set, copies go to `backups-copy` next to the data folder, which is the same drive and protects nothing if that drive fails. The newest 10 are kept. To set it (use your own folder; make the folder first):
+  - Windows (cmd.exe): `(echo PLANTDB_COPY_DIR=D:\PlantBackups)>>.env` then `docker compose up -d`
+  - Windows (PowerShell): `Add-Content .env 'PLANTDB_COPY_DIR=D:\PlantBackups'; docker compose up -d`
+  - bash: `echo 'PLANTDB_COPY_DIR=/mnt/backups/plants' >> .env && docker compose up -d`
 - **Another computer:** run the receiver from the `receiver` folder of the release on it (its README has the steps: Docker, a token, Tailscale), then type its address and token on the Backups page. The newest 20 are kept there.
 
 **Copy the newest backup now** tries both. What happened last shows under the form, and failures go on the Problems list.
+
+From 1.58.0 the app says so when every copy is on the record's own drive (no folder named in `PLANTDB_COPY_DIR` and no other computer set): at the top of the Backups page, on the Health card on Settings, and in one line on Today for the owner. Before 1.58.0 the Health card showed a tick for the `backups-copy` folder, and the Backups page could not see `PLANTDB_COPY_DIR` even when it was set.
 
 ### Search everywhere
 
@@ -1334,6 +1395,8 @@ The details for the stores near Round Rock and six stores near Nevada City (Peac
 
 ### The top bar
 
+On a phone (from 1.58.0) the top bar is one row: the page menu, Search and **More**. "Plant record" and the version are inside More. At the largest text Search and More take a second row.
+
 Six sections: **Today**, **Plants**, **Care**, **Weather**, **Discover** and **Settings**. Choose one, and its pages appear on a second row under it:
 
 | Section | Its pages |
@@ -1352,6 +1415,7 @@ The version number is always beside "Plant record". The **Home** button (it said
 Where a plant is has three parts: **outside or inside**, the **area or room**, and the **spot**. For example: Outside, Yard, Pallet shelf; or Inside, Downstairs Living Room, Large Brown Hutch.
 
 - **Rooms and spots** (under Plants) lists each home's areas outside and rooms inside, with their spots. Type over a name to rename it; it saves when you leave the box. **Add area**, **Add room** and **Add spot** are under each list, and **Remove** beside each one. An area or room with plants in it can't be removed until they are moved; removing a spot leaves its plants in the room.
+- **Move up** and **Move down** (from 1.58.0) put the rooms and the spots in your own order. Today lists the plants to water spot by spot in that order, so set it to the way you walk a round. Areas outside come before rooms inside.
 - **Roof overhead** (outside) and **Heated** (inside) decide how frost warnings and watering treat the plants there. Outside with a roof counts as a covered porch; inside without heat counts as a garage or shed.
 - On a plant's page, choose **Inside** or **Outside**, then the area or room, then the spot. **More about where** (the old "Spot (where exactly)") keeps whatever you wrote.
 - Your Rooms and shelves from the Grow lights page became rooms and spots, and a light spot's **Where** chooses from the same list.
@@ -1450,7 +1514,7 @@ Each home now carries these settings, on **Weather → Homes and places**, in it
 
 Today follows the home chosen with the Location button for everything now: water, feed, Needed from you, coming inside, turning, the health walk-through and the frost blocks all list only that home's plants. The Plants page keeps its own Home filter.
 
-**Editors at some homes only.** In the people list (Settings → people and names), an editor's row lists your homes with a tick box each. Untick a home and that person can still see everything, but cannot change plants at that home (their pages, care log, photos, requests). The owner is never limited. Lights, pots, groups and places are shared between homes and are not limited this way.
+**Editors at some homes only.** In the people list (Settings → people and names), an editor's row lists your homes with a tick box each. Untick a home and that person can still see everything, but cannot change plants at that home (their pages, care log, photos, requests). The owner is never limited. Lights, pots, groups and places are shared between homes and are not limited this way. From 1.58.0 the limit is checked wherever a plant is changed: its photos, questions, fertilizer and potting-mix entries, pest sightings, grow light spot and shelf follow the plant's home too, and such an editor can add plants, or move them, only at their own homes. Before 1.58.0 some of those went through when the request did not carry the plant's code.
 
 ### Add several plants at once
 
@@ -1603,7 +1667,7 @@ Instead of a printout, the sitter can open the sheet on their own phone and tick
 - Under the choices, **Share the sheet by link** (editors and the owner; people who can only view do not see it). **Make a link** makes one for the days, plants and note chosen above. Press **Copy the link** and send it however you like (a text message, say); **Open it** shows you what the sitter will see.
 - The sitter's page has **Smaller text**, **Larger text**, **Dark**, **High contrast** and **Print** buttons, large print to start with, and a real check box on every line. Each tick is saved at once and shows on your own sheet (filled in, with "Ticked by the sitter" for a screen reader) and in the link's row: how many boxes are ticked and when the page was last opened.
 - The link stops working the day after your last day away. **Take the link down** stops it at once; whoever opens it then sees "This sheet has been taken down" in plain words. The ticks are kept.
-- Nothing else is reachable through a link: only that sheet, its photos and its own page files. A link for one group shows only that group's plants, and a link made while another place is chosen shows that place's plants.
+- Nothing else is reachable through a link: only that sheet, its photos and its own page files. A link for one group shows only that group's plants, and a link made while another place is chosen shows that place's plants. From 1.58.0 the app also refuses everything that comes in from the internet except these links and the calendar link (see "Reaching the calendar from the internet with Tailscale Funnel").
 - **From outside your home network** the link needs Tailscale Funnel for the `/share` path, exactly like the calendar (see "Reaching the calendar from the internet with Tailscale Funnel" above). Until the public address is saved in the calendar window, the page says so and the link works at home only. Run this once on the PC that runs Plant record:
 
   Windows (cmd.exe):
@@ -1799,21 +1863,33 @@ Everything is in the `data` folder next to `docker-compose.yml`:
 
 Open **Backups** in the menu.
 
-- **Back up now** makes a backup straight away. Add an optional note, and tick **Include the photos** if you want them too.
+- **Back up now** makes a backup straight away. Add an optional note. **Include the photos** is ticked to start with (from 1.58.0, unless your photos come to more than a gigabyte); untick it for the database alone.
 - **Automatic backups**: switch them on or off and choose:
   - how often: every 6 hours, every 12 hours, daily, every 3 days or weekly
   - the hour of day
-  - how many automatic backups to keep (older automatic ones are deleted; backups you make yourself and the updater's backups are never deleted automatically)
-  - whether to include the photos
+  - how many automatic backups to keep (older automatic ones are deleted; backups you make yourself are never deleted automatically)
+  - whether to include the photos. From 1.58.0 they are included unless you untick the box. A record that had the box unticked was switched over once when 1.58.0 was installed (the Audit log says so), unless its photos come to more than a gigabyte; untick it again and it stays unticked. If they are left out, the top of the Backups page says so, with a button to put them in.
+- **Backups made before an update** (the updater makes one each time): from 1.58.0 the newest 5 are kept and older ones are deleted. Before that they were never deleted, one for every version installed.
+- **Weather history** (from 1.58.0) has a backup of its own, in pieces, on its own schedule. Nearly all of the database is weather history, and little of it changes from day to day, so every backup used to carry the same 50 MB again.
+  - The first piece holds everything. Each later piece holds only the days that are new or have changed. All the pieces together are the whole history.
+  - Choose how often (every day, 3 days, week, 2 weeks or month; it starts as every week) and the hour. A run with nothing new makes no file. **Back up the weather now** makes a piece straight away.
+  - **Combine the pieces into one** writes one new piece with everything, checks it, and only then removes the old ones. Past 26 pieces this happens by itself.
+  - **Put missing weather back from the pieces** adds the days your record lacks. It never changes or removes weather the record has.
+  - Once the first piece is made, the other backups leave the weather out, which makes them a few megabytes. The list says "without the weather history" on those. Restoring one of them keeps the weather your record has; if the record has none (a new computer), it is put back from the pieces.
+  - Untick **Back up the weather history by itself** and the other backups carry the whole weather history again.
 - The **Your backups** list shows each backup with a Download and a Delete button.
 
 Backups are zips named `plantdb-backup-YYYYMMDD-HHMMSS-<manual|auto|update>.zip`. Each holds `plants.db`, a `backup.json` describing it and, if chosen, a `photos` folder. They are saved in the `backups` folder next to `data`, so updates do not touch them. That folder is still on the same disk, so copy a few to another drive or cloud folder now and then.
+
+The pieces of the weather backup are zips named `plantdb-weather-YYYYMMDD-HHMMSS-<full|part>.zip` in `backups\weather`. Each holds `weather.db` (a small SQLite database with the hourly readings and the day summaries it carries) and `piece.json`, which lists the days in it. A piece is never changed once written. If a second folder is set for backups (`PLANTDB_COPY_DIR`), each piece is copied to a `weather` folder there too. Pieces are not sent to the other computer's receiver yet, so a mirror shows no weather history.
 
 The app must be running for automatic backups. If it was off when one was due, that backup runs within a few minutes of the next start.
 
 ### Restoring a backup
 
 Stop the app, keep the current database under another name, put the backup's `plants.db` in its place, and start the app again. The example uses `plantdb-backup-20261021-030000-auto.zip`; use your file's name.
+
+Restoring from the Backups page is simpler and keeps your weather history. Done by hand as below, a backup made from 1.58.0 on has no weather history in it: a few minutes after the app starts it puts the weather back from the pieces in `backups\weather` by itself (or press **Put missing weather back from the pieces** on the Backups page). Anything the pieces do not hold is downloaded again over the following hours.
 
 Windows (cmd.exe):
 

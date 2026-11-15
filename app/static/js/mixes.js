@@ -29,11 +29,12 @@ function mxInterval(r) {
 const dateF = d => d ? parseYmd(d).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '';
 // ---- the Potting mixes page
 async function viewMixes() {
-  await mxLoad();
+  await Promise.all([mxLoad(), loadAsks()]);
   const can = canChange(), E = MXD.every;
   const byRole = r => MXD.amendments.filter(a => a.role === r);
   return { title: 'Potting mixes', html: html`<h1>Potting mixes</h1>
     <p class="lede">What goes into your pots: recipes in parts by volume, the amendments they are made of, and how often semi-hydro and water-only plants are looked after. A plant's own page says what it is in now; <a href="#/pots">Pots and trays</a> has the pots themselves.</p>
+    ${askLine('flush', 'flush or root check')}
     <section class="blk" id="mx-recipes"><h2>Recipes (${MXD.recipes.length})</h2>
       ${can ? html`<p><button class="btn" type="button" data-act="mxrecipe">New recipe</button></p>` : ''}
       ${MXD.recipes.length ? html`<div class="mx-cards">${MXD.recipes.map(r => html`<article class="mx-card" data-id="${r.id}"><h3>${r.name}</h3>
@@ -168,6 +169,19 @@ async function mxPotDialog(code, repot) {
     top: L('top'), bottom: L('bottom'), notes: f.elements.notes.value, save_as: f.elements.save_as.value.trim() };
   await guard(async () => { await api('POST', '/api/mixes/plant/' + enc(code), body); toast(body.repot ? 'Repotted, with its mix' : 'Saved: what it is in'); MXD = null; route(); });
 }
+let MX_CARE = null;
+function mxCare() {                       // Today's two parts ask in the same moment: one request serves both
+  // 1.58.0 (Ethan, November 13, 2026): care never logged asks once (asks.py). No answer yet: the question, with these plants under it.
+  // Yes: each counts from the day of the answer. No: Today says nothing about them.
+  if (!MX_CARE) MX_CARE = Promise.all([api('GET', '/api/mixes/care'), loadAsks()]).then(([d]) => { const t = todayStr();
+    return { due: d.items.filter(x => x.last || askOn('flush', x.every, t)), fresh: ASKS.flush ? [] : d.items.filter(x => !x.last), every: d.every }; })
+    .finally(() => { MX_CARE = null; });
+  return MX_CARE;
+}
+const mxCareRow = x => html`<li class="job" data-code="${x.code}">${x.photo ? html`<img src="${thumbUrl(x.photo)}" alt="" loading="lazy" width="64" height="64">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}
+  <div class="job-txt"><a class="nm" href="#/plant/${enc(x.code)}">${x.name}</a> <span class="muted">${x.code}, ${x.grow_kind.toLowerCase()}</span>
+    <div>${MX_DOING[x.kind] || x.word}: ${x.last ? `last ${relDay(x.last)}, ${x.overdue > 0 ? `${x.overdue} day${x.overdue === 1 ? '' : 's'} overdue` : 'due today'}` : 'nothing logged yet'} (about every ${x.every} days).</div></div>
+  <div class="job-acts"><button class="btn small" type="button" data-act="care" data-kind="${x.kind}" data-code="${x.code}" data-name="${x.name}">${x.word}</button></div></li>`;
 addFeature({
   name: 'mixes',
   care: { topup: 'Topped up the reservoir', flush: 'Flushed', waterchange: 'Changed the water', rootcheck: 'Checked the roots' },
@@ -192,15 +206,20 @@ addFeature({
     },
     html: ({ S, p }) => mxPlantHtml(S, p),
   }],
+  // 1.58.0 (November 12 review, item 8): a flush or root check that has never been logged has no rhythm to be late on, so it is not counted as due
+  // (it stayed on Today for ever: "Flush and roots (6)" with nothing logged). Those wait in a folded part until the first one is logged, like watering.
   today: [{
     id: 'mx-hydro', order: 33,                                       // just after Water (30)
-    load: async () => { const d = await api('GET', '/api/mixes/care'); return d.items.length ? d : null; },
-    jump: d => `Flush and roots (${d.items.length})`,
-    html: d => html`<section class="blk" id="mx-hydro"><h2>Semi-hydro and water-only care (${d.items.length})</h2>
-      <ul class="jobs">${d.items.map(x => html`<li class="job" data-code="${x.code}">${x.photo ? html`<img src="${thumbUrl(x.photo)}" alt="" loading="lazy" width="64" height="64">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}
-        <div class="job-txt"><a class="nm" href="#/plant/${enc(x.code)}">${x.name}</a> <span class="muted">${x.code}, ${x.grow_kind.toLowerCase()}</span>
-          <div>${MX_DOING[x.kind] || x.word}: ${x.last ? `last ${relDay(x.last)}, ${x.overdue > 0 ? `${x.overdue} day${x.overdue === 1 ? '' : 's'} overdue` : 'due today'}` : 'nothing logged yet'} (about every ${x.every} days).</div></div>
-        <div class="job-acts"><button class="btn small" type="button" data-act="care" data-kind="${x.kind}" data-code="${x.code}" data-name="${x.name}">${x.word}</button></div></li>`)}</ul></section>`,
+    load: async () => { const d = await mxCare(); return d.due.length ? d : null; },
+    jump: d => `Flush and roots (${d.due.length})`,
+    html: d => html`<section class="blk" id="mx-hydro"><h2>Semi-hydro and water-only care (${d.due.length})</h2><ul class="jobs">${d.due.map(mxCareRow)}</ul></section>`,
+  }, {
+    id: 'mx-hydro-new', order: 34,
+    load: async () => { const d = await mxCare(); return d.fresh.length ? d : null; },
+    html: d => askBlock('flush', 'mx-hydro-new', d.fresh.length, 'Flush and root-check reminders',
+      `${d.fresh.length === 1 ? 'One semi-hydro or water-only plant has' : d.fresh.length + ' semi-hydro or water-only plants have'} no flush or root check in the log. Do you want Today to remind you when ${d.fresh.length === 1 ? 'it is' : 'they are'} due?`,
+      'Semi-hydro pots are flushed and water-only plants have their roots checked now and then. Yes starts counting today, so each comes up when it is next due. No keeps Today quiet about plants with none logged. A plant with one in the log is reminded either way. You can change the answer on the Potting mixes page.',
+      html`<ul class="jobs">${d.fresh.map(mxCareRow)}</ul>`),
   }],
 });
 Object.assign(acts, {

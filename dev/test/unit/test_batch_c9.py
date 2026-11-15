@@ -18,6 +18,9 @@ def test_the_page_is_made_with_its_photos_and_notes():
     assert p['home_id'], 'it lives at the Baraboo home, not the main one'
     homes = [h['name'] for h in t.get('/api/places').get_json() if h['id'] == p['home_id']]
     assert homes == ['Baraboo, WI'] or any('Baraboo' in n for n in homes), homes
+    with S.app.app_context():                # 1.58.0: the batch carried `area_id: 7`, copied from the white orchid's row: a room of the main home, and another room in every record
+        a = S.db().execute('SELECT * FROM areas WHERE id=?', (p['area_id'],)).fetchone()
+    assert a['home_id'] == p['home_id'] and (a['side'], a['sheltered'], a['name']) == ('out', 1, 'Covered porch'), 'it is on the covered porch of the Baraboo home'
     photos = [x for x in p['photos']]
     assert len(photos) == 5 and sum(1 for x in photos if x['is_primary']) == 1
     assert all(os.path.exists(os.path.join(S.DATA_DIR, 'photos', x['file'])) for x in photos)

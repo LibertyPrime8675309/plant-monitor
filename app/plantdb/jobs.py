@@ -4,7 +4,7 @@ running, what is waiting on a schedule, and what went wrong, in one place. The w
 from .core import *   # noqa: F401,F403
 
 JOB_WORD = {'weather': 'Weather update', 'backup': 'Backup', 'shops': 'Store check', 'library': 'Library photos', 'know': 'Library lookups',
-            'area': 'Library download', 'geo': 'Store map positions', 'restore': 'Restore', 'copy': 'Backup copy to the other computer', 'mirror': 'Mirror update'}
+            'area': 'Library download', 'geo': 'Store map positions', 'restore': 'Restore', 'copy': 'Backup copy to the other computer', 'mirror': 'Mirror update', 'wxbackup': 'Weather history backup'}
 JOBS = {'lock': threading.Lock(), 'running': {}, 'done': [], 'next': 0}
 
 def job_start(kind, label='', total=0):
@@ -62,6 +62,11 @@ def jobs_schedule(c):
         out.append({'kind': 'backup', 'word': JOB_WORD['backup'], 'every': {6: 'every 6 hours', 12: 'every 12 hours', 24: 'once a day', 168: 'once a week'}.get(BK_FREQ.get(S['freq'], 24), S['freq']),
                     'next': 'when due' if backup_due(c) else (datetime.fromisoformat(last_b.replace('Z', '+00:00')) + timedelta(hours=BK_FREQ.get(S['freq'], 24))).strftime('%Y-%m-%dT%H:%M:%SZ') if last_b else 'soon', 'last': last_b})
     else: out.append({'kind': 'backup', 'word': JOB_WORD['backup'], 'every': 'turned off', 'next': '', 'last': setting(c, 'backup_last_auto', '') or ''})
+    WS = wx_settings(c); wl = setting(c, 'wx_backup_last', '') or ''; days = WX_FREQ.get(WS['freq'], 7)         # 1.58.0: the weather history's own backup
+    if WS['enabled']:
+        out.append({'kind': 'wxbackup', 'word': JOB_WORD['wxbackup'], 'every': {1: 'once a day', 3: 'every 3 days', 7: 'once a week', 14: 'every 2 weeks', 30: 'once a month'}[days],
+                    'next': 'when due' if wx_due(c) else (parse_ts(wl) + timedelta(days=days)).strftime('%Y-%m-%dT%H:%M:%SZ') if wl else 'soon', 'last': wl})
+    else: out.append({'kind': 'wxbackup', 'word': JOB_WORD['wxbackup'], 'every': 'turned off', 'next': '', 'last': wl})
     return out
 
 @app.route('/api/jobs')
@@ -70,11 +75,12 @@ def jobs_api():
     with JOBS['lock']:
         running = sorted(JOBS['running'].values(), key=lambda j: j['id'])
         done = list(JOBS['done'])
-    return jsonify(running=running, done=done, schedule=jobs_schedule(c), problems=c.execute('SELECT COUNT(*) FROM problems WHERE cleared_at IS NULL').fetchone()[0])
+    return jsonify(running=running, done=done, schedule=jobs_schedule(c), problems=c.execute('SELECT COUNT(*) FROM problems WHERE cleared_at IS NULL').fetchone()[0],
+                   backup_notes=[n['key'] for n in backup_notes(c)])       # 1.58.0: Today tells the owner when the backups would not save the record
 
 @app.route('/api/jobs/run', methods=['POST'])
 def jobs_run_now():
-    """Owner: start a scheduled job now: {kind: weather | shops | backup}."""
+    """Owner: start a scheduled job now: {kind: weather | shops | backup | wxbackup}."""
     kind = str((request.get_json(silent=True) or {}).get('kind') or '')
     c = db()
     if kind == 'weather':
@@ -84,7 +90,9 @@ def jobs_run_now():
         shops_check_soon()
     elif kind == 'backup':
         if not run_backup_job('manual', bk_settings(c)['photos'], 'From the Jobs window', editor()): abort(409, 'A backup is being made already.')
-    else: abort(400, 'kind must be weather, shops or backup')
+    elif kind == 'wxbackup':
+        if BK_JOB.get('running') or not wx_run('make', editor()): abort(409, 'A backup is being made already.')
+    else: abort(400, 'kind must be weather, shops, backup or wxbackup')
     audit_only(c, 'setting', 'jobs', None, kind, editor(), f'{JOB_WORD[kind]} started from the Jobs window'); c.commit()
     return jsonify(ok=True)
 
@@ -112,7 +120,8 @@ def health_api():
     out = {'version': APP_VERSION, 'db_version': setting(c, 'db_version', ''), 'plants': plants, 'photos': photos,
            'db_bytes': os.path.getsize(DB_PATH) if os.path.exists(DB_PATH) else 0, 'data_bytes': dir_size(DATA_DIR), 'free_bytes': free, 'disk_bytes': total,
            'backup': {'last': sched.get('backup', {}).get('last', ''), 'next': sched.get('backup', {}).get('next', ''), 'every': sched.get('backup', {}).get('every', '')},
-           'copy': {'at': st.get('at', ''), 'dir': st.get('dir', ''), 'receiver': st.get('receiver', '')},
+           'copy': {'at': st.get('at', ''), 'dir': st.get('dir', ''), 'receiver': st.get('receiver', ''), 'away': copy_away(c)},
+           'backup_notes': backup_notes(c),          # 1.58.0: photos left out, or every copy on one drive (the owner's pages say so)
            'weather': {'last': sched.get('weather', {}).get('last', ''), 'next': sched.get('weather', {}).get('next', '')},
            'shops': {'last': sched.get('shops', {}).get('last', ''), 'next': sched.get('shops', {}).get('next', ''), 'every': sched.get('shops', {}).get('every', '')},
            'problems': c.execute('SELECT COUNT(*) FROM problems WHERE cleared_at IS NULL').fetchone()[0],

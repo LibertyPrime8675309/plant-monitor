@@ -23,7 +23,7 @@ function ltRoomsBlock() {
     const self = ps.find(pl => !pl.name), shelves = ps.filter(pl => pl.name), here = self ? spotsAt(self) : '';
     return html`<section class="lt-room" aria-label="${room}"><div class="lt-room-head"><h3>${room}</h3>
       <span class="row noprint"><button class="btn small" type="button" data-act="shelfnew" data-room="${room}" aria-label="New shelf in ${room}">New Shelf</button>
-        ${self ? html`<button class="btn ghost small" type="button" data-act="roomedit" data-id="${self.id}" aria-label="Rename the room ${room}">Rename</button><button class="btn ghost small" type="button" data-act="roomdel" data-id="${self.id}" aria-label="Remove the room ${room}">Remove room</button>` : ''}</span></div>
+        ${self ? html`<button class="btn ghost small" type="button" data-act="roomedit" data-id="${self.id}" aria-label="Rename the room ${room}">Rename</button><button class="btn ghost small" type="button" data-act="roomdel" data-id="${self.id}" aria-label="Remove room: ${room}">Remove room</button>` : ''}</span></div>
       ${self ? html`<div class="fit-place">${placeBits(self)}${self.words ? html`<p class="muted">${self.words}</p>` : ''}</div>` : ''}
       ${here ? html`<p class="muted">The room as a whole: ${here}</p>` : ''}
       ${shelves.length ? html`<ul>${shelves.map(pl => html`<li><span><strong>${pl.name}</strong><br><span class="muted">${spotsAt(pl) || 'No light spot here yet'}</span>${pl.words ? html`<br><span class="muted">${pl.words}</span>` : ''}
@@ -77,7 +77,7 @@ function ltSpotBody(s, i, plan) {
     ${s.plants.length ? html`<ul class="lt-plants lt-two">${s.plants.map(p => ltPlantLi(p, p.better ? html`<span class="lt-better">It would suit <strong>${p.better.name}</strong> (about ${p.better.dli} mol/m² a day).</span>` : ''))}</ul>` : html`<p class="muted">No plants in this spot yet.</p>`}
     ${ltSteps(s.steps)}
     <div class="row noprint">${plan ? html`<button class="btn" type="button" data-act="spotnew" data-plan="${i}">Set up this spot</button>`
-      : html`<button class="btn ghost" type="button" data-act="spotadd" data-id="${s.id}" aria-label="Add plants to ${s.name}">Add plants</button><button class="btn ghost" type="button" data-act="spotedit" data-id="${s.id}" aria-label="Change ${s.name}">Change this spot</button><button class="btn ghost" type="button" data-act="spotdel" data-id="${s.id}" aria-label="Remove ${s.name}">Remove this spot</button>`}</div>`;
+      : html`<button class="btn ghost" type="button" data-act="spotadd" data-id="${s.id}" aria-label="Add plants to ${s.name}">Add plants</button><button class="btn ghost" type="button" data-act="spotedit" data-id="${s.id}" aria-label="Change this spot: ${s.name}">Change this spot</button><button class="btn ghost" type="button" data-act="spotdel" data-id="${s.id}" aria-label="Remove this spot: ${s.name}">Remove this spot</button>`}</div>`;
 }
 function ltSpotCard(s, i, plan) {
   if (plan) return html`<article class="lt-spot" aria-labelledby="lts-p${i}"><h3 id="lts-p${i}">${s.name}</h3>${ltSpotBody(s, i, true)}</article>`;

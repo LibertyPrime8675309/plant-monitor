@@ -29,6 +29,9 @@ services:
       # 1.33.0: a second copy of each new backup lands here. Put PLANTDB_COPY_DIR=D:\PlantBackups (a folder on another drive) in
       # the .env file next to this one to send them there; until then they go to backups-copy next to the data folder.
       - ${PLANTDB_COPY_DIR:-./backups-copy}:/backups-copy
+      # 1.58.0: Claude saves a file of plant updates here (corrections, new pages); the page "Updates from Claude" shows each change
+      # before anything is changed. The app only reads this folder.
+      - ./plant-updates:/plant-updates:ro
     environment:
       # Optional: uncomment to require a password (any username) for http://localhost:8080 (and the home network, if opened).
       # People who come in through Tailscale are signed in by Tailscale instead.
@@ -38,6 +41,7 @@ services:
       TZ: America/Chicago
       PLANTDB_RUN_AS: ${PLANTDB_RUN_AS:-}
       PLANTDB_JOURNAL: ${PLANTDB_JOURNAL:-DELETE}   # 1.57.0: put PLANTDB_JOURNAL=WAL in .env to try WAL (tested first; falls back to DELETE)
+      PLANTDB_COPY_DIR: ${PLANTDB_COPY_DIR:-}       # 1.58.0: so the app knows whether you named a folder for the second copy (see volumes above)
     # Hardening (since 1.12): the app's own files cannot be changed, it has almost no Linux privileges and cannot gain
     # any. It can only write to data, backups and its scratch space (/tmp).
     # It starts as root with only the privileges below, and switches to its own user (which then has none at all) when

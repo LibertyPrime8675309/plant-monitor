@@ -1,0 +1,65 @@
+/* 1.58.0 (Ethan, November 13, 2026: the first screen, from the previews): All plants starts with its plants, the cold warning off
+   Today is one line, a plant's page has its care buttons under its name, and a phone's top bar is one row. */
+
+/* ----- All plants ----- */
+.hero.pl-hero{align-items:center;margin-bottom:.55rem}
+.pl-title{display:flex;flex-wrap:wrap;align-items:center;gap:.2rem 1.2rem;min-width:0}
+.pl-title h1{margin:0}
+.pl-title p{margin:0}
+.filters.pl-tools{margin-bottom:.7rem;gap:.5rem .9rem}
+.pl-row{display:flex;flex-wrap:wrap;gap:.5rem .6rem;align-items:flex-start;margin:0 0 1rem}
+.pl-row>.more-f{margin:0;padding:0 .85rem;flex:0 0 auto}
+.pl-row>.more-f>summary{padding:.45rem 0}
+.pl-row>.more-f[open]{flex:1 1 100%;order:5;padding-bottom:.5rem}
+.pl-row>.more-f.pl-acts[open]{order:6}
+.pl-row .water-all{margin:0;gap:.4rem .6rem}
+.pl-what>summary{cursor:pointer;display:inline-block;color:var(--cyan);font-weight:700;text-decoration:underline;text-underline-offset:3px;padding:.5rem .1rem}
+.pl-what[open]{flex:1 1 100%}
+.pl-what .hint{display:block;margin:0 0 .3rem}
+.pl-acts .row{margin:.3rem 0 .4rem}
+
+/* ----- the cold warning on pages other than Today ----- */
+.fz-banner.fz-line{display:flex;flex-wrap:wrap;gap:.3rem 1.2rem;align-items:center;justify-content:space-between;padding:.45rem .9rem;margin-bottom:.7rem}
+.fz-banner.fz-line p{margin:0}                 /* the Line length setting still decides how wide a paragraph may be */
+.fz-banner.fz-line .fz-title{font-size:1.15rem;flex:1 1 24rem;margin:0}
+.fz-banner.fz-line .fz-do{font-family:var(--sans);font-size:1rem;font-weight:400;margin-left:.4rem}
+.fz-banner.fz-line .row{margin:0}
+html[data-narrow="1"] .fz-banner.fz-line .fz-title{font-size:1.05rem;font-family:var(--sans);flex-basis:100%}
+html[data-narrow="1"] .fz-banner.fz-line .fz-do{margin-left:0}
+
+/* ----- a plant's page ----- */
+.pl-head{margin-bottom:.4rem}
+main>.quick{margin:0 0 .7rem;padding:.5rem .8rem}
+main>.quick #water-done-note{flex:1 1 100%;margin:0}
+html:not([data-narrow="1"]) main>.quick{display:flex;flex-wrap:wrap;gap:.3rem 1.2rem;align-items:center}
+html:not([data-narrow="1"]) main>.quick .quick-status{flex:1 1 26rem;margin:0}
+html:not([data-narrow="1"]) main>.quick .quick-btns{flex:1 1 44rem}
+html:not([data-narrow="1"]) main>.quick .quick-btns .btn{flex:1 1 8rem;min-height:2.75rem;padding-left:.6rem;padding-right:.6rem}
+html[data-narrow="1"] main>.quick .quick-btns .btn{flex:1 1 8rem}
+html[data-narrow="1"] main>.quick .quick-btns .btn:first-child{flex-basis:100%}
+/* the box for the rest of a plant's care (repotting, turning, pests). It looks like the care box but is not one: .quick stays the name of
+   the box with the buttons, so there is one of it on a page. */
+.quick-more{border:2px solid var(--line);border-radius:8px;background:var(--sheet);padding:.6rem .8rem;margin:0 0 1rem}
+.quick-more:empty{display:none}
+.quick-more>:first-child{margin-top:0}
+.pl-navrow{display:flex;flex-wrap:wrap;gap:.5rem .7rem;align-items:flex-start;margin:0 0 .7rem}
+.pl-navrow .pnav:not(.pn-side){margin:0;flex:0 1 auto;gap:.5rem;flex-wrap:wrap}
+.pl-navrow .pnav:not(.pn-side) .pn{flex-direction:row;flex-wrap:wrap;align-items:baseline;gap:.1rem .5rem;padding:.3rem .75rem;max-width:26rem;flex:0 1 auto;min-height:2.5rem;margin:0;text-align:left;align-content:center}
+.pl-navrow .pn-filters{margin:0;flex:1 1 18rem;padding:0 .8rem}
+.pl-navrow .pn-filters[open]{flex-basis:100%;order:5;padding-bottom:.5rem}
+.pl-navrow .pn-filters>summary{padding:.45rem 0}
+.pl-navrow .pl-layout{margin-left:auto}
+html[data-narrow="1"] .pl-navrow .pnav:not(.pn-side){flex:1 1 100%;flex-wrap:nowrap}
+html[data-narrow="1"] .pl-navrow .pnav:not(.pn-side) .pn{flex:1 1 0;flex-direction:column;gap:0;max-width:none}
+html[data-narrow="1"] .pl-navrow .pnav:not(.pn-side) .pn-next{text-align:right}
+html[data-narrow="1"] .pl-navrow .pn-code{display:none}
+
+/* ----- a phone's top bar in one row ----- */
+/* "Plant record" and the version are in More; the page menu, search and More share the row. When search and More do not fit beside
+   the page menu (the largest text), they take a second row. */
+html[data-narrow="1"] .top:not(.more-open) :is(.brand,.ver){display:none}
+html[data-narrow="1"] .top:not(.more-open) .top-in{align-items:stretch}
+html[data-narrow="1"] .top:not(.more-open) .pages-btn{flex:1 1 7rem}
+html[data-narrow="1"] .top:not(.more-open) .top-acts{flex:0 0 auto;margin-left:auto}
+html[data-narrow="1"] .top.more-open .brand{order:-2}
+html[data-narrow="1"] .top.more-open .ver{order:-1;margin-right:auto}
