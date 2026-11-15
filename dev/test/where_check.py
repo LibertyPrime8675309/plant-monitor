@@ -103,7 +103,24 @@ with sync_playwright() as p:
     check('Tall Black Shelf' in names and names[-1] == 'A new spot…', f'choosing a room offers its spots and a new one ({len(names)})')
     card.locator('[data-k=spot]').select_option(label='Tall Black Shelf'); pg.wait_for_timeout(200)
     check(card.locator('[data-whsnew]').is_hidden(), 'the new spot name box only shows for a new spot')
+    # 1.58.0 (Ethan, November 12): choices made in other groups survive Put in this spot
+    others = pg.evaluate("WHSORT.slice(1, 3).map(it => whsKey(it))")
+    for j in (1, 2):
+        if pg.locator(f'#whs-{j}').count():
+            o = pg.locator(f'#whs-{j}')
+            o.locator('[data-k=area]').select_option(str(dl['id'])); pg.wait_for_timeout(200)
+            o.locator('[data-k=spot]').select_option('new'); pg.wait_for_timeout(100)
+            o.locator('[data-k=name]').fill(f'Kept choice {j}')
+            if o.locator('[data-k=code]').count() > 1: o.locator('[data-k=code]').first.uncheck()
     card.locator('[data-act=whsone]').click(); pg.wait_for_timeout(2000)
+    after = pg.evaluate("""keys => keys.map(k => { const i = WHSORT.findIndex(it => whsKey(it) === k); if (i < 0) return null;
+      const q = n => document.querySelector(`[data-whs="${i}"][data-k=${n}]`);
+      return { area: q('area').value, spot: q('spot').value, name: q('name').value, shown: !document.querySelector(`[data-whsnew="${i}"]`).hidden,
+               off: document.querySelectorAll(`[data-whs="${i}"][data-k=code]:not(:checked)`).length, many: document.querySelectorAll(`[data-whs="${i}"][data-k=code]`).length }; })""", others)
+    kept = [a for a in after if a]
+    check(len(kept) >= 1 and all(a['area'] == str(dl['id']) and a['spot'] == 'new' and a['name'].startswith('Kept choice') and a['shown'] and (a['off'] == 1 or a['many'] == 1) for a in kept),
+          f'after Put in this spot, the area, new spot name and ticks chosen in the other groups are still there ({len(kept)} groups: {kept})')
+    pg.screenshot(path=os.path.join(OUT, 'where-3-kept.png'), full_page=False)
     tbs = next(sp for sp in dl['spots'] if sp['name'] == 'Tall Black Shelf')
     check(all(plant(c)['spot_id'] == tbs['id'] for c in codes0), f'Put in this spot puts its plants on the Tall Black Shelf ({len(codes0)})')
     check('put in Tall Black Shelf' in pg.inner_text('#toasts'), 'and says so')

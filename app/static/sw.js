@@ -71,10 +71,11 @@ async function shell(req) {
     return (await c.match(shellKey(req), { ignoreSearch: true })) || new Response('Offline, and the app is not saved on this device yet.', { status: 503 });
   }
 }
-// 1.37.0: the share sheet ("Share → Plants") posts the pictures here; keep them in a cache and open the page that adds them
+// 1.37.0: the share sheet ("Share → Plants") posts the pictures here; keep them in a cache and open the page that adds them.
+// 1.58.0: the address is /share-in (see review.py); /share is still answered here for an installed app whose manifest is the old one.
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  if (e.request.method !== 'POST' || url.pathname !== '/share') return;
+  if (e.request.method !== 'POST' || (url.pathname !== '/share-in' && url.pathname !== '/share')) return;
   e.respondWith((async () => {
     try {
       const fd = await e.request.formData(), c = await caches.open('plantdb-share'), files = fd.getAll('photos');

@@ -111,7 +111,6 @@ const r1 = n => Math.round(n * 10) / 10;           // avoids 3.7000000000000003
 const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
 const PLAN_CLASS = { 'Move indoors': 'p-move', 'Protect outside': 'p-protect', 'Hardy outside': 'p-hardy', 'Seasonal die-back': 'p-die', 'Annual': 'p-annual' };
-const PLAN_COLOR = { 'Move indoors': 'var(--cyan)', 'Protect outside': 'var(--ochre)', 'Hardy outside': 'var(--moss)', 'Seasonal die-back': 'var(--ink-2)', 'Annual': 'var(--ink-2)' };
 const HEALTH_CLASS = { Good: 'h-good', Fair: 'h-fair', Poor: 'h-poor', Critical: 'h-critical' };
 const HEALTH_COLOR = { Good: 'var(--moss)', Fair: 'var(--ochre)', Poor: 'var(--madder)', Critical: 'var(--critical)' };
 const HEALTH_ORDER = { Critical: 0, Poor: 1, Fair: 2, Good: 3 };
@@ -130,7 +129,10 @@ const ME = () => (META && META.me) || { via: 'local', role: 'owner', name: '', l
 const viaTS = () => ME().via === 'tailscale';
 function paintWho() {
   const n = viaTS() ? ME().name : getName(), el = document.getElementById('who-name');
-  if (el) el.textContent = viaTS() ? 'Signed in as ' + n : n ? 'Editing as ' + n : 'Set your name';
+  if (el) {
+    el.textContent = viaTS() ? 'Signed in as ' + n : n ? 'Editing as ' + n : 'Set your name';
+    el.parentNode.setAttribute('aria-label', el.textContent + (viaTS() ? '. People and your name' : '. Change who is editing'));      // 1.58.0: the spoken name starts with the words shown
+  }
   document.documentElement.dataset.role = ME().role;
   topSoon();
 }
@@ -323,21 +325,25 @@ async function viewWhere() {
   if (META) META.where = d.homes;
   WHAREAS = d.homes.flatMap(h => h.areas);                     // 1.56.3: the spots each area offers in Plants without a spot
   const can = canChange(), multi = d.homes.length > 1;
-  const areaHtml = a => html`<li class="wh-area" data-aid="${a.id}">
+  // 1.58.0: Move up and Move down put rooms and spots in the order a round is walked; Today lists the plants to water in that order
+  const mv = (kind, x, i, n) => !can || n < 2 ? '' : html`${i > 0 ? html`<button class="btn small ghost" type="button" data-act="whmove" data-kind="${kind}" data-id="${x.id}" data-dir="up" data-name="${x.name}" aria-label="Move up: ${x.name}">Move up</button>` : ''}
+    ${i < n - 1 ? html`<button class="btn small ghost" type="button" data-act="whmove" data-kind="${kind}" data-id="${x.id}" data-dir="down" data-name="${x.name}" aria-label="Move down: ${x.name}">Move down</button>` : ''}`;
+  const areaHtml = (a, ai, an) => html`<li class="wh-area" data-aid="${a.id}">
     <div class="wh-row"><label class="f wh-name">${a.side === 'out' ? 'Area' : 'Room'}<input type="text" maxlength="60" value="${a.name}" data-ed="area" data-id="${a.id}" data-k="name" ${can ? '' : raw('readonly')}></label>
       <label class="chk"><input type="checkbox" data-ed="area" data-id="${a.id}" data-k="sheltered" ${a.sheltered ? raw('checked') : ''} ${can ? '' : raw('disabled')}>${a.side === 'out' ? 'Roof overhead (like a covered porch)' : 'Heated (not a garage or shed)'}</label>
       <span class="muted">${a.plants} plant${a.plants === 1 ? '' : 's'}${a.lights ? `, ${a.lights} light spot${a.lights === 1 ? '' : 's'}` : ''}. Counts as: ${a.site}.</span>
-      ${can ? html`<button class="btn small ghost wh-del" type="button" data-act="whareadel" data-id="${a.id}" data-name="${a.name}">Remove ${a.name}</button>` : ''}</div>
-    <ul class="wh-spots">${a.spots.map(sp => html`<li><label class="f">Spot<input type="text" maxlength="60" value="${sp.name}" data-ed="spot" data-id="${sp.id}" data-k="name" ${can ? '' : raw('readonly')}></label>
+      ${mv('area', a, ai, an)}${can ? html`<button class="btn small ghost wh-del" type="button" data-act="whareadel" data-id="${a.id}" data-name="${a.name}">Remove ${a.name}</button>` : ''}</div>
+    <ul class="wh-spots">${a.spots.map((sp, si) => html`<li><label class="f">Spot<input type="text" maxlength="60" value="${sp.name}" data-ed="spot" data-id="${sp.id}" data-k="name" ${can ? '' : raw('readonly')}></label>
       <span class="muted">${sp.plants} plant${sp.plants === 1 ? '' : 's'}${sp.sheet ? `. ${sp.sheet[0].toUpperCase() + sp.sheet.slice(1)}.` : ''}</span>
-      <button class="btn small ghost" type="button" data-act="ltplace" data-id="${sp.id}" aria-label="Measurements and photos of ${sp.name}">Measurements and photos</button>${can ? html`<button class="btn small ghost" type="button" data-act="whspotdel" data-id="${sp.id}" data-name="${sp.name}" aria-label="Remove the spot ${sp.name}">Remove</button>` : ''}</li>`)}
+      <button class="btn small ghost" type="button" data-act="ltplace" data-id="${sp.id}" aria-label="Measurements and photos of ${sp.name}">Measurements and photos</button>${mv('spot', sp, si, a.spots.length)}${can ? html`<button class="btn small ghost" type="button" data-act="whspotdel" data-id="${sp.id}" data-name="${sp.name}" aria-label="Remove the spot ${sp.name}">Remove</button>` : ''}</li>`)}
       ${can ? html`<li><form class="row wh-add" data-form="whspotadd" data-aid="${a.id}"><label class="f">New spot in ${a.name}<input type="text" name="name" maxlength="60" placeholder="${a.side === 'out' ? 'Pallet shelf' : 'Brown hutch'}"></label><button class="btn small" type="submit">Add spot</button></form></li>` : ''}</ul></li>`;
-  const sideHtml = (h, side) => html`<section class="blk wh-side"><h3>${side === 'out' ? 'Outside' : 'Inside'}</h3><ul class="wh-areas">${h.areas.filter(a => a.side === side).map(areaHtml)}</ul>
+  const sideHtml = (h, side) => html`<section class="blk wh-side"><h3>${side === 'out' ? 'Outside' : 'Inside'}</h3><ul class="wh-areas">${h.areas.filter(a => a.side === side).map((a, i, all) => areaHtml(a, i, all.length))}</ul>
     ${can ? html`<form class="row wh-add" data-form="whareaadd" data-home="${h.home.is_home ? '' : h.home.id}" data-side="${side}"><label class="f">New ${side === 'out' ? 'area outside' : 'room inside'}<input type="text" name="name" maxlength="60" placeholder="${side === 'out' ? 'Patio' : 'Dining room'}"></label>
       <label class="chk"><input type="checkbox" name="sheltered" ${side === 'in' ? raw('checked') : ''}>${side === 'out' ? 'Roof overhead' : 'Heated'}</label><button class="btn small" type="submit">Add ${side === 'out' ? 'area' : 'room'}</button></form>` : ''}</section>`;
   return { title: 'Rooms and spots', html: html`<h1>Rooms and spots</h1>
     <p>Where plants go at each home: outside or inside, then the area or room, then the spot in it. Choose them on each plant's page. Rename anything here by typing over it; it saves when you leave the box. A room or shelf for grow lights is chosen from the same list.</p>
     <p class="hint">"Roof overhead" and "Heated" decide how frost warnings and watering treat the plants there: outside with a roof counts as a covered porch, and inside without heat counts as a garage or shed.</p>
+    ${can ? html`<p class="hint">Today lists the plants to water spot by spot, in the order shown here. <strong>Move up</strong> and <strong>Move down</strong> put the rooms and spots in the order you walk.</p>` : ''}
     ${S.items.length && can ? html`<section class="blk" id="wh-sort"><h2 tabindex="-1">Plants without a spot (${S.items.reduce((n, it) => n + it.plants.length, 0)})</h2>
       <p>These plants are not on a spot from your list yet. For each group, choose the area and one of its spots, or <strong>A new spot</strong> and its name, then press <strong>Put in this spot</strong>. Untick a plant to leave it for later. <strong>Put them all in their spots</strong> at the bottom does every group at once. What is written on a plant ("Spot (where exactly)") stays as it is.</p>
       <ul class="whs-list">${S.items.map((it, i) => whsCard(it, i, d.homes))}</ul>
@@ -371,6 +377,31 @@ function whsItem(i) {
   const codes = [...document.querySelectorAll(`[data-whs="${i}"][data-k=code]:checked`)].map(x => x.value);
   const spot = q('spot').value;
   return { text: it.text, from_area_id: it.area_id, area_id: +q('area').value, codes, ...(spot === 'new' ? { name: q('name').value } : { spot_id: +spot }) };
+}
+// 1.58.0 (Ethan, November 12): Put in this spot redraws the page, which used to undo the area, spot, name and ticks chosen in every
+// other group. They are noted first and put back afterwards, matched by group (its area and what is written on it), since the
+// groups' places in the list change when one is done.
+const whsKey = it => `${it.area_id}|${it.text || ''}`;
+function whsKeep(skip) {
+  const out = {};
+  WHSORT.forEach((it, i) => {
+    const q = k => document.querySelector(`[data-whs="${i}"][data-k=${k}]`); if (i === skip || !q('area')) return;
+    out[whsKey(it)] = { area: q('area').value, spot: q('spot').value, name: q('name') ? q('name').value : null,
+      off: [...document.querySelectorAll(`[data-whs="${i}"][data-k=code]:not(:checked)`)].map(x => x.value) };
+  });
+  return out;
+}
+function whsRestore(kept) {
+  WHSORT.forEach((it, i) => {
+    const k = kept[whsKey(it)], q = n => document.querySelector(`[data-whs="${i}"][data-k=${n}]`), area = q('area'), sel = q('spot');
+    if (!k || !area || !sel) return;
+    if ([...area.options].some(o => o.value === k.area)) area.value = k.area;
+    if (q('name') && k.name !== null) q('name').value = k.name;
+    sel.innerHTML = rend(whsSpotOpts(area.value, null, k.name));
+    if ([...sel.options].some(o => o.value === k.spot)) sel.value = k.spot;
+    const nf = document.querySelector(`[data-whsnew="${i}"]`); if (nf) nf.hidden = sel.value !== 'new';
+    document.querySelectorAll(`[data-whs="${i}"][data-k=code]`).forEach(b => { if (k.off.includes(b.value)) b.checked = false; });
+  });
 }
 document.addEventListener('change', e => {
   const t = e.target; if (!t.dataset || t.dataset.whs === undefined) return;
@@ -499,7 +530,7 @@ async function jobsDialog() {               // 1.32.0: the background jobs, in o
       ${j.total ? html` <span class="muted">(${j.done} of ${j.total})</span>` : ''}<br><small class="muted">Started ${when(j.started)}</small></li>`)}</ul>` : html`<p class="muted">Nothing is running.</p>`}
     <h3>On a schedule</h3>
     <ul class="job-list">${d.schedule.map(s => html`<li><strong>${s.word}</strong>: ${s.every}.${s.next ? ` Next ${/^\d{4}-/.test(s.next) ? when(s.next) : s.next}.` : ''} Last ${ago(s.last)}.
-      ${owner && ['weather', 'shops', 'backup'].includes(s.kind) ? html` <button class="btn ghost small" type="button" data-act="jobrun" data-kind="${s.kind}">Run now</button>` : ''}</li>`)}</ul>
+      ${owner && ['weather', 'shops', 'backup', 'wxbackup'].includes(s.kind) ? html` <button class="btn ghost small" type="button" data-act="jobrun" data-kind="${s.kind}">Run now</button>` : ''}</li>`)}</ul>
     <h3>Finished (${d.done.length})</h3>
     ${d.done.length ? html`<ul class="job-list">${d.done.map(j => html`<li><span aria-hidden="true">${j.ok ? '✓' : '✗'}</span> <strong>${j.word}</strong>${j.label ? `: ${j.label}` : ''}, ${j.ok ? 'done' : 'failed'}${j.text ? `: ${j.text}` : ''}
       <br><small class="muted">${when(j.finished)}, ${j.seconds != null ? `${j.seconds} s` : ''}</small></li>`)}</ul>` : html`<p class="muted">Nothing has finished since the app started.</p>`}
@@ -536,12 +567,15 @@ async function loadHealth() {
   const ok = (good, text) => html`<li class="${good ? 'hl-ok' : 'hl-bad'}"><span aria-hidden="true">${good ? '✓' : '!'}</span> ${text}</li>`;
   const oldAge = ts => ts && (Date.now() - new Date(ts)) > 2 * 86400e3;
   const lowDisk = H.free_bytes != null && H.free_bytes < 2e9;
-  const copyGood = H.copy.at && !/failed/.test(H.copy.dir + H.copy.receiver) && (H.copy.dir || H.copy.receiver);
+  const copyGood = H.copy.at && !/failed/.test(H.copy.dir + H.copy.receiver) && (H.copy.dir || H.copy.receiver) && H.copy.away !== false;   // 1.58.0: a copy beside the data is not a second copy
+  const notes = (H.backup_notes || []).filter(n => n.key !== 'one-drive');
   box.innerHTML = rend(html`<ul class="hl">
     <li><span aria-hidden="true">●</span> Version ${H.version}${H.db_version && H.db_version !== H.version ? ` (the database was last opened by ${H.db_version})` : ''}, running as ${H.runs_as || 'the app'}. ${H.plants} plants, ${H.photos} photos, ${H.readings.toLocaleString()} readings${H.sensors ? ` from ${H.sensors} sensor${H.sensors === 1 ? '' : 's'}` : ''}.</li>
     ${H.journal && H.journal.note ? html`<li><span aria-hidden="true">●</span> Saving mode: ${(H.journal.mode || '').toUpperCase()}. ${H.journal.note}</li>` : ''}
     ${ok(H.backup.last && !oldAge(H.backup.last), H.backup.last ? `Last backup ${when(H.backup.last)}${/^\d{4}-/.test(H.backup.next) ? ', next ' + when(H.backup.next) : ''}.` : H.backup.every === 'turned off' ? 'Automatic backups are turned off.' : 'No automatic backup yet.')}
-    ${ok(copyGood, H.copy.at ? `Second copy ${when(H.copy.at)}: ${[H.copy.dir ? 'folder ' + H.copy.dir : '', H.copy.receiver ? 'other computer ' + H.copy.receiver : ''].filter(Boolean).join('; ') || 'nowhere set up'}.` : 'No second copy of a backup yet (Backups page).')}
+    ${notes.map(n => ok(false, html`${bkNote(n)} <a href="#/backups">Backups</a>`))}
+    ${H.copy.away === false ? ok(false, html`${bkNote('one-drive')} <a href="#/backups?sec=bk-copies">How to keep a copy on another drive</a>`)
+      : ok(copyGood, H.copy.at ? `Second copy ${when(H.copy.at)}: ${[H.copy.dir ? 'folder ' + H.copy.dir : '', H.copy.receiver ? 'other computer ' + H.copy.receiver : ''].filter(Boolean).join('; ') || 'nowhere set up'}.` : 'No second copy of a backup yet (Backups page).')}
     ${ok(H.weather.last && !oldAge(H.weather.last), H.weather.last ? `Weather updated ${when(H.weather.last)}.` : 'No weather update yet.')}
     ${ok(true, H.shops.last ? `Stores checked ${when(H.shops.last)} (${H.shops.every}).` : `Stores not checked yet (${H.shops.every}).`)}
     ${ok(!H.problems, H.problems ? `${H.problems} problem${H.problems === 1 ? '' : 's'} to look at.` : 'No problems.')}
@@ -610,6 +644,7 @@ function modal(content, cls) {
   dlg.className = cls || '';
   dlg.innerHTML = rend(content);
   notesPass(dlg);                                   // 1.57.0: notes on request, in windows too
+  setTimeout(() => scrollBoxes(dlg), 0);            // 1.58.0: a table that scrolls in a window can be scrolled by keyboard (measured once the window is open)
   const h2 = dlg.querySelector('h2');               // the window is named by its heading, for screen readers
   if (h2) { h2.id = h2.id || 'dlg-title'; dlg.setAttribute('aria-labelledby', h2.id); } else dlg.removeAttribute('aria-labelledby');
   return new Promise(res => {
@@ -817,7 +852,7 @@ async function route() {
     featAdds(parts);                              // 1.46.0: what feature modules add to this page once it is on screen (features.js); they rebuild Navigation when done
     if (parts[0] === 'weather' && qs.get('sec') === 'places') setTimeout(() => { const t = document.getElementById('sec-places'); if (t) { scrollToSection(t); navFlash(t); } }, 300);   // 1.29.0: Homes and places
     else if (qs.get('sec')) { const go2 = () => { const t = document.getElementById(qs.get('sec')); if (t) { scrollToSection(t); navFlash(t); } }; setTimeout(go2, 300); setTimeout(go2, 1500); }   // 1.36.0: #/plant/P-001?sec=inside opens the page at that section
-    buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); setTimeout(() => { buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); }, 1200);
+    buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); scrollBoxes(); setTimeout(() => { buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); scrollBoxes(); }, 1200);
     if (h !== lastPath) { if (!(wentBack && !qs.get('sec') && scrollBack(h))) window.scrollTo(0, 0); focusTitle(app); NAVPIN = -1; navActive(); }
     else if (fresh && keepY) window.scrollTo(0, keepY);
     lastPath = h;

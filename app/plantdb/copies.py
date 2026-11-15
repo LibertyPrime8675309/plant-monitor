@@ -12,6 +12,12 @@ def copy_settings(c):
             'dir': COPY_DIR if os.path.isdir(COPY_DIR) else '', 'dir_env': os.environ.get('PLANTDB_COPY_DIR', ''),
             'status': json.loads(setting(c, 'backup_copy_status', '{}') or '{}')}
 
+def copy_away(c):
+    """1.58.0: is there a copy somewhere other than the record's own drive? A folder the owner named (PLANTDB_COPY_DIR in .env;
+    docker-compose passes it in from 1.58.0, the app could not see it before) or another computer. The default backups-copy
+    folder sits beside the data, on the same drive, and does not count."""
+    return bool(os.environ.get('PLANTDB_COPY_DIR', '').strip() and copy_dir_ok()) or bool(setting(c, 'backup_copy_url', '') and setting(c, 'backup_copy_token', ''))
+
 def copy_dir_ok():
     """The second folder, if Docker mapped one and it is not the backups folder itself."""
     if not os.path.isdir(COPY_DIR): return False

@@ -30,7 +30,7 @@ photos = [
     {'file': pic('crown_clip'), 'caption': f'{D}: close up of the crown with the clip on the upright leaf; dried, browning leaf bases to watch for rot', 'primary': False, 'source': SRC},
     {'file': pic('before'), 'caption': 'July 31: before the repot: no drainage holes, on a white saucer, roots hanging out of the pot and over the rim', 'primary': False, 'source': 'Ethan, July 31'},
 ]
-p = {k: base[k] for k in FIELD_NAMES}
+p = {k: base[k] for k in FIELD_NAMES if not k.endswith('_id')}     # not its home, room, spot, pot or tray: those are row numbers of one database (1.58.0: this page carried area_id 7)
 p.update(
     common_name='Moth orchid (grey pot, from Baraboo)', scientific_name='Phalaenopsis hybrid',
     aliases='Baraboo orchid (from Ethan\'s mother\'s house in Baraboo, Wisconsin)',

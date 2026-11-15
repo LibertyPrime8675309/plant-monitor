@@ -27,7 +27,7 @@ function rpWhen(p, R) {
 }
 const rpWords = (p, R) => `${p.where ? p.where + '. ' : ''}${rpWhen(p, R)} ${p.why}.`;
 function rpBtns(p) {
-  return html`${p.state === 'never' ? '' : html`<button class="btn small" type="button" data-act="repotted" data-code="${p.code}" data-name="${p.name}" aria-label="${'Repotted ' + p.name + ' today'}">Repotted today</button>`}
+  return html`${p.state === 'never' ? '' : html`<button class="btn small" type="button" data-act="repotted" data-code="${p.code}" data-name="${p.name}" aria-label="${'Repotted today: ' + p.name}">Repotted today</button>`}
     <button class="btn small ghost" type="button" data-act="repotset" data-code="${p.code}" aria-label="${(p.state === 'never' ? 'When was it repotted: ' : 'Change repotting for ') + p.name}">${p.state === 'never' ? 'When was it repotted?' : 'Change'}</button>`;
 }
 // The year choices for "When was it last repotted?". A year is saved as April 15 of that year (or today, if that is still to come),
@@ -175,7 +175,7 @@ addFeature({
   adds: {
     id: 'rp-plant', care: true,
     match: parts => parts[0] === 'plant' && parts[1] && parts[2] !== 'edit',
-    anchor: main => { const b = main.querySelector('.quick-btns'); return b && b.parentElement; }, where: 'beforeend',
+    anchor: quickMore, where: 'beforeend',
     load: async parts => {
       if (!CUR || CUR.p.code !== parts[1]) return null;
       const R = await api('GET', '/api/repotting?plant=' + enc(parts[1]));         // offline with nothing saved: leave it out

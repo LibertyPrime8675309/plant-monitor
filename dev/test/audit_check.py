@@ -4,6 +4,8 @@ Screenshots: dev/tmp/shots/audit-*.png"""
 import csv, io, json, os, sys, time, urllib.parse, urllib.request
 from datetime import date, timedelta
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from waits import until                      # 1.58.0: the filter steps wait for the list itself (a fixed pause was too short on GitHub)
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
 errs, fails = [], []
@@ -89,12 +91,26 @@ with sync_playwright() as pw:
     check(pg.locator('input[data-f=audq]').input_value() == 'hyacinth' and pg.locator('select[name=plant]').input_value() == 'P-050', 'filters are remembered')
     pg.locator('[data-act=audclear]').first.click(); pg.wait_for_timeout(1500)
     check(pg.locator('#aud-sum').inner_text().startswith('Showing 1 to 100 of'), 'Clear filters')
-    pg.select_option('select[name=who]', '~people'); pg.wait_for_timeout(900)
-    check(not any(t.startswith('Claude') for t in pg.locator('.aud-tbl td[data-label=Who]').all_inner_texts()), 'Who: people only')
-    pg.select_option('select[name=who]', ''); pg.select_option('select[name=field]', 'health_rating'); pg.wait_for_timeout(900)
-    check(all(t.startswith('Health rating') or 'Health rating' in t for t in pg.locator('.aud-tbl td[data-label=What]').all_inner_texts()), 'Field: health rating')
-    pg.select_option('select[name=field]', ''); pg.fill('input[name=from]', (date.today() + timedelta(days=1)).isoformat()); pg.dispatch_event('input[name=from]', 'change'); pg.wait_for_timeout(900)
-    check('No changes match' in pg.locator('#aud-list').inner_text(), 'From tomorrow: an empty message with Clear filters')
+    summ = lambda: pg.locator('#aud-sum').inner_text()
+    col = lambda label: pg.locator(f'.aud-tbl td[data-label={label}]').all_inner_texts()
+    n_health = S(field='health_rating')['total']
+    pg.select_option('select[name=who]', '~people')
+    check(until(pg, lambda: 'by people' in summ() and col('Who') and not any(t.startswith('Claude') for t in col('Who'))), 'Who: people only')
+    pg.select_option('select[name=who]', ''); pg.select_option('select[name=field]', 'health_rating')
+    check(until(pg, lambda: summ().startswith(f'Showing 1 to {min(n_health, 100)} of {n_health:,} ') and all('Health rating' in t for t in col('What'))), 'Field: health rating')
+    # 1.58.0: two choices one after the other start two searches, and the answer to the first can arrive last (it is the longer list; this
+    # failed on GitHub on November 13). Here the answers to searches without the field are held back, so they do arrive last: the list
+    # must still be the latest choice's. Nothing shows when a held-back answer is thrown away, so the wait is for its arrival.
+    pg.evaluate("""() => { const of = window.fetch; window.__audFetch = of; window.__audLate = 0;
+        window.fetch = (u, o) => { const p = of(u, o), s = String(u && u.url || u);
+          return s.includes('/api/audit/search') && !s.includes('field=health_rating') ? p.then(r => new Promise(res => setTimeout(() => { window.__audLate++; res(r); }, 700))) : p; }; }""")
+    pg.select_option('select[name=field]', ''); pg.select_option('select[name=field]', 'health_rating')
+    until(pg, lambda: pg.evaluate('window.__audLate') >= 1); pg.wait_for_timeout(300)
+    check(summ().startswith(f'Showing 1 to {min(n_health, 100)} of {n_health:,} ') and len(col('What')) == min(n_health, 100) and all('Health rating' in t for t in col('What')),
+          f'an answer to an earlier choice that arrives late does not replace the latest one ("{summ()}", {len(col("What"))} rows)')
+    pg.evaluate('() => { window.fetch = window.__audFetch; }')      # as a function: an expression whose value is a function is called by Playwright
+    pg.select_option('select[name=field]', ''); pg.fill('input[name=from]', (date.today() + timedelta(days=1)).isoformat()); pg.dispatch_event('input[name=from]', 'change')
+    check(until(pg, lambda: 'No changes match' in pg.locator('#aud-list').inner_text()), 'From tomorrow: an empty message with Clear filters')
     pg.locator('#aud-list [data-act=audclear]').click(); pg.wait_for_timeout(1500)
     pg.screenshot(path=f'{OUT}/audit-page.png')
     # the Debug window (on the Settings page from 1.29.0)

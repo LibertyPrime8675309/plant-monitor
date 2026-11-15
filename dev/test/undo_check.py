@@ -3,6 +3,8 @@ then Update now so the forecast and rain are filled in), then:  python3 dev/test
 Screenshots: dev/tmp/shots/undo-*.png"""
 import json, os, sys, urllib.request
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from waits import until
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
 errs, fails = [], []
@@ -11,7 +13,9 @@ def check(cond, what):
     if not cond: fails.append(what)
 def get(path): return json.load(urllib.request.urlopen(BASE + path))
 def log_for(code): return get('/api/care?plant=' + code)
-JOBS = '#today-water > ul.jobs > li.job'
+JOBS = '#today-water > .wpl .wpl-card'                   # 1.58.0: the watering list is cards by room and spot
+def press(pg, how):                                      # 1.58.0: tick the first card by its picture, then the bar's Watered ('water') or Still moist ('check')
+    pg.locator(JOBS).first.locator('label.wpl-tk').click(); pg.locator(f'#wpl-bar-due [data-how={how}]').click()
 TOAST = '#toasts .undo-toast'
 with sync_playwright() as p:
     b = p.chromium.launch()
@@ -25,8 +29,8 @@ with sync_playwright() as p:
             n0 = pg.locator(JOBS).count()
             check(n0 > 1, f'{tag}: {n0} plants due for water')
             code = pg.locator(JOBS).first.get_attribute('data-code'); before = len(log_for(code))
-            pg.locator(JOBS).first.locator('button[data-act=care][data-kind=water]').click(); pg.wait_for_timeout(1500)
-            check(pg.locator(f'{JOBS}[data-code="{code}"]').count() == 0, f'{tag}: {code} watered and left the list')
+            press(pg, 'water')
+            check(until(pg, lambda: pg.locator(f'{JOBS}[data-code="{code}"]').count() == 0), f'{tag}: {code} watered and left the list')
             check(len(log_for(code)) == before + 1, f'{tag}: one care log entry added')
             t = pg.locator(TOAST)
             check(t.count() == 1 and t.locator('[data-undo=undo]').is_visible(), f'{tag}: message with an Undo button is showing')
@@ -35,20 +39,22 @@ with sync_playwright() as p:
             check(over <= 2, f'{tag}: no sideways scrolling with the message showing')
             box = t.bounding_box(); check(box and box['x'] >= 0 and box['x'] + box['width'] <= w + 1, f'{tag}: message fits the screen width')
             pg.screenshot(path=f'{OUT}/undo-{tag}-today.png')
-            t.locator('[data-undo=undo]').click(); pg.wait_for_timeout(1800)
-            check(len(log_for(code)) == before, f'{tag}: Undo removed the entry')
-            check(pg.locator(f'{JOBS}[data-code="{code}"]').count() == 1, f'{tag}: {code} is back on the list')
+            t.locator('[data-undo=undo]').click()
+            check(until(pg, lambda: len(log_for(code)) == before), f'{tag}: Undo removed the entry')
+            check(until(pg, lambda: pg.locator(f'{JOBS}[data-code="{code}"]').count() == 1), f'{tag}: {code} is back on the list')
+            check(until(pg, lambda: pg.evaluate("document.activeElement.dataset.code") == code), f'{tag}: and the focus is on its tick box')
             check(pg.locator(TOAST).count() == 0, f'{tag}: the Undo message closed')
             check(pg.locator('#toasts .toast', has_text='Undone').count() == 1, f'{tag}: "Undone" message shown')
             if size == 'laptop' and theme == 'light':
-                # the U key, after Still moist (focus is on the next job's button, not in a box)
+                # the U key, after Still moist (the focus is on the list's first tick box, which takes no typing)
                 code2 = pg.locator(JOBS).first.get_attribute('data-code'); b2 = len(log_for(code2))
-                pg.locator(JOBS).first.locator('button[data-kind=check]').click(); pg.wait_for_timeout(1500)
-                check(len(log_for(code2)) == b2 + 1, 'Still moist logged')
-                pg.keyboard.press('u'); pg.wait_for_timeout(1800)
-                check(len(log_for(code2)) == b2, 'U key undid Still moist')
+                press(pg, 'check')
+                check(until(pg, lambda: len(log_for(code2)) == b2 + 1) and until(pg, lambda: pg.evaluate("document.activeElement.dataset.act") == 'wtick'), 'Still moist logged, and the focus is on a tick box')
+                pg.keyboard.press('u')
+                check(until(pg, lambda: len(log_for(code2)) == b2), 'U key undid Still moist')
                 # the countdown runs, and stops while the keyboard is on the message
-                pg.locator(JOBS).first.locator('button[data-kind=water]').click(); pg.wait_for_timeout(1200)
+                until(pg, lambda: pg.locator(TOAST).count() == 0 and pg.locator(f'{JOBS}[data-code="{code2}"]').count() == 1)
+                press(pg, 'water'); until(pg, lambda: pg.locator(TOAST + ' .undo-left').count() == 1)
                 t1 = pg.locator(TOAST + ' .undo-left').inner_text(); pg.wait_for_timeout(2100)
                 t2 = pg.locator(TOAST + ' .undo-left').inner_text()
                 check(t1 != t2, f'countdown runs ({t1} -> {t2})')
@@ -61,8 +67,8 @@ with sync_playwright() as p:
                 check(pg.locator(TOAST).count() == 0, 'Close removes the message (the watering stays)')
                 check(pg.evaluate("document.activeElement && document.activeElement.tagName") == 'H1', 'focus goes to the page heading after Close')
                 # someone else removed the entry first
-                code3 = pg.locator(JOBS).first.get_attribute('data-code')
-                pg.locator(JOBS).first.locator('button[data-kind=water]').click(); pg.wait_for_timeout(1500)
+                code3 = pg.locator(JOBS).first.get_attribute('data-code'); b3 = len(log_for(code3))
+                press(pg, 'water'); until(pg, lambda: len(log_for(code3)) == b3 + 1)
                 eid = log_for(code3)[0]['id']
                 urllib.request.urlopen(urllib.request.Request(BASE + f'/api/care/{eid}', method='DELETE', headers={'X-Editor': 'Someone'}))
                 pg.locator(TOAST + ' [data-undo=undo]').click(); pg.wait_for_timeout(1500)

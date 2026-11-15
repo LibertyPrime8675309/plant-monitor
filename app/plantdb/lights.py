@@ -487,6 +487,7 @@ def check_place(c, pid):
 def set_spot_plants(c, sid, spot_name, codes, who):
     old = {x for (x,) in c.execute('SELECT plant_code FROM light_assign WHERE spot_id=?', (sid,))}
     new = set(codes)
+    for code in sorted(new ^ old): home_check(c, code)          # 1.58.0: which light a plant is under follows the plant's home
     for code in sorted(new - old):
         r = c.execute('SELECT id, code FROM plants WHERE code=?', (code,)).fetchone()
         if not r: abort(400, f'There is no plant {code}')

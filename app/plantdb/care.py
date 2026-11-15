@@ -148,6 +148,7 @@ def care_one(i):
     c = db()
     old = c.execute('SELECT * FROM care_log WHERE id=?', (i,)).fetchone()
     if not old: abort(404, 'entry not found')
+    home_check(c, old['plant_code'])                 # 1.58.0: the entry follows its plant's home
     c.execute('DELETE FROM care_log WHERE id=?', (i,))
     r = c.execute('SELECT id FROM plants WHERE code=?', (old['plant_code'],)).fetchone()
     audit_only(c, 'care', 'care_log', f"{CARE_KINDS.get(old['kind'], old['kind'])} {old['done_on']}", None, editor(),
