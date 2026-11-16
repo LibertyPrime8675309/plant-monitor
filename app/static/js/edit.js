@@ -198,7 +198,7 @@ function viewForm(p) {
     html: html`<p class="crumb"><a href="${isNew ? '#/plants' : '#/plant/' + enc(p.code)}">${isNew ? 'All plants' : 'Back to ' + p.common_name}</a></p>
     <h1>${isNew ? 'Add a plant' : 'Edit ' + p.code}</h1>
     ${isNew ? addModeRow('one') : ''}
-    <p class="muted">${isNew ? 'Only the common name is required. Without a connection the plant is kept on this device and sent later; its first photo is then checked by the picture checker, and the names are offered on the Offline page.' : 'Saving makes version ' + (p.version + 1) + '. The old text stays in the page history.'}</p>
+    <p class="muted">${isNew ? 'Only the common name is required. Without a connection, the plant is kept on this device and sent later. Its first photo is checked then, and the names it suggests are on the Offline page.' : 'Saving makes version ' + (p.version + 1) + '. The old text stays in the page history.'}</p>
     <form data-form="${isNew ? 'new' : 'edit'}" ${p ? raw('data-code="' + esc(p.code) + '" data-ver="' + p.version + '"') : ''} autocomplete="off">
       ${isNew && NEWFILL ? html`<p class="notice ok" role="note">${NEWFILL.__from}: the names are filled in${NEWFILL.__pic ? ', and the picture is added when you save' : ''}. Check them before saving.</p>` : ''}
       ${isNew ? html`<fieldset><legend>Photos</legend><div class="field-grid">
@@ -241,7 +241,7 @@ function sevHtml() {
   const homes = HOMES();
   const homeSel = homes.length > 1 ? html`<label class="f">Home<small>Where these plants live.</small><select data-f="sevset" data-k="home">${homes.map(h => html`<option value="${h.is_home ? '' : h.id}" ${(h.is_home ? !SEV.home : String(SEV.home) === String(h.id)) ? raw('selected') : ''}>${h.name}</option>`)}</select></label>` : '';
   const siteSel = html`<label class="f">Location<select data-f="sevset" data-k="site">${(META.sites || ['Outdoors', 'Indoors']).map(x => html`<option ${x === SEV.site ? raw('selected') : ''}>${x}</option>`)}</select></label>`;
-  if (SEV.step !== 'review') return html`<p>Choose photos of several plants at once, from this device or your phone. Each photo is checked by the picture checker on this computer, and each plant's names and details are filled in from what it looks like. On the next screen you say, photo by photo, whether it shows the same plant as the one above or a different plant, and a wide shot of several plants together can go on every one of them. Nothing is added until you have checked everything.</p>
+  if (SEV.step !== 'review') return html`<p>Choose photos of several plants at once, from this device or your phone. Each photo is checked by the picture checker on this computer. Each plant's names and details are filled in from what it looks like. On the next screen, you say photo by photo whether it shows the same plant as the one above, or a different plant. A wide shot of several plants together can go on every one of them. Nothing is added until you have checked everything.</p>
     <form data-form="sevgo" class="sev-pick">
       <div class="field-grid">${homeSel}${siteSel}
         <label class="f wide">Photos<small>Choose as many as you like (JPG or PNG), from your photos or the camera. They are put in the order they were taken. A photo of the plant's label or tag helps.</small><input type="file" name="files" accept="image/*" multiple required></label></div>

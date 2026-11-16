@@ -22,6 +22,13 @@ function displayDialog() {
     'Try each one for a page or two: which helps is different for every reader.')}</div>`;
   G.plain = group('plain', 'Headings and plant names', [['0', 'Usual: headings in a book font, Latin names in italics'], ['1', 'One plain font: no italics and no capitals']],
     'Slanted and all-capital words are harder to read with dyslexia. Latin names stay in the same place, just upright.');
+  // 1.58.0 (the dyslexia audit): short forms in plain words, the reading guide and a page tint
+  G.abbr = group('abbr', 'Short forms', [['1', 'Explain them in brackets the first time on each page'], ['0', 'Leave them as they are']],
+    html`Such as "PAR (light plants can use)". All of them are explained on <a href="#/words">Words used in the app</a>.`);
+  G.guide = group('guide', 'Reading guide', [['0', 'Off'], ['1', 'On: a band across the page that follows the line you read']],
+    'The band follows the mouse pointer, your finger on the screen, or the box the keyboard is on. It never gets in the way of a click or tap.');
+  G.tint = group('tint', 'Page tint', [['none', 'None'], ['blue', 'Soft blue'], ['green', 'Soft green'], ['peach', 'Soft peach']],
+    'A pale colour behind the page instead of white, for light pages. Some readers find one tint calmer than the others: try each. Cream paper, in Colours, is a warm tint of its own.');
   const easyOn = easyReadingOn(P);
   G.easy = html`<div class="dv-easy" id="dv-easy"><p><strong>Easier reading</strong> sets the letter shapes to Lexend, one plain font, Roomy spacing, shorter lines and ${P.theme === 'dark' || P.theme === 'softdark' || document.documentElement.dataset.mode === 'dark' ? 'Soft dark' : 'Cream paper'} colours, all at once. You can change any of them after.</p>
     <p class="row">${easyOn ? html`<span>Easier reading is on.</span>` : html`<button class="btn small" type="button" data-act="easyread">Use easier reading</button>`}${easyPrev() ? html`<button class="btn ghost small" type="button" data-act="easyundo">Put back how it was</button>` : ''}</p></div>`;
@@ -53,7 +60,7 @@ function displayDialog() {
   const SH = window.PlantSync ? window.PlantSync.shared() : {};
   const share = part => html`<fieldset class="opt-group dv-share"><legend>Where these apply</legend><label class="chk"><input type="checkbox" data-dvshare="${part}" ${SH[part] ? raw('checked') : ''}>Use these on every device I sign in on</label>
     <p class="hint">Off (the usual): only this device. On: any phone, tablet or computer where you sign in and tick this too gets them.</p></fieldset>`;
-  const SECS = [['Text and colours', html`${G.size}${G.contrast}${G.theme}${G.cvd}${share('text')}`], ['Reading', html`${G.easy}${G.font}${G.plain}${G.space}${G.lines}${share('reading')}`],
+  const SECS = [['Text and colours', html`${G.size}${G.contrast}${G.theme}${G.cvd}${share('text')}`], ['Reading', html`${G.easy}${G.font}${G.plain}${G.space}${G.lines}${G.abbr}${G.guide}${G.tint}${share('reading')}`],
     ['Page layout', html`${G.width}${G.notes}${G.layout}${G.navside}${G.navopen}${share('layout')}`],
     ['Units', G.units], ['Identify', G.idmode], ['Reading aloud', html`${speak}${share('read')}`], ['Photos and touch', html`${G.photofit}${G.swipe}${share('photos')}`], ['Keyboard and voice', html`${G.keys}${G.vsearch}${share('keys')}`]];
   const keep = DVSCROLL; DVSCROLL = 0;
@@ -671,11 +678,17 @@ function bkNotesHtml(notes) {
 function copiesHtml(C) {          // 1.33.0: the second copy of each backup
   const st = C.status || {};
   return html`<section class="blk" id="bk-copies"><h2>Second copy</h2>
-    <p>Backups are on this PC's drive. A second copy of each new backup can also go to another drive, and to another computer over Tailscale (a family member's PC, say), as soon as the backup is made. The newest ${C.keep} are kept in the folder, the newest 20 on the other computer.</p>
+    <p>Backups are on this PC's drive. A second copy of each new backup can go to another drive, as soon as the backup is made. It can also go to another computer over Tailscale, such as a family member's PC. The newest ${C.keep} are kept in the folder, the newest 20 on the other computer.</p>
     <h3>Another drive</h3>
     ${C.dir_ok && C.dir_env ? html`<p><span aria-hidden="true">✓</span> Copies go to <code>${C.dir_env}</code>${C.dir_files.length ? ` (${C.dir_files.length} there now).` : ' (none there yet).'}</p>`
       : C.dir_ok ? html`<p><span aria-hidden="true">!</span> <strong>Copies go to <code>backups-copy</code>, next to the data folder${C.dir_files.length ? ` (${C.dir_files.length} there now)` : ''}. That is the same drive as the record, so it protects nothing if the drive fails.</strong></p>
-        <p>To send them to another drive: make a folder on it (an inside drive or a USB one), open the file named <code>.env</code> next to docker-compose.yml in Notepad (make it if it is not there), add the line <code>PLANTDB_COPY_DIR=D:\\PlantBackups</code> with your own folder, save, then run <strong>Update Plant Database.cmd</strong> or <code>docker compose up -d</code>. The README has the steps under "A second copy of each backup".</p>`
+        <p>To send them to another drive:</p>
+        <ol class="steps"><li>Make a folder on that drive. It can be a drive inside the computer or a USB one.</li>
+          <li>Open the file named <code>.env</code> in Notepad. It is next to docker-compose.yml. Make it if it is not there.</li>
+          <li>Add the line <code>PLANTDB_COPY_DIR=D:\\PlantBackups</code>, with your own folder in place of D:\\PlantBackups.</li>
+          <li>Save the file.</li>
+          <li>Run <strong>Update Plant Database.cmd</strong>, or <code>docker compose up -d</code>.</li></ol>
+        <p>The README has the same steps under "A second copy of each backup".</p>`
       : html`<p class="muted">No folder is mapped. Put <code>PLANTDB_COPY_DIR=D:\\PlantBackups</code> (a folder on another drive) in the <code>.env</code> file next to docker-compose.yml, then run <code>docker compose up -d</code>.</p>`}
     <h3>Another computer</h3>
     <form data-form="bkcopies" class="f-grid" autocomplete="off">
@@ -764,7 +777,7 @@ async function viewLabels() {
       ${/\.ts\.net$/i.test(location.hostname) && base !== location.origin && ME().role === 'owner' ? html`<p><button class="btn ghost" type="button" data-act="usethisbase">Use this address for the codes: ${location.origin}</button></p>` : ''}
       <p class="row"><button class="btn" type="button" data-act="print">Print labels</button>
         <a class="btn ghost" href="/card.html?all=1">Print care cards for all plants</a></p>
-      <p class="hint">Care cards: a 4 × 6 inch card (or a full page) for each plant, with its water, light, temperature, humidity, feeding and dangers in big type.</p></div>
+      <p class="hint">Care cards: a 4 × 6 inch card, or a full page, for each plant. Each card has its water, light, temperature, humidity, feeding and dangers in big type.</p></div>
     <div class="lsheet">${list.map(p => labelCard(p, base, true))}</div>
     <section class="blk" id="place-labels"><h2>Room, area and shelf labels</h2>
       <p class="muted">One for each room or area and each spot under Rooms and spots. Stick it on the shelf or by the door: scanning it opens the Plants page showing just what lives there.</p>

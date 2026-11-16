@@ -124,7 +124,7 @@ async function viewLibrary(qs) {
       <p>The "Your area" filter, the tags on the cards and each species' page use these lists. They are fetched in the background and kept on this computer, and fetched again when they get old.</p>
       <div id="lib-lists" aria-live="polite"><p class="muted">Loading…</p></div></section>
     <section class="id-sec" aria-labelledby="h-libpre"><h2 id="h-libpre">Photos for offline use</h2>
-      <p>Download the photo and short facts of every plant species recorded in an area, so the library shows them even without the internet. An area can be any country, state, county, city or park that iNaturalist knows. Downloads run in the background at about one species a second, after anything someone is looking at, and the photos are kept in data\\library (about 70 KB each). <strong>Check for updates</strong> gets the area's list again and downloads only what is new. Removing an area keeps its photos.</p>
+      <p>Download the photo and short facts of every plant species recorded in an area, so the library shows them even without the internet. An area can be any country, state, county, city or park that iNaturalist knows. Downloads run in the background, about one species a second, after anything someone is looking at. The photos are kept in data\\library, about 70 KB each. <strong>Check for updates</strong> gets the area's list again and downloads only what is new. Removing an area keeps its photos.</p>
       <div id="lib-pre" aria-live="polite"><p class="muted">Loading…</p></div></section>`,
   };
 }
@@ -156,7 +156,8 @@ function offKnowOk(k, f) {
 async function offLibBrowse(off) {             // the library without a connection: the download areas' list saved on this device
   const idx = await offSavedJson('/api/library/offline-index'); if (!idx) return null;
   const q = LIB.q.toLowerCase(), fam = LIB.family.toLowerCase(), m = LIB.mine;
-  let r = idx.species.filter(x => (!q || (x.n + ' ' + x.c).toLowerCase().includes(q)) && (!LIB.kind || x.k === LIB.kind) && (!fam || x.f.toLowerCase() === fam) && (!LIB.common || x.c)
+  const exactQ = !q || idx.species.some(x => (x.n + ' ' + x.c).toLowerCase().includes(q));      // 1.58.0: else close spellings
+  let r = idx.species.filter(x => (!q || (exactQ ? (x.n + ' ' + x.c).toLowerCase().includes(q) : fzMatch(x.n + ' ' + x.c, q))) && (!LIB.kind || x.k === LIB.kind) && (!fam || x.f.toLowerCase() === fam) && (!LIB.common || x.c)
     && (!m || (m === 'species' && x.y.length) || (m === 'genus' && x.y.length) || (m === 'wish' && x.w) || (m === 'notes' && x.t.length) || (m.startsWith('tag:') && x.t.includes(m.slice(4))))
     && (!LIB.know || offKnowOk(x.kn, LIB.know)));
   if (LIB.sort === 'sci') r = r.slice().sort((a, b) => a.n.localeCompare(b.n)); else if (LIB.sort === 'common') r = r.slice().sort((a, b) => (a.c || '~').localeCompare(b.c || '~'));
@@ -410,7 +411,7 @@ async function viewAround() {
   return {
     title: 'Around home', after: () => { libPhotos(); if (empty && d.online) setTimeout(() => { if (location.hash === '#/around') route(); }, 15000); },
     html: html`<p class="crumb"><a href="#/library">Back to the library</a></p><h1>Around ${d.place}</h1>
-    <p>What people have recorded growing wild within ${MILES(d.near_km)} miles of ${d.place}, from iNaturalist: what is flowering this month, the mushrooms and other fungi found this month, and the plants and fungi recorded most often. Open any of them for its page.</p>
+    <p>What people have recorded growing wild within ${MILES(d.near_km)} miles of ${d.place}, from iNaturalist. It shows what is flowering this month, the mushrooms and other fungi found this month, and the plants and fungi recorded most often. Open any of them for its page.</p>
     ${d.sections.some(x => x.key === 'fruiting' && x.total) ? fungiSafety(true) : ''}
     ${!d.online ? html`<p class="notice">Library lookups are turned off, so these lists are not fetched. The owner can turn them on at the bottom of the Library page.</p>` : empty ? html`<p class="notice" role="status">The lists are being fetched for the first time. This page fills in by itself in a minute or two.</p>` : ''}
     <div id="lib-res">${d.sections.map(x => html`<section aria-labelledby="ar-${x.key}"><h2 id="ar-${x.key}">${x.title}</h2>

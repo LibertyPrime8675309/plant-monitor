@@ -46,7 +46,7 @@ with sync_playwright() as p:
     pg.goto(BASE + '/#/mixes'); pg.wait_for_selector('#mx-amendments', timeout=20000); pg.wait_for_timeout(400)
     t = pg.inner_text('#mx-amendments')
     check('Parts of a mix' in t and 'Semi-hydro media' in t and 'Additives (a pinch, not a part)' in t, 'amendments in three groups')
-    check('Clay pebbles (LECA)' in t and 'lets in a great deal of air' in t and 'does not break down' in t, 'their properties in words, not numbers')
+    check('Clay pebbles (LECA)' in t and 'Lets in a great deal of air' in t and 'Lasts for good' in t, 'their properties in words, not numbers')
     check(pg.locator('[data-nav=pots][aria-current=page]').count() >= 1, 'Pots and trays is marked in the top bar while Potting mixes is open')
     check(pg.locator('[data-nav=mixes]').count() == 0, 'no link of its own, so the Care row does not wrap')
     pg.screenshot(path=os.path.join(OUT, 'mixes-1-page.png'), full_page=True)

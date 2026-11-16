@@ -23,7 +23,7 @@ Press the **Display** button (from 1.42.0 at the bottom of the Navigation menu; 
 - **Spacing** and **Line length** are in the **Reading** part from 1.58.0 (below).
 - **Plant pages**: photos and details side by side, or one column.
 - **Notes under buttons and boxes** (from 1.57.0): **Always show them** (the usual choice) or **Show them when I ask**. With the second, the small notes under buttons, boxes and pictures fold into a round **Note** button, which saves a lot of room on long forms. Press a Note button (or Tab to it and press Enter or Space) to read the note, and again to fold it; Escape folds it too. Pointing at a box with the mouse also shows its note, and on a phone or tablet a long press (about half a second) on a box opens its note. A screen reader still hears every note in full, and printed pages show them all.
-- **Line length** (from 1.26.0): **Use the full width** (the usual choice: paragraphs and lists run across the whole page, so more fits on screen) or **Shorter lines** (about 70 letters per line, which some people find easier to follow).
+- **Line length** (from 1.26.0): **Shorter lines** (about 70 letters per line, the usual choice from 1.58.0) or **Use the full width** (paragraphs and lists run across the whole page, so more fits on screen).
 
 On a plant page in side-by-side view, the photos (left) and details (right) each scroll on their own: put the pointer over the half you want to move and scroll. A "Switch to one column" button at the top of the page does the same as the Display setting. With very large text or a narrow window the page switches to one column automatically. The row of section buttons (Now, Temperature, Humidity, Light, Water and soil, ...) jumps straight to a section; in side-by-side view it steps aside while the On this page menu is open, because the menu lists the same sections. All parts of the page can also be reached with the Tab key.
 
@@ -55,8 +55,15 @@ On a phone the menu bar at the top scrolls away with the page (scroll back to th
 - **Letter shapes**: **Atkinson Hyperlegible** (the usual, made so that similar letters such as b and d look different), **Lexend** (wide, evenly spaced letters; some readers with dyslexia read it faster) or **OpenDyslexic** (heavier at the bottom). Each shows a line in its own letters. Which helps is different for every reader: try each for a page or two.
 - **Headings and plant names**: the usual (headings in a book font, Latin names in italics) or **One plain font**: headings in the reading letters, and no slanted or all-capital words anywhere, Latin names included.
 - **Spacing**: Normal, Roomy, or **Widest** (more again between lines, letters and words, and a blank line's worth between paragraphs: the most a web page is expected to allow).
-- **Line length**: the full width, or shorter lines of about 70 letters.
+- **Line length**: shorter lines of about 70 letters (the usual from 1.58.0), or the full width.
+- **Short forms**: the first time PAR, PPFD, DLI, ASPCA, USDA and the like appear on a page, their plain words follow in brackets, such as "PAR (light plants can use)". Turn it off here. **Words used in the app** (in Settings, and in Search) explains every one.
+- **Reading guide**: a soft band across the page that follows the line you are reading. It follows the mouse pointer, your finger on the screen, or the box the keyboard is on. It never gets in the way of a click.
+- **Page tint**: soft blue, soft green or soft peach behind light pages, instead of white. Some readers find one tint calmer than the others. Cream paper, in Colours, is a warm tint of its own.
 - Read aloud, the voice and its speed, and Search by voice are in their own parts and help with reading too.
+
+**Search forgives spelling (from 1.58.0).** A plant's name typed as it sounds ("filodendron"), a letter or two out ("monstra") or with its vowels mixed up ("boganvilla") still finds it. This works in Search, the Plants page, Library and Mushroom finds. When nothing is spelt the way you typed it, the page says it is showing close spellings, and names the nearest one. Words under five letters must be typed as they are.
+
+**Messages stay (from 1.58.0).** The short messages at the bottom of the screen ("Saved", "Watered") stay at least 8 seconds, and longer when they are long. Each has a **Close** button. To read one again, open **Settings → Recent messages**: it has the last 30 on that device.
 
 Like the other Display parts, these stay on the device they are chosen on unless you tick **Use these on every device I sign in on** in that part, so each person can choose their own on their own phone. If you had ticked it for Text and colours before 1.58.0, Reading follows you too.
 

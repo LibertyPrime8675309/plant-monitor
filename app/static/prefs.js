@@ -5,9 +5,10 @@
             swipe: '1',                                           // 1.14.1: swipe between plants
             vsearch: '1',                                         // search by voice: '1' buttons and say what was heard, 'quiet' buttons only, '0' hidden
             photofit: 'auto',                                     // 1.21.0: Plants page photos: auto (wide ones whole), fill, whole
-            lines: 'full',                                        // 1.26.0: line length: full (use the width) or short (about 70 characters)
+            lines: 'short',                                       // 1.26.0: line length: full (use the width) or short (about 70 characters); short is the usual from 1.58.0 (the dyslexia audit)
             notes: 'show',                                        // 1.57.0: small notes under controls: 'show', or 'ask' (a Note chip that opens them)
-            font: 'atkinson', plain: '0', cvd: 'usual' };          // 1.58.0: letter shapes, one plain font, colour vision. contrast 'auto' follows the device
+            font: 'atkinson', plain: '0', cvd: 'usual',            // 1.58.0: letter shapes, one plain font, colour vision. contrast 'auto' follows the device
+            abbr: '1', guide: '0', tint: 'none' };   // 1.58.0 (the dyslexia audit): short forms in plain words, the reading guide, a page tint
   var p = {};
   try { p = JSON.parse(localStorage.getItem('plantdb.display') || '{}') || {}; } catch (e) { p = {}; }
   var r = document.documentElement;
@@ -34,8 +35,12 @@
     if (th === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', th);
     if (tone) r.setAttribute('data-tone', tone[1]); else r.removeAttribute('data-tone');
     r.setAttribute('data-mode', th === 'auto' ? (mq('(prefers-color-scheme: dark)') ? 'dark' : 'light') : th);
+    // a page tint is for light pages only (Cream paper is a tint of its own): it replaces the light page's paper colour
+    if (x.tint === 'none' || r.getAttribute('data-mode') === 'dark' || tone) r.removeAttribute('data-tint'); else r.setAttribute('data-tint', x.tint);
     r.setAttribute('data-font', x.font);
     r.setAttribute('data-plain', x.plain);
+    r.setAttribute('data-abbr', x.abbr);
+    r.setAttribute('data-rguide', x.guide);
     if (x.cvd === 'usual') r.removeAttribute('data-cvd'); else r.setAttribute('data-cvd', x.cvd);
     var rem = parseFloat(getComputedStyle(r).fontSize) || 16;
     r.setAttribute('data-narrow', (window.innerWidth / rem) < 58 ? '1' : '0');
@@ -65,7 +70,7 @@
               'plantdb.wxhide', 'plantdb.wxper', 'plantdb.idscope', 'plantdb.place', 'plantdb.frosthide', 'plantdb.shopping', 'plantdb.shoplist',
               'plantdb.units', 'plantdb.idmode', 'plantdb.compare'];                    // 1.47.0: °F or °C, inches or cm; 1.51.0: Identify's two ways, per page   // 1.30.0: Shopping's home and kind; 1.34.0: the shopping list's extras
   // 1.58.0: Reading has its own part (spacing and line length moved there); a device that shared Text and colours shares Reading too
-  var PARTS = { text: ['size', 'contrast', 'theme', 'cvd'], reading: ['font', 'plain', 'space', 'lines'], layout: ['width', 'notes', 'layout', 'navside', 'navopen'], read: ['readbtns', 'rate', 'voice'],
+  var PARTS = { text: ['size', 'contrast', 'theme', 'cvd'], reading: ['font', 'plain', 'space', 'lines', 'abbr', 'guide', 'tint'], layout: ['width', 'notes', 'layout', 'navside', 'navopen'], read: ['readbtns', 'rate', 'voice'],
                 photos: ['photofit', 'swipe'], keys: ['keys', 'vsearch'] };
   var LS = window.localStorage, setI = Storage.prototype.setItem, remI = Storage.prototype.removeItem, queue = {}, timer = 0, applying = false;
   function shared() { var sh; try { sh = JSON.parse(LS.getItem('plantdb.dshare') || '{}') || {}; } catch (e) { sh = {}; }

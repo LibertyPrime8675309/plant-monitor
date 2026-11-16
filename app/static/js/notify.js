@@ -100,13 +100,17 @@ function searchDialog() {
 async function searchRun(q) {
   const box = document.getElementById('srch-res'); if (!box) return;
   q = q.trim(); SRCH.q = q; const seq = ++SRCH.seq;
-  const pages = q.length >= 2 ? pagesList().filter(([n]) => n.toLowerCase().includes(q.toLowerCase())).map(([n, h]) => ({ title: n, sub: 'page', href: h })) : [];
+  // 1.58.0: pages and everything else forgive spelling ("Fertiliser", "Mushroms"); a close spelling says what it found
+  let pages = q.length >= 2 ? pagesList().filter(([n]) => n.toLowerCase().includes(q.toLowerCase())) : [];
+  let close = null;
+  if (!pages.length && q.length >= 5) { pages = pagesList().filter(([n]) => fzMatch(n, q)); if (pages.length) close = fzNearest(pages.map(([n]) => n), q); }
+  pages = pages.map(([n, h]) => ({ title: n, sub: 'page', href: h }));
   let groups = [];
-  if (q.length >= 2) { try { groups = (await api('GET', '/api/search?q=' + enc(q))).groups; } catch (e) { groups = [{ kind: 'err', word: 'Could not search', items: [{ title: e.message, sub: '', href: '' }] }]; } }
+  if (q.length >= 2) { try { const d = await api('GET', '/api/search?q=' + enc(q)); groups = d.groups; close = close || d.close || null; } catch (e) { groups = [{ kind: 'err', word: 'Could not search', items: [{ title: e.message, sub: '', href: '' }] }]; } }
   if (seq !== SRCH.seq || !document.getElementById('srch-res')) return;
   const all = (pages.length ? [{ kind: 'pages', word: 'Pages', items: pages }] : []).concat(groups);
   if (!all.length) { box.innerHTML = rend(q.length >= 2 ? html`<p class="muted">Nothing matches "${q}".</p>` : ''); return; }
-  box.innerHTML = rend(html`${all.map(g => html`<h3 class="srch-h">${g.word}</h3><ul class="srch-list">${g.items.map(it => html`<li>${it.href ? html`<a href="${it.href}" data-act="srchgo">${it.title}</a>` : it.title}${it.sub ? html` <small class="muted">${it.sub}</small>` : ''}</li>`)}</ul>`)}`);
+  box.innerHTML = rend(html`${close ? html`<p class="srch-close">Nothing is spelt "${q}". Showing close spellings, such as <strong>${close}</strong>.</p>` : ''}${all.map(g => html`<h3 class="srch-h">${g.word}</h3><ul class="srch-list">${g.items.map(it => html`<li>${it.href ? html`<a href="${it.href}" data-act="srchgo">${it.title}</a>` : it.title}${it.sub ? html` <small class="muted">${it.sub}</small>` : ''}</li>`)}</ul>`)}`);
 }
 Object.assign(acts, {
   search() { searchDialog(); },

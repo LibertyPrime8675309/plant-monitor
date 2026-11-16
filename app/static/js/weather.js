@@ -658,7 +658,7 @@ async function loadWxTable() {
       <a class="noprint" href="/api/weather/table.csv?${q}" download>Download all of it as a spreadsheet (CSV, every column)</a></p>
     ${T.total ? html`${wtPager(T, 'top')}<div class="tbl-wrap wide"><table class="tbl wxt"><caption class="sr">Logged ${T.kind === 'daily' ? 'daily weather' : T.source === 'sensor' ? 'sensor readings' : 'hourly weather'}</caption>
       <thead><tr><th scope="col">${lbl}</th>${T.source === 'sensor' ? html`<th scope="col">Device</th>` : ''}${T.kind === 'daily' ? html`<th scope="col">Status</th>` : ''}${cols.map(c => html`<th scope="col" class="num">${c.label}${c.unit ? html`<div class="hint">${c.unit}</div>` : ''}</th>`)}</tr></thead>
-      <tbody>${T.rows.map(r => html`<tr><th scope="row">${T.kind === 'daily' ? dayLong(r.when) : r.when}</th>${T.source === 'sensor' ? html`<td>${r.device}</td>` : ''}${T.kind === 'daily' ? html`<td>${r.kind === 'forecast' ? 'Forecast' : 'Observed'}</td>` : ''}${cols.map(c => html`<td class="num">${wtCell(c.key, r[c.key], T.tz)}</td>`)}</tr>`)}</tbody></table></div>
+      <tbody>${T.rows.map(r => html`<tr><th scope="row">${T.kind === 'daily' ? dayLong(r.when) : hourWords(r.when)}</th>${T.source === 'sensor' ? html`<td>${r.device}</td>` : ''}${T.kind === 'daily' ? html`<td>${r.kind === 'forecast' ? 'Forecast' : 'Observed'}</td>` : ''}${cols.map(c => html`<td class="num">${wtCell(c.key, r[c.key], T.tz)}</td>`)}</tr>`)}</tbody></table></div>
       ${wtPager(T, 'bottom')}` : ''}`);
   scrollBoxes(el);                                  // 1.58.0: the long table can be scrolled from the keyboard
 }
@@ -783,8 +783,8 @@ async function viewFrost() {
   return {
     title: 'Cold-night checklist',
     html: html`<p class="crumb"><a href="#/winter">Winter plan</a></p><h1>Cold-night checklist</h1>
-    <p class="muted">Plants that are outside and would be hurt by a night in the 7-day forecast for ${F.place}. "Could die" and "Damaged" use each plant's own temperatures;
-      "Close call" means within ${tD(F.margin)} of its damage point, because forecasts often miss a clear, still night by a few degrees.
+    <p class="muted">Plants that are outside and would be hurt by a night in the 7-day forecast for ${F.place}. "Could die" and "Damaged" use each plant's own temperatures.
+      "Close call" means within ${tD(F.margin)} of its damage point. Forecasts often miss a clear, still night by a few degrees.
       Plants set to Indoors or Garage or shed are left out, so a plant leaves this list when you press Moved indoors.</p>
     <p>Before a plant comes inside, check it for pests: <a href="#/inside">Getting plants ready to come inside</a>.</p>
     ${canChange() ? html`<p class="row noprint"><button class="btn ghost small" type="button" data-act="buywatch" data-kind="frost" data-name="Frost cloth" data-search="frost cloth; frost blanket; plant cover" data-src="frost">Watch the stores for frost cloth</button></p>` : ''}
@@ -907,8 +907,8 @@ async function viewOutside() {
   return {
     title: 'Back outside',
     html: html`<p class="crumb"><a href="#/winter">Winter plan</a></p><h1>Back outside</h1>
-    <p class="muted">Plants that are inside now (Indoors, or Garage or shed), and whether the nights in the 7-day forecast for ${B.place} are warm enough for each to go back out.
-      Each plant is checked against its own temperatures: safe means no night within ${tD(B.margin)} of its damage point, and ready means every night is at or above the low it likes.</p>
+    <p class="muted">Plants that are inside now (Indoors, or Garage or shed). For each, whether the nights in the 7-day forecast for ${B.place} are warm enough to go back out.
+      Each plant is checked against its own temperatures. Safe means no night within ${tD(B.margin)} of its damage point. Ready means every night is at or above the low it likes.</p>
     ${B.season === 'autumn' ? html`<p class="notice">It is autumn, so most plants that came inside should stay in until spring. This page is most useful from late winter: each plant shows as ready as soon as the nights are warm enough for it.</p>` : ''}
     ${!B.nights.length ? html`<p class="notice">No forecast yet. It is fetched a few seconds after the app starts, then every hour.</p>` : ''}
     ${!ps.length ? html`<p class="notice ok">No plants are inside. When you bring one in, press its Moved indoors button and it shows here.</p>` : ''}
@@ -932,7 +932,7 @@ async function viewOutside() {
       <p class="muted">Getting used to the light, and out of full sun so the leaves do not scorch. A reminder comes after a week.</p>
       <ul class="fz-list">${B.porch.filter(p => !p.is_due).map(boPorchRow)}</ul></section>` : ''}
     <section class="blk"><h2>Going back out</h2><ul>
-      <li>Ease plants in. Leaves that grew indoors scorch in full sun, so give them a week on the covered porch, then a few hours of morning sun, then their usual spot.</li>
+      <li>Ease plants in. Leaves that grew indoors scorch in full sun. Give them a week on the covered porch, then a few hours of morning sun, then their usual spot.</li>
       <li>Moved to the porch sets the plant's Location to Covered porch and sets a reminder for a week later. It shows on the cold-night checklist if a cold night comes.</li>
       <li>Pots dry out much faster outside, especially in wind and sun. Check them every day or two for the first weeks.</li>
       <li>Start feeding again once new growth appears.</li></ul></section>`,
@@ -959,3 +959,10 @@ addFeature({
     html: ({ go, due }) => html`<div id="bo-today">${html`<p class="notice ok noprint">${go ? html`<strong>${go === 1 ? '1 plant inside can' : `${go} plants inside can`} go back outside.</strong>
       The nights in the forecast are warm enough for ${go === 1 ? 'it' : 'them'}. ` : ''}${due ? html`<strong>${due === 1 ? '1 plant on the porch is' : `${due} plants on the porch are`} ready for ${due === 1 ? 'its' : 'their'} summer spot.</strong> ${due === 1 ? 'It has' : 'They have'} had a week out of full sun. ` : ''}<a href="#/outside">Open the Back outside list</a></p>`}</div>` },
 });
+// 1.58.0 (the dyslexia audit): an hour in the weather table in words ("Sun, Nov 15, 5 PM"), not 2026-11-15 17:00
+function hourWords(w) {
+  const m = /^(\d{4}-\d\d-\d\d)[ T](\d\d):(\d\d)/.exec(String(w || ''));
+  if (!m) return w;
+  const h = +m[2], h12 = h % 12 || 12;
+  return `${midDay(m[1])}, ${h12}${m[3] === '00' ? '' : ':' + m[3]} ${h < 12 ? 'AM' : 'PM'}`;
+}

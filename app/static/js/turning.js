@@ -38,7 +38,7 @@ async function viewTurning() {
   return {
     title: 'Turn the pots',
     html: html`<h1>Turn the pots</h1>
-    <p class="muted">A plant by a window grows toward the light and starts to lean. Give each pot a quarter turn every week or two, always the same way round (clockwise, say), and it grows straight and even on every side.</p>
+    <p class="muted">A plant by a window grows toward the light and starts to lean. Give each pot a quarter turn every week or two, always the same way round (clockwise, say). Then it grows straight and even on every side.</p>
     <div class="verdict-box" role="status"><p><strong>${line.charAt(0).toUpperCase() + line.slice(1)}.</strong> ${tnPl(T.plants.length, 'pot is', 'pots are')} on the list, a turn every ${T.every} days.</p></div>
     <div class="tn-every noprint"><label class="f">Remind me to turn each pot every
       <select name="every" data-act="turnevery">${T.choices.map(n => html`<option value="${n}" ${n === T.every ? raw('selected') : ''}>${n} days${n === 14 ? ' (usual)' : ''}</option>`)}</select></label></div>
@@ -49,7 +49,7 @@ async function viewTurning() {
       <p class="hint">Plants out in the open get light from all round as the sun moves, so they are left out and not listed here. So are plants under a grow light that shines down from above. Switch any plant on or off with its button.</p>
       ${T.left_out.length ? html`<ul class="jobs">${T.left_out.map(p => jobRow(tnRow(p), p.why + '.',
         html`<button class="btn small ghost" type="button" data-act="turnset" data-code="${p.code}" data-on="1" aria-label="${'Remind me to turn ' + p.name}">Remind me</button>`))}</ul>` : ''}</section>
-    <p class="hint">Each turn is saved in the plant's care log as "Turned the pot", so you can see it on the plant's page and undo it there.</p>`,
+    <p class="hint">Each turn is saved in the plant's care log as "Turned the pot". You can see it on the plant's page, and undo it there.</p>`,
   };
 }
 async function tnAfterChange(code) {

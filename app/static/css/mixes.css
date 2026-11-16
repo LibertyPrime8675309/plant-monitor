@@ -21,3 +21,6 @@
 #mx-every .field-grid>p{grid-column:1/-1}
 html[data-role=viewer] :is([data-act=mxrecipe], [data-act=mxam], [data-act=mxrecipedel], [data-act=mxamdel], [data-act=mxpot], [data-act=mxpotdel], [data-act=mxsaverecipe]){display:none!important}
 .mx-fields select{max-width:100%}
+/* 1.58.0 (the dyslexia audit): an amendment's properties one short line each, side by side where they fit */
+.mx-props{list-style:none;padding:0;margin:.2rem 0;display:flex;flex-wrap:wrap;gap:.15rem 1.4rem;max-width:none}
+.mx-props li{margin:0}

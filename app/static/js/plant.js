@@ -154,7 +154,7 @@ function heatRange(p, H) {             // the AHS heat zones the plant is listed
 function heatBlock(p, H) {
   const head = html`<h3>Summer heat (AHS heat zones)</h3>`;
   if (!H) return '';
-  if (H.zone == null) return html`${head}<p class="muted">Not enough weather history yet. Once ${H.place} has 3 whole years of weather, this says how many hot days a usual year has and what that means for this plant. <a href="#/weather">Load the weather history on the Weather page</a>.</p>${heatRange(p, H)}`;
+  if (H.zone == null) return html`${head}<p class="muted">Not enough weather history yet. Once ${H.place} has 3 whole years of weather, this says how many hot days a usual year has. It also says what that means for this plant. <a href="#/weather">Load the weather history on the Weather page</a>.</p>${heatRange(p, H)}`;
   return html`${head}<p>Where you are: over the last ${H.years} years at ${H.place}, an average of ${H.over86} days a year went above ${tF(H.line)}, which is <strong>heat zone ${H.zone}</strong>
       on the American Horticultural Society's scale of 1 (cool summers) to 12 (very hot). A usual year's hottest day is about ${tF(H.hottest)}. <a href="#/weather">The Weather page</a> has each year's count.</p>
     ${heatVerdict(p, H)}${heatRange(p, H)}

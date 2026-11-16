@@ -45,7 +45,7 @@ with sync_playwright() as p:
     lines = {p['code']: ' '.join(p['lines']).lower() for p in data}
     check(all(re.search(r'cutting|stem|node', lines[c]) for c in codes), 'every plant listed has a cutting, stem or node in its notes')
     check(all(c in codes for c, t in lines.items() if re.search(r'stem cutting', t)), 'and every plant whose notes say "stem cutting" is listed')
-    check(y.locator('a').first.get_attribute('href') == f'#/plant/{codes[0]}' and y.locator('.muted').first.text_content() == f'({codes[0]})', 'each is a link with its code beside the name, so two of the same name can be told apart')
+    check(y.locator('a').first.get_attribute('href') == f'#/plant/{codes[0]}' and y.locator('.muted').first.text_content() == codes[0], 'each is a link with its code beside the name, so two of the same name can be told apart (1.58.0: a list, the rest behind Show all)')
     check(pg.locator('#gd-spores-yours').count() == 1, 'every method has its line, even where no plant has it (' + pg.locator('#gd-spores-yours').text_content()[:60] + ')')
     check(pg.locator('#gd-genetics-yours').count() == 0, 'breeding topics have none')
     # which words mean which section
