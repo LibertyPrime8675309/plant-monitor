@@ -86,7 +86,10 @@ def apart(a, b, kind): return sum((x - y) ** 2 for x, y in zip(_lab(a, kind), _l
 
 
 THEMES = {'light': {'data-theme': 'light', 'data-mode': 'light'}, 'cream': {'data-theme': 'light', 'data-tone': 'cream', 'data-mode': 'light'},
-          'dark': {'data-theme': 'dark', 'data-mode': 'dark'}, 'softdark': {'data-theme': 'dark', 'data-tone': 'soft', 'data-mode': 'dark'}}
+          'dark': {'data-theme': 'dark', 'data-mode': 'dark'}, 'softdark': {'data-theme': 'dark', 'data-tone': 'soft', 'data-mode': 'dark'},
+          # the page tints (1.58.0, the dyslexia audit): light pages with a pale colour behind them
+          'blue': {'data-theme': 'light', 'data-tint': 'blue', 'data-mode': 'light'}, 'green': {'data-theme': 'light', 'data-tint': 'green', 'data-mode': 'light'},
+          'peach': {'data-theme': 'light', 'data-tint': 'peach', 'data-mode': 'light'}}
 COMBOS = [(t, c, v) for t in THEMES for c in ('normal', 'high') for v in ('usual', 'rg', 'by')]
 
 

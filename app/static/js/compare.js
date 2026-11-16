@@ -128,7 +128,7 @@ async function viewCompare() {
     <section id="cmp-picked" class="blk" hidden></section>
     <div id="cmp-list"></div>
     <section class="blk"><h2>How the numbers work</h2>
-      <p>Each light's PAR and area at the distance you pick come from a smooth line through its maker's figures (or Claude's estimates, where the maker gives none). Daily light is the PAR times the hours. Light per watt and price per light are rough: they treat the whole area as getting the centre's light.</p>
+      <p>Each light's PAR and area at the distance you pick come from a smooth line through its maker's figures. Where the maker gives none, Claude's estimates are used. Daily light is the PAR times the hours. Light per watt and price per light are rough: they treat the whole area as getting the centre's light.</p>
       <p>${CMP_HELP.perlight}</p></section>` };
 }
 // Draw the parts that change with search, sort and filters, keeping the focus where it was
@@ -158,7 +158,7 @@ function cmpDraw1() {
       <dl class="dl">${shown.map(k => html`<dt>${cols[k].label}</dt><dd>${cols[k].v(r) || '—'}</dd>`)}</dl>${pick(r)}</li>`)}</ul>`);
   } else {
     const th = k => { const cur = CMP.sort.k === k, lab = k === 'name' ? 'Name' : (cols[k].tl || cols[k].label);
-      return html`<th scope="col" ${raw(`aria-sort="${cur ? (CMP.sort.dir === 'desc' ? 'descending' : 'ascending') : 'none'}"`)}><button type="button" class="cmp-th" data-act="cmpth" data-k="${k}">${lab}<span aria-hidden="true">${cur ? (CMP.sort.dir === 'desc' ? ' ▼' : ' ▲') : ''}</span></button>${CMP_HELP[k] ? html`<span class="sr"> (${CMP_HELP[k]})</span>` : ''}</th>`; };
+      return html`<th scope="col" ${raw(`aria-sort="${cur ? (CMP.sort.dir === 'desc' ? 'descending' : 'ascending') : 'none'}"`)}><button type="button" class="cmp-th" data-act="cmpth" data-k="${k}">${lab}<span aria-hidden="true">${cur ? (CMP.sort.dir === 'desc' ? ' ▼' : ' ▲') : ' ⇅'}</span></button>${CMP_HELP[k] ? html`<span class="sr"> (${CMP_HELP[k]})</span>` : ''}</th>`; };
     list.innerHTML = rend(html`<div class="tbl-wrap wide cmp-wrap" id="cmp-wrap"><table class="tbl cmp-tbl"><caption class="sr">Lights compared at ${lenF(CMP.d.at)}, ${CMP.d.hours} hours a day</caption>
       <thead><tr>${th('name')}${shown.map(th)}<th scope="col"><span class="sr">Pick to compare</span></th></tr></thead>
       <tbody>${rows.map(r => html`<tr><th scope="row">${nameBtn(r)}</th>${shown.map(k => html`<td data-h="${cols[k].label}" ${k === 'source' ? raw(`title="${r.source_words.replace(/"/g, '&quot;')}"`) : ''}>${(cols[k].tv || cols[k].v)(r) || '—'}${k === 'source' && r.source === 'doubtful' ? html`<span class="sr">: ${r.source_words}</span>` : ''}</td>`)}<td>${pick(r)}</td></tr>`)}</tbody></table></div>`);

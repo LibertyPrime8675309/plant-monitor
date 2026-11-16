@@ -20,9 +20,11 @@ function fungiSafety(short) {
 }
 function muYears(list) { return [...new Set(list.map(f => (f.found_on || '').slice(0, 4)).filter(Boolean))].sort().reverse(); }
 function muFiltered() {
-  const q = MU.q.toLowerCase();
-  return (MU.list || []).filter(f => (!MU.id || f.id_status === MU.id) && (!MU.place || f.place_kind === MU.place) && (!MU.year || (f.found_on || '').startsWith(MU.year))
-    && (!q || [f.code, f.name, f.scientific_name, f.place, f.near, f.notes, f.cap_colour, f.plant_code].join(' ').toLowerCase().includes(q)));
+  const q = MU.q.toLowerCase(), hay = f => [f.code, f.name, f.scientific_name, f.place, f.near, f.notes, f.cap_colour, f.plant_code].join(' ');
+  const r = (MU.list || []).filter(f => (!MU.id || f.id_status === MU.id) && (!MU.place || f.place_kind === MU.place) && (!MU.year || (f.found_on || '').startsWith(MU.year)));
+  if (!q) return r;
+  const exact = r.filter(f => hay(f).toLowerCase().includes(q));
+  return exact.length ? exact : r.filter(f => fzMatch(hay(f), q));          // 1.58.0: close spellings when nothing is spelt that way
 }
 function muCard(f) {
   return html`<article class="sheet mu-card" data-code="${f.code}">

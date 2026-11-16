@@ -412,7 +412,7 @@ async function viewOffline() {
             ${x.kind === 'plant' && /^P-/.test(x.ref || '') && (x.result.species || [])[0] ? html`<button class="btn small" type="button" data-act="offiduse" data-id="${x.id}">Put the first name on ${x.ref}</button>` : ''}`}
           <button class="btn ghost small" type="button" data-act="offidrm" data-id="${x.id}" aria-label="Remove this waiting picture">Remove</button></li>`)}</ul>` : html`<p class="muted">None. Pictures taken for Identify without a connection wait here and are checked when you're back online.</p>`}
     </section>
-    <section aria-labelledby="off-fresh-h"><h2 id="off-fresh-h">Saved pages</h2><p>Pages you have opened show straight away from what was saved last time, and are checked again just after (${QC.size} saved right now, kept 15 minutes). If something looks stale, clear them: the next page you open comes fresh from the server.</p>
+    <section aria-labelledby="off-fresh-h"><h2 id="off-fresh-h">Saved pages</h2><p>Pages you have opened show straight away from what was saved last time. Then they are checked again (${QC.size} saved right now, kept 15 minutes). If something looks stale, clear them: the next page you open comes fresh from the server.</p>
       <p class="row"><button class="btn ghost" type="button" data-act="qcclear">Clear the saved pages</button></p></section>
     ${keep || dl ? html`<section aria-labelledby="off-forget-h"><h2 id="off-forget-h">Forget the copy</h2><p>Deletes what this device saved (not the changes waiting to be sent, and nothing on the plant record itself).</p>
       <p class="row"><button class="btn danger" type="button" data-act="offforget">Delete the saved copy on this device</button></p></section>` : ''}`,
@@ -701,7 +701,7 @@ const ICS_PAGES = ['today', 'fertilizer', 'frost'];
 const icsTime = t => { const [h, m] = t.split(':').map(Number); return new Date(2000, 0, 1, h, m).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
 function icsSection() {
   return html`<section class="blk noprint" id="ics-box"><h2>Add to your calendar</h2>
-    <p>Put feeding days and cold nights in the calendar on your phone or computer, with a reminder, so you hear about them without opening Plant record.</p>
+    <p>Put feeding days and cold nights in the calendar on your phone or computer. Each comes with a reminder, so you hear about it without opening Plant record.</p>
     <p><button class="btn" type="button" data-act="icsopen">Set up your calendar</button></p></section>`;
 }
 new MutationObserver(() => {

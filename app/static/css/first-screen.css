@@ -13,7 +13,7 @@
 .pl-row>.more-f[open]{flex:1 1 100%;order:5;padding-bottom:.5rem}
 .pl-row>.more-f.pl-acts[open]{order:6}
 .pl-row .water-all{margin:0;gap:.4rem .6rem}
-.pl-what>summary{cursor:pointer;display:inline-block;color:var(--cyan);font-weight:700;text-decoration:underline;text-underline-offset:3px;padding:.5rem .1rem}
+.pl-what>summary{cursor:pointer;display:inline-block;color:var(--cyan);font-weight:700;padding:.5rem .1rem}   /* 1.58.0: not underlined: it opens a fold, it does not go to another page */
 .pl-what[open]{flex:1 1 100%}
 .pl-what .hint{display:block;margin:0 0 .3rem}
 .pl-acts .row{margin:.3rem 0 .4rem}

@@ -19,8 +19,11 @@ with sync_playwright() as p:
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.add_init_script("localStorage.setItem('plantdb.editor','Layout Test');if(!sessionStorage.getItem('kept'))localStorage.removeItem('plantdb.display');sessionStorage.setItem('kept','1')")
     pg.goto(LOCAL + '/#/groups'); pg.wait_for_timeout(2500)
-    check(pg.evaluate("document.documentElement.dataset.lines") == 'full', 'Line length starts at full width')
-    check(pg.locator('main p').first.evaluate("e => getComputedStyle(e).maxWidth") == 'none', 'paragraphs run the full width')
+    # 1.58.0 (the dyslexia audit, Ethan's choice of November 16): shorter lines are the usual; full width is a choice
+    check(pg.evaluate("document.documentElement.dataset.lines") == 'short', 'Line length starts at shorter lines')
+    check(pg.locator('main p').first.evaluate("e => getComputedStyle(e).maxWidth") != 'none', 'paragraphs are kept to about 70 letters')
+    pg.evaluate("window.PlantPrefs.set('lines','full')"); pg.wait_for_timeout(200)
+    check(pg.locator('main p').first.evaluate("e => getComputedStyle(e).maxWidth") == 'none', 'with full width chosen, paragraphs run the full width')
     check(cols(pg, '.grp-list') >= 3, f'groups sit at least three across at 1920 ({cols(pg, ".grp-list")})')
     pg.screenshot(path=os.path.join(OUT, 'layout-1-groups.png'))
     pg.click('#display-btn'); pg.wait_for_timeout(500)
