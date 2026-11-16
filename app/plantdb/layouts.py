@@ -447,6 +447,7 @@ def layout_item_one(iid):
         c.execute('UPDATE layout_items SET ' + ','.join(f'{k}=?' for k in ch) + ',updated_by=?,updated_at=? WHERE id=?', [f[k] for k in ch] + [who, now(), iid])
         layout_touch(c, L['id'], who)      # who moved it last and when is kept on the thing and on the layout; History is not given a line for every move
     if it['plant_code'] and ('h' in b or 'page_h' in b): layout_plant_height(c, L, it, b, f['h'], who)
+    if it['kind'] == 'light' and ('hours' in ch or 'dim_pct' in ch): layout_light_to_spots(c, L, iid, who)
     c.commit()
     return jsonify(item=layout_item_dict(c, c.execute('SELECT * FROM layout_items WHERE id=?', (iid,)).fetchone()))
 
@@ -483,3 +484,104 @@ def layout_record(lid):
         out.append({'plant': r['code'], 'name': r['common_name'], 'from': was, 'from_label': place_label(c, was), 'to': pid, 'to_label': label, 'changed': changed})
     c.commit()
     return jsonify(moved=out, layout=layout_dict(c, layout_row(c, lid), True))
+
+# ---------------------------------------------------------------- the light on a layout, for Grow lights
+# The same sums as the page's lyLight() (js/layouts.js), so that Grow lights, which shows them, and the Layouts page agree to the
+# tenth of a mol/m² a day; lightsread_check.py compares the two. Keep them in step.
+LY_EPS = 0.01
+def _ly_r1(x): return math.floor(x * 10 + 0.5) / 10          # as JavaScript's Math.round, not Python's round half to even
+def _ly_clamp(v, lo, hi): return max(lo, min(hi, v))
+def _ly_round(it): return it['shape'] == 'round' and abs(it['w'] - it['d']) < 0.05
+def _ly_plan(a, b):
+    ra, rb = _ly_round(a), _ly_round(b)
+    if ra and rb: return math.hypot(a['x'] + a['w'] / 2 - b['x'] - b['w'] / 2, a['y'] + a['d'] / 2 - b['y'] - b['d'] / 2) - (a['w'] + b['w']) / 2
+    if ra or rb:
+        cc, q = (a, b) if ra else (b, a); r = cc['w'] / 2; cx, cy = cc['x'] + r, cc['y'] + r
+        dist = math.hypot(cx - _ly_clamp(cx, q['x'], q['x'] + q['w']), cy - _ly_clamp(cy, q['y'], q['y'] + q['d']))
+        return dist - r if dist > 0 else -(r + min(cx - q['x'], q['x'] + q['w'] - cx, cy - q['y'], q['y'] + q['d'] - cy))
+    dx = max(a['x'] - b['x'] - b['w'], b['x'] - a['x'] - a['w']); dy = max(a['y'] - b['y'] - b['d'], b['y'] - a['y'] - a['d'])
+    return math.hypot(max(dx, 0), max(dy, 0)) if dx > 0 or dy > 0 else max(dx, dy)
+def _ly_levels(b): return [v for v in (b.get('levels') or []) if v['z'] <= b['h'] + 0.05] if b['kind'] == 'shelf' else []
+def _ly_solids(b):
+    lv, t = _ly_levels(b), b.get('board_in') or LAYOUT_BOARD_IN
+    return [{'z': b['z'] + v['z'] - t, 'h': t} for v in lv] if lv else [{'z': b['z'], 'h': b['h']}]
+def _ly_stands(items, a):
+    """Is it standing on the floor or on something (and so not hanging)?"""
+    if abs(a['z']) < 0.05: return True
+    return any(b['id'] != a['id'] and b['kind'] not in ('zone', 'light') and _ly_plan(a, b) < -LY_EPS and any(abs(q['z'] + q['h'] - a['z']) < 0.05 for q in _ly_solids(b)) for b in items)
+def _ly_in_plan(b, x, y):
+    if _ly_round(b): return math.hypot(x - b['x'] - b['w'] / 2, y - b['y'] - b['d'] / 2) <= b['w'] / 2 + LY_EPS
+    return b['x'] - LY_EPS <= x <= b['x'] + b['w'] + LY_EPS and b['y'] - LY_EPS <= y <= b['y'] + b['d'] + LY_EPS
+
+def layout_light_on(items, pl, li):
+    """What one drawn light gives one drawn plant (lyLightOn): {up, side, dli, by (something in the way), nofig}, or None when the
+    light is not above the plant's top."""
+    top = pl['z'] + pl['h']; src = li['z'] + li['h'] if _ly_stands(items, li) else li['z']; up = src - top
+    if up <= LY_EPS: return None
+    cx, cy = pl['x'] + pl['w'] / 2, pl['y'] + pl['d'] / 2
+    if _ly_round(li):
+        mx, my = li['x'] + li['w'] / 2, li['y'] + li['d'] / 2; off = math.hypot(cx - mx, cy - my); k = li['w'] / 2 / off if off > li['w'] / 2 else 1
+        sx, sy = mx + (cx - mx) * k, my + (cy - my) * k
+    else: sx, sy = _ly_clamp(cx, li['x'], li['x'] + li['w']), _ly_clamp(cy, li['y'], li['y'] + li['d'])
+    side = math.hypot(cx - sx, cy - sy); dist = math.hypot(up, side)
+    out = {'li': li, 'up': round(up, 2), 'side': round(side, 2), 'dli': 0.0, 'by': None, 'nofig': False}
+    if not li.get('pts'): return out | {'nofig': True}
+    near = li.get('near_in') or 3
+    par = (_loglog([(p[0], p[1]) for p in li['pts']], max(dist, near)) or 0) * (up / dist) ** 2
+    out['dli'] = par * (100 if li.get('dim_pct') is None else li['dim_pct']) / 100 * (12 if li.get('hours') is None else li['hours']) * 0.0036
+    for b in items:
+        if b is li or b is pl or b['kind'] not in ('shelf', 'other'): continue
+        for q in _ly_solids(b):
+            lo, hi = max(q['z'], top), min(q['z'] + q['h'], src)
+            if hi - lo < LY_EPS: continue
+            t = ((lo + hi) / 2 - top) / up
+            if _ly_in_plan(b, cx + (sx - cx) * t, cy + (sy - cy) * t): out['by'] = b; break
+        if out['by']: break
+    return out
+
+def layout_light(L):
+    """Each drawn plant's light on a layout (lyLight): {item id: {dli, verdict, reached, on: [...]}}, and whether any drawn light
+    has its maker's figures."""
+    items = L['items']; lights = [b for b in items if b['kind'] == 'light' and not b.get('gone')]; out = {}
+    if not lights: return out, False
+    for pl in items:
+        if pl['kind'] != 'plant': continue
+        alls = [x for x in (layout_light_on(items, pl, li) for li in lights) if x]
+        on = sorted((x for x in alls if not x['nofig'] and not x['by'] and x['dli'] >= 0.05), key=lambda x: -x['dli'])
+        dli = _ly_r1(sum(x['dli'] for x in on)); reached = dli >= 1 or any(x['side'] < 0.05 for x in on); need = pl.get('need')
+        out[pl['id']] = {'dli': dli, 'reached': reached, 'verdict': (light_verdict(dli, need['lo'], need['hi']) if need else 'unknown') if reached else 'none', 'on': on}
+    return out, any(li.get('pts') for li in lights)
+
+def layout_lights_for_grow(c):
+    """For Grow lights (LIGHTS_FROM_LAYOUTS): the lights drawn on a layout of a place (the first of each light on it), and each plant
+    drawn on a layout whose lights have figures, with its light there."""
+    if not c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='layout_items'").fetchone(): return {}
+    layout_tables(c)
+    lights, plants, seen = [], {}, set()
+    for r in c.execute('SELECT * FROM layouts ORDER BY id').fetchall():
+        L = layout_dict(c, r); pid = L['pid']
+        for it in L['items']:
+            if it['kind'] == 'light' and it['light_id'] and not it['gone'] and pid is not None and (pid, it['light_id']) not in seen:
+                seen.add((pid, it['light_id']))
+                lights.append({'pid': pid, 'light_id': it['light_id'], 'hours': it['hours'], 'dim_pct': it['dim_pct'], 'lid': L['id'], 'lname': L['name'], 'item': it['id']})
+        m, lit = layout_light(L)
+        if not lit: continue
+        for it in L['items']:
+            x = m.get(it['id']) if it['kind'] == 'plant' and it['plant'] and not it['gone'] else None
+            if x: plants.setdefault(it['plant'], []).append({'lid': L['id'], 'lname': L['name'], 'pid': pid, 'item': it['id'], 'here': it.get('rec') is not None and it.get('rec') == pid,
+                                                           'dli': x['dli'], 'verdict': x['verdict'], 'reached': x['reached']})
+    return {'lights': lights, 'plants': plants}
+LIGHTS_FROM_LAYOUTS.append(layout_lights_for_grow)
+
+def layout_light_to_spots(c, L, iid, who):
+    """A drawn light's hours or brightness changed: the light spots of the layout's place with that light take them, for the layout
+    is the one place they are set (Ethan, November 16, 2026). Only from the first of that light on the layout, the one Grow lights reads."""
+    it = c.execute('SELECT * FROM layout_items WHERE id=?', (iid,)).fetchone(); pid = layout_pid(L)
+    if it is None or not it['light_id'] or pid is None: return
+    first = c.execute("SELECT id FROM layout_items WHERE layout_id=? AND kind='light' AND light_id=? ORDER BY sort, id LIMIT 1", (L['id'], it['light_id'])).fetchone()
+    if not first or first[0] != iid: return
+    for s in c.execute('SELECT * FROM light_spots WHERE light_id=? AND place_id=?', (it['light_id'], pid)).fetchall():
+        if (s['hours'], s['dim_pct']) == (it['hours'], it['dim_pct']): continue
+        c.execute('UPDATE light_spots SET hours=?, dim_pct=?, updated_by=?, updated_at=? WHERE id=?', (it['hours'], it['dim_pct'], who, now(), s['id']))
+        audit_only(c, 'light', 'light_spot', f"{s['hours']:g} hours a day, {s['dim_pct']}%", f"{it['hours']:g} hours a day, {it['dim_pct']}%", who,
+                   f'Grow light spot "{s["name"]}": hours and brightness set on the layout "{L["name"]}"')

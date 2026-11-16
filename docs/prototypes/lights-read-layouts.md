@@ -18,22 +18,21 @@ Now, when a plant is drawn on a layout that has a grow light with its maker's fi
 - **No light reaches it:** the plant is drawn, and no light drawn there reaches it. A plant on the level above a strip light is one.
 - **A plant that is not drawn** keeps what its spot gives.
 - **The spot's summary** counts the plants out of their range by those marks, and says how many are read from a layout.
-- **The spot's own box** says how far under the light its plants are on the drawing, beside the spot's one distance. Where the light's hours or brightness on the layout are not the spot's, it says so, and that the plants' numbers use the layout's.
+- **The spot's own box** says how far under the light its plants are on the drawing, beside the spot's one distance, and that its hours and brightness are set on the layout.
 - **Under a light on a layout, but in no light spot:** a folded list of the plants that the drawing puts under a light and that no spot has.
 - **A plant's own page** says its light on the layout, under "Grow light this winter".
 
 Nothing is saved and nothing in the record changes. The numbers are worked out by the same code that the Layouts page uses, so the two pages cannot disagree about a plant.
 
-## Two ways of showing it, for Ethan to choose
-A gallery on his screens, at the usual and the largest text, each beside Grow lights as it is today (private to him): https://claude.ai/artifact/8k4ngzu9jvDEfpRon5ePvg
+## What Ethan chose (November 16, 2026)
+"1. Yes 2. Option 1 3. The layout 4. Yes"
 
-**Option 1, the layout decides** (how the branch is set). The mark beside each drawn plant is the layout's:
+- **Option 1:** the plant's mark in its spot is the layout's. The other way and the setting that chose between them are gone. The gallery he chose from: https://claude.ai/artifact/8k4ngzu9jvDEfpRon5ePvg
+- **The layout is the one place for a light's hours and brightness.** A spot whose light is drawn on the layout of its own place takes the drawn light's hours and brightness. A change on the layout goes to the spot, with a line in History. In **Change this spot** they show "set on the layout" with a link and cannot be typed. Saved on Grow lights, the spot keeps the layout's. With the light taken off the layout, the spot sets its own again.
+- **A plant under a light on a layout but in no spot counts as having a light.** The summary at the top of Grow lights has a column **Under a light on a layout** and "No light yet" leaves them out; the suggested layout leaves them out.
+- To know which plants a drawn light reaches, the server now works out the same sums as the Layouts page. The check compares the two for every drawn plant.
 
 ![Option 1: the plant's mark is the layout's](lights-read-layouts/laptop-decides.png)
-
-**Option 2, beside.** The mark stays the spot's, and the layout's is on the line under the plant:
-
-![Option 2: the layout's mark is on the line under the plant](lights-read-layouts/laptop-beside.png)
 
 A plant's own page:
 
@@ -56,7 +55,7 @@ Then, at http://127.0.0.1:8080:
 The focused check is `python3 dev/test/run_checks.py lightsread`.
 
 ## What it changes in the database
-Nothing. No table, no column, no saved setting. It reads `GET /api/layouts`, which now also carries the words for a plant's light (`verdicts`).
+No table and no column. A light spot's hours and brightness follow the light drawn on the layout of its place: changed there, they are written to the spot, with a line in History.
 
 ## How it is built
 - `app/static/js/layoutlights.js` (new) and `app/static/css/layoutlights.css` (new).
@@ -68,12 +67,9 @@ Nothing. No table, no column, no saved setting. It reads `GET /api/layouts`, whi
 - `dev/test/lightsread_check.py` (20 steps) and one line in `dev/test/unit/test_layouts.py`.
 
 ## What is not done
-- **The server does not use these numbers.** The summary at the top of Grow lights, the suggested layout, "It would suit ..." and Compare lights still use each spot's one number. A plant under a light on a layout but in no spot is listed, and is still counted as having no light.
-- **A drawn light and its spot keep their own hours and brightness.** A drawn light starts with its spot's, and after that each is set where it is. This page says where they differ; it does not make them one.
+- **Best setting** in a spot's dialog and **It would suit ...** still use the spot's one number. Compare lights knows nothing of layouts.
 - It changes the Grow lights page from outside, by adding to what that page has drawn. If this becomes a release, Grow lights should ask for the readings itself.
 - Daylight from windows is not counted, as on a layout.
 
 ## Questions for Ethan
-1. **Which way to show it:** option 1 (the layout decides the mark) or option 2 (beside the spot's mark)?
-2. **One place for a light's hours.** A light's hours and brightness can be set in its spot on Grow lights and on the drawn light on a layout. Which should be the one place: the spot, the layout, or either with the other following?
-3. **A plant under a light on a layout, but in no spot.** Should it count as having a light, so that the summary and the suggested layout leave it alone?
+None open.

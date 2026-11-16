@@ -127,6 +127,7 @@ window.addEventListener('resize', () => { if (document.getElementById('lt-top'))
 async function viewLights() {
   LT = await api('GET', '/api/lights');
   const n = LT.candidates.length, inside = LT.candidates.filter(c => c.inside).length, inSpots = Object.keys(LT.assigned).length, sug = LT.plan.reduce((a, s) => a + s.codes.length, 0);
+  const drawn = LT.candidates.filter(c => (LT.drawn || {})[c.code]).length;        // in no spot, but under a light drawn on a layout: they count as having a light
   const open = ltTopOpen();
   setTimeout(ltTopMeasure, 0); setTimeout(ltTopMeasure, 1300);
   return {
@@ -136,8 +137,8 @@ async function viewLights() {
       <div class="lt-top-body" id="lt-top-body" ${open ? '' : raw('hidden')}>
       <p class="muted">Your grow lights, the spots they light, and how much light each plant gets there. A plant's daily light (DLI, in mol/m² a day) is the light at its leaves (PAR) times the hours the light is on. Each plant page has the range it wants.</p>
       <div class="tbl-wrap"><table class="tbl lt-sum-tbl"><caption class="sr">The ${n} plants that live inside or are coming in, and the daylight outdoors</caption>
-        <thead><tr><th scope="col">Inside</th><th scope="col">Coming in</th><th scope="col">Assigned light spot</th><th scope="col">No assigned light spot</th><th scope="col">7-day mol/m² average</th></tr></thead>
-        <tbody><tr><td data-h="Inside">${inside}</td><td data-h="Coming in">${n - inside}</td><td data-h="Assigned light spot">${inSpots}</td><td data-h="No assigned light spot">${n - inSpots}</td>
+        <thead><tr><th scope="col">Inside</th><th scope="col">Coming in</th><th scope="col">Assigned light spot</th>${drawn ? html`<th scope="col">Under a light on a layout</th>` : ''}<th scope="col">${drawn ? 'No light yet' : 'No assigned light spot'}</th><th scope="col">7-day mol/m² average</th></tr></thead>
+        <tbody><tr><td data-h="Inside">${inside}</td><td data-h="Coming in">${n - inside}</td><td data-h="Assigned light spot">${inSpots}</td>${drawn ? html`<td data-h="Under a light on a layout">${drawn}</td>` : ''}<td data-h="${drawn ? 'No light yet' : 'No assigned light spot'}">${n - inSpots - drawn}</td>
           <td data-h="7-day mol/m² average">${has(LT.outdoor_dli) ? LT.outdoor_dli : 'Not known yet'}</td></tr></tbody></table></div>
       <p class="hint">${LT.plan.length ? `The suggested layout below places ${sug} more under your lights. ` : ''}${LT.unplaced.length ? `${LT.unplaced.length} ${LT.unplaced.length === 1 ? 'has' : 'have'} no light left in it. ` : ''}${has(LT.outdoor_dli) ? 'The 7-day average is outdoors in the open; under the porch roof it is much less.' : ''}</p></div></div>
     <section class="blk" id="lt-lights"><header class="sec-head"><h2>Your lights (${LT.lights.length})</h2><button class="btn ghost small noprint" type="button" data-act="lightnew">Add a light</button></header>
@@ -234,8 +235,9 @@ async function spotDialog(x, opt) {
       <section class="sp-light" id="sp-light" aria-label="About this light">${spotLightCard(L, x)}</section>
       <div class="field-grid three"><label class="f">How many of this light<input type="number" name="units" min="1" max="50" step="1" value="${x.units || 1}" required><small>Side by side over these plants.</small></label>
         <label class="f">Distance from the leaves (${lenU() === 'cm' ? 'cm' : 'inches'})<input type="number" name="distance" min="1" max="${lenU() === 'cm' ? 300 : 120}" step="0.5" value="${lenF(x.distance_in || 12, false)}" required><small>From the light to the top leaves${L && L.specs.direction === 'side' ? ' (this light shines sideways)' : ''}.</small></label>
-        <label class="f">Hours a day<input type="number" name="hours" min="1" max="24" step="0.5" value="${x.hours || 12}" required></label></div>
-      <label class="f">Brightness<select name="dim">${spotDims(L, x.dim_pct || 100)}</select></label>
+        <label class="f">Hours a day${x.layout ? html`<span class="sp-lockword">, set on the layout</span>` : ''}<input type="number" name="hours" min="0" max="24" step="0.5" value="${x.hours != null ? x.hours : 12}" required ${x.layout ? raw('readonly') : ''}></label></div>
+      <label class="f">Brightness${x.layout ? html`<span class="sp-lockword">, set on the layout</span>` : ''}<select name="dim" ${x.layout ? raw('disabled') : ''}>${spotDims(L, x.dim_pct || 100)}</select></label>
+      ${x.layout ? html`<p class="hint sp-layout">This light is drawn on the layout <a href="#/layouts/${x.layout.id}?sel=${x.layout.item}">${x.layout.name}</a>. Its hours and brightness are set there, for this spot and the layout together.</p>` : ''}
       <p class="row"><button class="btn ghost" type="button" data-act="spotbest">Best setting for the ticked plants</button></p>
       <p id="sp-best" class="sp-best" aria-live="polite"></p>
       <div id="sp-prev" class="sp-prev" aria-live="polite"></div>
@@ -336,8 +338,11 @@ async function spotBest() {
   if (!codes.length) { say.textContent = 'Tick the plants for this spot first.'; return; }
   try {
     const b = await api('GET', '/api/lights/best?' + new URLSearchParams({ light: f.elements.light.value, units: f.elements.units.value, plants: codes.join(',') }).toString());
-    f.elements.distance.value = lenF(b.distance_in, false); f.elements.hours.value = b.hours;
-    if ([...f.elements.dim.options].some(o => +o.value === b.dim_pct)) f.elements.dim.value = String(b.dim_pct);
+    f.elements.distance.value = lenF(b.distance_in, false);
+    if (!f.elements.hours.readOnly) {                    // a spot whose hours are set on its layout keeps them
+      f.elements.hours.value = b.hours;
+      if ([...f.elements.dim.options].some(o => +o.value === b.dim_pct)) f.elements.dim.value = String(b.dim_pct);
+    }
     say.textContent = `Set to ${b.distance_in} in from the leaves, ${b.hours} hours a day${b.dim_pct < 100 ? `, ${b.dim_pct}% brightness` : ''}: about ${b.dli} mol/m² a day. ${b.good} of the ${b.of} ticked plants with light needs are in their range${b.good < b.of ? '. The list under it shows which are not, and a spot of yours that would suit them, if there is one' : ''}.`;
     spotPreview(true);
   } catch (e) { say.textContent = e.message; }

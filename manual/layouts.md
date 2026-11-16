@@ -51,8 +51,8 @@ So when a plant is drawn on a layout that has a grow light, Grow lights reads th
 - **The plant's mark** (Too dim, A bit dim, Good, A bit bright, Too bright) is the layout's. Where the spot's one setting would have said something else, the line says what.
 - **No light reaches it** means the plant is drawn, but no light drawn on that layout reaches it. A plant on the level above a strip light is one.
 - **A plant that is not drawn** keeps what its spot gives, as before.
-- **The spot's own box** says how far under the light its plants are on the drawing, beside the spot's one distance. If the light's hours or brightness on the layout are not the spot's, it says so. The plants' numbers use the layout's.
-- **Under a light on a layout, but in no light spot** lists plants that the drawing puts under a light and that no spot has. The summary at the top of Grow lights and the suggested layout do not count these yet.
+- **A light's hours and brightness are set on the layout.** When the light of a spot is drawn on the layout of the spot's room or shelf, the spot takes the drawn light's hours and brightness. Change them on the layout and the spot follows. In **Change this spot** they are shown, with a link to the layout, and cannot be typed there. Take the light off the layout and the spot sets its own again.
+- **A plant under a light on a layout, but in no light spot** counts as having a light. The summary at the top of Grow lights counts it under **Under a light on a layout**, and the suggested layout leaves it out. They are listed above your spots.
 - **A plant's own page** says its light on the layout, under **Grow light this winter**.
 
-Nothing is saved by this, and nothing in your record changes. Move the plant or the light on the layout, or change the light's hours there, and Grow lights follows the next time you open it.
+Move the plant or the light on the layout, or change the light's hours there, and Grow lights follows the next time you open it.
