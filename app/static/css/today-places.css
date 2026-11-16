@@ -20,6 +20,7 @@ html[data-narrow="1"] .wpl-order>.btn{padding-left:.6rem;padding-right:.6rem}
 .wpl-grid{--cw:10.5rem;--lo:9rem;--n:2;display:grid;gap:.6rem;margin:0 0 .9rem;
   grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--cw),max(var(--lo),calc((100% - (var(--n) - 1) * .6rem) / var(--n) - .5px))),1fr))}      /* (- .5px: a width that fits exactly can round to one card fewer) */
 .wpl[data-pics=large] .wpl-grid{--cw:14rem;--lo:14rem;--n:1}
+.wpl[data-pics=xlarge] .wpl-grid{--cw:20rem;--lo:20rem;--n:1}      /* about 40% wider than Large; the photos behind the cards are 640 px on the short side, sharp at this size */
 .wpl-in,.wpl-in>.wpl-cards{display:contents}
 .wpl-head{display:flex;flex-direction:column;gap:.45rem;border:3px solid var(--ink);border-radius:6px;background:var(--sheet);padding:.45rem .55rem .55rem;min-width:0}
 .wpl-grid .wpl-head h3{margin:0;font-size:1.15rem;line-height:1.25;overflow-wrap:anywhere}        /* (.wpl-grid: "section.blk h3" gives a heading room above it) */
