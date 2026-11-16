@@ -39,8 +39,13 @@ with sync_playwright() as pw:
     b = pw.chromium.launch()
     pg = b.new_page(viewport={'width': 1280, 'height': 900}); pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.add_init_script("localStorage.setItem('plantdb.editor','Prep Test');localStorage.setItem('plantdb.display',JSON.stringify({layout:'single',navopen:'0'}))")
-    pg.goto(f'{BASE}/#/plant/P-065'); pg.wait_for_timeout(2500)
+    pg.goto(f'{BASE}/#/plant/P-065'); until(pg, lambda: pg.locator('#prep-box details.pr-more').count() == 1)
     check(pg.locator('#inside h2').inner_text().startswith('Getting ready to come inside'), 'plant page has the section')
+    # 1.58.0: before the checklist is started, About this plant and the checklist fold into one line; it opens and stays open
+    more = pg.locator('#prep-box details.pr-more')
+    check(not more.evaluate('d => d.open') and 'the checklist (10 steps)' in more.locator(':scope > summary').inner_text(), 'not started: About this plant and the checklist are folded into one line')
+    more.locator(':scope > summary').click()
+    check(until(pg, lambda: more.evaluate('d => d.open')), 'pressing that line opens them')
     check(pg.locator('select[data-act=preptrait][data-k=leaf_type]').input_value() == 'Large leaves', 'leaf type filled in (Large leaves)')
     check(pg.locator('#prep-box .pm').count() == 10, 'all 10 methods are there')
     v0 = call('GET', '/api/plants/P-065')['version']
