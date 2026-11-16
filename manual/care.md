@@ -10,7 +10,7 @@ The **Today** page (the page the app opens on, from 1.34.0) lists what to do tod
   - From 1.58.0 the lists are grouped **by room and spot**, in the order of Rooms and spots, so you can water spot by spot. The cards are one run: a tile where each spot starts, with the spot's name and **Watered all N here**, then that spot's plants. Each plant is a card: its picture, its name and how late it is.
   - **Press a picture to tick the plant** (the picture gets a tick, the word "Ticked" and a heavier border). **Watered** and **Still moist** for the ticked plants are in a bar that stays at the bottom of the screen while anything is ticked, with **Untick** to clear them. A ticked semi-hydro pot is topped up and a plant kept in water gets fresh water; Still moist is for the plants in soil. The ticks stay while you open a plant's page and come back, and start empty the next day.
   - Press how late a plant is ("4 days overdue") to read the reason. Press its name to open its page.
-  - **Picture size** (Medium or Large), beside the order buttons, sets how large the pictures are. Each device remembers its own choice.
+  - **Picture size** (Medium, Large or Extra large), beside the order buttons, sets how large the pictures are. Each device remembers its own choice.
   - With three spots or more, a phone has one list, **Go to a spot**, that goes straight to a spot.
   - With a keyboard: Tab to a picture and press Space to tick it. From a ticked card, the next Tab is **Go to the buttons for the ticked plants**.
   - **Most overdue first**, beside **By room and spot**, shows one row a plant with its reason and its own two buttons, as before 1.58.0. The choice is remembered on that device.
