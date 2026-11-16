@@ -150,7 +150,7 @@ def light_try(i):
         s2['dim_pct'] = min((x for x in dims if x >= s['dim_pct']), default=100)
         notes.append(f"It has no {s['dim_pct']}% setting, so this is at {s2['dim_pct']}%.")
     if pts and not on_chart(pts, s['distance_in']):
-        notes.append(f"The spot is {s['distance_in']:g} in from the leaves, outside the maker's figures ({chart_span(pts)[0]:g} to {chart_span(pts)[1]:g} in), so its light there is stretched from the nearest ones: a rough guess.")
+        notes.append(f"The spot is {s['distance_in']:g} in from the leaves, outside the maker's figures ({chart_span(pts)[0]:g} to {chart_span(pts)[1]:g} in), so its light there is worked out from the nearest ones. It is a rough guess.")
     if not pts: notes.append('It has no light figures yet, so its light cannot be worked out.')
     src, src_words = light_source(d)
     if src != 'maker': notes.append(f'Its figures: {src_words}.')
