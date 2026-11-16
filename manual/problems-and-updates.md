@@ -10,8 +10,8 @@ When something goes wrong, looks odd or could be better, you can say so from the
 
 - At the foot of the **Navigation** menu on every page, above Display.
 - On **Settings**, on the card **Problems and ideas**.
-- On a computer, a page with no Navigation menu (All plants, Add plants, Mushrooms, Year in review, Offline decisions, the Audit log, the Issue tracker) has it at the **foot of the page**, and as **Report** in the top bar beside Display when the bar has room.
-- At the largest text sizes on a phone, the button comes after the list of sections in Navigation (scroll the list to its end), so the list keeps its room.
+- On a computer, some pages have no Navigation menu: All plants, Add plants, Mushrooms, Year in review, Offline decisions, the Audit log and the Issue tracker. There it is at the **foot of the page**, and as **Report** in the top bar beside Display when the bar has room.
+- At the largest text sizes on a phone, the button comes after the list of sections in Navigation (scroll the list to its end). So the list keeps its room.
 
 **The window:**
 
@@ -52,7 +52,13 @@ Each report is a card, newest first:
 - **Copy for Claude:** copies the whole report as text (not its pictures: attach those in the chat yourself).
 - **Remove:** asks first, then deletes the report, your notes and its pictures. To keep a report out of the way without losing it, set it to Fixed or Closed.
 
-Above the cards: **Show** (Open and being looked at, to start with; or one status; or All), **Search the reports** (their words, names, devices, pages, your notes), **Report a problem**, and **Copy the ones shown for Claude**.
+Above the cards:
+
+- **Show**: Open and being looked at, to start with; or one status; or All.
+- **Search the reports**: their words, names, devices, pages and your notes.
+- **Report a problem**, and **Copy the ones shown for Claude**.
+
+
 
 Reports stay in your plant record: they are in every backup, and their pictures are in every backup that includes photos. Nothing sends them anywhere else. Copied text names the account that sent the report, so paste it only where you mean to.
 
@@ -60,7 +66,7 @@ Reports stay in your plant record: they are in every backup, and their pictures 
 
 A phone, tablet or computer that has had the app open since before an update can go on showing the old version. From 1.56.5 the app notices this by itself the next time it talks to the plant server, and reloads once (or shows **Reload now** if you are typing). **Check for updates** is for when you want to ask yourself.
 
-**Where the button is:** beside the version number at the top of **Settings**, and at the foot of **Navigation** beside Report a problem (on a page with no Navigation, at the foot of the page).
+**Where the button is:** beside the version number at the top of **Settings**, and at the foot of **Navigation** beside Report a problem. On a page with no Navigation, it is at the foot of the page.
 
 **What the window says:**
 

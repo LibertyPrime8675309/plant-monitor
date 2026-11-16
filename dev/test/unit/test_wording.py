@@ -28,3 +28,18 @@ def test_no_new_long_sentences():
         if len(L) > LIMITS.get(f, 0):
             over.append(f'{f}: {len(L)} (at most {LIMITS.get(f, 0)}): ' + ' | '.join(f'line {ln}: {s[:90]}' for ln, n, s in L))
     assert not over, 'Sentences over 25 words: split them into two or three short ones. ' + '; '.join(over)
+
+
+# The manual and the README (stage 5): no sentence over 50 words (the longest left are lists of sections),
+# and no more sentences over 25 words than now. Split the new ones.
+MANUAL_LIMIT = 271
+
+
+def test_manual_keeps_short_sentences():
+    found = [(os.path.relpath(f, wording.MANUAL), ln, n, s)
+             for f in wording.manual_files() for ln, n, s in wording.manual_long(f)]
+    huge = [x for x in found if x[2] > 50]
+    assert not huge, 'Sentences over 50 words in the manual: ' + '; '.join(
+        f'{f}:{ln} ({n}) {s[:80]}' for f, ln, n, s in huge)
+    assert len(found) <= MANUAL_LIMIT, (
+        f'{len(found)} sentences over 25 words in the manual (at most {MANUAL_LIMIT}): split the new ones')

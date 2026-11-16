@@ -1,6 +1,6 @@
 # Plant database
 
-Plant record is a web app for your plants: one page per plant with photos, names, what it needs (temperature, humidity, light, water, soil, feeding), where it lives, its care log and a full change history. It also keeps the weather, grow lights, mushroom finds, a plant library and the plan for each season. It runs in Docker on your PC and is opened in a browser. Phones and tablets can use it at home and, once set up, away from home.
+Plant record is a web app for your plants, with one page per plant. Each page has photos, names, and what the plant needs: temperature, humidity, light, water, soil and feeding. It also has where the plant lives, its care log and a full change history. It also keeps the weather, grow lights, mushroom finds, a plant library and the plan for each season. It runs in Docker on your PC and is opened in a browser. Phones and tablets can use it at home and, once set up, away from home.
 
 This file has what you need to run it: starting, stopping, updating, versions, where your data is and how it is backed up. **How to use each part of the app is in the `manual` folder** beside this file; the list is at the end.
 
@@ -70,7 +70,7 @@ docker compose pull
 docker compose up -d
 ```
 
-On the first start the app adds anything new (from the first version: 26 plants, P-041 to P-066, and their photos; from 1.6.0: 11 plants, P-067 to P-077, and new photos for three existing pages; from 1.2.0: the new environment fields filled in on every plant page, see below) and each upgrade batch runs once. Version 1.2.0 also adds a new table for weather and sensor readings; the app creates it by itself. Version 1.3.0 adds a database index (the first start after upgrading takes a few seconds longer while it is built, more if you loaded many years of history) and two tables for daily weather and the update log. If you had already loaded years of history, press **Load history** once more with the same start date to fill in the extra measurements and the daily summaries; it only fetches what is missing. Anything you edited on P-040 stays as you left it: if the upgrade wants to change a field you already changed, it leaves that field alone and records a note in the change log. Back up `data\` first if you want a safety copy (see "Your data and backups").
+On the first start the app adds anything new, and each upgrade batch runs once. From the first version that was 26 plants (P-041 to P-066) and their photos. From 1.6.0 it was 11 plants (P-067 to P-077) and new photos for three pages. From 1.2.0 it was the new environment fields on every plant page (see below). Version 1.2.0 also adds a new table for weather and sensor readings; the app creates it by itself. Version 1.3.0 adds a database index, and two tables for daily weather and the update log. The first start after upgrading takes a few seconds longer while the index is built, more if you loaded many years of history. If you had already loaded years of history, press **Load history** once more with the same start date to fill in the extra measurements and the daily summaries. It only fetches what is missing. Anything you edited on P-040 stays as you left it: if the upgrade wants to change a field you already changed, it leaves that field alone and records a note in the change log. Back up `data\` first if you want a safety copy (see "Your data and backups").
 
 ### The updater (from 1.7.0)
 
@@ -100,7 +100,7 @@ From 1.8.0, plant photos travel separately from the app, in **photo packs**. The
 
 Save any photo packs in `versions_plant-database` too (or in the Plants folder; the updater moves them). The updater adds the photos your `plant-database` folder does not have yet. Packs you already have are skipped.
 
-If a release needs a pack that is not in the folder, the updater lists it and stops before changing anything. If photos arrive after you have updated (because you used `-Force`), run the updater again; it adds them even though the version is already up to date. You can delete a pack once it has been added.
+If a release needs a pack that is not in the folder, the updater lists it and stops before changing anything. If photos arrive after you have updated (because you used `-Force`), run the updater again. It adds them even though the version is already up to date. You can delete a pack once it has been added.
 
 Everything it does is written to `update-log.txt` in the Plants folder. Each new release carries the newest updater in `plant-database\tools`, and the updater copies it into the Plants folder, so it keeps itself current.
 
@@ -126,7 +126,16 @@ macOS / Linux (bash), with PowerShell 7 (`pwsh`) installed:
 pwsh -File ./update-plant-database.ps1
 ```
 
-Options: `-Yes` (do not ask), `-Force` (re-apply the newest zip anyway), `-RemoveOldImage`, `-SkipBackup` (not recommended), `-Password <text>` (only if you set `PLANTDB_PASSWORD`), `-Url http://localhost:8080`, `-NoDownload` (from 1.55.0: do not ask GitHub, use only the zips already in the folder), `-Repo owner/name` (another GitHub repository to fetch releases from).
+Options:
+
+- `-Yes`: do not ask.
+- `-Force`: apply the newest zip again anyway.
+- `-RemoveOldImage`.
+- `-SkipBackup`: not recommended.
+- `-Password <text>`: only if you set `PLANTDB_PASSWORD`.
+- `-Url http://localhost:8080`.
+- `-NoDownload` (from 1.55.0): skip GitHub, and use only the zips already in the folder.
+- `-Repo owner/name`: another GitHub repository to fetch releases from.
 
 ### Releases, What's new and the restore test (from 1.55.0)
 
@@ -136,18 +145,18 @@ The rhythm from December 2026: one release with new features on the **first of e
 
 In the app:
 
-- **What's new.** After an update, Today starts with "New in <version>" and that version's changes from the list (the first line, with the rest folded under "The rest of what changed"). **Got it** puts it away; it is remembered for you (each person has their own), and "Every version's changes" opens the whole list as a plain page.
+- **What's new.** After an update, Today starts with "New in <version>" and that version's changes from the list (the first line, with the rest folded under "The rest of what changed"). **Got it** puts it away. It is remembered for you (each person has their own), and "Every version's changes" opens the whole list as a plain page.
 - **Opening the new version (from 1.56.5).** A page left open during an update notices the new version the next time it asks the app for anything, and reloads itself once. If you are typing or a window is open, a bar at the top says **Version … is installed** with **Reload now** instead. Every file the page loads names the version, so one reload brings all of it.
 - **An update is ready.** Twice a day the app asks GitHub whether a newer release exists. When one does, the owner sees "An update is ready: <version>" on Today, with a link to what changed, until it is installed. Only the owner sees it, because only the owner's PC can install it. The container can be told not to ask with `PLANTDB_UPDATES=0` in `docker-compose.yml`.
-- **Test a restore.** Backups are only as good as a restore, so once a quarter the owner's Today has "Test a restore" when none has been done for 90 days (or ever). Do it on the Backups page: **Back up now**, then **Restore** on that newest backup. The database from just before the restore is kept as another backup, so nothing is lost, and the reminder goes away for three months.
+- **Test a restore.** Backups are only as good as a restore. So once a quarter the owner's Today has "Test a restore" when none has been done for 90 days (or ever). Do it on the Backups page: **Back up now**, then **Restore** on that newest backup. The database from just before the restore is kept as another backup, so nothing is lost, and the reminder goes away for three months.
 
 ### Built on GitHub first (from November 2026)
 
-Every change to the app on GitHub builds all three container images (the app, the picture checker and the speech service) on GitHub's own machines before it can be merged, so a broken Dockerfile is caught there rather than on your PC. The images are kept in GitHub's registry under the repository (`ghcr.io/libertyprime8675309/plant-database`, `...-vision`, `...-speech`, tagged with the version); the repository and the images are public, so no sign-in is needed.
+Every change to the app on GitHub builds all three container images (the app, the picture checker and the speech service) on GitHub's own machines before it can be merged. So a broken Dockerfile is caught there rather than on your PC. The images are kept in GitHub's registry under the repository (`ghcr.io/libertyprime8675309/plant-database`, `...-vision`, `...-speech`, tagged with the version). The repository and the images are public, so no sign-in is needed.
 
 **From 1.46.0 the updater downloads those ready-built images instead of building them on your PC.** An update takes a couple of minutes rather than ten or more, and nothing is compiled on your computer. If GitHub cannot be reached, the updater builds the images from the folder as before, which still works offline from GitHub as long as Docker Hub can be reached for the base image.
 
-From 1.57.0 the Python libraries the app uses are fixed at known versions (`requirements.txt`), so a rebuild never picks up a new library by surprise. Once a week GitHub's Dependabot proposes updates to them, to the base images in the Dockerfiles and to GitHub's own build steps, as pull requests; each one goes through the same checks before it can be merged, and nothing changes on your PC until a release.
+From 1.57.0 the Python libraries the app uses are fixed at known versions (`requirements.txt`), so a rebuild never picks up a new library by surprise. Once a week GitHub's Dependabot proposes updates to them, to the base images in the Dockerfiles and to GitHub's own build steps, as pull requests. Each one goes through the same checks before it can be merged, and nothing changes on your PC until a release.
 
 ## Version
 
@@ -156,7 +165,7 @@ The `VERSION` file holds this package's version, and `CHANGELOG.md` lists what c
 ### Which version is running?
 
 - **In the app**: the version shows next to "Plant record" at the top of every page (for example `v1.6.2`), and at the top of the **Display** settings.
-- **In Docker Desktop**: open **Containers**; the **Image** column for `plant-database` shows the version, for example `ghcr.io/libertyprime8675309/plant-database:1.46.0` (before 1.46.0 the images were built on your PC and named `plant-database:1.6.2`). The **Images** list shows one entry per version you have had.
+- **In Docker Desktop**: open **Containers**. The **Image** column for `plant-database` shows the version, for example `ghcr.io/libertyprime8675309/plant-database:1.46.0` (before 1.46.0 the images were built on your PC and named `plant-database:1.6.2`). The **Images** list shows one entry per version you have had.
 - **From a terminal** (in the project folder):
 
 Windows (cmd.exe):
@@ -215,7 +224,14 @@ macOS / Linux (bash):
 cp data/plants.db plants-copy.db
 ```
 
-The weather tables are `locations` (your places), `readings` (hourly; sensors and weather, with the place in the `device` column: `open-meteo` for the original home place, `place-2` and so on for places you add), `weather_daily` (daily summaries, by place) and `weather_runs` (the update log, by place). To see how big the database is:
+The weather tables are:
+
+- `locations`: your places.
+- `readings`: hourly sensor and weather readings. The `device` column holds the place: `open-meteo` for the original home place, then `place-2` and so on for places you add.
+- `weather_daily`: daily summaries, by place.
+- `weather_runs`: the update log, by place.
+
+ To see how big the database is:
 
 Windows (cmd.exe):
 
@@ -237,7 +253,7 @@ ls -lh data/plants.db
 
 ### Saving mode (from 1.57.0, optional)
 
-The app saves to the database in the way that is safe on every computer (SQLite's "DELETE" journal). A faster way, "WAL", lets pages keep reading while a save is being written, which helps when several people use the app at once. On some Windows folders shared with Docker it does not work, so the app tests it first: when it starts, it writes and reads a small test database in the `data` folder, and uses WAL only if that works. Otherwise it stays as it is and says why. **Settings, Health of the app** shows the saving mode in use whenever WAL was asked for.
+The app saves to the database in the way that is safe on every computer (SQLite's "DELETE" journal). A faster way, "WAL", lets pages keep reading while a save is being written, which helps when several people use the app at once. On some Windows folders shared with Docker it does not work. So the app tests it first: when it starts, it writes and reads a small test database in the `data` folder, and uses WAL only if that works. Otherwise it stays as it is and says why. **Settings, Health of the app** shows the saving mode in use whenever WAL was asked for.
 
 To try it, make a backup first (**Backups**, **Make a backup now**), then add a line to the `.env` file next to `docker-compose.yml` and restart the app:
 
@@ -262,7 +278,7 @@ echo PLANTDB_JOURNAL=WAL >> .env
 docker compose up -d
 ```
 
-To go back, delete that line from `.env` (open it with `notepad .env` on Windows) and run `docker compose up -d` again. With WAL on, the database is three files while the app runs (`plants.db`, `plants.db-wal` and `plants.db-shm`), so copy it with **Backups** rather than by copying `plants.db` by hand.
+To go back, delete that line from `.env` (open it with `notepad .env` on Windows) and run `docker compose up -d` again. With WAL on, the database is three files while the app runs (`plants.db`, `plants.db-wal` and `plants.db-shm`). So copy it with **Backups** rather than by copying `plants.db` by hand.
 
 For a spreadsheet, use the **Weather** page's table (any columns, any dates) or the **Audit log** page: "Download weather and sensor readings (CSV)".
 
@@ -283,9 +299,9 @@ Open **Backups** in the menu.
   - how often: every 6 hours, every 12 hours, daily, every 3 days or weekly
   - the hour of day
   - how many automatic backups to keep (older automatic ones are deleted; backups you make yourself are never deleted automatically)
-  - whether to include the photos. From 1.58.0 they are included unless you untick the box. A record that had the box unticked was switched over once when 1.58.0 was installed (the Audit log says so), unless its photos come to more than a gigabyte; untick it again and it stays unticked. If they are left out, the top of the Backups page says so, with a button to put them in.
+  - whether to include the photos. From 1.58.0 they are included unless you untick the box. A record that had the box unticked was switched over once when 1.58.0 was installed (the Audit log says so), unless its photos come to more than a gigabyte. Untick it again and it stays unticked. If they are left out, the top of the Backups page says so, with a button to put them in.
 - **Backups made before an update** (the updater makes one each time): from 1.58.0 the newest 5 are kept and older ones are deleted. Before that they were never deleted, one for every version installed.
-- **Weather history** (from 1.58.0) has a backup of its own, in pieces, on its own schedule. Nearly all of the database is weather history, and little of it changes from day to day, so every backup used to carry the same 50 MB again.
+- **Weather history** (from 1.58.0) has a backup of its own, in pieces, on its own schedule. Nearly all of the database is weather history, and little of it changes from day to day. So every backup used to carry the same 50 MB again.
   - The first piece holds everything. Each later piece holds only the days that are new or have changed. All the pieces together are the whole history.
   - Choose how often (every day, 3 days, week, 2 weeks or month; it starts as every week) and the hour. A run with nothing new makes no file. **Back up the weather now** makes a piece straight away.
   - **Combine the pieces into one** writes one new piece with everything, checks it, and only then removes the old ones. Past 26 pieces this happens by itself.
@@ -304,7 +320,7 @@ The app must be running for automatic backups. If it was off when one was due, t
 
 Stop the app, keep the current database under another name, put the backup's `plants.db` in its place, and start the app again. The example uses `plantdb-backup-20261021-030000-auto.zip`; use your file's name.
 
-Restoring from the Backups page is simpler and keeps your weather history. Done by hand as below, a backup made from 1.58.0 on has no weather history in it: a few minutes after the app starts it puts the weather back from the pieces in `backups\weather` by itself (or press **Put missing weather back from the pieces** on the Backups page). Anything the pieces do not hold is downloaded again over the following hours.
+Restoring from the Backups page is simpler and keeps your weather history. Done by hand as below, a backup made from 1.58.0 on has no weather history in it. A few minutes after the app starts, it puts the weather back from the pieces in `backups\weather` by itself. Or press **Put missing weather back from the pieces** on the Backups page. Anything the pieces do not hold is downloaded again over the following hours.
 
 Windows (cmd.exe):
 
@@ -386,7 +402,7 @@ Each page below is a file in the `manual` folder. When the app says "see README"
 - Display settings and low vision: Pop-up windows; Read aloud and keyboard shortcuts; Section menu ("Navigation", called "On this page" before 1.42.0)
 - Room for the content
 - One identifier
-- Finding your way, summer heat for each plant, probe calibration and the health of the app: Every page in its section's row; Summer heat for each plant; Calibrating a soil probe; Soil moisture on the plant's page; Health of the app; Clear the saved pages; Buttons that say what they do
+- Finding your way, summer heat for each plant, probe calibration and the health of the app: Every page in its section's row. Summer heat for each plant. Calibrating a soil probe. Soil moisture on the plant's page. Health of the app. Clear the saved pages. Buttons that say what they do
 - The top bar, rooms and spots, pots and trays, editing on the page, and settings that follow you: The top bar; Rooms and spots; Pots and trays; Editing on the page; Settings that follow you
 - High Contrast, Problems, Restore, and a home per person
 - What's in the pages
@@ -408,7 +424,7 @@ Each page below is a file in the `manual` folder. When the app says "see README"
 - Plant labels
 - Who made a change
 - Groups of plants
-- Homes, adding several plants, and your plant photos: Homes; A home is a site; Add several plants at once; Your plant photos (Identify page); Not tied to Texas
+- Homes, adding several plants, and your plant photos: Homes. A home is a site. Add several plants at once. Your plant photos (Identify page). Not tied to Texas
 - About this plant
 - Audit log: Debug button and the audit log console
 - Large-print care cards
@@ -449,10 +465,10 @@ Each page below is a file in the `manual` folder. When the app says "see README"
 - Compare lights
 
 ### Away from home, on the phone and offline: `manual/away-and-offline.md`
-- Using the app away from home: One-time setup; Sharing it with someone (for example your girlfriend); Who can do what; Security, in short; Which user the app runs as; Opening it to your home network again (less safe); The names this computer answers to; If something doesn't work
-- On the phone and offline: Watering offline; When Tailscale comes back; Back goes back to where you were; Photos on the Add a plant form; Adding a plant without a connection; Several plants from photos, on a phone
+- Using the app away from home: One-time setup; Sharing it with someone; Who can do what; Security, in short; Which user the app runs as; Opening it to your home network again (less safe); The names this computer answers to; If something doesn't work
+- On the phone and offline: Watering offline. When Tailscale comes back. Back goes back to where you were. Photos on the Add a plant form. Adding a plant without a connection. Several plants from photos, on a phone
 - Offline use on phones and tablets
-- Photos from your phone, the year in review, and the mirror: Share a photo from your phone; The year in review; The mirror: a read-only copy on another machine
+- Photos from your phone, the year in review, and the mirror: Share a photo from your phone. The year in review. The mirror: a read-only copy on another machine
 - Notifications, a second copy of backups, and search: Notifications; Second copy of backups; Search everywhere
 
 ### Working with Claude: `manual/claude.md`
