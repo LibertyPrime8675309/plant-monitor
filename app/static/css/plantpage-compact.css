@@ -1,0 +1,7 @@
+/* 1.58.0: a shorter plant page on a narrow screen (a phone, or an iPad held upright). Each section's Read aloud shows its speaker
+   sign only (its spoken name stays "Read aloud: the ... section"), so it and Hide fit on one line, or beside the title. */
+html[data-narrow="1"] .sec-tools .rd-btn>span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+html[data-narrow="1"] .sec-tools .rd-btn{min-width:44px;min-height:44px;justify-content:center}
+/* Getting ready to come inside: About this plant and the checklist fold until the checklist is started */
+details.pr-more{margin:.6rem 0}
+details.pr-more>summary{cursor:pointer;min-height:44px;padding:.6rem 0;font-weight:700}

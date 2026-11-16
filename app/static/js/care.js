@@ -159,7 +159,9 @@ const PREP_CARE = { prep_start: 'Started the move-inside checklist', prep_inspec
 Object.assign(CARE_WORD, PREP_CARE);          // the care log and "Log other care" know these steps too
 const PR_SIGN = { 'Best': '★', 'Good': '✓', 'Use with care': '!', 'Not needed': '–', 'Not for this plant': '✕' };
 const prBadge = r => html`<span class="pr-badge pr-${r.toLowerCase().replace(/\s+/g, '-')}"><span aria-hidden="true">${PR_SIGN[r] || ''}</span> ${r}</span>`;
-const PREP = { data: null, list: null, open: new Set() };
+// 1.58.0 (Ethan, November 16: make a plant's page shorter): on a plant's page, About this plant and the checklist fold until the
+// checklist is started; PREP.more keeps them open once opened, across redraws.
+const PREP = { data: null, list: null, open: new Set(), more: false };
 // 1.40.1: Start the checklist beside a plant's status. 1.41.1: the steps are a checklist of tick boxes instead of one "next step"
 // button, on the plant page and inside each plant's fold on the Coming inside page. Every method is listed in order; the ones
 // rated Not needed or Not for this plant are marked "Not recommended" but can still be ticked.
@@ -200,6 +202,7 @@ function prepRender() {
     <div class="verdict-box pr-status" role="status"><p><strong>${D.status_word}.</strong> ${D.next}</p>
       ${D.status === 'settled' && !D.started ? html`<p class="hint">Start the checklist if it is new from a store, or came in without a check.</p>` : ''}</div>
     <p class="row pr-top noprint">${prepActs(D, 'top')}<button class="btn small ghost" type="button" data-act="prepjump">Go to the checklist</button></p>
+    <details class="pr-more" ${D.started || PREP.more ? raw('open') : ''}><summary>About this plant, and the checklist (${D.methods.length} steps)</summary>
     <fieldset class="pr-traits"><legend>About this plant</legend>
       <p class="hint">These decide which methods suit it. Claude filled in the leaf type from the photos; change anything that is wrong.</p>
       <div class="field-grid">
@@ -215,7 +218,7 @@ function prepRender() {
     ${D.best.length ? html`<p><strong>Best for this plant:</strong> ${D.best.join(', ')}.</p>` : ''}
     <h3 id="pm-head" tabindex="-1">The checklist, in the order to do it</h3>
     <p class="hint">Tick each step when you have done it; untick it to take back the last time. ${nrec} of the ${D.methods.length} are recommended for this plant. The others are marked Not recommended, and you can still tick them.</p>
-    ${prepChecklist(D, 'pg')}
+    ${prepChecklist(D, 'pg')}</details>
     <p class="hint">After it comes inside, keep it apart from your other houseplants for 3 weeks and check it at every watering. <a href="#/inside">See every plant that is coming inside</a>.</p>`);
 }
 async function loadPrep(box) {
