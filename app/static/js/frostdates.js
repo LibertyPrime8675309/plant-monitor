@@ -60,7 +60,7 @@ function fdPlants(D) {
   const list = g => g.plants.length <= FD_SHOW + 1 ? html`<ul class="fd-plants">${g.plants.map(fdPlantLi)}</ul>`
     : html`<ul class="fd-plants">${g.plants.slice(0, FD_SHOW).map(fdPlantLi)}</ul>
       <details class="fd-more"><summary>Show the other ${fdPlural(g.plants.length - FD_SHOW, 'plant')} damaged below ${tF(g.below)}</summary><ul class="fd-plants">${g.plants.slice(FD_SHOW).map(fdPlantLi)}</ul></details>`;
-  return html`<p class="muted">Your plants outside, grouped by the temperature that damages them, earliest first: the date their first damaging night usually comes, from the last ${D.winters} winters in ${D.place}.</p>
+  return html`<p class="muted">Your plants outside, grouped by the temperature that damages them, earliest first. Each group shows the date its first damaging night usually comes, from the last ${D.winters} winters in ${D.place}.</p>
     <ul class="fd-groups">${D.plants.map(g => html`<li class="fd-g"><h3 class="fd-h">Damaged below ${tF(g.below)} <span class="muted">(${fdPlural(g.plants.length, 'plant')})</span></h3>
       <p>${when(g)}</p>${list(g)}</li>`)}</ul>`;
 }
@@ -76,7 +76,7 @@ function fdOutside(D) {
     : html`<strong>The usual last freeze in spring is ${F.last.usual}</strong> (the latest in the last ${D.winters} winters was ${F.last.latest}).`;
   return html`${lead ? html`<p class="notice ${spring && L.freeze <= 0 ? 'ok' : ''} fd-now" role="status">${lead}${N.last_freeze ? ` This winter's latest freeze so far was ${fdDate(N.last_freeze.date)} (${tF(N.last_freeze.low)}).` : ''}</p>` : ''}
     <dl class="fd-dl">${row(H, `hard freeze (${tF(28)})`, 'hard')}${row(F, `freeze (${tF(32)})`, 'freeze')}${row(P, `night of ${tF(36)} or colder`, 'possible')}</dl>
-    <p class="hint">From the last ${D.winters} winters in ${D.place}. Plan by the latest date, not the usual one, for plants that are damaged near freezing: half of all springs have a freeze after the usual date. ${FD_POSSIBLE_WHY()} Each plant above is still checked against the 7-day forecast.</p>
+    <p class="hint">From the last ${D.winters} winters in ${D.place}. For plants that are damaged near freezing, plan by the latest date, not the usual one. Half of all springs have a freeze after the usual date. ${FD_POSSIBLE_WHY()} Each plant above is still checked against the 7-day forecast.</p>
     <p><a class="btn small ghost" href="#/weather?sec=wx-frostdates">All the frost dates (Weather page)</a></p>`;
 }
 

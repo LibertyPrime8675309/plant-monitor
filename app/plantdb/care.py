@@ -376,7 +376,7 @@ PREP_METHODS = [
         'Water the plant the day before.',
         'Outdoors, slide the plant out of its pot and gently tease the old soil off the roots. Bag the old soil for the trash.',
         'Rinse the roots in a bucket of water. White cottony patches are root mealybugs. Trim mushy, dark roots with clean scissors.',
-        'Use a new pot, or clean the old one without bleach: scrub it with hot soapy water and a brush, rinse it, and let it dry in the sun for a day. '
+        'Use a new pot, or clean the old one without bleach. Scrub it with hot soapy water and a brush, rinse it, and let it dry in the sun for a day. '
         'For extra cleaning, soak it for 10 minutes in 3% hydrogen peroxide from the pharmacy, straight from the bottle, then rinse. Never mix peroxide with vinegar or other cleaners.',
         'Repot in fresh bagged potting mix that suits the plant (see its Water and soil section), and water it in.',
         'Keep it out of strong light for a week while the roots recover.']},
