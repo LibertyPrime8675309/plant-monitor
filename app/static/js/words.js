@@ -12,7 +12,7 @@ const WORDS = [
   ['CRI', 'how true colours look', 'Colour rendering index: how natural colours look under a light, out of 100. Above 90 looks like daylight.'],
   ['ASPCA', 'a pet-safety list', 'The American Society for the Prevention of Cruelty to Animals. Its lists say which plants are poisonous to dogs, cats and horses.'],
   ['USDA', 'US farming department', 'The United States Department of Agriculture. Its hardiness zones say how cold the winters get where you live.'],
-  ['AHS', 'heat zone list', 'The American Horticultural Society. Its heat zones count the days a year above 86°F where you live.'],
+  ['AHS', 'American Horticultural Society', 'The American Horticultural Society. Its heat zones count the days a year above 86°F where you live.'],
   ['IUCN', 'world list of threatened species', 'The International Union for Conservation of Nature. Its Red List says how threatened a species is in the wild.'],
   ['CITES', 'trade rules for rare species', 'The Convention on International Trade in Endangered Species: the treaty that controls trade in rare plants and animals.'],
   ['LECA', 'clay pebbles', 'Lightweight expanded clay aggregate: baked clay balls used instead of soil in semi-hydro pots.'],
