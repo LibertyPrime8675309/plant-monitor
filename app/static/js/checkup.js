@@ -272,7 +272,7 @@ addFeature({
           : `This group uses the usual number of days (${D.due_days}), and ${ckN(D.poor_days, 'day', 'days')} for plants in Poor or Critical health.`}
         ${mine.length ? (due ? `${due} of its ${ckN(mine.length, 'plant', 'plants')} ${due === 1 ? 'is' : 'are'} due now.` : 'None of its plants are due now.') : ''}</p>
       ${canChange() ? html`<form data-form="ckgroupset" data-id="${g.id}" class="ck-set">
-        <label class="f">Days between looks for this group<small>Leave it empty to use the usual ${D.due_days}. The number you give decides for every plant in the group, even ones in Poor or Critical health, so it can be longer than ${D.poor_days} (cacti every 30 days, say). A plant in several groups goes by the shortest.</small>
+        <label class="f">Days between looks for this group<small>Leave it empty to use the usual ${D.due_days}. The number you give decides for every plant in the group, even ones in Poor or Critical health. So it can be longer than ${D.poor_days}: cacti every 30 days, say. A plant in several groups goes by the shortest.</small>
           <input type="number" name="days" min="1" max="365" step="1" inputmode="numeric" value="${g.days || ''}"></label>
         <p><button class="btn" type="submit">Save for this group</button></p></form>` : ''}
       ${due ? html`<p><button class="btn ghost" type="button" data-act="ckgroupwalk" data-id="${g.id}">Walk through the ${ckN(due, 'due plant', 'due plants')} in this group</button></p>` : ''}</section>`;
