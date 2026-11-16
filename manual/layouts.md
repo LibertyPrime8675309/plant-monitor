@@ -39,3 +39,19 @@ Part of the Plant record manual. The README in the folder above has how to start
 - A plant's own page says which layouts it is drawn on.
 - People who can only view can look and choose a thing to read its place, its size and its light. Changing a layout needs a connection to the plant server.
 
+## Grow lights reads your layouts (prototype)
+
+A light spot on **Grow lights** is one setting for every plant in it: one distance from the leaves, and one number for all of them. A layout knows more: where each plant stands under the light, how tall it is, and how far to the side.
+
+So when a plant is drawn on a layout that has a grow light, Grow lights reads the plant's light from the drawing.
+
+- **Above your light spots**, Grow lights says which layouts it reads and how many of your plants are drawn there.
+- **In a spot**, each plant that is drawn has a line under it: its own daily light on the layout, how far under the light it is, and a link that opens the layout with that plant chosen.
+- **The plant's mark** (Too dim, A bit dim, Good, A bit bright, Too bright) is the layout's. Where the spot's one setting would have said something else, the line says what.
+- **No light reaches it** means the plant is drawn, but no light drawn on that layout reaches it. A plant on the level above a strip light is one.
+- **A plant that is not drawn** keeps what its spot gives, as before.
+- **The spot's own box** says how far under the light its plants are on the drawing, beside the spot's one distance. If the light's hours or brightness on the layout are not the spot's, it says so. The plants' numbers use the layout's.
+- **Under a light on a layout, but in no light spot** lists plants that the drawing puts under a light and that no spot has. The summary at the top of Grow lights and the suggested layout do not count these yet.
+- **A plant's own page** says its light on the layout, under **Grow light this winter**.
+
+Nothing is saved by this, and nothing in your record changes. Move the plant or the light on the layout, or change the light's hours there, and Grow lights follows the next time you open it.

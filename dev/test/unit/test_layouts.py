@@ -259,6 +259,7 @@ def test_a_drawn_light_carries_what_the_page_works_the_light_out_from(room):
         assert (lamp['pts'], lamp['hours'], lamp['dim_pct'], lamp['dims']) == ([], 12, 100, [100]), 'a light of your own naming has no figures to count'
         assert fern['need'] == {'lo': 6, 'hi': 12, 'target': 8.4} and 'hours' not in fern and 'hours' not in fan
         assert r.get_json()['verdicts']['too_dim'] == 'Too dim', 'the words are the ones Grow lights uses'
+        assert c.get('/api/layouts').get_json()['verdicts']['dim'] == 'A bit dim', 'the list of layouts carries the same words, for Grow lights, which reads the layouts'
         put = lambda iid, body: c.put(f'/api/layouts/items/{iid}', json=body, headers=OWN)
         r = put(mine['id'], {'hours': 14.5, 'dim_pct': 50})
         assert r.status_code == 200 and (r.get_json()['item']['hours'], r.get_json()['item']['dim_pct']) == (14.5, 50)

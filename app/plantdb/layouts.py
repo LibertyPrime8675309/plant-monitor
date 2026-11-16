@@ -360,7 +360,7 @@ def layouts_api():
             return jsonify(on=[{'id': r['id'], 'name': r['name'], 'item': r['item']} for r in c.execute(
                 'SELECT l.id, l.name, i.id AS item FROM layout_items i JOIN layouts l ON l.id=i.layout_id WHERE i.plant_code=? ORDER BY l.name', (code.strip().upper(),))])
         return jsonify(layouts=[layout_dict(c, L) for L in c.execute('SELECT * FROM layouts ORDER BY home_id IS NOT NULL, home_id, name COLLATE NOCASE, id').fetchall()],
-                       places=layout_places(c), kinds=LAYOUT_KINDS, grids=list(LAYOUT_GRIDS))
+                       places=layout_places(c), kinds=LAYOUT_KINDS, grids=list(LAYOUT_GRIDS), verdicts=LIGHT_VERDICT)      # verdicts: for Grow lights, which reads the layouts (js/layoutlights.js)
     b = request.get_json(silent=True) or {}; who = editor()
     f = layout_fields(b)
     area_id = spot_id = None
