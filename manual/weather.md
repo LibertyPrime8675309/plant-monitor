@@ -10,6 +10,8 @@ From 1.58.0 the banner on pages other than Today is one line: the warning, how m
 
 **Open the cold-night checklist** (on the banner, or on the Winter plan page) shows the next 7 nights, then each plant once, most urgent first, in three groups: **Bring inside**, **Cover or move to shelter**, and **Close calls** (within 3°F of the damage point). Each plant has **Moved indoors** (sets its Location to Indoors, so it leaves every list and warning) and **Covered for tonight** (ticks it off for its next cold night only, since covers go back on each night), with **Undo**. Each group also has a button for all its plants, which asks first. Tips for a cold night are at the bottom.
 
+From 1.58.0 the checklist is shorter. In each group, what most plants share is said once at the top: the nights ahead, what to do, and the porch note. A plant's own row then shows only what is its own: its damage and death temperatures, and its nights or advice when they differ from the group's. On a phone, or an iPad held upright, a plant's words run beside its photo and then under it, and **Moved indoors** and **Covered** sit side by side. The Back outside list uses the same rows. At the largest text on a phone the checklist went from 156 screens to 100 (78 plants on it).
+
 Plants set to Indoors or Garage or shed are never counted. Plants on the Covered porch are.
 
 ## Getting plants ready to come inside (from 1.9.0)
