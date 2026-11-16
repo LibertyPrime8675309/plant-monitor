@@ -25,10 +25,18 @@ function filteredPlants(list) {
   let r = (list || ALL).filter(p =>
     statusOk(p) && (!G.site || (p.site || 'Outdoors') === G.site) && homeOk(p) && moreOk(p) && (!G.area || String(p.area_id) === G.area) && (!G.spot || String(p.spot_id) === G.spot) &&
     (!G.plan || p.winter_plan === G.plan) && (!G.health || p.health_rating === G.health) &&
-    (!G.low || (p.id_confidence != null && p.id_confidence < 70)) && (!G.needs || needsYou(p)) && inGroupFilter(p.code) &&
-    (!q || [p.code, p.common_name, p.scientific_name, p.aliases, p.plant_type, p.location].join(' ').toLowerCase().includes(q)));
+    (!G.low || (p.id_confidence != null && p.id_confidence < 70)) && (!G.needs || needsYou(p)) && inGroupFilter(p.code));
+  // 1.58.0: the search forgives spelling. Names as typed come first; only when none match, close spellings are shown, and the count says so
+  G_CLOSE = null;
+  if (q) {
+    const hay = p => [p.code, p.common_name, p.scientific_name, p.aliases, p.plant_type, p.location].join(' ');
+    const exact = r.filter(p => hay(p).toLowerCase().includes(q));
+    if (exact.length) r = exact;
+    else { r = r.filter(p => fzMatch(hay(p), q)); if (r.length) G_CLOSE = fzNearest(r.map(p => [p.common_name, p.scientific_name, p.aliases].join(' ')), q) || ''; }
+  }
   return r.sort(plantCmp());
 }
+let G_CLOSE = null;          // the nearest name when the search showed close spellings
 function plantCmp() {
   return {
     code: (a, b) => a.code.localeCompare(b.code),
@@ -113,7 +121,8 @@ function drawGrid() {
     const why = document.getElementById('wa-why'); if (why) why.textContent = W.untended ? `Plants at ${W.home.name} are cared for outside the app.` : n ? '' : (W.home ? `No plants at ${W.home.name} are shown.` : 'No plants are shown.');
     const hint = document.getElementById('wa-hint'); if (hint) hint.textContent = waterAllWords(W);
   }
-  document.getElementById('count').textContent = `${r.length} of ${pool} ${G.status === 'archived' ? 'archived ' : G.status === 'all' ? '' : 'active '}plants shown`;
+  document.getElementById('count').textContent = `${r.length} of ${pool} ${G.status === 'archived' ? 'archived ' : G.status === 'all' ? '' : 'active '}plants shown` +
+    (G_CLOSE != null ? `. Nothing is spelt "${G.q.trim()}", so these are close spellings${G_CLOSE ? `, such as ${G_CLOSE}` : ''}.` : '');
   document.getElementById('grid').innerHTML = r.length
     ? rend(r.map(sheet))
     : rend(html`<div class="empty" style="grid-column:1/-1"><p>No plants match these filters.</p><button class="btn ghost" type="button" data-act="clearfilters">Clear filters</button></div>`);
@@ -324,7 +333,7 @@ async function viewGroups() {
       <li><strong>Smart groups</strong> have a rule, such as "Genus is Philodendron" or "Location is Indoors". Plants that fit join by themselves, and leave when they stop fitting.</li>
       <li><strong>Hand-picked groups</strong> hold the plants you choose. Add or take out plants on the group's page or on a plant's own page.</li>
       <li>On the <a href="#/plants">Plants page</a>, choose a group under <strong>Group</strong> to see only those plants, or sort by group. Previous and Next Plant follow the same choice.</li>
-      <li>A group's page shows the conditions that suit every plant in it, and lets you log care, move the plants, or change a setting for all of them. A change to a setting shows each plant first, and can be undone.</li>
+      <li>A group's page shows the conditions that suit every plant in it. From there you can log care, move the plants, or change a setting for all of them. A change to a setting shows each plant first, and can be undone.</li>
       <li>Removing a group never changes the plants in it.</li></ul></section>`,
   };
 }

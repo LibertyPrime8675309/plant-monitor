@@ -83,3 +83,15 @@ Part of the notes on how Plant record is built. The short map is `docs/ARCHITECT
 - Display (`ui.js` `displayDialog()`): a Reading part (Easier reading, letter shapes, headings and plant names, spacing, line length). `easyReading()` / `easyUndo()` keep what was there before in localStorage `plantdb.easyprev`. `PlantSync` PARTS: `text` (size, contrast, theme, cvd) and `reading` (font, plain, space, lines); a device that shared `text` before shares `reading` too.
 - Checks: `dev/test/unit/test_colours.py` works out the colour tokens for every theme, contrast and colour-vision setting from the stylesheets and measures them (7 to 1; good, fair and poor kept apart under simulated colour blindness), and keeps justified text, capitals and italics out of the stylesheets. `dev/test/reading_check.py` measures every page in Cream paper, Soft dark and red-green colours, looks for sideways scrolling with the strongest reading settings on a phone, and tries Easier reading and a device asking for more contrast. `contrast_js.py` is the measure it shares with `names_check.py`.
 
+## The dyslexia audit's fixes (1.58.0)
+- **Search that forgives spelling:**
+  - `core.js` has `fzNorm` (sounds-alike letters: ph to f, ch and ck and c to k, y to i, doubled letters once), `fzWord` (start of a word; one slip under 8 letters, two from 8; or the same consonants, from 5), `fzMatch` ('exact' or 'close') and `fzNearest` (the word for "such as ...").
+  - Words under 5 letters only match as typed.
+  - They are used by the Plants filter (`filteredPlants`, `G_CLOSE`), Mushroom finds (`muFiltered`), the offline Library, and the Search window's page list.
+  - The server's `/api/search` falls back to `plantdb/fuzzy.py` and answers `close`.
+  - The picture checker's `/names` and `/browse` fall back to `fz_close()` in `vision/service.py`. Normalised names are built the first time, which takes a few seconds once.
+- **Messages:** `toast()` is shown for `toastMs()` (8 s at least, 70 ms a letter, half as long again for a problem). It has a `.toast-x` Close button (the only part that takes a click). `msgKeep()` keeps the last 30 in localStorage `plantdb.recentmsgs`, and `recentMsgsDialog()` shows them (Settings).
+- **Short forms:** `js/words.js` holds `WORDS`. `abbrPass()` runs with `notesPass()` after a page and its late parts are drawn. It adds `span.abx` " (plain words)" after the first of each short form. It skips buttons, links, headings, labels, tags and table headers, and any short form already followed by brackets. Its pages are `#/words` (Words used in the app) and the reading guide (`.rguide`, `data-rguide`).
+- **Display → Reading** gains `abbr` (`data-abbr`), `guide` (`data-rguide`) and `tint` (`data-tint`: blue, green, peach; light pages only, not with Cream paper). `lines` now defaults to `short`.
+- **Long notes:** `edLong()` shows a note of three sentences or more one sentence to a line (`sentLines()`).
+

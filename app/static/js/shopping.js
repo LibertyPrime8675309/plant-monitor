@@ -185,7 +185,7 @@ function buyCard(w) {
         <strong>Alerts:</strong> ${[w.max_price != null ? `${money2(w.max_price)}${w.price_per === 'unit' ? ' a ' + kindUnit(w.kind) : ''} or less` : '', w.alert_stock ? 'when it is in stock' : ''].filter(Boolean).join('; ') || 'none set (Edit to add one)'}.</p>
       <p class="hint">Searching for: ${(w.terms || []).join('; ') || 'nothing (Edit to add search words)'}.</p>
       <details class="wl-offers" data-wish="${w.name}"><summary>Every listing found, with past prices</summary><div class="wl-offers-box"><p class="loading">Loading</p></div></details></div>` : ''}
-    ${w.status === 'want' && visit.length ? html`<details class="buy-visit"><summary>Stores near you that carry ${kindWord(w.kind).toLowerCase()} (${visit.length})</summary><ul>${visit.map(s => html`<li><a href="#/store/${enc(s.key)}">${s.name}</a>${s.phone ? html`: ${phoneLinks(s.phone)}` : ''}${s.miles != null ? html` <small class="muted">about ${fmt(s.miles, 0)} miles</small>` : ''}</li>`)}</ul></details>` : ''}
+    ${w.status === 'want' && visit.length ? html`<details class="buy-visit"><summary>Stores near you that carry ${kindWord(w.kind).toLowerCase()} (${visit.length})</summary><ul>${visit.map(s => html`<li><a href="#/store/${enc(s.key)}">${s.name}</a>${s.phone ? html`: ${phoneLinks(s.phone)}` : ''}${s.miles != null ? html` <span class="muted">about ${fmt(s.miles, 0)} miles</span>` : ''}</li>`)}</ul></details>` : ''}
     ${w.where_seen ? html`<p><strong>Where to find it:</strong> ${w.where_seen}</p>` : ''}
     ${w.notes ? html`<p class="pl">${w.notes}</p>` : ''}
     ${can ? html`<div class="row wl-acts"><button class="btn small" type="button" data-act="buygot" data-name="${w.name}">${w.status === 'got' ? 'Move back to watching' : 'Got it'}</button>
@@ -280,7 +280,7 @@ function storeRows(list, cols) {
   const how = s => s.kind === 'api' ? 'Searches its listings' : s.platform === 'shopify' || s.platform === 'woo' ? 'Reads its online store' : s.platform === 'page' || s.kind === 'page' ? 'Call or visit: its pages are read for the names you watch' : 'Finds out on the first check';
   const owner = ME().role === 'owner';
   return html`<div class="tbl-wrap"><table class="tbl wl-shops"><thead><tr><th scope="col">Store</th><th scope="col">Carries</th><th scope="col">How it is checked</th>${cols.phone ? html`<th scope="col">Phone</th>` : ''}<th scope="col">Last check</th>${owner ? html`<th scope="col">Check it</th>` : ''}</tr></thead><tbody>
-    ${list.map(s => html`<tr><th scope="row"><a href="#/store/${enc(s.key)}">${s.name}</a>${s.miles != null ? html`<br><small class="muted">about ${fmt(s.miles, 0)} miles</small>` : ''}</th>
+    ${list.map(s => html`<tr><th scope="row"><a href="#/store/${enc(s.key)}">${s.name}</a>${s.miles != null ? html`<br><span class="muted">about ${fmt(s.miles, 0)} miles</span>` : ''}</th>
       <td>${s.carries.length ? s.carries.map(k => kindWord(k)).join(', ') : html`<span class="muted">Not set</span>`}</td><td>${how(s)}</td>
       ${cols.phone ? html`<td>${s.phone ? phoneLinks(s.phone) : html`<span class="muted">Not known</span>`}</td>` : ''}
       <td>${s.error ? html`<span class="bad-text">⚠ ${s.status}</span>` : s.status || (s.enabled ? 'Not checked yet' : 'Off')}${s.checked_at ? html`<br><small class="muted">${when(s.checked_at)}</small>` : ''}</td>

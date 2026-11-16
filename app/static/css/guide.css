@@ -6,3 +6,8 @@
 .gd-method li{margin:.3rem 0}
 .gd-yours{margin:.9rem 0 .3rem;overflow-wrap:anywhere}
 .gd-how{margin-left:.4rem;white-space:nowrap}
+/* 1.58.0 (the dyslexia audit): your plants as a list, five at a time */
+.gd-yours p{margin:0 0 .3rem}
+.gd-ylist{margin:.2rem 0 .4rem;padding-left:1.2rem;columns:18rem auto;column-gap:2rem}
+.gd-ylist li{margin:.2rem 0;break-inside:avoid}
+.gd-more>summary{cursor:pointer;font-weight:700;color:var(--cyan);margin:.2rem 0}

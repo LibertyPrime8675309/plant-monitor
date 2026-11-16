@@ -15,7 +15,10 @@ This is Ethan's plant database: a Flask + SQLite web app ("Plant record") that r
   - Every theme (Light, Cream paper, Dark, Soft dark) and colour-vision setting keeps text at 7 to 1. A new colour token gets a value in each, and `dev/test/unit/test_colours.py` must pass. Status colours use `--moss` (good), `--ochre` (fair), `--madder` / `--critical` (poor), never a colour of their own, so the colour-vision setting reaches them.
   - Readable with dyslexia: no justified text, no capitals made by the stylesheet (`text-transform`), italics only for Latin names (`.latin`, `<i>`). Use `<strong>`, not `<em>`, for emphasis. `test_colours.py` checks the stylesheets.
   - Everything must still work with the Reading settings at their strongest (OpenDyslexic, one plain font, Widest spacing, Largest text): no sideways scrolling, no text cut off. `reading_check.py` looks at every page that way.
-  - Short sentences and short paragraphs; one idea per sentence; a list in place of a long sentence of items.
+  - Short sentences and short paragraphs; one idea per sentence; a list in place of a long sentence of items. Aim for 25 words a sentence at most. Say it without a negative where you can ("Lasts for good", not "Does not break down"), and write dates in words ("Sun, Nov 15"), never 2026-11-15.
+  - **Search forgives spelling (1.58.0).** A new search box or filter matches with `fzMatch()` (core.js) after the exact match finds nothing, and says when it shows close spellings (`fzNearest()`). On the server use `plantdb/fuzzy.py` (`fz_match`, `fz_nearest`); `vision/service.py` has its own copy. `test_fuzzy.py` keeps the three alike.
+  - **Short forms (1.58.0):** a new abbreviation goes into `WORDS` in `static/js/words.js`, with its plain words and a line for the Words used in the app page. `abbrPass()` explains the first one on each page.
+  - **Messages (1.58.0):** `toast()` keeps a message for at least 8 seconds, with a Close button, and stores it in Recent messages. Don't shorten it, and don't put anything in a message that is not also on the page.
 - Write labels, buttons and help text in plain words, sentence case, active voice. Say what a button does ("Save changes", "Moved indoors").
 
 ## How Ethan works
