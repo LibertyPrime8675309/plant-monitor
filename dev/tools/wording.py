@@ -6,6 +6,7 @@ Text the record holds (plant notes, care profiles, batches) is not here: only th
     python3 dev/tools/wording.py                   every file
     python3 dev/tools/wording.py care.js lights.js some files
     python3 dev/tools/wording.py --count           the count per file only
+    python3 dev/tools/wording.py --manual          the manual pages and the README too
 
 dev/test/unit/test_wording.py keeps the count from growing: each file may have no more long sentences than its line in LIMITS."""
 import os, re, sys
@@ -70,6 +71,25 @@ def long_ones(fname):
     return sorted(out)
 
 
+MANUAL = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..')
+
+
+def manual_long(path):
+    """(line, words, sentence) for each sentence of more than 25 words in a manual page or the README (code blocks and code spans left out)."""
+    out, block = [], False
+    for i, line in enumerate(open(path, encoding='utf-8').read().split('\n'), 1):
+        if line.strip().startswith('```'): block = not block; continue
+        if block: continue
+        t = re.sub(r'`[^`]*`', 'X', line); t = re.sub(r'\[([^\]]*)\]\([^)]*\)', r'\1', t); t = re.sub(r'[*_#>|]', ' ', t)
+        for x in re.split(r'(?<=[.!?])\s+(?=[A-Z"(])', t):
+            if len(x.split()) > MAX_WORDS: out.append((i, len(x.split()), x.strip()))
+    return out
+
+
+def manual_files():
+    return [os.path.join(MANUAL, 'README.md')] + sorted(os.path.join(MANUAL, 'manual', f) for f in os.listdir(os.path.join(MANUAL, 'manual')) if f.endswith('.md'))
+
+
 def main(argv):
     files = [a for a in argv if a.endswith('.js')] or sorted(f for f in os.listdir(ROOT) if f.endswith('.js'))
     total = 0
@@ -78,6 +98,10 @@ def main(argv):
         if '--count' in argv: print(f'{len(L):4d}  {f}'); continue
         for line, n, s in L: print(f'{f}:{line} ({n} words) {s[:200]}')
     print(f'{total} sentences over {MAX_WORDS} words')
+    if '--manual' in argv:
+        for f in manual_files():
+            L = manual_long(f)
+            print(f'{len(L):4d}  {os.path.relpath(f, MANUAL)}' if '--count' in argv else '\n'.join(f'{os.path.relpath(f, MANUAL)}:{a} ({b} words) {c[:200]}' for a, b, c in L))
 
 
 if __name__ == '__main__':

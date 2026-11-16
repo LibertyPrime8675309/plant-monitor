@@ -4,9 +4,9 @@ Part of the Plant record manual. The README in the folder above has how to start
 
 ## Room and shelf layouts
 
-**Layouts** (Plants → Layouts, after Rooms and spots) draws a room, a porch or one shelf unit to scale, with your plants, grow lights and shelves on it, so you can move things about on the page before you move the real ones. It says how much light each plant gets where it is drawn. Moving a plant on a layout does not change where its page says it is until you press **Move it in the record**; a plant's height typed on a layout is saved on its page.
+**Layouts** (Plants → Layouts, after Rooms and spots) draws a room, a porch or one shelf unit to scale, with your plants, grow lights and shelves on it. You can move things about on the page before you move the real ones. It says how much light each plant gets where it is drawn. Moving a plant on a layout changes where its page says it is only when you press **Move it in the record**. A plant's height typed on a layout is saved on its page.
 
-- **Start a layout.** Choose one of your rooms, areas or shelves, or a space of your own, and give its width, depth and height. A shelf comes with its own size and its levels drawn as boards from **Measurements and photos**; a room starts at 12 by 10 ft (type its real size) with its shelves as blocks along the back wall. On **Rooms and spots**, every room, area and spot has **Lay it out**, which becomes **Open its layout** once it has one.
+- **Start a layout.** Choose one of your rooms, areas or shelves, or a space of your own, and give its width, depth and height. A shelf comes with its own size, and its levels are drawn as boards from **Measurements and photos**. A room starts at 12 by 10 ft (type its real size), with its shelves as blocks along the back wall. On **Rooms and spots**, every room, area and spot has **Lay it out**, which becomes **Open its layout** once it has one.
 - **Two drawings of the same things.** **Top view** looks down (the back at the top); **Front view** looks from the front (the floor at the bottom); **Both** shows them together.
 - **In a room, the front view looks at one wall at a time.** It starts at the back wall and draws only the things at that wall, so things across the room from each other are not drawn on top of each other.
   - **Front view looks at**, above that drawing, chooses the view: **Back wall**, **Left wall**, **Right wall**, **Front wall**, **Middle**, or **Everything**. The line above the drawing says how many things are there.
@@ -15,17 +15,30 @@ Part of the Plant record manual. The README in the folder above has how to start
   - You look at a wall from inside the room, so left and right are your left and right as you face it. The words under the drawing say which way is which ("Front" and "Back" for a side wall), and the arrow keys and dragging follow them.
   - Choose a thing anywhere and the front view goes to its wall. In the top view the wall being looked at has a heavy edge.
   - The layout of one shelf or spot keeps its whole front view. On a shelf unit the top view shows one level, the one the chosen thing is on, with the others faint; **Top view shows** in **Grid and settings** changes that.
-- **Add something.** A plant (tick any of yours, or name one you have not bought yet), a grow light from your list, one of your shelves or a board or table you describe, something else (a humidifier, a fan), or an **area to keep clear** such as a walkway or a door. A new thing goes in the first free place; choose a shelf on the drawing first to put it on that shelf, or a light under it. **Here, but not drawn yet** lists the plants the record has at that place, with **Put all on the layout**.
-- **Moving a thing.** Drag it; or choose it and use the arrow keys (one square, or five with Shift; in the front view, Up and Down stop on each shelf; Page Down and Page Up go to the next and the previous thing); or type **From the left**, **From the back** and **Off the floor** in **Chosen thing**; or pick what it **Stands on**. On a touch screen the first touch chooses a thing and the next one drags it.
+- **Add something.** You can add:
+    - a plant: tick any of yours, or name one you have not bought yet
+    - a grow light from your list
+    - one of your shelves, or a board or table you describe
+    - something else, such as a humidifier or a fan
+    - an **area to keep clear**, such as a walkway or a door
+
+  A new thing goes in the first free place. To put it on a shelf, or a light under one, choose the shelf on the drawing first. **Here, but not drawn yet** lists the plants the record has at that place, with **Put all on the layout**.
+- **Moving a thing.** There are four ways:
+    - Drag it.
+    - Choose it and use the arrow keys: one square, or five with Shift. In the front view, Up and Down stop on each shelf. Page Down and Page Up go to the next and the previous thing.
+    - Type **From the left**, **From the back** and **Off the floor** in **Chosen thing**.
+    - Pick what it **Stands on**.
+
+  On a touch screen the first touch chooses a thing and the next one drags it.
 - **A shelf carries what is on it.** Move a shelf, a table or anything else and whatever stands on it (on any of its levels) or hangs under it goes with it, and so does whatever stands on those. Undo puts all of them back together. A thing that is locked in place stays where it is.
 - **Putting a plant on a shelf in a room.** On a room's layout each of your shelves is one block, and it knows its levels from **Measurements and photos**.
-  - **Drop it there.** Drag a plant onto the shelf in the top view and it stands on it: on the lowest level that has the room for it and nothing in its way, or on the top if it is too tall for the levels. The arrow keys do the same when they carry it onto the shelf. Drag it off again and it goes down to the floor.
+  - **Drop it there.** Drag a plant onto the shelf in the top view and it stands on it. It goes on the lowest level that has the room for it and nothing in its way. If it is too tall for the levels, it goes on the top. The arrow keys do the same when they carry it onto the shelf. Drag it off again and it goes down to the floor.
   - **Stands on** lists the floor, every shelf in the room, and each level of a shelf that has them ("Level 2 of Tall Brown Shelf"). Choose one and the plant goes there: if it is already over that shelf it only changes level, and if not it goes to the first free place on it.
   - A plant too tall for its level is marked, and told by how much. From the front, such a shelf is drawn as its boards, open between them.
 - **Sizes.** Drag the square on the chosen thing's corner, or type its width, depth and height. **Turn a quarter** swaps its width and depth. A plant with no pot from Pots and trays starts at a guessed width, and says so. **Size and name** changes the space.
 - **A plant's height** is the one on its page (**Height now, with its pot**). Change it on a layout and its page changes too, with a line in its History; change it on its page and every layout follows. A plant whose page has no height keeps the height drawn until you type one, or press **Save this height on its page**.
-- **Light here.** Choose a plant to read how much light it gets where it is drawn (mol/m² a day), from which lights, and whether that is **Too dim**, **A bit dim**, **Good**, **A bit bright** or **Too bright** for what its page says it needs: the same words and figures as Grow lights. Choose a light to set its **Hours a day** and **Brightness**. The number changes as you move the plant or the light. A shelf between a light and a plant shuts the light out. Daylight is not counted.
-- **Move it in the record.** **Somewhere else in your record**, under the lists, names the plants drawn on a layout that your record has in another place. **Move it in the record** puts one where the layout has it (that shelf; on a room's layout, the shelf it stands on, or the room); the button above the list moves all of them, and asks first. **Undo** puts them back.
+- **Light here.** Choose a plant to read how much light it gets where it is drawn (mol/m² a day), and from which lights. It says whether that is **Too dim**, **A bit dim**, **Good**, **A bit bright** or **Too bright** for what its page says it needs. The words and figures are the same as on Grow lights. Choose a light to set its **Hours a day** and **Brightness**. The number changes as you move the plant or the light. A shelf between a light and a plant shuts the light out. Daylight is not counted.
+- **Move it in the record.** **Somewhere else in your record**, under the lists, names the plants drawn on a layout that your record has in another place. **Move it in the record** puts one where the layout has it: that shelf, or on a room's layout, the shelf it stands on or the room. The button above the list moves all of them, and asks first. **Undo** puts them back.
 - **The grid.** **Grid and settings** has **Snap to the grid**, **Show the grid** and **Squares of** (½ in to 1 ft, or 1 to 30 cm).
 - **What it marks**, while you move things:
   - **✗ Overlap** and **✗ Sticks out**: two things take up the same room, or a thing is past the edge of the space. A plant too tall for its level overlaps the shelf above.
@@ -47,7 +60,7 @@ A light spot on **Grow lights** is one setting for every plant in it: one distan
 So when a plant is drawn on a layout that has a grow light, Grow lights reads the plant's light from the drawing.
 
 - **Above your light spots**, Grow lights says which layouts it reads and how many of your plants are drawn there.
-- **In a spot**, each plant that is drawn has a line under it: its own daily light on the layout, how far under the light it is, and a link that opens the layout with that plant chosen.
+- **In a spot**, each plant that is drawn has a line under it. It gives its own daily light on the layout and how far under the light it is. Its link opens the layout with that plant chosen.
 - **The plant's mark** (Too dim, A bit dim, Good, A bit bright, Too bright) is the layout's. Where the spot's one setting would have said something else, the line says what.
 - **No light reaches it** means the plant is drawn, but no light drawn on that layout reaches it. A plant on the level above a strip light is one.
 - **A plant that is not drawn** keeps what its spot gives, as before.

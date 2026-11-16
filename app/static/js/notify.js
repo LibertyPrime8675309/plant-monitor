@@ -39,7 +39,7 @@ async function notifyDialog() {
   const d = await api('GET', '/api/push?_=' + Date.now()), cur = await pushCurrent(), ok = pushSupported();
   const here = cur && d.devices.length ? true : !!cur;
   const box = html`<form method="dialog" class="ntf-dlg"><h2>Notifications</h2>
-    <p class="muted">Messages on this device's lock screen or desktop, even when the app is closed: cold nights, Shopping alerts, what is due, and requests from Claude. They go through the browser's own push service; nothing else sees them.</p>
+    <p class="muted">Messages on this device's lock screen or desktop, even when the app is closed. They tell you of cold nights, Shopping alerts, what is due, and requests from Claude. They go through the browser's own push service; nothing else sees them.</p>
     <fieldset class="opt-group"><legend>This device</legend>
       ${!ok ? html`<p class="notice">This browser cannot receive notifications from a web page.${/iPhone|iPad/.test(navigator.userAgent) ? ' On an iPhone or iPad: Share, then Add to Home Screen, and open the app from there.' : ''}</p>`
         : here ? html`<p><span aria-hidden="true">✓</span> Turned on here (${pushDeviceName()}).</p><div class="row"><button class="btn ghost" type="button" data-act="pushtest">Send a test</button><button class="btn ghost" type="button" data-act="pushoff">Turn off on this device</button></div>`

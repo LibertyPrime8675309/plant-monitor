@@ -23,7 +23,7 @@ What changed:
 3. In the [Tailscale admin console](https://login.tailscale.com/admin/machines), open **Machines**, then **plants**, then the **…** menu, and choose **Disable key expiry**. Otherwise Tailscale asks you to sign the device in again after a few months.
 4. On your phone: install the Tailscale app, sign in with the same account and switch it on. Open the `https://plants…ts.net` address and add it to your home screen.
 
-### Sharing it with someone (for example your girlfriend)
+### Sharing it with someone
 
 1. In the Tailscale admin console, go to **Machines**, then **plants**, then the **…** menu, then **Share**. Copy the invite link (or invite by email) and send it.
 2. She installs Tailscale on her phone or computer and signs in with her own account (Google, Microsoft, Apple and others work). Then she opens the invite link and accepts it.
@@ -38,7 +38,7 @@ What changed:
 - **Owner**: also backups, settings (label address, weather places, the sensor token) and the people list. The setup script makes you the owner; if it couldn't, the first person to open the app through Tailscale is. There is always at least one owner.
 - On this computer (`http://localhost:8080`) everything stays open, as before, and your name is typed in.
 
-The app itself checks every request, so hiding a button is only a convenience: a change someone isn't allowed to make is refused even if they try it another way. The audit log shows each change under the Tailscale name of the person who made it. You can change the name shown for you in the same window.
+The app itself checks every request. So hiding a button is only a convenience: a change someone isn't allowed to make is refused even if they try it another way. The audit log shows each change under the Tailscale name of the person who made it. You can change the name shown for you in the same window.
 
 ### Security, in short
 
@@ -114,13 +114,21 @@ Any other name gets a short page saying so. People who come in through Tailscale
 
 ### Watering offline
 
-On the Today page without a connection, **Watered** and **Still moist** now take the plant off the list at once, and the plant's care log shows the entry as "not sent yet". The plant server gets it when it can be reached again (the entry then loses its "not sent yet" and gains its Remove button).
+On the Today page without a connection, **Watered** and **Still moist** now take the plant off the list at once. The plant's care log shows the entry as "not sent yet". The plant server gets it when it can be reached again (the entry then loses its "not sent yet" and gains its Remove button).
 
-The same goes for the other everyday changes: "Log other care" and Remove on a care entry, Moved indoors and Covered on the cold-night list, Fed, answers to Claude's requests, the Still-to-photograph ticks, photo captions, main photo and photo removal, the porch reminder, the wishlist and species notes. Each shows on its page at once and goes to the server later; a photo added offline shows as a thumbnail in the "Not sent yet" line on the plant's page. Settings, rooms and spots, lights, groups, stores, backups and sensors still need a connection (they are things you do at the PC).
+The same goes for the other everyday changes:
+
+- "Log other care", and Remove on a care entry
+- Moved indoors and Covered on the cold-night list, and Fed
+- answers to Claude's requests, and the Still-to-photograph ticks
+- photo captions, the main photo and removing a photo
+- the porch reminder, the wishlist and species notes
+
+ Each shows on its page at once and goes to the server later. A photo added offline shows as a thumbnail in the "Not sent yet" line on the plant's page. Settings, rooms and spots, lights, groups, stores, backups and sensors still need a connection (they are things you do at the PC).
 
 ### When Tailscale comes back
 
-The app now tells apart "this phone has no network" from "the plant server cannot be reached" (Tailscale off, or the computer asleep): both show as **Offline** at the top. While the server is out of reach the app tries again every 30 seconds, whenever you bring it to the front, and when the network comes back; the offline note on every page and the Offline use page have a **Try to connect now** button as well. When the server answers, the waiting changes are sent and the page is drawn again from the server (unless you are in the middle of a form). No relaunch needed.
+The app now tells apart "this phone has no network" from "the plant server cannot be reached" (Tailscale off, or the computer asleep): both show as **Offline** at the top. While the server is out of reach the app tries again every 30 seconds, whenever you bring it to the front, and when the network comes back. The offline note on every page and the Offline use page have a **Try to connect now** button as well. When the server answers, the waiting changes are sent and the page is drawn again from the server (unless you are in the middle of a form). No relaunch needed.
 
 ### Back goes back to where you were
 
@@ -180,15 +188,22 @@ Changes from a device are in the Audit log like any other, under the person's na
 
 ### Share a photo from your phone
 
-On an Android phone with the app added to the Home Screen (Chrome or Edge: menu → Add to Home screen), **Plants** appears in the phone's share sheet. Share a photo (or several) from the camera or gallery and choose Plants: the app opens on **Photos shared with Plant record**, with the pictures shown, a plant to choose (recently changed ones first) and a caption. **Add** puts them on that plant, or under Photos to assign later. iPhones do not offer this for web apps; there, use the camera button on the plant's page as before. The Photos page has a link to the shared-photos page too.
+On an Android phone with the app added to the Home Screen (Chrome or Edge: menu → Add to Home screen), **Plants** appears in the phone's share sheet. Share a photo (or several) from the camera or gallery and choose Plants. The app opens on **Photos shared with Plant record**. It shows the pictures, a plant to choose (recently changed ones first) and a caption. **Add** puts them on that plant, or under Photos to assign later. iPhones do not offer this for web apps. There, use the camera button on the plant's page as before. The Photos page has a link to the shared-photos page too.
 
 ### The year in review
 
-**Plants → Year in review** (`#/review`): one card per plant for a year, from everything the app logged: new this year or archived, how its health went, moves between places, waterings and feedings, how many cold nights it sat outside below its damage point and how many days at or above its heat-damage temperature, requests answered, and its first and last photo of the year. The plants with the hardest year come first (■), those that got better are marked ✓. Choose the year, narrow the list (hard year, got better, new, quiet) and print it. Good for deciding what to keep, what to move and what to let go.
+**Plants → Year in review** (`#/review`): one card per plant for a year, from everything the app logged. Each card shows:
+
+- whether it is new this year or archived, and how its health went
+- its moves between places, waterings and feedings
+- how many cold nights it sat outside below its damage point, and how many days at or above its heat-damage temperature
+- the requests answered, and its first and last photo of the year
+
+ The plants with the hardest year come first (■), those that got better are marked ✓. Choose the year, narrow the list (hard year, got better, new, quiet) and print it. Good for deciding what to keep, what to move and what to let go.
 
 ### The mirror: a read-only copy on another machine
 
-The `mirror` folder in the app folder sets up a second copy of the app on another machine (the spare hardware, or your girlfriend's PC): it runs the same app with the backup receiver, takes the newest backup every 5 minutes and shows that, read-only, at `https://plants-mirror.<your tailnet>.ts.net`. Every page on the mirror says which backup it shows and links to the main app; changes are refused. `mirror/README.md` has the steps (cmd.exe, PowerShell and bash). Photos on the mirror come from the last backup made with photos, so set the Backups page to include photos now and then.
+The `mirror` folder in the app folder sets up a second copy of the app on another machine, such as the spare hardware or a family member's PC. It runs the same app with the backup receiver. It takes the newest backup every 5 minutes and shows it, read-only, at `https://plants-mirror.<your tailnet>.ts.net`. Every page on the mirror says which backup it shows and links to the main app; changes are refused. `mirror/README.md` has the steps (cmd.exe, PowerShell and bash). Photos on the mirror come from the last backup made with photos, so set the Backups page to include photos now and then.
 
 ## Notifications, a second copy of backups, and search (from 1.33.0)
 
@@ -201,7 +216,7 @@ The `mirror` folder in the app folder sets up a second copy of the app on anothe
 - **Watering and feeding due:** one message at about 8 am with what is due today.
 - **Requests from Claude:** when a release adds a request (a photo or an answer Claude needs).
 
-Cold nights and what is due are for the home you start on (People, Starts on). **Send a test** checks a device. Messages go through the browser's own push service (Google's for Chrome, Apple's for Safari); only the title and a line of text are sent, encrypted for that device. Notifications need the app's Tailscale address (https) or this computer itself.
+Cold nights and what is due are for the home you start on (People, Starts on). **Send a test** checks a device. Messages go through the browser's own push service (Google's for Chrome, Apple's for Safari). Only the title and a line of text are sent, encrypted for that device. Notifications need the app's Tailscale address (https) or this computer itself.
 
 ### Second copy of backups
 
@@ -215,8 +230,8 @@ Cold nights and what is due are for the home you start on (People, Starts on). *
 
 **Copy the newest backup now** tries both. What happened last shows under the form, and failures go on the Problems list.
 
-From 1.58.0 the app says so when every copy is on the record's own drive (no folder named in `PLANTDB_COPY_DIR` and no other computer set): at the top of the Backups page, on the Health card on Settings, and in one line on Today for the owner. Before 1.58.0 the Health card showed a tick for the `backups-copy` folder, and the Backups page could not see `PLANTDB_COPY_DIR` even when it was set.
+From 1.58.0 the app says so when every copy is on the record's own drive, with no folder named in `PLANTDB_COPY_DIR` and no other computer set. It says so at the top of the Backups page, on the Health card on Settings, and in one line on Today for the owner. Before 1.58.0 the Health card showed a tick for the `backups-copy` folder, and the Backups page could not see `PLANTDB_COPY_DIR` even when it was set.
 
 ### Search everywhere
 
-The **Search** button in the top bar, or the `/` key anywhere, opens a search over plants (code, names, where they are, notes), pages, groups, rooms and spots, stores, mushroom finds, Shopping items and species in the library. Results are grouped; the arrow keys move through them and Enter opens one.
+The **Search** button in the top bar, or the `/` key anywhere, opens a search. It looks through plants (code, names, where they are, notes), pages, groups, rooms and spots, stores, mushroom finds, Shopping items and species in the library. Results are grouped; the arrow keys move through them and Enter opens one.

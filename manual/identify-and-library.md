@@ -127,7 +127,7 @@ From 1.30.0 this is on the **Shopping** page, with the stores on the **Stores** 
   - **Local nurseries with no online store** (Round Rock Garden Center, Snooper's, Cantu Imports, Barry Hill) have their plant pages read for the names on your wishlist, with the price if it's on the same line. Call them to be sure.
   - **eBay and Etsy** are searched through their official services, which need free keys from developer.ebay.com and etsy.com/developers. The owner pastes them under **eBay and Etsy keys**. They're kept on your computer and never shown again.
 - Walmart, Home Depot, Lowe's, Amazon and Facebook Marketplace are left out on purpose.
-- Each shop gets at most one request every 2 seconds, a few times a day, and the requests say they come from a home plant record.
+- Each shop gets at most one request every 2 seconds, a few times a day. The requests say they come from a home plant record.
 
 #### Your area, pets and care sheets (from 1.23.0; from 1.28.0 for any place)
 
@@ -166,7 +166,7 @@ When the owner turns library lookups off, none of this is fetched.
 
 #### Photos for offline use (from 1.22.0; by area from 1.28.0)
 
-At the bottom of the Library page, **Photos for offline use** has a table of areas. An area is any country, state, county, city or park that iNaturalist knows. For each area the app gets the list of every plant species recorded there, then downloads each one's photo and short facts, so the library shows them without the internet.
+At the bottom of the Library page, **Photos for offline use** has a table of areas. An area is any country, state, county, city or park that iNaturalist knows. For each area the app gets the list of every plant species recorded there, then downloads each one's photo and short facts. So the library shows them without the internet.
 
 The table shows, for each area:
 - **Photos downloaded**, out of how many species there are (and how many have no photo on iNaturalist);
@@ -180,7 +180,7 @@ The owner can:
 - **Remove** an area: it leaves the table, but its photos stay (another area may use them);
 - **Stop all downloads.**
 
-Downloads go at about one species a second, after anything someone is looking at, so a state with 5,000 species takes about an hour and a half and uses about 350 MB in `data\library`. Species already kept are skipped. You can leave the page while it runs. If the app restarts part way through, press **Check for updates** to carry on.
+Downloads go at about one species a second, after anything someone is looking at. So a state with 5,000 species takes about an hour and a half and uses about 350 MB in `data\library`. Species already kept are skipped. You can leave the page while it runs. If the app restarts part way through, press **Check for updates** to carry on.
 
 ### Stopping the picture checker
 
@@ -204,7 +204,7 @@ Windows (PowerShell) and bash: the same commands.
 
 ### A smaller, faster model
 
-If the computer is busy or short of memory, BioCLIP 2 is about half the size. It recognises your own plants nearly as well, but is much weaker at naming plants that aren't yours: with the usual list, the right species came first 17% of the time instead of 43%. To use it, put `PLANTDB_VISION_MODEL=bioclip-2` in the `.env` file and restart. It downloads its own 2.2 GB the first time.
+If the computer is busy or short of memory, BioCLIP 2 is about half the size. It recognises your own plants nearly as well. But is much weaker at naming plants that aren't yours: with the usual list, the right species came first 17% of the time instead of 43%. To use it, put `PLANTDB_VISION_MODEL=bioclip-2` in the `.env` file and restart. It downloads its own 2.2 GB the first time.
 
 - Windows (cmd.exe): `(echo PLANTDB_VISION_MODEL=bioclip-2)>>.env` then `docker compose up -d`
 - Windows (PowerShell): `Add-Content .env 'PLANTDB_VISION_MODEL=bioclip-2'; docker compose up -d`
@@ -222,25 +222,25 @@ The picture checker (BioCLIP, on this computer) used to rank every species by th
 - Each lifted name says why on its card ("Lifted: a houseplant", "Lifted: looks like your photos"). The line under the result says the names are weighted. To turn the weighting off, put `VISION_PRIOR=0` in `.env` and restart.
 - **Ten names** come back, five shown; **Show 5 more names** unfolds the rest. The three likeliest **genera** are on the line above: when no species fits, the genus is the safer answer.
 - **Several pictures of one plant:** after a result, **Add another photo of the same plant** (or **Add a camera shot of it**) checks them all together. Each picture is also looked at three ways (as it is, the whole picture letterboxed, and its middle).
-- **Pl@ntNet first when unsure:** under Second opinions, tick **Ask Pl@ntNet on its own whenever this computer is unsure**. With the Pl@ntNet key saved, a picture the computer is not sure about (no sure match among your plants, best name under 50%) goes to Pl@ntNet at once and its answer shows above the computer's own. Each costs one of Pl@ntNet's 500 free pictures a day.
+- **Pl@ntNet first when unsure:** under Second opinions, tick **Ask Pl@ntNet on its own whenever this computer is unsure**. With the Pl@ntNet key saved, a picture the computer is not sure about goes to Pl@ntNet at once. Not sure means no sure match among your plants, and a best name under 50%. Pl@ntNet's answer shows above the computer's own. Each costs one of Pl@ntNet's 500 free pictures a day.
 
-The weights were measured on your photos on November 8, 2026 (`dev/vision/README.md`): with them the right species comes first for 40% of photos instead of 33%, and is in the top five for 61% instead of 54%.
+The weights were measured on your photos on November 8, 2026 (`dev/vision/README.md`). With them the right species comes first for 40% of photos instead of 33%. It is in the top five for 61% instead of 54%.
 
 ### Two ways to identify (from 1.51.0)
 
-The weighting above is right for "which of my plants is this?" and wrong for a plant met in a garden or the wild, so every page that identifies now asks **What are you looking at?** first:
+The weighting above is right for "which of my plants is this?" and wrong for a plant met in a garden or the wild. So every page that identifies now asks **What are you looking at?** first:
 
 - **One of my plants:** a plant in the record, a cutting or a new pot of one. The names you already have, houseplants and your plants' photos count, as above.
-- **A new find:** a plant met in a garden, a shop or the wild. Nothing you have counts; instead the plants recorded in this home's country (from GBIF, the world's occurrence records) are lifted, the more often recorded the more. The country is the one set for the home on **Weather → Homes and places**. The first time a country is asked for, its list is downloaded (about a minute for the United States, 48,000 species) and the result says so; until it is there, no country is favoured.
-- The question offers your **last answer first**, so Enter repeats it. Tick **Do not ask again on this page** to make the answer the rule for that page, or set the rule in **Display settings → Identify**, one choice for each page (Identify, adding plants, a plant's own page). The rule follows you to every device you sign in on.
+- **A new find:** a plant met in a garden, a shop or the wild. Nothing you have counts. Instead the plants recorded in this home's country (from GBIF, the world's occurrence records) are lifted, the more often recorded the more. The country is the one set for the home on **Weather → Homes and places**. The first time a country is asked for, its list is downloaded (about a minute for the United States, 48,000 species) and the result says so. Until it is there, no country is favoured.
+- The question offers your **last answer first**, so Enter repeats it. Tick **Do not ask again on this page** to make the answer the rule for that page. Or set the rule in **Display settings → Identify**: one choice each for Identify, adding plants, and a plant's own page. The rule follows you to every device you sign in on.
 - On Identify, **What you are looking at** above the camera shows the way in use and can be changed any time. Every result says how it was checked ("Checked as a new find. Plants recorded in US (48,696 species) come first.") and each lifted name says why ("Lifted: recorded in this country").
-- The checker is measured against the November 8 baseline (`dev/vision/README.md`); `prior_test.py` now has a "new find" row too, which needs the country's list from `data\vision`.
-- Also fixed: **suggest names from** on Identify (the species list) was never saved, so the list went back to the first choice on every visit.
+- The checker is measured against the November 8 baseline (`dev/vision/README.md`). `Prior_test.py` now has a "new find" row too, which needs the country's list from `data\vision`.
+- Also fixed: **suggest names from** on Identify (the species list) was never saved. So the list went back to the first choice on every visit.
 
 ### The checker learns from you (from 1.52.0)
 
-- **This is right** sits beside **Not this** on every name Identify offers (editors and the owner). Press it and the picture is kept as a confirmed example of that species; from then on, a picture that looks like it lifts that name ("Lifted: looks like your photos or a confirmed picture"). On a plant's own page, **This is right** keeps the plant's main photo as the example.
-- **Not this** now keeps the picture too, as an example of what the name does *not* look like: a later picture that looks like it has that name lowered ("Lowered: looks like a picture that was not this"). Saying no to a whole genus is words only, as before.
+- **This is right** sits beside **Not this** on every name Identify offers (editors and the owner). Press it and the picture is kept as a confirmed example of that species. From then on, a picture that looks like it lifts that name ("Lifted: looks like your photos or a confirmed picture"). On a plant's own page, **This is right** keeps the plant's main photo as the example.
+- **Not this** now keeps the picture too, as an example of what the name does *not* look like. A later picture that looks like it has that name lowered ("Lowered: looks like a picture that was not this"). Saying no to a whole genus is words only, as before.
 - Your named plants' photos always counted; now **named mushroom finds** (fairly sure or confirmed by an expert) count as examples as well.
 - The status line on Identify says how many confirmed and rejected pictures it has learned from. Every confirmation and rejection is in the Audit log with who made it. The pictures are kept in `data\photos` as `ex_….jpg` and go into backups with everything else.
 
@@ -252,27 +252,33 @@ The weighting above is right for "which of my plants is this?" and wrong for a p
 
 - **Photos:** take photos of the cap from above, the underside (gills or pores), the whole stem and the very base. On a phone the button can open the camera. If a photo carries its location (most phone photos do, if location is on for the camera), the find gets that location.
 - **Where and when:** the date, and whether it was in the yard, in a plant pot (then pick which plant) or somewhere else, plus a description. **Use my location now** asks the phone or browser for where you are. Locations are seen by everyone you have given access to the app.
-- **What it grew on:** soil, mulch, dead wood, a living tree, potting mix and so on; what kind of place (lawn, under trees, a garden bed, a field, wet ground, indoors; from 1.51.1); trees nearby; how many.
-- **What it looks like:** cap width and colour, gills or pores, the stem (length, thickness, colour, hollow or solid; from 1.51.1), a ring on the stem, a cup or sac at the base, spore print colour, colour change when cut, smell. From 1.51.1 the spore print, colour change and smell boxes offer the usual answers a field guide asks for (white, cream, pink, rusty brown, purple-brown, black; blue, red then black; anise, almond, flour, rotten, and so on) and still take your own words. The help text there says it plainly: nothing recorded, and nothing the app says, means a mushroom is safe to eat.
+- **What it grew on:** soil, mulch, dead wood, a living tree, potting mix and so on. Also what kind of place (lawn, under trees, a garden bed, a field, wet ground, indoors), the trees nearby, and how many.
+- **What it looks like:**
+    - cap width and colour, and gills or pores
+    - the stem: length, thickness, colour, hollow or solid
+    - a ring on the stem, or a cup or sac at the base
+    - spore print colour, colour change when cut, and smell
+
+  The spore print, colour change and smell boxes offer the usual answers a field guide asks for, such as white, rusty brown or black; blue, or red then black; anise, almond or flour. They still take your own words. The help text there says it plainly: nothing recorded, and nothing the app says, means a mushroom is safe to eat.
 - **Name:** a common name or your own description, the scientific name, and how sure the name is: not identified yet, a guess, fairly sure, or confirmed by an expert.
 
 Only the photos and the place really matter at first; you can fill in the rest any time with **Edit this find**.
 
-**A find's page** shows its photos (**Previous photo** and **Next photo**, **Make this the main photo**, **Edit caption**, **Remove photo**), where and when (with a link to the map), and what you noted. **Identify the photo shown** compares the photo on screen with the 49,000 fungi, on this computer. **Use this name (as a guess)** saves a suggestion as the scientific name, marked "A guess". **Archive this find** takes it off the list without deleting it.
+**A find's page** shows its photos, with **Previous photo**, **Next photo**, **Make this the main photo**, **Edit caption** and **Remove photo**. It shows where and when (with a link to the map), and what you noted. **Identify the photo shown** compares the photo on screen with the 49,000 fungi, on this computer. **Use this name (as a guess)** saves a suggestion as the scientific name, marked "A guess". **Archive this find** takes it off the list without deleting it.
 
 **The list of finds** can be searched and filtered by how sure the name is, where, and year. **Show** includes archived finds.
 
 **Safety.** Every mushroom page has a short safety note, and **Read more** opens the full one. Never eat a wild mushroom because of an app, a photo, or this record. If a pet may have eaten one, call your vet or ASPCA Animal Poison Control at (888) 426-4435. If a person may have, call Poison Control at 1-800-222-1222 (or 911 if they are very ill).
 
-Changes to finds are in the Audit log under "Mushroom finds", and the finds and their photos are in your backups like everything else. **Download the finds (CSV)** on the Mushrooms page gives every field for a spreadsheet or to send to an expert, and **Download all data (JSON)** on Settings now includes the finds and their photo records (1.51.1).
+Changes to finds are in the Audit log under "Mushroom finds", and the finds and their photos are in your backups like everything else. **Download the finds (CSV)** on the Mushrooms page gives every field, for a spreadsheet or to send to an expert. **Download all data (JSON)** on Settings includes the finds and their photo records too.
 
 ## Facts and where they come from (from 1.53.0)
 
-Everything the app says about a species now has a source you can see. Open a species page (from a plant's page, the Library or Search) and the section **Facts and where they come from** lists every fact the record holds for it, in groups (Temperature, Light, Water, Soil, Feeding, Size and growth, Hardiness, Origin and safety, Pests, Propagation, Uses and partners, Care sheet). Each fact shows its value, where it came from, who noted it, when, and how sure it is (certain, likely, unsure); a field that has changed shows its **History**.
+Everything the app says about a species now has a source you can see. Open a species page, from a plant's page, the Library or Search. Its section **Facts and where they come from** lists every fact the record holds for it, in groups: Temperature, Light, Water, Soil, Feeding, Size and growth, Hardiness, Origin and safety, Pests, Propagation, Uses and partners, and Care sheet. Each fact shows its value, where it came from, who noted it, when, and how sure it is (certain, likely, unsure). A field that has changed shows its **History**.
 
-- **Where the first facts came from.** When 1.53.0 starts it reads what the record already knew and files it once, in place: the uses, partners and propagation Claude wrote for each species; Claude's care sheets from the Library; and, for every species in your record, the care values its plants agree on (temperatures, humidity, light, water, soil, feeding, size, hardiness, origin, safety, pests). Each care value is traced back to the upgrade batch or the first plant list that set it, or, if you changed it yourself, to you ("Edited in the app on P-003 by Ethan", your own observation). Nothing you typed is changed, and your plants' own values stay as they are.
-- **A plant's page reads the species' facts** for any care field the plant leaves empty, and says so in a line under the identification ("Not set for this plant, so shown from *Ficus carica*'s facts: soil or potting mix, hours of light"), with a link to the species. A plant's own value always wins, and the edit form shows only what is really on the plant.
-- **Download every fact (CSV)** at the bottom of the section (`/api/facts/export.csv`; `/api/facts/export` for JSON), so the knowledge can be checked in a spreadsheet or moved to another install.
+- **Where the first facts came from.** When 1.53.0 starts it reads what the record already knew and files it once, in place: the uses, partners and propagation Claude wrote for each species. Claude's care sheets from the Library. And, for every species in your record, the care values its plants agree on (temperatures, humidity, light, water, soil, feeding, size, hardiness, origin, safety, pests). Each care value is traced back to the upgrade batch or the first plant list that set it. If you changed it yourself, it is traced to you ("Edited in the app on P-003 by Ethan", your own observation). Nothing you typed is changed, and your plants' own values stay as they are.
+- **A plant's page reads the species' facts** for any care field the plant leaves empty. A line under the identification says so, with a link to the species: "Not set for this plant, so shown from *Ficus carica*'s facts: soil or potting mix, hours of light". A plant's own value always wins, and the edit form shows only what is really on the plant.
+- **Download every fact (CSV)** at the bottom of the section (`/api/facts/export.csv`; `/api/facts/export` for JSON). So the knowledge can be checked in a spreadsheet or moved to another install.
 - New upgrade batches can add facts as rows (`facts_add`), with the batch as their source.
 
 ### Adding and correcting facts (from 1.54.0)
@@ -280,8 +286,8 @@ Everything the app says about a species now has a source you can see. Open a spe
 - Anyone who can edit may press **Suggest a change** under a fact, or **Add a fact** at the bottom of the section. The form asks for the value, where it comes from (a link, a book and page, a grower, or your own observation), what kind of source that is, and how sure you are. It goes in as a **proposal**: it shows on the species page in a highlighted box, not as the value.
 - **Someone else accepts or rejects it**: another editor, or the owner (the owner may also accept their own). **Accept** makes it the value every page shows and moves the old value into the history; **Reject** asks for a reason, which is kept. Nobody but the owner can accept their own proposal, so every fact that shows was seen by two people.
 - **Facts to review** (Plants → Facts to review, and a block on Today while anything waits) lists every open proposal with the value it would replace. Each change is in the Audit log under "fact", with who proposed and who accepted.
-- **Mushrooms** have facts too (their description, where they grow, what they do), under the same rule as everywhere else: a proposal that says a mushroom is edible, safe, tasty or medicinal is refused, and there is no field for care values.
-- **Moving facts between installs:** send the JSON from `/api/facts/export` to `/api/facts/import` (editors and the owner); every row arrives as a proposal, never as an accepted fact, and duplicates are skipped.
+- **Mushrooms** have facts too: their description, where they grow and what they do. The same rule holds as everywhere else. A proposal that says a mushroom is edible, safe, tasty or medicinal is refused, and there is no field for care values.
+- **Moving facts between installs:** send the JSON from `/api/facts/export` to `/api/facts/import` (editors and the owner). Every row arrives as a proposal, never as an accepted fact, and duplicates are skipped.
 
 ## Uses, partners and propagation (from 1.27.0)
 
@@ -301,11 +307,11 @@ A reference for making more plants, and for making plants that are new. Open it 
 
 - **Which way should I do it?** goals such as "an exact copy of a woody or large plant" or "a copy that keeps its variegation", each linked to the ways that suit it.
 - **Before you start**: clean tools, rooting hormone, humidity, warmth, labels and patience.
-- **Copying a plant: propagation**: stem cuttings, leaf cuttings, root cuttings, division, offsets, pups, keikis and runners, layering in the soil, air layering, grafting and budding, bulbs, corms and tubers, spores, tissue culture and seed. Each is folded until you open it, and gives what it suits, the steps, and things worth knowing.
+- **Copying a plant: propagation**. It covers stem, leaf and root cuttings; division; offsets, pups, keikis and runners; layering and air layering; grafting and budding; bulbs, corms and tubers; spores; tissue culture; and seed. Each is folded until you open it, and gives what it suits, the steps, and things worth knowing.
 - **Your plants** are listed under each way: the ones that have it in their own propagation notes or in their species' facts. Each is a link, with its code beside the name.
-- **Breeding: making plants that are new**: the genetics you need, making a cross step by step, selecting and fixing traits, other ways to get something new (sports, chimeras, doubling chromosomes, hybrids between species), orchid breeding, and plant patents.
+- **Breeding: making plants that are new**. It covers the genetics you need, making a cross step by step, and selecting and fixing traits. It also covers other ways to get something new (sports, chimeras, doubling chromosomes, hybrids between species), orchid breeding, and plant patents.
 - **Keeping a mother plant.**
 - **"How to" links.** In a plant's or a species' list of propagation methods, **How to** beside a method opens the guide at that method.
-- Lengths and temperatures follow your units (**Display → Units**). **Read this page aloud** and **Read aloud** on each section work as on other pages, and the page works offline; only the list of your plants needs the plant server.
+- Lengths and temperatures follow your units (**Display → Units**). **Read this page aloud** and **Read aloud** on each section work as on other pages, and the page works offline. Only the list of your plants needs the plant server.
 
 The words were written by Claude from general gardening knowledge, and a person has not checked them against a source. The page says so. What one species needs, with where each fact comes from, is on its own page.
