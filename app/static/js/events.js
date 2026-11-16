@@ -324,6 +324,13 @@ const acts = {
     const all = [...document.querySelectorAll('details.fg-fold')], open = all.some(d => !d.open);
     all.forEach(d => { d.open = open; }); el.textContent = open ? 'Fold every group' : 'Open every group';
   },
+  whsmore(el) {                                      // 1.58.0: ten more groups; the focus goes to the first of them
+    const first = WHS_SHOWN; WHS_SHOWN += WHS_PAGE;
+    document.querySelectorAll('#wh-sort .whs-card').forEach((c, k) => { if (k < WHS_SHOWN) c.hidden = false; });
+    const left = WHSORT.length - WHS_SHOWN;
+    if (left > 0) el.textContent = `Show ${Math.min(WHS_PAGE, left)} more (${left} not shown)`; else el.closest('p').remove();
+    const f = document.querySelector(`#whs-${first} [data-k=area]`); if (f) f.focus();
+  },
   async whsone(el) {                                 // 1.56.3: one group; the focus goes on to the next
     if (!(await needName())) return;
     const i = +el.dataset.i, item = whsItem(i); if (!item) return;
@@ -488,7 +495,7 @@ const acts = {
   placeshow(el) { setPlace(el.dataset.id).then(() => window.scrollTo(0, 0)); },
   async placehome(el) {
     const p = WX.places.find(x => String(x.id) === el.dataset.id); if (!p || !(await needName())) return;
-    if (!(await confirmBox(`Make ${p.name} home?`, `Every computer or phone that has not chosen its own location will use the weather for ${p.name} instead of ${WX.home.name}, and so will the hourly updates and backups.`, 'Make home'))) return;
+    if (!(await confirmBox(`Make ${p.name} home?`, `Every computer or phone that has not chosen its own location will use the weather for ${p.name} instead of ${WX.home.name}. So will the hourly updates and backups.`, 'Make home'))) return;
     await guard(async () => { await api('PUT', '/api/places/' + p.id, { is_home: true }); if (String(PLACE) === String(p.id)) savePlace(null); META = null; COND = null; FROST = null; FROST_AT = 0; toast(`${p.name} is now home`); route(); });
   },
   async placeplants(el) {             // 1.28.0: a home of its own

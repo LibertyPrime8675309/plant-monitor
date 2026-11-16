@@ -36,7 +36,7 @@ function displayDialog() {
   G.navopen = group('navopen', 'Navigation menu', [['1', 'Open'], ['0', 'Folded away (the Navigation button opens it)']], 'On narrow windows and phones it starts folded and covers the page while open.');
   G.width = group('width', 'Page width', [['normal', 'Normal'], ['wide', 'Use the full width of the window']], 'Full width gives charts and tables more room on a wide screen.');
   G.lines = group('lines', 'Line length', [['full', 'Use the full width'], ['short', 'Shorter lines (about 70 letters)']], 'Full width fits more on the screen. Shorter lines can be easier to follow from one line to the next.');
-  G.notes = group('notes', 'Notes under buttons and boxes', [['show', 'Always show them'], ['ask', 'Show them when I ask']], 'The small notes that say what a button does or what to type. "When I ask" folds each into a Note button: press it, hold a finger on the button or box it belongs to, or point at it with the mouse. Screen readers still read every note.');
+  G.notes = group('notes', 'Notes under buttons and boxes', [['show', 'Always show them'], ['ask', 'Show them when I ask']], 'The small notes that say what a button does or what to type. "When I ask" folds each into a Note button. To read one, press it, hold a finger on the button or box it belongs to, or point at it with the mouse. Screen readers still read every note.');
   G.layout = group('layout', 'Plant pages', [['split', 'Photos and details side by side'], ['single', 'One column']], 'Side by side lets each half scroll on its own: scroll with the pointer over the half you want to move. One column stacks the photos above the details.');
   const speak = canSpeak() ? html`${group('readbtns', 'Read aloud buttons', [['1', 'Show them on each section'], ['0', 'Hide them']], 'Your browser reads the section aloud with its own voices. The R key reads the whole page either way.')}
     ${group('rate', 'Reading speed', [['0.8', 'Slower'], ['1', 'Normal'], ['1.25', 'Faster'], ['1.5', 'Fastest']])}
@@ -56,7 +56,7 @@ function displayDialog() {
   const IM = idModePref(), imsel = (page, title) => html`<label class="f">${title}<select data-act="idmodeset" data-page="${page}" id="pref-im-${page}">
     ${[['ask', 'Ask each time'], ['mine', 'One of my plants'], ['new', 'A new find']].map(([v, l]) => html`<option value="${v}" ${(IM[page] === 'mine' || IM[page] === 'new' ? IM[page] : 'ask') === v ? raw('selected') : ''}>${l}</option>`)}</select></label>`;
   G.idmode = html`<fieldset class="opt-group"><legend>What you are looking at</legend>${imsel('identify', ID_MODE_PAGES.identify)}${imsel('add', ID_MODE_PAGES.add)}${imsel('plant', ID_MODE_PAGES.plant)}
-    <p class="hint">"One of my plants" puts the names you already have first (a cutting, a new pot of the same plant). "A new find" ignores what you have and puts the plants recorded in this home's country first. "Ask each time" offers your last answer first. These follow you to every device you sign in on.</p></fieldset>`;
+    <p class="hint">"One of my plants" puts the names you already have first, for a cutting or a new pot of the same plant. "A new find" ignores what you have and puts the plants recorded in this home's country first. "Ask each time" offers your last answer first. These follow you to every device you sign in on.</p></fieldset>`;
   const SH = window.PlantSync ? window.PlantSync.shared() : {};
   const share = part => html`<fieldset class="opt-group dv-share"><legend>Where these apply</legend><label class="chk"><input type="checkbox" data-dvshare="${part}" ${SH[part] ? raw('checked') : ''}>Use these on every device I sign in on</label>
     <p class="hint">Off (the usual): only this device. On: any phone, tablet or computer where you sign in and tick this too gets them.</p></fieldset>`;
@@ -503,7 +503,7 @@ async function condDialog() {
       <label class="f">Humidity (%)<input type="number" step="any" name="h" min="0" max="100" value="${has(c.humidity) && c.mode === 'manual' ? c.humidity : ''}"></label>
       <label class="f">Light<input type="number" step="any" name="l" min="0" value="${has(c.par) && c.mode === 'manual' ? c.par : ''}"></label>
       <label class="f">Light is in<select name="lu"><option value="par">PAR (µmol/m²/s)</option><option value="lux">lux</option></select></label></div>
-      <p class="hint">Leave a box empty to keep the last value you typed. Rough light guides when you have no meter: full midday sun about 1,500 to 2,000 PAR (80,000 to 110,000 lux); open shade 200 to 600; under a porch roof 100 to 400; a bright window indoors 100 to 300; a room lit only by a lamp 5 to 30. About 54 lux is 1 PAR in sunlight.</p></div>
+      <p class="hint">Leave a box empty to keep the last value you typed. Rough light guides when you have no meter, in PAR:</p><ul class="hint"><li>full midday sun: about 1,500 to 2,000 (80,000 to 110,000 lux)</li><li>open shade: 200 to 600</li><li>under a porch roof: 100 to 400</li><li>a bright window indoors: 100 to 300</li><li>a room lit only by a lamp: 5 to 30</li></ul><p class="hint"> About 54 lux is 1 PAR in sunlight.</p></div>
     <div class="row"><button class="btn" value="ok">Save</button><button class="btn ghost" value="cancel">Cancel</button></div></form>`);
   if (r !== 'ok') return;
   const f = dlg.querySelector('form'), mode = (dlg.querySelector('[name=csrc]:checked') || {}).value || 'manual';
@@ -634,7 +634,7 @@ function wbHtml(W, hourOpt) {
   const S = W.settings, n = W.pieces.length, good = W.pieces.filter(p => !p.broken), newest = good[0], L = W.live;
   const num = x => Number(x).toLocaleString();
   return html`<section class="blk" id="bk-wx"><h2>Weather history</h2>
-    <p class="muted">The weather history is most of the database${L.rows ? ` (${num(L.rows)} hourly readings, ${wbDate(L.first)} to ${wbDate(L.last)})` : ''}, and it changes little from day to day. So it has a backup of its own, in pieces, saved in the <strong>weather</strong> folder inside the backups folder. The first piece holds everything. Each later piece holds only the days that are new or have changed. All the pieces together are the whole history.</p>
+    <p class="muted">The weather history is most of the database${L.rows ? ` (${num(L.rows)} hourly readings, ${wbDate(L.first)} to ${wbDate(L.last)})` : ''}. It changes little from day to day. So it has a backup of its own, in pieces, saved in the <strong>weather</strong> folder inside the backups folder. The first piece holds everything. Each later piece holds only the days that are new or have changed. All the pieces together are the whole history.</p>
     <p class="${newest ? 'notice ok' : 'notice'}" role="status">${newest ? html`Newest piece: <strong>${when(newest.created_at)}</strong>. ${n} piece${n === 1 ? '' : 's'}, ${mb(W.total_bytes)} in all.`
         : S.enabled ? 'No weather backup yet. The first piece is made within a few minutes of the app starting, or press the button below.' : 'The weather history has no backup of its own.'}
       ${W.last ? html` Last run ${when(W.last)}${W.result ? html`: ${W.result.charAt(0).toLowerCase() + W.result.slice(1)}` : ''}.` : ''}
@@ -707,7 +707,7 @@ async function viewBackups() {
   return {
     title: 'Backups',
     html: html`<h1>Backups</h1>
-    <p class="muted">A backup is a zip with a complete copy of the database (plants, change log, feeding log, settings${WB && WB.covered ? '' : ', weather history'}) and, if you choose, all the photos.${WB && WB.covered ? html` The weather history has <a href="#bk-wx" data-act="jumpsec" data-sec="bk-wx">a backup of its own</a>.` : ''} Backups are saved in ${where}, so they survive updates. Copy a few to another drive now and then.</p>
+    <p class="muted">A backup is a zip with a complete copy of the database: plants, change log, feeding log, settings${WB && WB.covered ? '' : ', weather history'}. If you choose, it holds all the photos too.${WB && WB.covered ? html` The weather history has <a href="#bk-wx" data-act="jumpsec" data-sec="bk-wx">a backup of its own</a>.` : ''} Backups are saved in ${where}, so they survive updates. Copy a few to another drive now and then.</p>
     <p class="${last ? 'notice ok' : 'notice'}" role="status">${last ? html`Latest backup: <strong>${when(last.created_at)}</strong> (${BK_KIND[last.kind]}, ${mb(last.bytes)}).` : 'No backups yet. Make one now.'}
       ${S.enabled ? ` Automatic backups: ${BK_FREQ_WORDS[S.freq].toLowerCase()}${['daily', '3d', 'weekly'].includes(S.freq) ? ' at about ' + hourOpt(S.hour) : ''}${S.photos ? ', with the photos' : ''}.` : ' Automatic backups are off.'}</p>
     ${bkNotesHtml(BK.notes)}
@@ -1047,7 +1047,7 @@ function debugDialog() {
     <p class="muted">Tools for seeing what the app is doing. These choices are remembered in this browser.</p>
     <fieldset class="opt-group"><legend>Audit log console</legend>
       <label class="chk dbg-chk"><input type="checkbox" data-dbg="console" ${DBG.console === '1' ? raw('checked') : ''}>Show the audit log console</label>
-      <p class="hint">A small window at the bottom of the screen with the newest changes to any record, checked every 3 seconds. Scroll it to see older ones; the Audit log page has everything.</p>
+      <p class="hint">A small window at the bottom of the screen with the newest changes to any record. It checks every 3 seconds. Scroll it to see older ones; the Audit log page has everything.</p>
       <fieldset class="dbg-lines"><legend>Changes it shows before you scroll</legend><div class="opts">${['3', '4', '5'].map(n => html`<label><input type="radio" name="dbg-lines" data-dbg="lines" value="${n}" ${DBG.lines === n ? raw('checked') : ''}><span>${n}</span></label>`)}</div></fieldset>
       <label class="chk dbg-chk"><input type="checkbox" data-dbg="announce" ${DBG.announce === '1' ? raw('checked') : ''}>Let screen readers announce each new change</label>
       <p id="dbg-msg" class="dbg-msg" role="status" aria-live="polite"></p></fieldset>
@@ -1060,7 +1060,7 @@ function debugDialog() {
       <dt>Layout</dt><dd>${r.dataset.narrow === '1' ? 'Narrow: one column, buttons at the bottom' : 'Wide'}${P.layout === 'single' ? ', plant pages in one column' : ''}</dd>
       <dt>Changes logged</dt><dd id="dbg-total">Counting</dd></dl></fieldset>
     <fieldset class="opt-group"><legend>Page timings</legend>
-      <p class="hint">How long the last pages took to change on this device, in seconds. "Waiting" is the time spent waiting for the plant server; "Drawing" is the time this device took to show the page; "Saved copy" means it showed what it had from before, and checked again just after.</p>
+      <p class="hint">How long the last pages took to change on this device, in seconds. "Waiting" is the time spent waiting for the plant server. "Drawing" is the time this device took to show the page. "Saved copy" means it showed what it had from before, then checked again.</p>
       ${TIMINGS.length ? html`<div class="tbl-wrap"><table class="tbl dbg-times"><caption class="sr">Page timings</caption><thead><tr><th scope="col">Page</th><th scope="col">Total</th><th scope="col">Waiting</th><th scope="col">Drawing</th><th scope="col">Slowest answers (server's own time)</th></tr></thead><tbody>
         ${TIMINGS.slice(0, 20).map(t => html`<tr><th scope="row">${t.page}<br><small class="muted">${when(t.at)}</small></th><td>${(t.total / 1000).toFixed(2)}</td><td>${(t.wait / 1000).toFixed(2)}</td><td>${(t.draw / 1000).toFixed(2)}</td>
           <td>${t.calls.length ? t.calls.slice(0, 3).map((c, i) => html`${i ? raw('<br>') : ''}${c.url.split('?')[0]}: ${(c.ms / 1000).toFixed(2)}${c.server != null ? ` (${(c.server / 1000).toFixed(2)})` : ''}`) : ''}${t.saved ? html`${t.calls.length ? raw('<br>') : ''}<span class="tag">Saved copy: ${t.saved}</span>` : ''}</td></tr>`)}

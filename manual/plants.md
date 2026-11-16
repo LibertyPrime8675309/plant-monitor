@@ -41,17 +41,17 @@ Every plant page has a **Date acquired**: the day the plant came to you.
 
 ## Previous and next plant (from 1.7.5)
 
-Every plant page has **Previous Plant** and **Next Plant** buttons, each showing the name and code of the plant it leads to. On a wide screen they sit in the margins either side of the page; on smaller screens and phones they sit at the top of the page, under the plant's name (from 1.56.5 the name comes first).
+Every plant page has **Previous Plant** and **Next Plant** buttons, each showing the name and code of the plant it leads to. On a wide screen they sit in the margins either side of the page. On smaller screens and phones they sit at the top of the page, under the plant's name (from 1.56.5 the name comes first).
 
 **Swipe (from 1.14.1).** On a phone or tablet, swipe left anywhere on a plant page for the next plant, or right for the previous one. While you swipe, a label names the plant that is coming; once it says "Let go to open it", lifting your finger opens it. Start the swipe away from the very edge of the screen, because your phone uses edge swipes for Back. Swipes that start on a menu, a form field or the photo are left alone, and so is scrolling up and down. To turn it off, open **Display** and set **Swipe between plants** to Off.
 
-They follow the Plants page filters and sort order. The fold-out **Filters for Previous / Next** panel at the top of each plant page has the same filters (search, winter plan, health, location, group, show, sort, "needs something from you", ID under 70%) and shows where the plant falls in the list. Changing a filter in either place changes it in both, and this browser remembers it.
+They follow the Plants page filters and sort order. The fold-out **Filters for Previous / Next** panel at the top of each plant page has the same filters, and shows where the plant falls in the list. They are search, winter plan, health, location, group, show, sort, "needs something from you" and ID under 70%. Changing a filter in either place changes it in both, and this browser remembers it.
 
 ## Location: outdoors or indoors (from 1.7.0)
 
-The label at the top of every plant page now starts with **Location**: Outdoors, Covered porch, Indoors, or Garage or shed. It is a menu. Click it (or Tab to it and use the arrow keys) and pick another place, and the change is saved straight away and recorded in the page history. The old free-text "Location" field, for example "Covered porch pallet shelf", is now called **Spot**.
+The label at the top of every plant page now starts with **Location**: Outdoors, Covered porch, Indoors, or Garage or shed. It is a menu. Click it (or Tab to it and use the arrow keys) and pick another place. The change is saved straight away and recorded in the page history. The old free-text "Location" field, for example "Covered porch pallet shelf", is now called **Spot**.
 
-On the **Winter plan** page each plant in "Plant by plant" has a **Moved indoors** button. Pressing it sets the plant's Location to Indoors and takes it off those lists. It is also left out of the frost warnings in "The next 7 days". Plants already inside are listed under **Already inside**, each with a **Moved back outside** button. After upgrading to 1.7.0, every plant started as Outdoors; 1.8.0 set the plants whose Spot is on the covered porch to Covered porch, unless you had already changed them.
+On the **Winter plan** page each plant in "Plant by plant" has a **Moved indoors** button. Pressing it sets the plant's Location to Indoors and takes it off those lists. It is also left out of the frost warnings in "The next 7 days". Plants already inside are listed under **Already inside**, each with a **Moved back outside** button. After upgrading to 1.7.0, every plant started as Outdoors. 1.8.0 Set the plants whose Spot is on the covered porch to Covered porch, unless you had already changed them.
 
 ## Plant timeline (from 1.8.0)
 
@@ -59,21 +59,21 @@ Each plant page has a **Timeline** section, just above Page history (also in the
 
 - how the plant is doing over time, for example "Health: Critical until Oct 22, Poor now (getting better)"
 - **Compare two photos:** the oldest and newest photo side by side. Pick others with the **Left photo** and **Right photo** menus, or press **Compare** under any photo in the list.
-- **Everything that has happened**, newest first and grouped by day: photos, changes to the page (the important ones in words, such as "Health rating: from Fair to Poor"), feeding and care, answered requests, and when the page was created. Tick boxes under **Show** hide any kind.
+- **Everything that has happened**, newest first and grouped by day. It has photos, feeding and care, answered requests, and when the page was created. It has changes to the page too, the important ones in words, such as "Health rating: from Fair to Poor". Tick boxes under **Show** hide any kind.
 
 ## Photo check (from 1.8.0)
 
-When you add photos, each one is checked in your browser first. Photos that look fine are added straight away. If any look **blurry**, **too dark**, **too bright (washed out)** or are a **very small picture**, a box shows them with what to do, and these buttons: **Take a new one** (opens the camera or file picker again), **Add only the good ones**, **Add it anyway** and **Cancel**. Nothing extra is sent anywhere.
+When you add photos, each one is checked in your browser first. Photos that look fine are added straight away. Some may look **blurry**, **too dark** or **too bright (washed out)**, or be a **very small picture**. Then a box shows them with what to do. Its buttons are **Take a new one** (the camera or file picker opens again), **Add only the good ones**, **Add it anyway** and **Cancel**. Nothing extra is sent anywhere.
 
 ## Current conditions and the "Now" marker
 
 Each plant page has a **Current conditions** box. Press **Set current conditions** (or **Change**) and choose where the numbers come from:
 
-- **I will type them in**: temperature (F), humidity (%), and light as PAR or lux. The dialog lists rough light values to use if you have no meter (full midday sun 1,500 to 2,000 PAR, open shade 200 to 600, under a porch roof 100 to 400, bright window 100 to 300, lamp-lit room 5 to 30).
+- **I will type them in**: temperature (F), humidity (%), and light as PAR or lux. The dialog lists rough light values to use if you have no meter. Full midday sun is 1,500 to 2,000 PAR, open shade 200 to 600, under a porch roof 100 to 400, a bright window 100 to 300, and a lamp-lit room 5 to 30.
 - **My sensor**: the newest reading your sensor sent (see below).
 - **Online weather**: the latest hour from Open-Meteo for your location. This is open sky, so plants under a roof or in shade get less light than it says.
 
-The setting is shared by all plant pages. Every gauge (temperature, humidity, light, soil moisture, soil temperature, soil pH) then shows a labelled **Now** marker. When a value is outside the plant's range, the page gets a **Getting this plant back in range** section with numbered steps for that plant and that situation (for example how to protect it from a cold night, or how to raise humidity). Readings that are old are flagged as out of date.
+The setting is shared by all plant pages. Every gauge (temperature, humidity, light, soil moisture, soil temperature, soil pH) then shows a labelled **Now** marker. When a value is outside the plant's range, the page gets a **Getting this plant back in range** section. It has numbered steps for that plant and that situation, such as how to protect it from a cold night, or how to raise humidity. Readings that are old are flagged as out of date.
 
 ## Location (from 1.11.0)
 
@@ -87,22 +87,32 @@ Nothing in the app is tied to Round Rock any more. The **Location** button at th
   - the Winter plan, the Today page's watering reminders and rain
   - the Weather page
   - what "today" means
-- **This browser remembers the choice.** Each computer or phone keeps its own, so someone else using the app somewhere else can pick their own place without changing yours.
+- **This browser remembers the choice.** Each computer or phone keeps its own. So someone else using the app somewhere else can pick their own place without changing yours.
 - **Add a place** in the same window: type a town or city, press **Search** (or Enter) and choose **Add and use** next to the right one. Its last 3 months of weather and its forecast arrive within a minute.
 - **Make … the home place for everyone**: the home place is what a computer or phone uses until it chooses its own location, and what the hourly updates and backups use.
-- The Winter plan's written notes, sources and expected-weather table are for Round Rock, so they show only when the place in use is Round Rock. For other places the expected columns come from that place's own weather history, once it has 3 years or more (use **Load history** on the Weather page).
+- The Winter plan's written notes, sources and expected-weather table are for Round Rock. So they show only when the place in use is Round Rock. For other places the expected columns come from that place's own weather history, once it has 3 years or more (use **Load history** on the Weather page).
 
 ## Environment fields on every plant page
 
-Besides the temperature, humidity and light ranges, each plant now has: a feeding season and interval (months and days), heat-damage temperature, comfortable air dryness (VPD, in kPa), comfortable light as PAR and as daily light (DLI, mol/m2/day), soil mix, soil pH, soil moisture and soil temperature ranges, fertilizer and nutrients, pests and diseases to watch, what to do about them, and current pest problems. Claude filled these in as a first guess for every plant from its type; they are guesses to check against your own experience, and everything is editable (Edit this page) with the usual version history.
+Besides the temperature, humidity and light ranges, each plant now has:
+
+- a feeding season and interval (months and days)
+- a heat-damage temperature
+- comfortable air dryness (VPD, in kPa)
+- comfortable light, as PAR and as daily light (DLI, mol/m2/day)
+- soil mix, soil pH, and soil moisture and soil temperature ranges
+- fertilizer and nutrients
+- pests and diseases to watch, what to do about them, and current pest problems
+
+ Claude filled these in as a first guess for every plant from its type. They are guesses to check against your own experience, and everything is editable (Edit this page) with the usual version history.
 
 ## Past days: what the values were on a date
 
-Temperature, Humidity (and air dryness), Light, and Water and soil (soil moisture, root-zone temperature, pH) each have a **Past days** box. Open it, pick the date on the calendar (or use the arrow keys), and you see that day's lowest, average and highest value, how many hours were in range, a chart of the day, and the plant's comfortable range **as it was recorded on that date** (if you changed the range later, both are shown). Each day on the calendar is marked in range, a little out, out of range or danger, and "Fed" where fertilizer was applied. Pick where the readings come from: your sensor, numbers you typed into Current conditions, or the online weather (outdoors, so for plants kept inside it only shows what the weather was). Days before any data was stored are blank; the online weather loads about 3 months back the first time, and more from the Weather page.
+Temperature, Humidity (and air dryness), Light, and Water and soil (soil moisture, root-zone temperature, pH) each have a **Past days** box. Open it, and pick the date on the calendar or with the arrow keys. You see that day's lowest, average and highest value, how many hours were in range, and a chart of the day. You also see the plant's comfortable range **as it was recorded on that date**. If you changed the range later, both are shown. Each day on the calendar is marked in range, a little out, out of range or danger, and "Fed" where fertilizer was applied. Pick where the readings come from: your sensor, numbers you typed into Current conditions, or the online weather. The online weather is outdoors, so for plants kept inside it only shows what the weather was. Days before any data was stored are blank; the online weather loads about 3 months back the first time, and more from the Weather page.
 
 ## Plant links and previews
 
-Plant codes such as P-012 written anywhere in the Still to photograph list, in requests, or in a plant page's text link to that plant. Point at a link (or Tab to it) to see a small preview with the plant's photo, name and health; Escape closes it. On the **Photos** page you can add your own entries with a note and a **Related plant**, and **Edit** any entry; codes you type are linked too.
+Plant codes such as P-012 written anywhere in the Still to photograph list, in requests, or in a plant page's text link to that plant. Point at a link (or Tab to it) to see a small preview with the plant's photo, name and health; Escape closes it. On the **Photos** page you can add your own entries with a note and a **Related plant**, and **Edit** any entry. Codes you type are linked too.
 
 ## Plant labels
 
@@ -120,7 +130,7 @@ If you open the app to your home network again (see "Using the app away from hom
 
 ## Groups of plants (from 1.16.0)
 
-The **Groups** page (in the top menu) gathers plants that are alike or kept together, so you can see what suits all of them and look after them in one go. A plant can be in several groups.
+The **Groups** page (in the top menu) gathers plants that are alike or kept together. So you can see what suits all of them and look after them in one go. A plant can be in several groups.
 
 - **Smart groups** have a rule. For example "Genus is Philodendron", "Location is Covered porch", or "Name contains palm". A rule can have several parts, and plants join when every part fits, or when any part fits. Plants that fit join by themselves, and leave when they stop fitting. While you make or change the rule, the window lists the plants that fit.
 - **Hand-picked groups** hold the plants you tick. Add or take out plants on the group's page, or from a plant's own page with **Change groups**.
@@ -158,12 +168,12 @@ Each home now carries these settings, on **Weather → Homes and places**, in it
 
 - **Country** (a two-letter code, filled in from the search when you add a place).
 - **Units there**: what people see who have not chosen units of their own in Display. Your own choice always wins.
-- **Care** (from 1.58.0, not on the main home): **Logged in this app** (the usual) or **Done outside the app**, for a home where nobody records care in the app, such as your mother's house in Baraboo. Water all, a group's care and Today's water-them-all buttons leave its plants out; you can still log care for one of its plants on that plant's page. Baraboo starts as Done outside the app.
-- **Seasons**: a winter with frost (the usual), a cool season where frost is rare, or wet and dry seasons with no frost. At a home with no frost, the Care section has no Winter plan, Cold-night checklist, Coming inside or Back outside, and Today has no cold-night, coming-inside or frost-dates blocks; the Care button opens the first page that applies there.
+- **Care** (from 1.58.0, not on the main home): **Logged in this app** (the usual) or **Done outside the app**. The second is for a home where nobody records care in the app, such as Baraboo. Water all, a group's care and Today's water-them-all buttons leave its plants out. You can still log care for one of its plants on that plant's page. Baraboo starts as Done outside the app.
+- **Seasons**: a winter with frost (the usual), a cool season where frost is rare, or wet and dry seasons with no frost. At a home with no frost, the Care section has no Winter plan, Cold-night checklist, Coming inside or Back outside, and Today has no cold-night, coming-inside or frost-dates blocks. The Care button opens the first page that applies there.
 
 Today follows the home chosen with the Location button for everything now: water, feed, Needed from you, coming inside, turning, the health walk-through and the frost blocks all list only that home's plants. The Plants page keeps its own Home filter.
 
-**Editors at some homes only.** In the people list (Settings → people and names), an editor's row lists your homes with a tick box each. Untick a home and that person can still see everything, but cannot change plants at that home (their pages, care log, photos, requests). The owner is never limited. Lights, pots, groups and places are shared between homes and are not limited this way. From 1.58.0 the limit is checked wherever a plant is changed: its photos, questions, fertilizer and potting-mix entries, pest sightings, grow light spot and shelf follow the plant's home too, and such an editor can add plants, or move them, only at their own homes. Before 1.58.0 some of those went through when the request did not carry the plant's code.
+**Editors at some homes only.** In the people list (Settings → people and names), an editor's row lists your homes with a tick box each. Untick a home and that person can still see everything, but cannot change plants at that home (their pages, care log, photos, requests). The owner is never limited. Lights, pots, groups and places are shared between homes and are not limited this way. From 1.58.0 the limit is checked wherever a plant is changed. Its photos, questions, fertilizer and potting-mix entries, pest sightings, grow light spot and shelf follow the plant's home too. Such an editor can add plants, or move them, only at their own homes. Before 1.58.0 some of those went through when the request did not carry the plant's code.
 
 ### Add several plants at once
 
@@ -173,7 +183,7 @@ Today follows the home chosen with the Location button for everything now: water
 2. Choose all the photos at once. A photo of a plant's label or tag helps.
 3. Press **Check these photos**. Each photo is checked by the picture checker on this computer, one at a time ("Checking photo 3 of 12").
 4. **The review screen** shows one box per plant:
-   - From 1.38.0, under each photo you say what it shows: **Same plant as the photo above**, **A different plant**, **Shows all of them** (a wide shot that goes on every plant) or **Leave this photo out**. The photos are in the order they were taken; the first guess is "same plant" when the picture checker sees the same species in both, and the plant boxes follow your answers. (The old "taken within 3 minutes" grouping is gone.)
+   - Under each photo you say what it shows: **Same plant as the photo above**, **A different plant**, **Shows all of them** or **Leave this photo out**. Shows all of them is for a wide shot that goes on every plant. The photos are in the order they were taken. The first guess is "same plant" when the picture checker sees the same species in both, and the plant boxes follow your answers. (The old "taken within 3 minutes" grouping is gone.)
    - **What the picture checker thinks it is**: the 3 likeliest species, with how likely each is. The names, family, genus, plant type, safety for pets and ID confidence are filled in from the one chosen. Choose another, or **None of these** to type them yourself. Anything you type is kept.
    - **This may be a plant you already have** appears when a plant looks like one in the record. It starts unticked, so it isn't added twice.
 5. Press **Add N plants**. Nothing is added until then. Each plant gets its photos (the first is the main photo), and its page says where its name came from.
@@ -194,7 +204,7 @@ Every plant page has an **About this plant** section after Identification (also 
 
 - **Type of plant and classification:** for example "Evergreen tropical tree", then kingdom, order, family, genus and species.
 - **Mature size:** a table of height and width in the ground and in a pot, plus growth rate and lifespan.
-- **Hardiness zones (USDA):** the coldest and warmest zones it grows in outdoors all year, and a line saying **✓ Hardy here** or **▼ Not hardy here** with how much colder a usual winter is than the plant can take. Your zone comes from the weather history the app keeps for your place: the average of each winter's coldest night, which is how the USDA defines zones. For Round Rock that is about 22°F, zone 9a. The 2023 USDA map puts Round Rock on the line between 8b and 9a; the link opens the map so you can look up a ZIP code. Annual plants have no zone.
+- **Hardiness zones (USDA):** the coldest and warmest zones it grows in outdoors all year. A line says **✓ Hardy here** or **▼ Not hardy here**, with how much colder a usual winter is than the plant can take. Your zone comes from the weather history the app keeps for your place: the average of each winter's coldest night, which is how the USDA defines zones. For Round Rock that is about 22°F, zone 9a. The 2023 USDA map puts Round Rock on the line between 8b and 9a. The link opens the map so you can look up a ZIP code. Annual plants have no zone.
 - **Native range, conservation status and invasive risk.** Conservation status is the IUCN Red List category where Claude could confirm one, and notes CITES (which only controls international trade, not growing a plant at home).
 - **Flowers and fruit,** including whether the fruit is edible.
 - **Dangers** to people and to pets, in a box with the Poison Control number (1-800-222-1222) and the ASPCA Animal Poison Control Center (888-426-4435).
@@ -205,7 +215,7 @@ If the identification is less than 85% sure, a note says the details are for the
 
 ## Audit log (from 1.10.0)
 
-The **Audit log** page (in the menu bar; it used to be called Change log) lists every change to every record, newest first: edits to plant pages, plants added or archived, photos added, moved or removed, feeding and care, requests and answers, the "Still to photograph" list, settings and backups. Each change shows when, which plant (with a link), who, what changed, and the value before and after.
+The **Audit log** page (in the menu bar; it used to be called Change log) lists every change to every record, newest first. That covers edits to plant pages, plants added or archived, photos added, moved or removed, feeding and care, requests and answers, the "Still to photograph" list, settings and backups. Each change shows when, which plant (with a link), who, what changed, and the value before and after.
 
 - **Filters** (at the top; on a phone, open **Filters** first):
   - **Search**: any words, a plant code, a name or a value, for example `hyacinth`, `P-024` or `Poor`.
