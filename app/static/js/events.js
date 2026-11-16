@@ -320,6 +320,13 @@ const acts = {
       toast(`${r.moved} plant${r.moved === 1 ? '' : 's'} put in their spots${r.made.length ? `. New spot${r.made.length === 1 ? '' : 's'}: ${r.made.join('; ')}` : ''}.`); await route(); whsRestore(kept);
       const h = document.querySelector('#wh-sort h2'); if (h) h.focus(); });
   },
+  whsmore(el) {                                      // 1.58.0: ten more groups; the focus goes to the first of them
+    const first = WHS_SHOWN; WHS_SHOWN += WHS_PAGE;
+    document.querySelectorAll('#wh-sort .whs-card').forEach((c, k) => { if (k < WHS_SHOWN) c.hidden = false; });
+    const left = WHSORT.length - WHS_SHOWN;
+    if (left > 0) el.textContent = `Show ${Math.min(WHS_PAGE, left)} more (${left} not shown)`; else el.closest('p').remove();
+    const f = document.querySelector(`#whs-${first} [data-k=area]`); if (f) f.focus();
+  },
   async whsone(el) {                                 // 1.56.3: one group; the focus goes on to the next
     if (!(await needName())) return;
     const i = +el.dataset.i, item = whsItem(i); if (!item) return;
