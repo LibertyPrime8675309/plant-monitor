@@ -5,3 +5,6 @@ html[data-narrow="1"] .sec-tools .rd-btn{min-width:44px;min-height:44px;justify-
 /* Getting ready to come inside: About this plant and the checklist fold until the checklist is started */
 details.pr-more{margin:.6rem 0}
 details.pr-more>summary{cursor:pointer;min-height:44px;padding:.6rem 0;font-weight:700}
+html[data-narrow="1"] .sec-tools{align-items:stretch}
+html[data-narrow="1"] .sec-tools .rd-btn{min-width:3.4em}
+html[data-narrow="1"] .sec-tools .rd-btn svg{width:1.5em;height:1.5em}
