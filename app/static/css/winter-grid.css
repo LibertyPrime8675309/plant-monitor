@@ -1,0 +1,5 @@
+/* 1.58.0: on the winter plan each plan's plants run across the page in as many columns as fit, one plan under the other.
+   Before, each plan was one column, so the longest plan (Move indoors) set the page's length and the other columns ended early. */
+.winter-cols{display:block}
+.winter-cols>div+div{margin-top:1.2rem}
+.winter-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(18rem,100%),1fr));column-gap:2rem;align-items:start}
