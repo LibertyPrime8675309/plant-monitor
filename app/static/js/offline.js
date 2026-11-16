@@ -279,7 +279,10 @@ async function offSync() {
   if (OFF.sending || !navigator.onLine) return;
   OFF.sending = 'checking';                    // one at a time: the online event, the timer and the page can all ask
   let st;
-  try { const r = await fetch('/api/offline/status', { cache: 'no-store' }); if (!r.ok || r.headers.get('X-Offline-Saved')) { OFF.sending = false; return; } st = await r.json(); } catch (e) { OFF.sending = false; return; }
+  // Just back online, the first try can still miss the server: try again in a few seconds (up to 5 times) rather than wait for the minute timer
+  const later = () => { OFF.sending = false; if (navigator.onLine && (OFF.retries = (OFF.retries || 0) + 1) <= 5) setTimeout(offSync, 3000); };
+  try { const r = await fetch('/api/offline/status', { cache: 'no-store' }); if (!r.ok || r.headers.get('X-Offline-Saved')) { later(); return; } st = await r.json(); } catch (e) { later(); return; }
+  OFF.retries = 0;
   OFF.conflicts = st.conflicts || 0;
   const ops = (await offOps()).filter(o => !o.failed);
   if (!ops.length && !(await idbAll('idq')).some(x => !x.result)) { OFF.sending = false; offPaint(); return; }
@@ -488,7 +491,7 @@ async function offStart() {
     try { await navigator.serviceWorker.register('/sw.js', { scope: '/' }); } catch (e) { console.warn('Offline use is not available here: ' + e.message); }
   }
   OFFDEV = await offKv('device', null);
-  window.addEventListener('online', () => { offPaint(); offProbe(); });
+  window.addEventListener('online', () => { OFF.retries = 0; offPaint(); offProbe(); });
   window.addEventListener('offline', () => offPaint());
   document.addEventListener('visibilitychange', () => { if (!document.hidden && OFF.reach === 'no') offProbe(); });
   window.addEventListener('focus', () => { if (OFF.reach === 'no') offProbe(); });
