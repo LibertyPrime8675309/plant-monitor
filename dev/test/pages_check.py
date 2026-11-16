@@ -4,6 +4,8 @@ Plants page showing one place, and the summer heat zone next to the winter zone.
 (MOCK_TS=1), then:  python3 dev/test/pages_check.py      Screenshots: dev/tmp/shots/pages-*.png"""
 import json, os, sys, urllib.request, urllib.error
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from waits import until
 LOCAL, TS = 'http://127.0.0.1:8080', 'http://127.0.0.1:8081'
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
@@ -111,8 +113,9 @@ with sync_playwright() as p:
     pg.goto(LOCAL + '/#/plant/P-012/edit'); pg.wait_for_timeout(3000)
     btn = pg.locator('label:has(textarea[name=notes]) + .spk-btn')
     check(btn.count() == 1 and btn.get_attribute('aria-label') == 'Speak into Notes' and not btn.is_visible(), 'a Speak button belongs to the Notes box, out of the way until the box is used')
-    pg.focus('textarea[name=notes]'); pg.wait_for_timeout(300)
-    check(btn.is_visible(), 'it shows when the box has the focus')
+    pg.evaluate("document.querySelector('textarea[name=notes]').closest('details').open = true")   # 1.58.0: the form's groups fold
+    pg.focus('textarea[name=notes]')
+    check(until(pg, lambda: btn.is_visible(), 3000), 'it shows when the box has the focus')
     pg.focus('input[name=common_name]'); pg.wait_for_timeout(500)
     check(not btn.is_visible(), 'and it goes out of the way again')
 

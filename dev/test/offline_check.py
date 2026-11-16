@@ -68,6 +68,7 @@ with sync_playwright() as p:
     if wb.count() and wb.is_enabled(): wb.click(); pg.wait_for_timeout(1200)
     else: pg.evaluate(f"api('POST', '/api/care', {{ plant: '{P}', kind: 'water' }})"); pg.wait_for_timeout(800)
     pg.goto(LOCAL + f'/#/plant/{P}/edit'); pg.wait_for_timeout(8000)
+    pg.click('[data-act=fgall]')                     # 1.58.0: the groups of the form fold; open them all
     pg.fill('form [name=notes]', 'Edited on the phone, offline.'); pg.fill('form [name=container]', 'Blue glazed pot (phone)')
     pg.click('form[data-form=edit] button[type=submit]') if pg.locator('form[data-form=edit]').count() else pg.click('form button[type=submit]')
     pg.wait_for_timeout(9000)

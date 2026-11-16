@@ -45,7 +45,8 @@ with sync_playwright() as p:
     pg.wait_for_timeout(1500)
     check(json.loads((call('GET', '/api/me/prefs')['prefs'].get('units') or '{}')).get('region') == 'metric', 'and sent to the server with the settings that follow you')
     # 3. the edit form shows and takes °C, and keeps °F underneath
-    pg.goto(BASE + f'/#/plant/{code}/edit'); pg.wait_for_selector('input[name=temp_ideal_low]', timeout=15000)
+    pg.goto(BASE + f'/#/plant/{code}/edit'); pg.wait_for_selector('[data-act=fgall]', timeout=15000)
+    pg.click('[data-act=fgall]')                       # 1.58.0: the form's groups fold; open them all
     check(pg.input_value('input[name=temp_ideal_low]') == str(c_of(lo)), f'the edit form shows the comfortable minimum as {c_of(lo)} (°C)')
     lab = pg.inner_text('label:has(input[name=temp_ideal_low])')
     check('(°C)' in lab and '(F)' not in lab, 'its label says °C')
