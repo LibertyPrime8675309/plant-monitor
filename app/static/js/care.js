@@ -313,7 +313,7 @@ function todayPrep(PR, t) {
 // the name and how late the plant is: the picture is a tick box, and one bar held at the bottom of the screen has Watered and Still moist
 // for everything ticked. How late a plant is opens the reason. The size of the pictures is a choice kept on each device.
 let WATER_ORDER = (() => { try { return localStorage.getItem('plantdb.waterorder') === 'late' ? 'late' : 'place'; } catch (e) { return 'place'; } })();
-const WATER_SIZES = { medium: 'Medium', large: 'Large' };      // Small was dropped (November 2026): a device that had chosen it gets Medium
+const WATER_SIZES = { medium: 'Medium', large: 'Large', xlarge: 'Extra large' };      // Small was dropped (November 2026): a device that had chosen it gets Medium. Extra large: his ask of November 15
 let WATER_PICS = (() => { try { const v = localStorage.getItem('plantdb.waterpics'); return WATER_SIZES[v] ? v : 'medium'; } catch (e) { return 'medium'; } })();
 // The ticks of each list ('due', 'soon', 'unk'), kept while the app is open: a look at a plant's page and back leaves them as they were.
 // A new day starts with none, and a plant that has left its list is no longer ticked.
