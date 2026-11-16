@@ -484,7 +484,7 @@ const acts = {
   placeshow(el) { setPlace(el.dataset.id).then(() => window.scrollTo(0, 0)); },
   async placehome(el) {
     const p = WX.places.find(x => String(x.id) === el.dataset.id); if (!p || !(await needName())) return;
-    if (!(await confirmBox(`Make ${p.name} home?`, `Every computer or phone that has not chosen its own location will use the weather for ${p.name} instead of ${WX.home.name}, and so will the hourly updates and backups.`, 'Make home'))) return;
+    if (!(await confirmBox(`Make ${p.name} home?`, `Every computer or phone that has not chosen its own location will use the weather for ${p.name} instead of ${WX.home.name}. So will the hourly updates and backups.`, 'Make home'))) return;
     await guard(async () => { await api('PUT', '/api/places/' + p.id, { is_home: true }); if (String(PLACE) === String(p.id)) savePlace(null); META = null; COND = null; FROST = null; FROST_AT = 0; toast(`${p.name} is now home`); route(); });
   },
   async placeplants(el) {             // 1.28.0: a home of its own

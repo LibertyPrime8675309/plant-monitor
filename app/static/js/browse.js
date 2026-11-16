@@ -99,19 +99,19 @@ async function viewBrowse() {
   return {
     title: 'Pests that eat plants',
     html: html`<h1>Pests that eat plants</h1>
-    <p class="muted">Rabbits, rats, mice and deer choose plants that are soft, tasty and have no defence. This sorts your plants by that, from the kind of plant, unless you have set a plant's risk yourself. The usual comes from gardeners' and extension-service knowledge, not a test on your garden, and a plant you log as eaten is raised (once to some risk, three times to high) for ${B.days} days: a hungry animal eats almost anything, and a plant that is "usually left alone" is not safe if nothing else is on offer.</p>
+    <p class="muted">Rabbits, rats, mice and deer choose plants that are soft, tasty and have no defence. This sorts your plants by that, from the kind of plant, unless you have set a plant's risk yourself. The usual comes from gardeners' and extension-service knowledge, not a test on your garden. A plant you log as eaten is raised for ${B.days} days: once to some risk, three times to high. A hungry animal eats almost anything. Even a plant that is "usually left alone" gets eaten when nothing else is on offer.</p>
     <div class="verdict-box" role="status"><p><strong>${C.High} most likely to be eaten, ${C.Moderate} with some risk, ${C.Low} usually left alone${C.Unknown ? `, ${C.Unknown} not known yet` : ''}.</strong></p></div>
     <section class="blk" id="br-seen"><h2>Seen eating, last ${B.days} days (${S.length})</h2>
       ${S.length ? html`<p>${Object.entries(B.by_pest).map(([k, n]) => `${k} ${n}`).join(', ')}. Logging each time shows who it is and which plants they go for.</p>
-        <ul class="br-sights">${S.map(brSighting)}</ul>` : html`<p class="muted">Nothing logged. When you find chewed leaves, droppings or an animal at a plant, press <strong>Log a sighting</strong> on that plant below, and add a picture as evidence.</p>`}</section>
+        <ul class="br-sights">${S.map(brSighting)}</ul>` : html`<p class="muted">Nothing logged. When you find chewed leaves, droppings or an animal at a plant, press <strong>Log a sighting</strong> on that plant below. Add a picture as evidence.</p>`}</section>
     ${BR_ORDER.map(k => by(k).length ? html`<section class="blk" id="br-${k.toLowerCase()}"><h2>${BR_HEAD[k]} (${by(k).length})</h2><ul class="jobs">${by(k).map(brRow)}</ul></section>` : '')}
     <section class="blk" id="br-plan"><h2>What to do</h2>
       <ul class="rp-list">
-        <li>Put the high-risk plants in the middle of a group of pots and ring them with plants that are usually left alone (aroids, aloes, crown of thorns).</li>
+        <li>Put the high-risk plants in the middle of a group of pots. Ring them with plants that are usually left alone, such as aroids, aloes and crown of thorns.</li>
         <li>Cover the high-risk plants that matter most with a wire cloche or a frame of hardware cloth (small mesh, about half an inch). Rats and mice climb, so a cover with a closed top works better than a low fence.</li>
         <li>Raise pots off the ground on a stand, and keep cactus bases clear of soil, where mice gnaw.</li>
-        <li>Look for droppings and chew marks to see who it is: rabbit droppings are round pellets and cuts are clean at an angle; rodents leave small gnawed edges and smaller droppings. Log what you find with a picture.</li>
-        <li>Plants animals dislike for their smell, such as lavender, rosemary, sage, thyme, marigolds, chives and potted mint, help a little next to the plants you want to protect. They are not a fence.</li></ul></section>`,
+        <li>Look for droppings and chew marks to see who it is. Rabbits leave round pellets and clean cuts at an angle. Rodents leave small gnawed edges and smaller droppings. Log what you find with a picture.</li>
+        <li>Plants with a smell animals dislike help a little next to the plants you want to protect. Lavender, rosemary, sage, thyme, marigolds, chives and potted mint are some. They are not a fence.</li></ul></section>`,
   };
 }
 // Today, in the evening: what to cover tonight

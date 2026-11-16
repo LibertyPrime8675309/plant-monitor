@@ -7,11 +7,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'tools'))
 import wording
 
 LIMITS = {
-    "browse.js": 5,
     "care.js": 3,
-    "events.js": 1,
-    "guide.js": 5,
-    "library.js": 1,
     "lights.js": 1,
     "mushrooms.js": 1,
     "notify.js": 1,
@@ -20,10 +16,10 @@ LIMITS = {
     "propagation.js": 1,
     "releases.js": 2,
     "review.js": 1,
-    "sensors.js": 4,
+    "sensors.js": 2,
     "shopping.js": 2,
     "ui.js": 6,
-    "weather.js": 4,
+    "weather.js": 3,
 }
 
 
