@@ -752,7 +752,7 @@ function frostBanner(inPage) {
 }
 const FZ_DO = {
   'Move indoors': 'Bring it inside: a heated room, or the garage for a night or two.',
-  'Protect outside': 'Cover it down to the ground with frost cloth or an old sheet (not plastic touching the leaves), or move it against the house or onto the porch.',
+  'Protect outside': 'Cover it down to the ground with frost cloth or an old sheet. Keep plastic off the leaves. Or move it against the house, or onto the porch.',
   'Hardy outside': 'Usually fine outside, but this is below its damage point: cover it, or move the pot against the house.',
   'Seasonal die-back': 'The top growth may die back. Mulch or wrap the pot, or move it to shelter to protect the roots.',
   'Annual': 'An annual: the cold will likely end its season. Bring it in only if you want to keep it going.',
@@ -844,7 +844,7 @@ async function viewWinter() {
       ${ref.applies !== false ? (ref.notes || []).map(n => html`<p class="hint">${n}</p>`) : ''}</section>
     <section class="blk"><h2>When to act</h2><dl class="dl">${(ref.triggers || []).map(t => html`<dt>${t.temp}</dt><dd>${t.action}</dd>`)}</dl></section>
     <section class="blk"><h2>Ground rules</h2>${(ref.playbook || []).length ? html`<ul>${ref.playbook.map(x => html`<li>${x}</li>`)}</ul>` : ''}</section>
-    <section class="blk"><h2>Plant by plant</h2><div class="cols">${META.winter_plans.map(pl => {
+    <section class="blk"><h2>Plant by plant</h2><div class="cols winter-cols">${META.winter_plans.map(pl => {
       const g = list.filter(p => p.winter_plan === pl && !isInside(p)).sort((a, b) => (b.temp_damage_below ?? -99) - (a.temp_damage_below ?? -99));
       if (!g.length) return '';
       return html`<div><h3>${pl} (${g.length})</h3><ul class="todo winter-list">${g.map(p => html`<li>${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : html`<span></span>`}

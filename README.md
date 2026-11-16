@@ -448,7 +448,7 @@ Each page below is a file in the `manual` folder. When the app says "see README"
 - Lights that fit the room
 - Compare lights
 
-### Room and shelf layouts (prototype): `manual/layouts.md`
+### Room and shelf layouts: `manual/layouts.md`
 - Room and shelf layouts: Start a layout; Two drawings of the same things; Moving a thing; Putting a plant on a shelf in a room; Light here; Move it in the record; What it marks; Undo and Redo
 
 ### Away from home, on the phone and offline: `manual/away-and-offline.md`

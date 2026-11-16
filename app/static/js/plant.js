@@ -162,7 +162,7 @@ function heatBlock(p, H) {
 }
 function zoneHere(p) {
   const Z = META && META.zone, lo = zoneNum(p.zone_low), here = !Z ? null : Z.zone ? zoneNum(Z.zone) : zoneNum(String(Z.map_zone || '').split(' ')[0]);   // no weather history yet: the colder end of the map zone
-  const where = html`${Z && Z.zone ? html`<p>Where you are: the last ${Z.years} winters of weather at ${placeName()} averaged a coldest night of ${tF(Z.winter_low)}, which is <strong>zone ${Z.zone}</strong>.${Z.map_note ? ' ' + Z.map_note : ''} <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>`
+  const where = html`${Z && Z.zone ? html`<p>Where you are: the coldest night at ${placeName()} averaged ${tF(Z.winter_low)} over the last ${Z.years} winters. That is <strong>zone ${Z.zone}</strong>.${Z.map_note ? ' ' + Z.map_note : ''} <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>`
     : Z && Z.map_zone ? html`<p>Where you are: zone ${Z.map_zone} on the 2023 USDA map. <a href="${Z.map_url}" target="_blank" rel="noopener noreferrer">Look up a ZIP code on the USDA map</a>.</p>` : ''}`;
   // 1.34.0: summer heat next to winter cold, from the same weather history; 1.36.0: the whole verdict for this plant (heatBlock)
   const summer = heatBlock(p, HEATV);
@@ -457,7 +457,7 @@ async function loadTimeline(box) {
 // ---------- 1.27.0: uses, partners, deterrents, propagation and breeding (one species' facts, on plant, species and find pages) ----------
 const FACT_EVIDENCE = { Tested: 'shown in trials', Traditional: "gardeners' lore, not proven", 'Same needs': 'same light, water and soil', 'Different needs': 'needs different light, water or soil' };
 function factYours(list, lead) {
-  return list && list.length ? html`<span class="fact-yours">${lead} ${list.map((x, i) => html`${i ? ', ' : ''}<a href="#/plant/${enc(x.code)}">${x.code} ${x.name}</a>`)}</span>` : '';
+  return list && list.length ? html`<span class="fact-yours">${lead} ${list.map((x, i) => html`${i ? ' · ' : ''}<a href="#/plant/${enc(x.code)}">${x.code} ${x.name}</a>`)}</span>` : '';
 }
 function factsHtml(f, box) {
   const fungus = box.dataset.factsKind === 'fungus', name = box.dataset.factsCommon || box.dataset.factsName;

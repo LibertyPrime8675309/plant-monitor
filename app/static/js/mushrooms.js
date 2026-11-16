@@ -49,7 +49,7 @@ async function viewFungi() {
   return {
     title: 'Mushroom finds', after: muDraw,
     html: html`<div class="hero"><div><h1>Mushroom finds</h1>
-      <p class="muted">Mushrooms you have spotted in the yard, in your plant pots, or anywhere else, with their photos, where they grew and what they look like.</p></div>
+      <p class="muted">Mushrooms you have spotted in the yard, in your pots or anywhere else. Each has its photos, where it grew and what it looks like.</p></div>
       <a class="btn" href="#/fungi/new">Add a find</a></div>
     ${fungiSafety(true)}
     <div class="filters mu-filters">
@@ -70,7 +70,7 @@ function viewFungiSafety() {
     <h2>Good habits when you record a find</h2>
     <ul><li>Photograph the cap from above, the underside (gills or pores), the whole stem, and the very base. Dig gently around the base first: a cup or sac there (a volva) is a warning sign of <i>Amanita</i>.</li>
       <li>Note what it grew on, and which trees are near: many mushrooms grow only with certain trees.</li>
-      <li>A spore print helps an expert most: put the cap gills-down on half white, half dark paper under a bowl for a few hours, and note the colour.</li>
+      <li>A spore print helps an expert most. Put the cap gills-down on paper that is half white and half dark. Cover it with a bowl for a few hours, then note the colour.</li>
       <li>Ask for help on iNaturalist or a local mycological society (most states and many cities have one; the North American Mycological Association lists them).</li></ul>` };
 }
 function muField(meta, f, v, plants) {

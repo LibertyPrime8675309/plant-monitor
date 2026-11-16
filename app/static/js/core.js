@@ -394,13 +394,17 @@ async function viewWhere() {
     <p class="hint">"Roof overhead" and "Heated" decide how frost warnings and watering treat the plants there. Outside with a roof counts as a covered porch. Inside without heat counts as a garage or shed.</p>
     ${can ? html`<p class="hint">Today lists the plants to water spot by spot, in the order shown here. <strong>Move up</strong> and <strong>Move down</strong> put the rooms and spots in the order you walk.</p>` : ''}
     ${S.items.length && can ? html`<section class="blk" id="wh-sort"><h2 tabindex="-1">Plants without a spot (${S.items.reduce((n, it) => n + it.plants.length, 0)})</h2>
-      <p>These plants are not on a spot from your list yet. For each group, choose the area and one of its spots, or <strong>A new spot</strong> and its name, then press <strong>Put in this spot</strong>. Untick a plant to leave it for later. <strong>Put them all in their spots</strong> at the bottom does every group at once. What is written on a plant ("Spot (where exactly)") stays as it is.</p>
+      <p>These plants are not on a spot from your list yet. For each group, choose the area and one of its spots, or <strong>A new spot</strong> and its name, then press <strong>Put in this spot</strong>. Untick a plant to leave it for later. <strong>Put them all in their spots</strong> at the bottom does every group at once, the ones not shown yet too. What is written on a plant ("Spot (where exactly)") stays as it is.</p>
       <ul class="whs-list">${S.items.map((it, i) => whsCard(it, i, d.homes))}</ul>
+      ${S.items.length > WHS_SHOWN ? html`<p class="row"><button class="btn ghost" type="button" data-act="whsmore">Show ${Math.min(WHS_PAGE, S.items.length - WHS_SHOWN)} more (${S.items.length - WHS_SHOWN} not shown)</button></p>` : ''}
       <p class="row"><button class="btn" type="button" data-act="whsort">Put them all in their spots</button></p></section>` : ''}
     ${d.homes.map(h => html`<section class="blk wh-home"><h2>${multi ? h.home.name : 'Your home'}${h.home.is_home && multi ? ' (main home)' : ''}</h2><div class="wh-sides">${sideHtml(h, 'out')}${sideHtml(h, 'in')}</div></section>`)}`,
     after: () => { WHSORT = S.items; } };
 }
 let WHSORT = [], WHAREAS = [];
+// 1.58.0 (Ethan, November 15: make Rooms and spots shorter): Plants without a spot shows ten groups at a time, like Missing details.
+// The rest are drawn but hidden, so Put them all in their spots still does every group. A group done makes room for the next.
+const WHS_PAGE = 10; let WHS_SHOWN = WHS_PAGE;
 // 1.56.3 (Ethan, November 10): "Plants without a spot". Each group of plants with the same words written on them (or none):
 // its plants, ticked; the area; one of that area's spots or a new one; and Put in this spot.
 function whsSpotOpts(aid, spotId, name) {
@@ -410,10 +414,12 @@ function whsSpotOpts(aid, spotId, name) {
 }
 function whsCard(it, i, homes) {
   const isNew = !it.spot_id && !(WHAREAS.find(x => x.id === it.area_id) || { spots: [] }).spots.some(sp => it.name && sp.name.toLowerCase() === it.name.toLowerCase());
-  return html`<li class="whs-card" id="whs-${i}"><h3>${it.text ? html`Written on ${it.plants.length === 1 ? 'it' : 'them'}: "${it.text}"` : 'Nothing written on them'}</h3>
-    <fieldset class="whs-plants"><legend>Plants (${it.plants.length})</legend>${it.plants.map(x => html`<div class="whs-plant"><label><input type="checkbox" checked data-whs="${i}" data-k="code" value="${x.code}">
+  return html`<li class="whs-card" id="whs-${i}" ${i >= WHS_SHOWN ? raw('hidden') : ''}><h3>${it.text ? html`Written on ${it.plants.length === 1 ? 'it' : 'them'}: "${it.text}"` : 'Nothing written on them'}</h3>
+    ${it.plants.length === 1 ? (x => html`<div class="whs-one"><input type="checkbox" checked hidden data-whs="${i}" data-k="code" value="${x.code}">
+      ${x.photo ? html`<img src="${thumbUrl(x.photo)}" alt="" loading="lazy" width="48" height="48">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}<span><a href="#/plant/${enc(x.code)}">${x.name}</a> <span class="muted">${x.code}</span></span></div>`)(it.plants[0])
+    : html`<fieldset class="whs-plants"><legend>Plants (${it.plants.length})</legend>${it.plants.map(x => html`<div class="whs-plant"><label><input type="checkbox" checked data-whs="${i}" data-k="code" value="${x.code}">
       ${x.photo ? html`<img src="${thumbUrl(x.photo)}" alt="" loading="lazy" width="48" height="48">` : html`<span class="job-nophoto" aria-hidden="true"></span>`}<span>${x.name} <span class="muted">${x.code}</span></span></label>
-      <a href="#/plant/${enc(x.code)}" class="whs-open">Open ${x.code}</a></div>`)}</fieldset>
+      <a href="#/plant/${enc(x.code)}" class="whs-open">Open ${x.code}</a></div>`)}</fieldset>`}
     <div class="whs-pick">
       <label class="f">Area or room<select data-whs="${i}" data-k="area">${homes.map(h => html`<optgroup label="${h.home.name}">${h.areas.map(a => html`<option value="${a.id}" ${a.id === it.area_id ? raw('selected') : ''}>${a.side === 'out' ? 'Outside' : 'Inside'}: ${a.name}</option>`)}</optgroup>`)}</select></label>
       <label class="f">Spot<select data-whs="${i}" data-k="spot">${whsSpotOpts(it.area_id, it.spot_id, it.name)}</select></label>

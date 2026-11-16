@@ -55,6 +55,8 @@ The **Weather** page replaces the fixed weather table. It has:
 
 The Winter plan page uses the same data for its forecast and its season table.
 
+From 1.58.0 the Winter plan's **Plant by plant** list is shorter. Each plan (Move indoors, Cover in place and so on) runs across the page, one under the other, with its plants in as many columns as fit. Before, each plan was a column, so the longest one set the page's length. On a phone, or an iPad held upright, a plant's words run beside its photo and then under it, and **Moved indoors** is only as wide as its words. Already inside works the same way.
+
 Online weather comes from [Open-Meteo](https://open-meteo.com/) (free, no account). The app fetches it every hour, loads the last 3 months the first time, and keeps everything in your database, so the history keeps growing. The computer running Docker needs internet access for this. If an update fails the Weather page shows the reason. Location is Round Rock, TX by default; change it under **Location and updates**. To bring in older history (for example last winter), use "Load older weather history from this date". Light is estimated from solar radiation (about 2.1 PAR per W/m2).
 
 ### More than one place

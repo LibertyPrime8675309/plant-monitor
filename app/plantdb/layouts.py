@@ -1,4 +1,4 @@
-"""Prototype (proto/layouts): layouts. A room, a porch, a patch of yard or one shelf unit, drawn to scale, with the plants, grow
+"""Layouts (1.58.0; prototype #131). A room, a porch, a patch of yard or one shelf unit, drawn to scale, with the plants, grow
 lights, shelves and anything else in it as things to move about on the page before the real ones are moved (Ethan, November 14,
 2026: "simulate 2D (maybe also 3D later) spaces ... dragging them around, snapping to and showing a grid, setting sizes for the
 space and the items, indicating when things collide or may conflict").

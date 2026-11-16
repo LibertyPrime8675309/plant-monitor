@@ -46,7 +46,7 @@ async function viewTurning() {
     <section class="blk" id="turn-later"><h2>Coming up (${later.length})</h2>
       ${later.length ? html`<ul class="jobs">${later.map(p => jobRow(tnRow(p), tnWords(p), tnBtns(p, true)))}</ul>` : html`<p class="muted">Nothing else on the list yet.</p>`}</section>
     <section class="blk" id="turn-out"><h2>Left out (${T.left_out.length})</h2>
-      <p class="hint">Plants out in the open get light from all round as the sun moves, so they are left out and not listed here. So are plants under a grow light that shines down from above. Switch any plant on or off with its button.</p>
+      <p class="hint">Plants out in the open get light from all round as the sun moves. So they are left out of this list. So are plants under a grow light that shines down from above. Switch any plant on or off with its button.</p>
       ${T.left_out.length ? html`<ul class="jobs">${T.left_out.map(p => jobRow(tnRow(p), p.why + '.',
         html`<button class="btn small ghost" type="button" data-act="turnset" data-code="${p.code}" data-on="1" aria-label="${'Remind me to turn ' + p.name}">Remind me</button>`))}</ul>` : ''}</section>
     <p class="hint">Each turn is saved in the plant's care log as "Turned the pot". You can see it on the plant's page, and undo it there.</p>`,

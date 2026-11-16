@@ -1,4 +1,4 @@
-# Room and shelf layouts (prototype, `proto/layouts`)
+# Room and shelf layouts (1.58.0; prototype #131)
 
 Notes for the next session. What it is for, with pictures and Ethan's answers, is in `docs/prototypes/layouts.md`; how to use it is in `manual/layouts.md`.
 

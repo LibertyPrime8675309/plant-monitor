@@ -305,9 +305,10 @@ function groupFilter() {
   return html`<label>Group<select data-f="group"><option value="">Any</option>${gs.map(g => html`<option value="${g.id}" ${String(G.group) === String(g.id) ? raw('selected') : ''}>${g.name} (${g.count})</option>`)}</select></label>`;
 }
 const plantName = code => (PCODES.get(code) || {}).common_name || code;
-function nameList(codes, max = 6) {
+// 1.58.0 (the dyslexia audit): names apart with " · ", since many names hold commas of their own ("Aloe vera (probable), teal pot")
+function nameList(codes, max = 5) {
   const names = codes.slice(0, max).map(plantName);
-  return names.join(', ') + (codes.length > max ? `, and ${codes.length - max} more` : '');
+  return names.join(' · ') + (codes.length > max ? `, and ${codes.length - max} more` : '');
 }
 const groupKindWords = g => g.kind === 'smart' ? `Smart group: plants join when ${g.rule_words}.` : 'Hand-picked group.';
 
@@ -316,7 +317,7 @@ async function viewGroups() {
   return {
     title: 'Groups',
     html: html`<h1>Groups</h1>
-    <p class="muted">Groups gather plants that are alike or kept together, so you can see what suits all of them and look after them in one go. A plant can be in several groups.</p>
+    <p class="muted">Groups gather plants that are alike or kept together. You can see what suits all of them, and look after them in one go. A plant can be in several groups.</p>
     <div class="row noprint grp-new"><button class="btn" type="button" data-act="grpnew" data-kind="smart">Make a smart group</button>
       <button class="btn ghost" type="button" data-act="grpnew" data-kind="picked">Make a hand-picked group</button></div>
     <section class="blk" id="grp-yours"><h2>Your groups (${gs.length})</h2>
