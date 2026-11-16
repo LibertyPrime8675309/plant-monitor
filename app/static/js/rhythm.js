@@ -50,7 +50,7 @@ async function viewRhythm() {
       ${C.few ? ` ${rhPl(C.few, 'plant has', 'plants have')} too few waterings logged to tell.` : ''}</p>
       <p class="hint">From the last ${RH.window} days of the care log. "About every" is the middle gap between waterings, so one long or short gap does not move it. Rain of ${rainF(RH.rain_counts_in)} or more counts as a watering for plants whose Location is Outdoors.</p></div>
     <section class="blk" id="rh-often"><h2>Watered sooner than the reminder (${C.often})</h2>
-      <p class="hint">The pot may dry faster than the app thinks (a small pot, a sunny window, a heater nearby), so a shorter reminder would suit it. Or it is watered before it needs it: push a finger into the mix first, and if it is still damp, press "Checked: still moist" instead.</p>
+      <p class="hint">The pot may dry faster than the app thinks: a small pot, a sunny window or a heater nearby. Then a shorter reminder would suit it. Or it is watered before it needs it. Push a finger into the mix first. If it is still damp, press "Checked: still moist" instead.</p>
       ${rhAllBtn('often', by('often'))}
       ${C.often ? html`<ul class="jobs">${by('often').map(rhRow)}</ul>` : html`<p class="muted">None.</p>`}</section>
     <section class="blk" id="rh-seldom"><h2>Watered later than the reminder (${C.seldom})</h2>
@@ -62,7 +62,7 @@ async function viewRhythm() {
     <details class="grp" id="rh-few"><summary><h2>Not enough logged yet (${C.few})</h2></summary>
       <p class="hint">A pattern needs at least ${RH.min_gaps + 1} waterings in the last ${RH.window} days. Press "Watered today" on Today or on the plant's page each time.</p>
       ${C.few ? html`<ul class="jobs">${by('few').map(rhRow)}</ul>` : html`<p class="muted">None.</p>`}</details>
-    <p class="hint">"Remind me every" changes the plant's "Check for water every (days)" so the reminder comes round at about that gap in weather like today's, and the change is in the plant's history. To go back to the app's own guess, empty that box in Edit this page.</p>`,
+    <p class="hint">"Remind me every" changes the plant's "Check for water every (days)". The reminder then comes round at about that gap, in weather like today's. The change is in the plant's history. To go back to the app's own guess, empty that box in Edit this page.</p>`,
   };
 }
 async function rhAfter(code) {

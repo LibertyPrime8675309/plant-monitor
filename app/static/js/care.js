@@ -550,7 +550,7 @@ async function forClaudeDialog() {
   FC.range = 'last';
   try { await fcLoad(); } catch (e) { toast('Could not gather your answers: ' + e.message, true); return; }
   await modal(html`<form method="dialog" class="fc"><h2>Copy my answers for Claude</h2>
-    <p>One message with everything you have done in Plant record: your answers first, then changes to plant pages, photos, feeding and care. Copy it, then paste it into your chat with Claude.</p>
+    <p>One message with everything you have done in Plant record. Your answers come first, then changes to plant pages, photos, feeding and care. Copy it, then paste it into your chat with Claude.</p>
     <div id="fc-box">${fcBox(FC.data)}</div>
     <p id="fc-status" class="fc-status" role="status" aria-live="polite"></p>
     <div class="row"><button class="btn" type="button" data-act="fccopy" autofocus>Copy message</button>
