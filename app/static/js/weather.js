@@ -758,14 +758,26 @@ const FZ_DO = {
   'Annual': 'An annual: the cold will likely end its season. Bring it in only if you want to keep it going.',
 };
 const fzNight = z => `${fzDay(z.date)}, ${tF(z.low)} (${FZ_WORD[z.level].toLowerCase()})`;
-function fzRow(p) {
-  const d = p.done, many = p.nights.length > 1;
+// 1.58.0: what most plants in a group share (the nights ahead, what to do, the porch) is said once at the top of the group, and a
+// plant's row says only what is its own. Before, every row of 49 said the same four sentences, and one plant took two screens of a
+// phone at the largest text.
+const fzNightLine = p => { const many = p.nights.length > 1;
+  return `Next cold night: ${fzNight(p.next)}.${many && p.worst.date !== p.next.date ? ` Coldest: ${fzNight(p.worst)}.` : ''}${many ? ` Cold on ${p.nights.length} of the next 7 nights.` : ''}`; };
+const fzDo = p => FZ_DO[p.plan] || FZ_DO['Protect outside'];
+const FZ_PORCH = 'On the covered porch, which helps a little but not in a freeze.';
+function fzShared(g) {                       // the line most of the group shares, when at least three plants and half of them share it
+  const top = f => { const n = {}; g.forEach(p => { const k = f(p); if (k) n[k] = (n[k] || 0) + 1; }); const [k, c] = Object.entries(n).sort((a, b) => b[1] - a[1])[0] || [];
+    return c >= 3 && c * 2 >= g.length ? k : ''; };
+  return { nights: top(fzNightLine), todo: top(fzDo), porch: top(p => p.site === 'Covered porch' ? FZ_PORCH : '') };
+}
+function fzRow(p, sh = {}) {
+  const d = p.done;
   return html`<li class="fz-row ${d ? 'is-done' : ''}" data-code="${p.code}">
     ${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy" width="72" height="72">` : html`<span class="fz-nophoto" aria-hidden="true"></span>`}
     <div class="fz-txt"><a class="nm" href="#/plant/${enc(p.code)}">${p.name}</a> <span class="muted">${p.code}</span>
-      <div><span class="fz-lv fz-${p.level}">${FZ_WORD[p.level]}</span> Damaged below ${tF(p.damage)}${p.lethal != null ? `, dies below ${tF(p.lethal)}` : ''}.${p.site === 'Covered porch' ? ' On the covered porch, which helps a little but not in a freeze.' : ''}</div>
-      <div>Next cold night: ${fzNight(p.next)}.${many && p.worst.date !== p.next.date ? ` Coldest: ${fzNight(p.worst)}.` : ''}${many ? ` Cold on ${p.nights.length} of the next 7 nights.` : ''}</div>
-      <div class="hint">${FZ_DO[p.plan] || FZ_DO['Protect outside']}</div>
+      <div><span class="fz-lv fz-${p.level}">${FZ_WORD[p.level]}</span> Damaged below ${tF(p.damage)}${p.lethal != null ? `, dies below ${tF(p.lethal)}` : ''}.${p.site === 'Covered porch' ? (sh.porch ? ' On the covered porch.' : ' ' + FZ_PORCH) : ''}</div>
+      ${fzNightLine(p) !== sh.nights ? html`<div>${fzNightLine(p)}</div>` : ''}
+      ${fzDo(p) !== sh.todo ? html`<div class="hint">${fzDo(p)}</div>` : ''}
       ${d ? html`<div class="fz-done">✔ Covered for ${fzDay(p.next.date, true)}, marked by ${d.by} ${when(d.at)}. It comes back on the list for the next cold night.</div>` : ''}</div>
     <div class="fz-acts">${d ? html`<button class="btn small ghost" type="button" data-act="frostundo" data-code="${p.code}" data-date="${p.next.date}">Undo "Covered"</button>`
       : html`<button class="btn small" type="button" data-act="frostin" data-code="${p.code}" data-name="${p.name}">Moved indoors</button>
@@ -796,11 +808,13 @@ async function viewFrost() {
         <td class="num">${n.counts.danger || '–'}</td><td class="num">${n.counts.damage || '–'}</td><td class="num">${n.counts.watch || '–'}</td><td class="num">${n.level ? ticked(n) : '–'}</td></tr>`)}
       </tbody></table></div><p class="hint">Forecast updated ${F.fetched_at ? when(F.fetched_at) : 'not yet'}. The low is usually reached just before dawn, so act the evening before.</p></section>` : ''}
     ${FZ_GROUPS.map(([id, title, sub0, test]) => { const g = (F.plants || []).filter(test), sub = typeof sub0 === 'function' ? sub0() : sub0; if (!g.length) return '';   // 1.47.0: a sub written as a function reads in the person's unit
-      const open = g.filter(p => !p.done);
+      const open = g.filter(p => !p.done), sh = fzShared(g);
       return html`<section class="blk" id="fz-${id}"><h2>${title} (${g.length})</h2><p class="muted">${sub} Most urgent first.</p>
+        ${sh.nights || sh.todo || sh.porch ? html`<div class="fz-shared"><p class="fz-shared-h">For the plants below, unless a plant's own row says otherwise:</p>
+          ${sh.nights ? html`<p>${sh.nights}</p>` : ''}${sh.todo ? html`<p><strong>What to do:</strong> ${sh.todo}</p>` : ''}${sh.porch ? html`<p>Plants on the covered porch: it helps a little, but not in a freeze.</p>` : ''}</div>` : ''}
         ${open.length > 1 ? html`<p>${id === 'in' ? html`<button class="btn small ghost" type="button" data-act="frostallin" data-group="${id}">Moved all ${open.length} indoors</button>`
           : html`<button class="btn small ghost" type="button" data-act="frostallcover" data-group="${id}">Mark all ${open.length} as covered for their next cold night</button>`}</p>` : ''}
-        <ul class="fz-list">${g.map(fzRow)}</ul></section>`; })}
+        <ul class="fz-list">${g.map(p => fzRow(p, sh))}</ul></section>`; })}
     <section class="blk" id="fz-dates"><h2>When cold nights usually come</h2><div class="fd-box" data-fd="frost"><p class="muted">Working out the frost dates…</p></div></section>
     <section class="blk"><h2>Protecting plants on a cold night</h2><ul>
       <li>Move pots against the house wall or onto the porch: they lose less heat there than in the open.</li>
