@@ -6,6 +6,8 @@
   scrolls sideways, headings are in the reading font, and Latin names are upright.
 - Display: Easier reading sets the reading settings together and "Put back how it was" undoes it; the choices survive a reload.
 - A device set to more contrast gets high contrast while Contrast is "Match my device"; health tags carry a symbol.
+- From the dyslexia audit: search finds close spellings and says so; messages stay, with Close and Recent messages; short forms are
+  explained once a page; Words used in the app; the reading guide follows the pointer; page tints keep 7 to 1.
 Start the mock server with a fresh data folder, then:  python3 dev/test/reading_check.py [base-url]"""
 import sys, json
 from playwright.sync_api import sync_playwright
@@ -84,6 +86,57 @@ with sync_playwright() as p:
     pg.evaluate("window.PlantPrefs.set('cvd', 'rg')")
     after = pg.evaluate("getComputedStyle(document.documentElement).getPropertyValue('--moss').trim()")
     check(before != after and after == '#1f1f90', f'red-green colours: good is blue ({before} → {after})')
+    ctx.close()
+
+    # 1.58.0, the dyslexia audit: search forgives spelling, messages stay, short forms in plain words, the reading guide, a page tint
+    ctx, pg = context(b, (1707, 960), False, {'theme': 'light'})
+    open_page(pg, '#/plants')
+    box = pg.locator('#app input[type=search]').first
+    box.fill('filodendron'); pg.wait_for_timeout(600)
+    cnt = pg.locator('#count').inner_text()
+    check(pg.locator('#grid .sheet').count() > 0 and 'close spellings' in cnt and 'Philodendron' in cnt, f'Plants: "filodendron" finds the philodendrons and says so ({cnt})')
+    box.fill('philodendron'); pg.wait_for_timeout(600)
+    check('close spellings' not in pg.locator('#count').inner_text(), 'spelt right, it says nothing about spelling')
+    box.fill('')
+    pg.evaluate("searchDialog()")
+    q = pg.locator('#srch-q')
+    if until(pg, lambda: q.count() > 0):
+        q.fill('monstra')
+        check(until(pg, lambda: pg.locator('.srch-close').count() > 0 and 'Monstera' in pg.locator('#srch-res').inner_text()), 'Search: "monstra" finds Monstera, with "Showing close spellings, such as Monstera"')
+    pg.evaluate("document.querySelectorAll('dialog[open]').forEach(d => d.close())")
+    pg.evaluate("toast('Saved the changes to the test page')")
+    t = pg.locator('#toasts .toast').last
+    check(t.locator('button.toast-x').count() == 1, 'a message has a Close button')
+    pg.wait_for_timeout(4500)
+    check(t.count() == 1 and t.is_visible(), 'a message is still there after 4.5 seconds (it used to go after 3.5)')
+    t.locator('button.toast-x').click()
+    check(until(pg, lambda: pg.locator('#toasts .toast', has_text='Saved the changes to the test page').count() == 0), 'Close takes it away')
+    pg.evaluate("recentMsgsDialog()")
+    check(until(pg, lambda: 'Saved the changes to the test page' in pg.locator('dialog[open] .msgs-list').inner_text()), 'Settings: Recent messages has it, to read again')
+    pg.evaluate("document.querySelectorAll('dialog[open]').forEach(d => d.close())")
+    open_page(pg, '#/lights')
+    abx = pg.locator('#app .abx')
+    fors = abx.evaluate_all("xs => xs.map(x => x.dataset.for)")
+    check(len(fors) > 0 and len(fors) == len(set(fors)), f'Grow lights: short forms explained once each ({", ".join(fors[:6])})')
+    pg.evaluate("window.PlantPrefs.set('abbr', '0')")
+    check(pg.locator('#app .abx').count() == 0, 'and the brackets go when Short forms is off')
+    pg.evaluate("window.PlantPrefs.set('abbr', '1')")
+    open_page(pg, '#/words')
+    check(pg.locator('.words-row').count() >= 15 and 'PPFD' in pg.locator('main').inner_text(), 'Words used in the app lists the short forms')
+    pg.evaluate("window.PlantPrefs.set('guide', '1')"); pg.mouse.move(600, 400); pg.wait_for_timeout(300)
+    g = pg.locator('.rguide')
+    check(g.count() == 1 and g.is_visible() and abs(g.bounding_box()['y'] + g.bounding_box()['height'] / 2 - 400) < 4, 'the reading guide follows the pointer')
+    check(g.evaluate("e => getComputedStyle(e).pointerEvents") == 'none', 'and never takes a click')
+    pg.evaluate("window.PlantPrefs.set('guide', '0')")
+    check(not g.is_visible(), 'it goes when turned off')
+    for tint in ('blue', 'green', 'peach'):
+        pg.evaluate(f"window.PlantPrefs.set('tint', '{tint}')")
+        check(pg.evaluate("document.documentElement.dataset.tint") == tint and pg.evaluate("getComputedStyle(document.body).backgroundColor") != 'rgb(243, 246, 244)', f'page tint {tint} changes the page colour')
+    open_page(pg, '#/plants')
+    c = pg.evaluate(CONTRAST)
+    check(not c, 'with a page tint all text is still at 7 to 1' + (': ' + c[0] if c else ''))
+    pg.evaluate("window.PlantPrefs.set('theme', 'dark')")
+    check(pg.evaluate("document.documentElement.dataset.tint") is None, 'a page tint is for light pages only')
     ctx.close()
 
     # a device that asks for more contrast

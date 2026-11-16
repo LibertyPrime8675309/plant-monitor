@@ -13,7 +13,7 @@
 .cmp-say{font-weight:700;margin:.5rem 0}
 .cmp-tbl th,.cmp-tbl td{vertical-align:top}
 .cmp-tbl thead th{padding:0}
-.cmp-th{font:inherit;font-weight:700;color:inherit;background:none;border:0;text-align:left;padding:.45rem .5rem;width:100%;min-height:2.75rem;cursor:pointer;text-decoration:underline;text-underline-offset:.2em}
+.cmp-th{font:inherit;font-weight:700;color:inherit;background:none;border:0;text-align:left;padding:.45rem .5rem;width:100%;min-height:2.75rem;cursor:pointer}   /* 1.58.0: not underlined like a link; the sort arrow says it sorts */
 .cmp-tbl tbody th{font-weight:400;min-width:10rem}
 .cmp-name{text-align:left}
 .cmp-pick{display:flex;gap:.4rem;align-items:center;font-weight:400;white-space:nowrap;min-height:2.75rem}

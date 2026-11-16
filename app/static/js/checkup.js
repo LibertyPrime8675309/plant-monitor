@@ -72,7 +72,7 @@ function ckSetupHtml(D) {
       <h3>Groups with their own number</h3>
       ${own.length ? html`<ul class="ck-list">${own.map(g => html`<li><a href="#/group/${g.id}">${g.name}</a>: every ${ckN(g.days, 'day', 'days')} (${ckN(g.count, 'plant', 'plants')})</li>`)}</ul>` : html`<p>None yet.</p>`}
       <p class="hint">To give a group its own number, open the group from the <a href="#/groups">Groups</a> page and use its Health walk-through section.
-        A plant in a group with its own number goes by that number, even when its health is Poor or Critical, so a group can be looked at less often (cacti once a month, say).
+        A plant in a group with its own number goes by that number, even when its health is Poor or Critical. So a group can be looked at less often: cacti once a month, say.
         A plant in several such groups goes by the shortest of them. Plants in no group with its own number go by the Poor or Critical number when their health is Poor or Critical.</p></section>`;
 }
 function ckPhotoHtml(p) {

@@ -33,7 +33,7 @@ async function viewMixes() {
   const can = canChange(), E = MXD.every;
   const byRole = r => MXD.amendments.filter(a => a.role === r);
   return { title: 'Potting mixes', html: html`<h1>Potting mixes</h1>
-    <p class="lede">What goes into your pots: recipes in parts by volume, the amendments they are made of, and how often semi-hydro and water-only plants are looked after. A plant's own page says what it is in now; <a href="#/pots">Pots and trays</a> has the pots themselves.</p>
+    <p class="lede">What goes into your pots. It has recipes in parts by volume, and the amendments they are made of. It also says how often semi-hydro and water-only plants are looked after. A plant's own page says what it is in now; <a href="#/pots">Pots and trays</a> has the pots themselves.</p>
     ${askLine('flush', 'flush or root check')}
     <section class="blk" id="mx-recipes"><h2>Recipes (${MXD.recipes.length})</h2>
       ${can ? html`<p><button class="btn" type="button" data-act="mxrecipe">New recipe</button></p>` : ''}
@@ -45,11 +45,11 @@ async function viewMixes() {
             <button class="btn ghost small" type="button" data-act="mxrecipedel" data-id="${r.id}" aria-label="Remove the recipe ${r.name}">Remove</button></p>` : ''}</article>`)}</div>`
         : html`<p class="muted">No recipes yet. Make one here, or record what a plant is in on its page and press "Save as a recipe".</p>`}</section>
     <section class="blk" id="mx-amendments"><h2>Amendments (${MXD.amendments.length})</h2>
-      <p class="hint">How much each holds water and lets in air is a rough guide for comparing them, from 1 (low) to 5 (very high), not a measurement. Change any that your own pots disagree with.</p>
+      <p class="hint">How much each holds water and lets in air is a rough guide, from 1 (low) to 5 (very high). It is for comparing them, not a measurement. Change any that your own pots disagree with.</p>
       ${can ? html`<p><button class="btn" type="button" data-act="mxam">Add an amendment</button></p>` : ''}
       ${['part', 'medium', 'additive'].map(role => byRole(role).length ? html`<h3>${MX_ROLE_H[role]} (${byRole(role).length})</h3>
         <ul class="mx-ams">${byRole(role).map(a => html`<li><span><strong>${a.name}</strong>${a.grades.length ? html` <span class="muted">(${a.grades.join(', ')})</span>` : ''}<br>
-          ${a.words ? html`${a.words[0].toUpperCase() + a.words.slice(1)}.` : html`<span class="muted">No properties set.</span>`}${a.notes ? html`<br><span class="muted">${a.notes}</span>` : ''}</span>
+          ${a.words ? html`<ul class="mx-props">${a.words.split(', ').map(w => html`<li>${w[0].toUpperCase() + w.slice(1)}</li>`)}</ul>` : html`<span class="muted">No properties set.</span>`}${a.notes ? html`<br><span class="muted">${a.notes}</span>` : ''}</span>
           ${can ? html`<span class="row"><button class="btn ghost small" type="button" data-act="mxam" data-id="${a.id}" aria-label="Change ${a.name}">Change</button>
             <button class="btn ghost small" type="button" data-act="mxamdel" data-id="${a.id}" aria-label="Remove ${a.name}">Remove</button></span>` : ''}</li>`)}</ul>` : '')}</section>
     <section class="blk" id="mx-every"><h2>Semi-hydro and water-only care</h2>

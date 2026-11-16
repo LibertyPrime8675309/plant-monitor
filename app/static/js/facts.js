@@ -89,10 +89,10 @@ async function viewFactsQueue() {
   const Q = await api('GET', '/api/facts/queue');
   const cap = k => k.charAt(0).toUpperCase() + k.slice(1);
   return { title: 'Facts to review', html: html`<h1>Facts to review</h1>
-    <p>${Q.count ? `${Q.count} ${Q.count === 1 ? 'proposal is' : 'proposals are'} waiting.` : 'Nothing is waiting for review.'} A proposal is a fact or a correction an editor suggested on a species page; accepting it makes it the value every page shows, and the old value goes into the history. Nobody but the owner accepts their own.</p>
+    <p>${Q.count ? `${Q.count} ${Q.count === 1 ? 'proposal is' : 'proposals are'} waiting.` : 'Nothing is waiting for review.'} A proposal is a fact or a correction an editor suggested on a species page. Accepting it makes it the value every page shows. The old value goes into the history. Nobody but the owner accepts their own.</p>
     ${Q.queue.length ? html`<ul class="fr-queue">${Q.queue.map(h => html`<li class="fr-qitem" id="fr-q-${h.id}"><h2><a href="#/species/${enc(cap(h.key))}"><i class="latin">${cap(h.key)}</i></a>: ${h.label}</h2>
       ${h.current ? html`<p class="hint">Now${h.current.key !== h.key ? html` (for the genus <i class="latin">${cap(h.current.key)}</i>)` : ''}: ${frValue(h.current)} <span class="muted">(${h.current.source})</span></p>` : html`<p class="hint">No accepted value yet.</p>`}${frProposed(h)}</li>`)}</ul>` : ''}
-    <p class="hint">Facts can also be brought in from another install: the owner or an editor sends the file from <code>/api/facts/export</code> to <code>/api/facts/import</code>; every row arrives as a proposal here.</p>`,
+    <p class="hint">Facts can also be brought in from another install. The owner or an editor sends the file from <code>/api/facts/export</code> to <code>/api/facts/import</code>. Every row then arrives here as a proposal.</p>`,
     after: () => { const q = document.querySelector('.fr-queue'); if (q) q.id = 'fr-queue'; } };
 }
 addFeature({

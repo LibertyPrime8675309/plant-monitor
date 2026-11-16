@@ -19,7 +19,7 @@ What it does
   houseplant genera, the state's plants, and the record's own photos that look like the picture (a new pot of a plant you
   have). Ten names come back, each with the reasons ('basis') for its lift. VISION_PRIOR=0 turns the prior off.
 Nothing leaves the computer except the downloads above."""
-import csv, html, io, json, math, os, re, sqlite3, threading, time, urllib.request
+import csv, html, io, json, math, os, re, sqlite3, threading, time, unicodedata, urllib.request
 import numpy as np
 from flask import Flask, request, jsonify, abort
 
@@ -572,7 +572,9 @@ def browse_mask(a):
         hay = NAMES['hay']
         idx = np.where(m)[0]
         m[:] = False
-        m[[i for i in idx if q in hay[i]]] = True
+        hit = [i for i in idx if q in hay[i]]
+        if not hit: hit = fz_close(q, idx)       # 1.58.0: close spellings when nothing is spelt that way
+        m[hit] = True
     return m
 
 def mask_for(scope, default='world'):
@@ -660,6 +662,51 @@ def species_dict(i):
             'order': r[0][3], 'in_texas': 'Texas' in us, 'us_states': sorted(us), 'usda_symbol': first[1],
             'kind': KINDS[int(B['kind'][i])][0] if B else '', 'kingdom': r[0][0]}
 
+
+# ---- 1.58.0: names that forgive spelling (the same rules as app/plantdb/fuzzy.py; this container is built on its own) ----
+def fz_norm(s):
+    s = unicodedata.normalize('NFD', str(s or '').lower())
+    s = ''.join(ch for ch in s if not unicodedata.combining(ch))
+    for a, b in (('ph', 'f'), ('ck', 'k'), ('ch', 'k'), ('qu', 'kw')): s = s.replace(a, b)
+    s = re.sub(r'c(?=[eiy])', 's', s).replace('c', 'k').replace('y', 'i').replace('z', 's').replace('x', 'ks')
+    s = re.sub(r'[^a-z0-9 ]', '', s)
+    return re.sub(r'([a-z0-9])\1+', r'\1', s)
+
+def fz_dist(a, b):
+    prev = list(range(len(b) + 1))
+    for i in range(1, len(a) + 1):
+        cur = [i] + [0] * len(b)
+        for j in range(1, len(b) + 1): cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] != b[j - 1]))
+        prev = cur
+    return prev[-1]
+
+def fz_skel(n): return ' '.join(w[0] + re.sub(r'[aeiou]', '', w[1:]) for w in n.split() if w)
+
+def fz_close(q, idx):
+    """Indexes in idx whose names are a close spelling of q, best first: the typed letters as they sound, then the same
+    consonants, then one or two letters out. Used only when nothing matches as typed, and only for five letters or more."""
+    nq = fz_norm(q).strip()
+    if len(nq.replace(' ', '')) < 5: return []
+    if 'fz' not in NAMES: NAMES['fz'] = [fz_norm(h) for h in NAMES['hay']]
+    if 'fzs' not in NAMES: NAMES['fzs'] = [fz_skel(h) for h in NAMES['fz']]
+    FZ, FS, sq = NAMES['fz'], NAMES['fzs'], fz_skel(nq)
+    first = [i for i in idx if nq in FZ[i]]
+    if first: return first
+    qs = sq.split()
+    def skel_ok(i):
+        ws = FS[i].split()
+        return all(any(w == x or (w.startswith(x) and len(w) - len(x) <= 1) for w in ws) for x in qs)
+    second = [i for i in idx if skel_ok(i)] if qs and all(len(x) >= 5 for x in qs) else []
+    if second: return second
+    lim = 2 if len(nq) >= 8 else 1
+    out = []
+    for i in idx:
+        for w in FZ[i].split():
+            if w[:1] == nq[:1] and abs(len(w) - len(nq)) <= lim and fz_dist(nq, w) <= lim:
+                out.append(i); break
+        if len(out) >= 400: break
+    return out
+
 @app.get('/names')
 def names():
     """Search the species list: ?q=part of a scientific or common name, &scope=, &limit="""
@@ -673,10 +720,13 @@ def names():
         if q in NAMES['hay'][i]:
             res.append(species_dict(i))
             if len(res) >= 400: break
+    close = False
+    if not res:                                    # 1.58.0: nothing spelt that way: close spellings
+        res = [species_dict(i) for i in fz_close(q, np.where(mask)[0])[:400]]; close = bool(res)
     # names that start with the search first, then the better-known plants (with a common name, growing in the US)
     res.sort(key=lambda x: (not (x['scientific_name'].lower().startswith(q) or (x['common_name'] or '').lower().startswith(q)),
                             not x['common_name'], not x['us_states'], x['scientific_name']))
-    return jsonify(results=res[:lim], total=len(res))
+    return jsonify(results=res[:lim], total=len(res), close=close)
 
 @app.get('/healthz')
 def healthz():

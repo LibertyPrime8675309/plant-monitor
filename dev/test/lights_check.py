@@ -263,7 +263,8 @@ with sync_playwright() as p:
     check(any(p_['room'] == 'Test single-shelf room' for p_ in call('GET', '/api/lights')[1]['places']) and room.count() == 1 and room.locator('li').count() == 0,
           'removing the only shelf keeps the room (it took the room with it)')
     check(abs(pg.evaluate('scrollY') - y0) < 300, f'and the page stays where it was, not back at the top ({y0} then {pg.evaluate("scrollY")})')
-    room.locator('[data-act=roomdel]').click(); pg.wait_for_timeout(400)
+    # 1.58.0: pressed from the page itself: in a 900 px window the bars held at the top cover over half of it, and where the button lands depends on the page above
+    room.locator('[data-act=roomdel]').evaluate("e => e.click()"); pg.wait_for_timeout(400)
     check('Remove this room?' in pg.inner_text('dialog'), 'Remove room asks about the room')
     pg.locator('dialog .btn').first.click(); pg.wait_for_timeout(2000)
     check(not any(p_['room'] == 'Test single-shelf room' for p_ in call('GET', '/api/lights')[1]['places']), 'and removes it')

@@ -229,7 +229,12 @@ function gdMatch(plants) {                          // {section id: [{code, name
 function gdYours(id, Y) {
   if (!Y) return '';                                // the plant server could not be reached: leave the line out
   const L = Y[id] || [];
-  return html`<p class="gd-yours" id="${id}-yours"><strong>${L.length ? `Your plants with this in their notes (${L.length}):` : 'None of your plants have this in their notes yet.'}</strong>${L.map((p, i) => html`${i ? ', ' : ' '}<a href="#/plant/${enc(p.code)}">${p.name}</a> <span class="muted">(${p.code})</span>`)}</p>`;
+  // 1.58.0 (the dyslexia audit): a list, five shown and the rest behind "Show all", not up to 62 names run into one paragraph
+  if (!L.length) return html`<p class="gd-yours" id="${id}-yours"><strong>None of your plants have this in their notes yet.</strong></p>`;
+  const li = p => html`<li><a href="#/plant/${enc(p.code)}">${p.name}</a> <span class="muted">${p.code}</span></li>`;
+  return html`<div class="gd-yours" id="${id}-yours"><p><strong>Your plants with this in their notes (${L.length}):</strong></p>
+    <ul class="gd-ylist">${L.slice(0, 5).map(li)}</ul>
+    ${L.length > 5 ? html`<details class="gd-more"><summary>Show all ${L.length}</summary><ul class="gd-ylist">${L.slice(5).map(li)}</ul></details>` : ''}</div>`;
 }
 function gdSection(m, open, Y) {                    // one way of doing it, folded until it is wanted
   return html`<details class="grp gd-method" id="${m.id}" ${open ? raw('open') : ''}><summary><h3>${m.title}</h3></summary>

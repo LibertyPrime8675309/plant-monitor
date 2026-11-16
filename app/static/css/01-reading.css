@@ -79,3 +79,32 @@ html[data-space=widest] :is(h1,h2,h3){line-height:1.5;letter-spacing:var(--ls);w
 .dv-font-sample[data-f=atkinson]{font-family:"Atkinson Hyperlegible",sans-serif}
 .dv-font-sample[data-f=lexend]{font-family:"Lexend",sans-serif}
 .dv-font-sample[data-f=dyslexic]{font-family:"OpenDyslexic",sans-serif}
+
+/* 1.58.0 (the dyslexia audit): the Search window says when it shows close spellings */
+.srch-close{margin:.2rem 0 .6rem;padding:.5rem .8rem;border-left:4px solid var(--cyan);background:var(--cyan-soft)}
+
+/* 1.58.0 (the dyslexia audit): messages stay to be read, with a Close button; Recent messages in Settings */
+.toast{display:flex;align-items:center;gap:.4rem 1rem;flex-wrap:wrap;line-height:var(--lh)}
+.toast .toast-x{pointer-events:auto;font:inherit;font-weight:700;background:none;color:inherit;border:2px solid currentColor;padding:.15rem .6rem;min-height:2.2rem;cursor:pointer}
+.msgs-list{list-style:none;padding:0;margin:.4rem 0 1rem;max-width:none}
+.msgs-list li{padding:.45rem 0;border-bottom:1px solid var(--line-2)}
+.msgs-list time{font-weight:700;margin-right:.4rem}
+
+/* 1.58.0 (the dyslexia audit): short forms in plain words, the Words page, the reading guide and the page tints */
+.abx{color:inherit}
+.words-list{margin:1rem 0;display:grid;gap:.2rem;max-width:60rem}
+.words-row{display:grid;grid-template-columns:minmax(5rem,8rem) 1fr;gap:.3rem 1.2rem;padding:.6rem 0;border-bottom:1px solid var(--line-2)}
+.words-row dt{font-weight:700;font-size:1.15rem}
+.words-row dd{margin:0}
+html[data-narrow="1"] .words-row{grid-template-columns:1fr}
+.rguide{position:fixed;left:0;right:0;top:0;height:calc(1em * var(--lh) * 1.25 + .4rem);margin-top:calc((1em * var(--lh) * 1.25 + .4rem) / -2);
+  pointer-events:none;z-index:70;background:color-mix(in srgb,var(--cyan) 14%,transparent);border-top:2px solid color-mix(in srgb,var(--cyan) 55%,transparent);border-bottom:2px solid color-mix(in srgb,var(--cyan) 55%,transparent)}
+@media print{.rguide{display:none!important}}
+:root[data-tint=blue]{--paper:#e9f0f7; --sheet:#f5f8fc; --line-2:#d3dfe9}
+:root[data-tint=green]{--paper:#e8f1e9; --sheet:#f5faf5; --line-2:#d2e2d4}
+:root[data-tint=peach]{--paper:#f8ebe0; --sheet:#fff7f0; --line-2:#ecdccd}
+/* a long note one sentence to a line (sentLines in core.js) */
+.ed-text .sl{display:block;margin:.15rem 0}
+/* bars that stay at the top of the screen keep their notes on as few lines as they can, whatever Line length says: a taller bar
+   covers more of the page under it (Grow lights' summary bar) */
+.lt-top p{max-width:none}

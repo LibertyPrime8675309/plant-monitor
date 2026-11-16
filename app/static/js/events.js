@@ -105,6 +105,7 @@ const acts = {
   },
   histmetric(el) { const S = HS[el.dataset.kind]; S.metric = el.dataset.m; S.day = S.day; histOpen(el.dataset.kind); },
   display() { displayDialog(); },
+  recentmsgs() { recentMsgsDialog(); },
   prefreset() { DVSCROLL = (document.getElementById('dv-body') || {}).scrollTop || 0; window.PlantPrefs.reset(); displayDialog(); },
   easyread() { DVSCROLL = (document.getElementById('dv-body') || {}).scrollTop || 0; easyReading(); displayDialog(); toast('Easier reading is on. "Put back how it was" undoes it.'); },
   easyundo() { DVSCROLL = (document.getElementById('dv-body') || {}).scrollTop || 0; easyUndo(); displayDialog(); toast('Reading settings put back'); },
