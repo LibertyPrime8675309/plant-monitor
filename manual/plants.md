@@ -39,6 +39,16 @@ Every plant page has a **Date acquired**: the day the plant came to you.
 - A date in the future is refused. Changing it is in the page history like any other edit, and Undo there puts the old date back.
 - An update file from Claude can set it too (field `acquired_on`, written as `2024-05-17`).
 
+## Edit and Add a plant: folding groups (from 1.58.0)
+The form's fields are in groups: Names and place, Identification, Temperature, Sunlight and so on.
+- Each group is one line. Press it to open the group, and press it again to fold it.
+- The line says how many of its fields are filled in, such as **Temperature 6 of 6 filled in**.
+- **Names and place** starts open.
+- **Open every group**, above the groups, opens them all at once. It then reads **Fold every group**.
+- **Save changes** saves every field, open or folded.
+- If a number is out of range in a folded group, that group opens, so you can see it.
+- Some names are shorter on the form, with the rest in the line under them. For example, **Daily light low (DLI)**, with "In mol/m2 a day" under it. The plant's page keeps the long names.
+
 ## Previous and next plant (from 1.7.5)
 
 Every plant page has **Previous Plant** and **Next Plant** buttons, each showing the name and code of the plant it leads to. On a wide screen they sit in the margins either side of the page. On smaller screens and phones they sit at the top of the page, under the plant's name (from 1.56.5 the name comes first).

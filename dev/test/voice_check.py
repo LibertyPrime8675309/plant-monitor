@@ -7,6 +7,8 @@ Start the app first (dev/test/mock_server.py), then:  python3 dev/test/voice_che
 Screenshots go to dev/tmp/shots/voice-*.png."""
 import json, os, sys, time, urllib.request
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from waits import until
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
 TS = 'http://127.0.0.1:' + os.environ.get('PLANTDB_TS_PORT', '8081')
 SPEECH = 'http://127.0.0.1:' + os.environ.get('MOCK_SPEECH_PORT', '8093')
@@ -198,8 +200,9 @@ with sync_playwright() as p:
     btn = pg.locator('label:has(textarea[name=notes]) + .spk-btn')
     check(btn.count() == 1 and btn.get_attribute('aria-label') == 'Speak into Notes' and not btn.is_visible(), 'a Speak button belongs to the Notes box, out of the way until the box is used')
     check(pg.evaluate("!String(dictateStart).includes('SpeechRecognition')"), 'Speak no longer uses the browser\'s recogniser')
-    pg.fill('textarea[name=notes]', 'Old note.'); pg.focus('textarea[name=notes]'); pg.wait_for_timeout(300)
-    check(btn.is_visible(), 'it shows when the box has the focus')
+    pg.evaluate("document.querySelector('textarea[name=notes]').closest('details').open = true")   # 1.58.0: the form's groups fold
+    pg.fill('textarea[name=notes]', 'Old note.'); pg.focus('textarea[name=notes]')
+    check(until(pg, lambda: btn.is_visible(), 3000), 'it shows when the box has the focus')
     say('the leaves look better today'); pg.evaluate('window.__vsTalk = [300, 900]')
     btn.click(); pg.wait_for_timeout(500)
     check(btn.inner_text() == 'Listening… press to stop' and btn.get_attribute('aria-pressed') == 'true', 'pressing it starts recording')
@@ -217,7 +220,9 @@ with sync_playwright() as p:
     pg.click('form[data-form=edit] button[type=submit]'); pg.wait_for_timeout(2500)
     check(json.loads(urllib.request.urlopen(urllib.request.Request(BASE + '/api/plants/P-012', headers={'X-Editor': 'Voice Test'}), timeout=5).read())['notes'].endswith('New pot next week'), 'what was said is saved with the plant')
     speech('/mock/state', {'state': 'setting up'})
-    pg.goto(BASE + '/#/plant/P-012/edit'); pg.wait_for_timeout(2500); pg.focus('textarea[name=notes]'); pg.wait_for_timeout(200)
+    pg.goto(BASE + '/#/plant/P-012/edit'); until(pg, lambda: pg.locator('textarea[name=notes]').count() == 1)
+    pg.evaluate("document.querySelector('textarea[name=notes]').closest('details').open = true")   # 1.58.0: the form's groups fold
+    pg.focus('textarea[name=notes]'); until(pg, lambda: btn.is_visible(), 3000)
     btn.click(); pg.wait_for_timeout(1200)
     check('getting ready' in pg.inner_text('#toasts').lower() or 'getting the speech model' in pg.inner_text('#toasts').lower(), 'when the speech service is not ready, Speak says so')
     speech('/mock/state', {'state': 'ready'})

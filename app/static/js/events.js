@@ -320,6 +320,10 @@ const acts = {
       toast(`${r.moved} plant${r.moved === 1 ? '' : 's'} put in their spots${r.made.length ? `. New spot${r.made.length === 1 ? '' : 's'}: ${r.made.join('; ')}` : ''}.`); await route(); whsRestore(kept);
       const h = document.querySelector('#wh-sort h2'); if (h) h.focus(); });
   },
+  fgall(el) {                                        // 1.58.0: open (or fold) every group of the plant form
+    const all = [...document.querySelectorAll('details.fg-fold')], open = all.some(d => !d.open);
+    all.forEach(d => { d.open = open; }); el.textContent = open ? 'Fold every group' : 'Open every group';
+  },
   whsmore(el) {                                      // 1.58.0: ten more groups; the focus goes to the first of them
     const first = WHS_SHOWN; WHS_SHOWN += WHS_PAGE;
     document.querySelectorAll('#wh-sort .whs-card').forEach((c, k) => { if (k < WHS_SHOWN) c.hidden = false; });
@@ -877,3 +881,5 @@ const formActs = {
     await guard(async () => { await api('PUT', '/api/settings', { base_url: form.elements.base.value }); toast('Address saved'); route(); });
   },
 };
+// 1.58.0: a field that the browser finds wrong when a plant form is saved may be in a folded group: open it, so the browser can show it
+document.addEventListener('invalid', e => { const d = e.target.closest && e.target.closest('details.fg-fold'); if (d) d.open = true; }, true);

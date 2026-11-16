@@ -5,6 +5,8 @@ Start the mock server with a fresh data folder first, then:  python3 dev/test/de
 Screenshots: dev/tmp/shots/details-*.png"""
 import json, os, re, sys, urllib.error, urllib.request
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from waits import until
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..', '..', 'app'))
 LOCAL, TS = 'http://127.0.0.1:8080', 'http://127.0.0.1:8081'
@@ -78,10 +80,10 @@ with sync_playwright() as p:
     lo = next(c for c, q in full.items() if q.get('id_confidence') is not None and q['id_confidence'] < 85 and c != 'P-036')
     pg.goto(LOCAL + '/#/plant/' + lo); pg.wait_for_timeout(2000)
     check('closest match' in pg.inner_text('#about'), f'a plant with an unsure ID ({lo}) says the details are for the closest match')
-    pg.goto(LOCAL + '/#/plant/P-020/edit'); pg.wait_for_timeout(2000)
+    pg.goto(LOCAL + '/#/plant/P-020/edit'); until(pg, lambda: pg.locator('fieldset legend', has_text='About this plant').count() == 1)
     fs = pg.locator('fieldset', has=pg.locator('legend', has_text='About this plant'))
     check(fs.count() == 1 and fs.locator('textarea, input').count() >= 23, 'the edit form has an About this plant section with every field')
-    check(fs.locator('label', has_text='Hardiness zone, coldest (USDA)').count() == 1 and fs.locator('label', has_text='Sources').count() >= 1, 'with real labels')
+    check(fs.locator('label', has_text='Coldest zone (USDA)').count() == 1 and fs.locator('label', has_text='Sources').count() >= 1, 'with real labels')
     ph = b.new_page(viewport={'width': 390, 'height': 844})
     ph.add_init_script("localStorage.setItem('plantdb.editor','Details Test');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
     ph.goto(LOCAL + '/#/plant/P-021'); ph.wait_for_timeout(2500)

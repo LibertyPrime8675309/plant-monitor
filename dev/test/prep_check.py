@@ -5,6 +5,8 @@ Screenshots: dev/tmp/shots/prep-*.png"""
 import json, os, sys, urllib.request
 from datetime import date, timedelta
 from playwright.sync_api import sync_playwright
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from waits import until
 BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
 errs, fails = [], []
@@ -136,8 +138,8 @@ with sync_playwright() as pw:
     keep = date.fromisoformat(d['keep_until'])
     check(d['status'] == 'apart' and keep >= date.today() + timedelta(days=13), f"moved indoors: kept apart until {d['keep_until']}")
     # the Edit page
-    t.goto(f'{BASE}/#/plant/P-031/edit'); t.wait_for_timeout(1800)
-    opts = t.locator('select[name=leaf_type] option').all_inner_texts()
+    t.goto(f'{BASE}/#/plant/P-031/edit'); until(t, lambda: t.locator('select[name=leaf_type] option').count() > 1)
+    opts = t.eval_on_selector_all('select[name=leaf_type] option', 'os => os.map(o => o.textContent.trim())')   # 1.58.0: its group is folded
     check(opts[0] == 'Not set' and 'Fern fronds' in opts, 'Edit page: leaf type menu with Not set')
     t.close()
     # phone, largest text
