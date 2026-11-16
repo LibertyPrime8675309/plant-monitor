@@ -428,7 +428,7 @@ async function viewDecisions() {
   return {
     title: 'Needs your decision',
     html: html`<h1>Needs your decision</h1>
-    <p>When the same thing was changed on a device without a connection and on the plant record, both versions are kept here until someone chooses. Everything else from the device has already been saved.</p>
+    <p>Sometimes the same thing is changed on a device without a connection and on the plant record. Then both versions are kept here until someone chooses. Everything else from the device has already been saved.</p>
     ${open.length ? html`<ul class="dec-list">${open.map(x => html`<li class="dec"><h2><a href="${href(x)}">${x.code}</a>: ${x.label}</h2>
         <div class="dec-sides"><div><h3>Changed on ${x.device || 'a device'}</h3><p class="dec-v">${v(x.phone_value)}</p><p class="hint">By ${x.phone_by}, ${when(x.phone_made_at)}</p>
           ${canChange() ? html`<button class="btn" type="button" data-act="decide" data-id="${x.id}" data-choice="phone">Keep this: ${String(v(x.phone_value)).slice(0, 40)}</button>` : ''}</div>
@@ -759,12 +759,12 @@ function icsForm() {
         <label class="f">Time<input type="time" data-act="icsopt" name="feed_at" value="${o.feed_at}" required></label></div>
       <div class="ics-rem"><label class="chk"><input type="checkbox" data-act="icsopt" name="cold_remind" ${ck('cold_remind')}> The day before a cold night</label>
         <label class="f">Time<input type="time" data-act="icsopt" name="cold_at" value="${o.cold_at}" required></label></div>
-      <p class="hint">Apple Calendar, Outlook and Samsung Calendar use these times. Google Calendar uses its own reminder settings for a subscribed calendar: on a computer, open Google Calendar's Settings, choose Plant record under "Other calendars" and set its notifications there.</p>
+      <p class="hint">Apple Calendar, Outlook and Samsung Calendar use these times. Google Calendar uses its own reminder settings for a subscribed calendar. On a computer, open Google Calendar's Settings. Choose Plant record under "Other calendars", and set its notifications there.</p>
     </fieldset>
     <div id="ics-prev" class="ics-prev" aria-live="polite">${icsPreview(null)}</div>
     <p id="ics-status" class="fc-status" role="status" aria-live="polite"></p>
     <section class="ics-part"><h3>Subscribe (updates by itself)</h3>
-      <p>Your calendar checks this link now and then (Apple and Outlook every few hours, Google about once a day) and picks up new feeding days and cold nights. Your PC needs to be on for that; while it is off, the calendar keeps what it last saw.</p>
+      <p>Your calendar checks this link now and then, and picks up new feeding days and cold nights. Apple and Outlook check every few hours, Google about once a day. Your PC needs to be on for that; while it is off, the calendar keeps what it last saw.</p>
       <label class="f">Calendar link<input type="text" id="ics-link" readonly value="${icsLink()}" spellcheck="false"></label>
       <p class="hint" id="ics-linkwhere"></p>
       <div class="row"><button class="btn" type="button" data-act="icscopy">Copy calendar link</button><button class="btn ghost" type="button" data-act="icsnewlink">Make a new link</button></div>
@@ -775,7 +775,7 @@ function icsForm() {
         <p>Funnel lets the internet reach the calendar link only, not the rest of Plant record. It uses port 8443, so anything you already share in your tailnet with Tailscale Serve stays private.</p>
         <ol><li>Open a terminal on the PC that runs Plant record and turn on Funnel for the calendar. The command is the same in Windows cmd.exe, PowerShell and bash:
             <pre class="ics-cmd">tailscale funnel --bg --https=8443 --set-path=/cal http://127.0.0.1:8080/cal</pre>
-            If Tailscale says Funnel or HTTPS is not turned on for your tailnet, open the link it shows, turn it on, and run the command again.
+            Tailscale may say Funnel or HTTPS is off for your tailnet. If so, open the link it shows, turn it on, and run the command again.
             If Windows says tailscale is not recognized, use the full path. In cmd.exe:
             <pre class="ics-cmd">"C:\\Program Files\\Tailscale\\tailscale.exe" funnel --bg --https=8443 --set-path=/cal http://127.0.0.1:8080/cal</pre>
             In PowerShell:
@@ -788,7 +788,7 @@ function icsForm() {
         <p>Funnel keeps running after a restart. To turn it off:</p>
         <pre class="ics-cmd">tailscale funnel --https=8443 --set-path=/cal off</pre></details>
       <details class="ics-how"><summary>How to subscribe in each calendar</summary>
-        <ul><li><b>Google Calendar</b> (also shows in Samsung Calendar when your Google account syncs to it): on a computer, open calendar.google.com, press the plus next to "Other calendars", choose From URL, paste the link and press Add calendar.</li>
+        <ul><li><b>Google Calendar</b> (also shows in Samsung Calendar when your Google account syncs to it): on a computer, open calendar.google.com. Press the plus next to "Other calendars" and choose From URL. Paste the link and press Add calendar.</li>
           <li><b>Apple Calendar on iPhone:</b> Settings, Apps, Calendar, Calendar Accounts, Add Account, Other, Add Subscribed Calendar, then paste the link.</li>
           <li><b>Outlook</b> (Outlook.com or the new Outlook on the PC): Add calendar, Subscribe from web, paste the link and press Import. Outlook on your phone then shows it too.</li>
           <li><b>Samsung Calendar</b> on its own: it shows calendars from your Google or Samsung account, so subscribe in Google Calendar as above.</li></ul></details>

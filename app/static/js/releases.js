@@ -32,12 +32,12 @@ addFeature({
           : html`<div class="notice rl-new" id="rl-new">${body}</div>`; } },
     { id: 'rl-update', order: 3,
       load: async () => { const W = await rlLoad(); return W.update ? W.update : null; },
-      html: U => html`<div class="notice rl-update" id="rl-update"><p><strong>An update is ready: ${U.version}</strong>${U.published ? ` (released ${U.published})` : ''}. On your PC, run <code>Update Plant Database.cmd</code> in the Plants folder: it fetches this release from GitHub, makes a backup and installs it in a couple of minutes.
+      html: U => html`<div class="notice rl-update" id="rl-update"><p><strong>An update is ready: ${U.version}</strong>${U.published ? ` (released ${U.published})` : ''}. On your PC, run <code>Update Plant Database.cmd</code> in the Plants folder. It fetches this release from GitHub, makes a backup and installs it, in a couple of minutes.
         <a href="${U.url}" target="_blank" rel="noopener noreferrer">What changed</a>.</p></div>` },
     { id: 'rl-restore', order: 85,
       load: async () => { const W = await rlLoad(); return W.restore && W.restore.due ? W.restore : null; },
-      html: R => html`<section class="blk" id="rl-restore"><h2>Test a restore</h2><p>${R.last ? `The last restore was ${R.days} days ago.` : 'A backup has never been restored on this install.'} Once a quarter, make sure a backup really comes back:
-        on <a href="#/backups">Backups</a>, press <strong>Back up now</strong>, then <strong>Restore</strong> on that newest backup. The database from just before is kept as another backup, so nothing is lost, and the date here resets.</p></section>` },
+      html: R => html`<section class="blk" id="rl-restore"><h2>Test a restore</h2><p>${R.last ? `The last restore was ${R.days} days ago.` : 'A backup has never been restored on this install.'} Once a quarter, make sure a backup really comes back.
+        On <a href="#/backups">Backups</a>, press <strong>Back up now</strong>. Then press <strong>Restore</strong> on that newest backup. The database from just before is kept as another backup, so nothing is lost, and the date here resets.</p></section>` },
   ],
 });
 // ---------- 1.58.0: Check for updates (beside the version on Settings, and at the foot of Navigation) ----------

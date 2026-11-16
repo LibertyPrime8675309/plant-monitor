@@ -10,15 +10,12 @@ LIMITS = {
     "care.js": 3,
     "lights.js": 1,
     "mushrooms.js": 1,
-    "notify.js": 1,
-    "offline.js": 6,
     "plant.js": 2,
     "propagation.js": 1,
-    "releases.js": 2,
     "review.js": 1,
     "sensors.js": 2,
     "shopping.js": 2,
-    "ui.js": 6,
+    "ui.js": 4,
     "weather.js": 3,
 }
 
