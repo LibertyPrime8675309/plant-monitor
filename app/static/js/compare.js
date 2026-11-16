@@ -214,14 +214,14 @@ async function cmpOpen(id) {
     ${r.chart.length ? html`<p><strong>${r.source === 'estimate' ? "Claude's estimates" : "Maker's figures"}:</strong> ${r.chart.map(([x, y], i) => `${i ? ', ' : ''}${lenF(x)} ${fmt(y)} PAR`).join('')}.</p>` : ''}
     ${r.notes ? html`<p class="muted">${r.notes}</p>` : ''}
     ${r.url ? html`<p><a href="${r.url}" target="_blank" rel="noopener noreferrer">Open the listing</a></p>` : ''}
-    <div class="row">${CMP.d.spots.length ? html`<button class="btn" value="try">Try it in a spot</button>` : ''}
+    <div class="row">${cmpCanTry() ? html`<button class="btn" value="try">${CMP.d.spots.length ? 'Try it in a spot' : 'Try it on a layout'}</button>` : ''}
       ${can && r.status !== 'owned' ? html`<button class="btn" value="bought">Bought it</button>` : ''}
       ${can ? html`<button class="btn ghost" value="edit">Change the listing details</button>` : ''}
       ${can && r.status === 'owned' && !r.in_use ? html`<button class="btn ghost" value="retire">No longer used</button>` : ''}
       ${can && r.status === 'retired' ? html`<button class="btn ghost" value="considering">Considering again</button>` : ''}
       ${can && r.status !== 'owned' && !r.in_use ? html`<button class="btn ghost" value="remove">Remove</button>` : ''}
       <button class="btn ghost" value="cancel">Close</button></div>
-    ${!CMP.d.spots.length ? html`<p class="hint">Set up a light spot on Grow lights to try a light in it.</p>` : ''}</form>`);
+    ${!cmpCanTry() ? html`<p class="hint">Set up a light spot on Grow lights, or draw a light on a layout, to try a light there.</p>` : ''}</form>`);
   if (res === 'try') return cmpTry(r);
   if (res === 'bought') return cmpBought(r);
   if (res === 'edit') return cmpDialog(r);
@@ -285,31 +285,43 @@ async function cmpDialog(r) {
     } catch (e) { toast(e.message, true); }
   }
 }
-// what each plant in one of your spots would get from this light
+// what each plant in one of your spots, or drawn on one of your layouts, would get from this light
+const cmpCanTry = () => CMP.d.spots.length || (CMP.d.drawn || []).length;
 async function cmpTry(r) {
-  const sp = CMP.d.spots;
+  const sp = CMP.d.spots, dr = CMP.d.drawn || [], first = sp.length ? String(sp[0].id) : `item:${dr[0].item}`;
   CMP.tryId = r.id;
-  const shown = modal(html`<form method="dialog" class="cmp-try"><h2>Try ${r.name} in a spot</h2>
-    <label class="f">Spot<select name="spot" id="cmp-try-spot" autofocus>${sp.map(s => html`<option value="${s.id}">${s.name}</option>`)}</select></label>
+  const shown = modal(html`<form method="dialog" class="cmp-try"><h2>Try ${r.name}</h2>
+    <label class="f">Where<select name="spot" id="cmp-try-spot" autofocus>
+      ${sp.length ? html`<optgroup label="Your light spots">${sp.map(s => html`<option value="${s.id}">${s.name}</option>`)}</optgroup>` : ''}
+      ${dr.length ? html`<optgroup label="Your layouts">${dr.map(d => html`<option value="item:${d.item}">${d.layout}, in place of the ${d.light}</option>`)}</optgroup>` : ''}</select>
+      <small>On a layout, each plant drawn there gets its own light from where it stands.</small></label>
     <div id="cmp-try-out" aria-live="polite"><p class="muted">Working it out…</p></div>
     <div class="row"><button class="btn ghost" value="cancel">Close</button></div></form>`);
-  cmpTryShow(r.id, sp[0].id);
+  cmpTryShow(r.id, first);
   return shown;
 }
+// 1.58.0: a plant drawn on a layout says its daily light there, now and with the new light
+const cmpTryCell = (v, w, dli) => html`${lvTag(v, w)}${has(dli) ? html` <span class="muted">${fmt(dli, 1)} mol/m²</span>` : ''}`;
 async function cmpTryShow(id, spot) {
   const out = document.getElementById('cmp-try-out'); if (!out) return;
   try {
-    const t = await api('GET', `/api/lights/${id}/try?spot=${spot}`), s = t.spot;
+    const item = String(spot).startsWith('item:'), t = await api('GET', `/api/lights/${id}/try?${item ? `item=${String(spot).slice(5)}` : `spot=${spot}`}`), s = t.spot;
+    const table = (cap, none) => t.plants.length ? html`<div class="tbl-wrap"><table class="tbl cmp-try-tbl"><caption>${cap}</caption>
+        <thead><tr><th scope="col">Plant</th><th scope="col">Needs</th><th scope="col">Now</th><th scope="col">With this light</th></tr></thead>
+        <tbody>${t.plants.map(p => html`<tr><th scope="row">${p.name} <span class="muted">${p.code}</span>${p.drawn && !item ? html` <span class="cmp-drawn">drawn on the layout</span>` : ''}</th><td data-h="Needs">${has(p.lo) ? `${fmt(p.lo, 1)} to ${fmt(p.hi, 1)}` : 'Not set'}</td>
+          <td data-h="Now">${cmpTryCell(p.now_verdict, p.now_word, p.now_dli)}</td><td data-h="With this light">${cmpTryCell(p.new_verdict, p.new_word, p.new_dli)}</td></tr>`)}</tbody></table></div>` : html`<p class="muted">${none}</p>`;
+    const lay = t.layout ? html`<p>${t.layout.words} <a href="#/layouts/${t.layout.id}?sel=${t.layout.item}">Open the layout</a>.</p>` : '';
+    if (item) {
+      out.innerHTML = rend(html`<p>The layout <strong>${t.layout.name}</strong>${t.layout.place ? ` (${t.layout.place})` : ''}, in place of the ${t.layout.light}${t.layout.drawn > 1 ? ` (all ${t.layout.drawn} drawn there)` : ''}.</p>
+        ${lay}${t.notes.map(x => html`<p class="hint">${x}</p>`)}${table('Each plant drawn there', 'No light drawn there reaches a plant, now or with this light.')}`);
+      return;
+    }
     const n = s.units > 1 ? `${s.units} of them` : 'one';
     out.innerHTML = rend(html`<p>The spot <strong>${s.name}</strong>${s.place ? ` (${s.place})` : ''}: ${lenF(s.distance_in)} from the leaves, ${fmt(s.hours, 1)} hours a day${s.dim_pct < 100 ? `, ${s.dim_pct}% brightness` : ''}.</p>
       <ul class="cmp-try-sum"><li><strong>Now</strong>, with ${s.light || 'its light'}: ${has(t.now.dli) ? `about ${fmt(t.now.dli, 1)} mol/m² a day` : 'not known'}${t.now.area_sqft ? `, lighting about ${areaF(t.now.area_sqft)}` : ''}.</li>
         <li><strong>With ${t.light.name}</strong> (${n}${t.new.dim_pct < 100 ? `, at ${t.new.dim_pct}%` : ''}): ${has(t.new.dli) ? `about ${fmt(t.new.dli, 1)} mol/m² a day` : 'not known'}${t.new.area_sqft ? `, lighting about ${areaF(t.new.area_sqft)}` : ''}${t.new.crowded ? '; crowded, so the plants at the edge get less' : ''}.</li></ul>
-      ${t.notes.map(x => html`<p class="hint">${x}</p>`)}
-      ${t.plants.length ? html`<div class="tbl-wrap"><table class="tbl cmp-try-tbl"><caption>Each plant there</caption>
-        <thead><tr><th scope="col">Plant</th><th scope="col">Needs</th><th scope="col">Now</th><th scope="col">With this light</th></tr></thead>
-        <tbody>${t.plants.map(p => html`<tr><th scope="row">${p.name} <span class="muted">${p.code}</span></th><td data-h="Needs">${has(p.lo) ? `${fmt(p.lo, 1)} to ${fmt(p.hi, 1)}` : 'Not set'}</td>
-          <td data-h="Now">${lvTag(p.now_verdict, p.now_word)}</td><td data-h="With this light">${lvTag(p.new_verdict, p.new_word)}</td></tr>`)}</tbody></table></div>`
-        : html`<p class="muted">No plants are in this spot yet.</p>`}
+      ${lay}${t.notes.map(x => html`<p class="hint">${x}</p>`)}
+      ${table('Each plant there', 'No plants are in this spot yet.')}
       <h3>Does it fit there?</h3>${fitBlock(t.fit)}`);
   } catch (e) { out.innerHTML = rend(html`<p class="muted">${e.message}</p>`); }
 }

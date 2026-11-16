@@ -109,7 +109,9 @@ def lights_compare():
     hours = _num(request.args, 'hours', 1, 24, 'Hours a day') or 12
     return jsonify(at=at, hours=hours, rows=compare_rows(c, at, hours), choices=list(COMPARE_AT), hours_choices=list(COMPARE_HOURS),
                    statuses=LIGHT_STATUS, directions=DIRECTIONS, mount_kinds=MOUNT_KINDS,
-                   spots=[{'id': s['id'], 'name': s['name']} for s in c.execute('SELECT id, name FROM light_spots ORDER BY name COLLATE NOCASE')])
+                   spots=[{'id': s['id'], 'name': s['name']} for s in c.execute('SELECT id, name FROM light_spots ORDER BY name COLLATE NOCASE')],
+                   drawn=[{'item': x['item'], 'layout': x['lname'], 'light': (c.execute('SELECT name FROM lights WHERE id=?', (x['light_id'],)).fetchone() or [''])[0]}
+                          for x in from_layouts(c)['lights']])     # 1.58.0: lights drawn on a layout, to try another in place of
 
 @app.route('/api/lights/<int:i>/status', methods=['POST'])
 def light_status(i):
@@ -129,12 +131,36 @@ def light_status(i):
     c.commit()
     return jsonify(ok=True)
 
+def try_layout_words(t, n):
+    """The layout part of "Try it": how many plants are drawn, and that the light is drawn the size of the one it replaces."""
+    return (f'On the layout "{t["name"]}", {n} plant{"s are" if n != 1 else " is"} drawn under it. Their light comes from where each stands. '
+            'The new light is drawn the same size and in the same place as the one it replaces.')
+
+def try_on_layout(c, i, L):
+    """?item=ID (a light drawn on a layout): every plant drawn there, now and with light i in its place (1.58.0)."""
+    try: iid = int(request.args.get('item') or 0)
+    except ValueError: abort(400, 'Choose one of your layouts')
+    it = c.execute("SELECT * FROM layout_items WHERE id=? AND kind='light'", (iid,)).fetchone() if c.execute("SELECT 1 FROM sqlite_master WHERE name='layout_items'").fetchone() else None
+    if not it or not it['light_id']: abort(404, 'That light is not on a layout')
+    L0 = c.execute('SELECT * FROM lights WHERE id=?', (it['light_id'],)).fetchone()
+    t = layout_try(c, it['layout_id'], it['light_id'], L)
+    notes = list(t['notes'])
+    if not light_points(light_specs(L)): notes.append('It has no light figures yet, so its light cannot be worked out.')
+    src, src_words = light_source(light_specs(L))
+    if src != 'maker': notes.append(f'Its figures: {src_words}.')
+    return jsonify(light={'id': L['id'], 'name': L['name'], 'status': L['status']}, spot=None,
+                   layout={'id': t['id'], 'name': t['name'], 'item': iid, 'light': L0['name'] if L0 else '', 'drawn': t['drawn'], 'place': t['place'],
+                           'words': try_layout_words(t, len(t['rows']))},
+                   now=None, new=None, plants=[r | {'drawn': True} for r in t['rows']], fit=None, notes=notes)
+
 @app.route('/api/lights/<int:i>/try')
 def light_try(i):
-    """?spot=ID: what each plant in that spot would get from light i, at the spot's distance, hours and brightness."""
+    """?spot=ID: what each plant in that spot would get from light i, at the spot's distance, hours and brightness. A plant drawn on
+    the layout of the spot's place, under the spot's light, gets it from the drawing (1.58.0). ?item=ID: in place of a light drawn on a layout."""
     c = db()
     L = c.execute('SELECT * FROM lights WHERE id=?', (i,)).fetchone()
     if not L: abort(404, 'That light is not in your list')
+    if request.args.get('item'): return try_on_layout(c, i, L)
     try: sid = int(request.args.get('spot') or 0)
     except ValueError: abort(400, 'Choose one of your spots')
     s = c.execute('SELECT * FROM light_spots WHERE id=?', (sid,)).fetchone()
@@ -156,17 +182,24 @@ def light_try(i):
     if src != 'maker': notes.append(f'Its figures: {src_words}.')
     if not d.get('mount') and L['status'] != 'owned':
         notes.append("How it holds is not known for a light you are considering, so whether it fits is not checked; the listing's photos usually show it.")
+    LL = from_layouts(c)
+    tie = spot_layout(s['place_id'], s['light_id'], LL)          # 1.58.0: its light is drawn on the layout of its place
+    if tie: s = dict(s) | {'hours': tie['hours'], 'dim_pct': tie['dim_pct']}; s2 = dict(s2) | {'hours': tie['hours']}
     now_ev = spot_eval(c, s, L0, ps) if L0 is not None else None
     new_ev = spot_eval(c, s2, L, ps)
+    t = layout_try(c, tie['lid'], s['light_id'], L) if tie else None
+    by = {r['code']: r for r in (t['rows'] if t else [])}
     rows = []
     for k, p in enumerate(new_ev['plants']):
         n0 = now_ev['plants'][k] if now_ev else None
+        d = by.get(p['code'])
         rows.append({'code': p['code'], 'name': p['name'], 'lo': p['lo'], 'hi': p['hi'],
                      'now_verdict': n0['verdict'] if n0 else 'unknown', 'now_word': n0['verdict_word'] if n0 else LIGHT_VERDICT['unknown'],
-                     'new_verdict': p['verdict'], 'new_word': p['verdict_word']})
+                     'new_verdict': p['verdict'], 'new_word': p['verdict_word']} | ({k2: d[k2] for k2 in ('now_dli', 'now_verdict', 'now_word', 'new_dli', 'new_verdict', 'new_word')} | {'drawn': True} if d else {}))
     return jsonify(light={'id': L['id'], 'name': L['name'], 'status': L['status']},
                    spot={'id': s['id'], 'name': s['name'], 'light': L0['name'] if L0 else '', 'units': s['units'], 'distance_in': s['distance_in'],
                          'hours': s['hours'], 'dim_pct': s['dim_pct'], 'place': place_label(c, s['place_id'])},
                    now={'dli': now_ev['dli'] if now_ev else None, 'ppfd': now_ev['ppfd'] if now_ev else None, 'area_sqft': now_ev['area_sqft'] if now_ev else None},
                    new={'dli': new_ev['dli'], 'ppfd': new_ev['ppfd'], 'area_sqft': new_ev['area_sqft'], 'dim_pct': s2['dim_pct'], 'crowded': new_ev['crowded']},
-                   plants=rows, fit=spot_fit(c, s2, L, ps), notes=notes)
+                   plants=rows, fit=spot_fit(c, s2, L, ps), notes=notes + (t['notes'] if t else []),
+                   layout={'id': t['id'], 'name': t['name'], 'item': tie['item'], 'words': try_layout_words(t, len(by))} if t else None)
