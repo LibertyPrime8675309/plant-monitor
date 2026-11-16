@@ -151,7 +151,7 @@ with sync_playwright() as p:
     check(pg.locator('#lib-res .lib-card').count() == 5 and 'Mushroom' in pg.inner_text('#lib-res'), 'and lists them')
     pg.goto(LOCAL + '/#/species/Leucocoprinus%20birnbaumii'); pg.wait_for_timeout(2500)
     t = pg.inner_text('main')
-    check('Never eat a wild mushroom' in t and 'F-001' in t and 'plants and lichens, not other fungi' in t, 'a fungus page has the safety note, your finds of it, and says the USDA lists have no range for it')
+    check('Never eat a wild mushroom' in t and 'F-001' in t and 'plants and lichens, but no other fungi' in t, 'a fungus page has the safety note, your finds of it, and says the USDA lists have no range for it')
     check(pg.locator('[data-act=spnew]').count() == 0 and pg.locator('[data-act=munewfrom]').count() == 1, 'it offers "Record a find of this" instead of "Add to my plants"')
     pg.screenshot(path=os.path.join(OUT, 'fungi-4-species.png'), full_page=True)
     pg.click('[data-act=munewfrom]'); pg.wait_for_timeout(1500)
