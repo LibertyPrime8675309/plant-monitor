@@ -89,14 +89,15 @@ with sync_playwright() as p:
     check(until(pg, lambda: pg.evaluate('!!LY && LY.d.id') == lid and pg.evaluate('LY.sel') == item[P['phil']]), 'the link opens the layout with that plant chosen')
 
     # ---- the layout changes: the spot and Grow lights follow; saved on Grow lights, the spot keeps the layout's hours
-    call('PUT', f'/api/layouts/items/{strip}', {'hours': 10, 'dim_pct': 100})
-    pg.goto(BASE + '/#/lights'); until(pg, lambda: pg.locator('#lt-spots li.lg-read').count() == 4)
+    pg.evaluate(f"api('PUT', '/api/layouts/items/{strip}', {{ hours: 10, dim_pct: 100 }})")      # through the page, as the Layouts page does it: the page's saved answers are dropped
+    pg.goto(BASE + '/#/lights'); until(pg, lambda: pg.locator('#lt-spots li.lg-read').count() == 4 and 'Its hours (10 a day)' in pg.inner_text('.lg-spot'))
     check(call('GET', '/api/lights')['spots'][0]['hours'] == 10 and 'Its hours (10 a day)' in pg.inner_text('.lg-spot') and f'about {num(P["cal"])} mol' not in row(pg, P['cal']).locator('.lg-line').inner_text(),
           "the drawn light's hours changed on the layout: the spot takes them, and the plants' numbers follow")
     pg.click(f'#lt-spots details.lt-spot-fold[data-id="{sid}"] [data-act=spotedit]'); pg.wait_for_selector('dialog[open] form[data-spot]')
     hrs = pg.locator('dialog[open] input[name=hours]')
-    check(hrs.get_attribute('readonly') is not None and hrs.input_value() == '10' and pg.locator('dialog[open] select[name=dim]').is_disabled() and 'set on the layout' in pg.inner_text('dialog[open] label:has(input[name=hours])')
-          and pg.locator(f'dialog[open] .sp-layout a[href="#/layouts/{lid}?sel={strip}"]').count() == 1, "Change this spot shows the hours and brightness as set on the layout, with a link to it")
+    shown = lambda: [hrs.get_attribute('readonly') is not None, hrs.input_value(), pg.locator('dialog[open] select[name=dim]').is_disabled(), 'set on the layout' in pg.inner_text('dialog[open] label:has(input[name=hours])'),
+                     pg.locator(f'dialog[open] .sp-layout a[href="#/layouts/{lid}?sel={strip}"]').count()]
+    check(until(pg, lambda: shown() == [True, '10', True, True, 1]), f"Change this spot shows the hours and brightness as set on the layout, with a link to it ({shown()})")
     pg.click('dialog[open] button[value=ok]'); pg.wait_for_selector('dialog[open]', state='detached')
     check(until(pg, lambda: call('GET', '/api/lights')['spots'][0]['hours'] == 10), 'saved, the spot keeps the layout\'s hours')
     call('PUT', f'/api/layouts/items/{strip}', {'hours': 14})
