@@ -20,6 +20,55 @@ function html(strs, ...vals) {
   return new Raw(out);
 }
 const enc = encodeURIComponent;
+// ---------- 1.58.0: search that forgives spelling (the dyslexia audit) ----------
+// A name typed as it sounds ("filodendron", "dieffenbakia"), a letter or two out ("monstra", "calethea") or with its vowels
+// muddled ("boganvilla") still finds the plant. The same rules are in plantdb/search.py, for the Search window.
+function fzNorm(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/ph/g, 'f').replace(/ck/g, 'k').replace(/ch/g, 'k').replace(/qu/g, 'kw').replace(/c(?=[eiy])/g, 's').replace(/c/g, 'k')
+    .replace(/y/g, 'i').replace(/z/g, 's').replace(/x/g, 'ks').replace(/[^a-z0-9]/g, '').replace(/(.)\1+/g, '$1');
+}
+const fzSkel = n => n ? n[0] + n.slice(1).replace(/[aeiou]/g, '') : '';
+function fzDist(a, b) {                        // edit distance, a swap of two letters counting as one
+  const m = a.length, n = b.length, d = [];
+  for (let i = 0; i <= m; i++) { d[i] = [i]; }
+  for (let j = 0; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+  }
+  return d[m][n];
+}
+// how far a typed word is from a word in the record: 0 the same or its start, 1 or 2 a slip, 3 the same consonants, or null
+function fzWord(q, w) {
+  const nq = fzNorm(q), nw = fzNorm(w);
+  if (!nq || !nw) return null;
+  if (nw.startsWith(nq)) return 0;
+  if (nq.length < 5) return null;               // short words: only as typed, or "palm" would find "pale"
+  const lim = nq.length >= 8 ? 2 : 1;
+  const d = Math.min(fzDist(nq, nw), nw.length > nq.length ? fzDist(nq, nw.slice(0, nq.length)) + 1 : 99);
+  if (d <= lim) return d;
+  const sq = fzSkel(nq), sw = fzSkel(nw);
+  return sq.length >= 5 && (sw === sq || (sw.startsWith(sq) && sw.length - sq.length <= 1)) ? 3 : null;
+}
+const fzWords = s => String(s || '').toLowerCase().split(/[^a-z0-9À-ɏ]+/).filter(Boolean);
+// does the text match the search? 'exact' (as typed), 'close' (a spelling slip), or false
+function fzMatch(text, q) {
+  const t = String(text || '').toLowerCase(), qq = String(q || '').trim().toLowerCase();
+  if (!qq || t.includes(qq)) return 'exact';
+  const words = fzWords(t), qs = fzWords(qq);
+  if (!qs.length) return false;
+  return qs.every(x => t.includes(x) || words.some(w => fzWord(x, w) != null)) ? 'close' : false;
+}
+// the word in the record nearest to what was typed, for "Did you mean ...?"
+function fzNearest(texts, q) {
+  let best = null, bd = 99;
+  for (const x of fzWords(q)) for (const t of texts) for (const w of String(t || '').split(/[\s,()/'"]+/)) {
+    const clean = w.replace(/[^\w\u00c0-\u024f-]/g, ''), d = fzWord(x, clean);
+    if (d != null && d < bd && clean.toLowerCase() !== x && !clean.toLowerCase().startsWith(x)) { bd = d; best = clean; }
+  }
+  return best;
+}
 // ---------- plant codes in text become links with a photo preview ----------
 let PCODES = new Map(), PCODES_AT = 0;
 async function loadCodes(force) {
@@ -342,7 +391,7 @@ async function viewWhere() {
       <label class="chk"><input type="checkbox" name="sheltered" ${side === 'in' ? raw('checked') : ''}>${side === 'out' ? 'Roof overhead' : 'Heated'}</label><button class="btn small" type="submit">Add ${side === 'out' ? 'area' : 'room'}</button></form>` : ''}</section>`;
   return { title: 'Rooms and spots', html: html`<h1>Rooms and spots</h1>
     <p>Where plants go at each home: outside or inside, then the area or room, then the spot in it. Choose them on each plant's page. Rename anything here by typing over it; it saves when you leave the box. A room or shelf for grow lights is chosen from the same list.</p>
-    <p class="hint">"Roof overhead" and "Heated" decide how frost warnings and watering treat the plants there: outside with a roof counts as a covered porch, and inside without heat counts as a garage or shed.</p>
+    <p class="hint">"Roof overhead" and "Heated" decide how frost warnings and watering treat the plants there. Outside with a roof counts as a covered porch. Inside without heat counts as a garage or shed.</p>
     ${can ? html`<p class="hint">Today lists the plants to water spot by spot, in the order shown here. <strong>Move up</strong> and <strong>Move down</strong> put the rooms and spots in the order you walk.</p>` : ''}
     ${S.items.length && can ? html`<section class="blk" id="wh-sort"><h2 tabindex="-1">Plants without a spot (${S.items.reduce((n, it) => n + it.plants.length, 0)})</h2>
       <p>These plants are not on a spot from your list yet. For each group, choose the area and one of its spots, or <strong>A new spot</strong> and its name, then press <strong>Put in this spot</strong>. Untick a plant to leave it for later. <strong>Put them all in their spots</strong> at the bottom does every group at once. What is written on a plant ("Spot (where exactly)") stays as it is.</p>
@@ -416,7 +465,7 @@ async function viewPots() {
   const d = await api('GET', '/api/containers'); CT = d;
   const pots = d.items.filter(x => x.kind === 'pot'), trays = d.items.filter(x => x.kind === 'tray');
   return { title: 'Pots and trays', html: html`<h1>Pots and trays</h1>
-    <p>Your pots and catch trays, how many of each you have, and which plants use them. Type over any value to change it; it saves when you leave the box. Sizes are in ${lenU() === 'cm' ? 'centimetres' : 'inches'}. The floor area is worked out for you (a round one counts as the square around it), and the Grow lights page uses them: a plant takes up the floor of its catch tray, or of its pot when it has no tray.</p>
+    <p>Your pots and catch trays, how many of each you have, and which plants use them. Type over any value to change it; it saves when you leave the box. Sizes are in ${lenU() === 'cm' ? 'centimetres' : 'inches'}. The floor area is worked out for you. A round one counts as the square around it. The Grow lights page uses these: a plant takes up the floor of its catch tray, or of its pot when it has no tray.</p>
     <section class="blk" id="ct-pots"><h2>Pots (${pots.length})</h2><div class="ct-list">${pots.map(ctCard)}</div>
       ${canChange() ? html`<p class="row"><button class="btn" type="button" data-act="ctadd" data-kind="pot">Add a pot</button></p>` : ''}</section>
     <section class="blk" id="ct-trays"><h2>Catch trays (${trays.length})</h2><div class="ct-list">${trays.map(ctCard)}</div>
@@ -462,8 +511,13 @@ function ctRedraw(x) {
 
 // 1.29.0: edit in place. Fields marked data-ed save when you leave them (or press Enter); Escape puts back what was there; the
 // message that follows has Undo. Long text shows as text with an Edit button (edLong), so reading never changes anything.
+// 1.58.0 (the dyslexia audit): a long note reads one sentence to a line, not as one block
+function sentLines(v) {
+  const parts = String(v || '').split(/(?<=[.!?])\s+(?=[A-Z0-9"(\u201c])/).filter(Boolean);
+  return parts.length < 3 ? v : html`${parts.map(x => html`<span class="sl">${x}</span>`)}`;
+}
 function edLong(kind, id, k, label, v, can) {
-  return html`<div class="ed-long" data-ed-long="${kind}:${id}:${k}"><p><strong>${label}:</strong> <span class="ed-text">${v || html`<span class="muted">none</span>`}</span>
+  return html`<div class="ed-long" data-ed-long="${kind}:${id}:${k}"><p><strong>${label}:</strong> <span class="ed-text">${v ? sentLines(v) : html`<span class="muted">none</span>`}</span>
     ${can ? html` <button class="btn small ghost" type="button" data-act="edlong" aria-label="Edit ${label.toLowerCase()}">Edit</button>` : ''}</p>
     <label class="f wide" hidden>${label}<textarea rows="3" maxlength="2000" data-ed="${kind}" data-id="${id}" data-k="${k}">${v || ''}</textarea><small>Saves when you leave the box. Escape puts back what was there.</small></label></div>`;
 }
@@ -596,6 +650,8 @@ function viewSettings() {
     ${card('Notifications', 'Messages on your phone or computer, even when the app is closed: cold nights, Shopping alerts, what is due today, and requests from Claude. Chosen for your own sign-in.', html`<button class="btn" type="button" data-act="notify" aria-haspopup="dialog">Open Notifications</button>`)}
     <section class="blk set-card set-health" id="health"><h2>Health of the app</h2><div id="health-box" aria-live="polite"><p class="loading">Checking</p></div>
       <div class="row"><button class="btn" type="button" data-act="jobs" aria-haspopup="dialog">Open the Jobs list</button><button class="btn ghost" type="button" data-act="problems" aria-haspopup="dialog">Open the Problems list<span id="prob-n"></span></button></div></section>
+    ${card('Words used in the app', 'The short forms the app uses, such as PAR, DLI and ASPCA, in plain words.', html`<a class="btn" href="#/words">Open Words used in the app</a>`)}
+    ${card('Recent messages', 'The short messages that pop up at the bottom of the screen ("Saved", "Watered"), the last 30 on this device, to read again.', html`<button class="btn" type="button" data-act="recentmsgs" aria-haspopup="dialog">Read recent messages</button>`)}
     ${card('Debug', 'A live view of the audit log at the bottom of the screen, and other tools for checking the app.', html`<button class="btn" type="button" id="debug-btn" data-act="debug" aria-haspopup="dialog">Open Debug</button>`)}
     </div>` };
 }
@@ -630,13 +686,35 @@ function peoplePaint(P) { const b = document.getElementById('people-box'); if (b
 function toast(msg, isErr) {
   if (!isErr && Date.now() - OFF.queuedAt < 2500) { msg = String(msg).replace(/\.$/, '') + '. Kept on this device; it will be sent when you are back online.'; OFF.queuedAt = 0; }
   if (isErr && typeof issNoteError === 'function') issNoteError(msg);        // 1.58.0: a problem report carries the last errors shown (issues.js)
+  // 1.58.0 (the dyslexia audit): a message stays long enough to read slowly (8 s at least, more for a long one, twice that for a
+  // problem), holds still while the keyboard is on its Close button, and is kept in Recent messages (Settings) to read again
   const t = document.createElement('div');
   t.className = 'toast' + (isErr ? ' err' : '');
-  t.textContent = msg;
-  document.getElementById('toasts').appendChild(t);
-  setTimeout(() => t.remove(), isErr ? 7000 : 3500);
+  t.innerHTML = rend(html`<span class="toast-msg">${msg}</span><button type="button" class="toast-x" aria-label="Close this message">Close</button>`);
+  const box = document.getElementById('toasts');
+  box.appendChild(t);
+  // two at a time at most, so a run of messages never covers the page; an older one is still in Recent messages
+  const plain = [...box.querySelectorAll(':scope > .toast:not(.undo-toast)')]; while (plain.length > 2) plain.shift().remove();
+  msgKeep(msg, isErr);
+  let left = toastMs(msg, isErr), held = false;
+  const x = t.querySelector('.toast-x');
+  x.addEventListener('click', () => t.remove());
+  for (const [ev, on] of [['focus', true], ['blur', false], ['pointerenter', true], ['pointerleave', false]]) x.addEventListener(ev, () => { held = on; });
+  const tick = setInterval(() => { if (!t.isConnected) { clearInterval(tick); return; } if (held) return; left -= 250; if (left <= 0) { clearInterval(tick); t.remove(); } }, 250);
 }
-const dlg = document.getElementById('dlg');
+const toastMs = (msg, isErr) => Math.max(8000, 3000 + String(msg).length * 70) * (isErr ? 1.5 : 1);
+// the last 30 messages on this device, newest first
+function msgKeep(msg, isErr) {
+  try { const L = JSON.parse(localStorage.getItem('plantdb.recentmsgs') || '[]'); L.unshift({ at: new Date().toISOString(), msg: String(msg), err: !!isErr });
+    localStorage.setItem('plantdb.recentmsgs', JSON.stringify(L.slice(0, 30))); } catch (e) { /* storage blocked: not kept */ }
+}
+function recentMsgsDialog() {
+  let L = []; try { L = JSON.parse(localStorage.getItem('plantdb.recentmsgs') || '[]'); } catch (e) { L = []; }
+  modal(html`<form method="dialog" class="msgs-dlg"><h2>Recent messages</h2>
+    <p class="hint">The last ${L.length || 30} messages this device showed, newest first.</p>
+    ${L.length ? html`<ul class="msgs-list">${L.map(m => html`<li${m.err ? raw(' class="err"') : ''}><time datetime="${m.at}">${when(m.at)}</time> ${m.err ? html`<strong>Problem:</strong> ` : ''}${m.msg}</li>`)}</ul>` : html`<p class="muted">No messages yet.</p>`}
+    <div class="row"><button class="btn" value="ok" autofocus>Done</button></div></form>`);
+}const dlg = document.getElementById('dlg');
 // 1.25.0: a press that starts and ends outside the window closes it, as Cancel would (a drag that ends outside does not)
 let DLGDOWN = false;
 const outsideDlg = e => { const r = dlg.getBoundingClientRect(); return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom; };
@@ -854,7 +932,7 @@ async function route() {
     featAdds(parts);                              // 1.46.0: what feature modules add to this page once it is on screen (features.js); they rebuild Navigation when done
     if (parts[0] === 'weather' && qs.get('sec') === 'places') setTimeout(() => { const t = document.getElementById('sec-places'); if (t) { scrollToSection(t); navFlash(t); } }, 300);   // 1.29.0: Homes and places
     else if (qs.get('sec')) { const go2 = () => { const t = document.getElementById(qs.get('sec')); if (t) { scrollToSection(t); navFlash(t); } }; setTimeout(go2, 300); setTimeout(go2, 1500); }   // 1.36.0: #/plant/P-001?sec=inside opens the page at that section
-    buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); scrollBoxes(); setTimeout(() => { buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); scrollBoxes(); }, 1200);
+    buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); abbrPass(); scrollBoxes(); setTimeout(() => { buildSideNav(); addFoldButtons(); navLayout(); addReadButtons(); notesPass(); abbrPass(); scrollBoxes(); }, 1200);
     if (h !== lastPath) { if (!(wentBack && !qs.get('sec') && scrollBack(h))) window.scrollTo(0, 0); focusTitle(app); NAVPIN = -1; navActive(); }
     else if (fresh && keepY) window.scrollTo(0, keepY);
     lastPath = h;

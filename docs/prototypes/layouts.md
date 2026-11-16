@@ -41,7 +41,7 @@ The record already holds most of what such a drawing needs: each shelf's measure
   - **Too dim**, **A bit dim**, **A bit bright** and **Too bright**: the lights drawn here give a plant less, or more, light than its page says it needs (below). Once a grow light is drawn, every plant carries a sign: the one Grow lights uses (▼▼ ▼ ✓ ▲ ▲▲) in that verdict's colour, red, amber or green, or a grey dash (–) when no light drawn reaches it.
   - **In an area to keep clear**, **Nothing under it** (a pot in the air), and **More than you own** (three of a light drawn when you own two).
   - Every mark is bars across the thing and a sign (✗ or !) as well as a colour, and each is a sentence in **To look at**, on the thing's own boxes, in the list of everything on the layout and in what a screen reader is told.
-- **Also:** Undo (each change made on this visit, newest first, and Ctrl+Z on the drawing), Turn a quarter, Make a copy, Lock in place, Take it off the layout, **Smaller** and **Larger** (remembered for each layout), each plant's photo on its pot, and a line on a plant's own page saying which layouts it is drawn on.
+- **Also:** Undo (each change made on this visit, newest first, and Ctrl+Z on the drawing), Turn a quarter, Make a copy, two locks (Lock its place, and apart from it Lock its size: Ethan, November 16, 2026), Take it off the layout, **Smaller** and **Larger** (remembered for each layout), each plant's photo on its pot, and a line on a plant's own page saying which layouts it is drawn on.
 - **The light each plant gets where it is drawn** (Ethan, November 15, 2026). For each plant the page works out the daily light (mol/m² a day) from the grow lights drawn above it, and says it in the words Grow lights uses: **Too dim**, **A bit dim**, **Good**, **A bit bright**, **Too bright**.
   - It uses each light's own figures from Grow lights, how far its underside is above the top of the plant, how far to the side the plant is, and the light's **Hours a day** and **Brightness**, which you set on the layout (a light starts with the setting of its Grow lights spot at that place, else 12 hours at full brightness).
   - Straight under a light, the number is the one Grow lights gives for that light at that distance. Off to the side it is less. A shelf or other thing between the light and the plant shuts that light out. Several lights add up.
@@ -114,7 +114,7 @@ Phone, dark mode, large text (one view at a time; nothing scrolls sideways):
 Then open http://127.0.0.1:8080/#/layouts, press **Start a layout** and choose **Tall Brown Shelf**. The focused check is `python3 dev/test/layouts_check.py` (or `python3 dev/test/run_checks.py layouts`); the unit tests are `dev/test/unit/test_layouts.py`.
 
 ## What it changes in the database
-- Two new tables, made the first time the page is used: `layouts` (name, home, the room or shelf it is of, width, depth, height, the size of a square, snapping, the room to leave around a plant, notes) and `layout_items` (the layout, what kind of thing, its name and shape, the plant, light or shelf it is in the record, its place and its size, locked, and for a light its hours a day and brightness).
+- Two new tables, made the first time the page is used: `layouts` (name, home, the room or shelf it is of, width, depth, height, the size of a square, snapping, the room to leave around a plant, notes) and `layout_items` (the layout, what kind of thing, its name and shape, the plant, light or shelf it is in the record, its place and its size, its two locks, and for a light its hours a day and brightness).
 - **A plant's `height_in`** changes when a height is given to it on a layout, and **a plant's home, area and spot** change when "Move it in the record" is pressed. Both go through `apply_changes()`, as an edit on the plant's own page does: a new version, History, the home limit.
 - No existing table or column changes. Nothing in `init_db()` changes, so an upgrade and a new install are the same as before. If this becomes a release, the two tables move into `init_db()`.
 - History gets a line when a layout is added, changed or removed and when a thing is put on one or taken off. It does not get a line for each move: who moved a thing last, and when, is kept on the thing.
@@ -169,5 +169,10 @@ Then open http://127.0.0.1:8080/#/layouts, press **Start a layout** and choose *
 - **2:** stays as built.
 - **3:** Grow lights reading a layout is being built in a pull request of its own, on top of this one.
 
+## What Ethan said on November 16, 2026
+"I would like to be able to lock in any items size values separately from the lock for its location. That way I won't accidentally resize something while dragging it around." And: 2 ft is right.
+
+- Built: **Lock its place** and **Lock its size**, apart. A thing that was locked before keeps both locked.
+
 ## Questions for Ethan
-1. **How far is far.** A thing is at a wall when it is within 2 ft of it, and away from the walls beyond that. Is 2 ft the right distance?
+None open.

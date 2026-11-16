@@ -22,7 +22,11 @@
 
 let LY = null;                                     // the layout on screen: { d: the server's answer, sel, fview, view, zoom, level, grid, photos, Sv: pixels to the inch in each view, mode, rem, F, undo, q }
 let LYL = null;                                    // the list page's answer (layouts, places)
-const LY_EPS = 0.01, LY_KEYS = ['x', 'y', 'z', 'w', 'd', 'h', 'shape', 'locked', 'name', 'hours', 'dim_pct'];
+const LY_EPS = 0.01, LY_KEYS = ['x', 'y', 'z', 'w', 'd', 'h', 'shape', 'locked', 'size_locked', 'name', 'hours', 'dim_pct'];
+// Two locks (Ethan, November 16, 2026: "lock in any item's size values separately from the lock for its location"): locked keeps a
+// thing where it is (dragging, the arrow keys, its place boxes, Stands on, Hangs under); size_locked keeps its size (the corner handle,
+// its size boxes, its shape). Turning it changes both, so either lock stops it.
+const LY_SIZE_KEYS = ['w', 'd', 'h', 'shape'], LY_PLACE_KEYS = ['x', 'y', 'z', 'on', 'under'];
 const LY_KINDS = ['plant', 'light', 'shelf', 'other', 'zone'];      // the kinds of thing, in the order they are offered (their words come from the server)
 const LY_PREF = 'plantdb.layouts';                 // this device's own choices: which view, the grid shown, photos on the plants
 const lyPref = () => { try { return JSON.parse(localStorage.getItem(LY_PREF) || '{}') || {}; } catch (e) { return {}; } };
@@ -470,11 +474,11 @@ function lyDrawnStep(L, S) {                            // the squares drawn: th
   return step;
 }
 const lyItTf = (L, it, view, o) => `translate(${lyNum(view === 'top' ? it.x : lyAc(L, it, (o && o.face) || 'back'))} ${lyNum(view === 'top' ? it.y : L.height_in - it.z - it.h)})`;
-const lyItCls = (it, o) => `ly-it ly-k-${it.kind}${lyLv(it).length ? ' ly-open' : ''}${o.state.get(it.id) ? ' is-' + o.state.get(it.id) : ''}${o.sel === it.id ? ' is-sel' : ''}${it.locked ? ' is-locked' : ''}${o.dim && o.dim.has(it.id) ? ' is-dim' : ''}${o.can && !it.locked ? ' can-move' : ''}`;
+const lyItCls = (it, o) => `ly-it ly-k-${it.kind}${lyLv(it).length ? ' ly-open' : ''}${o.state.get(it.id) ? ' is-' + o.state.get(it.id) : ''}${o.sel === it.id ? ' is-sel' : ''}${it.locked ? ' is-locked' : ''}${it.size_locked ? ' is-sizelocked' : ''}${o.dim && o.dim.has(it.id) ? ' is-dim' : ''}${o.can && !it.locked ? ' can-move' : ''}`;
 const lyTopOf = it => (lyLv(it).length ? it.z + lyLv(it)[0].z : it.z + it.h);      // seen from above, a shelf with levels is drawn under what stands in it
 function lyItLabel(L, it, F) {
   const mine = (F || []).filter(f => f.ids.includes(it.id)), said = mine.some(f => lyIsLv(f.kind));       // a plant marked for its light is already told it
-  return `${it.sort}. ${it.name}, ${(L.kinds || LYL.kinds)[it.kind].toLowerCase()}. ${lySizeWords(it)}. ${lyWhere(L, it)}.${it.locked ? ' Locked in place.' : ''}${said ? '' : lyLightWords(L, F, it)}${mine.length ? ' ' + mine.map(f => f.text).join(' ') : ''}`;
+  return `${it.sort}. ${it.name}, ${(L.kinds || LYL.kinds)[it.kind].toLowerCase()}. ${lySizeWords(it)}. ${lyWhere(L, it)}.${it.locked ? ' Locked in place.' : ''}${it.size_locked ? ' Its size is locked.' : ''}${said ? '' : lyLightWords(L, F, it)}${mine.length ? ' ' + mine.map(f => f.text).join(' ') : ''}`;
 }
 // One thing in one view, in pixels: its size, the disc its number sits in, and where that disc goes. A pot's number is in its
 // corner; a board's or a strip's is part of the way along it (a light's and a shelf's at different places, so the number of a
@@ -568,7 +572,7 @@ function lySelMark(L, it, view, o) {                    // the ring round the ch
   return html`<g class="ly-selmark" data-id="${it.id}" transform="${lyItTf(L, it, view, o)}">${top && it.shape === 'round'
     ? html`<ellipse class="ly-selring" cx="${lyNum(w / 2)}" cy="${lyNum(h / 2)}" rx="${lyNum(w / 2 + pad)}" ry="${lyNum(h / 2 + pad)}" stroke-width="${u(3)}"/>`
     : html`<rect class="ly-selring" x="${lyNum(-pad)}" y="${lyNum(-pad)}" width="${lyNum(w + 2 * pad)}" height="${lyNum(h + 2 * pad)}" stroke-width="${u(3)}"/>`}
-    ${o.can && !it.locked ? html`<rect class="ly-handle ly-handle-${view}" x="${lyNum(w - hs / 2 / o.S)}" y="${lyNum((top ? h : 0) - hs / 2 / o.S)}" width="${u(hs)}" height="${u(hs)}" stroke-width="${u(2)}"><title>Drag this corner to change its size</title></rect>` : ''}</g>`;
+    ${o.can && !it.size_locked ? html`<rect class="ly-handle ly-handle-${view}" x="${lyNum(w - hs / 2 / o.S)}" y="${lyNum((top ? h : 0) - hs / 2 / o.S)}" width="${u(hs)}" height="${u(hs)}" stroke-width="${u(2)}"><title>Drag this corner to change its size</title></rect>` : ''}</g>`;
 }
 // A drawing is one stop for the Tab key, not one for each thing on it: Tab lands on the chosen thing, or on the first thing when
 // none is chosen, and Page Down and Page Up go from thing to thing (the arrow keys move the thing itself).
@@ -861,15 +865,16 @@ function lyPanel() {                                    // the chosen thing: wha
   const box = document.getElementById('ly-panel'); if (!box) return;
   const L = LY.d, it = lyItem(LY.sel), can = lyCan();
   if (!it) { box.innerHTML = rend(html`<p class="muted">Press a thing on the drawing, or <strong>Choose</strong> beside it in the list below, to see its place and size here.${can ? ' Then drag it, move it with the arrow keys, or type where it goes.' : ''}</p>`); return; }
-  const ro = can && !it.locked ? '' : raw('disabled'), linked = it.plant || it.light_id || it.spot_id, lit = it.kind === 'light' && !it.gone && (it.pts || []).length;
+  const ro = can && !it.locked ? '' : raw('disabled'), rs = can && !it.size_locked ? '' : raw('disabled'), linked = it.plant || it.light_id || it.spot_id, lit = it.kind === 'light' && !it.gone && (it.pts || []).length;
   const dims = lit ? [...new Set((it.dims || [100]).concat(it.dim_pct))].sort((a, b) => b - a) : [];
-  const num = (k, label) => html`<label class="f">${label} (${lenU()})<input type="number" inputmode="decimal" step="any" id="ly-f-${k}" data-act="lyset" data-k="${k}" value="${lenF(it[k], false)}" ${ro}></label>`;
+  const lockedBox = k => can && (LY_SIZE_KEYS.includes(k) ? it.size_locked : it.locked);        // a locked box says so in its label, not only by looking greyed
+  const num = (k, label) => html`<label class="f">${label} (${lenU()})${lockedBox(k) ? html`<span class="ly-lockword">, locked</span>` : ''}<input type="number" inputmode="decimal" step="any" id="ly-f-${k}" data-act="lyset" data-k="${k}" value="${lenF(it[k], false)}" ${LY_SIZE_KEYS.includes(k) ? rs : ro}></label>`;
   const P = it.plant ? L.plants.find(p => p.code === it.plant) : null;
   box.innerHTML = rend(html`<div class="ly-who">${it.photo ? html`<img src="${thumbUrl(it.photo)}" alt="" loading="lazy">` : ''}
       <p><span class="ly-num">${it.sort}</span> <strong>${it.plant && !it.gone ? html`<a href="#/plant/${enc(it.plant)}">${it.name}</a>` : it.name}</strong><br>
         <span class="muted">${L.kinds[it.kind]}${it.plant ? ',' : ''}</span>${it.plant ? html` <span class="code">${it.plant}</span>` : ''}${it.gone ? html`<span class="muted">. It is no longer in the record.</span>` : ''}</p></div>
     <ul class="ly-flist" id="ly-p-find">${LY.F.filter(f => f.ids.includes(it.id)).map(lyFindLi)}</ul>
-    ${!linked ? html`<label class="f">Name<input type="text" maxlength="80" id="ly-f-name" data-act="lyset" data-k="name" value="${it.name}" autocomplete="off" ${ro}></label>` : ''}
+    ${!linked ? html`<label class="f">Name<input type="text" maxlength="80" id="ly-f-name" data-act="lyset" data-k="name" value="${it.name}" autocomplete="off" ${can ? '' : raw('disabled')}></label>` : ''}
     <div class="field-grid three ly-fields">${num('x', 'From the left')}${num('y', 'From the back')}${num('z', 'Off the floor')}
       ${lyRound(it) ? num('w', 'Across') : html`${num('w', 'Width')}${num('d', 'Depth')}`}${num('h', 'Height')}</div>
     ${lyPaged(it) ? html`<p class="hint ly-recline" id="ly-p-tall">${lyTallHtml(it)}</p>` : ''}
@@ -878,11 +883,14 @@ function lyPanel() {                                    // the chosen thing: wha
       ${dims.length > 1 ? html`<label class="f">Brightness<select id="ly-f-dim_pct" data-act="lyset" data-k="dim_pct" ${can ? '' : raw('disabled')}>${dims.map(x => html`<option value="${x}" ${x === it.dim_pct ? raw('selected') : ''}>${x === 100 ? 'Full (100%)' : x + '%'}</option>`)}</select></label>` : ''}</div>` : ''}
     <div class="ly-light" id="ly-p-light">${lyLightHtml(L, it)}</div>
     ${lyPaged(it) ? html`<p class="ly-recline" id="ly-p-rec">${lyRecHtml(L, it)}</p>` : ''}
-    ${it.kind === 'shelf' || it.kind === 'zone' ? '' : html`<label class="f">Shape, seen from above<select id="ly-f-shape" data-act="lyset" data-k="shape" ${ro}><option value="round" ${it.shape === 'round' ? raw('selected') : ''}>Round</option><option value="box" ${it.shape === 'box' ? raw('selected') : ''}>Square or oblong</option></select></label>`}
-    <label class="chk ly-chk"><input type="checkbox" id="ly-f-locked" data-act="lyset" data-k="locked" ${it.locked ? raw('checked') : ''} ${can ? '' : raw('disabled')}>Lock in place</label>
+    ${it.kind === 'shelf' || it.kind === 'zone' ? '' : html`<label class="f">Shape, seen from above<select id="ly-f-shape" data-act="lyset" data-k="shape" ${rs}><option value="round" ${it.shape === 'round' ? raw('selected') : ''}>Round</option><option value="box" ${it.shape === 'box' ? raw('selected') : ''}>Square or oblong</option></select></label>`}
+    <fieldset class="ly-locks"><legend>Locks</legend>
+      <label class="chk ly-chk"><input type="checkbox" id="ly-f-locked" data-act="lyset" data-k="locked" ${it.locked ? raw('checked') : ''} ${can ? '' : raw('disabled')}>Lock its place</label>
+      <label class="chk ly-chk"><input type="checkbox" id="ly-f-size_locked" data-act="lyset" data-k="size_locked" ${it.size_locked ? raw('checked') : ''} ${can ? '' : raw('disabled')}>Lock its size</label>
+      <p class="hint">With its size locked it can still be moved, but not made larger or smaller by accident.</p></fieldset>
     ${P && P.guessed.includes('width') ? html`<p class="hint">Its width here was a guess to start with: the plant has no pot or tray from Pots and trays. Type its real width above.</p>` : ''}
     ${it.spot_id && it.layout_id ? html`<p><a class="btn small ghost" href="#/layouts/${it.layout_id}">Open this shelf's own layout</a></p>` : ''}
-    ${can ? html`<p class="row ly-acts">${it.locked || lyRound(it) ? '' : html`<button class="btn small ghost" type="button" id="ly-turn" data-act="lyturn">Turn a quarter</button>`}
+    ${can ? html`<p class="row ly-acts">${it.locked || it.size_locked || lyRound(it) ? '' : html`<button class="btn small ghost" type="button" id="ly-turn" data-act="lyturn">Turn a quarter</button>`}
       ${it.plant || it.spot_id ? '' : html`<button class="btn small ghost" type="button" id="ly-copy" data-act="lycopy">Make a copy</button>`}
       <button class="btn small ghost danger" type="button" id="ly-rm" data-act="lyrm">Take it off the layout</button></p>` : ''}`);
 }
@@ -908,7 +916,7 @@ function lyLists() {                                    // what to look at, ever
   document.getElementById('ly-things-body').innerHTML = rend(L.items.length ? html`<ul class="ly-list">${L.items.map(it => html`<li class="ly-row${LY.sel === it.id ? ' is-sel' : ''}${st.get(it.id) ? ' is-' + st.get(it.id) : ''}" data-id="${it.id}">
       ${it.photo ? html`<img src="${thumbUrl(it.photo)}" alt="" loading="lazy">` : html`<span class="ly-nophoto ly-np-${it.kind}" aria-hidden="true"></span>`}
       <div class="ly-row-main"><div class="ly-row-txt"><span class="ly-num" aria-hidden="true">${it.sort}</span> <strong>${it.plant && !it.gone ? html`<a href="#/plant/${enc(it.plant)}">${it.name}</a>` : it.name}</strong> <span class="muted">${L.kinds[it.kind]}${it.plant ? ',' : ''}</span>${it.plant ? html` <span class="code">${it.plant}</span>` : ''}${tags(it)}${lvOf(it)}
-        <br><span>${lySizeWords(it)}. ${lyWhere(L, it)[0].toUpperCase() + lyWhere(L, it).slice(1)}.${it.locked ? ' Locked in place.' : ''}${it.gone ? ' No longer in the record.' : ''}${lyLightLine(it)}</span></div>
+        <br><span>${lySizeWords(it)}. ${lyWhere(L, it)[0].toUpperCase() + lyWhere(L, it).slice(1)}.${it.locked ? ' Locked in place.' : ''}${it.size_locked ? ' Its size is locked.' : ''}${it.gone ? ' No longer in the record.' : ''}${lyLightLine(it)}</span></div>
       <button class="btn small ghost" type="button" data-act="lypick" data-id="${it.id}" aria-label="${LY.sel === it.id ? 'Chosen' : 'Choose'}: ${it.sort}, ${it.name}" ${LY.sel === it.id ? raw('aria-pressed="true"') : ''}>${LY.sel === it.id ? 'Chosen' : 'Choose'}</button></div></li>`)}</ul>`
     : html`<p class="muted">Nothing is on it yet.</p>`);
   const tray = L.plants.filter(p => p.here && !p.on), tb = document.getElementById('ly-tray');
@@ -1055,7 +1063,7 @@ function lyTake(d, pick) {                              // the server's answer a
   if (pick !== undefined) lyWallFollow(lyItem(LY.sel));      // a thing just put on is chosen: the front view goes to its wall
   lyDrawAll();
 }
-const lySpec = it => ({ kind: it.kind, name: it.name, shape: it.shape, x: it.x, y: it.y, z: it.z, w: it.w, d: it.d, h: it.h, locked: !!it.locked,
+const lySpec = it => ({ kind: it.kind, name: it.name, shape: it.shape, x: it.x, y: it.y, z: it.z, w: it.w, d: it.d, h: it.h, locked: !!it.locked, size_locked: !!it.size_locked,
   ...(it.kind === 'light' && it.hours != null ? { hours: it.hours, dim_pct: it.dim_pct } : {}), ...(it.plant ? { plant: it.plant } : {}), ...(it.light_id ? { light_id: it.light_id } : {}), ...(it.spot_id ? { spot_id: it.spot_id } : {}) });
 // Puts things on the layout, each in the first place it is clear of the others (unless it comes with its place), and chooses the last one.
 // The chosen thing says where to start: on it if it is a shelf, over it if it is a plant and the new thing hangs. where: { shelf } says
@@ -1187,7 +1195,7 @@ document.addEventListener('pointerdown', e => {
   const view = svg.dataset.view, chosen = LY.sel === it.id;
   lyFlush();                                                    // this may draw the views again, so the drawing is looked up afresh below
   if (!hd) lySelect(it.id, view, true);
-  if (!lyCan() || it.locked) return;
+  if (!lyCan() || (hd ? it.size_locked : it.locked)) return;           // the corner handle needs the size unlocked; a move needs the place unlocked
   if (e.pointerType === 'touch' && !chosen && !hd) return;      // on a touch screen the first touch chooses a thing, and the page still scrolls; the next one drags it
   if (!getName() && !viaTS()) { needName(); return; }
   e.preventDefault();
@@ -1263,7 +1271,7 @@ document.addEventListener('keydown', e => {
   if (!dir && e.key !== 'Delete') return;
   e.preventDefault();
   if (!lyCan()) return;
-  if (it.locked) { toast(`${it.name} is locked in place. Untick Lock in place to move it.`); return; }
+  if (it.locked) { toast(`${it.name} is locked in place. Untick Lock its place to move it.`); return; }
   if (!getName() && !viaTS()) { needName(); return; }
   if (LY.sel !== it.id) lySelect(it.id, view);
   LY.fview = view;
@@ -1402,7 +1410,7 @@ Object.assign(acts, {
   },
   async lyturn() {
     await lyFlush();
-    const it = lyItem(LY.sel); if (!it || it.locked || !(await needName())) return;
+    const it = lyItem(LY.sel); if (!it || it.locked || it.size_locked || !(await needName())) return;
     const L = LY.d, g = +L.grid_in || 1, was = { ...it }, cx = it.x + it.w / 2, cy = it.y + it.d / 2;
     const at = (c, size, max) => { const v = L.snap ? Math.round((c - size / 2) / g) * g : c - size / 2; return r2(size <= max + LY_EPS ? clamp(v, 0, Math.max(0, max - size)) : v); };
     [it.w, it.d] = [it.d, it.w]; it.x = at(cx, it.w, L.width_in); it.y = at(cy, it.d, L.depth_in);       // turned about its middle, and kept inside the space where it fits there
@@ -1413,7 +1421,7 @@ Object.assign(acts, {
     const it = lyItem(LY.sel); if (!it || !(await needName())) return;
     await lyFlush();
     const { x, y, z, ...rest } = lySpec(it), u = lyUnder(LY.d, it), o = lyOver(LY.d, it), hangs = it.kind === 'light' && !u, by = hangs ? o : u;
-    await lyAddItems([{ ...rest, locked: false, name: it.light_id ? it.name : `${it.name} (copy)`, hangs }], false, { shelf: by && typeof by === 'object' ? by : null });
+    await lyAddItems([{ ...rest, locked: false, size_locked: false, name: it.light_id ? it.name : `${it.name} (copy)`, hangs }], false, { shelf: by && typeof by === 'object' ? by : null });
   },
   async lytall() { const it = lyItem(LY.sel); if (!it || !lyPaged(it) || it.page_h != null || !(await needName())) return; await lyFlush(); lyTallSave(it); },
   async lyrm() { const it = lyItem(LY.sel); if (it && (await needName())) await lyRemove(it); },
@@ -1465,7 +1473,10 @@ Object.assign(changeActs, {
     const L = LY.d, it = lyItem(LY.sel), k = el.dataset.k; if (!it) return;
     if (!(await needName())) { lyPanel(); return; }
     const was = { ...it }, riders = ['x', 'y', 'z', 'on', 'under'].includes(k) ? lyCarryStart(L, it) : [], skip = lyCarrySkip(riders); let what = 'moved', panel = '';
-    if (k === 'locked') { it.locked = val; what = val ? 'locked in place' : 'unlocked'; panel = 'full'; }
+    const sz = LY_SIZE_KEYS.includes(k);
+    if ((sz && it.size_locked) || (LY_PLACE_KEYS.includes(k) && it.locked)) { lyPanel(); toast(`${it.name}'s ${sz ? 'size' : 'place'} is locked. Untick Lock its ${sz ? 'size' : 'place'} to change it.`); return; }
+    if (k === 'locked') { it.locked = val; what = val ? 'locked in place' : 'place unlocked'; panel = 'full'; }
+    else if (k === 'size_locked') { it.size_locked = val; what = val ? 'size locked' : 'size unlocked'; panel = 'full'; }
     else if (k === 'shape') { it.shape = val; if (val === 'round') it.d = it.w; what = 'changed'; panel = 'full'; }
     else if (k === 'name') { const n = val.trim().replace(/\s+/g, ' '); if (!n) { el.value = it.name; return; } it.name = n; what = 'renamed'; }
     else if (k === 'hours') { const v = parseFloat(String(val).replace(',', '.')); if (val === '' || isNaN(v)) { el.value = it.hours; return; } it.hours = r2(clamp(v, 0, 24)); what = 'hours changed'; }

@@ -658,7 +658,7 @@ async function loadWxTable() {
       <a class="noprint" href="/api/weather/table.csv?${q}" download>Download all of it as a spreadsheet (CSV, every column)</a></p>
     ${T.total ? html`${wtPager(T, 'top')}<div class="tbl-wrap wide"><table class="tbl wxt"><caption class="sr">Logged ${T.kind === 'daily' ? 'daily weather' : T.source === 'sensor' ? 'sensor readings' : 'hourly weather'}</caption>
       <thead><tr><th scope="col">${lbl}</th>${T.source === 'sensor' ? html`<th scope="col">Device</th>` : ''}${T.kind === 'daily' ? html`<th scope="col">Status</th>` : ''}${cols.map(c => html`<th scope="col" class="num">${c.label}${c.unit ? html`<div class="hint">${c.unit}</div>` : ''}</th>`)}</tr></thead>
-      <tbody>${T.rows.map(r => html`<tr><th scope="row">${T.kind === 'daily' ? dayLong(r.when) : r.when}</th>${T.source === 'sensor' ? html`<td>${r.device}</td>` : ''}${T.kind === 'daily' ? html`<td>${r.kind === 'forecast' ? 'Forecast' : 'Observed'}</td>` : ''}${cols.map(c => html`<td class="num">${wtCell(c.key, r[c.key], T.tz)}</td>`)}</tr>`)}</tbody></table></div>
+      <tbody>${T.rows.map(r => html`<tr><th scope="row">${T.kind === 'daily' ? dayLong(r.when) : hourWords(r.when)}</th>${T.source === 'sensor' ? html`<td>${r.device}</td>` : ''}${T.kind === 'daily' ? html`<td>${r.kind === 'forecast' ? 'Forecast' : 'Observed'}</td>` : ''}${cols.map(c => html`<td class="num">${wtCell(c.key, r[c.key], T.tz)}</td>`)}</tr>`)}</tbody></table></div>
       ${wtPager(T, 'bottom')}` : ''}`);
   scrollBoxes(el);                                  // 1.58.0: the long table can be scrolled from the keyboard
 }
@@ -758,14 +758,26 @@ const FZ_DO = {
   'Annual': 'An annual: the cold will likely end its season. Bring it in only if you want to keep it going.',
 };
 const fzNight = z => `${fzDay(z.date)}, ${tF(z.low)} (${FZ_WORD[z.level].toLowerCase()})`;
-function fzRow(p) {
-  const d = p.done, many = p.nights.length > 1;
+// 1.58.0: what most plants in a group share (the nights ahead, what to do, the porch) is said once at the top of the group, and a
+// plant's row says only what is its own. Before, every row of 49 said the same four sentences, and one plant took two screens of a
+// phone at the largest text.
+const fzNightLine = p => { const many = p.nights.length > 1;
+  return `Next cold night: ${fzNight(p.next)}.${many && p.worst.date !== p.next.date ? ` Coldest: ${fzNight(p.worst)}.` : ''}${many ? ` Cold on ${p.nights.length} of the next 7 nights.` : ''}`; };
+const fzDo = p => FZ_DO[p.plan] || FZ_DO['Protect outside'];
+const FZ_PORCH = 'On the covered porch, which helps a little but not in a freeze.';
+function fzShared(g) {                       // the line most of the group shares, when at least three plants and half of them share it
+  const top = f => { const n = {}; g.forEach(p => { const k = f(p); if (k) n[k] = (n[k] || 0) + 1; }); const [k, c] = Object.entries(n).sort((a, b) => b[1] - a[1])[0] || [];
+    return c >= 3 && c * 2 >= g.length ? k : ''; };
+  return { nights: top(fzNightLine), todo: top(fzDo), porch: top(p => p.site === 'Covered porch' ? FZ_PORCH : '') };
+}
+function fzRow(p, sh = {}) {
+  const d = p.done;
   return html`<li class="fz-row ${d ? 'is-done' : ''}" data-code="${p.code}">
     ${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy" width="72" height="72">` : html`<span class="fz-nophoto" aria-hidden="true"></span>`}
     <div class="fz-txt"><a class="nm" href="#/plant/${enc(p.code)}">${p.name}</a> <span class="muted">${p.code}</span>
-      <div><span class="fz-lv fz-${p.level}">${FZ_WORD[p.level]}</span> Damaged below ${tF(p.damage)}${p.lethal != null ? `, dies below ${tF(p.lethal)}` : ''}.${p.site === 'Covered porch' ? ' On the covered porch, which helps a little but not in a freeze.' : ''}</div>
-      <div>Next cold night: ${fzNight(p.next)}.${many && p.worst.date !== p.next.date ? ` Coldest: ${fzNight(p.worst)}.` : ''}${many ? ` Cold on ${p.nights.length} of the next 7 nights.` : ''}</div>
-      <div class="hint">${FZ_DO[p.plan] || FZ_DO['Protect outside']}</div>
+      <div><span class="fz-lv fz-${p.level}">${FZ_WORD[p.level]}</span> Damaged below ${tF(p.damage)}${p.lethal != null ? `, dies below ${tF(p.lethal)}` : ''}.${p.site === 'Covered porch' ? (sh.porch ? ' On the covered porch.' : ' ' + FZ_PORCH) : ''}</div>
+      ${fzNightLine(p) !== sh.nights ? html`<div>${fzNightLine(p)}</div>` : ''}
+      ${fzDo(p) !== sh.todo ? html`<div class="hint">${fzDo(p)}</div>` : ''}
       ${d ? html`<div class="fz-done">✔ Covered for ${fzDay(p.next.date, true)}, marked by ${d.by} ${when(d.at)}. It comes back on the list for the next cold night.</div>` : ''}</div>
     <div class="fz-acts">${d ? html`<button class="btn small ghost" type="button" data-act="frostundo" data-code="${p.code}" data-date="${p.next.date}">Undo "Covered"</button>`
       : html`<button class="btn small" type="button" data-act="frostin" data-code="${p.code}" data-name="${p.name}">Moved indoors</button>
@@ -783,8 +795,8 @@ async function viewFrost() {
   return {
     title: 'Cold-night checklist',
     html: html`<p class="crumb"><a href="#/winter">Winter plan</a></p><h1>Cold-night checklist</h1>
-    <p class="muted">Plants that are outside and would be hurt by a night in the 7-day forecast for ${F.place}. "Could die" and "Damaged" use each plant's own temperatures;
-      "Close call" means within ${tD(F.margin)} of its damage point, because forecasts often miss a clear, still night by a few degrees.
+    <p class="muted">Plants that are outside and would be hurt by a night in the 7-day forecast for ${F.place}. "Could die" and "Damaged" use each plant's own temperatures.
+      "Close call" means within ${tD(F.margin)} of its damage point. Forecasts often miss a clear, still night by a few degrees.
       Plants set to Indoors or Garage or shed are left out, so a plant leaves this list when you press Moved indoors.</p>
     <p>Before a plant comes inside, check it for pests: <a href="#/inside">Getting plants ready to come inside</a>.</p>
     ${canChange() ? html`<p class="row noprint"><button class="btn ghost small" type="button" data-act="buywatch" data-kind="frost" data-name="Frost cloth" data-search="frost cloth; frost blanket; plant cover" data-src="frost">Watch the stores for frost cloth</button></p>` : ''}
@@ -796,11 +808,13 @@ async function viewFrost() {
         <td class="num">${n.counts.danger || '–'}</td><td class="num">${n.counts.damage || '–'}</td><td class="num">${n.counts.watch || '–'}</td><td class="num">${n.level ? ticked(n) : '–'}</td></tr>`)}
       </tbody></table></div><p class="hint">Forecast updated ${F.fetched_at ? when(F.fetched_at) : 'not yet'}. The low is usually reached just before dawn, so act the evening before.</p></section>` : ''}
     ${FZ_GROUPS.map(([id, title, sub0, test]) => { const g = (F.plants || []).filter(test), sub = typeof sub0 === 'function' ? sub0() : sub0; if (!g.length) return '';   // 1.47.0: a sub written as a function reads in the person's unit
-      const open = g.filter(p => !p.done);
+      const open = g.filter(p => !p.done), sh = fzShared(g);
       return html`<section class="blk" id="fz-${id}"><h2>${title} (${g.length})</h2><p class="muted">${sub} Most urgent first.</p>
+        ${sh.nights || sh.todo || sh.porch ? html`<div class="fz-shared"><p class="fz-shared-h">For the plants below, unless a plant's own row says otherwise:</p>
+          ${sh.nights ? html`<p>${sh.nights}</p>` : ''}${sh.todo ? html`<p><strong>What to do:</strong> ${sh.todo}</p>` : ''}${sh.porch ? html`<p>Plants on the covered porch: it helps a little, but not in a freeze.</p>` : ''}</div>` : ''}
         ${open.length > 1 ? html`<p>${id === 'in' ? html`<button class="btn small ghost" type="button" data-act="frostallin" data-group="${id}">Moved all ${open.length} indoors</button>`
           : html`<button class="btn small ghost" type="button" data-act="frostallcover" data-group="${id}">Mark all ${open.length} as covered for their next cold night</button>`}</p>` : ''}
-        <ul class="fz-list">${g.map(fzRow)}</ul></section>`; })}
+        <ul class="fz-list">${g.map(p => fzRow(p, sh))}</ul></section>`; })}
     <section class="blk" id="fz-dates"><h2>When cold nights usually come</h2><div class="fd-box" data-fd="frost"><p class="muted">Working out the frost dates…</p></div></section>
     <section class="blk"><h2>Protecting plants on a cold night</h2><ul>
       <li>Move pots against the house wall or onto the porch: they lose less heat there than in the open.</li>
@@ -907,8 +921,8 @@ async function viewOutside() {
   return {
     title: 'Back outside',
     html: html`<p class="crumb"><a href="#/winter">Winter plan</a></p><h1>Back outside</h1>
-    <p class="muted">Plants that are inside now (Indoors, or Garage or shed), and whether the nights in the 7-day forecast for ${B.place} are warm enough for each to go back out.
-      Each plant is checked against its own temperatures: safe means no night within ${tD(B.margin)} of its damage point, and ready means every night is at or above the low it likes.</p>
+    <p class="muted">Plants that are inside now (Indoors, or Garage or shed). For each, whether the nights in the 7-day forecast for ${B.place} are warm enough to go back out.
+      Each plant is checked against its own temperatures. Safe means no night within ${tD(B.margin)} of its damage point. Ready means every night is at or above the low it likes.</p>
     ${B.season === 'autumn' ? html`<p class="notice">It is autumn, so most plants that came inside should stay in until spring. This page is most useful from late winter: each plant shows as ready as soon as the nights are warm enough for it.</p>` : ''}
     ${!B.nights.length ? html`<p class="notice">No forecast yet. It is fetched a few seconds after the app starts, then every hour.</p>` : ''}
     ${!ps.length ? html`<p class="notice ok">No plants are inside. When you bring one in, press its Moved indoors button and it shows here.</p>` : ''}
@@ -932,7 +946,7 @@ async function viewOutside() {
       <p class="muted">Getting used to the light, and out of full sun so the leaves do not scorch. A reminder comes after a week.</p>
       <ul class="fz-list">${B.porch.filter(p => !p.is_due).map(boPorchRow)}</ul></section>` : ''}
     <section class="blk"><h2>Going back out</h2><ul>
-      <li>Ease plants in. Leaves that grew indoors scorch in full sun, so give them a week on the covered porch, then a few hours of morning sun, then their usual spot.</li>
+      <li>Ease plants in. Leaves that grew indoors scorch in full sun. Give them a week on the covered porch, then a few hours of morning sun, then their usual spot.</li>
       <li>Moved to the porch sets the plant's Location to Covered porch and sets a reminder for a week later. It shows on the cold-night checklist if a cold night comes.</li>
       <li>Pots dry out much faster outside, especially in wind and sun. Check them every day or two for the first weeks.</li>
       <li>Start feeding again once new growth appears.</li></ul></section>`,
@@ -959,3 +973,10 @@ addFeature({
     html: ({ go, due }) => html`<div id="bo-today">${html`<p class="notice ok noprint">${go ? html`<strong>${go === 1 ? '1 plant inside can' : `${go} plants inside can`} go back outside.</strong>
       The nights in the forecast are warm enough for ${go === 1 ? 'it' : 'them'}. ` : ''}${due ? html`<strong>${due === 1 ? '1 plant on the porch is' : `${due} plants on the porch are`} ready for ${due === 1 ? 'its' : 'their'} summer spot.</strong> ${due === 1 ? 'It has' : 'They have'} had a week out of full sun. ` : ''}<a href="#/outside">Open the Back outside list</a></p>`}</div>` },
 });
+// 1.58.0 (the dyslexia audit): an hour in the weather table in words ("Sun, Nov 15, 5 PM"), not 2026-11-15 17:00
+function hourWords(w) {
+  const m = /^(\d{4}-\d\d-\d\d)[ T](\d\d):(\d\d)/.exec(String(w || ''));
+  if (!m) return w;
+  const h = +m[2], h12 = h % 12 || 12;
+  return `${midDay(m[1])}, ${h12}${m[3] === '00' ? '' : ':' + m[3]} ${h < 12 ? 'AM' : 'PM'}`;
+}

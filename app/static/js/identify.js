@@ -109,7 +109,7 @@ async function viewIdentify() {
     </section>
     <section class="id-sec" aria-labelledby="h-idres"><h2 id="h-idres">What it found</h2><div id="id-res"><p class="muted">Start the camera or choose a photo.</p></div></section></div>
     <section class="id-sec" aria-labelledby="h-second"><h2 id="h-second">Second opinions</h2>
-      <p>When this computer is unsure, you can ask Pl@ntNet (free, up to 500 pictures a day) and then Claude (paid per picture, about a cent or two). They only see a picture when you press their button. Pl@ntNet does not keep pictures.</p>
+      <p>When this computer is unsure, you can ask Pl@ntNet, then Claude. Pl@ntNet is free for up to 500 pictures a day. Claude is paid per picture, about a cent or two. They only see a picture when you press their button. Pl@ntNet does not keep pictures.</p>
       <ul class="id-keys">
         <li><strong>Pl@ntNet:</strong> ${keys && keys.plantnet ? html`set up (key ending ${keys.plantnet_hint.slice(1)})` : 'not set up'}</li>
         <li><strong>Claude:</strong> ${keys && keys.claude ? html`set up (key ending ${keys.claude_hint.slice(1)}), using ${keys.claude_model}` : 'not set up'}</li>

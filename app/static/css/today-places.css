@@ -63,7 +63,7 @@ html[data-narrow="1"] .wpl-head .btn{margin-top:0}
 .wpl-pick:not(:has(input:checked)) .wpl-skip{display:none}
 /* how late a plant is opens the reason */
 .wpl-why{margin:0}
-.wpl-why>summary{cursor:pointer;display:inline-block;color:var(--cyan);font-weight:700;text-decoration:underline;text-underline-offset:3px;padding:.1rem 0;list-style:none}
+.wpl-why>summary{cursor:pointer;display:inline-block;color:var(--cyan);font-weight:700;padding:.1rem 0;list-style:none}   /* 1.58.0: not underlined: it opens a fold */
 .wpl-why>summary::-webkit-details-marker{display:none}
 .wpl-why>summary::before{content:"\25B8\00a0"}
 .wpl-why[open]>summary::before{content:"\25BE\00a0"}

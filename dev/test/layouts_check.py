@@ -53,7 +53,7 @@ THING = "(id, kind, x, y, z, w, d, h, more) => Object.assign({ id, sort: id, nam
 FIND = "(items, clear) => lyFindings({ width_in: 40, depth_in: 20, height_in: 30, clear_in: clear === undefined ? 1 : clear, items }).map(f => f.kind + (f.hard ? '!' : '') + ':' + f.ids.join('+'))"
 def find(pg, items, clear=None):
     return pg.evaluate(f"([spec, clear]) => {{ const T = {THING}, F = {FIND}; return F(spec.map(a => T(...a)), clear === null ? undefined : clear); }}", [items, clear])
-def it(pg, iid): return pg.evaluate("i => { const t = LY.d.items.find(x => x.id === i); return t ? { x: t.x, y: t.y, z: t.z, w: t.w, d: t.d, h: t.h, locked: t.locked } : null; }", iid)
+def it(pg, iid): return pg.evaluate("i => { const t = LY.d.items.find(x => x.id === i); return t ? { x: t.x, y: t.y, z: t.z, w: t.w, d: t.d, h: t.h, locked: t.locked, size_locked: t.size_locked } : null; }", iid)
 def saved(lid, iid): return next((x for x in call('GET', f'/api/layouts/{lid}')['items'] if x['id'] == iid), None)
 def centre(pg, view, iid, sel='g.ly-it'):
     return pg.evaluate("""([v, i, s]) => { const g = document.querySelector(`svg.ly-svg[data-view="${v}"] ${s}[data-id="${i}"]`); g.scrollIntoView({ block: 'center' });
@@ -279,11 +279,26 @@ with sync_playwright() as p:
     pg.fill('#ly-f-h', '10'); pg.press('#ly-f-h', 'Tab')
     check(clean() and until(pg, lambda: saved(lid, c3)['h'] == 10), 'at 10 in it fits')
 
-    # ---- Lock in place
-    pg.check('#ly-f-locked'); until(pg, lambda: it(pg, c3)['locked'])
+    # ---- the two locks: its place, and apart from it its size (Ethan, November 16, 2026)
+    check(pg.locator('fieldset.ly-locks legend').inner_text() == 'Locks' and pg.locator('#ly-f-locked').is_visible() and pg.locator('#ly-f-size_locked').is_visible(), 'the chosen thing has two locks, Lock its place and Lock its size')
+    pg.check('#ly-f-locked'); until(pg, lambda: it(pg, c3)['locked'] and saved(lid, c3)['locked'])
     xl = it(pg, c3)['x']; pick(c3); pg.keyboard.press('ArrowRight'); pg.wait_for_timeout(200)
-    check(it(pg, c3)['x'] == xl and 'is locked in place' in pg.inner_text('#toasts') and pg.locator('#ly-f-x').is_disabled(), 'a locked thing does not move, says why, and its boxes are off')
+    check(it(pg, c3)['x'] == xl and 'is locked in place' in pg.inner_text('#toasts') and pg.locator('#ly-f-x').is_disabled() and not pg.locator('#ly-f-h').is_disabled()
+          and pg.locator(f'svg.ly-svg[data-view=front] .ly-selmark[data-id="{c3}"] .ly-handle').count() == 1 and not saved(lid, c3)['size_locked'],
+          'with its place locked it does not move and its place boxes are off, and its size can still be changed (its size boxes and the corner handle)')
     pg.uncheck('#ly-f-locked'); until(pg, lambda: not it(pg, c3)['locked'])
+    pg.check('#ly-f-size_locked'); until(pg, lambda: it(pg, c3)['size_locked'] and saved(lid, c3)['size_locked'])
+    sz = (it(pg, c3)['w'], it(pg, c3)['h'])
+    check(pg.locator('#ly-f-h').is_disabled() and pg.locator('#ly-f-w').is_disabled() and not pg.locator('#ly-f-x').is_disabled() and pg.locator('.ly-handle').count() == 0 and pg.locator('#ly-turn').count() == 0
+          and not saved(lid, c3)['locked'] and pg.inner_text('label:has(#ly-f-h)').startswith('Height (in), locked') and 'locked' not in pg.inner_text('label:has(#ly-f-x)') and 'Its size is locked' in pg.locator(f'svg.ly-svg[data-view=front] g.ly-it[data-id="{c3}"]').get_attribute('aria-label'),
+          'with its size locked its size boxes are off, there is no corner handle and no Turn a quarter, its place boxes still work, and the drawing says so')
+    x0 = it(pg, c3)['x']; pick(c3); pg.keyboard.press('ArrowRight')
+    check(until(pg, lambda: it(pg, c3)['x'] == x0 + 1) and (it(pg, c3)['w'], it(pg, c3)['h']) == sz, 'and it still moves, keeping its size')
+    a0 = centre(pg, 'front', c3); drag(pg, a0, -2 * pg.evaluate('LY.Sv.front'), 0)
+    check(until(pg, lambda: it(pg, c3)['x'] == x0 - 1) and (it(pg, c3)['w'], it(pg, c3)['h']) == sz, f'dragged by its middle it moves, and its size stays ({it(pg, c3)})')
+    pg.click('#ly-undo'); until(pg, lambda: it(pg, c3)['x'] == x0 + 1); pg.click('#ly-undo'); until(pg, lambda: it(pg, c3)['x'] == x0)
+    pg.uncheck('#ly-f-size_locked'); until(pg, lambda: not it(pg, c3)['size_locked'] and not saved(lid, c3)['size_locked'])
+    check(pg.locator(f'.ly-selmark[data-id="{c3}"] .ly-handle').count() >= 1 and not pg.locator('#ly-f-h').is_disabled(), 'unlocked, the corner handle and the size boxes are back')
 
     # ---- a light under the chosen shelf, and a plant too close under it
     lv2 = pg.evaluate("LY.d.items.find(i => i.name === 'Level 2').id")

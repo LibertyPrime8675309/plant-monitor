@@ -65,7 +65,7 @@ def test_a_shelfs_levels_become_boards_from_its_measurements():
     boards, top = LY.layout_boards({'levels': 4, 'gaps_in': [23, 13, 27], 'width_in': 22, 'depth_in': 11})
     assert [b['z'] for b in boards] == [0, 23.75, 37.5, 65.25] and top == 66, 'each level is a board and the clear height below it higher'
     assert [b['name'] for b in boards] == ['Level 1 (bottom)', 'Level 2', 'Level 3', 'Level 4 (top)']
-    assert all((b['w'], b['d'], b['h'], b['kind'], b['locked']) == (22, 11, 0.75, 'shelf', True) for b in boards)
+    assert all((b['w'], b['d'], b['h'], b['kind'], b['locked'], b['size_locked']) == (22, 11, 0.75, 'shelf', True, True) for b in boards), 'a board is locked in its place and in its size'
     boards, top = LY.layout_boards({'levels': 3, 'gap_in': 12, 'width_in': 30, 'depth_in': 12})
     assert [b['z'] for b in boards] == [0, 12.75, 25.5] and top == 26.25, 'one clear height for every level'
     for sheet in ({'levels': 1, 'width_in': 30, 'depth_in': 12}, {'levels': 3, 'gap_in': 12, 'depth_in': 12}, {'levels': 4, 'gaps_in': [23, 13], 'width_in': 22, 'depth_in': 11}, {}):
@@ -131,6 +131,12 @@ def test_the_routes_keep_a_layout_and_refuse_what_makes_no_sense(room):
         r = put(it['id'], {'x': 3.456, 'h': 15, 'name': 'Renamed here', 'locked': True})
         assert r.status_code == 200 and (r.get_json()['item']['x'], r.get_json()['item']['h'], r.get_json()['item']['name'], r.get_json()['item']['locked']) == (3.46, 15, P['name'], True)
         assert put(by['Humidifier']['id'], {'name': 'Mist maker'}).get_json()['item']['name'] == 'Mist maker'
+        # the two locks are kept apart: its size can be locked and its place not, and the other way round
+        s1 = put(by['Humidifier']['id'], {'size_locked': True}).get_json()['item']
+        assert (s1['size_locked'], s1['locked']) == (True, False)
+        s2 = put(by['Humidifier']['id'], {'locked': True, 'size_locked': False}).get_json()['item']
+        assert (s2['size_locked'], s2['locked']) == (False, True)
+        assert put(by['Humidifier']['id'], {'locked': False}).get_json()['item']['size_locked'] is False
         assert put(it['id'], {'w': -1}).status_code == 400 and put(it['id'], {'shape': 'star'}).status_code == 400 and put(987654, {'x': 1}).status_code == 404
         # a plant's height given on a layout goes on its page too, with a line in its History; moving it changes nothing there
         after = c.get(f"/api/plants/{P['code']}").get_json()
@@ -281,10 +287,15 @@ def test_a_drawn_light_carries_what_the_page_works_the_light_out_from(room):
 
 def test_a_table_made_before_lights_had_hours_gains_them():
     c = sqlite3.connect(':memory:'); c.row_factory = sqlite3.Row
-    c.executescript(LY.LAYOUT_SCHEMA.replace('  hours REAL, dim_pct INTEGER,\n', ''))
+    c.executescript(LY.LAYOUT_SCHEMA.replace('  hours REAL, dim_pct INTEGER, size_locked INTEGER NOT NULL DEFAULT 0,\n', ''))
     assert 'hours' not in {r[1] for r in c.execute('PRAGMA table_info(layout_items)')}
+    c.execute("INSERT INTO layouts(name, width_in, depth_in, height_in, created_at) VALUES('Old', 20, 10, 40, 'now')")
+    for locked in (1, 0): c.execute("INSERT INTO layout_items(layout_id, kind, w, d, h, locked, created_at) VALUES(1, 'other', 1, 1, 1, ?, 'now')", (locked,))
     LY.layout_tables(c); LY.layout_tables(c)
-    assert {'hours', 'dim_pct'} <= {r[1] for r in c.execute('PRAGMA table_info(layout_items)')}
+    assert {'hours', 'dim_pct', 'size_locked'} <= {r[1] for r in c.execute('PRAGMA table_info(layout_items)')}
+    assert [tuple(r) for r in c.execute('SELECT locked, size_locked FROM layout_items ORDER BY id')] == [(1, 1), (0, 0)], 'a thing locked before the size lock came keeps its size locked too'
+    c.execute('UPDATE layout_items SET size_locked=0 WHERE id=1'); LY.layout_tables(c)
+    assert c.execute('SELECT size_locked FROM layout_items WHERE id=1').fetchone()[0] == 0, 'and making the tables again does not lock it again'
 
 def test_a_thing_whose_plant_was_archived_says_so_and_keeps_its_name():
     with S.app.test_client() as c:

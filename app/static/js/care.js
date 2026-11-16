@@ -700,7 +700,8 @@ function holdReason(p, ds, ctx) {
   const lim = has(p.temp_damage_below) ? +p.temp_damage_below : 35;
   const fc = ((ctx && ctx.forecast) || []).filter(d => d.date >= ds && d.date <= addDays(ds, 2));
   const cold = fc.filter(d => d.low <= lim).sort((a, b) => a.low - b.low)[0];
-  if (cold) return `A cold night is forecast (${tF(cold.low)} on ${midDay(cold.date)}), at or below the damage point for this plant (${tF(lim)}). Wait until it passes.`;
+  // 1.58.0 (the dyslexia audit): one short sentence; it was three, in every row of the Fertilizer page
+  if (cold) return `Wait: ${midDay(cold.date)} will be ${tF(cold.low)}, at or below the ${tF(lim)} that damages it.`;
   return null;
 }
 function fertState(p, entries, ds, ctx) {

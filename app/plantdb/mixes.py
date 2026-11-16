@@ -56,9 +56,9 @@ def am_words(a):
     bits = []
     if a.get('holds_water'): bits.append(f"holds {AMOUNT[a['holds_water'] - 1]} water")
     if a.get('airy'): bits.append(f"lets in {AMOUNT[a['airy'] - 1]} air")
-    if a.get('lasts_months') == 0: bits.append('does not break down')
+    if a.get('lasts_months') == 0: bits.append('lasts for good')          # 1.58.0: said without a negative (the dyslexia audit)
     elif a.get('lasts_months'): bits.append(f"breaks down in about {months_words(a['lasts_months'])}")
-    if a.get('feeds') is not None: bits.append('feeds the plant' if a['feeds'] == 2 else 'feeds a little' if a['feeds'] == 1 else 'no food in it')
+    if a.get('feeds') is not None: bits.append('feeds the plant' if a['feeds'] == 2 else 'feeds a little' if a['feeds'] == 1 else 'has no plant food')
     if a.get('ph'): bits.append(f"pH: {PH[a['ph']]}")
     if a.get('weight'): bits.append({1: 'light', 2: 'medium weight', 3: 'heavy'}[a['weight']])
     return ', '.join(bits)

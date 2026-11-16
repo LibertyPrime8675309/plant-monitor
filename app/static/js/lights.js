@@ -134,7 +134,7 @@ async function viewLights() {
     html: html`<div class="lt-top" id="lt-top" data-open="${open ? '1' : '0'}">
       <div class="lt-top-row"><h1>Grow lights</h1><button class="btn ghost small lt-top-btn noprint" type="button" data-act="lttop" aria-expanded="${open ? 'true' : 'false'}" aria-controls="lt-top-body">${open ? 'Hide the summary' : 'Show the summary'}</button></div>
       <div class="lt-top-body" id="lt-top-body" ${open ? '' : raw('hidden')}>
-      <p class="muted">Your grow lights, the spots they light, and how much light each plant gets there. A plant's daily light (DLI, in mol/m² a day) is the light at its leaves while the light is on (PAR) times the hours it is on. Each plant page has the range it wants.</p>
+      <p class="muted">Your grow lights, the spots they light, and how much light each plant gets there. A plant's daily light (DLI, in mol/m² a day) is the light at its leaves (PAR) times the hours the light is on. Each plant page has the range it wants.</p>
       <div class="tbl-wrap"><table class="tbl lt-sum-tbl"><caption class="sr">The ${n} plants that live inside or are coming in, and the daylight outdoors</caption>
         <thead><tr><th scope="col">Inside</th><th scope="col">Coming in</th><th scope="col">Assigned light spot</th><th scope="col">No assigned light spot</th><th scope="col">7-day mol/m² average</th></tr></thead>
         <tbody><tr><td data-h="Inside">${inside}</td><td data-h="Coming in">${n - inside}</td><td data-h="Assigned light spot">${inSpots}</td><td data-h="No assigned light spot">${n - inSpots}</td>
@@ -148,12 +148,12 @@ async function viewLights() {
     <section class="blk" id="lt-rooms"><h2>Rooms and shelves</h2><p>Where your plants go inside. Choose one for each light spot.</p>${ltRoomsBlock()}
       <div class="row noprint"><button class="btn ghost" type="button" data-act="roomnew">New Room</button></div></section>
     <section class="blk" id="lt-plan"><h2>Suggested layout</h2>
-      <p>For the plants that are not in a spot yet. Plants that need the most light are placed first. Each goes under the smallest of your lights that can give it enough, sharing a light with plants whose needs overlap, while there is room under it. "Set up this spot" opens it so you can rename it or change anything before saving.</p>
+      <p>For the plants that are not in a spot yet. Plants that need the most light are placed first. Each goes under the smallest of your lights that can give it enough. Plants whose needs overlap share a light, while there is room under it. "Set up this spot" opens it so you can rename it or change anything before saving.</p>
       ${LT.plan.length > 1 ? html`<p class="row noprint"><button class="btn" type="button" data-act="spotplanall">Set up all ${LT.plan.length} suggested spots</button></p>` : ''}
       ${LT.plan.length ? html`<div class="lt-grid">${LT.plan.map((s, i) => ltSpotCard(s, i, true))}</div>` : html`<p class="muted">Every plant that needs a light is in a spot.</p>`}
       ${LT.unplaced.length ? html`<h3>No light left for these</h3><ul class="lt-plants lt-two">${LT.unplaced.map(u => ltPlantLi(u, html`<span>${u.why}</span>`))}</ul>` : ''}</section>
     <section class="blk"><h2>How the numbers work</h2>
-      <p>Makers measure light straight under the centre of the light at a few distances. The app draws a smooth line through those figures to get the light at any distance, then multiplies by the hours a day: 100 PAR for 12 hours is about 4.3 mol/m².</p>
+      <p>Makers measure light straight under the centre of the light at a few distances. The app draws a smooth line through those figures to get the light at any distance. Then it multiplies by the hours a day: 100 PAR for 12 hours is about 4.3 mol/m².</p>
       <p>The edges of a light's circle get less, and a window adds some. Plants that stretch or go pale want more; bleached or crisp leaves want less. Several of the same light side by side light a bigger area at about the same strength.</p></section>`,
   };
 }

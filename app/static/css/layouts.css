@@ -184,3 +184,8 @@ html[data-role=viewer] :is([data-act=lynew], [data-act=lyadd], [data-act=lyundo]
   .ly-row.is-sel{outline-color:Highlight}
 }
 @media print{.ly-handle,.ly-selring{display:none}}
+/* the two locks, together under one heading */
+.ly-locks{border:0;padding:0;margin:.4rem 0;min-width:0}
+.ly-locks legend{font:inherit;font-weight:700;padding:0}
+.ly-locks .hint{margin:.1rem 0 0}
+.ly-fields input:disabled,.ly-fields select:disabled,#ly-f-shape:disabled{border-style:dashed}      /* a locked box looks it, as well as saying it */

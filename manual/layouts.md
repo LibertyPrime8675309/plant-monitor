@@ -35,7 +35,8 @@ Part of the Plant record manual. The README in the folder above has how to start
   - **A sign for its light** on every plant, once a grow light is drawn: ▼▼ too dim, ▼ a bit dim, ✓ good, ▲ a bit bright, ▲▲ too bright. Red is too much or too little, amber is a bit, green is good. A **grey dash (–)** means no light drawn here reaches it; it may still have a window, which a layout does not know about.
   - Each mark is bars across the thing and a sign as well as a colour, and is written as a sentence under **To look at**. **What the marks mean** lists them.
 - **Undo and Redo.** **Undo** takes back the changes made on this visit, newest first, and **Redo** does again what Undo took back. **Ctrl+Z** and **Ctrl+Y** do the same from anywhere on the page, except in a box you are typing in. A new change empties Redo.
-- **Also:** **Make a copy**, **Lock in place** and **Take it off the layout** are under the chosen thing's boxes; Delete on the drawing takes the chosen thing off. **Smaller** and **Larger** change the size of the drawing, and each layout remembers its own.
+- **Two locks.** Under the chosen thing's boxes, **Lock its place** keeps it where it is, and **Lock its size** keeps its size. They are apart, so a thing with its size locked can still be dragged around without being made larger or smaller by accident: its size boxes are off and it has no corner handle. **Turn a quarter** needs both unlocked. A shelf's boards are locked both ways.
+- **Also:** **Make a copy** and **Take it off the layout** are under the chosen thing's boxes; Delete on the drawing takes the chosen thing off. **Smaller** and **Larger** change the size of the drawing, and each layout remembers its own.
 - A plant's own page says which layouts it is drawn on.
 - People who can only view can look and choose a thing to read its place, its size and its light. Changing a layout needs a connection to the plant server.
 
