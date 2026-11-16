@@ -265,6 +265,7 @@ def test_a_drawn_light_carries_what_the_page_works_the_light_out_from(room):
         assert (lamp['pts'], lamp['hours'], lamp['dim_pct'], lamp['dims']) == ([], 12, 100, [100]), 'a light of your own naming has no figures to count'
         assert fern['need'] == {'lo': 6, 'hi': 12, 'target': 8.4} and 'hours' not in fern and 'hours' not in fan
         assert r.get_json()['verdicts']['too_dim'] == 'Too dim', 'the words are the ones Grow lights uses'
+        assert c.get('/api/layouts').get_json()['verdicts']['dim'] == 'A bit dim', 'the list of layouts carries the same words, for Grow lights, which reads the layouts'
         put = lambda iid, body: c.put(f'/api/layouts/items/{iid}', json=body, headers=OWN)
         r = put(mine['id'], {'hours': 14.5, 'dim_pct': 50})
         assert r.status_code == 200 and (r.get_json()['item']['hours'], r.get_json()['item']['dim_pct']) == (14.5, 50)
@@ -272,14 +273,29 @@ def test_a_drawn_light_carries_what_the_page_works_the_light_out_from(room):
         assert put(mine['id'], {'hours': 25}).status_code == 400 and put(mine['id'], {'dim_pct': 0}).status_code == 400 and put(mine['id'], {'hours': 'all day'}).status_code == 400
         assert put(mine['id'], {'hours': 0}).status_code == 200, 'a light may be drawn switched off'
         assert 'hours' not in put(fan['id'], {'hours': 9}).get_json()['item'], 'only a light has hours'
-        # a light starts with the setting of a Grow lights spot that has it at this place
+        # the layout is the one place a light's hours and brightness are set (Ethan, November 16, 2026): a spot set up at this place
+        # with this light takes the drawn light's, follows it when it changes, and keeps it when the spot is saved with others
         r = c.post('/api/lights/spots', json={'name': 'Layout test spot', 'light': light['id'], 'units': 1, 'distance': 12, 'hours': 9, 'dim': 100, 'place': room['shelf']}, headers=OWN)
         assert r.status_code in (200, 201), r.get_data(as_text=True)
+        sid = r.get_json()['id']
+        spot = lambda: next(x for x in c.get('/api/lights').get_json()['spots'] if x['id'] == sid)
+        assert (spot()['hours'], spot()['layout']['id'], spot()['layout']['item']) == (0, lid, mine['id']), 'a new spot where the light is drawn takes the drawn light\'s hours'
+        assert put(mine['id'], {'hours': 10, 'dim_pct': 100}).status_code == 200
+        d = conn(); row = d.execute('SELECT hours, dim_pct FROM light_spots WHERE id=?', (sid,)).fetchone(); d.close()
+        assert tuple(row) == (10, 100) and spot()['hours'] == 10, 'changed on the layout, the spot follows, in the record too'
+        d = conn(); note = d.execute("SELECT note FROM audit_log WHERE note LIKE '%Layout test spot%set on the layout%' ORDER BY id DESC LIMIT 1").fetchone(); d.close()
+        assert note is not None, 'and History says why'
+        sp = spot()
+        assert c.put(f'/api/lights/spots/{sid}', json={'name': sp['name'], 'light': light['id'], 'units': 1, 'distance': 12, 'hours': 5, 'dim': 50, 'place': room['shelf']}, headers=OWN).status_code == 200
+        assert (spot()['hours'], spot()['dim_pct']) == (10, 100), 'saved on Grow lights with other hours, the spot keeps the layout\'s'
+        # with that light taken off the layout, a spot sets its own again; a light drawn then starts with the spot's setting
+        assert c.delete(f"/api/layouts/items/{mine['id']}", headers=OWN).status_code == 200
+        assert c.put(f'/api/lights/spots/{sid}', json={'name': sp['name'], 'light': light['id'], 'units': 1, 'distance': 12, 'hours': 9, 'dim': 100, 'place': room['shelf']}, headers=OWN).status_code == 200
+        assert spot()['hours'] == 9 and spot()['layout'] is None
         again = c.get(f'/api/layouts/{lid}').get_json()
         assert next(x for x in again['lights'] if x['id'] == light['id'])['hours'] == 9
         r = c.post(f'/api/layouts/{lid}/items', json={'kind': 'light', 'light_id': light['id'], 'w': 5, 'd': 5, 'h': 2, 'z': 40}, headers=OWN)
-        assert r.get_json()['items'][-1]['hours'] == 9 and r.get_json()['items'][0]['hours'] == 0, 'and one already drawn keeps its own'
-        d = conn(); sid = d.execute("SELECT id FROM light_spots WHERE name='Layout test spot'").fetchone()[0]; d.close()
+        assert r.get_json()['items'][-1]['hours'] == 9, 'a light drawn where a spot has it starts with the spot\'s setting'
         assert c.delete(f'/api/lights/spots/{sid}', headers=OWN).status_code == 200
         assert c.post(f'/api/plants/{code}/status', json={'archived': True}, headers=OWN).status_code == 200
         assert c.delete(f'/api/layouts/{lid}', headers=OWN).status_code == 200

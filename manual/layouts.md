@@ -40,3 +40,19 @@ Part of the Plant record manual. The README in the folder above has how to start
 - A plant's own page says which layouts it is drawn on.
 - People who can only view can look and choose a thing to read its place, its size and its light. Changing a layout needs a connection to the plant server.
 
+## Grow lights reads your layouts
+
+A light spot on **Grow lights** is one setting for every plant in it: one distance from the leaves, and one number for all of them. A layout knows more: where each plant stands under the light, how tall it is, and how far to the side.
+
+So when a plant is drawn on a layout that has a grow light, Grow lights reads the plant's light from the drawing.
+
+- **Above your light spots**, Grow lights says which layouts it reads and how many of your plants are drawn there.
+- **In a spot**, each plant that is drawn has a line under it: its own daily light on the layout, how far under the light it is, and a link that opens the layout with that plant chosen.
+- **The plant's mark** (Too dim, A bit dim, Good, A bit bright, Too bright) is the layout's. Where the spot's one setting would have said something else, the line says what.
+- **No light reaches it** means the plant is drawn, but no light drawn on that layout reaches it. A plant on the level above a strip light is one.
+- **A plant that is not drawn** keeps what its spot gives, as before.
+- **A light's hours and brightness are set on the layout.** When the light of a spot is drawn on the layout of the spot's room or shelf, the spot takes the drawn light's hours and brightness. Change them on the layout and the spot follows. In **Change this spot** they are shown, with a link to the layout, and cannot be typed there. Take the light off the layout and the spot sets its own again.
+- **A plant under a light on a layout, but in no light spot** counts as having a light. The summary at the top of Grow lights counts it under **Under a light on a layout**, and the suggested layout leaves it out. They are listed above your spots.
+- **A plant's own page** says its light on the layout, under **Grow light this winter**.
+
+Move the plant or the light on the layout, or change the light's hours there, and Grow lights follows the next time you open it.

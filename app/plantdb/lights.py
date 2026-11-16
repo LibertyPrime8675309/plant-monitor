@@ -298,6 +298,40 @@ def step_down(L, s, plants, outdoor):
                   'text': "The spot's own setting."})
     return steps
 
+# Grow lights and your layouts (1.58.0, prototype #141; layouts.py fills LIGHTS_FROM_LAYOUTS). Ethan, November 16, 2026:
+# a light's hours and brightness are set on the layout, and a plant under a light drawn on a layout counts as having a light.
+def from_layouts(c):
+    """What your layouts say about your grow lights: the lights drawn on a layout of a place, and each drawn plant's light there."""
+    out = {'lights': [], 'plants': {}}
+    for fn in LIGHTS_FROM_LAYOUTS:
+        r = fn(c) or {}
+        out['lights'] += r.get('lights') or []
+        for code, rs in (r.get('plants') or {}).items(): out['plants'].setdefault(code, []).extend(rs)
+    return out
+
+def spot_layout(place_id, light_id, LL):
+    """The light drawn on the layout of a spot's own place, when there is one: its hours and brightness are the spot's."""
+    if place_id is None: return None
+    return next((x for x in LL['lights'] if x['light_id'] == light_id and x['pid'] == place_id), None)
+
+def spot_tie_body(c, b):
+    """A spot about to be saved: when its light is drawn on the layout of its place, the body takes that light's hours and
+    brightness (the layout sets them; a light drawn switched off is checked as 1 hour and saved as 0). Returns (body, the drawn light)."""
+    try:
+        place = int(b['place']) if b.get('place') not in (None, '', 'null') else None
+        light = int(b['light'])
+    except (KeyError, TypeError, ValueError): return b, None
+    tie = spot_layout(place, light, from_layouts(c))
+    return (b | {'hours': max(1, tie['hours']), 'dim': tie['dim_pct']}, tie) if tie else (b, None)
+
+def layout_lit(LL, assigned):
+    """Plants in no light spot that a light drawn on a layout reaches. They count as having a light."""
+    out = {}
+    for code, rs in LL['plants'].items():
+        r = next((x for x in rs if x['reached']), None)
+        if r and code not in assigned: out[code] = {k: r[k] for k in ('lid', 'lname', 'item', 'dli', 'verdict')}
+    return out
+
 def lights_state(c):
     lights = c.execute('SELECT * FROM lights ORDER BY sort, id').fetchall()
     byid = {L['id']: L for L in lights}
@@ -308,21 +342,26 @@ def lights_state(c):
     for code, sid in c.execute('SELECT plant_code, spot_id FROM light_assign'): assign.setdefault(sid, []).append(code)
     assigned = {code for codes in assign.values() for code in codes}
     outdoor = outdoor_dli(c)
+    LL = from_layouts(c)
     out_spots = []
     others = [(o['name'], light_mount(o)) for o in lights if o['count'] > 0]
     pphoto = place_photo_map(c)
     for s in spots:
         ps = [r for r in (c.execute('SELECT * FROM plants WHERE code=?', (code,)).fetchone() for code in assign.get(s['id'], [])) if r]
         L = byid.get(s['light_id'])
+        tie = spot_layout(s['place_id'], s['light_id'], LL)
+        if tie: s = dict(s) | {'hours': tie['hours'], 'dim_pct': tie['dim_pct']}       # set on the layout
         ev = spot_eval(c, s, L, ps)
         out_spots.append({'id': s['id'], 'name': s['name'], 'light_id': s['light_id'], 'light': L['name'] if L else 'A light that was removed',
                           'place_id': s['place_id'], 'place': place_label(c, s['place_id']), 'place_photo': pphoto.get(s['place_id']),
                           'units': s['units'], 'distance_in': s['distance_in'], 'hours': s['hours'], 'dim_pct': s['dim_pct'], 'notes': s['notes'],
                           'level': s['level'] or '', 'holder': s['holder'] or '',
+                          'layout': {'id': tie['lid'], 'name': tie['lname'], 'item': tie['item']} if tie else None,
                           'fit': spot_fit(c, s, L, ps, [x for x in others if L is None or x[0] != L['name']]),     # 1.56.0 (PLAN.md step 8d): can it be put there
                           'checked': spot_checked(c, s),                                                        # 1.56.0 (8e): set up and checked
                           'steps': step_down(L, s, ps, outdoor) if L else [], **ev})
-    plan, unplaced = light_plan(c, lights, used, assigned)
+    drawn = layout_lit(LL, assigned)
+    plan, unplaced = light_plan(c, lights, used, assigned | set(drawn))
     for p in plan:
         p['steps'] = step_down(byid[p['light_id']], p, [c.execute('SELECT * FROM plants WHERE code=?', (x,)).fetchone() for x in p['codes']], outdoor)
     cands = [{'code': r['code'], 'name': r['common_name'], 'site': r['site'], 'winter_plan': r['winter_plan'], 'need': plant_need(r),
@@ -340,7 +379,7 @@ def lights_state(c):
         return {'levels': sh.get('levels'), 'gaps_in': sh.get('gaps_in') or ([sh['gap_in']] * (sh['levels'] - 1) if sh.get('gap_in') and sh.get('levels') else [])}
     places = [p | {'spots': [s['id'] for s in out_spots if s['place_id'] == p['id']], 'photo': pphoto.get(p['id']), 'words': place_words(c, p['id']), **lv(p['id'])} for p in light_places(c)]
     return {'lights': lights_out, 'spots': out_spots, 'plan': plan, 'unplaced': unplaced, 'places': places,
-            'candidates': cands, 'assigned': {code: sid for sid, codes in assign.items() for code in codes}, 'outdoor_dli': outdoor,
+            'candidates': cands, 'assigned': {code: sid for sid, codes in assign.items() for code in codes}, 'drawn': drawn, 'readings': LL['plants'], 'outdoor_dli': outdoor,
             'verdicts': LIGHT_VERDICT, 'mount_kinds': MOUNT_KINDS, 'points': POINTS, 'holders': {k: v[0] for k, v in HOLDERS.items()}}
 
 def better_spot(spots, p, here=None):
@@ -503,8 +542,9 @@ def set_spot_plants(c, sid, spot_name, codes, who):
 def light_spot_add():
     """Set up a spot: {name, light, units, distance, hours, dim, notes, plants: [codes]}"""
     c = db()
-    b = request.get_json(silent=True) or {}
+    b, tie = spot_tie_body(c, request.get_json(silent=True) or {})
     s = spot_fields(b)
+    if tie: s['hours'] = tie['hours']                                      # the layout sets them
     L = c.execute('SELECT * FROM lights WHERE id=?', (int(_num(b, 'light', 1, 1e9, 'Light', required=True)),)).fetchone()
     if not L: abort(400, 'Choose one of your lights')
     who = editor()
@@ -563,8 +603,9 @@ def light_spot_one(i):
         audit_only(c, 'light', 'light_spot', spot_text(old, L0[0] if L0 else 'light', c), None, who, 'Grow light spot removed: ' + old['name'])
         c.commit()
         return jsonify(ok=True)
-    b = request.get_json(silent=True) or {}
+    b, tie = spot_tie_body(c, request.get_json(silent=True) or {})
     s = spot_fields(b)
+    if tie: s['hours'] = tie['hours']                                      # the layout sets them
     L = c.execute('SELECT * FROM lights WHERE id=?', (int(_num(b, 'light', 1, 1e9, 'Light', required=True)),)).fetchone()
     if not L: abort(400, 'Choose one of your lights')
     check_place(c, s['place_id'])
