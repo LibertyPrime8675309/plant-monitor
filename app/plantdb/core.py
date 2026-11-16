@@ -150,6 +150,7 @@ PUSH_EXTRA_KINDS = []      # (key, label, help): more kinds of phone notificatio
 PUSH_CLOCK = []            # fn(c): notifications that go by the clock; push_loop() calls each one on every round
 ICS_EXTRA = []             # fn(c, today, end) -> [{kind, uid, date, title, desc, path, plants, word}]: more all-day entries for the calendar file
 EXPORT_EXTRA = {}          # name -> fn(c) -> a list of rows: more lists for the JSON download
+LIGHTS_FROM_LAYOUTS = []   # fn(c) -> {'lights': [{pid, light_id, hours, dim_pct, lid, lname, item}], 'plants': {code: [reading]}}: grow lights drawn on layouts, for Grow lights
 INT_RANGES = {'id_confidence': (0, 100), 'temp_ideal_low': (-60, 150), 'temp_ideal_high': (-60, 150), 'heat_zone_high': (1, 12), 'heat_zone_low': (1, 12),
               'temp_damage_below': (-60, 150), 'temp_lethal_below': (-60, 150),
               'humidity_low': (0, 100), 'humidity_high': (0, 100),

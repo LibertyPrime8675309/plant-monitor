@@ -464,6 +464,10 @@ Each page below is a file in the `manual` folder. When the app says "see README"
 - Lights that fit the room
 - Compare lights
 
+### Room and shelf layouts: `manual/layouts.md`
+- Room and shelf layouts: Start a layout; Two drawings of the same things; Moving a thing; Putting a plant on a shelf in a room; Light here; Move it in the record; What it marks; Undo and Redo
+- Grow lights reads your layouts: a drawn plant's own light, in its spot and on its page
+
 ### Away from home, on the phone and offline: `manual/away-and-offline.md`
 - Using the app away from home: One-time setup; Sharing it with someone; Who can do what; Security, in short; Which user the app runs as; Opening it to your home network again (less safe); The names this computer answers to; If something doesn't work
 - On the phone and offline: Watering offline. When Tailscale comes back. Back goes back to where you were. Photos on the Add a plant form. Adding a plant without a connection. Several plants from photos, on a phone

@@ -247,6 +247,7 @@ Where a plant is has three parts: **outside or inside**, the **area or room**, a
 - On a plant's page, choose **Inside** or **Outside**, then the area or room, then the spot. **More about where** (the old "Spot (where exactly)") keeps whatever you wrote.
 - Your Rooms and shelves from the Grow lights page became rooms and spots, and a light spot's **Where** chooses from the same list.
 - **Plants without a spot** (from 1.56.3; it was Spots to sort out) is at the top of Rooms and spots. It lists every plant that is not on a spot from your list yet, each with its photo and name. They are grouped by what is written on them ("Spot (where exactly)", or nothing). For each group, choose the **Area or room** and then the **Spot**. Pick a spot already in that area, or **A new spot…** with its name, suggested from the words. It suggests a spot that is already there when the words name it. Press **Put in this spot**; untick a plant to leave it for later. **Put them all in their spots** does every group at once. The words written on a plant stay as they are.
+  - From 1.58.0 it shows ten groups at a time. Press **Show 10 more** for the next ten. When you put a group in its spot, the next one comes up. **Put them all in their spots** still does every group, the ones not shown yet too. A group of one plant shows that plant on one line, its name a link to its page.
 
 ### Pots and trays
 

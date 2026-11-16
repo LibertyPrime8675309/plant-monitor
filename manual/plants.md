@@ -168,7 +168,7 @@ Each home now carries these settings, on **Weather → Homes and places**, in it
 
 - **Country** (a two-letter code, filled in from the search when you add a place).
 - **Units there**: what people see who have not chosen units of their own in Display. Your own choice always wins.
-- **Care** (from 1.58.0, not on the main home): **Logged in this app** (the usual) or **Done outside the app**. The second is for a home where nobody records care in the app, such as your mother's house in Baraboo. Water all, a group's care and Today's water-them-all buttons leave its plants out. You can still log care for one of its plants on that plant's page. Baraboo starts as Done outside the app.
+- **Care** (from 1.58.0, not on the main home): **Logged in this app** (the usual) or **Done outside the app**. The second is for a home where nobody records care in the app, such as Baraboo. Water all, a group's care and Today's water-them-all buttons leave its plants out. You can still log care for one of its plants on that plant's page. Baraboo starts as Done outside the app.
 - **Seasons**: a winter with frost (the usual), a cool season where frost is rare, or wet and dry seasons with no frost. At a home with no frost, the Care section has no Winter plan, Cold-night checklist, Coming inside or Back outside, and Today has no cold-night, coming-inside or frost-dates blocks. The Care button opens the first page that applies there.
 
 Today follows the home chosen with the Location button for everything now: water, feed, Needed from you, coming inside, turning, the health walk-through and the frost blocks all list only that home's plants. The Plants page keeps its own Home filter.

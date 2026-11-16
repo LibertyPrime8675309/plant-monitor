@@ -1,0 +1,14 @@
+/* 1.58.0: a shorter Rooms and spots page. In Plants without a spot, each group's heading was a large title, so a long note written on
+   a plant took a screen of its own at large text; it is now bold at the size of the words around it. A group of one plant shows the
+   plant as one line, its name a link to its page, with no tick box to untick. On a narrow screen (a phone, or an iPad held upright)
+   a plant's name runs beside its tick box and photo and then under them, instead of in a narrow column. */
+.whs-card h3{font-family:inherit;font-size:1rem;font-weight:700;line-height:1.4}
+.whs-one{display:flex;gap:.6rem;align-items:center;margin:0 0 .4rem;min-width:0;overflow-wrap:anywhere}
+.whs-one img,.whs-one .job-nophoto{width:48px;height:48px;flex:0 0 48px;object-fit:cover;border-radius:6px}
+.whs-one a{display:inline-block;min-height:44px;padding-top:.6rem}
+html[data-narrow="1"] .whs-plant{display:block}
+html[data-narrow="1"] .whs-plant label{display:block;min-height:0}
+html[data-narrow="1"] .whs-plant label::after{content:"";display:table;clear:both}
+html[data-narrow="1"] .whs-plant label>input{float:left;margin:.3rem .6rem .2rem 0}
+html[data-narrow="1"] .whs-plant label>img,html[data-narrow="1"] .whs-plant label>.job-nophoto{float:left;margin:0 .6rem .2rem 0}
+html[data-narrow="1"] .whs-plant .whs-open{display:inline-block;min-height:44px;padding:.5rem 0}

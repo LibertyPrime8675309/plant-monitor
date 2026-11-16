@@ -1,0 +1,7 @@
+/* 1.58.0: a shorter winter plan on a narrow screen (a phone, or an iPad held upright). A plant's words used to run in a narrow column
+   beside its photo, and Moved indoors filled the width of the screen. Now the words run beside the photo and then under it, and the
+   button is as wide as its words (never under a fingertip, 44 px). The same list serves Already inside. */
+html[data-narrow="1"] .winter-list li{display:block}
+html[data-narrow="1"] .winter-list li::after{content:"";display:table;clear:both}
+html[data-narrow="1"] .winter-list li>img,html[data-narrow="1"] .winter-list li>span:first-child:empty{float:left;width:56px;height:56px;margin:.2rem .7rem .3rem 0}
+html[data-narrow="1"] .winter-list .btn{display:inline-block;width:auto;max-width:100%;min-width:44px;min-height:44px;white-space:normal}

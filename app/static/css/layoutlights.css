@@ -1,0 +1,15 @@
+/* Grow lights reads your layouts (1.58.0, js/layoutlights.js): the note above the spots, a line in each spot that has plants on
+   a layout, and a line under each such plant. Colours are the page's own tokens, so every theme and colour-vision setting reaches them. */
+.lg-note{border-left:.45rem solid var(--cyan);background:var(--sheet);padding:.6rem .9rem;margin:.3rem 0 1rem}
+.lg-note p{margin:0 0 .4rem}
+.lg-note .lg-fold{margin:.3rem 0 0}
+.lg-note .lg-fold>summary{display:inline-flex;max-width:100%}
+.lg-code{color:var(--ink-2)}
+ul.lt-plants li>.lg-line{grid-column:1/-1;display:block;overflow-wrap:anywhere;padding:0 0 .2rem}      /* a row of its own under the plant: beside the picture it had a few letters to a line */
+.lg-line .lv{margin-top:.15rem}
+.lg-spot{border-left:.3rem solid var(--cyan);padding:.1rem 0 .1rem .7rem;margin:.5rem 0}
+.lg-spot p{margin:0 0 .3rem}
+.lg-differ{color:var(--ink)}
+.lg-none{white-space:normal}
+.lg-sum{font-weight:700}
+.lg-plant .lg-hint{display:block;margin-top:.2rem}
