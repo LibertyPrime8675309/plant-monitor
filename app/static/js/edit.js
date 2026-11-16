@@ -16,7 +16,7 @@ function histShell(kind) {
   const S = HS[kind], mets = HKIND[kind];
   return html`${mets.length > 1 ? html`<div class="opts tabs" role="group" aria-label="What to look at">${mets.map(m => html`<button type="button" class="btn ${S.metric === m ? '' : 'ghost'} small" data-act="histmetric" data-kind="${kind}" data-m="${m}" aria-pressed="${String(S.metric === m)}">${HMAP[m][1]}</button>`)}</div>` : ''}
     <div class="chart-tools"><label>Readings from<select data-f="histsrc" data-kind="${kind}">${[['auto', 'Best available'], ['sensor', 'My sensor'], ['manual', 'Typed in by me'], ['weather', 'Online weather (outdoors)']].map(([v, l]) => html`<option value="${v}" ${S.source === v ? raw('selected') : ''}>${l}</option>`)}</select></label></div>
-    <p class="hint">Each day is marked by how that day's readings compared with this plant's range <em>as recorded on that day</em>. Weather history comes from the online weather for your area (outdoors); sensor and typed-in values appear once you have recorded them.</p>
+    <p class="hint">Each day is marked by how that day's readings compared with this plant's range <strong>as recorded on that day</strong>. Weather history comes from the online weather for your area (outdoors); sensor and typed-in values appear once you have recorded them.</p>
     <div id="cal-h-${kind}"></div><div id="hd-${kind}"></div>`;
 }
 async function histOpen(kind) {

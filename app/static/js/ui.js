@@ -8,9 +8,23 @@ function displayDialog() {
   const group = (key, title, opts, hint) => html`<fieldset class="opt-group"><legend>${title}</legend><div class="opts">${opts.map(([v, l]) => html`<label><input type="radio" name="pref-${key}" data-pref="${key}" value="${v}" ${P[key] === v ? raw('checked') : ''}><span>${l}</span></label>`)}</div>${hint ? html`<p class="hint">${hint}</p>` : ''}</fieldset>`;
   const G = {};
   G.size = group('size', 'Text and button size', [['100', 'Standard'], ['115', 'Comfortable'], ['135', 'Large'], ['160', 'Larger'], ['190', 'Largest']], 'Everything scales together, including buttons, bars and charts.');
-  G.space = group('space', 'Spacing', [['normal', 'Normal'], ['roomy', 'Roomy']], 'Roomy adds space between lines, letters and words.');
-  G.contrast = group('contrast', 'Contrast', [['normal', 'Normal'], ['high', 'High']], 'High contrast uses black and white, stronger lines and heavier outlines.');
-  G.theme = group('theme', 'Colours', [['auto', 'Match my device'], ['light', 'Light'], ['dark', 'Dark']]);
+  G.space = group('space', 'Spacing', [['normal', 'Normal'], ['roomy', 'Roomy'], ['widest', 'Widest']], 'Roomy adds space between lines, letters and words. Widest adds more again, with a blank line\'s worth between paragraphs.');
+  G.contrast = group('contrast', 'Contrast', [['auto', 'Match my device'], ['normal', 'Normal'], ['high', 'High']], 'High contrast uses black and white, stronger lines and heavier outlines. "Match my device" turns it on when your phone or computer is set to more contrast.');
+  G.theme = group('theme', 'Colours', [['auto', 'Match my device'], ['light', 'Light'], ['cream', 'Cream paper'], ['dark', 'Dark'], ['softdark', 'Soft dark']],
+    'Cream paper is a warm, less glaring page that many people with dyslexia or tired eyes find easier. Soft dark is grey with off-white letters, gentler than Dark for light-sensitive eyes. Light suits most people with astigmatism better than the dark ones.');
+  // 1.58.0: colours for colour blindness. Health tags carry a symbol in every setting (✓ Good, ~ Fair, ! Poor, !! Critical)
+  G.cvd = group('cvd', 'Colour vision', [['usual', 'Usual colours'], ['rg', 'Red-green colour blindness'], ['by', 'Blue-yellow colour blindness']],
+    'Changes the colours for good, fair and poor, chart lines and calendar marks so they stay apart. Red-green uses blue for good, amber for fair and raspberry for poor. Words and symbols always say the same thing as the colour.');
+  // 1.58.0: Reading. Letter shapes, one plain font, and the Easier reading button that sets them together
+  const fontOpt = (v, name, note) => [v, html`${name}<strong class="dv-font-sample" data-f="${v}" aria-hidden="true">Philodendron: water weekly, bright light</strong>${note ? html`<small class="dv-font-note">${note}</small>` : ''}`];
+  G.font = html`<div class="dv-fonts">${group('font', 'Letter shapes', [fontOpt('atkinson', 'Atkinson Hyperlegible (the usual)', 'Made so that similar letters, like b and d or I and l, look different.'),
+    fontOpt('lexend', 'Lexend', 'Wide, evenly spaced letters. Some readers with dyslexia read it faster.'), fontOpt('dyslexic', 'OpenDyslexic', 'Heavier at the bottom, so letters do not seem to flip. Some readers like it.')],
+    'Try each one for a page or two: which helps is different for every reader.')}</div>`;
+  G.plain = group('plain', 'Headings and plant names', [['0', 'Usual: headings in a book font, Latin names in italics'], ['1', 'One plain font: no italics and no capitals']],
+    'Slanted and all-capital words are harder to read with dyslexia. Latin names stay in the same place, just upright.');
+  const easyOn = easyReadingOn(P);
+  G.easy = html`<div class="dv-easy" id="dv-easy"><p><strong>Easier reading</strong> sets the letter shapes to Lexend, one plain font, Roomy spacing, shorter lines and ${P.theme === 'dark' || P.theme === 'softdark' || document.documentElement.dataset.mode === 'dark' ? 'Soft dark' : 'Cream paper'} colours, all at once. You can change any of them after.</p>
+    <p class="row">${easyOn ? html`<span>Easier reading is on.</span>` : html`<button class="btn small" type="button" data-act="easyread">Use easier reading</button>`}${easyPrev() ? html`<button class="btn ghost small" type="button" data-act="easyundo">Put back how it was</button>` : ''}</p></div>`;
   G.navside = group('navside', 'Navigation menu side', [['left', 'Left'], ['right', 'Right']], 'The Navigation menu lists the sections of the page you are on. Display is at its bottom.');
   G.navopen = group('navopen', 'Navigation menu', [['1', 'Open'], ['0', 'Folded away (the Navigation button opens it)']], 'On narrow windows and phones it starts folded and covers the page while open.');
   G.width = group('width', 'Page width', [['normal', 'Normal'], ['wide', 'Use the full width of the window']], 'Full width gives charts and tables more room on a wide screen.');
@@ -39,7 +53,8 @@ function displayDialog() {
   const SH = window.PlantSync ? window.PlantSync.shared() : {};
   const share = part => html`<fieldset class="opt-group dv-share"><legend>Where these apply</legend><label class="chk"><input type="checkbox" data-dvshare="${part}" ${SH[part] ? raw('checked') : ''}>Use these on every device I sign in on</label>
     <p class="hint">Off (the usual): only this device. On: any phone, tablet or computer where you sign in and tick this too gets them.</p></fieldset>`;
-  const SECS = [['Text and colours', html`${G.size}${G.space}${G.contrast}${G.theme}${share('text')}`], ['Page layout', html`${G.width}${G.lines}${G.notes}${G.layout}${G.navside}${G.navopen}${share('layout')}`],
+  const SECS = [['Text and colours', html`${G.size}${G.contrast}${G.theme}${G.cvd}${share('text')}`], ['Reading', html`${G.easy}${G.font}${G.plain}${G.space}${G.lines}${share('reading')}`],
+    ['Page layout', html`${G.width}${G.notes}${G.layout}${G.navside}${G.navopen}${share('layout')}`],
     ['Units', G.units], ['Identify', G.idmode], ['Reading aloud', html`${speak}${share('read')}`], ['Photos and touch', html`${G.photofit}${G.swipe}${share('photos')}`], ['Keyboard and voice', html`${G.keys}${G.vsearch}${share('keys')}`]];
   const keep = DVSCROLL; DVSCROLL = 0;
   modal(html`<form method="dialog" class="dv-form">
@@ -63,6 +78,22 @@ function displayDialog() {
   mark();
 }
 let DVSCROLL = 0;              // Reset to defaults redraws the window; it stays where it was
+// 1.58.0: Easier reading, one button for the reading settings together. What they were before is kept on this device, for "Put back how it was".
+const EASY_KEYS = ['font', 'plain', 'space', 'lines', 'theme'];
+function easyReadingOn(P) { return P.font !== 'atkinson' && P.plain === '1' && P.space !== 'normal' && P.lines === 'short' && (P.theme === 'cream' || P.theme === 'softdark'); }
+function easyPrev() { try { return JSON.parse(localStorage.getItem('plantdb.easyprev') || 'null'); } catch (e) { return null; } }
+function easyReading() {
+  const P = window.PlantPrefs.get(), dark = P.theme === 'dark' || P.theme === 'softdark' || document.documentElement.dataset.mode === 'dark';
+  const prev = {}; EASY_KEYS.forEach(k => { prev[k] = P[k]; });
+  try { localStorage.setItem('plantdb.easyprev', JSON.stringify(prev)); } catch (e) { /* this visit only */ }
+  const want = { font: 'lexend', plain: '1', space: P.space === 'widest' ? 'widest' : 'roomy', lines: 'short', theme: dark ? 'softdark' : 'cream' };
+  EASY_KEYS.forEach(k => window.PlantPrefs.set(k, want[k]));
+}
+function easyUndo() {
+  const prev = easyPrev(); if (!prev) return;
+  EASY_KEYS.forEach(k => { if (prev[k]) window.PlantPrefs.set(k, prev[k]); });
+  try { localStorage.removeItem('plantdb.easyprev'); } catch (e) { /* nothing kept */ }
+}
 // ---------- swipe between plants on touch screens (added in 1.14.1) ----------
 // A quick sideways swipe on a plant page opens the next plant (swipe left) or the previous one (swipe right), the same as
 // the Previous / Next Plant buttons. It stays out of the way of scrolling, zooming, tables and charts that scroll sideways,

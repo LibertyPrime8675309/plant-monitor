@@ -800,7 +800,7 @@ html[data-role=viewer] :is([data-act=boporch], [data-act=boout], [data-act=bolea
 .ps-what{min-width:0}
 .ps-code{font-weight:700;white-space:nowrap}
 .ps-where{display:block}
-.ps-none,.ps-note{margin:.2rem 0;font-style:italic}
+.ps-none,.ps-note{margin:.2rem 0}   /* 1.58.0: not in italics (harder to read with dyslexia) */
 .ps-pls{margin:.3rem 0 0;padding-left:1.2rem}
 .ps-pls li{margin:.25rem 0;break-inside:avoid}
 /* each day on its own page: shown on screen as a dashed line where the page will turn */
@@ -1144,7 +1144,7 @@ ul.srcs li{margin:.25rem 0;overflow-wrap:anywhere}
 .pc-col:empty{display:none}
 .pc-boxes>.pc-box{flex:1 1 100%}
 .pc-box{border:2px solid var(--line);border-left:.45rem solid var(--ink);border-radius:6px;padding:.55rem .8rem .6rem;break-inside:avoid;min-width:0}
-.pc-box h3{margin:0 0 .2rem;font-size:1.05rem;text-transform:uppercase;letter-spacing:.06em}
+.pc-box h3{margin:0 0 .2rem;font-size:1.1rem}   /* 1.58.0: no longer in capitals (harder to read with dyslexia) */
 .pc-box p{margin:.25rem 0;overflow-wrap:anywhere}
 .pc-main-fact{font-size:1.4rem;font-weight:700;line-height:1.25}
 .pc-printed{margin:.3rem 0 0;font-size:1em;color:var(--ink-2)}            /* 1.20.0: as big as the rest of the card's text */

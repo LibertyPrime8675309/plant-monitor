@@ -1,20 +1,24 @@
 /* Display settings, applied before the page paints. Stored in this browser only. */
 (function () {
-  var D = { size: '115', space: 'normal', contrast: 'normal', layout: 'split', theme: 'auto', navside: 'left', navopen: '1', width: 'normal',
+  var D = { size: '115', space: 'normal', contrast: 'auto', layout: 'split', theme: 'auto', navside: 'left', navopen: '1', width: 'normal',
             readbtns: '1', rate: '1', voice: 'auto', keys: '1',   // 1.8.0: read aloud, reading speed and voice, keyboard shortcuts
             swipe: '1',                                           // 1.14.1: swipe between plants
             vsearch: '1',                                         // search by voice: '1' buttons and say what was heard, 'quiet' buttons only, '0' hidden
             photofit: 'auto',                                     // 1.21.0: Plants page photos: auto (wide ones whole), fill, whole
             lines: 'full',                                        // 1.26.0: line length: full (use the width) or short (about 70 characters)
-            notes: 'show' };                                      // 1.57.0: small notes under controls: 'show', or 'ask' (a Note chip that opens them)
+            notes: 'show',                                        // 1.57.0: small notes under controls: 'show', or 'ask' (a Note chip that opens them)
+            font: 'atkinson', plain: '0', cvd: 'usual' };          // 1.58.0: letter shapes, one plain font, colour vision. contrast 'auto' follows the device
   var p = {};
   try { p = JSON.parse(localStorage.getItem('plantdb.display') || '{}') || {}; } catch (e) { p = {}; }
   var r = document.documentElement;
+  var TONE = { cream: ['light', 'cream'], softdark: ['dark', 'soft'] };
+  function mq(q) { return !!(window.matchMedia && matchMedia(q).matches); }
   function apply(v) {
     var x = {}; for (var k in D) x[k] = (v && v[k]) || D[k];
     r.setAttribute('data-size', x.size);
     r.setAttribute('data-space', x.space);
-    r.setAttribute('data-contrast', x.contrast);
+    // 1.58.0: "Match my device" (the usual) is high contrast when the device asks for more contrast
+    r.setAttribute('data-contrast', x.contrast === 'auto' ? (mq('(prefers-contrast: more)') ? 'high' : 'normal') : x.contrast);
     r.setAttribute('data-layout', x.layout);
     r.setAttribute('data-navside', x.navside);
     r.setAttribute('data-navpref', x.navopen);
@@ -24,7 +28,15 @@
     r.setAttribute('data-photofit', x.photofit);
     r.setAttribute('data-lines', x.lines);
     r.setAttribute('data-notes', x.notes);
-    if (x.theme === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', x.theme);
+    // 1.58.0: Cream paper is light and Soft dark is dark underneath (data-theme), with data-tone saying which; data-mode is light or
+    // dark once "Match my device" is worked out, for the colours that differ between the two
+    var tone = TONE[x.theme], th = tone ? tone[0] : x.theme;
+    if (th === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', th);
+    if (tone) r.setAttribute('data-tone', tone[1]); else r.removeAttribute('data-tone');
+    r.setAttribute('data-mode', th === 'auto' ? (mq('(prefers-color-scheme: dark)') ? 'dark' : 'light') : th);
+    r.setAttribute('data-font', x.font);
+    r.setAttribute('data-plain', x.plain);
+    if (x.cvd === 'usual') r.removeAttribute('data-cvd'); else r.setAttribute('data-cvd', x.cvd);
     var rem = parseFloat(getComputedStyle(r).fontSize) || 16;
     r.setAttribute('data-narrow', (window.innerWidth / rem) < 58 ? '1' : '0');
     if (r.getAttribute('data-touch') !== '1')    // 1.26.0: a phone or tablet with no mouse or keyboard (once seen, kept for the visit)
@@ -39,6 +51,11 @@
   };
   apply(p);
   window.addEventListener('resize', function () { apply(p); });
+  // the device's own light or dark and contrast settings can change while the page is open
+  if (window.matchMedia) ['(prefers-color-scheme: dark)', '(prefers-contrast: more)'].forEach(function (q) {
+    var m = matchMedia(q), f = function () { apply(p); };
+    if (m.addEventListener) m.addEventListener('change', f); else if (m.addListener) m.addListener(f);
+  });
 })();
 /* 1.29.0: settings that follow you. The keys below are saved on the server for your sign-in (the owner's on this computer) as well
    as in this browser, so any device you sign in on picks them up. Display settings stay on this device unless you tick "Use these on
@@ -47,10 +64,12 @@
   var KEYS = ['plantdb.filters', 'plantdb.library', 'plantdb.fungi', 'plantdb.ltlights', 'plantdb.auditf', 'plantdb.calview', 'plantdb.wxchart',
               'plantdb.wxhide', 'plantdb.wxper', 'plantdb.idscope', 'plantdb.place', 'plantdb.frosthide', 'plantdb.shopping', 'plantdb.shoplist',
               'plantdb.units', 'plantdb.idmode', 'plantdb.compare'];                    // 1.47.0: °F or °C, inches or cm; 1.51.0: Identify's two ways, per page   // 1.30.0: Shopping's home and kind; 1.34.0: the shopping list's extras
-  var PARTS = { text: ['size', 'space', 'contrast', 'theme'], layout: ['width', 'lines', 'notes', 'layout', 'navside', 'navopen'], read: ['readbtns', 'rate', 'voice'],
+  // 1.58.0: Reading has its own part (spacing and line length moved there); a device that shared Text and colours shares Reading too
+  var PARTS = { text: ['size', 'contrast', 'theme', 'cvd'], reading: ['font', 'plain', 'space', 'lines'], layout: ['width', 'notes', 'layout', 'navside', 'navopen'], read: ['readbtns', 'rate', 'voice'],
                 photos: ['photofit', 'swipe'], keys: ['keys', 'vsearch'] };
   var LS = window.localStorage, setI = Storage.prototype.setItem, remI = Storage.prototype.removeItem, queue = {}, timer = 0, applying = false;
-  function shared() { try { return JSON.parse(LS.getItem('plantdb.dshare') || '{}') || {}; } catch (e) { return {}; } }
+  function shared() { var sh; try { sh = JSON.parse(LS.getItem('plantdb.dshare') || '{}') || {}; } catch (e) { sh = {}; }
+    if (sh.text && !('reading' in sh)) sh.reading = true; return sh; }
   function send() {
     var body = queue; queue = {}; timer = 0;
     if (!Object.keys(body).length) return;

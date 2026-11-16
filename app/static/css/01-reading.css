@@ -1,0 +1,81 @@
+/* 1.58.0: easier reading and more colours (Display → Text and colours, and Reading).
+   - Two more colour themes: Cream paper (a warm, softer light page) and Soft dark (grey, not navy, with off-white text). They are
+     light and dark underneath (data-theme), with data-tone saying which, so everything written for the light or dark theme still applies.
+   - Colour vision (data-cvd): status colours (good, fair, poor), chart lines and calendar badges that stay apart for red-green
+     (rg) or blue-yellow (by) colour blindness. Health tags carry a symbol too, so nothing rests on colour alone.
+   - Reading (dyslexia and tired eyes): letter shapes (data-font), one plain font with no italics or capitals (data-plain), and
+     the widest spacing (data-space=widest: WCAG 1.4.12's text spacing).
+   prefs.js sets the attributes before the page paints, and data-mode (light or dark, after "Match my device" is worked out).
+   Every text colour here is 7 to 1 or better on the page, on white and on its own soft tint (test_colours.py measures them). */
+
+@font-face{font-family:"Lexend";font-weight:400;font-style:normal;font-display:swap;src:url(/fonts/lexend-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"Lexend";font-weight:700;font-style:normal;font-display:swap;src:url(/fonts/lexend-latin-700-normal.woff2) format("woff2")}
+@font-face{font-family:"OpenDyslexic";font-weight:400;font-style:normal;font-display:swap;src:url(/fonts/opendyslexic-latin-400-normal.woff2) format("woff2")}
+@font-face{font-family:"OpenDyslexic";font-weight:700;font-style:normal;font-display:swap;src:url(/fonts/opendyslexic-latin-700-normal.woff2) format("woff2")}
+
+/* ---- Cream paper ---- */
+:root[data-tone=cream]{
+  --paper:#f6efdf; --sheet:#fffaf0; --ink:#231c12; --ink-2:#4a3f30; --line:#c9bb9c; --line-2:#e8dcc2;
+}
+:root[data-tone=cream][data-contrast=high]{
+  --paper:#fdf6e3; --sheet:#fffbf2; --ink:#000; --ink-2:#1f1a12; --line:#4d4232; --line-2:#8a7b62;
+}
+
+/* ---- Soft dark (with high contrast it is the usual high-contrast dark) ---- */
+:root[data-tone=soft]:not([data-contrast=high]){
+  --paper:#1b1c1e; --sheet:#25272a; --ink:#e6e4df; --ink-2:#c8c5be; --line:#55585e; --line-2:#34363a;
+  --cyan:#a6ceef; --cyan-ink:#1b1c1e; --cyan-soft:#23384a;
+  --moss:#8fd3a5; --moss-soft:#22382a; --ochre:#e6c27a; --ochre-soft:#3d3320; --on-ochre-link:#b7d9f5; --on-soft-link:#bcdcf4;
+  --madder:#f2b3a8; --madder-soft:#42292a; --critical:#ff9fb7;
+  --top-bg:#141516; --focus:#a6ceef; --on-bad:#1b1c1e;
+}
+
+/* ---- Colour vision. Light pages (light, cream; normal or high contrast) ---- */
+:root[data-cvd=rg][data-mode=light]{
+  --moss:#1f1f90; --moss-soft:#e4e5f7; --ochre:#6a4600; --madder:#881842; --madder-soft:#f6e0e9; --critical:#5c0d2c;
+  --z-ok:#8f9aa1;
+}
+:root[data-cvd=by][data-mode=light]{ --z-ok:#8f9aa1; }
+:root[data-cvd][data-mode=light]{
+  --s1:#0072b2; --s2:#d55e00; --s3:#009e73; --s4:#e69f00; --s5:#cc79a7; --s6:#56b4e9;
+}
+/* Dark pages (dark, soft dark; normal or high contrast) */
+:root[data-cvd=rg][data-mode=dark]{
+  --moss:#b4b8ff; --moss-soft:#262850; --ochre:#e9bd6a; --madder:#ffa8c8; --madder-soft:#4a2436; --critical:#ffc4dc;
+  --z-ok:#66737c;
+}
+:root[data-cvd=by][data-mode=dark]{ --ochre:#d8e070; --ochre-soft:#3a3c14; --z-ok:#66737c; }
+:root[data-cvd][data-mode=dark]{
+  --s1:#56b4e9; --s2:#e8762b; --s3:#2bb38c; --s4:#e6a91a; --s5:#d98cb6; --s6:#8fcff2;
+}
+
+/* Health tags say it with a symbol too, in every theme (the word is still the name a screen reader gives) */
+.tag.h-good::before{content:"✓ ";content:"✓ " / ""}
+.tag.h-fair::before{content:"~ ";content:"~ " / ""}
+.tag.h-poor::before{content:"! ";content:"! " / ""}
+.tag.h-critical::before{content:"!! ";content:"!! " / ""}
+
+/* ---- Letter shapes ---- */
+:root[data-font=lexend]{--sans:"Lexend","Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif}
+:root[data-font=dyslexic]{--sans:"OpenDyslexic","Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif}
+
+/* ---- One plain font: headings in the reading font, no italics, no capitals, no squeezed letters ---- */
+:root[data-plain="1"]{--serif:var(--sans)}
+:root[data-plain="1"] *{font-style:normal!important;text-transform:none!important;font-variant:normal!important}
+:root[data-plain="1"] :is(h1,h2,h3,h4,legend,.brand){letter-spacing:var(--ls)}
+
+/* ---- Widest spacing (WCAG text spacing: lines 1.5 times the letters and more, letters .12em, words .16em, paragraphs 2em) ---- */
+html[data-space=widest]{--lh:2; --ls:.12em; --ws:.16em; --para:2em}
+html[data-space=widest] :is(h1,h2,h3){line-height:1.5;letter-spacing:var(--ls);word-spacing:var(--ws)}
+
+/* ---- The Easier reading button in Display ---- */
+.dv-easy{border:2px solid var(--line);border-radius:8px;padding:.8rem 1rem;background:var(--sheet);grid-column:1/-1}
+.dv-easy p{margin:.3rem 0}
+.dv-easy .row{display:flex;flex-wrap:wrap;gap:.6rem;align-items:center}
+.dv-fonts .opts{flex-direction:column;align-items:stretch}
+.dv-fonts .opts span{flex-direction:column;align-items:flex-start;justify-content:flex-start;text-align:left;gap:.2rem;padding:.6rem 1rem}
+.dv-font-sample{display:block;font-size:1.2rem;font-weight:400}
+.dv-font-note{display:block;font-weight:400;font-size:1rem}
+.dv-font-sample[data-f=atkinson]{font-family:"Atkinson Hyperlegible",sans-serif}
+.dv-font-sample[data-f=lexend]{font-family:"Lexend",sans-serif}
+.dv-font-sample[data-f=dyslexic]{font-family:"OpenDyslexic",sans-serif}
