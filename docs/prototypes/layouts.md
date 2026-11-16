@@ -25,8 +25,9 @@ The record already holds most of what such a drawing needs: each shelf's measure
   - A plant too tall for its level is told so, and by how much. From the front such a shelf is its boards, open between them.
 - **A shelf carries what is on it** (Ethan, November 15, 2026: "Plants should be carried with shelves"). Move a shelf, a table or anything else, by dragging, by the arrow keys or by typing, and what stands on it (on any of its levels) or hangs under it goes with it, and so does what stands on those. It is one change: Undo puts all of them back together. A thing locked in place stays where it is.
 - **In a room, the front view looks at one wall at a time** (Ethan, November 15, 2026: "focus its perspective on one wall at a time, to reduce screen clutter").
-  - It starts at the back wall and draws only the things at that wall. **Front view looks at**, above that drawing, chooses the back, left, right or front wall, or every wall at once, and says how many things each has.
-  - A thing is at a wall when it is within 6 in of it, or nearer to it than to any other wall, so every thing is in some wall's view. What stands on a shelf is wherever the shelf is. A thing in a corner is at both walls.
+  - It starts at the back wall and draws only the things at that wall. **Front view looks at**, above that drawing, chooses the back, left, right or front wall, the middle, or everything at once; the line above the drawing says how many things are there.
+  - A thing is at a wall when it is within 2 ft of it. What stands on a shelf is wherever the shelf is. A thing in a corner is at both walls.
+  - A thing more than 2 ft from every wall is in no wall's view. Those have a view of their own, **Middle**, seen from the front of the room (Ethan, November 15, 2026: "Things far away from every wall should have a view of their own and not be shown in the front view for the specified wall").
   - A wall is looked at from inside the room: left and right are your left and right as you face it, the words under the drawing say which way the room runs, and the arrow keys and dragging follow.
   - Choosing a thing takes the front view to its wall. In the top view the wall looked at has a heavy edge.
   - Where two names along the floor would run into each other, the nearer thing keeps its name and the other keeps its number.
@@ -97,6 +98,10 @@ A room's front view, one wall at a time: the back wall, then the left wall of th
 
 ![The front view looking at the left wall](layouts/laptop-wall-left.png)
 
+The things far from every wall, in the view of their own:
+
+![The front view of the middle of the room](layouts/laptop-wall-mid.png)
+
 Phone, dark mode, large text (one view at a time; nothing scrolls sideways):
 
 ![Phone, dark, large text: the top view](layouts/phone-dark-big-top.png) ![Phone, dark, large text: the front view](layouts/phone-dark-big-front.png)
@@ -157,6 +162,12 @@ Then open http://127.0.0.1:8080/#/layouts, press **Start a layout** and choose *
 - **The step that failed once in four runs.** The fault was in the check, not in the page. The step typed two boxes, waited for the "Overlap" mark, and then read where the plant was. The first box alone already makes the two plants overlap, so when that box's save was slow the step read the place before the second box had been taken. With every save held back 400 ms the step failed 10 times in 10, on the page as it was and as it is; at the usual speed it failed 2 times in 10 in a loop. The step now waits for the place and the mark together.
   - The first fix (reading a typed box before waiting for earlier saves) did not cause or cure that failure, but it closed a real fault: with one save on its way and two more boxes typed behind it, the page as it was lost a typed value 10 times in 10; now it keeps each one. The check has a step for it.
 
+## What Ethan said last on November 15, 2026
+"1. Things far away from every wall should have a view of their own and not be shown in the "front view" for the specified wall. 2. The front view turning to the wall of what I choose is correct. 3. Proceed with grow lights reading a layout when done"
+
+- **1:** built. "Far" is more than 2 ft from every wall; nearer than that, a thing is at that wall.
+- **2:** stays as built.
+- **3:** Grow lights reading a layout is being built in a pull request of its own, on top of this one.
+
 ## Questions for Ethan
-1. **Things in the middle of a room.** A sofa or a floor lamp out in the room is drawn in the view of the wall it is nearest to. Is that right, or should things far from every wall have a view of their own?
-2. **The front view follows the chosen thing.** Choose a thing at another wall and the front view turns to that wall. Is that what you want, or should it stay on the wall you picked until you change it?
+1. **How far is far.** A thing is at a wall when it is within 2 ft of it, and away from the walls beyond that. Is 2 ft the right distance?

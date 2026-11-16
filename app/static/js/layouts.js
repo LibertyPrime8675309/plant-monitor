@@ -420,32 +420,34 @@ function lyLevelNow() {
 // ---------- the front view, one wall at a time ----------
 // In a room, an area or a space of your own the front view looks at one wall from inside and draws only the things at that wall
 // (Ethan, November 15, 2026: "focus its perspective on one wall at a time, to reduce screen clutter"). A thing is at a wall when it
-// is within LY_WALL_IN of it, or when no wall is nearer; what stands on a thing or hangs under it is wherever that thing is. So
-// every thing is in at least one wall's view. 'all' draws everything, looking at the back wall, which is also what the layout
-// of one shelf or spot always does. Looking at a wall, the view's left is your left as you face it:
+// is within LY_WALL_IN of it; what stands on a thing or hangs under it is wherever that thing is. A thing far from every wall is
+// at none of them: those have a view of their own, 'mid' (Ethan, November 15: "Things far away from every wall should have a view
+// of their own and not be shown in the front view for the specified wall"). So every thing is in at least one view. 'all' draws
+// everything, as the layout of one shelf or spot always does. 'mid' and 'all' look the way the back wall's view does. Looking at
+// a wall, the view's left is your left as you face it:
 //   back   left to right is the top view's left to right
 //   right  left to right is the top view's back to front
 //   front  left to right is the top view's right to left
 //   left   left to right is the top view's front to back
-const LY_WALLS = { back: 'The back wall', left: 'The left wall', right: 'The right wall', front: 'The front wall', all: 'Every wall at once' };
-const LY_WALL_OPT = { back: 'Back wall', left: 'Left wall', right: 'Right wall', front: 'Front wall', all: 'Every wall' };      // as the list beside the front view has them
+const LY_WALLS = { back: 'The back wall', left: 'The left wall', right: 'The right wall', front: 'The front wall', mid: 'The middle, away from the walls', all: 'Everything at once' };
+const LY_WALL_OPT = { back: 'Back wall', left: 'Left wall', right: 'Right wall', front: 'Front wall', mid: 'Middle', all: 'Everything' };      // as the list beside the front view has them: short, so none is cut off in the list at the largest, widest text on a phone
 const LY_WALL_ENDS = { back: ['Left', 'Right'], right: ['Back', 'Front'], front: ['Right', 'Left'], left: ['Front', 'Back'] };      // what is at the view's left and right
-const LY_WALL_IN = 6;
+const LY_WALL_IN = 24;                                  // nearer a wall than this (2 ft), a thing is at that wall
 const lyWalled = L => !L.spot_id;
-const lyFaceOf = wall => (wall && wall !== 'all' ? wall : 'back');
+const lyFaceOf = wall => (LY_WALL_ENDS[wall] ? wall : 'back');
 const lyFaceNow = () => (LY && lyWalled(LY.d) ? lyFaceOf(LY.wall) : 'back');
 const lySide = face => face === 'left' || face === 'right';
 const lyAcrossW = (L, face) => (lySide(face) ? L.depth_in : L.width_in);                                   // how wide that wall is
 const lyAc = (L, it, face) => (face === 'left' ? L.depth_in - it.y - it.d : face === 'right' ? it.y : face === 'front' ? L.width_in - it.x - it.w : it.x);      // where a thing is across the view, from its left
 const lyAw = (it, face) => (lySide(face) ? it.d : it.w);                                                  // and how wide it is there
 const lyNear = (L, it, face) => (face === 'left' ? it.x + it.w : face === 'right' ? L.width_in - it.x : face === 'front' ? L.depth_in - it.y : it.y + it.d);      // how far its near side is from the wall: the larger, the nearer to you
-function lyWallsOf(L, it, seen) {                        // the walls a thing is at, the first being the one the front view goes to for it
+function lyWallsOf(L, it, seen) {                        // the walls a thing is at (or 'mid' alone), the first being the view the front view goes to for it
   const u = lyUnder(L, it), c = u && u !== 'floor' ? u : it.kind === 'light' && !u ? lyOver(L, it) : null;
   seen = seen || new Set(); seen.add(it.id);
   if (c && c !== 'top' && !seen.has(c.id)) return lyWallsOf(L, c, seen);
   const d = { back: Math.max(0, it.y), left: Math.max(0, it.x), right: Math.max(0, L.width_in - it.x - it.w), front: Math.max(0, L.depth_in - it.y - it.d) };
-  const least = Math.min(d.back, d.left, d.right, d.front);
-  return Object.keys(d).filter(w => d[w] <= Math.max(least + LY_EPS, LY_WALL_IN));
+  const at = Object.keys(d).filter(w => d[w] <= LY_WALL_IN + LY_EPS);
+  return at.length ? at : ['mid'];
 }
 const lyWallSet = (L, wall) => (wall === 'all' ? null : new Set(L.items.filter(it => lyWallsOf(L, it).includes(wall)).map(it => it.id)));      // the things a wall's view draws (null: all of them)
 // The front view goes to the wall the thing is at, unless it is at the wall being looked at already. Called when a thing is
@@ -754,7 +756,7 @@ function lyOpts(view) {
     dim: view === 'top' ? lyDim(LY.d, lyLevelNow()) : null,
     label: view === 'top' ? `Top view of ${LY.d.name}, looking down. The back is at the top of the drawing and the front at the bottom.`
       : `Front view of ${LY.d.name}${walled && LY.wall !== 'all' ? `, looking at ${LY_WALLS[LY.wall].toLowerCase()}` : ''}. The floor is at the bottom of the drawing.` };
-  if (view === 'top') o.wallmark = walled && LY.wall !== 'all' && lyViewNow() === 'both' ? LY.wall : null;
+  if (view === 'top') o.wallmark = walled && LY_WALL_ENDS[LY.wall] && lyViewNow() === 'both' ? LY.wall : null;
   else { o.face = lyFaceNow(); o.only = walled ? lyWallSet(LY.d, LY.wall) : null; o.noname = lyNameClash(LY.d, o); }
   o.along = lyLabSpots(LY.d, view, o);
   return o;
@@ -765,9 +767,9 @@ function lyFigure(view) {
   return html`<figure class="ly-fig" data-view="${view}">
     <figcaption><strong>${top ? 'Top view' : one ? `Front view: ${LY_WALLS[LY.wall].toLowerCase()}` : 'Front view'}</strong> <span class="muted">${lenF(top ? L.width_in : lyAcrossW(L, face))} wide, ${top ? `${lenF(L.depth_in)} deep` : `${lenF(L.height_in)} high`}.${
       LY.grid && Math.abs(step - L.grid_in) > 0.006 ? ` The squares drawn here are ${lenF(step)}.` : ''}${top && lv ? ` Showing ${lv.name}; the other levels are faint.` : ''}${
-      top && o.wallmark ? ' The heavy edge is the wall the front view looks at.' : ''}</span></figcaption>
-    ${!top && walled ? html`<label class="f ly-wall noprint">Front view looks at<select id="ly-wall" data-act="lywall">${Object.keys(LY_WALLS).map(w => { const n = w === 'all' ? L.items.length : lyWallSet(L, w).size;
-      return html`<option value="${w}" ${LY.wall === w ? raw('selected') : ''}>${LY_WALL_OPT[w]}: ${n} ${n === 1 ? 'thing' : 'things'}</option>`; })}</select></label>` : ''}
+      top && o.wallmark ? ' The heavy edge is the wall the front view looks at.' : ''}${
+      !top && one ? (o.only.size ? ` ${o.only.size} of the ${L.items.length} things are here.` : ' Nothing is here.') : ''}</span></figcaption>
+    ${!top && walled ? html`<label class="f ly-wall noprint">Front view looks at<select id="ly-wall" data-act="lywall">${Object.keys(LY_WALLS).map(w => html`<option value="${w}" ${LY.wall === w ? raw('selected') : ''}>${LY_WALL_OPT[w]}</option>`)}</select></label>` : ''}
     <div class="ly-frame"><p class="ly-edge" aria-hidden="true">${top ? 'Back' : 'Top'}</p>
       <div class="ly-scroll" id="ly-scroll-${view}">${lySvg(L, view, o)}</div>
       <p class="ly-edge ly-edge-row" aria-hidden="true"><span>${ends[0]}</span><span>${top ? 'Front' : 'Floor'}</span><span>${ends[1]}</span></p></div></figure>`;
@@ -865,7 +867,7 @@ function lyPanel() {                                    // the chosen thing: wha
   const P = it.plant ? L.plants.find(p => p.code === it.plant) : null;
   box.innerHTML = rend(html`<div class="ly-who">${it.photo ? html`<img src="${thumbUrl(it.photo)}" alt="" loading="lazy">` : ''}
       <p><span class="ly-num">${it.sort}</span> <strong>${it.plant && !it.gone ? html`<a href="#/plant/${enc(it.plant)}">${it.name}</a>` : it.name}</strong><br>
-        <span class="muted">${L.kinds[it.kind]}${it.plant ? ', ' : ''}${it.plant ? html`<span class="code">${it.plant}</span>` : ''}${it.gone ? '. It is no longer in the record.' : ''}</span></p></div>
+        <span class="muted">${L.kinds[it.kind]}${it.plant ? ',' : ''}</span>${it.plant ? html` <span class="code">${it.plant}</span>` : ''}${it.gone ? html`<span class="muted">. It is no longer in the record.</span>` : ''}</p></div>
     <ul class="ly-flist" id="ly-p-find">${LY.F.filter(f => f.ids.includes(it.id)).map(lyFindLi)}</ul>
     ${!linked ? html`<label class="f">Name<input type="text" maxlength="80" id="ly-f-name" data-act="lyset" data-k="name" value="${it.name}" autocomplete="off" ${ro}></label>` : ''}
     <div class="field-grid three ly-fields">${num('x', 'From the left')}${num('y', 'From the back')}${num('z', 'Off the floor')}
@@ -905,7 +907,7 @@ function lyLists() {                                    // what to look at, ever
   const tags = it => F.filter(f => lyMarked(f).includes(it.id) && !lyIsLv(f.kind)).map(f => f.kind).filter((k, i, a) => a.indexOf(k) === i).map(k => html` <span class="ly-tag ${['outside', 'overlap'].includes(k) ? 'ly-tag-hard' : 'ly-tag-soft'}"><span aria-hidden="true">${['outside', 'overlap'].includes(k) ? '✗' : '!'} </span>${LY_WORD[k]}</span>`);
   document.getElementById('ly-things-body').innerHTML = rend(L.items.length ? html`<ul class="ly-list">${L.items.map(it => html`<li class="ly-row${LY.sel === it.id ? ' is-sel' : ''}${st.get(it.id) ? ' is-' + st.get(it.id) : ''}" data-id="${it.id}">
       ${it.photo ? html`<img src="${thumbUrl(it.photo)}" alt="" loading="lazy">` : html`<span class="ly-nophoto ly-np-${it.kind}" aria-hidden="true"></span>`}
-      <div class="ly-row-main"><div class="ly-row-txt"><span class="ly-num" aria-hidden="true">${it.sort}</span> <strong>${it.plant && !it.gone ? html`<a href="#/plant/${enc(it.plant)}">${it.name}</a>` : it.name}</strong> <span class="muted">${L.kinds[it.kind]}${it.plant ? ', ' : ''}${it.plant ? html`<span class="code">${it.plant}</span>` : ''}</span>${tags(it)}${lvOf(it)}
+      <div class="ly-row-main"><div class="ly-row-txt"><span class="ly-num" aria-hidden="true">${it.sort}</span> <strong>${it.plant && !it.gone ? html`<a href="#/plant/${enc(it.plant)}">${it.name}</a>` : it.name}</strong> <span class="muted">${L.kinds[it.kind]}${it.plant ? ',' : ''}</span>${it.plant ? html` <span class="code">${it.plant}</span>` : ''}${tags(it)}${lvOf(it)}
         <br><span>${lySizeWords(it)}. ${lyWhere(L, it)[0].toUpperCase() + lyWhere(L, it).slice(1)}.${it.locked ? ' Locked in place.' : ''}${it.gone ? ' No longer in the record.' : ''}${lyLightLine(it)}</span></div>
       <button class="btn small ghost" type="button" data-act="lypick" data-id="${it.id}" aria-label="${LY.sel === it.id ? 'Chosen' : 'Choose'}: ${it.sort}, ${it.name}" ${LY.sel === it.id ? raw('aria-pressed="true"') : ''}>${LY.sel === it.id ? 'Chosen' : 'Choose'}</button></div></li>`)}</ul>`
     : html`<p class="muted">Nothing is on it yet.</p>`);
@@ -914,7 +916,7 @@ function lyLists() {                                    // what to look at, ever
   document.getElementById('ly-tray-body').innerHTML = rend(html`<p>${tray.length === 1 ? 'This plant is' : `These ${tray.length} plants are`} at ${L.place || 'this place'} in your record but not on the drawing.</p>
     ${tray.length > 1 ? html`<p><button class="btn small" type="button" data-act="lytray" data-all="1">Put all ${tray.length} on the layout</button></p>` : ''}
     ${tray.length > 12 ? raw(`<details class="ly-fold"><summary class="btn small ghost"><span>Show these ${tray.length} plants</span></summary>`) : ''}<ul class="ly-list">${tray.map(p => html`<li class="ly-row">${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : html`<span class="ly-nophoto" aria-hidden="true"></span>`}
-      <div class="ly-row-main"><div class="ly-row-txt"><strong><a href="#/plant/${enc(p.code)}">${p.name}</a></strong> <span class="muted"><span class="code">${p.code}</span></span><br><span>${lySizeWords(p)}${p.guessed.length ? ' (a guess)' : ''}</span></div>
+      <div class="ly-row-main"><div class="ly-row-txt"><strong><a href="#/plant/${enc(p.code)}">${p.name}</a></strong> <span class="code">${p.code}</span><br><span>${lySizeWords(p)}${p.guessed.length ? ' (a guess)' : ''}</span></div>
       <button class="btn small ghost" type="button" data-act="lytray" data-code="${p.code}" aria-label="Put it on: ${p.name}">Put it on</button></div></li>`)}</ul>${tray.length > 12 ? raw('</details>') : ''}`);
   lyRecDraw();
 }
@@ -931,7 +933,7 @@ function lyRecDraw() {                                  // the plants drawn here
   document.getElementById('ly-rec-body').innerHTML = rend(!list.length ? '' : html`<p>${list.length === 1 ? 'This plant is' : `These ${list.length} plants are`} drawn here, but your record has ${list.length === 1 ? 'it' : 'them'} somewhere else. Nothing in the record changes until you say so here.</p>
     ${list.length > 1 ? html`<p><button class="btn small" type="button" id="ly-recall" data-act="lyrec" data-all="1">Move ${list.length === 2 ? 'both' : `all ${list.length}`} in the record</button></p>` : ''}
     ${list.length > 12 ? raw(`<details class="ly-fold"><summary class="btn small ghost"><span>Show these ${list.length} plants</span></summary>`) : ''}<ul class="ly-list">${list.map(({ it, to }) => html`<li class="ly-row">${it.photo ? html`<img src="${thumbUrl(it.photo)}" alt="" loading="lazy">` : html`<span class="ly-nophoto" aria-hidden="true"></span>`}
-      <div class="ly-row-main"><div class="ly-row-txt"><span class="ly-num" aria-hidden="true">${it.sort}</span> <strong><a href="#/plant/${enc(it.plant)}">${it.name}</a></strong> <span class="muted"><span class="code">${it.plant}</span></span>
+      <div class="ly-row-main"><div class="ly-row-txt"><span class="ly-num" aria-hidden="true">${it.sort}</span> <strong><a href="#/plant/${enc(it.plant)}">${it.name}</a></strong> <span class="code">${it.plant}</span>
         <br><span>In your record: ${it.rec_label || 'no room or shelf'}. On this layout: ${to.label}.</span></div>
       <button class="btn small ghost" type="button" data-act="lyrec" data-id="${it.id}" aria-label="Move it in the record: ${it.name}">Move it in the record</button></div></li>`)}</ul>${list.length > 12 ? raw('</details>') : ''}`);
   if (keep) { const el = keep === 'all' ? document.getElementById('ly-recall') : box.querySelector(`[data-act=lyrec][data-id="${keep}"]`); if (el) el.focus({ preventScroll: true }); }
@@ -1313,7 +1315,7 @@ async function lyAddDialog() {
       <label class="f">Search your plants<input type="search" id="ly-add-q" autocomplete="off" placeholder="Name or code"></label><p class="hint" id="ly-add-n" role="status"></p>
       ${free.length ? html`<ul class="ly-picks">${free.map(p => html`<li class="ly-pick" data-q="${(p.name + ' ' + p.code).toLowerCase()}"><label class="chk"><input type="checkbox" name="plant" value="${p.code}">
         ${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : html`<span class="ly-nophoto" aria-hidden="true"></span>`}
-        <span><strong>${p.name}</strong> <span class="muted"><span class="code">${p.code}</span>${p.here ? ', here' : ''}</span><br><span class="muted">${lySizeWords(p)}${p.guessed.length ? ' (a guess)' : ''}</span></span></label></li>`)}</ul>`
+        <span><strong>${p.name}</strong> <span class="code">${p.code}</span>${p.here ? html`<span class="muted">, here</span>` : ''}<br><span class="muted">${lySizeWords(p)}${p.guessed.length ? ' (a guess)' : ''}</span></span></label></li>`)}</ul>`
         : html`<p class="muted">Every plant at this home is on the layout already.</p>`}
       <label class="f">Or a plant with no page yet<input type="text" name="newplant" maxlength="80" autocomplete="off" placeholder="A Monstera I am thinking of buying"><small>It is drawn 8 in across and 12 in tall to start with.</small></label></div>
     <div data-lyk="light" hidden>${L.lights.length ? html`<label class="f">Which light<select name="light">${L.lights.map(x => { const n = L.items.filter(i => i.light_id === x.id).length; return html`<option value="${x.id}">${x.name} (${x.count} owned, ${n} drawn)</option>`; })}</select></label>

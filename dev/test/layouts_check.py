@@ -159,17 +159,17 @@ with sync_playwright() as p:
       const L = {{ width_in: 100, depth_in: 80, height_in: 90, clear_in: 1, grid_in: 1, items: [T(1, 'shelf', 10, 0, 0, 30, 12, 60, {{ levels: lv, board_in: 0.75 }}),
         T(2, 'plant', 12, 2, 0.75, 6, 6, 8), T(3, 'plant', 20, 2, 21.5, 6, 6, 8), T(4, 'light', 10, 4, 19.25, 30, 2, 1.5),          // on its level 1, on its level 2, a strip up under level 2's board
         T(5, 'other', 60, 44, 0, 20, 20, 30), T(6, 'other', 62, 46, 30, 8, 8, 10), T(7, 'plant', 63, 47, 40, 4, 4, 6),               // a table, a box on it, a plant on the box
-        T(8, 'plant', 72, 50, 30, 6, 6, 8, {{ locked: true }}), T(9, 'plant', 2, 30, 0, 6, 6, 10), T(10, 'zone', 58, 42, 0, 30, 30, 40), T(11, 'other', 0, 0, 0, 8, 8, 20)] }};
+        T(8, 'plant', 72, 50, 30, 6, 6, 8, {{ locked: true }}), T(9, 'plant', 2, 30, 0, 6, 6, 10), T(10, 'zone', 58, 42, 0, 30, 30, 40), T(11, 'other', 0, 0, 0, 8, 8, 20), T(12, 'plant', 40, 30, 0, 10, 10, 12)] }};
       const ids = a => a.map(t => t.id).sort((x, y) => x - y), I = n => L.items[n - 1];
       const rs = lyCarryStart(L, I(1)), was = {{ ...I(1) }}; I(1).x += 5; I(1).z += 2; lyCarryMove(I(1), was, rs); const moved = [2, 3, 4].map(n => [I(n).x, I(n).z]); Object.assign(I(1), was); rs.forEach(r => Object.assign(r.it, r.was));
       const st = lyStandOpts(L, I(5)).map(o => o.w);
       return {{ shelf: ids(lyRiders(L, I(1))), table: ids(lyRiders(L, I(5))), plant: ids(lyRiders(L, I(9))), zone: ids(lyRiders(L, I(10))), moved, onbox: st.some(w => w.startsWith('other 6')),
-        walls: [1, 3, 4, 5, 7, 9, 11].map(n => lyWallsOf(L, I(n)).join('+')), back: [...lyWallSet(L, 'back')].sort((x, y) => x - y), all: lyWallSet(L, 'all'),
+        walls: [1, 3, 4, 5, 7, 9, 11, 12].map(n => lyWallsOf(L, I(n)).join('+')), back: [...lyWallSet(L, 'back')].sort((x, y) => x - y), mid: [...lyWallSet(L, 'mid')], all: lyWallSet(L, 'all'),
         across: ['back', 'right', 'front', 'left'].map(f => [lyAc(L, I(1), f), lyAw(I(1), f), lyAcrossW(L, f)]), near: ['back', 'right', 'front', 'left'].map(f => lyNear(L, I(1), f)) }}; }}""")
     check(car['shelf'] == [2, 3, 4] and car['table'] == [6, 7] and car['plant'] == [] and car['zone'] == [] and car['moved'] == [[17, 2.75], [25, 23.5], [15, 21.25]] and not car['onbox'],
           f"a shelf carries what stands on its levels and the strip under one of its boards; a table carries the box on it and the plant on the box, and not a thing locked in place; each goes as far as the shelf goes; \"Stands on\" does not offer what the thing itself carries ({car['shelf']} {car['table']} {car['moved']})")
-    check(car['walls'] == ['back', 'back', 'back', 'front', 'front', 'left', 'back+left'] and car['back'] == [1, 2, 3, 4, 11] and car['all'] is None,
-          f"a thing is at the wall it is within 6 in of, else at the nearest; what stands on a thing or hangs under it is at that thing's wall; a thing in a corner is at both walls ({car['walls']} {car['back']})")
+    check(car['walls'] == ['back+left', 'back+left', 'back+left', 'right+front', 'right+front', 'left', 'back+left', 'mid'] and car['back'] == [1, 2, 3, 4, 11] and car['mid'] == [12] and car['all'] is None,
+          f"a thing is at each wall it is within 2 ft of; what stands on a thing or hangs under it is at that thing's walls; a thing more than 2 ft from every wall is at none, and is in the view of the things away from the walls ({car['walls']} {car['back']} {car['mid']})")
     check(car['across'] == [[10, 30, 100], [0, 12, 80], [60, 30, 100], [68, 12, 80]] and car['near'] == [12, 90, 80, 40],
           f"looking at each wall, a thing is drawn from your left as you face it: the back wall as the top view has it, the right wall from back to front, the front wall from right to left, the left wall from front to back ({car['across']})")
 
@@ -524,9 +524,9 @@ with sync_playwright() as p:
     pg.click('#ly-v-both', force=True); until(pg, lambda: pg.locator('svg.ly-svg[data-view=front]').count() == 1)
     front = lambda sel='g.ly-it': pg.locator(f'svg.ly-svg[data-view=front] {sel}')
     total = pg.evaluate('LY.d.items.length'); nb = pg.evaluate("lyWallSet(LY.d, 'back').size")
-    check(pg.input_value('#ly-wall') == 'back' and 'the back wall' in pg.inner_text('figure[data-view=front] figcaption') and pg.evaluate("document.getElementById('ly-wall').selectedOptions[0].textContent") == f'Back wall: {nb} things' 
-          and front().count() == nb < total and pg.locator('svg.ly-svg[data-view=top] .ly-wallmark').count() == 1 and len(pg.evaluate("[...document.querySelectorAll('#ly-wall option')].map(o => o.textContent)")) == 5,
-          f'in a room the front view starts at the back wall and draws the {nb} of {total} things that are there; the top view marks that wall with a heavy edge; a list offers the four walls and every wall at once')
+    check(pg.input_value('#ly-wall') == 'back' and 'the back wall' in pg.inner_text('figure[data-view=front] figcaption') and pg.evaluate("document.getElementById('ly-wall').selectedOptions[0].textContent") == 'Back wall' and f'{nb} of the {total} things are here' in pg.inner_text('figure[data-view=front] figcaption') 
+          and front().count() == nb < total and pg.locator('svg.ly-svg[data-view=top] .ly-wallmark').count() == 1 and pg.evaluate("[...document.querySelectorAll('#ly-wall option')].map(o => o.value)") == ['back', 'left', 'right', 'front', 'mid', 'all'],
+          f'in a room the front view starts at the back wall and draws the {nb} of {total} things that are there; the top view marks that wall with a heavy edge; a list offers the four walls, the things away from the walls, and everything at once')
     pick(rp3); pg.select_option('#ly-f-on', 'floor'); until(pg, lambda: it(pg, rp3)['z'] == 0)
     for k, val in (('y', 60), ('x', pg.evaluate('LY.d.width_in') - 8)): pg.fill(f'#ly-f-{k}', str(val)); pg.press(f'#ly-f-{k}', 'Tab')
     check(until(pg, lambda: (it(pg, rp3)['x'], it(pg, rp3)['y']) == (pg.evaluate('LY.d.width_in') - 8, 60) and pg.input_value('#ly-wall') == 'right') and front(f'g.ly-it[data-id="{rp3}"]').count() == 1
@@ -548,8 +548,16 @@ with sync_playwright() as p:
         pg.keyboard.press('ArrowRight'); until(pg, lambda: it(pg, lw)['y'] == y0)
     pick(rp3)
     check(until(pg, lambda: pg.input_value('#ly-wall') == 'right') and front(f'g.ly-it[data-id="{rp3}"]').count() == 1, 'choosing the plant again brings the front view back to its wall')
+    # a thing far from every wall is in no wall's view: it has a view of its own
+    for k, val in (('x', 60), ('y', 50)): pg.fill(f'#ly-f-{k}', str(val)); pg.press(f'#ly-f-{k}', 'Tab')
+    check(until(pg, lambda: (it(pg, rp3)['x'], it(pg, rp3)['y']) == (60, 50) and pg.input_value('#ly-wall') == 'mid') and front(f'g.ly-it[data-id="{rp3}"]').count() == 1 and front().count() == pg.evaluate("lyWallSet(LY.d, 'mid').size")
+          and 'away from the walls' in pg.inner_text('figure[data-view=front] figcaption') and pg.locator('svg.ly-svg[data-view=top] .ly-wallmark').count() == 0
+          and pg.evaluate(f"['back', 'left', 'right', 'front'].every(w => !lyWallSet(LY.d, w).has({rp3}))"),
+          'moved to the middle of the room, more than 2 ft from every wall, the plant is in no wall\'s view: the front view turns to the things away from the walls')
+    pg.select_option('#ly-wall', 'back')
+    check(until(pg, lambda: 'the back wall' in pg.inner_text('figure[data-view=front] figcaption')) and front(f'g.ly-it[data-id="{rp3}"]').count() == 0, 'and the back wall\'s view does not draw it')
     pg.select_option('#ly-wall', 'all')
-    check(until(pg, lambda: front().count() == total) and pg.locator('svg.ly-svg[data-view=top] .ly-wallmark').count() == 0 and 'wall' not in pg.inner_text('figure[data-view=front] figcaption strong'), 'Every wall at once draws everything, as before')
+    check(until(pg, lambda: front().count() == total) and pg.locator('svg.ly-svg[data-view=top] .ly-wallmark').count() == 0 and 'wall' not in pg.inner_text('figure[data-view=front] figcaption strong'), 'Everything draws every thing at once, as before')
     shot(pg, '6d-walls')
     pg.select_option('#ly-wall', 'back'); pg.click('#ly-v-top', force=True); until(pg, lambda: pg.locator('svg.ly-svg[data-view=front]').count() == 0)
     check(pg.locator('#ly-wall').count() == 0, 'with the top view alone there is no wall to choose')
