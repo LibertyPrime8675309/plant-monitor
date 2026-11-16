@@ -120,13 +120,24 @@ const HINTS = {
   height_in: 'Today, from the surface the pot stands on to the top of the plant. The Grow lights page uses it to check the plant fits under a shelf or a light.',
   leaf_type: 'Decides which pest treatments suit it before it comes inside.', pot_size: 'Whether the pot can be soaked in a bucket or tub.', health_steps: 'One step per line, in order.', indoor_setup: 'One item per line.',
 };
+// 1.58.0 (Ethan, November 15: shorter labels, the explanation in the hint): the form's own shorter labels. The page keeps the long ones.
+const FORM_LABELS = {
+  par_low: ['PAR low', 'Light at the leaves, in umol/m2/s.'], par_high: ['PAR high', 'Light at the leaves, in umol/m2/s.'],
+  dli_low: ['Daily light low (DLI)', 'In mol/m2 a day.'], dli_high: ['Daily light high (DLI)', 'In mol/m2 a day.'],
+  water_every_days: ['Water every (days)', 'How often to check for water.'], npk_ratio: ['N-P-K ratio', 'The fertilizer ratio it needs.'],
+  zone_low: ['Coldest zone (USDA)', ''], zone_high: ['Warmest zone (USDA)', ''], height_in: ['Height now (in)', 'With its pot.'],
+  browse_risk: ['Risk of being eaten', 'Set by you.'], fert_to_month: ['Feed until month (1-12)', ''],
+  height_ground: ['Height in the ground', 'When fully grown.'], width_ground: ['Width in the ground', 'When fully grown.'],
+};
+const NUM_KINDS = ['int', 'num', 'date'];
 const rangeOf = n => (META.int_ranges && META.int_ranges[n]) || (META.num_ranges && META.num_ranges[n]) || [-60, 150];
 // 1.47.0: a plant's temperatures are kept in °F and shown and typed in the person's unit (Display, Units); submitForm() converts back
 const TEMP_FIELDS = ['temp_ideal_low', 'temp_ideal_high', 'temp_damage_below', 'temp_lethal_below', 'temp_damage_above', 'soil_temp_low', 'soil_temp_high'];
 const tempLabel = s => String(s).replace(/\((°?F)\)/, '(' + tU() + ')');
 const LEN_FIELDS = ['height_in'];                  // 1.56.0: kept in inches, shown and typed in the person's length unit
-function fieldInput(f, val) {
-  const hint = HINTS[f.name] || (f.kind === 'list' ? 'One item per line.' : '');
+function fieldInput(f, val, form) {
+  let hint = HINTS[f.name] || (f.kind === 'list' ? 'One item per line.' : '');
+  if (form && FORM_LABELS[f.name]) { const [lab, pre] = FORM_LABELS[f.name]; f = { ...f, label: lab }; hint = [pre, hint].filter(Boolean).join(' '); }
   const wide = (f.kind === 'long' || f.kind === 'list') ? 'wide' : '';
   let v = val == null ? '' : val;          // let: the location defaults to Outdoors below (1.17.1 fixes "Add a plant", which stopped on it)
   let inp;
@@ -156,8 +167,10 @@ function fieldInput(f, val) {
     inp = html`<select name="${f.name}">${optional ? html`<option value="" ${!v ? raw('selected') : ''}>Not set</option>` : ''}${opts.map(o => html`<option ${o === v ? raw('selected') : ''}>${o}</option>`)}</select>`;
   }
   else inp = html`<input type="text" name="${f.name}" value="${v}" ${f.name === 'common_name' ? raw('required') : ''}>`;
-  return html`<label class="f ${wide}">${f.label}${hint ? html`<small>${hint}</small>` : ''}${inp}</label>`;
+  return html`<label class="f ${wide} ${NUM_KINDS.includes(f.kind) ? 'fnum' : ''}">${f.label}${hint ? html`<small>${hint}</small>` : ''}${inp}</label>`;
 }
+// 1.58.0 (Ethan, November 15: make Edit and Add a plant shorter): each group of fields folds; Names and place starts open.
+const FG_FOLD = true;
 let FORMP = null;                    // the plant the form is for (null: a new one), for whereInputs()
 const WHERE = () => (META && META.where) || [];
 const whereHome = hid => WHERE().find(h => hid ? String(h.home.id) === String(hid) && !h.home.is_home : h.home.is_home) || WHERE()[0] || { areas: [] };
@@ -205,7 +218,12 @@ function viewForm(p) {
         <label class="f wide">Photos<small>Optional. Take them now or choose them from your photos; the first one becomes the main photo. With a photo, the common name can wait: a stand-in name is used until the photo is checked.</small><input type="file" name="__photos" accept="image/*" multiple data-f="newphotos"></label>
         <p class="row wide"><button class="btn ghost" type="button" data-act="newfill" id="newfill-btn" disabled aria-describedby="newfill-why">Fill in the names from the first photo</button><span class="why" id="newfill-why">Add a photo below first.</span></p>
         <div id="newfill-st" class="hint wide" role="status" aria-live="polite">Choose a photo, then the names can be filled in from it${ID.keys && ID.keys.plantnet ? ' (this computer and Pl@ntNet)' : ''}.</div></div></fieldset>` : ''}
-      ${GROUPS.map(([title, names]) => html`<fieldset><legend>${title}</legend><div class="field-grid fg-form">${names.map(n => fieldInput(F[n], p ? p[n] : NEWFILL && NEWFILL[n] ? NEWFILL[n] : (n === 'winter_plan' ? 'Move indoors' : n === 'health_rating' ? 'Fair' : '')))}</div></fieldset>`)}
+      ${FG_FOLD ? html`<p class="row fg-all"><button class="btn small ghost" type="button" data-act="fgall">Open every group</button></p>` : ''}
+      ${GROUPS.map(([title, names], gi) => { const val = n => p ? p[n] : NEWFILL && NEWFILL[n] ? NEWFILL[n] : (n === 'winter_plan' ? 'Move indoors' : n === 'health_rating' ? 'Fair' : '');
+        const set = html`<fieldset><legend>${title}</legend><div class="field-grid fg-form">${names.map(n => fieldInput(F[n], val(n), true))}</div></fieldset>`;
+        if (!FG_FOLD) return set;
+        const shown = names.filter(n => F[n] && !['spot', 'home'].includes(F[n].kind)), filled = shown.filter(n => { const v = val(n); return v != null && v !== ''; }).length;
+        return html`<details class="fg-fold" ${gi === 0 ? raw('open') : ''}><summary><span class="fg-t">${title}</span> <span class="muted">${filled} of ${shown.length} filled in</span></summary>${set}</details>`; })}
       ${isNew ? '' : html`<fieldset><legend>Change note</legend><label class="f">What did you change, and why?<small>Optional. It appears in the page history.</small><input type="text" name="__note" maxlength="300"></label></fieldset>`}
       <div id="form-err"></div>
       <div class="sticky-save"><button class="btn" type="submit">${isNew ? 'Add plant' : 'Save changes'}</button>

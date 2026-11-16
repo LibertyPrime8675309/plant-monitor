@@ -1,0 +1,15 @@
+/* 1.58.0: a shorter Edit and Add a plant. A number or a date box is only as wide as what goes in it, and such fields sit side by side
+   where they fit (Ideal low beside Ideal high, and so on), instead of each taking a whole line. Other fields keep their width. */
+.field-grid.fg-form{display:flex;flex-wrap:wrap;column-gap:1.4rem;align-items:flex-start}
+.field-grid.fg-form>*{flex:1 1 19rem;min-width:0;max-width:100%}
+.field-grid.fg-form>.wide,.field-grid.fg-form>.where-f{flex-basis:100%}
+.field-grid.fg-form>label.f.fnum{flex:0 1 11.5rem}
+.field-grid.fg-form>label.f.fnum input{width:11ch;max-width:100%}
+.field-grid.fg-form>label.f.fnum input[type=date]{width:auto}
+/* each group of fields folds (a <details>); its summary says how many of its fields are filled in */
+details.fg-fold{border-top:2px solid var(--line);margin:0}
+details.fg-fold>summary{cursor:pointer;padding:.7rem 0;min-height:44px;font-weight:700;font-size:1.15rem}
+details.fg-fold>summary .muted{font-weight:400;font-size:1rem}
+details.fg-fold>fieldset{margin-top:0}
+details.fg-fold>fieldset>legend{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.fg-all{margin:.4rem 0}
