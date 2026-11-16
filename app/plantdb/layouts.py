@@ -46,18 +46,22 @@ CREATE TABLE IF NOT EXISTS layout_items(
   plant_code TEXT, light_id INTEGER, spot_id INTEGER,
   x REAL NOT NULL DEFAULT 0, y REAL NOT NULL DEFAULT 0, z REAL NOT NULL DEFAULT 0, w REAL NOT NULL, d REAL NOT NULL, h REAL NOT NULL,
   locked INTEGER NOT NULL DEFAULT 0, notes TEXT NOT NULL DEFAULT '', sort INTEGER NOT NULL DEFAULT 0,
-  hours REAL, dim_pct INTEGER,
+  hours REAL, dim_pct INTEGER, size_locked INTEGER NOT NULL DEFAULT 0,
   created_by TEXT, created_at TEXT NOT NULL, updated_by TEXT, updated_at TEXT);
 CREATE INDEX IF NOT EXISTS layout_items_of ON layout_items(layout_id, sort);
 """
 LAYOUT_HOURS, LAYOUT_DIM = 12.0, 100                 # a drawn light is on this long and this bright, until the person says
 def layout_tables(c):
     """On first use, and for a record put back from a backup made before layouts. A light's hours and brightness came later than
-    the first tables, so they are added to a table that was made without them."""
+    the first tables, so they are added to a table that was made without them. So is size_locked (Ethan, November 16, 2026: the
+    size is locked apart from the place). Before it, locked held both, so a thing that was locked keeps its size locked too."""
     c.executescript(LAYOUT_SCHEMA)
     have = {r[1] for r in c.execute('PRAGMA table_info(layout_items)')}
     for col, kind in (('hours', 'REAL'), ('dim_pct', 'INTEGER')):
         if col not in have: c.execute(f'ALTER TABLE layout_items ADD COLUMN {col} {kind}')
+    if 'size_locked' not in have:
+        c.execute('ALTER TABLE layout_items ADD COLUMN size_locked INTEGER NOT NULL DEFAULT 0')
+        c.execute('UPDATE layout_items SET size_locked=locked')
 
 # ---------------------------------------------------------------- what the record knows about sizes
 def layout_plant_size(c, r):
@@ -98,7 +102,7 @@ def layout_boards(sheet):
     out, z = [], 0.0
     for i in range(n):
         out.append({'kind': 'shelf', 'name': 'Level %d%s' % (i + 1, ' (bottom)' if i == 0 else ' (top)' if i == n - 1 else ''), 'shape': 'box',
-                    'x': 0.0, 'y': 0.0, 'z': round(z, 2), 'w': float(w), 'd': float(d), 'h': LAYOUT_BOARD_IN, 'locked': True})
+                    'x': 0.0, 'y': 0.0, 'z': round(z, 2), 'w': float(w), 'd': float(d), 'h': LAYOUT_BOARD_IN, 'locked': True, 'size_locked': True})
         z += LAYOUT_BOARD_IN + (gaps[i] if i < n - 1 else 0)
     return out, round(z, 2)
 
@@ -131,7 +135,7 @@ def layout_start(c, area, spot):
         ss = sheet_of(sp); _, top = layout_boards(ss)
         w, d, h = float(ss.get('width_in') or 30), float(ss.get('depth_in') or 12), float(top or 36)
         if x and x + w > W: x, y, row = 0.0, y + row + 24, 0.0          # the next row, two feet in front of the last
-        items.append({'kind': 'shelf', 'name': sp['name'], 'shape': 'box', 'spot_id': sp['id'], 'x': x, 'y': y, 'z': 0.0, 'w': w, 'd': d, 'h': h, 'locked': False})
+        items.append({'kind': 'shelf', 'name': sp['name'], 'shape': 'box', 'spot_id': sp['id'], 'x': x, 'y': y, 'z': 0.0, 'w': w, 'd': d, 'h': h, 'locked': False, 'size_locked': False})
         x += w + 6; row = max(row, d)
     if items: notes.append(f'Its {len(items)} {"spots are" if len(items) != 1 else "spot is"} drawn as blocks along the back wall, from their measurements where they have them. Move each to where it stands.')
     return {'width_in': float(W), 'depth_in': float(D), 'height_in': H, 'items': items, 'notes': notes}
@@ -161,7 +165,7 @@ def layout_item_dict(c, it):
     the brightness steps it has (dims), and the hours and brightness it is drawn with. A shelf carries its place's name (place),
     and its levels when its measurements give them (levels, layout_levels), so a plant can be put on one of them."""
     d = {k: it[k] for k in ('id', 'kind', 'name', 'shape', 'x', 'y', 'z', 'w', 'd', 'h', 'notes', 'sort')}
-    d.update(locked=bool(it['locked']), plant=it['plant_code'], light_id=it['light_id'], spot_id=it['spot_id'], gone=False)
+    d.update(locked=bool(it['locked']), size_locked=bool(it['size_locked']), plant=it['plant_code'], light_id=it['light_id'], spot_id=it['spot_id'], gone=False)
     if it['kind'] == 'light':
         d.update(hours=it['hours'] if it['hours'] is not None else LAYOUT_HOURS, dim_pct=it['dim_pct'] if it['dim_pct'] is not None else LAYOUT_DIM, pts=[], dims=[100])
     if it['plant_code']:
@@ -300,7 +304,8 @@ def layout_item_fields(c, L, b, old=None):
     for k, label in (('w', 'Its width'), ('d', 'Its depth'), ('h', 'Its height')):
         f[k] = layout_num(b, k, label, 0.1, 2400, o.get(k))
         if f[k] is None: abort(400, f'{label} is missing')
-    f['locked'] = (1 if b['locked'] else 0) if 'locked' in b else o.get('locked', 0)
+    f['locked'] = (1 if b['locked'] else 0) if 'locked' in b else o.get('locked', 0)                 # its place: it is not moved
+    f['size_locked'] = (1 if b['size_locked'] else 0) if 'size_locked' in b else o.get('size_locked', 0)   # its size: it is not made larger or smaller
     f['notes'] = str(b.get('notes', o.get('notes') or '')).strip()[:400]
     f['hours'] = f['dim_pct'] = None
     if kind == 'light':                                    # how long it is on and how bright: what the light on the page is worked out from
@@ -331,8 +336,8 @@ def layout_touch(c, lid, who): c.execute('UPDATE layouts SET updated_by=?, updat
 def layout_item_add(c, L, b, who):
     f = layout_item_fields(c, L, b)
     n = c.execute('SELECT COALESCE(MAX(sort),0)+1 FROM layout_items WHERE layout_id=?', (L['id'],)).fetchone()[0]
-    c.execute('INSERT INTO layout_items(layout_id,kind,name,shape,plant_code,light_id,spot_id,x,y,z,w,d,h,locked,notes,hours,dim_pct,sort,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
-              (L['id'], f['kind'], f['name'], f['shape'], f['plant_code'], f['light_id'], f['spot_id'], f['x'], f['y'], f['z'], f['w'], f['d'], f['h'], f['locked'], f['notes'],
+    c.execute('INSERT INTO layout_items(layout_id,kind,name,shape,plant_code,light_id,spot_id,x,y,z,w,d,h,locked,size_locked,notes,hours,dim_pct,sort,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+              (L['id'], f['kind'], f['name'], f['shape'], f['plant_code'], f['light_id'], f['spot_id'], f['x'], f['y'], f['z'], f['w'], f['d'], f['h'], f['locked'], f['size_locked'], f['notes'],
                f['hours'], f['dim_pct'], n, who, now()))
     return f
 
@@ -408,7 +413,7 @@ def layout_one(lid):
 
 @app.route('/api/layouts/<int:lid>/items', methods=['POST'])
 def layout_items_add(lid):
-    """Puts things on a layout: one ({kind, name, plant | light_id | spot_id, shape, x, y, z, w, d, h, locked}) or several ({items: [...]})."""
+    """Puts things on a layout: one ({kind, name, plant | light_id | spot_id, shape, x, y, z, w, d, h, locked, size_locked}) or several ({items: [...]})."""
     c = db(); layout_tables(c)
     L = layout_row(c, lid, True); who = editor()
     b = request.get_json(silent=True) or {}
@@ -423,7 +428,7 @@ def layout_items_add(lid):
 
 @app.route('/api/layouts/items/<int:iid>', methods=['PUT', 'DELETE'])
 def layout_item_one(iid):
-    """PUT moves or changes one thing ({x, y, z, w, d, h, name, shape, locked, notes, hours, dim_pct}, any of them). DELETE takes it off
+    """PUT moves or changes one thing ({x, y, z, w, d, h, name, shape, locked, size_locked, notes, hours, dim_pct}, any of them). DELETE takes it off
     the layout. History gets a line when a thing is put on a layout or taken off it, and not for each move: a drawing is moved about
     a great deal. A plant's height (h) is saved on its page too (layout_plant_height)."""
     c = db(); layout_tables(c)
