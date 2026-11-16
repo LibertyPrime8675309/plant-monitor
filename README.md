@@ -466,3 +466,11 @@ Each page below is a file in the `manual` folder. When the app says "see README"
 - Report a problem
 - The Issue tracker
 - Check for updates
+### How often you water: `manual/water-rhythm.md`
+- How often you water
+### Missing details: `manual/missing-details.md`
+- Missing details
+### Your own reminders: `manual/reminders.md`
+- Your own reminders
+### Propagation: `manual/propagation.md`
+- Propagation
