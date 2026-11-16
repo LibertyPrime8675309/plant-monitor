@@ -844,7 +844,7 @@ async function viewWinter() {
       ${ref.applies !== false ? (ref.notes || []).map(n => html`<p class="hint">${n}</p>`) : ''}</section>
     <section class="blk"><h2>When to act</h2><dl class="dl">${(ref.triggers || []).map(t => html`<dt>${t.temp}</dt><dd>${t.action}</dd>`)}</dl></section>
     <section class="blk"><h2>Ground rules</h2>${(ref.playbook || []).length ? html`<ul>${ref.playbook.map(x => html`<li>${x}</li>`)}</ul>` : ''}</section>
-    <section class="blk"><h2>Plant by plant</h2><div class="cols">${META.winter_plans.map(pl => {
+    <section class="blk"><h2>Plant by plant</h2><div class="cols winter-cols">${META.winter_plans.map(pl => {
       const g = list.filter(p => p.winter_plan === pl && !isInside(p)).sort((a, b) => (b.temp_damage_below ?? -99) - (a.temp_damage_below ?? -99));
       if (!g.length) return '';
       return html`<div><h3>${pl} (${g.length})</h3><ul class="todo winter-list">${g.map(p => html`<li>${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : html`<span></span>`}
