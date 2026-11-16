@@ -752,7 +752,7 @@ function frostBanner(inPage) {
 }
 const FZ_DO = {
   'Move indoors': 'Bring it inside: a heated room, or the garage for a night or two.',
-  'Protect outside': 'Cover it down to the ground with frost cloth or an old sheet (not plastic touching the leaves), or move it against the house or onto the porch.',
+  'Protect outside': 'Cover it down to the ground with frost cloth or an old sheet. Keep plastic off the leaves. Or move it against the house, or onto the porch.',
   'Hardy outside': 'Usually fine outside, but this is below its damage point: cover it, or move the pot against the house.',
   'Seasonal die-back': 'The top growth may die back. Mulch or wrap the pot, or move it to shelter to protect the roots.',
   'Annual': 'An annual: the cold will likely end its season. Bring it in only if you want to keep it going.',

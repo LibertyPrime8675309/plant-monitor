@@ -8,13 +8,11 @@ import wording
 
 LIMITS = {
     "browse.js": 5,
-    "care.js": 5,
-    "compare.js": 1,
+    "care.js": 3,
     "events.js": 1,
-    "frostdates.js": 2,
     "guide.js": 5,
     "library.js": 1,
-    "lights.js": 2,
+    "lights.js": 1,
     "mushrooms.js": 1,
     "notify.js": 1,
     "offline.js": 6,
@@ -24,9 +22,8 @@ LIMITS = {
     "review.js": 1,
     "sensors.js": 4,
     "shopping.js": 2,
-    "turning.js": 1,
     "ui.js": 6,
-    "weather.js": 5,
+    "weather.js": 4,
 }
 
 

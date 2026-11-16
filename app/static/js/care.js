@@ -282,7 +282,7 @@ async function viewInside() {
       <p class="hint">Not every method suits every plant: open a plant's plan to see which are best for it.</p>
       ${D.methods.map((m, i) => html`<details class="pm-steps pm-ref"><summary>${i + 1}. ${m.title}</summary><ol>${m.steps.map(s => html`<li>${tText(s)}</li>`)}</ol></details>`)}</section>
     <section class="blk" id="in-apart"><h2>Keeping them apart</h2>
-      <p>Pests often show up a week or two after the first treatment, when eggs hatch. So keep the plants that came in away from your long-term houseplants for ${D.keep_apart_days} days, and for 2 weeks after the last treatment if you found pests.</p>
+      <p>Pests often show up a week or two after the first treatment, when eggs hatch. So keep the plants that came in away from your long-term houseplants for ${D.keep_apart_days} days. If you found pests, keep them apart for 2 weeks after the last treatment.</p>
       <ul><li>Give any plant where you found pests its own "hospital" spot until two weekly checks come up clean.</li>
         <li>Put yellow sticky traps beside each group. They catch fungus gnats, whiteflies and thrips, and show whether there are more or fewer each week.</li>
         <li>Spider mites thrive in dry indoor air, so a humidifier helps the palms, calathea and alocasias.</li>
@@ -814,7 +814,7 @@ function productsBlock() {
         <td>${npkText(x)}${ratioText(x.n, x.p, x.k) ? html`<div class="hint">ratio ${ratioText(x.n, x.p, x.k)}</div>` : ''}</td><td>${x.form}</td>
         <td>${x.last_used ? html`${midDay(x.last_used)}<div class="hint">${doseText(x)}${x.uses > 1 ? `, ${x.uses} times in all` : ''}</div>` : html`<span class="muted">Not used yet</span>`}</td>
         <td class="noprint"><div class="row" style="gap:.4rem"><button class="btn ghost small" type="button" data-act="fzedit" data-i="${i}" aria-label="Change the fertilizer ${x.product}">Change</button>${x.saved ? html`<button class="btn danger small" type="button" data-act="fzdel" data-i="${i}" aria-label="Remove the fertilizer ${x.product}">Remove</button>` : ''}</div></td></tr>`)}</tbody></table></div>
-      <p class="hint">Amounts aim for about 150 ppm of the strongest of N, P and K at full strength, 75 at half and 40 at a quarter, which is a usual rate for plants in pots. If the label says to use less, use the label.</p>`
+      <p class="hint">Amounts aim for about 150 ppm of the strongest of N, P and K at full strength. That is a usual rate for plants in pots. Half strength is about 75, and a quarter about 40. If the label says to use less, use the label.</p>`
     : html`<p class="muted">None yet.</p>`}`;
 }
 async function productDialog(x) {

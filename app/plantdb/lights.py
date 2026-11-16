@@ -290,7 +290,7 @@ def step_down(L, s, plants, outdoor):
     mid = light_setting(d, round((first['dli'] + final) / 2, 1), None, hi, hours_first=14)
     steps = []
     if any(r['site'] == 'Outdoors' for r in plants) and outdoor and outdoor > hi * 1.5:
-        steps.append({'when': 'Before moving in', 'text': 'Give the plants that are out in the open 5 to 7 days on the covered porch or in bright shade first, so the drop in light is smaller.'})
+        steps.append({'when': 'Before moving in', 'text': 'Give the plants that are out in the open 5 to 7 days on the covered porch or in bright shade first. Then the drop in light is smaller.'})
     for when, st in (('First week inside', first), ('Second week', mid)):
         if st: steps.append({'when': when, 'distance_in': st['distance_in'], 'hours': st['hours'], 'dim_pct': st['dim_pct'], 'dli': st['dli'],
                              'text': light_timer_note(d, st['hours'])})
