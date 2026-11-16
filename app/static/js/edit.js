@@ -236,7 +236,7 @@ async function viewSeveral() {
 function sevHtml() {
   if (SEV.done) return html`<div class="notice ok" role="status"><strong>${SEV.done.length} plant${SEV.done.length === 1 ? '' : 's'} added:</strong>
     <ul>${SEV.done.map(c => html`<li><a href="#/plant/${enc(c)}">${c} ${(ALL.find(p => p.code === c) || {}).common_name || ''}</a></li>`)}</ul>
-    <p>Each one has a page of its own now. The care details (temperature, water, light and so on) are still empty: fill them in on each page, or ask Claude with "Copy my answers for Claude".</p></div>
+    <p>Each one has a page of its own now. The care details (temperature, water, light and so on) are still empty. Fill them in on each page, or ask Claude with "Copy my answers for Claude".</p></div>
     <p class="row"><button class="btn" type="button" data-act="sevreset">Add more plants</button><a class="btn ghost" href="#/plants">Go to the Plants page</a></p>`;
   const homes = HOMES();
   const homeSel = homes.length > 1 ? html`<label class="f">Home<small>Where these plants live.</small><select data-f="sevset" data-k="home">${homes.map(h => html`<option value="${h.is_home ? '' : h.id}" ${(h.is_home ? !SEV.home : String(SEV.home) === String(h.id)) ? raw('selected') : ''}>${h.name}</option>`)}</select></label>` : '';

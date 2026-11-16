@@ -1,4 +1,4 @@
-/* Plant record front end: layouts (prototype, proto/layouts; plantdb/layouts.py). One of the files loaded in order by index.html
+/* Plant record front end: layouts (1.58.0, prototype #131; plantdb/layouts.py). One of the files loaded in order by index.html
    (js/manifest.json); they share one scope. Plain JavaScript, no inline handlers (the server's content policy forbids them).
 
    A layout is a room, a porch or one shelf unit drawn to scale, with the plants, grow lights, shelves and anything else in it as
@@ -630,11 +630,12 @@ async function viewLayouts(parts, qs) {
   const rem = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16, homes = [...new Set(d.layouts.map(x => x.home))], want = +qs.get('place');
   const cards = list => html`<ul class="ly-cards">${list.map(x => lyCard(x, rem))}</ul>`;
   return { title: 'Layouts', html: html`<h1>Room and shelf layouts</h1>
-    <p class="lede">Draw a room, a porch or one shelf unit to scale, put your plants, grow lights and shelves on it, and move them about here before you move the real ones. Things that overlap or stick out are marked as you go, and so is a plant that is crowded, too close to a light, or too dim or too bright under the lights you draw.</p>
+    <p class="lede">Draw a room, a porch or one shelf unit to scale. Put your plants, grow lights and shelves on it. Move them about here before you move the real ones.</p>
+    <p>As you go, it marks these:</p><ul class="ly-lede-list"><li>Things that overlap or stick out.</li><li>A plant that is crowded or too close to a light.</li><li>A plant too dim or too bright under the lights you draw.</li></ul>
     ${canChange() ? html`<p class="row noprint"><button class="btn" type="button" data-act="lynew">Start a layout</button></p>` : ''}
     ${!d.layouts.length ? html`<p class="notice">No layouts yet. ${canChange() ? html`<strong>Start a layout</strong> draws one of your rooms or shelves from its measurements, or a space of any size you type.` : ''}</p>`
       : homes.length > 1 ? homes.map(h => html`<section class="blk"><h2>${h}</h2>${cards(d.layouts.filter(x => x.home === h))}</section>`) : cards(d.layouts)}
-    <p class="hint">Moving a plant on a layout does not change where its page says it is, until you press <strong>Move it in the record</strong> there. A plant's height typed on a layout is saved on its page.</p>`,
+    <p class="hint">A plant moved on a layout keeps its place on its page. Press <strong>Move it in the record</strong> there to change that too. A plant's height typed on a layout is saved on its page.</p>`,
     after: () => { if (want) lyWant(want); } };
 }
 function lyWant(pid) {                                  // came from a room's or shelf's own button: open its layout, or start one
@@ -695,7 +696,7 @@ async function viewLayout(id, qs) {
         <section class="blk" id="ly-find"><h2>To look at</h2><div id="ly-find-body"></div>
           <details class="ly-fold ly-key" id="ly-marks"><summary class="btn small ghost"><span>What the marks mean</span></summary><ul>
             <li><strong><span aria-hidden="true">✗ </span>A cross and close bars:</strong> it overlaps something, or sticks out of the space.</li>
-            <li><strong><span aria-hidden="true">! </span>An exclamation mark and wide bars:</strong> something to look at. It is tight, close to a light, in an area to keep clear, has nothing under it, or gets more or less light than it needs.</li>
+            <li><strong><span aria-hidden="true">! </span>An exclamation mark and wide bars:</strong> something to look at. It may be one of these:<ul><li>Tight, or close to a light.</li><li>In an area to keep clear.</li><li>Standing on nothing.</li><li>Getting more or less light than it needs.</li></ul></li>
             <li><strong><span aria-hidden="true">▼▼ ▼ ✓ ▲ ▲▲ – </span>A sign for its light:</strong> on each plant, once a grow light is drawn. Too dim, a bit dim, good, a bit bright, too bright, against what its page says it needs. Red is too much or too little, amber is a bit, green is good. A grey dash: no light drawn here reaches it (it may have a window).</li>
             <li><strong>A heavy edge in the top view:</strong> the wall the front view is looking at.</li>
             <li><strong>A dashed outline:</strong> a grow light, with a sun in it, or an area to keep clear, with thin bars.</li>
@@ -1328,7 +1329,7 @@ async function lyAddDialog() {
       <label class="f">Or a plant with no page yet<input type="text" name="newplant" maxlength="80" autocomplete="off" placeholder="A Monstera I am thinking of buying"><small>It is drawn 8 in across and 12 in tall to start with.</small></label></div>
     <div data-lyk="light" hidden>${L.lights.length ? html`<label class="f">Which light<select name="light">${L.lights.map(x => { const n = L.items.filter(i => i.light_id === x.id).length; return html`<option value="${x.id}">${x.name} (${x.count} owned, ${n} drawn)</option>`; })}</select></label>
       <label class="f">How many<input type="number" name="lightn" min="1" max="20" step="1" value="1" inputmode="numeric"></label>
-      <p class="hint">A light starts at a rough size from how it holds. A strip or a bulb starts up under the chosen shelf, or at the top of the space; a light that stands starts on the floor or the chosen shelf.</p>`
+      <p class="hint">A light starts at a rough size from how it holds. A strip or a bulb starts under the chosen shelf, or at the top of the space. A light that stands starts on the floor or the chosen shelf.</p>`
       : html`<p class="muted">No lights in your list yet. <a href="#/lights">Grow lights</a> is where they are added.</p>`}</div>
     <div data-lyk="shelf" hidden><label class="f">Which<select name="shelf" data-act="lykind"><option value="">A board, a table or furniture I describe</option>
         ${L.shelves.map(s => html`<option value="b${s.spot_id}">${s.label}, as one block${s.guessed ? ' (size a guess)' : ''}</option>${s.boards.length ? html`<option value="l${s.spot_id}">${s.label}, level by level</option>` : ''}`)}</select></label>

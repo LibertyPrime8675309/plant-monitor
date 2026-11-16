@@ -290,7 +290,7 @@ def step_down(L, s, plants, outdoor):
     mid = light_setting(d, round((first['dli'] + final) / 2, 1), None, hi, hours_first=14)
     steps = []
     if any(r['site'] == 'Outdoors' for r in plants) and outdoor and outdoor > hi * 1.5:
-        steps.append({'when': 'Before moving in', 'text': 'Give the plants that are out in the open 5 to 7 days on the covered porch or in bright shade first, so the drop in light is smaller.'})
+        steps.append({'when': 'Before moving in', 'text': 'Give the plants that are out in the open 5 to 7 days on the covered porch or in bright shade first. Then the drop in light is smaller.'})
     for when, st in (('First week inside', first), ('Second week', mid)):
         if st: steps.append({'when': when, 'distance_in': st['distance_in'], 'hours': st['hours'], 'dim_pct': st['dim_pct'], 'dli': st['dli'],
                              'text': light_timer_note(d, st['hours'])})
@@ -298,7 +298,7 @@ def step_down(L, s, plants, outdoor):
                   'text': "The spot's own setting."})
     return steps
 
-# Grow lights and your layouts (prototype, proto/lights-read-layouts; layouts.py fills LIGHTS_FROM_LAYOUTS). Ethan, November 16, 2026:
+# Grow lights and your layouts (1.58.0, prototype #141; layouts.py fills LIGHTS_FROM_LAYOUTS). Ethan, November 16, 2026:
 # a light's hours and brightness are set on the layout, and a plant under a light drawn on a layout counts as having a light.
 def from_layouts(c):
     """What your layouts say about your grow lights: the lights drawn on a layout of a place, and each drawn plant's light there."""

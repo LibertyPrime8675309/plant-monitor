@@ -2,7 +2,7 @@
 
 Part of the Plant record manual. The README in the folder above has how to start, stop, update and back up the app, and the list of every manual page.
 
-## Room and shelf layouts (prototype)
+## Room and shelf layouts
 
 **Layouts** (Plants → Layouts, after Rooms and spots) draws a room, a porch or one shelf unit to scale, with your plants, grow lights and shelves on it, so you can move things about on the page before you move the real ones. It says how much light each plant gets where it is drawn. Moving a plant on a layout does not change where its page says it is until you press **Move it in the record**; a plant's height typed on a layout is saved on its page.
 
@@ -40,7 +40,7 @@ Part of the Plant record manual. The README in the folder above has how to start
 - A plant's own page says which layouts it is drawn on.
 - People who can only view can look and choose a thing to read its place, its size and its light. Changing a layout needs a connection to the plant server.
 
-## Grow lights reads your layouts (prototype)
+## Grow lights reads your layouts
 
 A light spot on **Grow lights** is one setting for every plant in it: one distance from the leaves, and one number for all of them. A layout knows more: where each plant stands under the light, how tall it is, and how far to the side.
 

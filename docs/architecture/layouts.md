@@ -1,4 +1,4 @@
-# Room and shelf layouts (prototype, `proto/layouts`)
+# Room and shelf layouts (1.58.0; prototype #131)
 
 Notes for the next session. What it is for, with pictures and Ethan's answers, is in `docs/prototypes/layouts.md`; how to use it is in `manual/layouts.md`.
 
@@ -44,7 +44,7 @@ State is `LY`; the drawings are SVG; one `addFeature()` call adds the page, the 
 - **A lesson from a step that failed once in four runs.** The step typed two boxes and waited for a mark that the first box alone already produced, then read the place: when the first box's save was slow, the second box had not been taken yet. `dev/tmp/ly/race.py` (not kept in the repository) showed it failing 10 times in 10 with saves held back 400 ms, on the page before and after any fix. Wait for everything a step expects in one `until()`. The same hunt found a real fault in the page (a box read after waiting), which has its own step now: three boxes typed while saves are held back.
 - `dev/test/layouts_check.py` (in `run_checks.py` as `layouts`; it takes a base address): the geometry, the light, landing and the record are each asked directly with made-up things, then tried on the page; a viewer; a phone in the dark theme at the largest text.
 
-## Grow lights reads a layout (prototype, `proto/lights-read-layouts`, on top of `proto/layouts`)
+## Grow lights reads a layout (1.58.0; prototype #141)
 Ethan chose on November 16, 2026: the plant's mark is the layout's; a light's hours and brightness are set on the layout; a plant under a light on a layout but in no spot counts as having a light.
 
 - **Server.** `layouts.py` has the light sum too (`layout_light`, `layout_light_on` and the `_ly_*` geometry), the same as `lyLight()` in `layouts.js`. `lightsread_check.py` compares the two for every drawn plant: keep them in step. `layout_lights_for_grow(c)` goes into core's `LIGHTS_FROM_LAYOUTS` and gives, for every layout of a place, the lights drawn there (the first of each light) and each drawn plant's reading.

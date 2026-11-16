@@ -215,7 +215,7 @@ def fit_check(mount, light_name, place, spot_sheet, room_sheet, level, holder, d
             elif where_above is None:
                 alt = [n for n, om in (others or []) if om and om.get('kind') in ('floor', 'clamp')]
                 add('nofit', f'{There} has nothing above {"its top level" if stack else "it"}, so {what} has nowhere to be fixed. '
-                    f'A light that stands on the floor beside it or clamps to its edge would reach it{" (" + ", ".join(alt[:2]) + ")" if alt else ""}.')
+                    f'A light that stands on the floor beside it, or clamps to its edge, would reach it{" (" + ", ".join(alt[:2]) + ")" if alt else ""}.')
             elif where_above == 'ceiling' and clear and clear > 36:
                 add('nofit', f'The ceiling is {L(clear)} above {there}: {what} fixed there would be too far from the leaves. A shelf or a stand closer to them would do.')
             elif kind == 'under' and m.get('length_in') and s.get('width_in') and m['length_in'] > s['width_in'] + 0.5:

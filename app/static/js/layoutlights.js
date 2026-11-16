@@ -1,5 +1,5 @@
 'use strict';
-/* Grow lights reads your layouts (prototype, proto/lights-read-layouts, on top of Layouts; Ethan, November 15, 2026: "Yes" to
+/* Grow lights reads your layouts (1.58.0, prototype #141, on top of Layouts; Ethan, November 15, 2026: "Yes" to
    "Should Grow lights read a shelf's layout where there is one?", then "Proceed with grow lights reading a layout").
 
    A light spot on Grow lights is one setting for every plant in it: one distance from the leaves, one number. A layout knows more:
@@ -101,10 +101,10 @@ addFeature({
       const inSpots = LT.spots.flatMap(s => s.plants.map(p => ({ p, r: lgFor(p.code, s.place_id) }))).filter(x => x.r).length;
       const loose = Object.keys(LT.drawn || {}).map(code => ({ code, r: lgFor(code, null) })).filter(x => x.r && x.r.reached);
       return html`<div class="lg-note" id="lg-note"><p><strong>Read from your layouts.</strong> ${d.lit.length === 1 ? html`Your layout <a href="#/layouts/${d.lit[0].id}">${d.lit[0].name}</a> has a grow light drawn on it.` : html`${d.lit.length} of your <a href="#/layouts">layouts</a> have a grow light drawn on them.`}
-          ${inSpots ? `${inSpots === 1 ? 'One plant in the spots below is' : `${inSpots} of the plants in the spots below are`} drawn there, so ${inSpots === 1 ? 'its' : 'their'} light is read from where ${inSpots === 1 ? 'it stands' : 'each stands'} on the drawing: its own distance under the light, and how far to the side.` : 'No plant in the spots below is drawn there yet.'}
+          ${inSpots ? `${inSpots === 1 ? 'One plant in the spots below is' : `${inSpots} of the plants in the spots below are`} drawn there. ${inSpots === 1 ? 'Its' : 'Their'} light is read from where ${inSpots === 1 ? 'it stands' : 'each stands'} on the drawing: its own distance under the light, and how far to the side.` : 'No plant in the spots below is drawn there yet.'}
           A plant that is not drawn keeps what its spot gives.</p>
         ${loose.length ? html`<details class="lg-fold"><summary class="btn small ghost"><span>Under a light on a layout, but in no light spot (${loose.length})</span></summary>
-          <p class="hint">These count as having a light: the summary above and the suggested layout below leave them out.</p>
+          <p class="hint">These count as having a light. The summary above and the suggested layout below leave them out.</p>
           <ul class="lt-plants lt-two">${loose.map(({ code, r }) => html`<li><span></span><span class="lt-pt"><a class="nm" href="#/plant/${enc(code)}">${r.name}</a><span class="lg-code">${code}</span></span>${lgTag(r)}
             <span class="lg-line">On the layout ${lgLink(r)}: about <strong>${lgMol(r.dli)}</strong>${lgWhere(r) ? `, ${lgWhere(r)}` : ''}.</span></li>`)}</ul></details>` : ''}</div>`;
     },

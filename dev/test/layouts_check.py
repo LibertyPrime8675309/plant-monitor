@@ -366,7 +366,7 @@ with sync_playwright() as p:
     pg.click('#ly-undo')
     check(until(pg, lambda: call('GET', f'/api/plants/{bcode}')['height_in'] is None) and until(pg, lambda: pg.locator('#ly-tallsave').count() == 1), 'and Undo takes it off the page again')
     pg.click('#ly-marks summary'); pg.click('#ly-keyhelp summary')
-    check(pg.locator('#ly-marks li').count() == 7 and 'A sign for its light' in pg.inner_text('#ly-marks') and 'A grey dash' in pg.inner_text('#ly-marks') and 'A heavy edge' in pg.inner_text('#ly-marks') and pg.locator('#ly-marks li').first.is_visible() and 'Too dim' in pg.inner_text('#ly-marks') and 'Page Down' in pg.inner_text('#ly-keyhelp') and 'Ctrl+Y' in pg.inner_text('#ly-keyhelp'), 'What the marks mean and Keys for the drawing open lists, in words')
+    check(pg.locator('#ly-marks > ul > li').count() == 7 and 'A sign for its light' in pg.inner_text('#ly-marks') and 'A grey dash' in pg.inner_text('#ly-marks') and 'A heavy edge' in pg.inner_text('#ly-marks') and pg.locator('#ly-marks li').first.is_visible() and 'Too dim' in pg.inner_text('#ly-marks') and 'Page Down' in pg.inner_text('#ly-keyhelp') and 'Ctrl+Y' in pg.inner_text('#ly-keyhelp'), 'What the marks mean and Keys for the drawing open lists, in words')
     pg.click('#ly-marks summary'); pg.click('#ly-keyhelp summary')
 
     # ---- an area to keep clear, something else, a copy, a quarter turn

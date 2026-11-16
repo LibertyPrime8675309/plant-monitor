@@ -83,4 +83,4 @@ Read the file for the part you are changing. Each holds the notes as they were w
 | `water-rhythm.md` | **How often you water.** The rhythm page; the chosen gap with no indoor stretch |
 | `reminders.md` | **Your own reminders.** Reminders with a date; the morning notification, the calendar file and the download through core's lists |
 | `propagation.md` | **Propagation.** Attempts, seed lots, photos, the notification, Library facts for seed |
-| `layouts.md` | **Room and shelf layouts (prototype `proto/layouts`).** The model; what a layout changes in the record; shelves with levels, what a moved thing carries and where it comes to rest; the front view of one wall at a time; the light a plant gets where it is drawn; Undo and Redo; Grow lights reading a layout (prototype `proto/lights-read-layouts`) |
+| `layouts.md` | **Room and shelf layouts (1.58.0; prototype #131).** The model; what a layout changes in the record; shelves with levels, what a moved thing carries and where it comes to rest; the front view of one wall at a time; the light a plant gets where it is drawn; Undo and Redo; Grow lights reading a layout (1.58.0; prototype #141) |
