@@ -1,0 +1,14 @@
+/* 1.58.0: a shorter cold-night checklist on a narrow screen (a phone, or an iPad held upright). The words of each plant used to run
+   in a narrow column beside its photo, so at large text every sentence took many lines and one plant was two screens tall; and its
+   two buttons each took a whole line. Now the words run beside the photo and then under it, and the buttons sit side by side, each as
+   wide as its words (never under a fingertip, 44 px). The same rows serve Back outside (bo-row). */
+html[data-narrow="1"] .fz-row{display:block}
+html[data-narrow="1"] .fz-row::after{content:"";display:table;clear:both}
+html[data-narrow="1"] .fz-row>img,html[data-narrow="1"] .fz-row>.fz-nophoto{float:left;width:56px;height:56px;margin:.2rem .7rem .3rem 0}
+html[data-narrow="1"] .fz-row .muted{white-space:normal}
+html[data-narrow="1"] .fz-acts{clear:both;display:flex;flex-direction:row;flex-wrap:wrap;align-items:flex-start;gap:.4rem .6rem;min-width:0;padding-top:.5rem}
+html[data-narrow="1"] .fz-acts .btn{flex:0 1 auto;max-width:100%;min-width:44px;min-height:44px;white-space:normal}
+/* what the plants of a group share, said once above them */
+.fz-shared{border-left:4px solid var(--ink);padding:.3rem 0 .3rem .8rem;margin:.6rem 0 .8rem;max-width:60rem}
+.fz-shared p{margin:.2rem 0}
+.fz-shared .fz-shared-h{font-weight:700}

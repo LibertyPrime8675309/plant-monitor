@@ -10,7 +10,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from waits import until
 import re
 _src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'names_check.py'), encoding='utf-8').read()      # the same two rules as the `names` check, on this prototype's own pages
-NAMES, CONTRAST = (re.search(r"^%s = r'''(.*?)'''" % k, _src, re.S | re.M).group(1) for k in ('NAMES', 'CONTRAST'))
+NAMES = re.search(r"^NAMES = r'''(.*?)'''", _src, re.S | re.M).group(1)
+from contrast_js import CONTRAST                                                    # 1.58.0: shared by names_check and reading_check
 def spoken(pg, where):
     bad = pg.evaluate(NAMES); low = pg.evaluate(CONTRAST)
     check(not bad and not low, f'{where}: every control\'s spoken name holds the words it shows, and all text is at 7 to 1' + ('' if not bad and not low else ': ' + '; '.join((bad + low)[:4])))

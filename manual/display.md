@@ -17,9 +17,10 @@ Everything you type is taken in your unit too: a plant's temperatures on its edi
 Press the **Display** button (from 1.42.0 at the bottom of the Navigation menu; on a page with no menu, from 1.57.0 in the top bar beside Search) to change how everything looks. The **Debug** button beside it is described under "Audit log" below. Changes apply at once and are remembered in that browser (each computer or phone keeps its own).
 
 - **Text and button size**: Standard, Comfortable (the new default, a little bigger than before), Large, Larger, Largest. Buttons, bars, charts and spacing scale together.
-- **Spacing**: Normal or Roomy (more space between lines, letters and words).
-- **Contrast**: Normal or High (black and white with heavier outlines).
-- **Colours**: match your device, light or dark.
+- **Contrast**: Match my device (the usual from 1.58.0: high contrast when your phone or computer is set to more contrast), Normal or High (black and white with heavier outlines).
+- **Colours**: match your device, Light, **Cream paper**, Dark or **Soft dark** (the two new ones are from 1.58.0, below).
+- **Colour vision** (from 1.58.0): Usual colours, **Red-green colour blindness** or **Blue-yellow colour blindness** (below).
+- **Spacing** and **Line length** are in the **Reading** part from 1.58.0 (below).
 - **Plant pages**: photos and details side by side, or one column.
 - **Notes under buttons and boxes** (from 1.57.0): **Always show them** (the usual choice) or **Show them when I ask**. With the second, the small notes under buttons, boxes and pictures fold into a round **Note** button, which saves a lot of room on long forms. Press a Note button (or Tab to it and press Enter or Space) to read the note, and again to fold it; Escape folds it too. Pointing at a box with the mouse also shows its note, and on a phone or tablet a long press (about half a second) on a box opens its note. A screen reader still hears every note in full, and printed pages show them all.
 - **Line length** (from 1.26.0): **Use the full width** (the usual choice: paragraphs and lists run across the whole page, so more fits on screen) or **Shorter lines** (about 70 letters per line, which some people find easier to follow).
@@ -37,9 +38,32 @@ On a phone the menu bar at the top scrolls away with the page (scroll back to th
 - Tables too wide for the screen become one box per row: the row's name (a day, a plant, a backup) at the top, then each value next to its column's name, two or more to a line when they fit. The long table on the Weather page still scrolls sideways.
 - The same happens on a tablet or a small window whenever the text is large enough that the page switches to one column.
 
+### Colours, colour vision and easier reading (from 1.58.0)
+
+**Colours** in Display, Text and colours:
+- **Light** and **Dark** are as before. Light suits most people with astigmatism better, because light letters on a dark page can look blurred or glowing.
+- **Cream paper** is a warm, softer light page with dark brown letters. Many people with dyslexia, or with eyes that tire on a white screen, find it easier.
+- **Soft dark** is grey rather than navy, with off-white letters: gentler than Dark for light-sensitive eyes, migraines or reading at night. With **High** contrast it becomes the usual high-contrast dark.
+- Every theme keeps all text at 7 to 1 or better against what is behind it.
+
+**Colour vision** changes the colours that mean something, so they stay apart for colour-blind eyes:
+- **Red-green colour blindness** (the most common kind, about 1 man in 12): good is blue, fair is amber and poor is raspberry, in place of green, amber and red. Chart lines and calendar marks use a set of colours made to stay apart for every kind of colour blindness, and the "comfortable" band on charts is grey.
+- **Blue-yellow colour blindness**: the same chart and calendar colours; on dark pages fair is a lime yellow so it stands apart from poor.
+- In every setting the health tags carry a symbol as well as a word and colour: **✓ Good**, **~ Fair**, **! Poor**, **!! Critical**. Nothing in the app is said by colour alone.
+
+**Reading** is a part of its own, for dyslexia and for anyone who reads more easily with a few changes:
+- **Easier reading** is one button that sets Lexend letters, one plain font, Roomy spacing, shorter lines and Cream paper (Soft dark if you use a dark theme), all at once. **Put back how it was** undoes it. You can change any one of them after.
+- **Letter shapes**: **Atkinson Hyperlegible** (the usual, made so that similar letters such as b and d look different), **Lexend** (wide, evenly spaced letters; some readers with dyslexia read it faster) or **OpenDyslexic** (heavier at the bottom). Each shows a line in its own letters. Which helps is different for every reader: try each for a page or two.
+- **Headings and plant names**: the usual (headings in a book font, Latin names in italics) or **One plain font**: headings in the reading letters, and no slanted or all-capital words anywhere, Latin names included.
+- **Spacing**: Normal, Roomy, or **Widest** (more again between lines, letters and words, and a blank line's worth between paragraphs: the most a web page is expected to allow).
+- **Line length**: the full width, or shorter lines of about 70 letters.
+- Read aloud, the voice and its speed, and Search by voice are in their own parts and help with reading too.
+
+Like the other Display parts, these stay on the device they are chosen on unless you tick **Use these on every device I sign in on** in that part, so each person can choose their own on their own phone. If you had ticked it for Text and colours before 1.58.0, Reading follows you too.
+
 ### Pop-up windows (from 1.25.0)
 
-- **Display settings** is divided into parts: Text and colours, Page layout, Units, Reading aloud, Photos and touch, and Keyboard and voice.
+- **Display settings** is divided into parts: Text and colours, Reading (from 1.58.0), Page layout, Units, Identify, Reading aloud, Photos and touch, and Keyboard and voice.
   - On a computer, the parts are listed on the left. Press one to jump to it; the part you're looking at is highlighted.
   - On a phone, or an upright tablet, the window covers the screen and the parts are a row of buttons above the settings.
   - **Done** and **Reset to defaults** are at the top and stay there while you scroll. Reset to defaults keeps the window open.

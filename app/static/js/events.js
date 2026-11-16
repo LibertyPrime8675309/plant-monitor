@@ -106,6 +106,8 @@ const acts = {
   histmetric(el) { const S = HS[el.dataset.kind]; S.metric = el.dataset.m; S.day = S.day; histOpen(el.dataset.kind); },
   display() { displayDialog(); },
   prefreset() { DVSCROLL = (document.getElementById('dv-body') || {}).scrollTop || 0; window.PlantPrefs.reset(); displayDialog(); },
+  easyread() { DVSCROLL = (document.getElementById('dv-body') || {}).scrollTop || 0; easyReading(); displayDialog(); toast('Easier reading is on. "Put back how it was" undoes it.'); },
+  easyundo() { DVSCROLL = (document.getElementById('dv-body') || {}).scrollTop || 0; easyUndo(); displayDialog(); toast('Reading settings put back'); },
   dvjump(el) {
     const t = document.getElementById(el.dataset.to); if (!t) return;
     t.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
