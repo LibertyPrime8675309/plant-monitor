@@ -236,10 +236,10 @@ async function viewWeather(sec) {
         <li><span class="code">par</span> (µmol/m²/s) or <span class="code">lux</span></li><li><span class="code">soil_moisture</span> (%)</li>
         <li><span class="code">soil_temp_f</span> or <span class="code">soil_temp_c</span></li><li><span class="code">soil_ph</span></li></ul>
       <p> Send up to 500 at once as <span class="code">{"readings":[ ... ]}</span>. Lux is converted to PAR at 54 lux per PAR.</p>
-      <h3>Try it from this computer</h3>
+      <details class="pr-more"><summary>Try it from this computer</summary>
       <p>Windows (cmd.exe):</p><pre class="code">curl -X POST ${url} -H "X-Ingest-Token: ${ing.token}" -H "Content-Type: application/json" -d "{\\"device\\":\\"porch\\",\\"temp_f\\":71.2,\\"humidity\\":58,\\"par\\":240}"</pre>
       <p>Windows (PowerShell):</p><pre class="code">Invoke-RestMethod -Method Post -Uri ${url} -Headers @{"X-Ingest-Token"="${ing.token}"} -ContentType "application/json" -Body '${sample}'</pre>
-      <p>macOS / Linux (bash):</p><pre class="code">curl -X POST ${url} -H "X-Ingest-Token: ${ing.token}" -H "Content-Type: application/json" -d '${sample}'</pre>
+      <p>macOS / Linux (bash):</p><pre class="code">curl -X POST ${url} -H "X-Ingest-Token: ${ing.token}" -H "Content-Type: application/json" -d '${sample}'</pre></details>
       <p class="hint">Anyone on your network who has the token can add readings, so keep it private. If it leaks, make a new token and update your sensor.</p></section>` : html`<section class="blk" id="sensor"><h2>Connect your sensor</h2><p class="muted">Only ${ME().owner_name} can see the sensor address and token.</p></section>`}
     <section class="blk" id="sec-places"><h2>Places</h2>${placesBlock(W)}</section>
     <section class="blk"><h2>Updates for ${W.location.name}</h2>
@@ -485,7 +485,7 @@ function siteCells(p) {
 function placesBlock(W) {
   const P = W.places || [];
   return html`<p>Track the weather for as many places as you like. Each place keeps its own hourly readings, daily summaries, forecast and update log. The <strong>Location</strong> button at the top of every page chooses the place this browser uses for weather, frost warnings, watering and the Winter plan. The home place is the one a browser starts with, and the one hourly updates and backups use.</p>
-    <div class="tbl-wrap"><table class="tbl"><caption class="sr">Places with tracked weather</caption><thead><tr><th scope="col">Place</th><th scope="col">Where</th><th scope="col">Stored</th><th scope="col">Last update</th><th scope="col">Hourly updates</th><th scope="col">Plants</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
+    <div class="tbl-wrap"><table class="tbl"><caption class="sr">Places with tracked weather</caption><thead><tr><th scope="col">Place</th><th scope="col">Where</th><th scope="col">Stored</th><th scope="col">Last update</th><th scope="col">Hourly updates</th><th scope="col">Plants</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody data-more="wx-places">
     ${P.map(p => html`<tr><th scope="row">${p.name}${p.is_home ? html`<div><strong class="tag-home">Main home</strong></div>` : p.plants_here ? html`<div><strong class="tag-home">Home</strong></div>` : ''}${String(p.id) === String(W.location.id) ? html`<div class="hint">In use in this browser</div>` : ''}</th>
       <td>${p.lat}, ${p.lon}<div class="hint">${p.tz}</div></td>
       <td>${p.count ? `${num(p.count)} hourly readings from ${dayLong((p.first || '').slice(0, 10))}` : 'Nothing yet'}${p.daily_count ? html`<div class="hint">${num(p.daily_count)} daily summaries</div>` : ''}</td>

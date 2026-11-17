@@ -327,7 +327,7 @@ async function viewGroups() {
     ${sug.length ? html`<section class="blk" id="grp-suggest"><h2>Suggested groups (${sug.length})</h2>
       <p>Plants of the same family or genus, and plants under the same grow light. Each is a smart group, so new plants that fit join by themselves.</p>
       <p class="noprint"><button class="btn" type="button" data-act="grpaddall">Add all ${sug.length} suggested groups</button></p>
-      <ul class="grp-list">${sug.map((x, i) => html`<li class="grp-card"><h3>${x.name}</h3><p>Plants join when ${x.rule_words}.</p>
+      <ul class="grp-list" data-more="grp-sug">${sug.map((x, i) => html`<li class="grp-card"><h3>${x.name}</h3><p>Plants join when ${x.rule_words}.</p>
         <p><strong>${x.count} plants</strong>: ${nameList(x.codes)}</p>
         <p class="noprint"><button class="btn small" type="button" data-act="grpaddsug" data-i="${i}" aria-label="Add this group: ${x.name}">Add this group</button></p></li>`)}</ul></section>` : ''}
     <section class="blk" id="grp-how"><h2>How groups work</h2><ul>

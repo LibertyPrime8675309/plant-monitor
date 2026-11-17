@@ -112,6 +112,13 @@ with sync_playwright() as p:
     check(pg.locator('#sub-nav a[data-nav=groups][aria-current=page]').count() == 1, 'Groups is in the top menu')
     check(pg.locator('#grp-yours .grp-card').count() == 2 and pg.locator('#grp-suggest .grp-card').count() >= 10, 'the Groups page lists your groups and the suggestions')
     pg.screenshot(path=os.path.join(OUT, 'groups-1-page.png'))
+    # 1.58.0: the suggestions show ten at a time
+    sug = pg.locator('#grp-suggest ul[data-more] > li'); n = sug.count()
+    if n > 10:
+        check(pg.locator('#grp-suggest ul[data-more] > li:not([hidden])').count() == 10 and pg.locator('[data-act=showmore][data-k=grp-sug]').count() == 1, f'the suggestions show 10 of {n} at first, with Show 10 more')
+    while pg.locator('[data-act=showmore][data-k=grp-sug]').count():
+        pg.locator('[data-act=showmore][data-k=grp-sug]').click()
+    check(pg.locator('#grp-suggest ul[data-more] > li:not([hidden])').count() == n, 'Show 10 more shows them all in the end')
     pg.locator('#grp-suggest .grp-card', has=pg.locator('h3', has_text='Majesty palms')).locator('[data-act=grpaddsug]').click(); pg.wait_for_timeout(1500)
     check('Majesty palms' in pg.inner_text('#grp-yours'), 'Add this group makes the suggested group')
     pg.goto(LOCAL + f"/#/group/{ph['id']}"); pg.wait_for_timeout(2000)

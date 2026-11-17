@@ -224,7 +224,9 @@ function libDraw(added) {
   } else if (added && box.querySelector('.grid')) {
     box.querySelector('.grid').insertAdjacentHTML('beforeend', rend(LIB.res.slice(n - added).map(libCard)));
   } else {
-    box.innerHTML = rend(html`<h2 class="sr">The plants found</h2><div class="grid lib-grid">${LIB.res.map(libCard)}</div>`);
+    MORE_SHOWN.delete('lib-res');                     // 1.58.0: a new search starts again at the first twelve
+    box.innerHTML = rend(html`<h2 class="sr">The plants found</h2><div class="grid lib-grid" data-more="lib-res" data-step="12">${LIB.res.map(libCard)}</div>`);
+    moreLists(box);
   }
   if (added) { const first = box.querySelectorAll('[data-sp]')[n - added]; const a = first && first.querySelector('a'); if (a) a.focus(); }
   libPhotos();

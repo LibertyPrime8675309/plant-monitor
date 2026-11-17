@@ -280,7 +280,7 @@ async function viewInside() {
       <li>Keep it apart from your other houseplants for ${D.keep_apart_days} days, with yellow sticky traps nearby, and check it at every watering.</li></ol></section>
     ${D.plants.length ? html`<p class="row noprint"><button class="btn small ghost" type="button" data-act="prepfold" data-open="1">Open every plant</button><button class="btn small ghost" type="button" data-act="prepfold" data-open="0">Close every plant</button></p>` : ''}
     ${groups.map(([k, list]) => html`<section class="blk" id="in-${k}"><h2>${w[k]} (${list.length})</h2>${gHint[k] ? html`<p class="hint">${gHint[k]}</p>` : ''}
-      <ul class="mi-plants">${list.map(fold)}</ul></section>`)}
+      <ul class="mi-plants" data-more="in-${k}">${list.map(fold)}</ul></section>`)}
     <section class="blk" id="in-methods"><h2>How to do each method</h2>
       <p class="hint">Not every method suits every plant: open a plant's plan to see which are best for it.</p>
       ${D.methods.map((m, i) => html`<details class="pm-steps pm-ref"><summary>${i + 1}. ${m.title}</summary><ol>${m.steps.map(s => html`<li>${tText(s)}</li>`)}</ol></details>`)}</section>
