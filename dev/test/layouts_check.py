@@ -315,7 +315,7 @@ with sync_playwright() as p:
     lv2 = pg.evaluate("LY.d.items.find(i => i.name === 'Level 2').id")
     check(pick(lv2), 'a shelf level is chosen from the list')
     pg.click('#ly-add'); pg.wait_for_selector('dialog[open] form[data-lyadd]')
-    check([x.strip() for x in pg.locator('dialog[open] fieldset.ly-kind .opts span').all_inner_texts()] == ['Plant', 'Grow light', 'Shelf or furniture', 'Something else', 'Area to keep clear'], 'the Add window asks what it is, plant first')
+    check([x.strip() for x in pg.locator('dialog[open] fieldset.ly-kind .opts span').all_inner_texts()] == ['Plant', 'Grow light', 'Shelf or furniture', 'Window', 'Something else', 'Area to keep clear'], 'the Add window asks what it is, plant first')
     pg.check('dialog[open] input[name=kind][value=light]', force=True)
     t8 = pg.evaluate("LY.d.lights.find(x => /T8/.test(x.name)).id")
     pg.select_option('dialog[open] select[name=light]', str(t8)); shot(pg, '4-add')
@@ -341,7 +341,7 @@ with sync_playwright() as p:
     check(until(pg, lambda: any(f == 'nearlight' for f in pg.evaluate('LY.F.map(f => f.kind)'))) and pg.locator(f'svg.ly-svg[data-view=front] g.ly-it[data-id="{a}"].is-soft').count() == 1
           and 'Close to a light' in pg.inner_text('#ly-find-body') and 'warning' in pg.inner_text('#ly-status'), f'a plant whose top is 2 in under the strip is "Close to a light" (its figures start at {li["near"]} in)')
     words = pg.inner_text('#ly-p-light')
-    check('Light here: about' in words and 'mol/m² a day' in words and '2 in above its top, 12 hours a day' in words and 'Closer than its figures go' in words and 'Daylight is not counted' in words,
+    check('Light here: about' in words and 'mol/m² a day' in words and '2 in above its top, 12 hours a day' in words and 'Closer than its figures go' in words and 'Daylight is counted from windows drawn here' in words,
           "the plant's own boxes say how much light it gets here, from which light, how far above its top and for how many hours")
     check(pg.locator('#ly-p-light .lv-too_dim').count() == 1 and 'Too dim' in pg.inner_text('#ly-p-light .lv') and 'It needs' in words and 'Too dim' in pg.inner_text('#ly-find-body')
           and pg.locator(f'.ly-list .ly-row[data-id="{a}"] .lv-too_dim').count() == 1 and 'too dim' in pg.inner_text(f'.ly-list .ly-row[data-id="{a}"]'),
@@ -376,8 +376,14 @@ with sync_playwright() as p:
           '"Save this height on its page" puts the height drawn on its page')
     press(pg, '#ly-undo')
     check(until(pg, lambda: call('GET', f'/api/plants/{bcode}')['height_in'] is None) and until(pg, lambda: pg.locator('#ly-tallsave').count() == 1), 'and Undo takes it off the page again')
-    pg.click('#ly-marks summary'); pg.click('#ly-keyhelp summary')
-    check(pg.locator('#ly-marks > ul > li').count() == 7 and 'A sign for its light' in pg.inner_text('#ly-marks') and 'A grey dash' in pg.inner_text('#ly-marks') and 'A heavy edge' in pg.inner_text('#ly-marks') and pg.locator('#ly-marks li').first.is_visible() and 'Too dim' in pg.inner_text('#ly-marks') and 'Page Down' in pg.inner_text('#ly-keyhelp') and 'Ctrl+Y' in pg.inner_text('#ly-keyhelp'), 'What the marks mean and Keys for the drawing open lists, in words')
+    def lists_open():
+        # Undo redraws the page once more; open the two lists again if that closed them
+        for d in ('#ly-marks', '#ly-keyhelp'):
+            if not pg.evaluate("s => !!document.querySelector(s)?.open", d):
+                pg.click(d + ' summary')
+        return pg.evaluate("() => document.querySelector('#ly-marks').open && document.querySelector('#ly-keyhelp').open")
+    until(pg, lists_open)
+    check(pg.locator('#ly-marks > ul > li').count() == 10 and 'A sign for its light' in pg.inner_text('#ly-marks') and 'A grey dash' in pg.inner_text('#ly-marks') and 'A heavy edge' in pg.inner_text('#ly-marks') and pg.locator('#ly-marks li').first.is_visible() and 'Too dim' in pg.inner_text('#ly-marks') and 'Page Down' in pg.inner_text('#ly-keyhelp') and 'Ctrl+Y' in pg.inner_text('#ly-keyhelp'), 'What the marks mean and Keys for the drawing open lists, in words')
     pg.click('#ly-marks summary'); pg.click('#ly-keyhelp summary')
 
     # ---- an area to keep clear, something else, a copy, a quarter turn
@@ -430,11 +436,21 @@ with sync_playwright() as p:
 
     # ---- a change that cannot be saved is said, and the page goes back to what is saved
     pick(a); xs = it(pg, a)['x']
-    pg.route('**/api/layouts/items/*', lambda r: r.abort() if r.request.method == 'PUT' else r.continue_())
+    pg.route('**/api/layouts/items/*', lambda r: r.fulfill(status=400, content_type='application/json', body='{"error": "That move was refused"}') if r.request.method == 'PUT' else r.continue_())
     pg.keyboard.press('ArrowRight')
-    check(until(pg, lambda: 'Cannot reach the plant server' in pg.inner_text('#toasts')) and until(pg, lambda: it(pg, a)['x'] == xs) and saved(lid, a)['x'] == xs and pg.locator('.ly-stale').count() == 0,
-          'a move that could not be saved is said, and the thing goes back to where it is saved')
+    check(until(pg, lambda: 'That move was refused' in pg.inner_text('#toasts')) and until(pg, lambda: it(pg, a)['x'] == xs) and saved(lid, a)['x'] == xs and pg.locator('.ly-stale').count() == 0,
+          'a move the server refuses is said, and the thing goes back to where it is saved')
     pg.unroute('**/api/layouts/items/*')
+    # 1.58.0: with no connection a change waits on this device, and is sent by itself once the server can be reached
+    pg.route('**/api/layouts/items/*', lambda r: r.abort() if r.request.method == 'PUT' else r.continue_())
+    pick(a); pg.keyboard.press('ArrowRight')
+    check(until(pg, lambda: pg.locator('.ly-offline').count() == 1) and it(pg, a)['x'] != xs and saved(lid, a)['x'] == xs and 'kept on this device' in pg.inner_text('#ly-status'),
+          f"with no connection, the move stays on the page and the layout says it is kept on this device ({pg.inner_text('#ly-status')[:160]!r})")
+    x1 = it(pg, a)['x']
+    pg.unroute('**/api/layouts/items/*')
+    pg.evaluate('offSync()')
+    check(until(pg, lambda: saved(lid, a)['x'] == x1, 30000), 'once the server can be reached, the move is sent by itself')
+    xs = x1
     # the page's own request function is made to fail for layouts (a saved copy from the service worker would answer a stopped request)
     pg.evaluate("(() => { window.lyRealApi = api; api = async (m, u, ...more) => { if (u.startsWith('/api/layouts')) throw new Error('Cannot reach the plant server. Check that the container is running.'); return lyRealApi(m, u, ...more); }; })()")
     pick(a); pg.keyboard.press('ArrowRight')
@@ -641,7 +657,7 @@ with sync_playwright() as p:
     ph.on('pageerror', lambda e: errs.append(str(e)))
     ph.add_init_script("localStorage.setItem('plantdb.editor','Phone');localStorage.setItem('plantdb.display', JSON.stringify({theme:'dark', size:'190'}))")
     ph.goto(BASE + f'/#/layouts/{lid}'); ph.wait_for_selector('#ly-draw svg.ly-svg', timeout=20000); ph.wait_for_timeout(500)
-    check(ph.locator('svg.ly-svg[data-live]').count() == 1 and ph.locator('input[name=lyview]').count() == 2 and over(ph) <= 0, f'phone, dark, the largest text: one view at a time, and no sideways scrolling ({over(ph)}px)')
+    check(ph.locator('svg.ly-svg[data-live]').count() == 1 and ph.locator('input[name=lyview]').count() == 3 and over(ph) <= 0, f'phone, dark, the largest text: one view at a time, and no sideways scrolling ({over(ph)}px)')
     ph.click('#ly-more'); ph.wait_for_selector('#ly-level'); ph.wait_for_timeout(200)
     check(over(ph) <= 0, f'nor with Grid and settings open ({over(ph)}px)')
     ph.click('#ly-more')

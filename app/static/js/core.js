@@ -275,6 +275,7 @@ async function apiNet(method, url, body, form, m) {     // m.took: how long the 
   else if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
   // 1.24.0: changes that can wait are kept on this device when the server can't be reached, and sent later (offSync)
   const q = method !== 'GET' && offQueueable(method, url);
+  if (q && offLyTemp(url)) { const r = await offQueue(method, url, body, form); if (navigator.onLine) setTimeout(offSync, 0); return r; }      // 1.58.0: a thing put on a layout offline and not sent yet: its changes follow it
   if (q && (!navigator.onLine || /\/NEW-/i.test(url))) return offQueue(method, url, body, form);
   if (q) opts.headers['X-Offline-Op'] = offId();          // so a retry after a dropped answer is made only once
   let r;

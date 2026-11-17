@@ -189,3 +189,37 @@ html[data-role=viewer] :is([data-act=lynew], [data-act=lyadd], [data-act=lyundo]
 .ly-locks legend{font:inherit;font-weight:700;padding:0}
 .ly-locks .hint{margin:.1rem 0 0}
 .ly-fields input:disabled,.ly-fields select:disabled,#ly-f-shape:disabled{border-style:dashed}      /* a locked box looks it, as well as saying it */
+/* 1.58.0: a window, in the wall: the glass's light blue edge and a pale fill, with two bars across like a frame (not colour alone) */
+.ly-k-window>.ly-shape{fill:var(--sheet);stroke:var(--ink-2)}
+.ly-k-window>.ly-pane{fill:none;stroke:var(--ink-2)}
+/* 1.58.0: the light map (deeper yellow is more light; the numbers on it say how much), the 3D view, a group of chosen things */
+.ly-lm{fill:#f2b400;stroke:none}
+.ly-lm-0{fill-opacity:0}.ly-lm-1{fill-opacity:.14}.ly-lm-2{fill-opacity:.28}.ly-lm-3{fill-opacity:.42}.ly-lm-4{fill-opacity:.58}.ly-lm-5{fill-opacity:.75}
+.ly-lmn{fill:var(--ink);stroke:var(--sheet);paint-order:stroke;font-weight:700}
+.ly-lmedge{fill:none;stroke:var(--ink-2);stroke-width:1}
+.ly-lmkey{margin:.4rem 0 0}
+.ly-lmbands{list-style:none;padding:0;margin:.3rem 0 0;display:flex;flex-wrap:wrap;gap:.3rem 1rem}
+.ly-lmbands li{display:flex;align-items:center;gap:.35rem}
+.ly-3floor{fill:var(--paper);stroke:var(--ink-2)}
+.ly-3wall{fill:var(--line-2);fill-opacity:.35;stroke:var(--line)}
+.ly-svg[data-view="3d"] .ly-f3y{filter:brightness(.9)}
+.ly-svg[data-view="3d"] .ly-f3x{filter:brightness(.78)}
+.ly-svg[data-view="3d"] .ly-f3zone{fill:none;stroke-dasharray:4 3}
+.ly-svg[data-view="3d"] .ly-k-shelf .ly-f3post{fill:var(--ink-2)}
+.ly-svg[data-view="3d"] .ly-it.is-sel>.ly-shape{stroke:var(--focus);stroke-width:4px;vector-effect:non-scaling-stroke}
+.ly-svg .ly-it.is-with>.ly-shape{stroke:var(--focus);stroke-width:4px;stroke-dasharray:7 4;vector-effect:non-scaling-stroke}      /* chosen with the chosen thing: a dashed ring */
+.ly-3tools{margin:.3rem 0}
+.ly-svg[data-view="3d"]{touch-action:pan-y;cursor:grab}      /* dragged to turn: a finger still scrolls the page up and down */
+.ly-svg[data-view="3d"] .ly-it{cursor:pointer}
+.ly-svg[data-view="3d"].is-turning{cursor:grabbing}
+.ly-shadeset{border:2px solid var(--line);border-radius:.5rem;padding:.5rem .8rem;margin:.6rem 0}
+.ly-shadeset legend{font-weight:700;padding:0 .3rem}
+.ly-pot small{display:block}
+.ly-group{border:2px solid var(--line);border-radius:.5rem;padding:.6rem .8rem;margin:0 0 .8rem}
+.ly-group h3{margin:0 0 .3rem;font-size:1em}
+.ly-gl-h{margin:.5rem 0 .2rem}
+.ly-lineup{gap:.35rem}
+.ly-rowacts{display:flex;flex-wrap:wrap;gap:.3rem .6rem;align-items:center}
+.ly-offline{margin:.4rem 0 0}
+.ly-sheet-one ul{margin:.2rem 0 .4rem}
+.ly-svg[data-view="3d"] .ly-f3r{stroke-opacity:.2}

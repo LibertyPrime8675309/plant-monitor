@@ -348,7 +348,7 @@ def read_rows(LL, rows, pid):
 def drawn_dli(r, light_id, hours, dim):
     """A drawn plant's daily light with every drawn `light_id` on its layout at these hours and brightness (the others as they are)."""
     mine = sum(p['par'] for p in r['parts'] if p['light_id'] == light_id)
-    rest = sum(o['dli'] for o in r['on'] if o['light_id'] != light_id)
+    rest = sum(o['dli'] for o in r['on'] if o['light_id'] != light_id) + (r.get('day') or 0)      # 1.58.0: and its daylight from the windows drawn there
     return round(mine * dim / 100 * hours * 0.0036 + rest, 1)
 
 def layout_lit(LL, assigned):

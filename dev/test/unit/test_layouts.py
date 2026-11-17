@@ -74,7 +74,7 @@ def test_a_shelfs_levels_become_boards_from_its_measurements():
 def test_what_a_layout_of_a_place_starts_with(room):
     with S.app.test_client() as c:
         d = c.get('/api/layouts').get_json()
-    assert set(d['kinds']) == {'plant', 'light', 'shelf', 'other', 'zone'} and 1 in d['grids']
+    assert set(d['kinds']) == {'plant', 'light', 'shelf', 'window', 'other', 'zone'} and 1 in d['grids']
     by = {p['pid']: p for p in d['places']}
     shelf, table, whole = by[room['shelf']], by[room['table']], by[-room['area']]
     st = shelf['start']
@@ -302,12 +302,14 @@ def test_a_drawn_light_carries_what_the_page_works_the_light_out_from(room):
 
 def test_a_table_made_before_lights_had_hours_gains_them():
     c = sqlite3.connect(':memory:'); c.row_factory = sqlite3.Row
-    c.executescript(LY.LAYOUT_SCHEMA.replace('  hours REAL, dim_pct INTEGER, size_locked INTEGER NOT NULL DEFAULT 0,\n', ''))
+    c.executescript(LY.LAYOUT_SCHEMA.replace('  hours REAL, dim_pct INTEGER, size_locked INTEGER NOT NULL DEFAULT 0, facing TEXT, day_dli REAL, pot_h REAL,\n', '').replace('  pot_block INTEGER, leaf_block INTEGER,\n', ''))
     assert 'hours' not in {r[1] for r in c.execute('PRAGMA table_info(layout_items)')}
+    assert 'pot_block' not in {r[1] for r in c.execute('PRAGMA table_info(layouts)')}
     c.execute("INSERT INTO layouts(name, width_in, depth_in, height_in, created_at) VALUES('Old', 20, 10, 40, 'now')")
     for locked in (1, 0): c.execute("INSERT INTO layout_items(layout_id, kind, w, d, h, locked, created_at) VALUES(1, 'other', 1, 1, 1, ?, 'now')", (locked,))
     LY.layout_tables(c); LY.layout_tables(c)
-    assert {'hours', 'dim_pct', 'size_locked'} <= {r[1] for r in c.execute('PRAGMA table_info(layout_items)')}
+    assert {'hours', 'dim_pct', 'size_locked', 'facing', 'day_dli', 'pot_h'} <= {r[1] for r in c.execute('PRAGMA table_info(layout_items)')}
+    assert {'pot_block', 'leaf_block'} <= {r[1] for r in c.execute('PRAGMA table_info(layouts)')}
     assert [tuple(r) for r in c.execute('SELECT locked, size_locked FROM layout_items ORDER BY id')] == [(1, 1), (0, 0)], 'a thing locked before the size lock came keeps its size locked too'
     c.execute('UPDATE layout_items SET size_locked=0 WHERE id=1'); LY.layout_tables(c)
     assert c.execute('SELECT size_locked FROM layout_items WHERE id=1').fetchone()[0] == 0, 'and making the tables again does not lock it again'
@@ -346,3 +348,44 @@ def test_the_tables_are_made_on_first_use_and_making_them_again_harms_nothing():
     LY.layout_tables(c)                                                        # a record put back from a backup, or the second request
     assert c.execute('SELECT name, grid_in, snap, clear_in FROM layouts').fetchall() == [('Kept', 1, 1, 1)]
     assert {r[0] for r in c.execute("SELECT name FROM sqlite_master WHERE type='table'")} >= {'layouts', 'layout_items'}
+
+
+def test_a_pot_in_the_way_blocks_all_and_leaves_half_and_each_layout_can_say_its_own():
+    """Ethan, November 17, 2026: "Pots will block 100% of light while plants will block ~50%. Having the ability to change these values
+    myself would be nice." A plant's pot is the bottom part of its box; a line through it counts the pot, one over it the leaves."""
+    W = {'id': 9, 'kind': 'window', 'name': 'Window', 'x': 0, 'y': 0, 'z': 0, 'w': 40, 'd': 1, 'h': 60, 'day_dli': 12, 'facing': 'S', 'shape': 'box'}
+    far = {'id': 1, 'kind': 'plant', 'name': 'Far', 'x': 16, 'y': 40, 'z': 0, 'w': 8, 'd': 8, 'h': 10, 'pot_h': 5, 'shape': 'box'}
+    near = {'id': 2, 'kind': 'plant', 'name': 'Near', 'x': 15, 'y': 15, 'z': 0, 'w': 10, 'd': 10, 'h': 30, 'pot_h': 12, 'shape': 'box'}
+    L = {'width_in': 40, 'depth_in': 60, 'height_in': 60, 'items': [W, far, near]}
+    o = LY.layout_day_on(L, L['items'], far, W)
+    assert [(x['q']['name'], x['pot']) for x in o['shade']] == [('Near', True)] and o['dli'] == 0, 'the low line to its top goes through the pot: it blocks it all'
+    near['pot_h'] = 2; o = LY.layout_day_on(L, L['items'], far, W)
+    assert [(x['q']['name'], x['pot']) for x in o['shade']] == [('Near', False)], 'with a short pot the line goes through the leaves'
+    clear = LY.layout_day_on({**L, 'items': [W, far]}, [W, far], far, W)['dli']
+    assert abs(o['dli'] - clear * 0.5) < 1e-9, 'leaves let half through'
+    L2 = {**L, 'pot_block': 80, 'leaf_block': 25}
+    assert abs(LY.layout_day_on(L2, L2['items'], far, W)['dli'] - clear * 0.75) < 1e-9, 'a layout can say leaves block a quarter'
+    near['pot_h'] = 12
+    assert abs(LY.layout_day_on(L2, L2['items'], far, W)['dli'] - clear * 0.2) < 1e-9, 'and a pot 80%'
+    assert LY._ly_shade_names(LY.layout_day_on(L, L['items'], far, W)['shade']) == ["Near's pot"]
+    near.pop('pot_h'); near['pot_rec'] = None
+    assert LY._ly_pot_h(near) == 8.5, 'no height anywhere: 0.85 of its width, to the half inch'
+    near['pot_rec'] = 6; assert LY._ly_pot_h(near) == 6, "its pot's height in Pots and trays"
+    near['pot_h'] = 40; assert LY._ly_pot_h(near) == 30, 'never taller than the plant'
+
+def test_shade_settings_and_a_pot_height_are_saved():
+    with S.app.test_client() as c:
+        r = c.post('/api/layouts', json={'name': 'Shade test', 'width_in': 40, 'depth_in': 40, 'height_in': 80, 'items': [{'kind': 'plant', 'name': 'A plant', 'w': 6, 'd': 6, 'h': 8}]}, headers=OWN)
+        lid = r.get_json()['id']; d = c.get(f'/api/layouts/{lid}').get_json()
+        assert (d['pot_block'], d['leaf_block']) == (100, 50)
+        d = c.put(f'/api/layouts/{lid}', json={'pot_block': 90, 'leaf_block': 30}, headers=OWN).get_json()
+        assert (d['pot_block'], d['leaf_block']) == (90, 30)
+        assert c.put(f'/api/layouts/{lid}', json={'leaf_block': 120}, headers=OWN).status_code == 400
+        iid = d['items'][0]['id']
+        assert c.put(f'/api/layouts/items/{iid}', json={'pot_h': 4.5}, headers=OWN).status_code == 200
+        assert c.get(f'/api/layouts/{lid}').get_json()['items'][0]['pot_h'] == 4.5
+        assert c.put(f'/api/layouts/items/{iid}', json={'x': 2}, headers=OWN).status_code == 200
+        assert c.get(f'/api/layouts/{lid}').get_json()['items'][0]['pot_h'] == 4.5, 'a move keeps it'
+        assert c.put(f'/api/layouts/items/{iid}', json={'pot_h': None}, headers=OWN).status_code == 200
+        assert c.get(f'/api/layouts/{lid}').get_json()['items'][0]['pot_h'] is None, 'none goes back to its pot or the guess'
+        assert c.delete(f'/api/layouts/{lid}', headers=OWN).status_code == 200
