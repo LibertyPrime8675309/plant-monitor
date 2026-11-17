@@ -67,5 +67,7 @@ So when a plant is drawn on a layout that has a grow light, Grow lights reads th
 - **A light's hours and brightness are set on the layout.** When the light of a spot is drawn on the layout of the spot's room or shelf, the spot takes the drawn light's hours and brightness. Change them on the layout and the spot follows. In **Change this spot** they are shown, with a link to the layout, and cannot be typed there. Take the light off the layout and the spot sets its own again.
 - **A plant under a light on a layout, but in no light spot** counts as having a light. The summary at the top of Grow lights counts it under **Under a light on a layout**, and the suggested layout leaves it out. They are listed above your spots.
 - **A plant's own page** says its light on the layout, under **Grow light this winter**.
+- **Best setting** in a spot's dialog reads the drawing for the plants drawn there. It can set the best hours and brightness on the layout. See the Grow lights page of this manual.
+- **Compare lights** can try another light in place of one drawn on a layout.
 
 Move the plant or the light on the layout, or change the light's hours there, and Grow lights follows the next time you open it.

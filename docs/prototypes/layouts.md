@@ -132,7 +132,7 @@ Then open http://127.0.0.1:8080/#/layouts, press **Start a layout** and choose *
 - A view in three dimensions.
 - The light is said in words and numbers; it is not yet drawn (for example as the pool of light under each lamp).
 - Daylight from windows, and the shade one plant casts on another, are not counted.
-- Grow lights keeps its own spots (which plants are under which light, at what distance). A layout does not change them, and Grow lights does not read layouts yet: Ethan has said it should (below), and that is the next piece of work, in a pull request of its own.
+- Grow lights keeps its own spots (which plants are under which light). It reads layouts since pull request 141, and Best setting and Compare lights since 151. A layout does not move plants between spots.
 - A layout does not change a shelf's measurements in the record when you resize its boards.
 - Choosing several things at once, and lining things up.
 - A layout cannot be changed offline.
