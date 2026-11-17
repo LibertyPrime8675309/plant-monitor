@@ -214,7 +214,7 @@ with sync_playwright() as p:
     check('SANSI-80W-TEST' in pg.inner_text('#lt-lights') and pg.locator('#lt-lights .lt-ed:visible').count() == 0, '1.39.1: each light shows its model as text; the edit fields wait behind a button')
     pg.locator('[data-act=ltedit]').first.click(); pg.wait_for_timeout(300)
     check('Manufacturer model' in pg.inner_text('#lt-lights') and pg.locator('#lt-lights [data-k=model]').evaluate_all("els => els.some(e => e.value === 'SANSI-80W-TEST')"), 'each light shows its manufacturer model (1.29.0: in a box you can type in)')
-    check(pg.locator('#lt-spots details.lt-spot-fold').count() == 1 and pg.locator('#lt-plan article').count() >= 5 and pg.locator('.lt-light').count() == 11, 'the page shows your spot, the suggestions and your 11 lights')
+    check(pg.locator('#lt-spots details.lt-spot-fold').count() == 1 and pg.locator('#lt-plan .lt-spot').count() >= 5 and pg.locator('.lt-light').count() == 11, 'the page shows your spot, the suggestions and your 11 lights')
     check(pg.locator('.lt-light img.lt-photo').count() == 10 and all(pg.locator('.lt-light img.lt-photo').nth(i).get_attribute('alt') for i in range(10)), 'every light photo has a description')
     check(pg.locator('.lv').count() > 10 and pg.locator('.lv span[aria-hidden]').count() == pg.locator('.lv').count(), 'verdicts are words with a symbol, not colour alone')
     pg.screenshot(path=os.path.join(OUT, 'lights-1-page.png'))
@@ -269,6 +269,7 @@ with sync_playwright() as p:
     pg.locator('dialog .btn').first.click(); pg.wait_for_timeout(2000)
     check(not any(p_['room'] == 'Test single-shelf room' for p_ in call('GET', '/api/lights')[1]['places']), 'and removes it')
     pg.evaluate('window.scrollTo(0, 0)')
+    pg.locator('#lt-plan details.lt-plan-fold > summary').first.click()      # 1.58.0: each suggested spot folds
     pg.click('#lt-plan [data-act=spotnew]'); pg.wait_for_timeout(1200)
     check(pg.locator('dialog select[name=place] optgroup').count() == 6, 'the spot window offers the rooms and shelves (and the other homes\' rooms)')
     t1 = pg.inner_text('#sp-prev')

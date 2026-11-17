@@ -120,6 +120,7 @@ with sync_playwright() as p:
     check('16 in wide' in t and 'Too tall for the level' in t and 'Not set up and checked yet' in t, 'opened, the spot shows each reason, and that it is not checked yet')
     card.screenshot(path=os.path.join(OUT, 'mounting-1-spot-nofit.png'))
     lc = pg.locator('article.lt-light', has_text=key['sansi-t8']['name']).first
+    pg.evaluate("document.querySelectorAll('details.lt-more').forEach(d => d.open = true)")   # 1.58.0: a light's figures fold into one line
     check('How it holds' in lc.inner_text() and 'at least 24 in long' in lc.inner_text(), "the light's card says how it holds")
     # How it holds, for the GooingTop (keyboard)
     pg.locator(f'[data-act=ltmount][data-id="{key["gooingtop-clip"]["id"]}"]').focus(); pg.keyboard.press('Enter')

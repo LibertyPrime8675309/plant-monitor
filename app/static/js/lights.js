@@ -66,7 +66,8 @@ function ltPlantLi(p, extra) {      // 1.42.0: the code and the range on lines o
 }
 // 1.58.0 (Ethan, November 16: make Grow lights shorter): each light's figures, notes and maker's chart fold into one line; each
 // suggested spot folds like your own spots (its line says its light, its daily light and how many plants); so does No light left.
-const LT_FOLD = true, LT_PLAN_OPEN = new Set();
+const LT_FOLD = true, LT_PLAN_OPEN = new Set(), LT_MORE_OPEN = new Set();       // what you opened stays open when the page redraws after a change
+document.addEventListener('toggle', e => { const d = e.target; if (d && d.classList && d.classList.contains('lt-light-more')) { if (d.open) LT_MORE_OPEN.add(d.dataset.id); else LT_MORE_OPEN.delete(d.dataset.id); } }, true);
 document.addEventListener('toggle', e => { const d = e.target; if (d && d.classList && d.classList.contains('lt-plan-fold')) { const i = Number(d.dataset.plan); if (d.open) LT_PLAN_OPEN.add(i); else LT_PLAN_OPEN.delete(i); } }, true);
 // 1.42.0: each of your spots folds; shut, it still shows its name, where it is, its daily light and how many plants
 const LT_OPEN = (() => { try { return new Set(JSON.parse(localStorage.getItem('plantdb.ltspots') || '[]')); } catch (e) { return new Set(); } })();
@@ -110,7 +111,7 @@ function ltLightCard(L) {
       <label class="f lt-n">How many you have<input type="number" inputmode="numeric" min="0" max="100" step="1" value="${L.count}" ${ed('count')}><small>${L.in_use ? `${L.in_use} in use in your spots.` : 'None in a spot yet.'}</small></label>
       <label class="f">Manufacturer model<input type="text" maxlength="80" value="${S.model || ''}" ${ed('model')}></label>
       <label class="f">Where it is<input type="text" maxlength="600" value="${L.fixture || ''}" ${ed('fixture')}><small>For a bulb, the lamp or socket it screws into.</small></label></div>`; })()}
-    ${LT_FOLD ? raw('<details class="lt-more"><summary>Its light figures, notes and the maker\'s chart</summary>') : ''}
+    ${LT_FOLD ? raw(`<details class="lt-more lt-light-more" data-id="${L.id}" ${LT_MORE_OPEN.has(String(L.id)) ? 'open' : ''}><summary>Its light figures, notes and the maker's chart</summary>`) : ''}
     <dl class="dl">
       ${S.kind ? html`<dt>Type</dt><dd>${S.kind}</dd>` : ''}
       ${bits.length ? html`<dt>Light</dt><dd>${bits.join(', ')}</dd>` : ''}
