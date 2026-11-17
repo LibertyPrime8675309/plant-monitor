@@ -389,3 +389,39 @@ def test_shade_settings_and_a_pot_height_are_saved():
         assert c.put(f'/api/layouts/items/{iid}', json={'pot_h': None}, headers=OWN).status_code == 200
         assert c.get(f'/api/layouts/{lid}').get_json()['items'][0]['pot_h'] is None, 'none goes back to its pot or the guess'
         assert c.delete(f'/api/layouts/{lid}', headers=OWN).status_code == 200
+
+def test_a_home_has_its_own_window_daylight_and_windows_follow_it():
+    """Ethan, November 17, 2026: "if you can make them customizable in the app per "Home" that would be ideal. I can go through the
+    house with a light meter another day and get actual numbers to edit in." """
+    with S.app.test_client() as c:
+        home = next(p for p in c.get('/api/places').get_json() if p['is_home'])
+        assert home['window_dli'] == {}
+        assert c.get('/api/meta').get_json()['window_dli']['usual']['S'] == 12
+        r = c.post('/api/layouts', json={'name': 'Daylight test', 'width_in': 100, 'depth_in': 100, 'height_in': 96,
+                                         'items': [{'kind': 'window', 'name': 'South window', 'facing': 'S', 'x': 20, 'y': 0, 'z': 30, 'w': 40, 'd': 1, 'h': 48},
+                                                   {'kind': 'plant', 'name': 'A plant', 'x': 30, 'y': 20, 'w': 8, 'd': 8, 'h': 12}]}, headers=OWN)
+        lid = r.get_json()['id']; d = c.get(f'/api/layouts/{lid}').get_json()
+        win = next(i for i in d['items'] if i['kind'] == 'window'); pl = next(i for i in d['items'] if i['kind'] == 'plant')
+        assert win['day_dli'] is None and d['window_dli']['S'] == 12 and d['window_own'] == [], 'a new window follows its home'
+        day12 = LY.layout_day_on(d, d['items'], pl, win)['dli']
+        assert c.put(f"/api/places/{home['id']}", json={'window_dli': {'S': 15, 'N': 3}}, headers=OWN).status_code == 200
+        assert c.put(f"/api/places/{home['id']}", json={'window_dli': {'S': 80}}, headers=OWN).status_code == 400
+        assert c.put(f"/api/places/{home['id']}", json={'window_dli': {'UP': 3}}, headers=OWN).status_code == 400
+        home = next(p for p in c.get('/api/places').get_json() if p['is_home'])
+        assert home['window_dli'] == {'N': 3.0, 'S': 15.0}
+        d = c.get(f'/api/layouts/{lid}').get_json()
+        assert d['window_dli']['S'] == 15 and d['window_dli']['E'] == 8 and d['window_own'] == ['N', 'S'] and d['window_home']['id'] == home['id']
+        assert abs(LY.layout_day_on(d, d['items'], pl, win)['dli'] - day12 * 15 / 12) < 1e-9, "the window follows its home's new number"
+        assert c.put(f"/api/layouts/items/{win['id']}", json={'day_dli': 10}, headers=OWN).status_code == 200
+        d = c.get(f'/api/layouts/{lid}').get_json(); w2 = next(i for i in d['items'] if i['kind'] == 'window')
+        assert w2['day_dli'] == 10 and abs(LY.layout_day_on(d, d['items'], pl, w2)['dli'] - day12 * 10 / 12) < 1e-9, 'its own number wins'
+        assert c.put(f"/api/layouts/items/{win['id']}", json={'x': 22}, headers=OWN).status_code == 200
+        assert next(i for i in c.get(f'/api/layouts/{lid}').get_json()['items'] if i['kind'] == 'window')['day_dli'] == 10, 'a move keeps it'
+        assert c.put(f"/api/layouts/items/{win['id']}", json={'facing': 'N'}, headers=OWN).status_code == 200
+        assert next(i for i in c.get(f'/api/layouts/{lid}').get_json()['items'] if i['kind'] == 'window')['day_dli'] is None, 'turned, it follows its home again'
+        assert c.put(f"/api/layouts/items/{win['id']}", json={'day_dli': 5}, headers=OWN).status_code == 200
+        assert c.put(f"/api/layouts/items/{win['id']}", json={'day_dli': None}, headers=OWN).status_code == 200
+        assert next(i for i in c.get(f'/api/layouts/{lid}').get_json()['items'] if i['kind'] == 'window')['day_dli'] is None, 'none goes back to the home'
+        assert c.put(f"/api/places/{home['id']}", json={'window_dli': {'S': None, 'N': ''}}, headers=OWN).status_code == 200
+        assert next(p for p in c.get('/api/places').get_json() if p['is_home'])['window_dli'] == {}, 'empty goes back to the usual numbers'
+        assert c.delete(f'/api/layouts/{lid}', headers=OWN).status_code == 200

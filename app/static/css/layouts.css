@@ -177,7 +177,7 @@
 .ly-wh{margin-left:.4rem}
 #ly-wherelink{display:flex;gap:.8rem;align-items:center;flex-wrap:wrap}
 
-html[data-role=viewer] :is([data-act=lynew], [data-act=lyadd], [data-act=lyundo], [data-act=lyredo], [data-act=lyspace], [data-act=lydel], [data-act=lyturn], [data-act=lycopy], [data-act=lyrm], [data-act=lytray], [data-act=lyrec], [data-act=lytall], .ly-handle){display:none!important}
+html[data-role=viewer] :is([data-act=lynew], [data-act=lyadd], [data-act=lyundo], [data-act=lyredo], [data-act=lyspace], [data-act=lydel], [data-act=lyturn], [data-act=lycopy], [data-act=lyrm], [data-act=lytray], [data-act=lyrec], [data-act=lytall], [data-act=lydayhome], .ly-handle){display:none!important}
 @media (forced-colors:active){
   .ly-svg{forced-color-adjust:none}
   .ly-f,.ly-tag,.ly-card,.ly-num{forced-color-adjust:none;color:CanvasText;background:Canvas;border-color:CanvasText}
@@ -215,6 +215,7 @@ html[data-role=viewer] :is([data-act=lynew], [data-act=lyadd], [data-act=lyundo]
 .ly-shadeset{border:2px solid var(--line);border-radius:.5rem;padding:.5rem .8rem;margin:.6rem 0}
 .ly-shadeset legend{font-weight:700;padding:0 .3rem}
 .ly-pot small{display:block}
+.ly-dayhome{margin:.2rem 0 .7rem}
 .ly-group{border:2px solid var(--line);border-radius:.5rem;padding:.6rem .8rem;margin:0 0 .8rem}
 .ly-group h3{margin:0 0 .3rem;font-size:1em}
 .ly-gl-h{margin:.5rem 0 .2rem}

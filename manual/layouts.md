@@ -70,8 +70,12 @@ Part of the Plant record manual. The README in the folder above has how to start
 
 ### Windows and shade (1.58.0)
 - **Add something** has **Window**. It goes in the middle of the wall you choose, at the height you give.
-- A window gives daylight at the glass. It starts from the way it faces: about 12 mol/m² a day facing south, 9 west, 8 east and 4 north.
-- Type your own reading under **Daylight at the glass** if you have a light meter. **Which way it faces** changes the starting number.
+- A window gives daylight at the glass, in mol/m² a day: the light a plant can use over a whole day. Full sun outdoors in summer is about 40 to 60.
+- It uses its home's number for the way it faces. To start with that is about 12 facing south, 9 west, 8 east and 4 north.
+- Set a home's numbers on **Homes and places**, under **Window daylight**. Every window at that home that faces that way follows them.
+- Type a reading under **Daylight at the glass** to give one window its own number. Empty the box to go back to the home's.
+- With its own number, the owner sees **Use it for every north window** (or the way it faces). That makes it the home's number.
+- **Which way it faces** goes back to the home's number for the new way.
 - The daylight is half as much 2 ft from the glass, and a fifth at 4 ft. It is less to the side of the window, and none through a shelf or a wall.
 - A plant in the way of a light or a window shades what is behind it. The bottom of its box is its pot, and the rest is its leaves.
 - To start with, a pot in the way blocks all the light, and leaves block half. Change both under **Grid and settings**, **Size and name**, **Shade from plants in the way**. Each layout keeps its own.

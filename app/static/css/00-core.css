@@ -1818,6 +1818,9 @@ ul.lt-plants.lt-two{grid-template-columns:repeat(auto-fit,minmax(max(min(100%,19
 .site-set .f{margin:0;font-size:.95em}
 .site-set select{width:100%;min-width:0}
 .site-set input{width:4rem}
+.site-dli summary{cursor:pointer;font-weight:700}
+.site-dli .dli-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(7.5em,1fr));gap:.3rem .6rem;margin-top:.3rem}
+.site-dli .dli-grid input{width:100%}
 .p-homes{border:2px solid var(--line);border-radius:8px;padding:.4rem .7rem .5rem;margin:0;min-width:0}
 .p-homes legend{font:inherit;font-weight:700;padding:0 .3rem}
 .p-homes .chk{display:inline-flex;align-items:center;gap:.4rem;margin:.1rem .9rem .1rem 0;font-weight:400}

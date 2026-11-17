@@ -45,6 +45,11 @@ const LY_NAMES = { other: ['Humidifier', 'Fan', 'Heater', 'Heat mat', 'Sensor', 
 const LY_WIN_FALL = 24, LY_POT_BLOCK = 100, LY_LEAF_BLOCK = 50, LY_POT_TALL = 0.85;
 const lyBlk = L => [L.pot_block == null ? LY_POT_BLOCK : L.pot_block, L.leaf_block == null ? LY_LEAF_BLOCK : L.leaf_block];
 // How tall a plant's pot is: the layout's own height, else its pot's in Pots and trays, else LY_POT_TALL of its width to the nearest half inch.
+// A window's daylight at the glass: its own, else its home's for the way it faces (window_dli: the home's numbers on Homes and places,
+// else the usual ones). layouts.py: _ly_day.
+// The ways a window can face, round the compass (the server's answer has them in the order of their letters).
+const lyWays = L => ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'].filter(k => (L.facing || {})[k]).map(k => [k, L.facing[k]]);
+const lyDay = (L, w) => (w.day_dli != null ? w.day_dli : ((L.window_dli || {})[w.facing || 'S'] || 0));
 function lyPotH(q) {
   let v = q.pot_h != null ? q.pot_h : q.pot_rec;
   if (v == null) v = Math.max(0.5, Math.floor(Math.min(q.w, q.d) * LY_POT_TALL * 2 + 0.5) / 2);
@@ -240,7 +245,7 @@ function lyDayOn(L, pl, w) {
   const qz = clamp(top, w.z, w.z + w.h), dx = cx - qx, dy = cy - qy, dz = top - qz, depth = dx * nx + dy * ny;
   if (depth <= LY_EPS) return null;
   const dist = Math.sqrt(dx * dx + dy * dy + dz * dz), f = dist / LY_WIN_FALL, a = [qx, qy, qz], b = [cx, cy, top];
-  const out = { w, dist: r2(dist), dli: (w.day_dli || 0) * (depth / dist) / (1 + f * f), by: null, shade: [] };
+  const out = { w, dist: r2(dist), dli: lyDay(L, w) * (depth / dist) / (1 + f * f), by: null, shade: [] };
   out.by = L.items.find(q => q !== pl && (q.kind === 'shelf' || q.kind === 'other') && lyCross(q, lySolids(q), a, b)) || null;
   if (!out.by) { out.shade = lyShade(L, pl.id, a, b); out.dli *= lyThrough(out.shade); }
   return out;
@@ -1247,9 +1252,10 @@ function lyPanel() {                                    // the chosen thing: wha
     <div class="field-grid ly-fields" id="ly-f-rest">${lyRestHtml(L, it, ro)}</div>
     ${lit ? html`<div class="field-grid ly-fields"><label class="f">Hours a day<input type="number" inputmode="decimal" min="0" max="24" step="0.5" id="ly-f-hours" data-act="lyset" data-k="hours" value="${it.hours}" ${can ? '' : raw('disabled')}></label>
       ${dims.length > 1 ? html`<label class="f">Brightness<select id="ly-f-dim_pct" data-act="lyset" data-k="dim_pct" ${can ? '' : raw('disabled')}>${dims.map(x => html`<option value="${x}" ${x === it.dim_pct ? raw('selected') : ''}>${x === 100 ? 'Full (100%)' : x + '%'}</option>`)}</select></label>` : ''}</div>` : ''}
-    ${it.kind === 'window' ? html`<div class="field-grid ly-fields"><label class="f">Which way it faces<select id="ly-f-facing" data-act="lyset" data-k="facing" ${can ? '' : raw('disabled')}>${Object.entries(L.facing || {}).map(([k, v]) => html`<option value="${k}" ${k === it.facing ? raw('selected') : ''}>${v}</option>`)}</select></label>
-      <label class="f">Daylight at the glass (mol/m² a day)<input type="number" inputmode="decimal" min="0" max="70" step="0.5" id="ly-f-day_dli" data-act="lyset" data-k="day_dli" value="${it.day_dli}" ${can ? '' : raw('disabled')}></label></div>
-      <p class="hint">In ${LY_WALLS[lyWinWall(L, it)].toLowerCase()}. Its daylight is half as much ${lenF(LY_WIN_FALL)} from the glass, and less to the side. A usual day facing ${((L.facing || {})[it.facing] || '').toLowerCase()} gives about ${(L.window_dli || {})[it.facing]} at the glass. A light meter's reading is better.</p>` : ''}
+    ${it.kind === 'window' ? html`<div class="field-grid ly-fields"><label class="f">Which way it faces<select id="ly-f-facing" data-act="lyset" data-k="facing" ${can ? '' : raw('disabled')}>${lyWays(L).map(([k, v]) => html`<option value="${k}" ${k === it.facing ? raw('selected') : ''}>${v}</option>`)}</select></label>
+      <label class="f">Daylight at the glass (mol/m² a day)<input type="number" inputmode="decimal" min="0" max="70" step="0.5" id="ly-f-day_dli" data-act="lyset" data-k="day_dli" value="${lyDay(L, it)}" ${can ? '' : raw('disabled')}></label></div>
+      <p class="hint" id="ly-p-day">${lyDayWords(L, it)}</p>
+      ${can && ME().role === 'owner' && it.day_dli != null && L.window_home && L.window_home.id && it.day_dli !== (L.window_dli || {})[it.facing] ? html`<p class="ly-dayhome"><button class="btn small ghost" type="button" data-act="lydayhome" data-id="${it.id}">Use ${it.day_dli} for every ${lyFaceWord(L, it)} window at ${L.window_home.name}</button></p>` : ''}` : ''}
     <div class="ly-light" id="ly-p-light">${lyLightHtml(L, it)}</div>
     ${lyPaged(it) ? html`<p class="ly-recline" id="ly-p-rec">${lyRecHtml(L, it)}</p>` : ''}
     ${it.kind === 'shelf' || it.kind === 'zone' ? '' : html`<label class="f">Shape, seen from above<select id="ly-f-shape" data-act="lyset" data-k="shape" ${rs}><option value="round" ${it.shape === 'round' ? raw('selected') : ''}>Round</option><option value="box" ${it.shape === 'box' ? raw('selected') : ''}>Square or oblong</option></select></label>`}
@@ -1262,6 +1268,14 @@ function lyPanel() {                                    // the chosen thing: wha
     ${can ? html`<p class="row ly-acts">${it.locked || it.size_locked || lyRound(it) ? '' : html`<button class="btn small ghost" type="button" id="ly-turn" data-act="lyturn">Turn a quarter</button>`}
       ${it.plant || it.spot_id ? '' : html`<button class="btn small ghost" type="button" id="ly-copy" data-act="lycopy">Make a copy</button>`}
       <button class="btn small ghost danger" type="button" id="ly-rm" data-act="lyrm">Take it off the layout</button></p>` : ''}`);
+}
+// Where a window's daylight comes from, in words: its own number, or its home's for the way it faces (set on Homes and places).
+const lyFaceWord = (L, it) => ((L.facing || {})[it.facing] || '').toLowerCase();
+function lyDayWords(L, it) {
+  const home = (L.window_home || {}).name || 'this home', theirs = (L.window_own || []).includes(it.facing);
+  const from = it.day_dli != null ? 'Its own number. Empty the box to use the home\'s.'
+    : `${theirs ? 'The number' : 'The usual number'} for a ${lyFaceWord(L, it)} window at ${home}. Change it there on Homes and places.`;
+  return `In ${LY_WALLS[lyWinWall(L, it)].toLowerCase()}. ${from} Its daylight is half as much ${lenF(LY_WIN_FALL)} from the glass, and less to the side.`;
 }
 // Where a plant's pot height comes from, in words: its pot blocks light behind it (lyShade).
 const lyPotWords = it => `${it.pot_h != null ? 'Set here.' : it.pot_rec != null ? 'From its pot in Pots and trays.' : 'A guess from its width.'} The pot blocks ${lyBlk(LY.d)[0]}% of the light behind it, and the leaves above it ${lyBlk(LY.d)[1]}%.${it.pot_h != null ? ' Empty the box to go back to its pot.' : ''}`;
@@ -1453,7 +1467,7 @@ function lyTake(d, pick) {                              // the server's answer a
   lyDrawAll();
 }
 const lySpec = it => ({ kind: it.kind, name: it.name, shape: it.shape, x: it.x, y: it.y, z: it.z, w: it.w, d: it.d, h: it.h, locked: !!it.locked, size_locked: !!it.size_locked,
-  ...(it.kind === 'light' && it.hours != null ? { hours: it.hours, dim_pct: it.dim_pct } : {}), ...(it.kind === 'window' ? { facing: it.facing, day_dli: it.day_dli } : {}), ...(it.kind === 'plant' && it.pot_h != null ? { pot_h: it.pot_h } : {}), ...(it.plant ? { plant: it.plant } : {}), ...(it.light_id ? { light_id: it.light_id } : {}), ...(it.spot_id ? { spot_id: it.spot_id } : {}) });
+  ...(it.kind === 'light' && it.hours != null ? { hours: it.hours, dim_pct: it.dim_pct } : {}), ...(it.kind === 'window' ? { facing: it.facing, ...(it.day_dli != null ? { day_dli: it.day_dli } : {}) } : {}), ...(it.kind === 'plant' && it.pot_h != null ? { pot_h: it.pot_h } : {}), ...(it.plant ? { plant: it.plant } : {}), ...(it.light_id ? { light_id: it.light_id } : {}), ...(it.spot_id ? { spot_id: it.spot_id } : {}) });
 // Puts things on layout L (specs as lySpec gives them) and answers { d: the layout as it now is, added: the new things, in order }.
 // With no connection (1.58.0, Ethan: "Would it be possible to have things be put on or off compatible with offline mode?") the
 // change waits on this device, and each new thing is drawn as the server will draw it, with a number below 0 (lyDraft) until it
@@ -1477,7 +1491,7 @@ function lyDraft(L, items, sp, id) {
   const t = { id, sort: items.reduce((m, x) => Math.max(m, x.sort || 0), 0) + 1, kind: sp.kind, name: sp.name, shape: sp.shape || (sp.kind === 'plant' ? 'round' : 'box'), x: sp.x || 0, y: sp.y || 0, z: sp.z || 0, w: sp.w, d: sp.d, h: sp.h,
     notes: '', locked: !!sp.locked, size_locked: !!sp.size_locked, plant: sp.plant || null, light_id: sp.light_id || null, spot_id: sp.spot_id || null, gone: false, pending: true };
   if (t.kind === 'light') { t.hours = sp.hours != null ? sp.hours : offer && offer.hours != null ? offer.hours : 12; t.dim_pct = sp.dim_pct != null ? sp.dim_pct : offer && offer.dim_pct != null ? offer.dim_pct : 100; t.pts = []; t.dims = [100]; }
-  if (t.kind === 'window') { t.facing = (L.facing || {})[sp.facing] ? sp.facing : 'S'; t.day_dli = sp.day_dli != null ? sp.day_dli : (L.window_dli || {})[t.facing]; }
+  if (t.kind === 'window') { t.facing = (L.facing || {})[sp.facing] ? sp.facing : 'S'; t.day_dli = sp.day_dli != null ? sp.day_dli : null; }
   if (t.kind === 'plant') { t.pot_h = sp.pot_h != null ? sp.pot_h : null; t.pot_rec = null; }
   if (offer && offer.item) Object.assign(t, offer.item);
   if (t.page_h) t.h = t.page_h;
@@ -1800,7 +1814,7 @@ async function lyAddDialog() {
       <p class="hint">Anything put in this area is marked "In an area to keep clear". The area itself does not get in the way of anything.</p></div>
     <div data-lyk="window" hidden><label class="f">Name<input type="text" name="winname" maxlength="80" autocomplete="off" list="ly-names-window" value="Window"></label>${names('window')}
       <div class="field-grid"><label class="f">In which wall<select name="winwall">${['back', 'left', 'right', 'front'].map(w => html`<option value="${w}">${LY_WALLS[w]}</option>`)}</select></label>
-        <label class="f">Which way it faces<select name="winface">${Object.entries(L.facing || {}).map(([k, v]) => html`<option value="${k}" ${k === 'S' ? raw('selected') : ''}>${v}</option>`)}</select></label></div>
+        <label class="f">Which way it faces<select name="winface">${lyWays(L).map(([k, v]) => html`<option value="${k}" ${k === 'S' ? raw('selected') : ''}>${v}</option>`)}</select></label></div>
       <div class="field-grid three">${num('ww', 'Width', 36)}${num('wh', 'Height', 48)}${num('wz', 'Off the floor', 30)}</div>
       <p class="hint">Its daylight at the glass starts from the way it faces. Change it on the layout, from a light meter if you have one.</p></div>
     <p class="hint">${shelf ? `It goes on ${shelf.name}, the thing chosen on the drawing, where there is room. A light that hangs goes under it.` : on && on.kind === 'plant' ? `It goes in the first free place. A light that hangs goes over ${on.name}, the plant chosen on the drawing.`
@@ -1829,7 +1843,7 @@ async function lyAddDialog() {
   else if (kind === 'window') {                           // in the middle of its wall, 4 in deep, at the height given
     const wall = E.winwall.value, ww = len('ww', 36), wh = len('wh', 48), wz = lenIn(E.wz.value), z = isNaN(wz) || E.wz.value === '' ? 30 : r2(+wz), t = 4, fc = E.winface.value;
     const along = wall === 'back' || wall === 'front', W = L.width_in, D = L.depth_in;
-    specs.push({ kind, name: E.winname.value.trim() || 'Window', shape: 'box', facing: fc, day_dli: (L.window_dli || {})[fc], z, h: wh,
+    specs.push({ kind, name: E.winname.value.trim() || 'Window', shape: 'box', facing: fc, z, h: wh,
       w: along ? ww : t, d: along ? t : ww, x: along ? r2(Math.max(0, (W - ww) / 2)) : wall === 'left' ? 0 : r2(W - t), y: along ? (wall === 'back' ? 0 : r2(D - t)) : r2(Math.max(0, (D - ww) / 2)) });
     placed = true;
   }
@@ -1874,6 +1888,17 @@ Object.assign(acts, {
   },
   async lyline(el) { await lyFlush(); if (!(await needName())) return; lyLineUp(el.dataset.how); },
   lyalone() { LY.many.clear(); lyDrawViews(); lyPanel(); lyLists(); lySay('Only one thing is chosen now.'); },
+  // A window's own daylight made its home's number for every window facing that way (owner only, like Homes and places).
+  async lydayhome(el) {
+    const it = lyItem(+el.dataset.id), L = LY.d; if (!it || it.day_dli == null || !L.window_home) return;
+    await lyFlush();
+    await guard(async () => {
+      await api('PUT', '/api/places/' + L.window_home.id, { window_dli: { [it.facing]: it.day_dli } });
+      await lyReload();
+      toast(`${lyFaceWord(LY.d, it)[0].toUpperCase() + lyFaceWord(LY.d, it).slice(1)} windows at ${L.window_home.name} now have ${it.day_dli}. A window with its own number keeps it.`);
+      const b = document.getElementById('ly-f-day_dli'); if (b) b.focus({ preventScroll: true });
+    });
+  },
   lysheet(el) { lySheetSave(+el.dataset.i); },
   lynew: () => lyStartDialog(null),
   lyadd: () => lyAddDialog(),
@@ -1972,12 +1997,15 @@ Object.assign(changeActs, {
     else if (k === 'name') { const n = val.trim().replace(/\s+/g, ' '); if (!n) { el.value = it.name; return; } it.name = n; what = 'renamed'; }
     else if (k === 'hours') { const v = parseFloat(String(val).replace(',', '.')); if (val === '' || isNaN(v)) { el.value = it.hours; return; } it.hours = r2(clamp(v, 0, 24)); what = 'hours changed'; }
     else if (k === 'dim_pct') { it.dim_pct = clamp(Math.round(+val) || 100, 1, 100); what = 'brightness changed'; }
-    else if (k === 'facing') { if (!(L.facing || {})[val]) return; it.facing = val; it.day_dli = (L.window_dli || {})[val]; what = 'turned to face ' + L.facing[val].toLowerCase(); panel = 'full'; }
+    else if (k === 'facing') { if (!(L.facing || {})[val]) return; it.facing = val; it.day_dli = null; what = 'turned to face ' + L.facing[val].toLowerCase(); panel = 'full'; }
     else if (k === 'pot_h') {                           // its pot's height: an empty box goes back to its pot in Pots and trays, or the guess
       if (val === '') { if (it.pot_h == null) return; it.pot_h = null; what = 'pot height taken from its pot'; }
       else { const v = lenIn(val); if (isNaN(v) || +v <= 0) { el.value = lenF(lyPotH(it), false); return; } it.pot_h = r2(clamp(+v, 0.1, 600)); what = 'pot height changed'; }
     }
-    else if (k === 'day_dli') { const v = parseFloat(String(val).replace(',', '.')); if (val === '' || isNaN(v)) { el.value = it.day_dli; return; } it.day_dli = r2(clamp(v, 0, 70)); what = 'daylight changed'; }
+    else if (k === 'day_dli') {                         // its own daylight; an empty box goes back to its home's number
+      if (val === '') { if (it.day_dli == null) return; it.day_dli = null; what = "daylight taken from the home's number"; panel = 'full'; }
+      else { const v = parseFloat(String(val).replace(',', '.')); if (isNaN(v)) { el.value = lyDay(L, it); return; } it.day_dli = r2(clamp(v, 0, 70)); what = 'daylight changed'; panel = 'full'; }
+    }
     else if (k === 'on') { const o = lyStandOpts(L, it).find(x => x.v === val); if (!o) return; const t = lyPutOn(L, it, o.q, skip); it.x = t.x; it.y = t.y; it.z = t.z; panel = 'rest'; }
     else if (k === 'under') { const o = lyHangOpts(L, it).find(x => x.v === val); if (!o) return; it.z = o.z; panel = 'rest'; }
     else {

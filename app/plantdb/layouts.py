@@ -30,8 +30,8 @@ ORDER = 66            # calls into where.py and lights.py (50) and fit.py (60): 
 LAYOUT_KINDS = {'plant': 'Plant', 'light': 'Grow light', 'shelf': 'Shelf or furniture', 'window': 'Window', 'other': 'Something else', 'zone': 'Area to keep clear'}
 # A window (1.58.0, Ethan: "Daylight from windows and the shade one plant casts on another"): which way it faces, and the daylight it
 # gives at the glass on a usual day (mol/m² a day), to start with (a light meter's reading is better: type it on the layout).
-LAYOUT_FACING = {'N': 'North', 'NE': 'Northeast', 'E': 'East', 'SE': 'Southeast', 'S': 'South', 'SW': 'Southwest', 'W': 'West', 'NW': 'Northwest'}
-LAYOUT_WINDOW_DLI = {'N': 4, 'NE': 6, 'E': 8, 'SE': 10, 'S': 12, 'SW': 10, 'W': 9, 'NW': 6}
+# The numbers are a home's own (home_window_dli, places.py) or else WINDOW_DLI (core.py); a window can have its own (day_dli).
+LAYOUT_FACING, LAYOUT_WINDOW_DLI = WINDOW_FACING, WINDOW_DLI
 LAYOUT_WIN_FALL_IN = 24          # a window's daylight is half as much this far from the glass, a fifth at twice as far
 # Shade (Ethan, November 17, 2026: "Pots will block 100% of light while plants will block ~50%. Having the ability to change these values
 # myself would be nice."): how much of the light a pot in the way blocks, and how much a plant's leaves block, in percent. Each layout
@@ -189,7 +189,7 @@ def layout_item_dict(c, it):
         d.update(hours=it['hours'] if it['hours'] is not None else LAYOUT_HOURS, dim_pct=it['dim_pct'] if it['dim_pct'] is not None else LAYOUT_DIM, pts=[], dims=[100])
     if it['kind'] == 'window':
         fc = it['facing'] if it['facing'] in LAYOUT_FACING else 'S'
-        d.update(facing=fc, day_dli=it['day_dli'] if it['day_dli'] is not None else LAYOUT_WINDOW_DLI[fc])
+        d.update(facing=fc, day_dli=it['day_dli'])          # its own daylight, or none: its home's for that way (window_dli, _ly_day)
     if it['kind'] == 'plant':
         # its pot, the bottom part of its box, which shades what is behind it: as tall as the layout says (pot_h), else as its pot in
         # Pots and trays (pot_rec), else a guess from its width (_ly_pot_h)
@@ -235,6 +235,8 @@ def layout_dict(c, L, full=False):
         sp = c.execute('SELECT * FROM spots WHERE id=?', (L['spot_id'],)).fetchone()
         sh = sheet_of(sp) if sp else {}
         d['sheet'] = {k: sh.get(k) for k in ('width_in', 'depth_in', 'levels', 'gaps_in', 'gap_in', 'top_in')} if sp else None
+    hw = home_window_dli(c, L['home_id'])                  # the daylight at its home's windows, by the way they face
+    d.update(window_dli=hw['dli'], window_own=hw['own'], window_home={'id': hw['home_id'], 'name': hw['home']})
     d.update(snap=bool(L['snap']), pid=pid, place=place_label(c, pid) if pid else None, home=layout_home_name(c, L['home_id']),
              items=[layout_item_dict(c, it) for it in c.execute('SELECT * FROM layout_items WHERE layout_id=? ORDER BY sort, id', (L['id'],)).fetchall()])
     if not full: return d
@@ -261,7 +263,7 @@ def layout_dict(c, L, full=False):
         shelves.append({'spot_id': sp['id'], 'name': sp['name'], 'label': sp['area'] + ', ' + sp['name'], 'w': float(s.get('width_in') or 30), 'd': float(s.get('depth_in') or 12),
                         'h': float(top or 36), 'guessed': not (s.get('width_in') and s.get('depth_in') and top), 'boards': boards, 'item': layout_shelf_part(c, sp, L['id'])})
     d.update(plants=plants, lights=lights, shelves=shelves, kinds=LAYOUT_KINDS, grids=list(LAYOUT_GRIDS), verdicts=LIGHT_VERDICT,
-             facing=LAYOUT_FACING, window_dli=LAYOUT_WINDOW_DLI)
+             facing=LAYOUT_FACING)
     return d
 
 def layout_places(c):
@@ -357,9 +359,9 @@ def layout_item_fields(c, L, b, old=None):
         fc = b.get('facing', o.get('facing') or 'S')
         if fc not in LAYOUT_FACING: abort(400, 'Say which way it faces: ' + ', '.join(LAYOUT_FACING.values()).lower())
         f['facing'] = fc
-        day = o.get('day_dli') if old is not None else None
-        if old is not None and o.get('facing') != fc and 'day_dli' not in b: day = LAYOUT_WINDOW_DLI[fc]      # turned another way: that way's usual daylight
-        f['day_dli'] = layout_amount(b, 'day_dli', 'Daylight at the glass', 0, 70, day if day is not None else LAYOUT_WINDOW_DLI[fc])
+        # its own daylight; none follows its home's number for the way it faces. Turned another way, it follows its home again.
+        day = o.get('day_dli') if old is not None and o.get('facing') == fc else None
+        f['day_dli'] = None if 'day_dli' in b and b['day_dli'] in (None, '') else layout_amount(b, 'day_dli', 'Daylight at the glass', 0, 70, day)
     if kind == 'light':                                    # how long it is on and how bright: what the light on the page is worked out from
         hours, dim = (o.get('hours'), o.get('dim_pct')) if old is not None else layout_light_setting(c, L, f.get('light_id'))
         f['hours'] = layout_amount(b, 'hours', 'Hours a day', 0, 24, hours if hours is not None else LAYOUT_HOURS)
@@ -643,6 +645,11 @@ def _ly_win_wall(L, w):
     ds = [('back', w['y']), ('left', w['x']), ('right', L['width_in'] - w['x'] - w['w']), ('front', L['depth_in'] - w['y'] - w['d'])]
     return min(ds, key=lambda x: x[1])[0]
 
+def _ly_day(L, w):
+    """A window's daylight at the glass (lyDay): its own, else its home's for the way it faces (window_dli)."""
+    if w.get('day_dli') is not None: return w['day_dli']
+    return ((L.get('window_dli') if isinstance(L, dict) else None) or LAYOUT_WINDOW_DLI).get(w.get('facing') or 'S', 0)
+
 def layout_day_on(L, items, pl, w, blk=None):
     """What one window gives one plant's top (lyDayOn): its daylight at the glass, less with the angle and with the distance (half as much
     LAYOUT_WIN_FALL_IN away), none through a board or other solid thing, and less through each plant in the way. None when the plant
@@ -656,7 +663,7 @@ def layout_day_on(L, items, pl, w, blk=None):
     depth = dx * nx + dy * ny
     if depth <= LY_EPS: return None
     dist = math.sqrt(dx * dx + dy * dy + dz * dz); f = dist / LAYOUT_WIN_FALL_IN
-    out = {'w': w, 'dist': round(dist, 2), 'dli': (w.get('day_dli') or 0) * (depth / dist) / (1 + f * f), 'by': None, 'shade': []}
+    out = {'w': w, 'dist': round(dist, 2), 'dli': _ly_day(L, w) * (depth / dist) / (1 + f * f), 'by': None, 'shade': []}
     a, b = (qx, qy, qz), (cx, cy, top)
     out['by'] = next((q for q in items if q is not pl and q['kind'] in ('shelf', 'other') and _ly_cross(q, _ly_solids(q), a, b)), None)
     if not out['by']:
