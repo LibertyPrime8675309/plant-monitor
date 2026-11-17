@@ -283,6 +283,18 @@ These are saved for your sign-in as well as in the browser. So any device you si
 - **People, Starts on:** the owner picks the home each person starts on. It applies the first time they open the app after it is set; whatever home they choose with the Home button after that is kept.
 - If an older release is ever installed over a newer one, every page says "Plant record will not run on this database" and which version to install. Nothing is changed. (`PLANTDB_ALLOW_OLDER=1` in `.env` overrides this, for emergencies only.)
 
+## Long lists show ten at a time (from 1.58.0)
+Some pages had lists so long that they took a hundred screens or more at large text. They now show a few at a time.
+- **Show 10 more** under a list shows the next ten. It also says how many are not shown yet.
+- After pressing it, you are moved to the first of the new ones.
+- The rest are still in the page. **Print** prints them all, and a button for a whole list (such as **Save for all**) still covers every plant.
+- Repotting, Pests that eat plants and the Fertilizer page's feeding seasons show ten at a time.
+- 2026 in review shows twelve plants at a time.
+- The Audit log shows 25 changes a page, with **Previous page** and **Next page**.
+- **Most likely to be eaten** on Pests that eat plants still shows every plant.
+
+On a phone, or an iPad at large text, lists like Repotting put a plant's words under its photo. Its buttons sit side by side.
+
 ## What's in the pages
 
 - **Plants**: all pages, filterable by winter plan, health and ID confidence; sortable.

@@ -1900,3 +1900,5 @@ html[data-notes=ask] :is(.hint,label.f>small).note-open,html[data-notes=ask] :is
 html[data-notes=ask] :is(.hint,label.f>small):focus-visible{outline:var(--ring) solid var(--focus);outline-offset:2px}
 @media print{html[data-notes=ask] :is(.hint,label.f>small){font-size:1rem!important;line-height:inherit}html[data-notes=ask] :is(.hint,label.f>small)::before{content:none!important}html[data-notes=ask] :is(.hint,label.f>small) *{font-size:inherit!important}}
 #app h1[tabindex="-1"]:focus{outline:none}     /* 1.57.0: the title takes the focus after moving to a page, so a screen reader starts there; it is not a control, so no ring */
+/* 1.58.0: a long list shows a few at a time (moreLists in core.js); a printout has them all */
+@media print{[data-more]>li[hidden],[data-more]>article[hidden]{display:block!important}[data-more]>tr[hidden]{display:table-row!important}.more-row{display:none}}

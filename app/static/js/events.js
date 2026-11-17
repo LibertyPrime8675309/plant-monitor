@@ -321,6 +321,14 @@ const acts = {
       toast(`${r.moved} plant${r.moved === 1 ? '' : 's'} put in their spots${r.made.length ? `. New spot${r.made.length === 1 ? '' : 's'}: ${r.made.join('; ')}` : ''}.`); await route(); whsRestore(kept);
       const h = document.querySelector('#wh-sort h2'); if (h) h.focus(); });
   },
+  showmore(el) {                                     // 1.58.0: the next few of a long list; the focus goes to the first of them
+    const list = document.querySelector(`[data-more="${el.dataset.k}"]`); if (!list) return;
+    const step = +list.dataset.step || 10, first = Math.max(step, MORE_SHOWN.get(el.dataset.k) || 0);
+    MORE_SHOWN.set(el.dataset.k, first + step); moreLists();
+    const it = list.children[first]; if (!it) return;
+    const f = it.querySelector('a, button, input, select') || it; if (f === it) it.tabIndex = -1;
+    f.focus();
+  },
   fgall(el) {                                        // 1.58.0: open (or fold) every group of the plant form
     const all = [...document.querySelectorAll('details.fg-fold')], open = all.some(d => !d.open);
     all.forEach(d => { d.open = open; }); el.textContent = open ? 'Fold every group' : 'Open every group';
