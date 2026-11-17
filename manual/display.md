@@ -69,7 +69,7 @@ On a phone the menu bar at the top scrolls away with the page (scroll back to th
 
 **Search forgives spelling (from 1.58.0).** A plant's name typed as it sounds ("filodendron"), a letter or two out ("monstra") or with its vowels mixed up ("boganvilla") still finds it. This works in Search, the Plants page, Library and Mushroom finds. When nothing is spelt the way you typed it, the page says it is showing close spellings, and names the nearest one. Words under five letters must be typed as they are.
 
-**Messages stay (from 1.58.0).** The short messages at the bottom of the screen ("Saved", "Watered") stay at least 8 seconds, and longer when they are long. Each has a **Close** button. To read one again, open **Settings → Recent messages**: it has the last 30 on that device.
+**Messages stay (from 1.58.0).** The short messages ("Saved", "Watered") sit at the bottom right of the screen, or across the bottom on a phone. They stay at least 8 seconds, and longer when they are long. Each has a **Close** button. To read one again, open **Settings → Recent messages**: it has the last 30 on that device. A message shown while a window is open sits above that window.
 
 Like the other Display parts, these stay on the device they are chosen on unless you tick **Use these on every device I sign in on** in that part. So each person can choose their own on their own phone. If you had ticked it for Text and colours before 1.58.0, Reading follows you too.
 

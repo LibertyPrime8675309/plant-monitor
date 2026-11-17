@@ -697,7 +697,7 @@ function toast(msg, isErr) {
   const t = document.createElement('div');
   t.className = 'toast' + (isErr ? ' err' : '');
   t.innerHTML = rend(html`<span class="toast-msg">${msg}</span><button type="button" class="toast-x" aria-label="Close this message">Close</button>`);
-  const box = document.getElementById('toasts');
+  const box = toastHost();
   box.appendChild(t);
   // two at a time at most, so a run of messages never covers the page; an older one is still in Recent messages
   const plain = [...box.querySelectorAll(':scope > .toast:not(.undo-toast)')]; while (plain.length > 2) plain.shift().remove();
@@ -708,6 +708,15 @@ function toast(msg, isErr) {
   for (const [ev, on] of [['focus', true], ['blur', false], ['pointerenter', true], ['pointerleave', false]]) x.addEventListener(ev, () => { held = on; });
   const tick = setInterval(() => { if (!t.isConnected) { clearInterval(tick); return; } if (held) return; left -= 250; if (left <= 0) { clearInterval(tick); t.remove(); } }, 250);
 }
+// Messages show above an open window: the box moves into the topmost open dialog (which is in the top layer and stays
+// usable), and back to the page when that window closes
+function toastHost() {
+  const box = document.getElementById('toasts'), open = [...document.querySelectorAll('dialog[open]')].pop();
+  const home = open || document.body;
+  if (box.parentElement !== home) home.appendChild(box);
+  return box;
+}
+document.addEventListener('close', () => setTimeout(toastHost), true);
 const toastMs = (msg, isErr) => Math.max(8000, 3000 + String(msg).length * 70) * (isErr ? 1.5 : 1);
 // the last 30 messages on this device, newest first
 function msgKeep(msg, isErr) {
