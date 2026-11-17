@@ -916,7 +916,7 @@ async function viewFertilizer() {
     <section class="blk"><h2>Calendar for all plants</h2><div id="cal-fa"></div><div id="fa-day"></div></section>
     <section class="blk" id="fn-products"><h2>Your fertilizers</h2>${productsBlock()}</section>
     ${fertShopBlock()}
-    <section class="blk"><h2>Feeding seasons</h2><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Plant</th><th>Season</th><th class="num">Every (days)</th><th>Last fed</th><th>Next feeding</th></tr></thead><tbody>
+    <section class="blk"><h2>Feeding seasons</h2><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Plant</th><th>Season</th><th class="num">Every (days)</th><th>Last fed</th><th>Next feeding</th></tr></thead><tbody data-more="fn-seasons">
       ${rows.map(r => { const es = entriesFor(r.p.code), nd = nextDue(r.p, es); return html`<tr><th scope="row"><a href="#/plant/${enc(r.p.code)}">${r.p.common_name}</a><div class="hint">${r.p.code}</div></th>
         <td>${hasSeason(r.p) ? MN[r.p.fert_from_month - 1] + ' to ' + MN[r.p.fert_to_month - 1] : 'Not set'}</td><td class="num">${r.p.fert_every_days || ''}</td><td>${es[0] ? midDay(es[0].applied_on) : 'Never logged'}</td><td>${nd ? midDay(nd) : ''}</td></tr>`; })}</tbody></table></div></section>
     <section class="blk"><h2>Everything logged</h2>${entryRows(FERT.entries.slice(0, 60), by, true)}${FERT.entries.length > 60 ? html`<p class="hint">Showing the newest 60 of ${FERT.entries.length}. The change log has the rest.</p>` : ''}</section>`,

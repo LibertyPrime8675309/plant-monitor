@@ -64,9 +64,9 @@ async function viewRepotting() {
         <label class="f">Last repotted, for all ${never.length}<select name="year"><option value="">Choose a year</option>${rpYears().map(([y, l]) => html`<option value="${y}">${l}</option>`)}</select></label>
         <button class="btn small ghost" type="submit">Save for all ${never.length}</button>
         <p class="hint">Saves the same year for every plant in this list. You can change any of them afterwards with its own button.</p></form>` : ''}
-      <ul class="jobs">${never.map(p => jobRow(rpRow(p), rpWords(p, R), rpBtns(p)))}</ul>` : html`<p class="muted">Every plant on the plan has a repotting recorded.</p>`}</section>
+      <ul class="jobs" data-more="rp-never">${never.map(p => jobRow(rpRow(p), rpWords(p, R), rpBtns(p)))}</ul>` : html`<p class="muted">Every plant on the plan has a repotting recorded.</p>`}</section>
     <section class="blk" id="rp-later"><h2>Later (${later.length})</h2>
-      ${later.length ? html`<ul class="jobs">${later.map(p => jobRow(rpRow(p), rpWords(p, R), rpBtns(p)))}</ul>` : html`<p class="muted">Nothing else on the plan yet.</p>`}</section>
+      ${later.length ? html`<ul class="jobs" data-more="rp-later">${later.map(p => jobRow(rpRow(p), rpWords(p, R), rpBtns(p)))}</ul>` : html`<p class="muted">Nothing else on the plan yet.</p>`}</section>
     <section class="blk" id="rp-signs"><h2>Signs a plant cannot wait for spring</h2>
       <ul class="rp-list"><li>Roots come out of the drainage holes, or circle round on top of the soil.</li>
         <li>Water runs straight through, or the soil is dry again a day or two after watering.</li>

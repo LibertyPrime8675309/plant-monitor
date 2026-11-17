@@ -798,7 +798,7 @@ function placeLabels(base) {
 // ---------- audit log page: every change to every record, with filters (1.10.0; was the Change log page) ----------
 let AUDOPEN = false;             // 1.39.1: the audit filters box stays open for the visit once you open it
 document.addEventListener('toggle', e => { if (e.target && e.target.id === 'aud-fbox') AUDOPEN = e.target.open; }, true);
-const AUD = { f: { q: '', plant: '', who: '', kind: '', field: '', from: '', to: '', order: 'desc' }, offset: 0, limit: 100, facets: null, total: 0, t: null, seq: 0 };
+const AUD = { f: { q: '', plant: '', who: '', kind: '', field: '', from: '', to: '', order: 'desc' }, offset: 0, limit: 25, facets: null, total: 0, t: null, seq: 0 };
 try { const s = JSON.parse(localStorage.getItem('plantdb.auditf') || '{}'); Object.keys(AUD.f).forEach(k => { if (typeof s[k] === 'string') AUD.f[k] = s[k]; }); } catch (e) { /* defaults */ }
 const audSave = () => { try { localStorage.setItem('plantdb.auditf', JSON.stringify(AUD.f)); } catch (e) { /* not remembered */ } };
 function audQS(extra) {

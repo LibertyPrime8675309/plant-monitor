@@ -864,6 +864,21 @@ function timingKeep(T, t0, tData, tEnd) {
   TIMINGS = TIMINGS.slice(0, 40);
   try { localStorage.setItem('plantdb.timings', JSON.stringify(TIMINGS)); } catch (e) { /* this visit only */ }
 }
+// 1.58.0 (Ethan, November 17: make the long pages shorter): a long list shows a few at a time. Give the list data-more="name"
+// (and data-step, 10 if not given). After the page draws, moreLists() hides the rest and puts "Show 10 more (N not shown)" under
+// it. The hidden ones are still in the page, so printing and buttons that act on the whole list still reach them. How many are
+// shown is kept while the app is open, so a page that redraws after a change keeps your place.
+const MORE_SHOWN = new Map();
+function moreLists(root = document) {
+  root.querySelectorAll('[data-more]').forEach(list => {
+    const key = list.dataset.more, step = +list.dataset.step || 10, items = [...list.children];
+    const n = Math.max(step, MORE_SHOWN.get(key) || 0), left = items.length - n;
+    items.forEach((it, i) => { it.hidden = i >= n; });
+    const host = list.closest('table') || list, next = host.nextElementSibling;
+    if (next && next.classList.contains('more-row')) next.remove();
+    if (left > 0) host.insertAdjacentHTML('afterend', rend(html`<p class="row more-row noprint"><button class="btn ghost" type="button" data-act="showmore" data-k="${key}">Show ${Math.min(step, left)} more (${left} not shown)</button></p>`));
+  });
+}
 async function route() {
   const my = ++token;
   OFF.saved = null;
@@ -948,6 +963,7 @@ async function route() {
     const tData = performance.now(), keepY = fresh ? window.scrollY : 0;
     myTiming.drawn = true; app.removeAttribute('aria-busy');
     app.innerHTML = rend(view.html);
+    moreLists(app);
     if (parts[0] !== 'frost' && parts[0] !== 'plant' && parts[0] !== 'today' && parts.length && coldSeason()) app.insertAdjacentHTML('afterbegin', rend(frostBanner()));   // 1.48.0: no frost banner at a tropical home   // plant pages have their own note; Today has its own section
     if (((OFF.saved && OFF.saved !== 'none') || !navigator.onLine || OFF.reach === 'no') && parts[0] !== 'offline') app.insertAdjacentHTML('afterbegin', rend(html`<p class="notice off-note noprint" role="note"><strong>Offline.</strong> This is what this device saved${OFF.saved && OFF.saved !== 'none' ? ' on ' + when(OFF.saved) : ''}. Changes you make are kept here and sent when the plant server can be reached. <button class="btn small ghost" type="button" data-act="offtry">Try to connect now</button> <a href="#/offline">Offline page</a></p>`));
     await offNotice(parts);

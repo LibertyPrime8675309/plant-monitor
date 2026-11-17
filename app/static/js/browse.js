@@ -104,7 +104,7 @@ async function viewBrowse() {
     <section class="blk" id="br-seen"><h2>Seen eating, last ${B.days} days (${S.length})</h2>
       ${S.length ? html`<p>${Object.entries(B.by_pest).map(([k, n]) => `${k} ${n}`).join(', ')}. Logging each time shows who it is and which plants they go for.</p>
         <ul class="br-sights">${S.map(brSighting)}</ul>` : html`<p class="muted">Nothing logged. When you find chewed leaves, droppings or an animal at a plant, press <strong>Log a sighting</strong> on that plant below. Add a picture as evidence.</p>`}</section>
-    ${BR_ORDER.map(k => by(k).length ? html`<section class="blk" id="br-${k.toLowerCase()}"><h2>${BR_HEAD[k]} (${by(k).length})</h2><ul class="jobs">${by(k).map(brRow)}</ul></section>` : '')}
+    ${BR_ORDER.map(k => by(k).length ? html`<section class="blk" id="br-${k.toLowerCase()}"><h2>${BR_HEAD[k]} (${by(k).length})</h2><ul class="jobs" ${k !== 'High' ? raw(`data-more="br-${k.toLowerCase()}"`) : ''}>${by(k).map(brRow)}</ul></section>` : '')}
     <section class="blk" id="br-plan"><h2>What to do</h2>
       <ul class="rp-list">
         <li>Put the high-risk plants in the middle of a group of pots. Ring them with plants that are usually left alone, such as aroids, aloes and crown of thorns.</li>
