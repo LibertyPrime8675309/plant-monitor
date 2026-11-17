@@ -89,6 +89,8 @@ Like the other Display parts, these stay on the device they are chosen on unless
 
 Every section has a **Read aloud** button. From 1.58.0 its spoken name starts with those words, such as "Read aloud: the Water section", so voice control finds it by what it shows. Your browser reads that section in its own voice. The section gets a dashed outline while it is read, and a big **Stop reading** button stays at the bottom of the screen. **Read this page aloud**, under the page title, reads the whole page. The R key does the same, and Escape stops. In **Display** you can hide the buttons, pick the **Reading speed** (slower to fastest) and the **Voice**, with **Try this voice**. In Microsoft Edge the "Natural" voices sound the most human.
 
+On a phone, or an iPad held upright, a section's **Read aloud** button shows only its speaker sign (from 1.58.0). It sits beside **Hide**, so the two take one line. A screen reader still says its full name.
+
 Keyboard shortcuts work on every page, except while you are typing in a box. **Display** can turn them off.
 
 | Key | What it does |
