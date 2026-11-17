@@ -819,7 +819,7 @@ async function viewFrost() {
           ${sh.nights ? html`<p>${sh.nights}</p>` : ''}${sh.todo ? html`<p><strong>What to do:</strong> ${sh.todo}</p>` : ''}${sh.porch ? html`<p>Plants on the covered porch: it helps a little, but not in a freeze.</p>` : ''}</div>` : ''}
         ${open.length > 1 ? html`<p>${id === 'in' ? html`<button class="btn small ghost" type="button" data-act="frostallin" data-group="${id}">Moved all ${open.length} indoors</button>`
           : html`<button class="btn small ghost" type="button" data-act="frostallcover" data-group="${id}">Mark all ${open.length} as covered for their next cold night</button>`}</p>` : ''}
-        <ul class="fz-list">${g.map(p => fzRow(p, sh))}</ul></section>`; })}
+        <ul class="fz-list" data-more="fz-${id}">${g.map(p => fzRow(p, sh))}</ul></section>`; })}
     <section class="blk" id="fz-dates"><h2>When cold nights usually come</h2><div class="fd-box" data-fd="frost"><p class="muted">Working out the frost dates…</p></div></section>
     <section class="blk"><h2>Protecting plants on a cold night</h2><ul>
       <li>Move pots against the house wall or onto the porch: they lose less heat there than in the open.</li>
@@ -852,7 +852,7 @@ async function viewWinter() {
     <section class="blk"><h2>Plant by plant</h2><div class="cols winter-cols">${META.winter_plans.map(pl => {
       const g = list.filter(p => p.winter_plan === pl && !isInside(p)).sort((a, b) => (b.temp_damage_below ?? -99) - (a.temp_damage_below ?? -99));
       if (!g.length) return '';
-      return html`<div><h3>${pl} (${g.length})</h3><ul class="todo winter-list">${g.map(p => html`<li>${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : html`<span></span>`}
+      return html`<div><h3>${pl} (${g.length})</h3><ul class="todo winter-list" data-more="wp-${META.winter_plans.indexOf(pl)}">${g.map(p => html`<li>${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : html`<span></span>`}
         <span><a class="nm" href="#/plant/${enc(p.code)}">${p.common_name}</a><br><span class="muted">${p.code}${p.temp_damage_below != null ? ', damage below ' + tF(p.temp_damage_below) : ''}${p.site && p.site !== 'Outdoors' ? ', ' + p.site.toLowerCase() : ''}</span>
         <br><button class="btn small noprint" type="button" data-act="movein" data-code="${p.code}" data-name="${p.common_name}">Moved indoors</button></span></li>`)}</ul></div>`;
     })}</div>
