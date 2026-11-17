@@ -113,7 +113,18 @@ with sync_playwright() as p:
     check(until(pg, lambda: pg.locator('#toasts .toast', has_text='Saved the changes to the test page').count() == 0), 'Close takes it away')
     pg.evaluate("recentMsgsDialog()")
     check(until(pg, lambda: 'Saved the changes to the test page' in pg.locator('dialog[open] .msgs-list').inner_text()), 'Settings: Recent messages has it, to read again')
+    # a message shown while a window is open sits above that window, and its Close button works
+    pg.evaluate("toast('Shown above the open window')")
+    t = pg.locator('#toasts .toast', has_text='Shown above the open window')
+    check(until(pg, lambda: t.count() == 1) and pg.evaluate("!!document.querySelector('dialog[open] #toasts')"), 'a message shown while a window is open goes into that window, above it')
+    hit = pg.evaluate("(() => { const b = [...document.querySelectorAll('#toasts .toast-x')].pop().getBoundingClientRect(); const e = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return !!(e && e.closest('.toast-x')); })()")
+    check(hit, 'and nothing covers its Close button')
+    r = t.bounding_box(); vw = pg.viewport_size['width']
+    check(r and r['x'] > vw / 2 - 40 and r['x'] + r['width'] <= vw, f'on a wide screen messages sit at the right, not over the middle (left edge {int(r["x"]) if r else "?"} of {vw})')
+    t.locator('button.toast-x').click()
+    check(until(pg, lambda: t.count() == 0), 'Close takes it away inside the window too')
     pg.evaluate("document.querySelectorAll('dialog[open]').forEach(d => d.close())")
+    check(until(pg, lambda: pg.evaluate("document.getElementById('toasts').parentElement === document.body")), 'when the window closes, messages go back to the page')
     open_page(pg, '#/lights')
     abx = pg.locator('#app .abx')
     fors = abx.evaluate_all("xs => xs.map(x => x.dataset.for)")
