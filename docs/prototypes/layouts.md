@@ -128,14 +128,14 @@ Then open http://127.0.0.1:8080/#/layouts, press **Start a layout** and choose *
 - Shared lines: one in `js/manifest.json`, one in `run_checks.py`, the CHANGELOG and IDEAS entries, one line in the README's list of manual pages and one row in the table at the end of `docs/ARCHITECTURE.md`. The guide is `manual/layouts.md`; the notes are `docs/architecture/layouts.md`.
 - **Three dimensions later:** a place and a size in three directions is everything a view from a corner needs, so a third view can be added without changing what is stored.
 
+## What came after (November 17, 2026)
+Ethan: "I would like to have all of these implemented please!" Built in the pull request after 151: a 3D view; the light as a map on the top view; windows with their daylight, and the shade a plant casts; a shelf's boards and size saved to its measurements; choosing several things and lining them up; changing a layout without a connection. The guide is `manual/layouts.md`; the notes `docs/architecture/layouts.md`.
+
 ## What is not done
-- A view in three dimensions.
-- The light is said in words and numbers; it is not yet drawn (for example as the pool of light under each lamp).
-- Daylight from windows, and the shade one plant casts on another, are not counted.
-- Grow lights keeps its own spots (which plants are under which light). It reads layouts since pull request 141, and Best setting and Compare lights since 151. A layout does not move plants between spots.
-- A layout does not change a shelf's measurements in the record when you resize its boards.
-- Choosing several things at once, and lining things up.
-- A layout cannot be changed offline.
+- Grow lights keeps its own spots (which plants are under which light). A layout does not move plants between spots.
+- The 3D view chooses things and moves them with the arrow keys; dragging and resizing are in the top and front views.
+- Putting a thing on a layout or taking one off needs a connection.
+- A window's daylight is one number for a usual day; it does not follow the seasons or the weather.
 
 ## What Ethan said (November 15, 2026)
 1. **The name.** "Layouts" works fine. Kept.

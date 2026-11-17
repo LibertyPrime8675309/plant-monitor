@@ -74,7 +74,7 @@ def test_a_shelfs_levels_become_boards_from_its_measurements():
 def test_what_a_layout_of_a_place_starts_with(room):
     with S.app.test_client() as c:
         d = c.get('/api/layouts').get_json()
-    assert set(d['kinds']) == {'plant', 'light', 'shelf', 'other', 'zone'} and 1 in d['grids']
+    assert set(d['kinds']) == {'plant', 'light', 'shelf', 'window', 'other', 'zone'} and 1 in d['grids']
     by = {p['pid']: p for p in d['places']}
     shelf, table, whole = by[room['shelf']], by[room['table']], by[-room['area']]
     st = shelf['start']
@@ -302,12 +302,12 @@ def test_a_drawn_light_carries_what_the_page_works_the_light_out_from(room):
 
 def test_a_table_made_before_lights_had_hours_gains_them():
     c = sqlite3.connect(':memory:'); c.row_factory = sqlite3.Row
-    c.executescript(LY.LAYOUT_SCHEMA.replace('  hours REAL, dim_pct INTEGER, size_locked INTEGER NOT NULL DEFAULT 0,\n', ''))
+    c.executescript(LY.LAYOUT_SCHEMA.replace('  hours REAL, dim_pct INTEGER, size_locked INTEGER NOT NULL DEFAULT 0, facing TEXT, day_dli REAL,\n', ''))
     assert 'hours' not in {r[1] for r in c.execute('PRAGMA table_info(layout_items)')}
     c.execute("INSERT INTO layouts(name, width_in, depth_in, height_in, created_at) VALUES('Old', 20, 10, 40, 'now')")
     for locked in (1, 0): c.execute("INSERT INTO layout_items(layout_id, kind, w, d, h, locked, created_at) VALUES(1, 'other', 1, 1, 1, ?, 'now')", (locked,))
     LY.layout_tables(c); LY.layout_tables(c)
-    assert {'hours', 'dim_pct', 'size_locked'} <= {r[1] for r in c.execute('PRAGMA table_info(layout_items)')}
+    assert {'hours', 'dim_pct', 'size_locked', 'facing', 'day_dli'} <= {r[1] for r in c.execute('PRAGMA table_info(layout_items)')}
     assert [tuple(r) for r in c.execute('SELECT locked, size_locked FROM layout_items ORDER BY id')] == [(1, 1), (0, 0)], 'a thing locked before the size lock came keeps its size locked too'
     c.execute('UPDATE layout_items SET size_locked=0 WHERE id=1'); LY.layout_tables(c)
     assert c.execute('SELECT size_locked FROM layout_items WHERE id=1').fetchone()[0] == 0, 'and making the tables again does not lock it again'

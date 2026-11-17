@@ -76,7 +76,7 @@ const lgLink = r => html`<a href="#/layouts/${r.lid}?sel=${r.item}">${r.lname}</
 // The line under a plant: its light on the layout, and what the spot's one setting would have said where that differs.
 function lgLine(r, p, s) {
   const differs = s && p.spot_verdict && p.spot_verdict !== p.verdict;
-  return html`<span class="lg-line">On the layout ${lgLink(r)}: ${r.reached ? html`about <strong>${lgMol(r.dli)}</strong>${lgWhere(r) ? `, ${lgWhere(r)}` : ''}.` : html`<strong>no light drawn there reaches it</strong>${r.shut.length ? ` (the ${r.shut[0]} is shut out)` : ''}.`}
+  return html`<span class="lg-line">On the layout ${lgLink(r)}: ${r.reached || r.day >= 1 ? html`about <strong>${lgMol(r.dli)}</strong>${lgWhere(r) ? `, ${lgWhere(r)}` : ''}.${r.day >= 0.05 ? ` That counts ${fmt(r.day, 1)} of daylight from the windows drawn there.` : ''}${(r.shade || []).length ? ` ${r.shade.join(', ')} shades it.` : ''}` : html`<strong>no light drawn there reaches it</strong>${r.shut.length ? ` (the ${r.shut[0]} is shut out)` : ''}.`}
     ${differs ? html` <span class="muted">The spot's one setting gives ${has(s.dli) ? s.dli : '?'} (${p.spot_word}).</span>` : ''}</span>`;
 }
 // A spot with plants drawn on a layout: how far under its light they are there, against the spot's one distance.

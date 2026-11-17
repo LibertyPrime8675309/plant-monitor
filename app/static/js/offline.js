@@ -15,7 +15,10 @@ const OFF_OK = [                              // the changes that can wait for a
   ['PUT', /^\/api\/plants\/[^/]+$/], ['POST', /^\/api\/plants\/[^/]+\/(site|status|photos)$/],
   ['POST', /^\/api\/fungi$/], ['PUT', /^\/api\/fungi\/[^/]+$/], ['POST', /^\/api\/fungi\/[^/]+\/(status|photos)$/], ['PATCH', /^\/api\/fungi\/photos\/\d+$/], ['DELETE', /^\/api\/fungi\/photos\/\d+$/],
   ['PUT', /^\/api\/library\/notes$/], ['PUT', /^\/api\/wishlist$/], ['DELETE', /^\/api\/wishlist$/],
-  ['POST', /^\/api\/report$/]];               // 1.58.0: a problem report (issues.js): often written exactly when the connection is the problem
+  ['POST', /^\/api\/report$/],               // 1.58.0: a problem report (issues.js): often written exactly when the connection is the problem
+  // 1.58.0 (Ethan, November 17, 2026: "Changing a layout with no connection"): a thing moved, made larger or smaller, renamed, locked or
+  // set up on a layout, and a layout's own size and grid. Putting a thing on or taking it off needs the connection (it gets its number there).
+  ['PUT', /^\/api\/layouts\/items\/\d+$/], ['PUT', /^\/api\/layouts\/\d+$/]];
 const offQueueable = (m, url) => OFF_OK.some(([mm, re]) => mm === m && re.test(url.split('?')[0]));
 const offId = () => Date.now().toString(36) + '-' + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join('');
 let OFFDB = null;
@@ -66,6 +69,8 @@ function offWords(op) {                       // what a waiting change is, in wo
   if (u === '/api/library/notes') return `Notes and tags for ${b.name}`;
   if (u === '/api/report') { const t = ((op.form || []).find(p => p.k === 'notes') || {}).v || ''; return `A problem report${t ? ': ' + t.slice(0, 60) + (t.length > 60 ? '…' : '') : ''}`; }
   if (u === '/api/wishlist') return op.method === 'DELETE' ? `${b.name} taken off the wishlist` : `${b.name} on the wishlist`;
+  if (/^\/api\/layouts\/items\//.test(u)) return `A layout: ${b._what || b.name ? (b._what || b.name) + ' ' : 'a thing '}${['x', 'y', 'z'].some(k => k in b) ? 'moved' : ['w', 'd', 'h'].some(k => k in b) ? 'made larger or smaller' : 'changed'}`;
+  if (/^\/api\/layouts\/\d+$/.test(u)) return `A layout: ${b.name || 'its size or grid'} changed`;
   return op.method + ' ' + u;
 }
 async function offSavedJson(url) {
@@ -193,6 +198,11 @@ async function offQueue(method, url, body, form) {
     const L = N.notes || [], k = L.findIndex(x => x.name === op.body.name), row = { name: op.body.name, notes: op.body.notes || '', tags: op.body.tags || '', updated_by: op.who, updated_at: op.made, pending: true };
     if (k >= 0) Object.assign(L[k], row); else L.push(row);
   });
+  const lyItem = path.match(/^\/api\/layouts\/items\/(\d+)$/), lyOne = path.match(/^\/api\/layouts\/(\d+)$/);
+  if (lyItem) for (const u of await offCachedUrls(/^\/api\/layouts\/\d+(\?|$)/)) await offPatch(u, L => {      // the saved layout shows the change when opened again offline
+    const t = (L.items || []).find(x => x.id === +lyItem[1]); if (t) Object.assign(t, op.body);
+  });
+  if (lyOne) for (const u of await offCachedUrls(new RegExp(`^/api/layouts/${lyOne[1]}(\\?|$)`))) await offPatch(u, L => { Object.assign(L, op.body); });
   if (/\/status$/.test(path) && /^\/api\/plants\//.test(path)) await offPatch(path.replace(/\/status$/, ''), j => { j.status = op.body.archived ? 'archived' : 'active'; });
   await idbPut('outbox', op);
   OFF.queuedAt = Date.now();

@@ -166,6 +166,8 @@ def offline_manifest():
     names = sorted({r[0] for r in c.execute("SELECT scientific_name FROM plants WHERE status='active' AND scientific_name<>''")} |
                    {r[0] for r in c.execute("SELECT scientific_name FROM fungi_finds WHERE scientific_name<>''")} | {r[0] for r in c.execute('SELECT name FROM wishlist')})
     urls += [f'/api/library/taxon?name={urllib.parse.quote(n)}' for n in names]
+    if c.execute("SELECT 1 FROM sqlite_master WHERE name='layouts'").fetchone():          # 1.58.0: layouts can be changed without a connection
+        urls += ['/api/layouts'] + [f'/api/layouts/{r[0]}' for r in c.execute('SELECT id FROM layouts ORDER BY id')]
     photos = [r[0] for r in c.execute('SELECT file FROM photos ORDER BY id')] + [r[0] for r in c.execute('SELECT file FROM fungi_photos ORDER BY id')]
     sizes = 0
     for f in photos:

@@ -22,12 +22,12 @@
 
 let LY = null;                                     // the layout on screen: { d: the server's answer, sel, fview, view, zoom, level, grid, photos, Sv: pixels to the inch in each view, mode, rem, F, undo, q }
 let LYL = null;                                    // the list page's answer (layouts, places)
-const LY_EPS = 0.01, LY_KEYS = ['x', 'y', 'z', 'w', 'd', 'h', 'shape', 'locked', 'size_locked', 'name', 'hours', 'dim_pct'];
+const LY_EPS = 0.01, LY_KEYS = ['x', 'y', 'z', 'w', 'd', 'h', 'shape', 'locked', 'size_locked', 'name', 'hours', 'dim_pct', 'facing', 'day_dli'];
 // Two locks (Ethan, November 16, 2026: "lock in any item's size values separately from the lock for its location"): locked keeps a
 // thing where it is (dragging, the arrow keys, its place boxes, Stands on, Hangs under); size_locked keeps its size (the corner handle,
 // its size boxes, its shape). Turning it changes both, so either lock stops it.
 const LY_SIZE_KEYS = ['w', 'd', 'h', 'shape'], LY_PLACE_KEYS = ['x', 'y', 'z', 'on', 'under'];
-const LY_KINDS = ['plant', 'light', 'shelf', 'other', 'zone'];      // the kinds of thing, in the order they are offered (their words come from the server)
+const LY_KINDS = ['plant', 'light', 'shelf', 'window', 'other', 'zone'];      // the kinds of thing, in the order they are offered (their words come from the server)
 const LY_PREF = 'plantdb.layouts';                 // this device's own choices: which view, the grid shown, photos on the plants
 const lyPref = () => { try { return JSON.parse(localStorage.getItem(LY_PREF) || '{}') || {}; } catch (e) { return {}; } };
 const lyPrefSave = p => { try { localStorage.setItem(LY_PREF, JSON.stringify({ ...lyPref(), ...p })); } catch (e) { /* this visit only */ } };
@@ -36,7 +36,12 @@ const LY_WORD = { outside: 'Sticks out', overlap: 'Overlap', zone: 'In an area t
 // A plant's light against what it needs is a mark of its own kind (Ethan, November 15, 2026: marks for more than too dim and too bright).
 const LY_LV = { too_dim: 'toodim', dim: 'dim', bright: 'bright', too_bright: 'toobright' }, lyIsLv = k => k === 'toodim' || k === 'dim' || k === 'bright' || k === 'toobright';
 const LY_LV_SIGN = { too_dim: '▼▼', dim: '▼', good: '✓', bright: '▲', too_bright: '▲▲', unknown: '?', none: '–' };       // as Grow lights has them (LV_ICON in js/lights.js); none: no drawn light reaches the plant (grey; Ethan, November 15, 2026)
-const LY_NAMES = { other: ['Humidifier', 'Fan', 'Heater', 'Heat mat', 'Sensor', 'Table', 'Chair', 'Watering can', 'Storage box'], zone: ['Walkway', 'Door', 'Window', 'Heating vent', 'Outlet'] };
+const LY_NAMES = { other: ['Humidifier', 'Fan', 'Heater', 'Heat mat', 'Sensor', 'Table', 'Chair', 'Watering can', 'Storage box'], zone: ['Walkway', 'Door', 'Window', 'Heating vent', 'Outlet'], window: ['Window', 'Glass door', 'Skylight'] };
+// 1.58.0 (Ethan, November 17, 2026: "Daylight from windows and the shade one plant casts on another"): a window gives its daylight
+// at the glass (day_dli), less with the angle and half as much LY_WIN_FALL away; a plant in the way lets LY_SHADE of a light or a
+// window through. The same sums are in layouts.py (layout_day_on, _ly_shade): change both together.
+const LY_WIN_FALL = 24, LY_SHADE = 0.5;
+const lyFlat = it => it.kind === 'zone' || it.kind === 'light' || it.kind === 'window';     // nothing stands on it or hangs under it, and it carries nothing
 const r2 = n => Math.round(n * 100) / 100;
 const lyNum = n => String(Math.round(n * 1000) / 1000);
 const lyCan = () => canChange() && !(META && META.mirror && META.mirror.on) && !(LY && LY.stale);
@@ -86,12 +91,12 @@ const lySizeWords = it => lyRound(it) ? `${lenF(it.w)} across, ${lenF(it.h)} tal
 // What a thing stands on: 'floor', the thing whose top it rests on, or null (it is in the air, or reaches into something).
 function lyUnder(L, a) {
   if (Math.abs(a.z) < 0.05) return 'floor';
-  return L.items.find(b => b.id !== a.id && b.kind !== 'zone' && b.kind !== 'light' && lyPlan(a, b) < -LY_EPS && lySolids(b).some(q => Math.abs(q.z + q.h - a.z) < 0.05)) || null;
+  return L.items.find(b => b.id !== a.id && !lyFlat(b) && lyPlan(a, b) < -LY_EPS && lySolids(b).some(q => Math.abs(q.z + q.h - a.z) < 0.05)) || null;
 }
 // What a thing hangs under: 'top' (the top of the space), the thing whose underside its top touches, or null.
 function lyOver(L, a) {
   if (Math.abs(a.z + a.h - L.height_in) < 0.05) return 'top';
-  return L.items.find(b => b.id !== a.id && b.kind !== 'zone' && lyPlan(a, b) < -LY_EPS && lySolids(b).some(q => Math.abs(q.z - a.z - a.h) < 0.05)) || null;
+  return L.items.find(b => b.id !== a.id && b.kind !== 'zone' && b.kind !== 'window' && lyPlan(a, b) < -LY_EPS && lySolids(b).some(q => Math.abs(q.z - a.z - a.h) < 0.05)) || null;
 }
 // What a thing carries when it is moved (Ethan, November 15, 2026: "Plants should be carried with shelves"): everything that stands
 // on it, on any of its levels, or hangs under one of its solid parts, and what those carry in turn. A thing locked in place stays
@@ -100,8 +105,8 @@ function lyRiders(L, it) {
   const out = [], seen = new Set([it.id]);
   const rides = (t, c) => lyPlan(t, c) < -LY_EPS && ((c.kind !== 'light' && lySolids(c).some(q => Math.abs(q.z + q.h - t.z) < 0.05))
     || (t.kind === 'light' && lySolids(c).some(q => Math.abs(q.z - t.z - t.h) < 0.05) && !lyUnder(L, t)));
-  const walk = c => { for (const t of L.items) if (!seen.has(t.id) && t.kind !== 'zone' && !t.locked && rides(t, c)) { seen.add(t.id); out.push(t); walk(t); } };
-  if (it.kind !== 'zone') walk(it);
+  const walk = c => { for (const t of L.items) if (!seen.has(t.id) && t.kind !== 'zone' && t.kind !== 'window' && !t.locked && rides(t, c)) { seen.add(t.id); out.push(t); walk(t); } };
+  if (it.kind !== 'zone' && it.kind !== 'window') walk(it);
   return out;
 }
 // A move begins: what the thing carries, each with its place as it is now. As the thing moves, each goes as far as it has gone.
@@ -162,6 +167,59 @@ function lyLightOn(L, pl, li) {
       return lyInPlan(b, cx + (sx - cx) * t, cy + (sy - cy) * t);
     });
   }) || null;
+  out.shade = out.by ? [] : lyShade(L, pl.id, [sx, sy, src], [cx, cy, top]);      // 1.58.0: a plant in the way lets some through
+  if (out.shade.length) { const k = LY_SHADE ** out.shade.length; out.par *= k; out.dli *= k; }
+  return out;
+}
+// Does the straight line from a to b ([x, y, z]) go through one of q's parts ([{z, h}])? Over the stretch of the line at that
+// part's height (all of it, for a level line at that height), not counting its two ends (layouts.py: _ly_cross).
+function lyCross(q, parts, a, b) {
+  for (const p of parts) {
+    const z0 = a[2], z1 = b[2]; let t0, t1;
+    if (Math.abs(z1 - z0) < LY_EPS) { if (!(p.z - LY_EPS <= z0 && z0 <= p.z + p.h + LY_EPS)) continue; t0 = 0; t1 = 1; }
+    else {
+      const lo = Math.max(p.z, Math.min(z0, z1)), hi = Math.min(p.z + p.h, Math.max(z0, z1)); if (hi - lo < LY_EPS) continue;
+      const u = (lo - z0) / (z1 - z0), v = (hi - z0) / (z1 - z0); t0 = Math.min(u, v); t1 = Math.max(u, v);
+    }
+    t0 = Math.max(t0, 0.02); t1 = Math.min(t1, 0.98); if (t1 < t0) continue;
+    if (lySegPlan(q, a, b, t0, t1)) return true;
+  }
+  return false;
+}
+// Does the stretch t0 to t1 of the line from a to b go over q, seen from above? Exactly: a thin board is not missed (layouts.py: _ly_seg_plan).
+function lySegPlan(q, a, b, t0, t1) {
+  const dx = b[0] - a[0], dy = b[1] - a[1];
+  if (lyRound(q)) {
+    const cx = q.x + q.w / 2, cy = q.y + q.d / 2, l2 = dx * dx + dy * dy;
+    const t = Math.min(t1, Math.max(t0, l2 > 1e-12 ? ((cx - a[0]) * dx + (cy - a[1]) * dy) / l2 : t0));
+    return Math.hypot(a[0] + dx * t - cx, a[1] + dy * t - cy) <= q.w / 2 + LY_EPS;
+  }
+  let lo = t0, hi = t1;
+  for (const [s0, d, mn, mx] of [[a[0], dx, q.x - LY_EPS, q.x + q.w + LY_EPS], [a[1], dy, q.y - LY_EPS, q.y + q.d + LY_EPS]]) {
+    if (Math.abs(d) < 1e-12) { if (s0 < mn || s0 > mx) return false; continue; }
+    const u = (mn - s0) / d, v = (mx - s0) / d;
+    lo = Math.max(lo, Math.min(u, v)); hi = Math.min(hi, Math.max(u, v)); if (lo > hi) return false;
+  }
+  return true;
+}
+const lyShade = (L, skip, a, b) => L.items.filter(q => q.kind === 'plant' && !q.gone && q.id !== skip && lyCross(q, [{ z: q.z, h: q.h }], a, b));
+// The wall a window is in: the nearest one.
+function lyWinWall(L, w) {
+  const ds = [['back', w.y], ['left', w.x], ['right', L.width_in - w.x - w.w], ['front', L.depth_in - w.y - w.d]];
+  return ds.reduce((a, b) => (b[1] < a[1] ? b : a))[0];
+}
+// What one window gives one plant's top (layouts.py: layout_day_on): { w, dist, dli, by, shade }, or null when it is not in front of it.
+function lyDayOn(L, pl, w) {
+  const cx = pl.x + pl.w / 2, cy = pl.y + pl.d / 2, top = pl.z + pl.h, wall = lyWinWall(L, w);
+  let nx, ny, qx, qy;
+  if (wall === 'back' || wall === 'front') { nx = 0; ny = wall === 'back' ? 1 : -1; qx = clamp(cx, w.x, w.x + w.w); qy = wall === 'back' ? w.y + w.d : w.y; }
+  else { nx = wall === 'left' ? 1 : -1; ny = 0; qx = wall === 'left' ? w.x + w.w : w.x; qy = clamp(cy, w.y, w.y + w.d); }
+  const qz = clamp(top, w.z, w.z + w.h), dx = cx - qx, dy = cy - qy, dz = top - qz, depth = dx * nx + dy * ny;
+  if (depth <= LY_EPS) return null;
+  const dist = Math.sqrt(dx * dx + dy * dy + dz * dz), f = dist / LY_WIN_FALL, a = [qx, qy, qz], b = [cx, cy, top];
+  const out = { w, dist: r2(dist), dli: (w.day_dli || 0) * (depth / dist) / (1 + f * f), by: null, shade: [] };
+  out.by = L.items.find(q => q !== pl && (q.kind === 'shelf' || q.kind === 'other') && lyCross(q, lySolids(q), a, b)) || null;
+  if (!out.by) { out.shade = lyShade(L, pl.id, a, b); out.dli *= LY_SHADE ** out.shade.length; }
   return out;
 }
 function lyVerdict(dli, need) {                         // as lights.py, light_verdict
@@ -176,18 +234,29 @@ function lyVerdict(dli, need) {                         // as lights.py, light_v
 // straight under one that is on: only then is it called too dim, since a plant across the room has its daylight. The Map's own
 // `any` says that some drawn light has figures; with none, nothing is said about light.
 function lyLight(L) {
-  const m = new Map(), lights = L.items.filter(b => b.kind === 'light' && !b.gone);
-  m.any = lights.some(li => (li.pts || []).length);
-  if (!lights.length) return m;
+  const m = new Map(), lights = L.items.filter(b => b.kind === 'light' && !b.gone), wins = L.items.filter(b => b.kind === 'window');
+  m.any = lights.some(li => (li.pts || []).length) || wins.length > 0;
+  if (!lights.length && !wins.length) return m;
   for (const pl of L.items) {
     if (pl.kind !== 'plant') continue;
     const all = lights.map(li => lyLightOn(L, pl, li)).filter(Boolean);
     const on = all.filter(x => !x.nofig && !x.by && x.dli >= 0.05).sort((a, b) => b.dli - a.dli);
-    const dli = r1(on.reduce((t, x) => t + x.dli, 0)), reached = dli >= 1 || on.some(x => x.side < 0.05);
-    m.set(pl.id, { dli, need: pl.need || null, verdict: reached ? lyVerdict(dli, pl.need) : 'none', reached, on,
+    const days = wins.map(w => lyDayOn(L, pl, w)).filter(Boolean), day = days.filter(x => !x.by).reduce((t, x) => t + x.dli, 0), lsum = on.reduce((t, x) => t + x.dli, 0);
+    const dli = r1(lsum + day), reached = r1(lsum) >= 1 || on.some(x => x.side < 0.05), lit = reached || r1(day) >= 1;
+    m.set(pl.id, { dli, need: pl.need || null, verdict: lit ? lyVerdict(dli, pl.need) : 'none', reached, lit, on, day: r1(day),
+      wins: days.filter(x => !x.by && x.dli >= 0.05).sort((a, b) => b.dli - a.dli), wshut: days.filter(x => x.by && x.dli >= 0.5),
+      shade: [...new Set(all.concat(days).flatMap(x => (x.shade || []).map(q => q.name)))].sort(),
       shut: all.filter(x => !x.nofig && x.by && x.dli >= 0.5), nofig: all.filter(x => x.nofig && x.side < 0.05) });
   }
   return m;
+}
+// 1.58.0: the light at one point of the layout (the light map): what a plant with its top there would get, from the lights and the windows.
+function lyLightAt(L, x, y, z) {
+  const pt = { id: null, kind: 'probe', x, y, z, w: 0, d: 0, h: 0 };
+  let t = 0;
+  for (const li of L.items) if (li.kind === 'light' && !li.gone) { const o = lyLightOn(L, pt, li); if (o && !o.nofig && !o.by) t += o.dli; }
+  for (const w of L.items) if (w.kind === 'window') { const o = lyDayOn(L, pt, w); if (o && !o.by) t += o.dli; }
+  return t;
 }
 const lyMol = n => `${fmt(n, 1)} mol/m² a day`;
 function lyLightHtml(L, it) {                           // for the chosen thing's boxes: a plant's light where it is drawn; for a light, the plants it lights
@@ -202,13 +271,17 @@ function lyLightHtml(L, it) {                           // for the chosen thing'
   const x = it.kind === 'plant' ? m.get(it.id) : null; if (!x) return '';
   if (!m.any) return x.nofig.length ? html`<p class="hint">${x.nofig.map(o => `${lyNm(o.li)} is over it, but has no maker’s figures, so the light it gives is not counted. `)}</p>` : '';
   const V = L.verdicts || {}, set = li => `${fmt(li.hours, 1)} hours a day${li.dim_pct < 100 ? ` at ${li.dim_pct}% brightness` : ''}`;
-  return html`<p><strong>Light here:</strong> ${x.reached ? html`about ${lyMol(x.dli)}. ${lvTag(x.verdict, V[x.verdict] || '')}` : x.dli > 0 ? `about ${lyMol(x.dli)}: the lights drawn here hardly reach it.` : 'none of the lights drawn here reaches it.'}
-      ${x.reached ? (x.need ? `It needs ${fmt(x.need.lo, 1)} to ${fmt(x.need.hi, 1)}.` : 'Its light needs are not set on its page.') : ''}</p>
-    ${x.on.length || x.shut.length || x.nofig.length ? html`<ul class="ly-lightlist">
+  const wins = L.items.some(b => b.kind === 'window');
+  return html`<p><strong>Light here:</strong> ${x.lit ? html`about ${lyMol(x.dli)}. ${lvTag(x.verdict, V[x.verdict] || '')}` : x.dli > 0 ? `about ${lyMol(x.dli)}: the lights${wins ? ' and windows' : ''} drawn here hardly reach it.` : `none of the lights${wins ? ' or windows' : ''} drawn here reaches it.`}
+      ${x.lit ? (x.need ? `It needs ${fmt(x.need.lo, 1)} to ${fmt(x.need.hi, 1)}.` : 'Its light needs are not set on its page.') : ''}</p>
+    ${x.on.length || x.shut.length || x.nofig.length || x.wins.length || x.wshut.length || x.shade.length ? html`<ul class="ly-lightlist">
+      ${x.wins.slice(0, 3).map(o => html`<li>${lyNm(o.w)}: ${lenF(r1(o.dist))} from the glass, about ${fmt(o.dli, 1)} of daylight.</li>`)}
+      ${x.wshut.map(o => html`<li>${lyNm(o.w)} is shut out by ${lyNm(o.by)}.</li>`)}
+      ${x.shade.length ? html`<li>In the shade of ${x.shade.join(', ')}. Each plant in the way lets about half the light through.</li>` : ''}
       ${x.on.slice(0, 4).map(o => html`<li>${lyNm(o.li)}: ${lenF(r1(o.up))} above its top${o.side >= 0.5 ? `, ${lenF(r1(o.side))} to the side` : ''}, ${set(o.li)}, about ${fmt(o.dli, 1)}.${o.close ? ' Closer than its figures go.' : o.far ? ' Further than its figures go, so this is rough.' : ''}</li>`)}
       ${x.shut.map(o => html`<li>${lyNm(o.li)} is shut out by ${lyNm(o.by)}.</li>`)}
       ${x.nofig.map(o => html`<li>${lyNm(o.li)} is over it, but has no maker’s figures, so its light is not counted.</li>`)}</ul>` : ''}
-    <p class="hint">${x.on.length ? 'From the lights drawn here and their makers’ figures. ' : ''}Daylight is not counted.</p>`;
+    <p class="hint">${x.on.length ? 'From the lights drawn here and their makers’ figures. ' : ''}${wins ? 'Daylight is from the windows drawn here, on a usual day.' : 'Daylight is counted from windows drawn here: there are none yet.'}</p>`;
 }
 // ---------- the record ----------
 // Where the drawing puts a plant, as a place in the record: { pid, label }. On a shelf's own layout, that shelf. On a room's or an
@@ -261,7 +334,7 @@ function lyPageH(it, h) {                               // what the plant's page
 // The answer also carries the light each plant gets (its own `light`: lyLight), worked out once for the marks and the words.
 function lyFindings(L) {
   const out = [], items = L.items, W = L.width_in, D = L.depth_in, H = L.height_in, clear = +L.clear_in || 0;
-  const solid = it => it.kind !== 'zone';
+  const solid = it => it.kind !== 'zone' && it.kind !== 'window';      // a window is in the wall: a shelf in front of it does not overlap it
   for (const a of items) {
     const s = [];
     if (a.x < -LY_EPS) s.push(['the left side', -a.x]);
@@ -310,7 +383,7 @@ function lyFindings(L) {
   const light = lyLight(L);
   for (const [id, x] of light) {
     if (!LY_LV[x.verdict]) continue;
-    out.push({ kind: LY_LV[x.verdict], ids: [id], text: `${lyNm(items.find(a => a.id === id))} gets about ${lyMol(x.dli)} from the lights drawn here, and needs ${fmt(x.need.lo, 1)} to ${fmt(x.need.hi, 1)}.` });
+    out.push({ kind: LY_LV[x.verdict], ids: [id], text: `${lyNm(items.find(a => a.id === id))} gets about ${lyMol(x.dli)} from the ${x.day >= 0.05 ? (x.on.length ? 'lights and windows' : 'windows') : 'lights'} drawn here, and needs ${fmt(x.need.lo, 1)} to ${fmt(x.need.hi, 1)}.` });
   }
   const drawn = {};
   for (const a of items) if (a.kind === 'light' && a.light_id) (drawn[a.light_id] = drawn[a.light_id] || []).push(a);
@@ -356,7 +429,7 @@ function lyPutOn(L, it, q, skip) {
 // for, else the top. Over nothing, it goes down to the floor. A thing in the air (a hanging light, a basket) keeps its height, and
 // so do a shelf, an area to keep clear, and a thing whose middle has left the space. This is how a plant is dropped onto a shelf.
 function lyLand(L, it, was, skip) {                     // skip: what it carries, which is not in its way and is nothing to land on
-  if (it.kind === 'zone' || it.kind === 'shelf') return;
+  if (it.kind === 'zone' || it.kind === 'shelf' || it.kind === 'window') return;
   const u = lyUnder(L, was); if (!u) return;
   const cx = it.x + it.w / 2, cy = it.y + it.d / 2;
   if (cx < -LY_EPS || cy < -LY_EPS || cx > L.width_in + LY_EPS || cy > L.depth_in + LY_EPS) return;
@@ -537,6 +610,7 @@ function lyItemInner(L, it, view, o) {
     ${shape('ly-shape', `stroke-width="${u(2.5)}"${it.kind === 'zone' || it.kind === 'light' ? ` stroke-dasharray="${u(7)} ${u(4)}"` : ''}`)}
     ${photo ? html`<clipPath id="${cid}">${shape('ly-clip')}</clipPath><image class="ly-photo" href="${thumbUrl(it.photo)}" width="${lyNum(w)}" height="${lyNum(h)}" preserveAspectRatio="xMidYMid slice" clip-path="url(#${cid})"/>${shape('ly-rim', `stroke-width="${u(2.5)}"`)}` : ''}
     ${it.kind === 'zone' ? shape('ly-zfill', `fill="url(#ly-z-${o.id})"`) : ''}
+    ${it.kind === 'window' ? html`<path class="ly-pane" d="M ${lyNum(w / 2)} 0 V ${lyNum(h)} M 0 ${lyNum(h / 2)} H ${lyNum(w)}" stroke-width="${u(1.5)}"/>` : ''}
     ${top ? '' : lyLv(it).map(v => html`<rect class="ly-board" y="${lyNum(h - v.z)}" width="${lyNum(w)}" height="${lyNum(it.board_in || 0.75)}"/>`)}
     ${it.kind === 'light' && Math.min(wpx, hpx) >= 1.3 * rem ? html`<g class="ly-sun" transform="translate(${lyNum(w / 2)} ${lyNum(h / 2)})"><circle r="${u(0.22 * rem)}"/><circle class="ly-rays" r="${u(0.45 * rem)}" stroke-width="${u(0.2 * rem)}" stroke-dasharray="${u(0.12 * rem)} ${u(0.233 * rem)}"/></g>` : ''}
     ${shape('ly-hatch ly-hatch-h', `fill="url(#ly-hh-${o.id})"`)}${shape('ly-hatch ly-hatch-s', `fill="url(#ly-hs-${o.id})"`)}`;
@@ -568,6 +642,7 @@ function lyItemLab(L, it, view, o) {
 }
 const lyLabCls = (it, o) => lyItCls(it, o).replace('ly-it', 'ly-lab');
 function lySelMark(L, it, view, o) {                    // the ring round the chosen thing, drawn last so nothing hides it, and its corner handle
+  if (view === '3d') return '';                          // in the 3D view the chosen thing is drawn heavier, with its name
   const top = view === 'top', u = n => lyNum(n / o.S), w = top ? it.w : lyAw(it, o.face || 'back'), h = top ? it.d : it.h, pad = 4 / o.S, hs = 1.05 * o.rem;
   return html`<g class="ly-selmark" data-id="${it.id}" transform="${lyItTf(L, it, view, o)}">${top && it.shape === 'round'
     ? html`<ellipse class="ly-selring" cx="${lyNum(w / 2)}" cy="${lyNum(h / 2)}" rx="${lyNum(w / 2 + pad)}" ry="${lyNum(h / 2 + pad)}" stroke-width="${u(3)}"/>`
@@ -601,14 +676,261 @@ function lySvg(L, view, o) {
       ${hatch('ly-hh-' + o.id, 'ly-hh', 9, 2.5, 45)}${hatch('ly-hs-' + o.id, 'ly-hs', 15, 2.5, -45)}${hatch('ly-z-' + o.id, 'ly-zz', 11, 1.5, 45)}</defs>
     <rect class="ly-space" width="${lyNum(W)}" height="${lyNum(V)}" stroke-width="${u(2.5)}"/>
     ${o.grid ? html`<rect class="ly-gridfill" width="${lyNum(W)}" height="${lyNum(V)}" fill="url(#ly-g-${o.id})"/><rect class="ly-gridfill" width="${lyNum(W)}" height="${lyNum(V)}" fill="url(#ly-G-${o.id})"/>` : ''}
+    ${top && o.lmap ? lyLmapSvg(o.lmap, o) : ''}
     <rect class="ly-edge-line" width="${lyNum(W)}" height="${lyNum(V)}" stroke-width="${u(2.5)}"/>
     ${top ? '' : html`<line class="ly-floor" x1="${lyNum(-m)}" x2="${lyNum(W + m)}" y1="${lyNum(V)}" y2="${lyNum(V)}" stroke-width="${u(5)}"/>`}
     ${mark ? html`<line class="ly-wallmark" x1="${lyNum(mark[0])}" y1="${lyNum(mark[1])}" x2="${lyNum(mark[2])}" y2="${lyNum(mark[3])}" stroke-width="${u(7)}"/>` : ''}
-    ${order.map(it => html`<g class="${lyItCls(it, o)}" data-id="${it.id}" transform="${lyItTf(L, it, view, o)}" ${o.live && !(o.dim && o.dim.has(it.id))
+    ${order.map(it => html`<g class="${lyItCls(it, o)}${o.live && LY && LY.many && LY.many.has(it.id) ? ' is-with' : ''}" data-id="${it.id}" transform="${lyItTf(L, it, view, o)}" ${o.live && !(o.dim && o.dim.has(it.id))
       ? raw(`tabindex="${it.id === stop ? 0 : -1}" role="button" aria-pressed="${o.sel === it.id}" aria-describedby="ly-keys" aria-label="${esc(lyItLabel(L, it, o.F))}"`) : raw('aria-hidden="true"')}>${lyItemInner(L, it, view, o)}</g>`)}
     ${order.map(it => html`<g class="${lyLabCls(it, o)}" data-id="${it.id}" data-lv="${lyLvKey(it, o)}" transform="${lyItTf(L, it, view, o)}" aria-hidden="true">${lyItemLab(L, it, view, o)}</g>`)}
     ${sel ? lySelMark(L, sel, view, o) : ''}
   </svg>`;
+}
+
+// ---------- 1.58.0: the light as a picture (Ethan, November 17, 2026: "Light drawn as a picture") ----------
+// On the top view, each square is shaded by the daily light a plant with its top at that height would get there, from the lights and
+// windows drawn (lyLightAt). Deeper yellow is more light, and the numbers on it say how much, so the colour is not alone in saying it.
+const LY_LBANDS = [[0, 'under 1'], [1, '1 to 3'], [3, '3 to 6'], [6, '6 to 12'], [12, '12 to 20'], [20, '20 or more']];
+const lyLband = v => { let b = 0; LY_LBANDS.forEach(([lo], i) => { if (v >= lo) b = i; }); return b; };
+const lyHasLight = L => L.items.some(b => (b.kind === 'light' && !b.gone && (b.pts || []).length) || b.kind === 'window');
+function lyLmapZ(L) {                                   // the height it is worked out at: the chosen plant's top, else the height chosen, else 1 ft
+  const it = lyItem(LY.sel);
+  if (LY.lmapAt === 'auto') return it && it.kind === 'plant' ? r2(it.z + it.h) : Math.min(12, L.height_in);
+  return clamp(+LY.lmapAt || 0, 0, L.height_in);
+}
+function lyLightMap(L, z) {
+  const W = L.width_in, D = L.depth_in, c = Math.max(+L.grid_in || 1, Math.max(W, D) / 40), cells = [];
+  for (let y0 = 0; y0 < D - LY_EPS; y0 += c) for (let x0 = 0; x0 < W - LY_EPS; x0 += c) {
+    const w = Math.min(c, W - x0), d = Math.min(c, D - y0);
+    cells.push({ x0, y0, w, d, v: lyLightAt(L, x0 + w / 2, y0 + d / 2, z) });
+  }
+  return { z, c, cells, max: cells.reduce((m, q) => Math.max(m, q.v), 0) };
+}
+function lyLmapSvg(M, o) {
+  const k = Math.max(1, Math.ceil(2.9 * o.rem / (M.c * o.S))), u = n => lyNum(n / o.S), fs = 0.72 * o.rem;
+  const cols = Math.round(LY.d.width_in / M.c + 0.49);
+  return html`<g class="ly-lmap" aria-hidden="true">${M.cells.map(q => html`<rect class="ly-lm ly-lm-${lyLband(q.v)}" x="${lyNum(q.x0)}" y="${lyNum(q.y0)}" width="${lyNum(q.w + 0.02)}" height="${lyNum(q.d + 0.02)}"/>`)}
+    ${M.cells.filter((q, i) => (i % cols) % k === Math.floor(k / 2) && Math.floor(i / cols) % k === Math.floor(k / 2)).map(q => html`<text class="ly-lmn" x="${lyNum(q.x0 + q.w / 2)}" y="${lyNum(q.y0 + q.d / 2)}" font-size="${u(fs)}" stroke-width="${u(3.5)}" text-anchor="middle" dominant-baseline="central">${q.v >= 9.95 ? fmt(q.v, 0) : fmt(q.v, 1)}</text>`)}</g>`;
+}
+function lyLmapKey(M) {
+  const it = lyItem(LY.sel), at = LY.lmapAt === 'auto' && it && it.kind === 'plant' ? `the top of ${it.name}, ${lenF(M.z)} off the floor` : `${lenF(M.z)} off the floor`;
+  return html`<div class="ly-lmkey"><p><strong>The light map</strong> is the daily light a plant would get with its top at ${at}, in mol/m² a day. Deeper yellow is more light, and the numbers say how much. The most here is about ${fmt(M.max, 1)}.</p>
+    <ul class="ly-lmbands">${LY_LBANDS.map(([, w], i) => html`<li><svg class="ly-lmsw" viewBox="0 0 10 10" width="18" height="18" aria-hidden="true"><rect class="ly-lm ly-lm-${i}" width="10" height="10"/><rect class="ly-lmedge" width="10" height="10"/></svg>${w}</li>`)}</ul></div>`;
+}
+
+// ---------- 1.58.0: the view in three dimensions (Ethan, November 14 and 17, 2026: "2D (Maybe also 3D later)", "3D View") ----------
+// Drawn with SVG, as the other views, from a corner above: each thing a box (a pot a round one), a shelf with levels its boards and
+// four posts, the floor and the two walls behind. Turn it and look from higher or lower with the buttons. Things are chosen here, and
+// moved with the arrow keys (along the floor, the way that is nearest to the arrow as you look) or in the other views.
+const LY_3D_AZ = -35, LY_3D_EL = 35;
+const lyAzWord = az => { const a = ((az % 360) + 360) % 360, w = ['the front', 'the front right', 'the right', 'the back right', 'the back', 'the back left', 'the left', 'the front left']; return w[Math.round(a / 45) % 8]; };
+function ly3dBasis() {
+  const a = LY.az * Math.PI / 180, e = LY.el * Math.PI / 180, se = Math.sin(e), ce = Math.cos(e), sa = Math.sin(a), ca = Math.cos(a);
+  return { R: [ca, -sa, 0], U: [-se * sa, -se * ca, ce], V: [sa * ce, ca * ce, se] };
+}
+const ly3dDot = (p, q) => p[0] * q[0] + p[1] * q[1] + p[2] * q[2];
+function ly3dDir(dx, dy) {                              // an arrow key as you look, to a step along the floor in the top view
+  const a = LY.az * Math.PI / 180, vx = dx * Math.cos(a) + dy * Math.sin(a), vy = -dx * Math.sin(a) + dy * Math.cos(a);
+  return Math.abs(vx) >= Math.abs(vy) ? [Math.sign(vx), 0] : [0, Math.sign(vy)];
+}
+function ly3dBounds(L, B) {
+  const W = L.width_in, D = L.depth_in, H = L.height_in, xs = [], ys = [];
+  for (const x of [0, W]) for (const y of [0, D]) for (const z of [0, H]) { const p = [x - W / 2, y - D / 2, z]; xs.push(ly3dDot(p, B.R)); ys.push(-ly3dDot(p, B.U)); }
+  const m = 0.05 * Math.max(W, D, H);
+  return { x0: Math.min(...xs) - m, y0: Math.min(...ys) - m, w: Math.max(...xs) - Math.min(...xs) + 2 * m, h: Math.max(...ys) - Math.min(...ys) + 2 * m };
+}
+// The pieces of one thing: [{ depth, faces: [{ pts, cls }], top: [x, y] (where its number goes, on the last piece) }]
+function ly3dPieces(L, it, B) {
+  const W = L.width_in, D = L.depth_in, P = (x, y, z) => [x - W / 2, y - D / 2, z], pr = p => [ly3dDot(p, B.R), -ly3dDot(p, B.U)];
+  const vis = n => ly3dDot(n, B.V) > 1e-6, out = [];
+  const box = (x0, y0, z0, x1, y1, z1, cls) => {
+    const f = [], C = (x, y, z) => pr(P(x, y, z));
+    if (vis([0, 0, 1])) f.push({ pts: [C(x0, y0, z1), C(x1, y0, z1), C(x1, y1, z1), C(x0, y1, z1)], cls: 'ly-f3t' });
+    if (vis([0, 1, 0])) f.push({ pts: [C(x0, y1, z0), C(x1, y1, z0), C(x1, y1, z1), C(x0, y1, z1)], cls: 'ly-f3y' });
+    if (vis([0, -1, 0])) f.push({ pts: [C(x0, y0, z0), C(x1, y0, z0), C(x1, y0, z1), C(x0, y0, z1)], cls: 'ly-f3y' });
+    if (vis([1, 0, 0])) f.push({ pts: [C(x1, y0, z0), C(x1, y1, z0), C(x1, y1, z1), C(x1, y0, z1)], cls: 'ly-f3x' });
+    if (vis([-1, 0, 0])) f.push({ pts: [C(x0, y0, z0), C(x0, y1, z0), C(x0, y1, z1), C(x0, y0, z1)], cls: 'ly-f3x' });
+    out.push({ depth: ly3dDot(P((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), B.V), bb: [x0, y0, z0, x1, y1, z1], faces: f.map(q => ({ ...q, cls: q.cls + (cls ? ' ' + cls : '') })) });
+  };
+  const round = (cx, cy, rx, ry, z0, z1) => {
+    const N = 16, ring = z => Array.from({ length: N }, (_, i) => { const t = 2 * Math.PI * i / N; return [cx + rx * Math.cos(t), cy + ry * Math.sin(t), z]; }), lo = ring(z0), hi = ring(z1), f = [];
+    for (let i = 0; i < N; i++) {
+      const t = 2 * Math.PI * (i + 0.5) / N, n = [Math.cos(t), Math.sin(t), 0], j = (i + 1) % N;
+      if (vis(n)) f.push({ pts: [lo[i], lo[j], hi[j], hi[i]].map(p => pr(P(...p))), cls: (Math.abs(n[0]) > Math.abs(n[1]) ? 'ly-f3x' : 'ly-f3y') + ' ly-f3r' });
+    }
+    if (vis([0, 0, 1])) f.push({ pts: hi.map(p => pr(P(...p))), cls: 'ly-f3t' });
+    out.push({ depth: ly3dDot(P(cx, cy, (z0 + z1) / 2), B.V), bb: [cx - rx, cy - ry, z0, cx + rx, cy + ry, z1], faces: f });
+  };
+  if (it.kind === 'zone') out.push({ depth: -1e9, bb: [it.x, it.y, it.z, it.x + it.w, it.y + it.d, it.z], faces: [{ pts: [[it.x, it.y], [it.x + it.w, it.y], [it.x + it.w, it.y + it.d], [it.x, it.y + it.d]].map(([x, y]) => pr(P(x, y, it.z))), cls: 'ly-f3t ly-f3zone' }] });
+  else if (lyLv(it).length) {
+    for (const q of lySolids(it)) box(it.x, it.y, q.z, it.x + it.w, it.y + it.d, q.z + q.h, '');
+    const t = Math.min(1, it.w / 8, it.d / 8);
+    for (const [x, y] of [[it.x, it.y], [it.x + it.w - t, it.y], [it.x, it.y + it.d - t], [it.x + it.w - t, it.y + it.d - t]]) box(x, y, it.z, x + t, y + t, it.z + it.h, 'ly-f3post');
+  } else if (lyRound(it) || it.shape === 'round') round(it.x + it.w / 2, it.y + it.d / 2, it.w / 2, it.d / 2, it.z, it.z + it.h);
+  else box(it.x, it.y, it.z, it.x + it.w, it.y + it.d, it.z + it.h, '');
+  const top = pr(P(it.x + it.w / 2, it.y + it.d / 2, it.z + it.h));
+  out.forEach(p => { p.top = top; });
+  return out;
+}
+// The order to draw the pieces in, far first. A piece is behind another when the two are apart along some direction and it is on
+// the far side (the boxes stand square to the room, so this is exact for things that do not overlap); where neither is behind the
+// other, the one whose middle is further goes first.
+function ly3dOrder(pieces, V) {
+  const n = pieces.length, after = pieces.map(() => []), need = new Array(n).fill(0);
+  const behind = (a, b) => { for (let k = 0; k < 3; k++) { if (V[k] > 1e-6 && a.bb[k + 3] <= b.bb[k] + 1e-6) return true; if (V[k] < -1e-6 && a.bb[k] >= b.bb[k + 3] - 1e-6) return true; } return false; };
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    const ij = behind(pieces[i], pieces[j]), ji = behind(pieces[j], pieces[i]);
+    if (ij && !ji) { after[i].push(j); need[j]++; } else if (ji && !ij) { after[j].push(i); need[i]++; }
+  }
+  const out = [], done = new Array(n).fill(false);
+  for (let k = 0; k < n; k++) {
+    let best = -1;
+    for (let i = 0; i < n; i++) if (!done[i] && need[i] === 0 && (best < 0 || pieces[i].depth < pieces[best].depth)) best = i;
+    if (best < 0) for (let i = 0; i < n; i++) if (!done[i] && (best < 0 || pieces[i].depth < pieces[best].depth)) best = i;      // a ring of "behind": the furthest first
+    done[best] = true; out.push(pieces[best]); for (const j of after[best]) need[j]--;
+  }
+  return out;
+}
+function ly3dSvg(L, o) {
+  const B = ly3dBasis(), b = ly3dBounds(L, B), S = o.S, u = n => lyNum(n / S), W = L.width_in, D = L.depth_in, H = L.height_in;
+  const P = (x, y, z) => [x - W / 2, y - D / 2, z], pr = (x, y, z) => { const p = P(x, y, z); return [ly3dDot(p, B.R), -ly3dDot(p, B.U)]; };
+  const poly = pts => pts.map(p => `${lyNum(p[0])},${lyNum(p[1])}`).join(' ');
+  const walls = [['back', [[0, 0], [W, 0]], [0, 1, 0]], ['front', [[W, D], [0, D]], [0, -1, 0]], ['left', [[0, D], [0, 0]], [1, 0, 0]], ['right', [[W, 0], [W, D]], [-1, 0, 0]]].filter(w => ly3dDot(w[2], B.V) > 1e-6);
+  const step = 12 * Math.max(1, Math.ceil(Math.max(W, D) / 12 / 16)), lines = [];
+  if (o.grid) { for (let x = step; x < W - 0.01; x += step) lines.push([pr(x, 0, 0), pr(x, D, 0)]); for (let y = step; y < D - 0.01; y += step) lines.push([pr(0, y, 0), pr(W, y, 0)]); }
+  const stop = lyTabStop(L, o), pieces = [];
+  for (const it of L.items) ly3dPieces(L, it, B).forEach((p, i) => pieces.push({ ...p, it, first: i === 0 }));
+  const order = ly3dOrder(pieces, B.V);
+  const fs = 0.8 * o.rem, br = 0.6 * o.rem;
+  return html`<svg class="ly-svg ly-3d${o.live ? '' : ' ly-still'}" data-view="3d" ${o.live ? raw('data-live="1"') : ''} viewBox="${lyNum(b.x0)} ${lyNum(b.y0)} ${lyNum(b.w)} ${lyNum(b.h)}" width="${Math.round(b.w * S)}" height="${Math.round(b.h * S)}" role="${o.live ? 'group' : 'img'}" aria-label="${o.label}">
+    <polygon class="ly-3floor" points="${poly([pr(0, 0, 0), pr(W, 0, 0), pr(W, D, 0), pr(0, D, 0)])}" stroke-width="${u(2)}"/>
+    ${lines.map(([a, c]) => html`<line class="ly-gl" x1="${lyNum(a[0])}" y1="${lyNum(a[1])}" x2="${lyNum(c[0])}" y2="${lyNum(c[1])}" stroke-width="${u(1.2)}"/>`)}
+    ${walls.map(([w, [[x0, y0], [x1, y1]]]) => { const top = [pr(x0, y0, H), pr(x1, y1, H)]; return html`<polygon class="ly-3wall" points="${poly([pr(x0, y0, 0), pr(x1, y1, 0), top[1], top[0]])}" stroke-width="${u(1.5)}"/>
+      <text class="ly-name ly-3wname" x="${lyNum(top[0][0] + (top[1][0] - top[0][0]) * 0.2)}" y="${lyNum(top[0][1] + (top[1][1] - top[0][1]) * 0.2 + 1.4 * fs / S)}" font-size="${u(fs)}" stroke-width="${u(4)}" text-anchor="middle">${LY_WALLS[w].replace(/^The (.)/, (m, c) => c.toUpperCase())}</text>`; })}
+    ${order.map(p => html`<g class="${lyItCls(p.it, o)}${LY.many && LY.many.has(p.it.id) ? ' is-with' : ''}" data-id="${p.it.id}" ${o.live && p.first ? raw(`tabindex="${p.it.id === stop ? 0 : -1}" role="button" aria-pressed="${o.sel === p.it.id}" aria-describedby="ly-keys" aria-label="${esc(lyItLabel(L, p.it, o.F))}"`) : raw('aria-hidden="true"')}>
+      ${p.faces.map(f => html`<polygon class="ly-shape ${f.cls}" points="${poly(f.pts)}" stroke-width="${u(1.6)}"/>`)}</g>`)}
+    ${L.items.filter(it => it.kind !== 'zone').map(it => { const t = pr(it.x + it.w / 2, it.y + it.d / 2, it.z + it.h), x = it.kind === 'plant' && o.F && o.F.light && o.F.light.any ? o.F.light.get(it.id) : null, sg = x && LY_LV_SIGN[x.verdict];
+      return html`<g class="ly-lab ly-3lab${o.sel === it.id ? ' is-sel' : ''}" aria-hidden="true" transform="translate(${lyNum(t[0])} ${lyNum(t[1] - br / S - 2 / S)})">
+        <g class="ly-badge"><circle r="${u(br)}" stroke-width="${u(1.5)}"/><text font-size="${u(Math.min(fs, br * 1.3))}" text-anchor="middle" dominant-baseline="central">${it.sort}</text></g>
+        ${sg ? html`<g class="ly-lvb ly-lvb-${x.verdict}" transform="translate(${u(2.1 * br)} 0)"><circle r="${u(br)}" stroke-width="${u(1.5)}"/><text font-size="${u(br * (sg.length > 1 ? 0.82 : 1.25))}" text-anchor="middle" dominant-baseline="central">${sg}</text></g>` : ''}
+        ${o.sel === it.id ? html`<text class="ly-name" x="0" y="${u(-1.6 * br)}" font-size="${u(fs)}" stroke-width="${u(4)}" text-anchor="middle">${it.name}</text>` : ''}</g>`; })}
+  </svg>`;
+}
+function ly3dFigure(o) {
+  const L = LY.d;
+  return html`<figure class="ly-fig" data-view="3d">
+    <figcaption><strong>3D view</strong> <span class="muted">Seen from ${lyAzWord(LY.az)}, from ${LY.el >= 55 ? 'high above' : LY.el <= 20 ? 'a little above' : 'above'}. Choose a thing here. Move it with the arrow keys, or in the top or front view.</span></figcaption>
+    <div class="row ly-3tools noprint" role="group" aria-label="Turn the 3D view">
+      <button class="btn small ghost" type="button" id="ly-3left" data-act="ly3d" data-d="left">Turn left</button><button class="btn small ghost" type="button" id="ly-3right" data-act="ly3d" data-d="right">Turn right</button>
+      <button class="btn small ghost" type="button" id="ly-3up" data-act="ly3d" data-d="up" ${LY.el >= 75 ? raw('disabled') : ''}>Look from higher</button><button class="btn small ghost" type="button" id="ly-3down" data-act="ly3d" data-d="down" ${LY.el <= 15 ? raw('disabled') : ''}>Look from lower</button>
+      <button class="btn small ghost" type="button" id="ly-3reset" data-act="ly3d" data-d="reset">Start view</button></div>
+    <div class="ly-frame"><div class="ly-scroll" id="ly-scroll-3d">${ly3dSvg(L, o)}</div></div></figure>`;
+}
+
+// ---------- 1.58.0: choosing several things at once and lining them up (Ethan, November 17, 2026) ----------
+// LY.many holds the things chosen with the chosen one (LY.sel): Shift, Ctrl or Cmd with a press on the drawing, Shift with Enter on
+// a thing, or "Add to the group" in the list. The arrow keys and a drag move them all; the panel lines them up or spreads them out.
+const lyGroup = () => (LY.sel == null ? [] : [LY.sel, ...(LY.many || [])].map(lyItem).filter(Boolean));
+function lyGroupRiders(it) {                            // what moves with a thing: what it carries, and the rest of the group with what they carry
+  const L = LY.d, out = lyCarryStart(L, it), seen = new Set([it.id, ...out.map(r => r.it.id)]);
+  if (LY.sel === it.id) for (const m of lyGroup()) {
+    if (seen.has(m.id) || m.locked) continue;
+    seen.add(m.id); out.push({ it: m, was: { ...m } });
+    for (const r of lyCarryStart(L, m)) if (!seen.has(r.it.id)) { seen.add(r.it.id); out.push(r); }
+  }
+  return out;
+}
+function lyWith(id, on) {                               // a thing into the group, or out of it
+  if (!LY.many) LY.many = new Set();
+  if (LY.sel == null) { lySelect(id, LY.fview, true); return; }
+  if (id === LY.sel) { const rest = [...LY.many]; if (!on && rest.length) { LY.many.delete(rest[0]); LY.sel = null; lySelect(rest[0], LY.fview); } return; }
+  if (on) LY.many.add(id); else LY.many.delete(id);
+  lyDrawViews(); lyPanel(); lyLists();
+  const n = LY.many.size;
+  lySay(`${(lyItem(id) || {}).name} ${on ? 'added to' : 'taken out of'} the group. ${n ? `${n + 1} things are chosen.` : 'One thing is chosen.'}`);
+}
+const LY_LINE = { left: ['Left edges', 'x', 0], right: ['Right edges', 'x', 1], back: ['Back edges', 'y', 0], front: ['Front edges', 'y', 1], midx: ['Middles, left to right', 'x', 0.5], midy: ['Middles, back to front', 'y', 0.5], floor: ['Bottoms, at one height', 'z', 0] };
+function lyGroupHtml() {
+  const g = lyGroup(); if (g.length < 2 || !lyCan()) return '';
+  const free = g.filter(t => !t.locked), lk = g.length - free.length;
+  return html`<section class="ly-group" id="ly-group" aria-labelledby="ly-group-h"><h3 id="ly-group-h">${g.length} things chosen</h3>
+    <p>${g.map(t => `${t.sort}. ${t.name}`).join(', ')}. The arrow keys and a drag move them all.${lk ? ` ${lk === 1 ? 'One is' : `${lk} are`} locked in place and stay${lk === 1 ? 's' : ''} where ${lk === 1 ? 'it is' : 'they are'}.` : ''}</p>
+    <p class="ly-gl-h"><strong>Line them up with ${g[0].name}:</strong></p>
+    <div class="row ly-lineup">${Object.entries(LY_LINE).map(([k, [w]]) => html`<button class="btn small ghost" type="button" data-act="lyline" data-how="${k}">${w}</button>`)}</div>
+    ${g.length > 2 ? html`<p class="ly-gl-h"><strong>Spread them out evenly:</strong></p><div class="row ly-lineup"><button class="btn small ghost" type="button" data-act="lyline" data-how="spreadx">Left to right</button><button class="btn small ghost" type="button" data-act="lyline" data-how="spready">Back to front</button></div>` : ''}
+    <p><button class="btn small ghost" type="button" data-act="lyalone">Choose only ${g[0].name}</button></p></section>`;
+}
+function lyLineUp(how) {
+  const L = LY.d, g = lyGroup(), first = g[0]; if (g.length < 2) return;
+  const free = g.filter(t => !t.locked), was = new Map(free.map(t => [t.id, { ...t }])), size = { x: 'w', y: 'd', z: 'h' };
+  const carry = new Map(free.map(t => [t.id, lyCarryStart(L, t).filter(r => !g.includes(r.it))])), skip = new Set(g.map(q => q.id).concat([...carry.values()].flat().map(r => r.it.id)));
+  if (how === 'spreadx' || how === 'spready') {
+    const ax = how === 'spreadx' ? 'x' : 'y', s = size[ax], all = g.slice().sort((a, b) => a[ax] - b[ax]), lo = all[0], hi = all[all.length - 1];
+    const gap = (hi[ax] + hi[s] - lo[ax] - all.reduce((t, q) => t + q[s], 0)) / (all.length - 1);
+    let at = lo[ax];
+    for (const t of all) { if (!t.locked && t !== lo && t !== hi) t[ax] = r2(at); at += t[s] + gap; }
+  } else {
+    const [, ax, k] = LY_LINE[how], s = size[ax], v = first[ax] + first[s] * k;
+    for (const t of free) if (t !== first) t[ax] = r2(v - t[s] * k);
+  }
+  const moved = free.filter(t => ['x', 'y', 'z'].some(k => t[k] !== was.get(t.id)[k]));
+  if (!moved.length) { lySay('They are lined up that way already.'); toast('They are lined up that way already.'); return; }
+  const riders = [];
+  for (const t of moved) {                              // each lands on what is under it there, and what it carries moves with it
+    const w = was.get(t.id); if (how !== 'floor') lyLand(L, t, w, skip);
+    lyCarryMove(t, w, carry.get(t.id)); riders.push(...carry.get(t.id));
+  }
+  const lead = moved[0], label = how.startsWith('spread') ? 'spread out' : 'lined up';
+  lyCommit(lead, was.get(lead.id), label, '', moved.slice(1).map(t => ({ it: t, was: was.get(t.id) })).concat(riders), `, with ${moved.length - 1 === 0 ? 'nothing else' : moved.length - 1 === 1 ? 'one other thing' : `${moved.length - 1} other things`}`);
+  lySay(`${moved.length} ${moved.length === 1 ? 'thing' : 'things'} ${label}: ${how.startsWith('spread') ? 'the same space between each' : LY_LINE[how][0].toLowerCase()}.`);
+}
+
+// ---------- 1.58.0: a shelf's boards and size saved to its measurements (Ethan, November 17, 2026) ----------
+// On a shelf unit's own layout, its boards (the shelves drawn on it that are not one of the record's shelves) say its levels, the clear
+// height of each, and its width and depth. On a room's layout, a record shelf drawn as one block says its width and depth. Where those
+// differ from its measurements (Rooms and spots, "Measurements and photos"), the page says so and saves them there when asked.
+function lySheetDiff(L) {
+  const out = [], near = (a, b) => a != null && b != null && Math.abs(a - b) < 0.06, s = L.sheet;
+  if (s && L.spot_id) {
+    const boards = L.items.filter(b => b.kind === 'shelf' && !b.spot_id && !lyLv(b).length).sort((a, b) => a.z - b.z);
+    if (boards.length >= 2) {
+      const gaps = boards.slice(1).map((b, i) => r1(b.z - boards[i].z - boards[i].h)), w = r1(Math.max(...boards.map(b => b.w))), d = r1(Math.max(...boards.map(b => b.d)));
+      const now = s.gaps_in && s.gaps_in.length ? s.gaps_in : s.gap_in && s.levels ? Array(s.levels - 1).fill(s.gap_in) : null, top = boards[boards.length - 1], above = r1(L.height_in - top.z - top.h);
+      const want = { levels: boards.length, gaps_in: gaps, width_in: w, depth_in: d, ...(above >= 1 && above <= 240 ? { top_in: above } : {}) };
+      if (gaps.every(g => g >= 1 && g <= 240) && (s.levels !== boards.length || !now || now.length !== gaps.length || now.some((g, i) => !near(g, gaps[i])) || !near(s.width_in, w) || !near(s.depth_in, d)))
+        out.push({ spot: L.spot_id, name: L.place || L.name, from: s, want, words: [
+          s.levels !== boards.length ? `${boards.length} levels (the measurements say ${s.levels || 'none'})` : '',
+          !now || now.length !== gaps.length || now.some((g, i) => !near(g, gaps[i])) ? `the clear height of each level, from the bottom: ${gaps.map(g => lenF(g)).join(', ')}${now ? ` (they say ${now.map(g => lenF(g)).join(', ')})` : ''}` : '',
+          !near(s.width_in, w) ? `${lenF(w)} wide (they say ${s.width_in ? lenF(s.width_in) : 'nothing'})` : '', !near(s.depth_in, d) ? `${lenF(d)} deep (they say ${s.depth_in ? lenF(s.depth_in) : 'nothing'})` : ''].filter(Boolean) });
+    }
+  }
+  for (const b of L.items) if (b.kind === 'shelf' && b.spot_id && b.sheet && !b.gone && (!near(b.sheet.width_in, b.w) || !near(b.sheet.depth_in, b.d)))
+    out.push({ spot: b.spot_id, item: b.id, name: b.name, from: b.sheet, want: { width_in: r1(b.w), depth_in: r1(b.d) },
+      words: [!near(b.sheet.width_in, b.w) ? `${lenF(r1(b.w))} wide (its measurements say ${b.sheet.width_in ? lenF(b.sheet.width_in) : 'nothing'})` : '', !near(b.sheet.depth_in, b.d) ? `${lenF(r1(b.d))} deep (they say ${b.sheet.depth_in ? lenF(b.sheet.depth_in) : 'nothing'})` : ''].filter(Boolean) });
+  return out;
+}
+function lySheetDraw() {
+  const box = document.getElementById('ly-sheet'); if (!box) return;
+  const D = lySheetDiff(LY.d), can = lyCan();
+  box.hidden = !D.length;
+  document.getElementById('ly-sheet-body').innerHTML = rend(html`${D.map((x, i) => html`<div class="ly-sheet-one"><p><strong>${x.name}</strong> is drawn here with:</p><ul>${x.words.map(w => html`<li>${w}</li>`)}</ul>
+    ${can ? html`<p><button class="btn small" type="button" data-act="lysheet" data-i="${i}">Save ${x.item ? 'its width and depth' : 'these'} to its measurements</button></p>` : ''}</div>`)}
+    <p class="hint">Its measurements are on Rooms and spots, under "Measurements and photos". They say what fits there, and how a new layout of it starts.</p>`);
+}
+async function lySheetSave(i) {
+  const x = lySheetDiff(LY.d)[i]; if (!x) return;
+  if (!(await needName())) return;
+  await lyFlush();
+  await guard(async () => {
+    const pd = await api('GET', `/api/rooms/${x.spot}`), old = { ...(pd.sheet || {}) }, neu = { ...old, ...x.want };
+    if (x.want.gaps_in) delete neu.gap_in;
+    await api('PUT', `/api/rooms/${x.spot}`, { sheet: neu });
+    const put = s => async () => { await api('PUT', `/api/rooms/${x.spot}`, { sheet: s }); await lyReload(); };
+    lyUndoPush(`${x.name}: its measurements saved from the layout`, 'measurements saved', put(old), put(neu));
+    await lyReload();
+    toast(`${x.name}: its measurements are saved from the layout. Undo puts back what they said.`);
+    lySay(`${x.name}: its measurements are saved from the layout.`);
+  });
 }
 
 // ---------- the list of layouts (#/layouts) ----------
@@ -680,9 +1002,11 @@ const lyNarrow = () => { const m = document.querySelector('.ly-main'); return !!
 const lyViewNow = () => LY.view === 'both' && lyNarrow() ? LY.fview : LY.view;
 async function viewLayout(id, qs) {
   const d = await api('GET', `/api/layouts/${enc(id)}?_=${Date.now()}`), p = lyPref(), mine = (p.each || {})[d.id] || {}, same = LY && LY.d.id === d.id;
-  LY = { d, sel: same ? LY.sel : null, fview: same ? LY.fview : 'top', view: ['top', 'front', 'both'].includes(mine.view) ? mine.view : d.area_id && !d.spot_id ? 'top' : 'both', zoom: clamp(+mine.zoom || 1, 0.5, 4), level: same ? LY.level : 'auto', wall: same ? LY.wall : Object.keys(LY_WALLS).includes(mine.wall) ? mine.wall : 'back',
-    grid: p.grid !== false, photos: p.photos !== false, more: !!p.more, undo: same ? LY.undo : [], redo: same ? LY.redo : [], ids: same ? LY.ids : new Map(), lastLv: same ? LY.lastLv : 0, Sv: { top: 1, front: 1 }, mv: {}, mode: 'one', order: ['top', 'front'], rem: 16, F: [], q: Promise.resolve() };
+  LY = { d, sel: same ? LY.sel : null, fview: same ? LY.fview : 'top', view: ['top', 'front', 'both', '3d'].includes(mine.view) ? mine.view : d.area_id && !d.spot_id ? 'top' : 'both', zoom: clamp(+mine.zoom || 1, 0.5, 4), level: same ? LY.level : 'auto', wall: same ? LY.wall : Object.keys(LY_WALLS).includes(mine.wall) ? mine.wall : 'back',
+    grid: p.grid !== false, photos: p.photos !== false, more: !!p.more, undo: same ? LY.undo : [], redo: same ? LY.redo : [], ids: same ? LY.ids : new Map(), lastLv: same ? LY.lastLv : 0, Sv: { top: 1, front: 1, '3d': 1 }, mv: {}, mode: 'one', order: ['top', 'front'], rem: 16, F: [], q: Promise.resolve(),
+    many: same && LY.many ? LY.many : new Set(), az: mine.az != null && isFinite(+mine.az) ? +mine.az : LY_3D_AZ, el: clamp(+mine.el || LY_3D_EL, 15, 75), lmap: !!p.lmap, lmapAt: p.lmapAt || 'auto' };
   const sel = +qs.get('sel'); if (sel && d.items.some(x => x.id === sel)) LY.sel = sel;
+  for (const m of [...LY.many]) if (!d.items.some(x => x.id === m) || m === LY.sel) LY.many.delete(m);
   if (LY.sel && !lyItem(LY.sel)) LY.sel = null;
   if (sel && LY.sel === sel) lyWallFollow(lyItem(sel));
   return { title: d.name + ' layout', html: html`<p class="crumb ly-crumb"><span><a class="noprint" href="#/layouts">All layouts</a> <span class="muted" id="ly-sub"></span></span></p>
@@ -701,18 +1025,24 @@ async function viewLayout(id, qs) {
             <li><strong>A heavy edge in the top view:</strong> the wall the front view is looking at.</li>
             <li><strong>A dashed outline:</strong> a grow light, with a sun in it, or an area to keep clear, with thin bars.</li>
             <li><strong>A ring round it:</strong> the chosen thing. The square on its corner changes its size.</li>
+            <li><strong>A dashed ring round it:</strong> chosen with the chosen thing, in a group that moves and lines up together.</li>
+            <li><strong>A box with a cross of bars:</strong> a window, in a wall.</li>
+            <li><strong>Yellow squares with numbers:</strong> the light map, when Light map is ticked. Deeper yellow is more light.</li>
             <li><strong>Faint:</strong> on another level than the one the top view is showing.</li></ul></details>
           <details class="ly-fold ly-key" id="ly-keyhelp"><summary class="btn small ghost"><span>Keys for the drawing</span></summary><ul>
             <li><strong>Tab</strong> goes to the drawing: to the chosen thing, or the first thing.</li>
             <li><strong>Page Down</strong> and <strong>Page Up</strong> go to the next and the previous thing, and choose it.</li>
             <li><strong>The arrow keys</strong> move the thing one square; with <strong>Shift</strong>, five. In the front view, Up and Down stop at each shelf, and Left and Right are your left and right as you face that wall. What stands on a thing moves with it.</li>
             <li><strong>Enter</strong> or <strong>Space</strong> chooses the thing; <strong>Escape</strong> chooses nothing.</li>
+            <li><strong>Shift</strong> with <strong>Enter</strong>, or Shift, Ctrl or Cmd with a press, adds the thing to the group, or takes it out. <strong>Escape</strong> chooses one thing again.</li>
+            <li>In the <strong>3D view</strong> the arrow keys move a thing along the floor, the way nearest to the arrow as you look.</li>
             <li><strong>Delete</strong> takes the thing off the layout. <strong>Ctrl+Z</strong> takes back the last change, and <strong>Ctrl+Y</strong> does it again.</li></ul></details></section>
       </div>
     </div>
     <section class="blk" id="ly-things"><h2>On this layout</h2><div id="ly-things-body"></div></section>
     <section class="blk" id="ly-tray" hidden><h2>Here, but not drawn yet</h2><div id="ly-tray-body"></div></section>
     <section class="blk" id="ly-rec" hidden><h2>Somewhere else in your record</h2><div id="ly-rec-body"></div></section>
+    <section class="blk" id="ly-sheet" hidden><h2>A shelf's measurements</h2><div id="ly-sheet-body"></div></section>
     <p class="sr" id="ly-say" role="status" aria-live="polite"></p>
     <p class="sr" id="ly-keys">Arrow keys move it one square, or five with Shift. Page Down and Page Up go to the next and the previous thing. Delete takes it off the layout.</p>`,
     after: () => { lyDrawAll(); lyWatch(); } };
@@ -752,21 +1082,25 @@ function lyMeasure() {
     else if (!two && rest >= 19 * rem && low >= 0.75 * st) { mode = 'tall'; st = low; }
     else mode = 'pair';
   } else sf = st = view === 'top' ? Math.min(aw / Wt, most / Dt) : Math.min(aw / Wf, most / Hf);
-  LY.Sv = { top: Math.max(0.15, st) * LY.zoom, front: Math.max(0.15, sf) * LY.zoom }; LY.mv = mv; LY.rem = rem; LY.mode = mode;
+  const b3 = ly3dBounds(L, ly3dBasis()), s3 = Math.min(aw / b3.w, most / b3.h);
+  LY.Sv = { top: Math.max(0.15, st) * LY.zoom, front: Math.max(0.15, sf) * LY.zoom, '3d': Math.max(0.15, s3) * LY.zoom }; LY.mv = mv; LY.rem = rem; LY.mode = mode;
   LY.order = mode === 'tall' || (mode === 'pair' && sf * Wf <= st * Wt) ? ['front', 'top'] : ['top', 'front'];       // side by side, the narrower view is on the left; one above the other, the top view is above
 }
 function lyOpts(view) {
   const walled = lyWalled(LY.d);
+  if (view === '3d') return { S: LY.Sv['3d'], rem: LY.rem, id: '3d', live: true, can: lyCan(), sel: LY.sel, state: lyState(LY.F), F: LY.F, grid: LY.grid, dim: null,
+    label: `3D view of ${LY.d.name}, seen from ${lyAzWord(LY.az)} and above.` };
   const o = { S: LY.Sv[view], m: LY.mv[view], rem: LY.rem, id: view, live: true, can: lyCan(), sel: LY.sel, state: lyState(LY.F), F: LY.F, grid: LY.grid, photos: LY.photos,
     dim: view === 'top' ? lyDim(LY.d, lyLevelNow()) : null,
     label: view === 'top' ? `Top view of ${LY.d.name}, looking down. The back is at the top of the drawing and the front at the bottom.`
       : `Front view of ${LY.d.name}${walled && LY.wall !== 'all' ? `, looking at ${LY_WALLS[LY.wall].toLowerCase()}` : ''}. The floor is at the bottom of the drawing.` };
-  if (view === 'top') o.wallmark = walled && LY_WALL_ENDS[LY.wall] && lyViewNow() === 'both' ? LY.wall : null;
+  if (view === 'top') { o.wallmark = walled && LY_WALL_ENDS[LY.wall] && lyViewNow() === 'both' ? LY.wall : null; o.lmap = LY.lmap && lyHasLight(LY.d) ? lyLightMap(LY.d, lyLmapZ(LY.d)) : null; }
   else { o.face = lyFaceNow(); o.only = walled ? lyWallSet(LY.d, LY.wall) : null; o.noname = lyNameClash(LY.d, o); }
   o.along = lyLabSpots(LY.d, view, o);
   return o;
 }
 function lyFigure(view) {
+  if (view === '3d') return ly3dFigure(lyOpts('3d'));
   const L = LY.d, top = view === 'top', lv = top ? lyItem(lyLevelNow()) : null, step = lyDrawnStep(L, LY.Sv[view]), o = lyOpts(view);
   const walled = lyWalled(L), one = walled && LY.wall !== 'all', face = lyFaceNow(), ends = top ? ['Left', 'Right'] : LY_WALL_ENDS[face];
   return html`<figure class="ly-fig" data-view="${view}">
@@ -777,7 +1111,8 @@ function lyFigure(view) {
     ${!top && walled ? html`<label class="f ly-wall noprint">Front view looks at<select id="ly-wall" data-act="lywall">${Object.keys(LY_WALLS).map(w => html`<option value="${w}" ${LY.wall === w ? raw('selected') : ''}>${LY_WALL_OPT[w]}</option>`)}</select></label>` : ''}
     <div class="ly-frame"><p class="ly-edge" aria-hidden="true">${top ? 'Back' : 'Top'}</p>
       <div class="ly-scroll" id="ly-scroll-${view}">${lySvg(L, view, o)}</div>
-      <p class="ly-edge ly-edge-row" aria-hidden="true"><span>${ends[0]}</span><span>${top ? 'Front' : 'Floor'}</span><span>${ends[1]}</span></p></div></figure>`;
+      <p class="ly-edge ly-edge-row" aria-hidden="true"><span>${ends[0]}</span><span>${top ? 'Front' : 'Floor'}</span><span>${ends[1]}</span></p></div>
+    ${top && o.lmap ? lyLmapKey(o.lmap) : top && LY.lmap ? html`<p class="hint ly-lmkey">The light map needs a grow light with its maker's figures, or a window, on the layout.</p>` : ''}</figure>`;
 }
 function lyFocusIt(id, view) {                           // the keyboard goes to a thing on the drawing: in the view asked for, else in the other one
   const gs = [...document.querySelectorAll(`svg.ly-svg[data-live] g.ly-it[data-id="${id}"]`)].filter(g => g.hasAttribute('tabindex'));
@@ -815,6 +1150,8 @@ function lyHead() {
   box.innerHTML = rend(html`<p><strong><span aria-hidden="true">${!n ? '' : hard ? '✗ ' : soft ? '! ' : '✓ '}</span>${!n ? 'Nothing is on this layout yet.' : hard ? `${hard} ${hard === 1 ? 'problem' : 'problems'}: something overlaps or sticks out.`
     : soft ? 'Nothing overlaps or sticks out.' : 'Everything fits: nothing overlaps, sticks out or is crowded.'}</strong>
     ${!n ? (lyCan() ? html`Press <strong>Add something</strong> to put the first plant, light or shelf on it.` : '') : html`${soft ? `${soft} ${soft === 1 ? 'warning' : 'warnings'} to look at${hard ? ' as well' : ''}. ` : ''}${n} ${n === 1 ? 'thing' : 'things'} on it.`}</p>
+    ${LY.offn ? html`<p class="ly-offline"><strong><span aria-hidden="true">! </span>${LY.offn === 1 ? 'One change' : `${LY.offn} changes`} made here without a connection ${LY.offn === 1 ? 'is' : 'are'} kept on this device.</strong>
+      ${LY.offn === 1 ? 'It is sent by itself' : 'They are sent by themselves'} when the plant server can be reached. Moving, sizing and setting things up works without a connection; putting a thing on or taking it off needs one.</p>` : ''}
     ${LY.stale ? html`<p class="ly-stale"><strong><span aria-hidden="true">! </span>The last change was not saved,</strong> and the plant server could not be reached to read the layout again. Nothing more can be changed here until it has been.
       <button class="btn small" type="button" data-act="lyreload">Read it again</button></p>` : ''}`);
 }
@@ -825,8 +1162,9 @@ function lyToolsDraw() {
   if (!grids.some(([v]) => Math.abs(v - L.grid_in) < 0.006)) grids.push([L.grid_in, lenF(L.grid_in)]);
   const keep = document.activeElement && box.contains(document.activeElement) ? (document.activeElement.id || '') : '';
   const sq = (grids.find(([v]) => Math.abs(v - L.grid_in) < 0.006) || [0, lenF(L.grid_in)])[1];
-  box.innerHTML = rend(html`<fieldset class="ly-viewset"><legend class="sr">Which view to show</legend><div class="opts">${[['top', 'Top view'], ['front', 'Front view']].concat(lyNarrow() ? [] : [['both', 'Both']]).map(([v, w]) =>
+  box.innerHTML = rend(html`<fieldset class="ly-viewset"><legend class="sr">Which view to show</legend><div class="opts">${[['top', 'Top view'], ['front', 'Front view']].concat(lyNarrow() ? [] : [['both', 'Both']], [['3d', '3D view']]).map(([v, w]) =>
       html`<label><input type="radio" name="lyview" id="ly-v-${v}" value="${v}" data-act="lyview" ${view === v ? raw('checked') : ''}><span>${w}</span></label>`)}</div></fieldset>
+    <label class="chk ly-chk ly-lmchk"><input type="checkbox" id="ly-lmap" data-act="lylmap" ${LY.lmap ? raw('checked') : ''}>Light map</label>
     ${can ? html`<button class="btn" type="button" id="ly-add" data-act="lyadd">Add something</button>
       <button class="btn ghost" type="button" id="ly-undo" data-act="lyundo" ${last ? raw(`aria-label="${esc(`Undo: ${last.short}. ${last.label}`)}"`) : raw('disabled')}>${last ? `Undo: ${last.short}` : 'Undo'}</button>
       <button class="btn ghost" type="button" id="ly-redo" data-act="lyredo" ${again ? raw(`aria-label="${esc(`Redo: ${again.short}. ${again.label}`)}"`) : raw('disabled')}>${again ? `Redo: ${again.short}` : 'Redo'}</button>` : ''}
@@ -835,6 +1173,8 @@ function lyToolsDraw() {
     <details class="ly-more" ${LY.more ? raw('open') : ''}><summary class="btn ghost" id="ly-more" data-act="lymore"><span>Grid and settings<span class="ly-more-now">: ${sq} squares, snapping ${L.snap ? 'on' : 'off'}</span></span></summary>
       <div class="ly-more-in"><label class="chk ly-chk"><input type="checkbox" id="ly-snap" data-act="lysnap" ${L.snap ? raw('checked') : ''} ${can ? '' : raw('disabled')}>Snap to the grid</label>
         <label class="chk ly-chk"><input type="checkbox" id="ly-gridshow" data-act="lygridshow" ${LY.grid ? raw('checked') : ''}>Show the grid</label>
+        <label class="f ly-step">Light map at<select id="ly-lmapz" data-act="lylmapz"><option value="auto" ${LY.lmapAt === 'auto' ? raw('selected') : ''}>The chosen plant's top, else 1 ft</option>
+          ${Array.from({ length: Math.floor(L.height_in / 12) + 1 }, (_, i) => i * 12).map(z => html`<option value="${z}" ${String(LY.lmapAt) === String(z) ? raw('selected') : ''}>${z ? `${lenF(z)} off the floor` : 'The floor'}</option>`)}</select></label>
         <label class="f ly-step">Squares of<select id="ly-step" data-act="lystep" ${can ? '' : raw('disabled')}>${grids.map(([v, w]) => html`<option value="${v}" ${Math.abs(v - L.grid_in) < 0.006 ? raw('selected') : ''}>${w}</option>`)}</select></label>
         ${levels.length > 1 ? html`<label class="f ly-step">Top view shows<select id="ly-level" data-act="lylevel"><option value="auto" ${LY.level === 'auto' ? raw('selected') : ''}>The chosen thing's level</option>
           <option value="0" ${LY.level === 0 ? raw('selected') : ''}>Every level</option>${levels.map(s => html`<option value="${s.id}" ${LY.level === s.id ? raw('selected') : ''}>${s.name} only</option>`)}</select></label>` : ''}
@@ -871,7 +1211,7 @@ function lyPanel() {                                    // the chosen thing: wha
   const lockedBox = k => can && (LY_SIZE_KEYS.includes(k) ? it.size_locked : it.locked);        // a locked box says so in its label, not only by looking greyed
   const num = (k, label) => html`<label class="f">${label} (${lenU()})${lockedBox(k) ? html`<span class="ly-lockword">, locked</span>` : ''}<input type="number" inputmode="decimal" step="any" id="ly-f-${k}" data-act="lyset" data-k="${k}" value="${lenF(it[k], false)}" ${LY_SIZE_KEYS.includes(k) ? rs : ro}></label>`;
   const P = it.plant ? L.plants.find(p => p.code === it.plant) : null;
-  box.innerHTML = rend(html`<div class="ly-who">${it.photo ? html`<img src="${thumbUrl(it.photo)}" alt="" loading="lazy">` : ''}
+  box.innerHTML = rend(html`${lyGroupHtml()}<div class="ly-who">${it.photo ? html`<img src="${thumbUrl(it.photo)}" alt="" loading="lazy">` : ''}
       <p><span class="ly-num">${it.sort}</span> <strong>${it.plant && !it.gone ? html`<a href="#/plant/${enc(it.plant)}">${it.name}</a>` : it.name}</strong><br>
         <span class="muted">${L.kinds[it.kind]}${it.plant ? ',' : ''}</span>${it.plant ? html` <span class="code">${it.plant}</span>` : ''}${it.gone ? html`<span class="muted">. It is no longer in the record.</span>` : ''}</p></div>
     <ul class="ly-flist" id="ly-p-find">${LY.F.filter(f => f.ids.includes(it.id)).map(lyFindLi)}</ul>
@@ -882,6 +1222,9 @@ function lyPanel() {                                    // the chosen thing: wha
     <div class="field-grid ly-fields" id="ly-f-rest">${lyRestHtml(L, it, ro)}</div>
     ${lit ? html`<div class="field-grid ly-fields"><label class="f">Hours a day<input type="number" inputmode="decimal" min="0" max="24" step="0.5" id="ly-f-hours" data-act="lyset" data-k="hours" value="${it.hours}" ${can ? '' : raw('disabled')}></label>
       ${dims.length > 1 ? html`<label class="f">Brightness<select id="ly-f-dim_pct" data-act="lyset" data-k="dim_pct" ${can ? '' : raw('disabled')}>${dims.map(x => html`<option value="${x}" ${x === it.dim_pct ? raw('selected') : ''}>${x === 100 ? 'Full (100%)' : x + '%'}</option>`)}</select></label>` : ''}</div>` : ''}
+    ${it.kind === 'window' ? html`<div class="field-grid ly-fields"><label class="f">Which way it faces<select id="ly-f-facing" data-act="lyset" data-k="facing" ${can ? '' : raw('disabled')}>${Object.entries(L.facing || {}).map(([k, v]) => html`<option value="${k}" ${k === it.facing ? raw('selected') : ''}>${v}</option>`)}</select></label>
+      <label class="f">Daylight at the glass (mol/m² a day)<input type="number" inputmode="decimal" min="0" max="70" step="0.5" id="ly-f-day_dli" data-act="lyset" data-k="day_dli" value="${it.day_dli}" ${can ? '' : raw('disabled')}></label></div>
+      <p class="hint">In ${LY_WALLS[lyWinWall(L, it)].toLowerCase()}. Its daylight is half as much ${lenF(LY_WIN_FALL)} from the glass, and less to the side. A usual day facing ${((L.facing || {})[it.facing] || '').toLowerCase()} gives about ${(L.window_dli || {})[it.facing]} at the glass. A light meter's reading is better.</p>` : ''}
     <div class="ly-light" id="ly-p-light">${lyLightHtml(L, it)}</div>
     ${lyPaged(it) ? html`<p class="ly-recline" id="ly-p-rec">${lyRecHtml(L, it)}</p>` : ''}
     ${it.kind === 'shelf' || it.kind === 'zone' ? '' : html`<label class="f">Shape, seen from above<select id="ly-f-shape" data-act="lyset" data-k="shape" ${rs}><option value="round" ${it.shape === 'round' ? raw('selected') : ''}>Round</option><option value="box" ${it.shape === 'box' ? raw('selected') : ''}>Square or oblong</option></select></label>`}
@@ -912,13 +1255,14 @@ function lyLists() {                                    // what to look at, ever
   fb.innerHTML = rend(F.length ? html`<ul class="ly-flist">${F.map(f => html`<li class="ly-f ${f.hard ? 'ly-f-hard' : 'ly-f-soft'}"><span><strong><span aria-hidden="true">${f.hard ? '✗' : '!'} </span>${LY_WORD[f.kind]}:</strong> ${f.text}</span>
       <button class="btn small ghost" type="button" data-act="lypick" data-id="${f.ids[0]}" aria-label="Show it: ${(lyItem(f.ids[0]) || {}).name || 'on the drawing'}">Show it</button></li>`)}</ul>`
     : html`<p class="muted">${L.items.length ? 'Nothing to look at: everything fits.' : 'Nothing yet.'}</p>`);
-  const lvOf = it => { const x = it.kind === 'plant' && F.light.any ? F.light.get(it.id) : null; return !x ? '' : x.reached && LY_LV_SIGN[x.verdict] ? html` ${lvTag(x.verdict, (L.verdicts || {})[x.verdict] || '')}` : html` <span class="tag ly-lv-none"><span aria-hidden="true">– </span>No light reaches it</span>`; };
+  const lvOf = it => { const x = it.kind === 'plant' && F.light.any ? F.light.get(it.id) : null; return !x ? '' : x.lit && LY_LV_SIGN[x.verdict] ? html` ${lvTag(x.verdict, (L.verdicts || {})[x.verdict] || '')}` : html` <span class="tag ly-lv-none"><span aria-hidden="true">– </span>No light reaches it</span>`; };
   const tags = it => F.filter(f => lyMarked(f).includes(it.id) && !lyIsLv(f.kind)).map(f => f.kind).filter((k, i, a) => a.indexOf(k) === i).map(k => html` <span class="ly-tag ${['outside', 'overlap'].includes(k) ? 'ly-tag-hard' : 'ly-tag-soft'}"><span aria-hidden="true">${['outside', 'overlap'].includes(k) ? '✗' : '!'} </span>${LY_WORD[k]}</span>`);
   document.getElementById('ly-things-body').innerHTML = rend(L.items.length ? html`<ul class="ly-list">${L.items.map(it => html`<li class="ly-row${LY.sel === it.id ? ' is-sel' : ''}${st.get(it.id) ? ' is-' + st.get(it.id) : ''}" data-id="${it.id}">
       ${it.photo ? html`<img src="${thumbUrl(it.photo)}" alt="" loading="lazy">` : html`<span class="ly-nophoto ly-np-${it.kind}" aria-hidden="true"></span>`}
       <div class="ly-row-main"><div class="ly-row-txt"><span class="ly-num" aria-hidden="true">${it.sort}</span> <strong>${it.plant && !it.gone ? html`<a href="#/plant/${enc(it.plant)}">${it.name}</a>` : it.name}</strong> <span class="muted">${L.kinds[it.kind]}${it.plant ? ',' : ''}</span>${it.plant ? html` <span class="code">${it.plant}</span>` : ''}${tags(it)}${lvOf(it)}
         <br><span>${lySizeWords(it)}. ${lyWhere(L, it)[0].toUpperCase() + lyWhere(L, it).slice(1)}.${it.locked ? ' Locked in place.' : ''}${it.size_locked ? ' Its size is locked.' : ''}${it.gone ? ' No longer in the record.' : ''}${lyLightLine(it)}</span></div>
-      <button class="btn small ghost" type="button" data-act="lypick" data-id="${it.id}" aria-label="${LY.sel === it.id ? 'Chosen' : 'Choose'}: ${it.sort}, ${it.name}" ${LY.sel === it.id ? raw('aria-pressed="true"') : ''}>${LY.sel === it.id ? 'Chosen' : 'Choose'}</button></div></li>`)}</ul>`
+      <span class="ly-rowacts"><button class="btn small ghost" type="button" data-act="lypick" data-id="${it.id}" aria-label="${LY.sel === it.id ? 'Chosen' : 'Choose'}: ${it.sort}, ${it.name}" ${LY.sel === it.id ? raw('aria-pressed="true"') : ''}>${LY.sel === it.id ? 'Chosen' : 'Choose'}</button>
+        ${LY.sel != null && LY.sel !== it.id ? html`<label class="chk ly-chk ly-with"><input type="checkbox" data-act="lywith" data-id="${it.id}" ${LY.many.has(it.id) ? raw('checked') : ''} aria-label="With the chosen thing: ${it.sort}, ${it.name}">With the chosen thing</label>` : ''}</span></div></li>`)}</ul>`
     : html`<p class="muted">Nothing is on it yet.</p>`);
   const tray = L.plants.filter(p => p.here && !p.on), tb = document.getElementById('ly-tray');
   tb.hidden = !tray.length || !can;
@@ -927,12 +1271,12 @@ function lyLists() {                                    // what to look at, ever
     ${tray.length > 12 ? raw(`<details class="ly-fold"><summary class="btn small ghost"><span>Show these ${tray.length} plants</span></summary>`) : ''}<ul class="ly-list">${tray.map(p => html`<li class="ly-row">${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : html`<span class="ly-nophoto" aria-hidden="true"></span>`}
       <div class="ly-row-main"><div class="ly-row-txt"><strong><a href="#/plant/${enc(p.code)}">${p.name}</a></strong> <span class="code">${p.code}</span><br><span>${lySizeWords(p)}${p.guessed.length ? ' (a guess)' : ''}</span></div>
       <button class="btn small ghost" type="button" data-act="lytray" data-code="${p.code}" aria-label="Put it on: ${p.name}">Put it on</button></div></li>`)}</ul>${tray.length > 12 ? raw('</details>') : ''}`);
-  lyRecDraw();
+  lyRecDraw(); lySheetDraw();
 }
 function lyLightWords(L, F, it) {                       // a plant's light in a sentence, or nothing when no drawn light has figures
   const x = it.kind === 'plant' && F && F.light && F.light.any ? F.light.get(it.id) : null; if (!x) return '';
   const w = (L.verdicts || {})[x.verdict];
-  return x.reached ? ` Light: about ${lyMol(x.dli)}${w && x.verdict !== 'unknown' ? ', ' + w.toLowerCase() : ''}.` : ' Light: none drawn here reaches it.';
+  return x.lit ? ` Light: about ${lyMol(x.dli)}${w && x.verdict !== 'unknown' ? ', ' + w.toLowerCase() : ''}.` : ' Light: none drawn here reaches it.';
 }
 const lyLightLine = it => lyLightWords(LY.d, LY.F, it);  // for its line in the list
 function lyRecDraw() {                                  // the plants drawn here that the record has somewhere else, and the way to move them there
@@ -959,6 +1303,12 @@ function lyLive(it, inner, also) {                      // also: the things it c
   LY.F = lyFindings(LY.d);
   document.querySelectorAll('svg.ly-svg[data-live]').forEach(svg => {
     const view = svg.dataset.view, o = lyOpts(view);
+    if (view === '3d' || (view === 'top' && o.lmap)) {        // drawn again whole: what is in front of what, or the light map, changes as it moves
+      const a = document.activeElement, had = a && a.closest && svg.contains(a) ? a.closest('g.ly-it') : null, id = had ? had.dataset.id : null;
+      svg.outerHTML = rend(view === '3d' ? ly3dSvg(LY.d, o) : lySvg(LY.d, view, o));
+      if (id) lyFocusIt(+id, view);
+      return;
+    }
     svg.querySelectorAll('g.ly-it').forEach(g => {
       const t = lyItem(+g.dataset.id); if (!t) return;
       const cls = lyItCls(t, o); if (g.getAttribute('class') !== cls) g.setAttribute('class', cls);
@@ -977,8 +1327,15 @@ function lyLive(it, inner, also) {                      // also: the things it c
   });
   lyHead(); lyPanelPatch(); lyLists();
 }
-function lySelect(id, view, focus) {                    // choose a thing (or none): its ring on both drawings, and its place and size beside them
+function lySelect(id, view, focus, keep) {              // choose a thing (or none): its ring on both drawings, and its place and size beside them; keep: one of the group, which it now leads
   if (view) LY.fview = view;
+  if (LY.many && LY.many.size && LY.sel !== id) {
+    if (keep && id != null) { LY.many.delete(id); if (LY.sel != null) LY.many.add(LY.sel); } else LY.many.clear();
+    LY.sel = null;                                       // drawn again whole below, with the group's marks
+    LY.sel = id; LY.tall = null; lyWallFollow(lyItem(id)); lyDrawViews(); lyPanel(); lyLists();
+    if (focus && id != null) lyFocusIt(id, LY.fview);
+    return;
+  }
   const want = LY.fview;                                 // drawing the views again may put the keyboard back on the thing that had it, in the other view
   if (LY.sel !== id) {
     const shown = lyLevelNow();
@@ -1004,7 +1361,8 @@ function lySaveItem(it, was, more) {                    // sends what changed on
   if (more) Object.assign(body, more);
   if (!Object.keys(body).length) return LY.q;
   const id = it.id, lid = LY.d.id;
-  LY.q = LY.q.then(() => api('PUT', '/api/layouts/items/' + id, body)).then(() => {}, e => lyNotSaved(e, lid));
+  body._what = it.name;                                 // only for the list of changes waiting on this device (offline.js); the server leaves it
+  LY.q = LY.q.then(() => api('PUT', '/api/layouts/items/' + id, body)).then(r => { if (r && r.offline && LY && LY.d.id === lid) { LY.offn = (LY.offn || 0) + 1; lyHead(); } }, e => lyNotSaved(e, lid));
   return LY.q;
 }
 // A change was not saved (the server refused it, or cannot be reached). The page says so and shows the layout as it is saved, so
@@ -1022,7 +1380,7 @@ function lyUndoPush(label, short, undo, redo) { LY.undo.push({ label, short, und
 const lyCur = id => { while (LY.ids.has(id)) id = LY.ids.get(id); return id; };
 // A change to a thing is done: draw it properly (what is in front of what may have changed), keep it for Undo, and save it.
 // panel: 'full' draws the chosen thing's boxes again; otherwise they are only filled in, so a box being typed in keeps the keyboard.
-function lyCommit(it, was, what, panel, riders) {       // riders: what it carried, each with the place it had (lyCarryStart)
+function lyCommit(it, was, what, panel, riders, words) {       // riders: what it carried, each with the place it had (lyCarryStart); words: said of them in place of "and the things it carries"
   const keys = LY_KEYS.filter(k => it[k] !== was[k]); if (!keys.length) return;
   const id = it.id, back = {}; keys.forEach(k => { back[k] = was[k]; });
   const tall = keys.includes('h') && lyPaged(it), pageWas = was.page_h == null ? null : was.page_h;      // a plant's height is saved on its page too, and Undo puts back what the page said
@@ -1037,7 +1395,8 @@ function lyCommit(it, was, what, panel, riders) {       // riders: what it carri
     lyDrawAll(); lySaveItem(t, now, tall ? { page_h: page } : null); for (const [q, w] of also) lySaveItem(q, w);
     await LY.q;
   };
-  const with_ = ride.length ? `, and ${ride.length === 1 ? 'the one thing' : `the ${ride.length} things`} it carries` : '';
+  const grouped = !words && LY.many && LY.many.size && LY.sel === it.id && ride.some(r => LY.many.has(r.id));
+  const with_ = words != null ? words : grouped ? `, with the ${ride.length === 1 ? 'one other thing' : `${ride.length} other things`} chosen and what they carry` : ride.length ? `, and ${ride.length === 1 ? 'the one thing' : `the ${ride.length} things`} it carries` : '';
   LY.undo.push({ label: `${it.name} ${what}${with_}`, short: what, undo: put(back, pageWas, 'back'), redo: put(fwd, fwd.h, 'fwd') });
   if (LY.undo.length > 40) LY.undo.shift();
   LY.redo = [];
@@ -1047,7 +1406,7 @@ function lyCommit(it, was, what, panel, riders) {       // riders: what it carri
   if (panel === 'full') lyPanel(); else lyPanelPatch();
   lyLists();
   if (tall) lySay(`${it.name} is now ${lenF(it.h)} tall, here and on its page. ${LY.F.filter(f => f.ids.includes(it.id)).map(f => f.text).join(' ')}`);
-  else { lySayIt(it); if (ride.length) lySay(document.getElementById('ly-say').textContent + ` ${ride.length === 1 ? 'The one thing it carries' : `The ${ride.length} things it carries`} moved with it.`); }
+  else { lySayIt(it); if (ride.length) lySay(document.getElementById('ly-say').textContent + (words != null || grouped ? ` ${ride.length === 1 ? 'One other thing' : `${ride.length} other things`} moved with it.` : ` ${ride.length === 1 ? 'The one thing it carries' : `The ${ride.length} things it carries`} moved with it.`)); }
   lySaveItem(it, was); for (const r of ride) lySaveItem(r.it, r.was);
 }
 async function lyReload() {
@@ -1065,7 +1424,7 @@ function lyTake(d, pick) {                              // the server's answer a
   lyDrawAll();
 }
 const lySpec = it => ({ kind: it.kind, name: it.name, shape: it.shape, x: it.x, y: it.y, z: it.z, w: it.w, d: it.d, h: it.h, locked: !!it.locked, size_locked: !!it.size_locked,
-  ...(it.kind === 'light' && it.hours != null ? { hours: it.hours, dim_pct: it.dim_pct } : {}), ...(it.plant ? { plant: it.plant } : {}), ...(it.light_id ? { light_id: it.light_id } : {}), ...(it.spot_id ? { spot_id: it.spot_id } : {}) });
+  ...(it.kind === 'light' && it.hours != null ? { hours: it.hours, dim_pct: it.dim_pct } : {}), ...(it.kind === 'window' ? { facing: it.facing, day_dli: it.day_dli } : {}), ...(it.plant ? { plant: it.plant } : {}), ...(it.light_id ? { light_id: it.light_id } : {}), ...(it.spot_id ? { spot_id: it.spot_id } : {}) });
 // Puts things on the layout, each in the first place it is clear of the others (unless it comes with its place), and chooses the last one.
 // The chosen thing says where to start: on it if it is a shelf, over it if it is a plant and the new thing hangs. where: { shelf } says
 // it instead (a copy starts on what the thing it copies stands on, or under what that hangs under).
@@ -1151,11 +1510,12 @@ async function lyPutLayout(changes, label) {
 // or down in the front view it stops on the way at anything it can stand on or hang under, so it lands on a shelf exactly.
 function lyStops(L, it, skip) {                         // heights (of its bottom) at which it would rest on something or hang under something (skip: what it carries)
   const s = [0, L.height_in - it.h];
-  for (const b of L.items) if (b !== it && !(skip && skip.has(b.id)) && b.kind !== 'zone' && lyPlan(it, b) < -LY_EPS) for (const q of lySolids(b)) { s.push(q.z + q.h); if (it.kind === 'light') s.push(q.z - it.h); }
+  for (const b of L.items) if (b !== it && !(skip && skip.has(b.id)) && b.kind !== 'zone' && b.kind !== 'window' && lyPlan(it, b) < -LY_EPS) for (const q of lySolids(b)) { s.push(q.z + q.h); if (it.kind === 'light') s.push(q.z - it.h); }
   return s.filter(z => z >= -LY_EPS);
 }
 function lyNudge(it, view, dx, dy, n) {
-  const L = LY.d, g = +L.grid_in || 1, going = LY.nudge && LY.nudge.id === it.id, was = going ? LY.nudge.was : { ...it }, riders = going ? LY.nudge.riders : lyCarryStart(L, it), skip = lyCarrySkip(riders);
+  if (view === '3d') { [dx, dy] = ly3dDir(dx, dy); view = 'top'; }        // along the floor, the way nearest the arrow as you look
+  const L = LY.d, g = +L.grid_in || 1, going = LY.nudge && LY.nudge.id === it.id, was = going ? LY.nudge.was : { ...it }, riders = going ? LY.nudge.riders : lyGroupRiders(it), skip = lyCarrySkip(riders);
   const step = (v, d) => !d ? v : !L.snap ? v + d * g * n : (d > 0 ? Math.floor(v / g + 1e-6) + n : Math.ceil(v / g - 1e-6) - n) * g;
   const keepIn = (v, size, max) => clamp(v, Math.min(0, g - size), Math.max(0, max - Math.min(g, size)));        // some of it stays in the space
   const before = { ...it };
@@ -1195,13 +1555,15 @@ document.addEventListener('pointerdown', e => {
   const it = lyItem(+(hd ? hd.closest('.ly-selmark') : g).dataset.id); if (!it) return;
   const view = svg.dataset.view, chosen = LY.sel === it.id;
   lyFlush();                                                    // this may draw the views again, so the drawing is looked up afresh below
-  if (!hd) lySelect(it.id, view, true);
+  if (!hd && (e.shiftKey || e.ctrlKey || e.metaKey)) { e.preventDefault(); lyWith(it.id, !(LY.many && LY.many.has(it.id)) && it.id !== LY.sel); return; }      // 1.58.0: into the group, or out of it
+  if (!hd) lySelect(it.id, view, true, LY.many && LY.many.has(it.id));
+  if (view === '3d') return;                                    // things are chosen in the 3D view, and moved with the arrow keys or in the other views
   if (!lyCan() || (hd ? it.size_locked : it.locked)) return;           // the corner handle needs the size unlocked; a move needs the place unlocked
   if (e.pointerType === 'touch' && !chosen && !hd) return;      // on a touch screen the first touch chooses a thing, and the page still scrolls; the next one drags it
   if (!getName() && !viaTS()) { needName(); return; }
   e.preventDefault();
   const live = document.querySelector(`svg.ly-svg[data-live][data-view="${view}"]`); if (!live) return;
-  LY.drag = { id: it.id, view, svg: live, resize: !!hd, pid: e.pointerId, p0: lyPoint(live, e), was: { ...it }, moved: false, at: null, face: lyFaceNow(), riders: hd ? [] : lyCarryStart(LY.d, it) };
+  LY.drag = { id: it.id, view, svg: live, resize: !!hd, pid: e.pointerId, p0: lyPoint(live, e), was: { ...it }, moved: false, at: null, face: lyFaceNow(), riders: hd ? [] : lyGroupRiders(it) };
   window.addEventListener('pointermove', lyDragMove); window.addEventListener('pointerup', lyDragEnd); window.addEventListener('pointercancel', lyDragEnd);
 });
 function lyDragEdge() {                                 // while a thing is held near the top or bottom of the window, the page scrolls and the thing keeps up
@@ -1260,8 +1622,9 @@ document.addEventListener('keydown', e => {
   const g = e.target.closest('g.ly-it'); if (!g) return;
   const view = g.closest('svg').dataset.view, it = lyItem(+g.dataset.id); if (!it) return;
   if (e.ctrlKey || e.metaKey) return;                     // Ctrl+Z and Ctrl+Y are heard by the whole page, below
+  if ((e.key === 'Enter' || e.key === ' ') && e.shiftKey) { e.preventDefault(); lyWith(it.id, !(LY.many && LY.many.has(it.id)) && it.id !== LY.sel); return; }      // 1.58.0: Shift with Enter: into the group, or out of it
   if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); lySelect(it.id, view, true); lySayIt(it); return; }
-  if (e.key === 'Escape') { if (LY.sel != null) { e.preventDefault(); lyFlush(); lySelect(null); } return; }
+  if (e.key === 'Escape') { if (LY.sel != null) { e.preventDefault(); lyFlush(); if (LY.many && LY.many.size) { LY.many.clear(); lyDrawViews(); lyPanel(); lyLists(); lySay('Only one thing is chosen now.'); } else lySelect(null); } return; }
   if (e.key === 'PageDown' || e.key === 'PageUp') {              // to the next or the previous thing, in the order of their numbers, and round again
     e.preventDefault(); lyFlush();
     const all = LY.d.items, at = all.indexOf(it), to = all[(at + (e.key === 'PageDown' ? 1 : all.length - 1)) % all.length];
@@ -1342,6 +1705,11 @@ async function lyAddDialog() {
     <div data-lyk="zone" hidden><label class="f">Name<input type="text" name="zonename" maxlength="80" autocomplete="off" list="ly-names-zone" value="Walkway"></label>${names('zone')}
       <div class="field-grid three">${num('zw', 'Width', Math.min(30, L.width_in))}${num('zd', 'Depth', Math.min(30, L.depth_in))}${num('zh', 'Height', L.height_in)}</div>
       <p class="hint">Anything put in this area is marked "In an area to keep clear". The area itself does not get in the way of anything.</p></div>
+    <div data-lyk="window" hidden><label class="f">Name<input type="text" name="winname" maxlength="80" autocomplete="off" list="ly-names-window" value="Window"></label>${names('window')}
+      <div class="field-grid"><label class="f">In which wall<select name="winwall">${['back', 'left', 'right', 'front'].map(w => html`<option value="${w}">${LY_WALLS[w]}</option>`)}</select></label>
+        <label class="f">Which way it faces<select name="winface">${Object.entries(L.facing || {}).map(([k, v]) => html`<option value="${k}" ${k === 'S' ? raw('selected') : ''}>${v}</option>`)}</select></label></div>
+      <div class="field-grid three">${num('ww', 'Width', 36)}${num('wh', 'Height', 48)}${num('wz', 'Off the floor', 30)}</div>
+      <p class="hint">Its daylight at the glass starts from the way it faces. Change it on the layout, from a light meter if you have one.</p></div>
     <p class="hint">${shelf ? `It goes on ${shelf.name}, the thing chosen on the drawing, where there is room. A light that hangs goes under it.` : on && on.kind === 'plant' ? `It goes in the first free place. A light that hangs goes over ${on.name}, the plant chosen on the drawing.`
       : 'It goes in the first free place, from the back left corner. To put it on a shelf, or a light under one, choose that shelf on the drawing first.'}</p>
     <div class="row"><button class="btn" value="ok">Add to the layout</button><button class="btn ghost" value="cancel" formnovalidate>Cancel</button></div></form>`, 'wide');
@@ -1365,6 +1733,13 @@ async function lyAddDialog() {
     }
   } else if (kind === 'other') specs.push({ kind, name: E.othername.value.trim() || 'Something else', shape: E.othershape.value, w: len('ow', 12), d: len('od', 12), h: len('oh', 12) });
   else if (kind === 'zone') specs.push({ kind, name: E.zonename.value.trim() || 'Keep clear', shape: 'box', w: len('zw', 30), d: len('zd', 30), h: len('zh', L.height_in) });
+  else if (kind === 'window') {                           // in the middle of its wall, 4 in deep, at the height given
+    const wall = E.winwall.value, ww = len('ww', 36), wh = len('wh', 48), wz = lenIn(E.wz.value), z = isNaN(wz) || E.wz.value === '' ? 30 : r2(+wz), t = 4, fc = E.winface.value;
+    const along = wall === 'back' || wall === 'front', W = L.width_in, D = L.depth_in;
+    specs.push({ kind, name: E.winname.value.trim() || 'Window', shape: 'box', facing: fc, day_dli: (L.window_dli || {})[fc], z, h: wh,
+      w: along ? ww : t, d: along ? t : ww, x: along ? r2(Math.max(0, (W - ww) / 2)) : wall === 'left' ? 0 : r2(W - t), y: along ? (wall === 'back' ? 0 : r2(D - t)) : r2(Math.max(0, (D - ww) / 2)) });
+    placed = true;
+  }
   if (!specs.length) { toast(kind === 'plant' ? 'Tick the plants to put on the layout.' : 'Nothing was added.', true); return; }
   await lyAddItems(specs, placed);
 }
@@ -1389,6 +1764,18 @@ async function lySpaceDialog() {
 }
 
 Object.assign(acts, {
+  ly3d(el) {                                            // 1.58.0: turn the 3D view, or look from higher or lower
+    const d = el.dataset.d;
+    if (d === 'left') LY.az -= 30; else if (d === 'right') LY.az += 30; else if (d === 'up') LY.el = Math.min(75, LY.el + 15); else if (d === 'down') LY.el = Math.max(15, LY.el - 15);
+    else { LY.az = LY_3D_AZ; LY.el = LY_3D_EL; }
+    LY.az = ((LY.az + 180) % 360 + 360) % 360 - 180;
+    lyPrefEach({ az: LY.az, el: LY.el }); lyDrawViews();
+    const b = document.getElementById(el.id); if (b && !b.disabled) b.focus({ preventScroll: true }); else { const r = document.getElementById('ly-3reset'); if (r) r.focus({ preventScroll: true }); }
+    lySay(`The 3D view is seen from ${lyAzWord(LY.az)}, from ${LY.el >= 55 ? 'high above' : LY.el <= 20 ? 'a little above' : 'above'}.`);
+  },
+  async lyline(el) { await lyFlush(); if (!(await needName())) return; lyLineUp(el.dataset.how); },
+  lyalone() { LY.many.clear(); lyDrawViews(); lyPanel(); lyLists(); lySay('Only one thing is chosen now.'); },
+  lysheet(el) { lySheetSave(+el.dataset.i); },
   lynew: () => lyStartDialog(null),
   lyadd: () => lyAddDialog(),
   lyundo: () => lyUndo(),
@@ -1466,6 +1853,9 @@ Object.assign(changeActs, {
     lySay(`The front view now looks at ${LY_WALLS[LY.wall].toLowerCase()}: ${n} ${n === 1 ? 'thing' : 'things'}.`);
   },
   lygridshow(el) { LY.grid = el.checked; lyPrefSave({ grid: LY.grid }); lyDrawViews(); },
+  lylmap(el) { LY.lmap = el.checked; lyPrefSave({ lmap: LY.lmap }); if (LY.lmap && lyViewNow() !== 'top' && lyViewNow() !== 'both') { LY.view = 'top'; lyPrefEach({ view: 'top' }); lyToolsDraw(); } lyDrawViews(); lySay(LY.lmap ? 'The light map is on the top view.' : 'The light map is off.'); },
+  lylmapz(el) { LY.lmapAt = el.value; lyPrefSave({ lmapAt: LY.lmapAt }); lyDrawViews(); },
+  lywith(el) { lyWith(+el.dataset.id, el.checked); },
   async lysnap(el) { const on = el.checked; if (!(await needName()) || !(await lyPutLayout({ snap: on }))) { lyToolsDraw(); return; } lySay(on ? 'Things snap to the grid.' : 'Things move freely.'); },
   async lystep(el) { if (!(await needName()) || !(await lyPutLayout({ grid_in: +el.value }))) lyToolsDraw(); },
   lylevel(el) { LY.level = el.value === 'auto' ? 'auto' : +el.value || 0; lyDrawViews(); },
@@ -1483,6 +1873,8 @@ Object.assign(changeActs, {
     else if (k === 'name') { const n = val.trim().replace(/\s+/g, ' '); if (!n) { el.value = it.name; return; } it.name = n; what = 'renamed'; }
     else if (k === 'hours') { const v = parseFloat(String(val).replace(',', '.')); if (val === '' || isNaN(v)) { el.value = it.hours; return; } it.hours = r2(clamp(v, 0, 24)); what = 'hours changed'; }
     else if (k === 'dim_pct') { it.dim_pct = clamp(Math.round(+val) || 100, 1, 100); what = 'brightness changed'; }
+    else if (k === 'facing') { if (!(L.facing || {})[val]) return; it.facing = val; it.day_dli = (L.window_dli || {})[val]; what = 'turned to face ' + L.facing[val].toLowerCase(); panel = 'full'; }
+    else if (k === 'day_dli') { const v = parseFloat(String(val).replace(',', '.')); if (val === '' || isNaN(v)) { el.value = it.day_dli; return; } it.day_dli = r2(clamp(v, 0, 70)); what = 'daylight changed'; }
     else if (k === 'on') { const o = lyStandOpts(L, it).find(x => x.v === val); if (!o) return; const t = lyPutOn(L, it, o.q, skip); it.x = t.x; it.y = t.y; it.z = t.z; panel = 'rest'; }
     else if (k === 'under') { const o = lyHangOpts(L, it).find(x => x.v === val); if (!o) return; it.z = o.z; panel = 'rest'; }
     else {
