@@ -209,6 +209,12 @@ html[data-role=viewer] :is([data-act=lynew], [data-act=lyadd], [data-act=lyundo]
 .ly-svg[data-view="3d"] .ly-it.is-sel>.ly-shape{stroke:var(--focus);stroke-width:4px;vector-effect:non-scaling-stroke}
 .ly-svg .ly-it.is-with>.ly-shape{stroke:var(--focus);stroke-width:4px;stroke-dasharray:7 4;vector-effect:non-scaling-stroke}      /* chosen with the chosen thing: a dashed ring */
 .ly-3tools{margin:.3rem 0}
+.ly-svg[data-view="3d"]{touch-action:pan-y;cursor:grab}      /* dragged to turn: a finger still scrolls the page up and down */
+.ly-svg[data-view="3d"] .ly-it{cursor:pointer}
+.ly-svg[data-view="3d"].is-turning{cursor:grabbing}
+.ly-shadeset{border:2px solid var(--line);border-radius:.5rem;padding:.5rem .8rem;margin:.6rem 0}
+.ly-shadeset legend{font-weight:700;padding:0 .3rem}
+.ly-pot small{display:block}
 .ly-group{border:2px solid var(--line);border-radius:.5rem;padding:.6rem .8rem;margin:0 0 .8rem}
 .ly-group h3{margin:0 0 .3rem;font-size:1em}
 .ly-gl-h{margin:.5rem 0 .2rem}

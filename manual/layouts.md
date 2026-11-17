@@ -57,6 +57,8 @@ Part of the Plant record manual. The README in the folder above has how to start
 ### The 3D view (1.58.0)
 - **3D view**, beside Top view and Front view, draws the space from a corner above. Each thing is a box, and a pot is round. A shelf with levels shows its boards and four posts. The floor and the two walls behind are drawn too.
 - **Turn left** and **Turn right** go round it. **Look from higher** and **Look from lower** tilt it. **Start view** goes back to the front left.
+- You can also turn it with the mouse. Hold the right button anywhere on the drawing and move the mouse. Left and right go round it, and up and down tilt it.
+- Holding the left button on the floor or a wall does the same. On a touch screen, drag a finger left or right on the floor to go round it.
 - Press a thing to choose it. Its name shows above it. The arrow keys move it along the floor, the way nearest to the arrow as you look.
 - To drag a thing or change its size, use the top or front view.
 
@@ -71,7 +73,10 @@ Part of the Plant record manual. The README in the folder above has how to start
 - A window gives daylight at the glass. It starts from the way it faces: about 12 mol/m² a day facing south, 9 west, 8 east and 4 north.
 - Type your own reading under **Daylight at the glass** if you have a light meter. **Which way it faces** changes the starting number.
 - The daylight is half as much 2 ft from the glass, and a fifth at 4 ft. It is less to the side of the window, and none through a shelf or a wall.
-- A plant in the way of a light or a window lets about half of it through. **Light here** names the plants that shade it.
+- A plant in the way of a light or a window shades what is behind it. The bottom of its box is its pot, and the rest is its leaves.
+- To start with, a pot in the way blocks all the light, and leaves block half. Change both under **Grid and settings**, **Size and name**, **Shade from plants in the way**. Each layout keeps its own.
+- A plant's pot height is under **Its pot's height**, when the plant is chosen. It starts as its pot's height in Pots and trays. With no height there, it is a guess from its width. Type the real height, or empty the box to go back.
+- **Light here** names the plants that shade it, and says when it is a pot.
 - A plant's light, its mark and Grow lights all count the daylight from the windows drawn.
 
 ### Choosing several things (1.58.0)
@@ -89,9 +94,10 @@ Part of the Plant record manual. The README in the folder above has how to start
 - **Undo** puts back what its measurements said.
 
 ### Without a connection (1.58.0)
-- Moving things, changing their size, their locks, a light's hours or a window's daylight all work without a connection.
+- Everything on a layout works without a connection. You can move things, change their size and settings, and put things on or take them off.
 - The change is kept on this device, and the layout says so. It is sent by itself when the plant server can be reached.
-- Putting a thing on a layout or taking one off needs a connection.
+- A thing you put on is drawn at once, with its light worked out. It gets its number in the record when it is sent, and the changes you made to it go after it.
+- **Move it here in the record** still needs a connection.
 - A layout opens without a connection once this device has opened it before. **Keep a copy on this device**, on the Offline page, keeps every layout.
 
 ## Grow lights reads your layouts

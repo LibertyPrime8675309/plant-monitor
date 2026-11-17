@@ -22,7 +22,7 @@
 
 let LY = null;                                     // the layout on screen: { d: the server's answer, sel, fview, view, zoom, level, grid, photos, Sv: pixels to the inch in each view, mode, rem, F, undo, q }
 let LYL = null;                                    // the list page's answer (layouts, places)
-const LY_EPS = 0.01, LY_KEYS = ['x', 'y', 'z', 'w', 'd', 'h', 'shape', 'locked', 'size_locked', 'name', 'hours', 'dim_pct', 'facing', 'day_dli'];
+const LY_EPS = 0.01, LY_KEYS = ['x', 'y', 'z', 'w', 'd', 'h', 'shape', 'locked', 'size_locked', 'name', 'hours', 'dim_pct', 'facing', 'day_dli', 'pot_h'];
 // Two locks (Ethan, November 16, 2026: "lock in any item's size values separately from the lock for its location"): locked keeps a
 // thing where it is (dragging, the arrow keys, its place boxes, Stands on, Hangs under); size_locked keeps its size (the corner handle,
 // its size boxes, its shape). Turning it changes both, so either lock stops it.
@@ -38,9 +38,18 @@ const LY_LV = { too_dim: 'toodim', dim: 'dim', bright: 'bright', too_bright: 'to
 const LY_LV_SIGN = { too_dim: '▼▼', dim: '▼', good: '✓', bright: '▲', too_bright: '▲▲', unknown: '?', none: '–' };       // as Grow lights has them (LV_ICON in js/lights.js); none: no drawn light reaches the plant (grey; Ethan, November 15, 2026)
 const LY_NAMES = { other: ['Humidifier', 'Fan', 'Heater', 'Heat mat', 'Sensor', 'Table', 'Chair', 'Watering can', 'Storage box'], zone: ['Walkway', 'Door', 'Window', 'Heating vent', 'Outlet'], window: ['Window', 'Glass door', 'Skylight'] };
 // 1.58.0 (Ethan, November 17, 2026: "Daylight from windows and the shade one plant casts on another"): a window gives its daylight
-// at the glass (day_dli), less with the angle and half as much LY_WIN_FALL away; a plant in the way lets LY_SHADE of a light or a
-// window through. The same sums are in layouts.py (layout_day_on, _ly_shade): change both together.
-const LY_WIN_FALL = 24, LY_SHADE = 0.5;
+// at the glass (day_dli), less with the angle and half as much LY_WIN_FALL away. A plant in the way shades what is behind it.
+// Shade (Ethan, November 17, 2026: "Pots will block 100% of light while plants will block ~50%. Having the ability to change these
+// values myself would be nice."): a plant's pot is the bottom part of its box (lyPotH) and blocks pot_block percent; its leaves block
+// leaf_block. Each layout says its own (Size and name). The same sums are in layouts.py (layout_day_on, _ly_shade): change both together.
+const LY_WIN_FALL = 24, LY_POT_BLOCK = 100, LY_LEAF_BLOCK = 50, LY_POT_TALL = 0.85;
+const lyBlk = L => [L.pot_block == null ? LY_POT_BLOCK : L.pot_block, L.leaf_block == null ? LY_LEAF_BLOCK : L.leaf_block];
+// How tall a plant's pot is: the layout's own height, else its pot's in Pots and trays, else LY_POT_TALL of its width to the nearest half inch.
+function lyPotH(q) {
+  let v = q.pot_h != null ? q.pot_h : q.pot_rec;
+  if (v == null) v = Math.max(0.5, Math.floor(Math.min(q.w, q.d) * LY_POT_TALL * 2 + 0.5) / 2);
+  return Math.min(v, q.h);
+}
 const lyFlat = it => it.kind === 'zone' || it.kind === 'light' || it.kind === 'window';     // nothing stands on it or hangs under it, and it carries nothing
 const r2 = n => Math.round(n * 100) / 100;
 const lyNum = n => String(Math.round(n * 1000) / 1000);
@@ -167,8 +176,8 @@ function lyLightOn(L, pl, li) {
       return lyInPlan(b, cx + (sx - cx) * t, cy + (sy - cy) * t);
     });
   }) || null;
-  out.shade = out.by ? [] : lyShade(L, pl.id, [sx, sy, src], [cx, cy, top]);      // 1.58.0: a plant in the way lets some through
-  if (out.shade.length) { const k = LY_SHADE ** out.shade.length; out.par *= k; out.dli *= k; }
+  out.shade = out.by ? [] : lyShade(L, pl.id, [sx, sy, src], [cx, cy, top]);      // 1.58.0: a plant or a pot in the way blocks some
+  if (out.shade.length) { const k = lyThrough(out.shade); out.par *= k; out.dli *= k; }
   return out;
 }
 // Does the straight line from a to b ([x, y, z]) go through one of q's parts ([{z, h}])? Over the stretch of the line at that
@@ -202,7 +211,21 @@ function lySegPlan(q, a, b, t0, t1) {
   }
   return true;
 }
-const lyShade = (L, skip, a, b) => L.items.filter(q => q.kind === 'plant' && !q.gone && q.id !== skip && lyCross(q, [{ z: q.z, h: q.h }], a, b));
+// The plants the line from a to b goes through: [{ q, pot, k }]. A line through both its pot and its leaves counts the part that
+// blocks more; k is the share of the light it lets through (layouts.py: _ly_shade).
+function lyShade(L, skip, a, b) {
+  const blk = lyBlk(L), out = [];
+  for (const q of L.items) {
+    if (q.kind !== 'plant' || q.gone || q.id === skip) continue;
+    const ph = lyPotH(q), hits = [];
+    if (ph > LY_EPS && lyCross(q, [{ z: q.z, h: ph }], a, b)) hits.push([true, blk[0]]);
+    if (q.h - ph > LY_EPS && lyCross(q, [{ z: q.z + ph, h: q.h - ph }], a, b)) hits.push([false, blk[1]]);
+    if (hits.length) { const [pot, pct] = hits.reduce((x, y) => (y[1] > x[1] ? y : x)); out.push({ q, pot, k: 1 - pct / 100 }); }
+  }
+  return out;
+}
+const lyThrough = shade => shade.reduce((k, x) => k * x.k, 1);
+const lyShadeNames = shade => shade.map(x => x.q.name + (x.pot ? "'s pot" : ''));
 // The wall a window is in: the nearest one.
 function lyWinWall(L, w) {
   const ds = [['back', w.y], ['left', w.x], ['right', L.width_in - w.x - w.w], ['front', L.depth_in - w.y - w.d]];
@@ -219,7 +242,7 @@ function lyDayOn(L, pl, w) {
   const dist = Math.sqrt(dx * dx + dy * dy + dz * dz), f = dist / LY_WIN_FALL, a = [qx, qy, qz], b = [cx, cy, top];
   const out = { w, dist: r2(dist), dli: (w.day_dli || 0) * (depth / dist) / (1 + f * f), by: null, shade: [] };
   out.by = L.items.find(q => q !== pl && (q.kind === 'shelf' || q.kind === 'other') && lyCross(q, lySolids(q), a, b)) || null;
-  if (!out.by) { out.shade = lyShade(L, pl.id, a, b); out.dli *= LY_SHADE ** out.shade.length; }
+  if (!out.by) { out.shade = lyShade(L, pl.id, a, b); out.dli *= lyThrough(out.shade); }
   return out;
 }
 function lyVerdict(dli, need) {                         // as lights.py, light_verdict
@@ -245,7 +268,7 @@ function lyLight(L) {
     const dli = r1(lsum + day), reached = r1(lsum) >= 1 || on.some(x => x.side < 0.05), lit = reached || r1(day) >= 1;
     m.set(pl.id, { dli, need: pl.need || null, verdict: lit ? lyVerdict(dli, pl.need) : 'none', reached, lit, on, day: r1(day),
       wins: days.filter(x => !x.by && x.dli >= 0.05).sort((a, b) => b.dli - a.dli), wshut: days.filter(x => x.by && x.dli >= 0.5),
-      shade: [...new Set(all.concat(days).flatMap(x => (x.shade || []).map(q => q.name)))].sort(),
+      shade: [...new Set(all.concat(days).flatMap(x => lyShadeNames(x.shade || [])))].sort(),
       shut: all.filter(x => !x.nofig && x.by && x.dli >= 0.5), nofig: all.filter(x => x.nofig && x.side < 0.05) });
   }
   return m;
@@ -277,7 +300,7 @@ function lyLightHtml(L, it) {                           // for the chosen thing'
     ${x.on.length || x.shut.length || x.nofig.length || x.wins.length || x.wshut.length || x.shade.length ? html`<ul class="ly-lightlist">
       ${x.wins.slice(0, 3).map(o => html`<li>${lyNm(o.w)}: ${lenF(r1(o.dist))} from the glass, about ${fmt(o.dli, 1)} of daylight.</li>`)}
       ${x.wshut.map(o => html`<li>${lyNm(o.w)} is shut out by ${lyNm(o.by)}.</li>`)}
-      ${x.shade.length ? html`<li>In the shade of ${x.shade.join(', ')}. Each plant in the way lets about half the light through.</li>` : ''}
+      ${x.shade.length ? html`<li>In the shade of ${x.shade.join(', ')}. A pot in the way blocks ${lyBlk(L)[0]}% of the light, and leaves block ${lyBlk(L)[1]}%.</li>` : ''}
       ${x.on.slice(0, 4).map(o => html`<li>${lyNm(o.li)}: ${lenF(r1(o.up))} above its top${o.side >= 0.5 ? `, ${lenF(r1(o.side))} to the side` : ''}, ${set(o.li)}, about ${fmt(o.dli, 1)}.${o.close ? ' Closer than its figures go.' : o.far ? ' Further than its figures go, so this is rough.' : ''}</li>`)}
       ${x.shut.map(o => html`<li>${lyNm(o.li)} is shut out by ${lyNm(o.by)}.</li>`)}
       ${x.nofig.map(o => html`<li>${lyNm(o.li)} is over it, but has no maker’s figures, so its light is not counted.</li>`)}</ul>` : ''}
@@ -819,7 +842,7 @@ function ly3dSvg(L, o) {
 function ly3dFigure(o) {
   const L = LY.d;
   return html`<figure class="ly-fig" data-view="3d">
-    <figcaption><strong>3D view</strong> <span class="muted">Seen from ${lyAzWord(LY.az)}, from ${LY.el >= 55 ? 'high above' : LY.el <= 20 ? 'a little above' : 'above'}. Choose a thing here. Move it with the arrow keys, or in the top or front view.</span></figcaption>
+    <figcaption><strong>3D view</strong> <span class="muted">Seen from ${lyAzWord(LY.az)}, from ${LY.el >= 55 ? 'high above' : LY.el <= 20 ? 'a little above' : 'above'}. Choose a thing here. Move it with the arrow keys, or in the top or front view. To turn it, drag with the right mouse button, or drag the floor.</span></figcaption>
     <div class="row ly-3tools noprint" role="group" aria-label="Turn the 3D view">
       <button class="btn small ghost" type="button" id="ly-3left" data-act="ly3d" data-d="left">Turn left</button><button class="btn small ghost" type="button" id="ly-3right" data-act="ly3d" data-d="right">Turn right</button>
       <button class="btn small ghost" type="button" id="ly-3up" data-act="ly3d" data-d="up" ${LY.el >= 75 ? raw('disabled') : ''}>Look from higher</button><button class="btn small ghost" type="button" id="ly-3down" data-act="ly3d" data-d="down" ${LY.el <= 15 ? raw('disabled') : ''}>Look from lower</button>
@@ -1219,6 +1242,8 @@ function lyPanel() {                                    // the chosen thing: wha
     <div class="field-grid three ly-fields">${num('x', 'From the left')}${num('y', 'From the back')}${num('z', 'Off the floor')}
       ${lyRound(it) ? num('w', 'Across') : html`${num('w', 'Width')}${num('d', 'Depth')}`}${num('h', 'Height')}</div>
     ${lyPaged(it) ? html`<p class="hint ly-recline" id="ly-p-tall">${lyTallHtml(it)}</p>` : ''}
+    ${it.kind === 'plant' ? html`<label class="f ly-pot">Its pot's height (${lenU()})<input type="number" inputmode="decimal" min="0" step="any" id="ly-f-pot_h" data-act="lyset" data-k="pot_h" value="${lenF(lyPotH(it), false)}" ${can ? '' : raw('disabled')}>
+      <small id="ly-p-pot">${lyPotWords(it)}</small></label>` : ''}
     <div class="field-grid ly-fields" id="ly-f-rest">${lyRestHtml(L, it, ro)}</div>
     ${lit ? html`<div class="field-grid ly-fields"><label class="f">Hours a day<input type="number" inputmode="decimal" min="0" max="24" step="0.5" id="ly-f-hours" data-act="lyset" data-k="hours" value="${it.hours}" ${can ? '' : raw('disabled')}></label>
       ${dims.length > 1 ? html`<label class="f">Brightness<select id="ly-f-dim_pct" data-act="lyset" data-k="dim_pct" ${can ? '' : raw('disabled')}>${dims.map(x => html`<option value="${x}" ${x === it.dim_pct ? raw('selected') : ''}>${x === 100 ? 'Full (100%)' : x + '%'}</option>`)}</select></label>` : ''}</div>` : ''}
@@ -1238,8 +1263,12 @@ function lyPanel() {                                    // the chosen thing: wha
       ${it.plant || it.spot_id ? '' : html`<button class="btn small ghost" type="button" id="ly-copy" data-act="lycopy">Make a copy</button>`}
       <button class="btn small ghost danger" type="button" id="ly-rm" data-act="lyrm">Take it off the layout</button></p>` : ''}`);
 }
+// Where a plant's pot height comes from, in words: its pot blocks light behind it (lyShade).
+const lyPotWords = it => `${it.pot_h != null ? 'Set here.' : it.pot_rec != null ? 'From its pot in Pots and trays.' : 'A guess from its width.'} The pot blocks ${lyBlk(LY.d)[0]}% of the light behind it, and the leaves above it ${lyBlk(LY.d)[1]}%.${it.pot_h != null ? ' Empty the box to go back to its pot.' : ''}`;
 function lyPanelPatch() {                               // the chosen thing moved: its boxes follow, except the one being typed in
   const it = lyItem(LY.sel), a = document.activeElement; if (!it) return;
+  const pb = document.getElementById('ly-f-pot_h'); if (pb && pb !== a) pb.value = lenF(lyPotH(it), false);
+  const pw = document.getElementById('ly-p-pot'); if (pw) pw.textContent = lyPotWords(it);
   for (const k of ['x', 'y', 'z', 'w', 'd', 'h']) { const el = document.getElementById('ly-f-' + k); if (el && el !== a) el.value = lenF(it[k], false); }
   const rest = document.getElementById('ly-f-rest'), ro = lyCan() && !it.locked ? '' : raw('disabled');
   if (rest && !rest.contains(a)) rest.innerHTML = rend(lyRestHtml(LY.d, it, ro));
@@ -1424,7 +1453,36 @@ function lyTake(d, pick) {                              // the server's answer a
   lyDrawAll();
 }
 const lySpec = it => ({ kind: it.kind, name: it.name, shape: it.shape, x: it.x, y: it.y, z: it.z, w: it.w, d: it.d, h: it.h, locked: !!it.locked, size_locked: !!it.size_locked,
-  ...(it.kind === 'light' && it.hours != null ? { hours: it.hours, dim_pct: it.dim_pct } : {}), ...(it.kind === 'window' ? { facing: it.facing, day_dli: it.day_dli } : {}), ...(it.plant ? { plant: it.plant } : {}), ...(it.light_id ? { light_id: it.light_id } : {}), ...(it.spot_id ? { spot_id: it.spot_id } : {}) });
+  ...(it.kind === 'light' && it.hours != null ? { hours: it.hours, dim_pct: it.dim_pct } : {}), ...(it.kind === 'window' ? { facing: it.facing, day_dli: it.day_dli } : {}), ...(it.kind === 'plant' && it.pot_h != null ? { pot_h: it.pot_h } : {}), ...(it.plant ? { plant: it.plant } : {}), ...(it.light_id ? { light_id: it.light_id } : {}), ...(it.spot_id ? { spot_id: it.spot_id } : {}) });
+// Puts things on layout L (specs as lySpec gives them) and answers { d: the layout as it now is, added: the new things, in order }.
+// With no connection (1.58.0, Ethan: "Would it be possible to have things be put on or off compatible with offline mode?") the
+// change waits on this device, and each new thing is drawn as the server will draw it, with a number below 0 (lyDraft) until it
+// is sent. Its changes wait with it, and are sent after it with the server's number (offSync).
+let LY_TEMP = 0;
+const lyTempId = () => -(Date.now() * 100 + (LY_TEMP++ % 100));
+async function lyPost(L, specs) {
+  const temps = specs.map(() => lyTempId()), before = new Set(LY.d.items.map(x => x.id));
+  const d = await api('POST', `/api/layouts/${L.id}/items`, { items: specs, _temps: temps });
+  if (!d || !d.offline) return { d, added: d.items.filter(x => !before.has(x.id)) };
+  const items = LY.d.items.slice(), added = specs.map((sp, i) => { const t = lyDraft(LY.d, items, sp, temps[i]); items.push(t); return t; });
+  for (const t of added) { const p = t.plant && (LY.d.plants || []).find(x => x.code === t.plant); if (p) p.on = true; }
+  await offLayoutKeep(L.id, S => { S.items = (S.items || []).concat(added); for (const t of added) { const p = t.plant && (S.plants || []).find(x => x.code === t.plant); if (p) p.on = true; } });
+  LY.offn = (LY.offn || 0) + 1;
+  return { d: { ...LY.d, items }, added };
+}
+// A thing put on with no connection, as the server will give it (layout_item_dict): what the record says of its plant, light or shelf
+// comes with the offer of it (item).
+function lyDraft(L, items, sp, id) {
+  const offer = sp.plant ? (L.plants || []).find(p => p.code === sp.plant) : sp.light_id ? (L.lights || []).find(x => x.id === sp.light_id) : sp.spot_id ? (L.shelves || []).find(x => x.spot_id === sp.spot_id) : null;
+  const t = { id, sort: items.reduce((m, x) => Math.max(m, x.sort || 0), 0) + 1, kind: sp.kind, name: sp.name, shape: sp.shape || (sp.kind === 'plant' ? 'round' : 'box'), x: sp.x || 0, y: sp.y || 0, z: sp.z || 0, w: sp.w, d: sp.d, h: sp.h,
+    notes: '', locked: !!sp.locked, size_locked: !!sp.size_locked, plant: sp.plant || null, light_id: sp.light_id || null, spot_id: sp.spot_id || null, gone: false, pending: true };
+  if (t.kind === 'light') { t.hours = sp.hours != null ? sp.hours : offer && offer.hours != null ? offer.hours : 12; t.dim_pct = sp.dim_pct != null ? sp.dim_pct : offer && offer.dim_pct != null ? offer.dim_pct : 100; t.pts = []; t.dims = [100]; }
+  if (t.kind === 'window') { t.facing = (L.facing || {})[sp.facing] ? sp.facing : 'S'; t.day_dli = sp.day_dli != null ? sp.day_dli : (L.window_dli || {})[t.facing]; }
+  if (t.kind === 'plant') { t.pot_h = sp.pot_h != null ? sp.pot_h : null; t.pot_rec = null; }
+  if (offer && offer.item) Object.assign(t, offer.item);
+  if (t.page_h) t.h = t.page_h;
+  return t;
+}
 // Puts things on the layout, each in the first place it is clear of the others (unless it comes with its place), and chooses the last one.
 // The chosen thing says where to start: on it if it is a shelf, over it if it is a plant and the new thing hangs. where: { shelf } says
 // it instead (a copy starts on what the thing it copies stands on, or under what that hangs under).
@@ -1442,15 +1500,14 @@ async function lyAddItems(specs, placed, where) {
     if (!t) t = placed ? it : lyPlace(T, it, shelf || (hangs ? over : null), hangs);
     T.items.push({ ...t, id: -1 - i, sort: 0 }); return lySpec(t);
   });
-  const before = new Set(L.items.map(x => x.id));
   await guard(async () => {
-    const d = await api('POST', `/api/layouts/${L.id}/items`, { items: body }), added = d.items.filter(x => !before.has(x.id));
+    const { d, added } = await lyPost(L, body);
     let gone = [];                                        // while they are taken back: [the id each had, what it was]
     lyUndoPush(added.length === 1 ? `${added[0].name} put on` : `${added.length} things put on`, added.length === 1 ? 'put on' : `${added.length} put on`,
-      async () => { gone = added.map(x => [x.id, lyItem(lyCur(x.id))]).filter(([, t]) => t).map(([i, t]) => [i, lySpec(t)]); for (const [i] of gone) await api('DELETE', '/api/layouts/items/' + lyCur(i)); await lyReload(); },
+      async () => { gone = added.map(x => [x.id, lyItem(lyCur(x.id))]).filter(([, t]) => t).map(([i, t]) => [i, lySpec(t)]); for (const [i] of gone) { const t = lyItem(lyCur(i)); if (t) await lyTakeOff(t); } lyDrawAll(); },
       async () => {
         if (!gone.length) return;
-        const had = new Set(LY.d.items.map(x => x.id)), r = await api('POST', `/api/layouts/${LY.d.id}/items`, { items: gone.map(([, spec]) => spec) }), back = r.items.filter(x => !had.has(x.id));
+        const { d: r, added: back } = await lyPost(LY.d, gone.map(([, spec]) => spec));
         gone.forEach(([i], n) => { if (back[n]) LY.ids.set(lyCur(i), back[n].id); });
         lyTake(r, back.length ? back[back.length - 1].id : undefined);
       });
@@ -1460,7 +1517,8 @@ async function lyAddItems(specs, placed, where) {
   });
 }
 async function lyTakeOff(it) {                          // off the layout, in the record and on the page
-  await api('DELETE', '/api/layouts/items/' + it.id);
+  const r = await api('DELETE', '/api/layouts/items/' + it.id, { _what: it.name });
+  if (r && r.offline) { LY.offn = (LY.offn || 0) + 1; await offLayoutKeep(LY.d.id, S => { const p = it.plant && (S.plants || []).find(x => x.code === it.plant); if (p) p.on = false; }); }
   LY.d.items = LY.d.items.filter(x => x !== it);
   const p = it.plant && LY.d.plants.find(x => x.code === it.plant); if (p) p.on = false;
   if (LY.sel === it.id) LY.sel = null;
@@ -1472,7 +1530,7 @@ async function lyRemove(it) {
   await guard(async () => {
     await lyTakeOff(it);
     lyUndoPush(`${name} taken off`, 'taken off',
-      async () => { const had = new Set(LY.d.items.map(x => x.id)), d = await api('POST', `/api/layouts/${LY.d.id}/items`, { items: [spec] }), n = d.items.find(x => !had.has(x.id)); if (n) LY.ids.set(lyCur(id), n.id); lyTake(d); },
+      async () => { const { d, added } = await lyPost(LY.d, [spec]), n = added[0]; if (n) LY.ids.set(lyCur(id), n.id); lyTake(d); },
       async () => { const t = lyItem(lyCur(id)); if (!t) return; spec = lySpec(t); await lyTakeOff(t); lyDrawAll(); });
     lyDrawAll(); toast(`Taken off the layout: ${name}. Undo puts it back.`);
     const b = document.getElementById('ly-add'); if (b) b.focus({ preventScroll: true });
@@ -1546,6 +1604,41 @@ function lyPoint(svg, e) {                              // where the pointer is 
   const m = svg.getScreenCTM(); if (!m) return { x: 0, y: 0 };
   const p = svg.createSVGPoint(); p.x = e.clientX; p.y = e.clientY;
   const q = p.matrixTransform(m.inverse()); return { x: q.x, y: q.y };
+}
+// 1.58.0 (Ethan, November 17, 2026: "I like being able to hold right-click then panning my mouse to manipulate 3D spaces"): the 3D
+// view turns as the pointer moves with the right button held, or with the left button (or a finger) held on the floor or walls
+// rather than on a thing. Left and right turn it; up and down look from lower or higher (15° to 75°). On a touch screen the page
+// still scrolls up and down (touch-action: pan-y), so a finger turns it left and right. The buttons above it do the same.
+const LY_3D_DRAG = 0.4;                                 // degrees for each pixel the pointer moves
+document.addEventListener('pointerdown', e => {
+  if (!lyOn() || !e.target.closest || (e.button !== 0 && e.button !== 2)) return;
+  const svg = e.target.closest('svg.ly-svg[data-view="3d"]'); if (!svg) return;
+  if (e.button === 0 && (e.target.closest('g.ly-it') || e.shiftKey || e.ctrlKey || e.metaKey)) return;       // a press on a thing chooses it
+  e.stopImmediatePropagation();
+  LY.turn = { x: e.clientX, y: e.clientY, az: LY.az, el: LY.el, pid: e.pointerId, moved: false, raf: 0 };
+  window.addEventListener('pointermove', ly3dTurnMove); window.addEventListener('pointerup', ly3dTurnEnd); window.addEventListener('pointercancel', ly3dTurnEnd);
+});
+document.addEventListener('contextmenu', e => { if (lyOn() && e.target.closest && e.target.closest('svg.ly-svg[data-view="3d"]')) e.preventDefault(); });      // the right button turns the view
+function ly3dTurnMove(e) {
+  const t = LY && LY.turn; if (!t || e.pointerId !== t.pid) return;
+  const dx = e.clientX - t.x, dy = e.clientY - t.y;
+  if (!t.moved && Math.hypot(dx, dy) < 4) return;
+  t.moved = true; e.preventDefault();
+  LY.az = ((t.az + dx * LY_3D_DRAG + 180) % 360 + 360) % 360 - 180;
+  LY.el = clamp(t.el + dy * LY_3D_DRAG, 15, 75);
+  if (!t.raf) t.raf = requestAnimationFrame(() => {
+    t.raf = 0; const s3 = document.querySelector('svg.ly-svg[data-view="3d"]');
+    if (s3 && LY) { s3.outerHTML = rend(ly3dSvg(LY.d, lyOpts('3d'))); const n = document.querySelector('svg.ly-svg[data-view="3d"]'); if (n) n.classList.add('is-turning'); }
+  });
+}
+function ly3dTurnEnd(e) {
+  const t = LY && LY.turn; if (!t || (e && e.pointerId !== t.pid)) return;
+  window.removeEventListener('pointermove', ly3dTurnMove); window.removeEventListener('pointerup', ly3dTurnEnd); window.removeEventListener('pointercancel', ly3dTurnEnd);
+  if (t.raf) cancelAnimationFrame(t.raf);
+  LY.turn = null; if (!t.moved) return;
+  LY.az = Math.round(LY.az); LY.el = Math.round(LY.el);
+  lyPrefEach({ az: LY.az, el: LY.el }); lyDrawViews();
+  lySay(`The 3D view is seen from ${lyAzWord(LY.az)}, from ${LY.el >= 55 ? 'high above' : LY.el <= 20 ? 'a little above' : 'above'}.`);
 }
 document.addEventListener('pointerdown', e => {
   if (!lyOn() || e.button > 0 || !e.target.closest) return;
@@ -1750,6 +1843,11 @@ async function lySpaceDialog() {
     <label class="f">Name<input type="text" name="name" maxlength="80" autocomplete="off" value="${L.name}"></label>
     <div class="field-grid three">${num('width_in', 'Width, left to right')}${num('depth_in', 'Depth, back to front')}${num('height_in', 'Height')}</div>
     ${num('clear_in', 'Room to leave around a plant', 'A plant closer than this to another thing, beside it or above it, is marked "Tight". 0 turns it off.')}
+    <fieldset class="ly-shadeset"><legend>Shade from plants in the way</legend>
+      <p class="hint">How much light a plant's pot and leaves block. 100 blocks it all.</p><div class="field-grid">
+      <label class="f">A pot blocks (%)<input type="number" inputmode="numeric" min="0" max="100" step="1" name="pot_block" value="${lyBlk(L)[0]}"></label>
+      <label class="f">Leaves block (%)<input type="number" inputmode="numeric" min="0" max="100" step="1" name="leaf_block" value="${lyBlk(L)[1]}"></label></div>
+      <p class="hint">To start with, a pot blocks 100 and leaves 50.</p></fieldset>
     <label class="chk ly-chk"><input type="checkbox" name="photos" ${LY.photos ? raw('checked') : ''}>Show each plant's photo on the drawing (on this device)</label>
     <label class="f">Notes<textarea name="notes" rows="2" maxlength="1000">${L.notes || ''}</textarea></label>
     <div class="row"><button class="btn" value="ok">Save changes</button><button class="btn ghost" value="cancel" formnovalidate>Cancel</button>
@@ -1758,6 +1856,7 @@ async function lySpaceDialog() {
   const E = dlg.querySelector('form[data-lyspace]').elements, ch = {};
   if (E.name.value.trim() && E.name.value.trim() !== L.name) ch.name = E.name.value.trim();
   for (const k of ['width_in', 'depth_in', 'height_in', 'clear_in']) { const v = lenIn(E[k].value); if (E[k].value !== '' && !isNaN(v) && Math.abs(+v - L[k]) > 0.004) ch[k] = r2(+v); }
+  for (const [k, i] of [['pot_block', 0], ['leaf_block', 1]]) { const v = Math.round(+E[k].value); if (E[k].value !== '' && !isNaN(v) && v !== lyBlk(L)[i]) ch[k] = clamp(v, 0, 100); }
   if (E.notes.value.trim() !== (L.notes || '')) ch.notes = E.notes.value.trim();
   if (E.photos.checked !== LY.photos) { LY.photos = E.photos.checked; lyPrefSave({ photos: LY.photos }); lyDrawViews(); }
   if (Object.keys(ch).length && (await lyPutLayout(ch, 'size and name changed'))) toast('Saved');
@@ -1874,6 +1973,10 @@ Object.assign(changeActs, {
     else if (k === 'hours') { const v = parseFloat(String(val).replace(',', '.')); if (val === '' || isNaN(v)) { el.value = it.hours; return; } it.hours = r2(clamp(v, 0, 24)); what = 'hours changed'; }
     else if (k === 'dim_pct') { it.dim_pct = clamp(Math.round(+val) || 100, 1, 100); what = 'brightness changed'; }
     else if (k === 'facing') { if (!(L.facing || {})[val]) return; it.facing = val; it.day_dli = (L.window_dli || {})[val]; what = 'turned to face ' + L.facing[val].toLowerCase(); panel = 'full'; }
+    else if (k === 'pot_h') {                           // its pot's height: an empty box goes back to its pot in Pots and trays, or the guess
+      if (val === '') { if (it.pot_h == null) return; it.pot_h = null; what = 'pot height taken from its pot'; }
+      else { const v = lenIn(val); if (isNaN(v) || +v <= 0) { el.value = lenF(lyPotH(it), false); return; } it.pot_h = r2(clamp(+v, 0.1, 600)); what = 'pot height changed'; }
+    }
     else if (k === 'day_dli') { const v = parseFloat(String(val).replace(',', '.')); if (val === '' || isNaN(v)) { el.value = it.day_dli; return; } it.day_dli = r2(clamp(v, 0, 70)); what = 'daylight changed'; }
     else if (k === 'on') { const o = lyStandOpts(L, it).find(x => x.v === val); if (!o) return; const t = lyPutOn(L, it, o.q, skip); it.x = t.x; it.y = t.y; it.z = t.z; panel = 'rest'; }
     else if (k === 'under') { const o = lyHangOpts(L, it).find(x => x.v === val); if (!o) return; it.z = o.z; panel = 'rest'; }

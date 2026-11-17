@@ -73,15 +73,22 @@ with sync_playwright() as p:
       const at = (y, items) => { const pl = T(2, 'plant', 54, y - 4, 0, 8, 8, 40); const o = lyDayOn(L([win, pl].concat(items || [])), pl, win); return o ? { dli: o.dli, by: !!o.by, shade: o.shade.length } : null; };
       const strip = T(5, 'light', 40, 40, 60, 24, 2, 1.5, { pts: [[6, 400, 4], [12, 200, 6], [24, 80, 10]], near_in: 6, far_in: 24, hours: 12, dim_pct: 100 });
       const under = T(6, 'plant', 48, 37, 0, 8, 8, 30), top = T(7, 'plant', 46, 35, 20, 12, 12, 30);
-      const one = lyLight(L([strip, under])).get(6).dli, shaded = lyLight(L([strip, under, T(8, 'plant', 46, 35, 40, 12, 12, 12)])).get(6);
+      const one = lyLight(L([strip, under])).get(6).dli, shaded = lyLight(L([strip, under, T(8, 'plant', 46, 35, 40, 12, 12, 12, { pot_h: 0 })])).get(6);
       return { near: at(4 + 24), behind: lyDayOn(L([win]), T(3, 'plant', 54, -20, 0, 8, 8, 40), win), board: at(48, [T(4, 'shelf', 30, 20, 0, 60, 2, 90)]),
-               shade: at(60, [T(9, 'plant', 50, 30, 0, 16, 16, 60)]), clear: at(60), one, shaded: shaded.dli, sname: shaded.shade };
+               shade: at(60, [T(9, 'plant', 50, 30, 0, 16, 16, 60)]), clear: at(60), one, shaded: shaded.dli, sname: shaded.shade,
+               pot: at(60, [T(9, 'plant', 50, 30, 0, 16, 16, 60, { pot_h: 50 })]),
+               own: (() => { const pl = T(2, 'plant', 54, 56, 0, 8, 8, 40), it = [win, pl, T(9, 'plant', 50, 30, 0, 16, 16, 60)], A = lyDayOn({ ...L(it), leaf_block: 25 }, pl, win), B = lyDayOn({ ...L(it.slice(0, 2)) }, pl, win); return A.dli / B.dli; })(),
+               guess: lyPotH(T(9, 'plant', 0, 0, 0, 10, 10, 30)), names: lyShadeNames([{ q: { name: 'Fern' }, pot: true }, { q: { name: 'Fig' }, pot: false }]) };
     }""")
     check(sums['near'] and abs(sums['near']['dli'] - 6) < 0.01, f"a window's daylight is half as much 2 ft straight out from the glass ({sums['near']})")
     check(sums['behind'] is None, 'a plant behind the window\'s wall gets none of its daylight')
     check(sums['board'] and sums['board']['by'], f"a board between the window and the plant shuts it out ({sums['board']})")
     check(sums['shade'] and sums['shade']['shade'] == 1 and abs(sums['shade']['dli'] - sums['clear']['dli'] / 2) < 0.01, f"a plant in the way lets half of a window's daylight through ({sums['shade']}, {sums['clear']})")
     check(abs(sums['shaded'] - round(sums['one'] / 2 * 10) / 10) <= 0.1 and sums['sname'] == ['plant 8'], f"a plant in the way lets half of a light through, and is named ({sums['one']}, {sums['shaded']}, {sums['sname']})")
+
+    check(sums['pot'] and sums['pot']['shade'] == 1 and sums['pot']['dli'] == 0, f"a pot in the way blocks all of the window's daylight ({sums['pot']})")
+    check(abs(sums['own'] - 0.75) < 1e-9, f"with leaves set to block 25%, three quarters get through ({sums['own']})")
+    check(sums['guess'] == 8.5 and sums['names'] == ["Fern's pot", 'Fig'], f"a pot with no height is 0.85 as tall as wide, and a pot is named as one ({sums['guess']}, {sums['names']})")
 
     # ---- a room with a window, a grow light and plants: the server's readings and the page's agree
     full = call('GET', f'/api/layouts/{rid}')
@@ -123,6 +130,34 @@ with sync_playwright() as p:
     press(pg, '#ly-undo'); press(pg, '#ly-undo')
     check(until(pg, lambda: saved(rid, win['id'])['facing'] == 'S' and saved(rid, win['id'])['day_dli'] == 12), 'Undo twice puts back its way and its daylight')
 
+    # ---- shade from a pot and from leaves, set by the person (Ethan, November 17, 2026)
+    def agree():
+        pgv = pg.evaluate("() => Object.fromEntries([...LY.F.light].map(([id, x]) => [id, { dli: x.dli, day: x.day, shade: x.shade }]))")
+        rd2 = call('GET', '/api/lights')['readings']; sv = {code: next(r for r in rd2.get(code, []) if r['lid'] == rid) for code in (A, B, C)}
+        return all(sv[c]['dli'] == pgv[str(ids[c])]['dli'] and sv[c]['day'] == pgv[str(ids[c])]['day'] and sv[c]['shade'] == pgv[str(ids[c])]['shade'] for c in sv), pgv, sv
+    pick(pg, ids[A])
+    check(pg.locator('#ly-f-pot_h').input_value() == '7' and 'A guess from its width' in pg.inner_text('#ly-p-pot') and 'blocks 100%' in pg.inner_text('#ly-p-pot'),
+          f"a plant's boxes give its pot's height, a guess here, and what a pot blocks ({pg.locator('#ly-f-pot_h').input_value()}, {pg.inner_text('#ly-p-pot')[:120]!r})")
+    day0 = pg.evaluate(f"LY.F.light.get({ids[B]}).day")
+    pg.fill('#ly-f-pot_h', '28'); pg.press('#ly-f-pot_h', 'Enter')
+    check(until(pg, lambda: saved(rid, ids[A])['pot_h'] == 28 and pg.evaluate(f"LY.F.light.get({ids[B]}).shade") == [an + "'s pot"]) and 'Set here' in pg.inner_text('#ly-p-pot'),
+          "its pot made 28 in tall: saved, and now its pot is what shades the plant behind it")
+    ok, pgv, sv = agree()
+    check(ok and pgv[str(ids[B])]['day'] == 0 and sv[B]['shade'] == [an + "'s pot"], f"the pot blocks all the window's daylight, on the page and on the server ({pgv[str(ids[B])]}, {sv[B].get('shade')})")
+    press(pg, '#ly-undo')
+    check(until(pg, lambda: saved(rid, ids[A])['pot_h'] is None and pg.evaluate(f"LY.F.light.get({ids[B]}).day") == day0), 'Undo goes back to the guess')
+    if not pg.evaluate("document.querySelector('details.ly-more').open"): pg.click('#ly-more')
+    pg.click('#ly-space'); until(pg, lambda: pg.locator('form[data-lyspace] input[name=leaf_block]').is_visible())
+    check(pg.locator('form[data-lyspace] input[name=pot_block]').input_value() == '100' and pg.locator('form[data-lyspace] input[name=leaf_block]').input_value() == '50', 'Size and name has what a pot and leaves block: 100 and 50 to start with')
+    pg.fill('form[data-lyspace] input[name=leaf_block]', '20'); pg.click('form[data-lyspace] button[value=ok]')
+    check(until(pg, lambda: call('GET', f'/api/layouts/{rid}')['leaf_block'] == 20 and pg.evaluate(f"LY.F.light.get({ids[B]}).day") > day0), 'leaves set to block 20%: saved, and more daylight reaches the plant behind')
+    ok, pgv, sv = agree()
+    check(ok, f"and the page and the server still agree ({[(c, sv[c]['day'], pgv[str(ids[c])]['day']) for c in sv]})")
+    pick(pg, ids[B])
+    check(until(pg, lambda: 'leaves block 20%' in pg.inner_text('#ly-p-light')), f"the plant's light says what leaves block now ({pg.inner_text('#ly-p-light')[:200]!r})")
+    press(pg, '#ly-undo')
+    check(until(pg, lambda: call('GET', f'/api/layouts/{rid}')['leaf_block'] == 50), 'Undo puts back 50%')
+
     # ---- the light map
     pg.check('#ly-lmap')
     check(until(pg, lambda: pg.locator('svg.ly-svg[data-view=top] rect.ly-lm').count() > 100) and pg.locator('svg.ly-svg[data-view=top] text.ly-lmn').count() >= 6
@@ -131,7 +166,8 @@ with sync_playwright() as p:
     near = pg.evaluate("lyLightAt(LY.d, 58, 10, 12)"); far = pg.evaluate("lyLightAt(LY.d, 10, 95, 12)")
     check(near > far and pg.evaluate("lyLband(lyLightAt(LY.d, 58, 10, 12))") > pg.evaluate("lyLband(lyLightAt(LY.d, 10, 95, 12))"), f'near the window the map is deeper than in the far corner ({near:.1f}, {far:.1f})')
     shot(pg, '1-lightmap')
-    pg.click('#ly-more'); pg.select_option('#ly-lmapz', '48')
+    if not pg.evaluate("document.querySelector('details.ly-more').open"): pg.click('#ly-more')
+    pg.select_option('#ly-lmapz', '48')
     check(until(pg, lambda: '4 ft off the floor' in pg.inner_text('.ly-lmkey') or '48 in off the floor' in pg.inner_text('.ly-lmkey')), f"at another height, the key says which ({pg.inner_text('.ly-lmkey')[:120]!r})")
     pg.select_option('#ly-lmapz', 'auto'); pg.uncheck('#ly-lmap')
     check(until(pg, lambda: pg.locator('rect.ly-lm').count() == 0), 'unticked, the light map goes')
@@ -153,6 +189,23 @@ with sync_playwright() as p:
     check(pg.evaluate('document.activeElement && document.activeElement.closest && document.activeElement.closest("g.ly-it") ? +document.activeElement.closest("g.ly-it").dataset.id : null') == ids[C], 'the keyboard stays on it as the 3D view is drawn again')
     press(pg, '#ly-3reset')
     check(until(pg, lambda: pg.evaluate('[LY.az, LY.el]') == [-35, 35]), 'Start view turns it back')
+    # turned by dragging (Ethan, November 17, 2026: "hold right-click then panning my mouse")
+    floor = pg.evaluate("""() => {                     // a point on the floor or a wall with no thing on it
+      const s = document.querySelector('svg.ly-svg[data-view="3d"]'), r = s.getBoundingClientRect();
+      for (let y = r.top + 10; y < r.bottom; y += 7) for (let x = r.left + 10; x < r.right; x += 7) { const e = document.elementFromPoint(x, y); if (e && e.closest('svg.ly-svg[data-view="3d"]') && !e.closest('g.ly-it') && x > 40 && y > 80) return [x, y]; }
+      return null; }""")
+    sel0 = pg.evaluate('LY.sel')
+    pg.mouse.move(floor[0], floor[1]); pg.mouse.down(button='right'); pg.mouse.move(floor[0] + 50, floor[1] + 25, steps=5); pg.mouse.move(floor[0] + 100, floor[1] + 50, steps=5); pg.mouse.up(button='right')
+    check(until(pg, lambda: pg.evaluate('[LY.az, LY.el]') == [5, 55]) and 'high above' in pg.inner_text('figure[data-view="3d"] figcaption'),
+          f"dragged 100 px right and 50 px down with the right button held: turned 40° and looked from 20° higher ({pg.evaluate('[LY.az, LY.el]')})")
+    check(pg.evaluate("(() => { try { return JSON.parse(localStorage.getItem('plantdb.layouts') || '{}'); } catch (e) { return {}; } })()") is not None and pg.evaluate('LY.sel') == sel0, 'and nothing else was chosen or moved')
+    floor = pg.evaluate("""() => { const s = document.querySelector('svg.ly-svg[data-view="3d"]'), r = s.getBoundingClientRect();
+      for (let y = r.top + 10; y < r.bottom; y += 7) for (let x = r.left + 10; x < r.right; x += 7) { const e = document.elementFromPoint(x, y); if (e && e.closest('svg.ly-svg[data-view="3d"]') && !e.closest('g.ly-it') && x > 40 && y > 80) return [x, y]; }
+      return null; }""")
+    pg.mouse.move(floor[0], floor[1]); pg.mouse.down(); pg.mouse.move(floor[0] - 60, floor[1], steps=6); pg.mouse.up()
+    check(until(pg, lambda: pg.evaluate('LY.az') == -19 and pg.evaluate('LY.el') == 55), f"the left button held on the floor turns it too ({pg.evaluate('[LY.az, LY.el]')})")
+    check(pg.evaluate("document.querySelector('svg.ly-svg[data-view=\"3d\"]').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))") is False, 'the right button opens no menu on the 3D view')
+    press(pg, '#ly-3reset'); until(pg, lambda: pg.evaluate('[LY.az, LY.el]') == [-35, 35])
     press(pg, '#ly-undo')
     check(until(pg, lambda: (saved(rid, ids[C])['x'], saved(rid, ids[C])['y']) == (x0['x'], x0['y'])), 'Undo takes the move back')
 
@@ -217,6 +270,34 @@ with sync_playwright() as p:
 
     # ---- without a connection
     check(pg.evaluate("offWords({ method: 'PUT', url: '/api/layouts/items/5', body: { x: 4, _what: 'Fig' } })") == 'A layout: Fig moved', 'a change waiting on this device is called by what moved')
+    check(pg.evaluate("offWords({ method: 'POST', url: '/api/layouts/5/items', body: { items: [{ name: 'Fan' }] } })") == 'A layout: Fan put on'
+          and pg.evaluate("offWords({ method: 'DELETE', url: '/api/layouts/items/-12', body: { _what: 'Fan' } })") == 'A layout: Fan taken off', 'and by what was put on or taken off')
+    # Ethan, November 17, 2026: "Would it be possible to have things be put on or off compatible with offline mode?"
+    opened(pg, rid, 6)
+    n0 = len(call('GET', f'/api/layouts/{rid}')['items'])
+    pg.route('**/api/layouts/**', lambda r: r.abort() if r.request.method != 'GET' else r.continue_())
+    free = pg.evaluate("LY.d.plants.find(p => !p.on && p.item && p.item.need)")
+    pg.evaluate("p => lyAddItems([{ kind: 'other', name: 'Offline fan', shape: 'box', w: 8, d: 8, h: 12 }, { kind: 'plant', plant: p.code, name: p.name, shape: p.shape, w: p.w, d: p.d, h: p.h }])", free)
+    fan = pg.evaluate("(LY.d.items.find(i => i.name === 'Offline fan') || {}).id")
+    pl = pg.evaluate("c => LY.d.items.find(i => i.plant === c)", free['code'])
+    check(fan is not None and fan < 0 and pl and pl['id'] < 0 and pl['need'] == free['item']['need'] and pl['name'] == free['item']['name'] and pg.locator('.ly-offline').count() == 1,
+          f"with no connection, a fan and a plant are put on: drawn at once, the plant with its light needs, and the layout says they are kept on this device ({fan}, {pl and pl['id']})")
+    check(len(call('GET', f'/api/layouts/{rid}')['items']) == n0, 'nothing has reached the server yet')
+    check(pg.evaluate("LY.F.light.has(LY.d.items.find(i => i.name !== 'Offline fan' && i.id < 0).id)"), 'the plant put on offline has its light worked out on the page')
+    pick(pg, fan); x0 = it(pg, fan)['x']; pg.keyboard.press('ArrowRight')
+    until(pg, lambda: it(pg, fan)['x'] != x0); xf = it(pg, fan)['x']
+    pick(pg, blk); pg.click('#ly-rm')
+    check(until(pg, lambda: pg.evaluate("i => !LY.d.items.some(x => x.id === i)", blk)), 'a shelf block taken off with no connection goes from the page')
+    ops = pg.evaluate("offOps().then(o => o.map(x => [x.method, x.url]))")
+    check([m for m, _ in ops if '/api/layouts' in _] == ['POST', 'PUT', 'DELETE'] and any(u == f'/api/layouts/items/{fan}' for _, u in ops), f'three changes wait, in order: put on, the move of the new fan by its number here, taken off ({ops})')
+    pg.unroute('**/api/layouts/**')
+    pg.evaluate('offSync()')
+    def sent():
+        S = call('GET', f'/api/layouts/{rid}')['items']; F = [i for i in S if i['name'] == 'Offline fan']
+        return len(F) == 1 and F[0]['x'] == xf and any(i['plant'] == free['code'] for i in S) and not any(i['id'] == blk for i in S)
+    check(until(pg, sent, 30000), 'once the server can be reached, they are sent in order: the fan put on and then moved, the plant put on, the block taken off')
+    check(until(pg, lambda: pg.evaluate("offOps().then(o => o.filter(x => x.url.includes('/api/layouts')).length)") == 0, 15000), 'and nothing is left waiting')
+    check(until(pg, lambda: pg.evaluate("(LY.d.items.find(i => i.name === 'Offline fan') || { id: -1 }).id") > 0, 15000), 'the page then shows the fan with its number from the server')
     urls = call('GET', '/api/offline/manifest')['urls']
     check('/api/layouts' in urls and f'/api/layouts/{rid}' in urls and f'/api/layouts/{sid}' in urls, 'the copy kept on a device for offline use has the layouts')
 

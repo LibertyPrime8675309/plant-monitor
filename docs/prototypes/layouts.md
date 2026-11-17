@@ -133,9 +133,19 @@ Ethan: "I would like to have all of these implemented please!" Built in the pull
 
 ## What is not done
 - Grow lights keeps its own spots (which plants are under which light). A layout does not move plants between spots.
-- The 3D view chooses things and moves them with the arrow keys; dragging and resizing are in the top and front views.
-- Putting a thing on a layout or taking one off needs a connection.
+- The 3D view chooses things, moves them with the arrow keys and turns by dragging; dragging a thing and resizing are in the top and front views.
+- **Move it in the record** needs a connection.
 - A window's daylight is one number for a usual day; it does not follow the seasons or the weather.
+
+## What Ethan said about the six additions (November 17, 2026)
+1. **The starting daylight for each direction.** He asked what the numbers mean. They are the daily light at the glass, in mol/m² a day (the unit Grow lights uses). Unchanged until he says.
+2. **Shade.** "Shade will depend on both how the plant blocks the light and how its pot blocks the light. Pots will block 100% of light while plants will block ~50%. Having the ability to change these values myself would be nice." Built: a pot and leaves, with what each blocks set for each layout, and each plant's pot height.
+3. **Turning the 3D view by dragging.** "I like being able to hold right-click then panning my mouse to manipulate 3D spaces personally." Built: the right button anywhere on it, or the left button on the floor; a finger left and right.
+4. **Putting things on and taking them off offline.** "Would it be possible?" Built.
+
+![A plant's boxes with its pot's height](layouts/laptop-pot.png)
+
+![Size and name, with what a pot and leaves block](layouts/laptop-shade.png)
 
 ## What Ethan said (November 15, 2026)
 1. **The name.** "Layouts" works fine. Kept.
