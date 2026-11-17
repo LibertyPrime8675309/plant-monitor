@@ -80,7 +80,7 @@ with sync_playwright() as p:
     lo = next(c for c, q in full.items() if q.get('id_confidence') is not None and q['id_confidence'] < 85 and c != 'P-036')
     pg.goto(LOCAL + '/#/plant/' + lo); pg.wait_for_timeout(2000)
     check('closest match' in pg.inner_text('#about'), f'a plant with an unsure ID ({lo}) says the details are for the closest match')
-    pg.goto(LOCAL + '/#/plant/P-020/edit'); until(pg, lambda: pg.locator('fieldset legend', has_text='About this plant').count() == 1)
+    pg.goto(LOCAL + '/#/plant/P-020/edit')
     fs = pg.locator('fieldset', has=pg.locator('legend', has_text='About this plant'))
     check(until(pg, lambda: fs.count() == 1 and fs.locator('textarea, input').count() >= 23), f"the edit form has an About this plant section with every field ({fs.locator('textarea, input').count()})")      # wait for all: the form may still be drawing
     check(fs.locator('label', has_text='Coldest zone (USDA)').count() == 1 and fs.locator('label', has_text='Sources').count() >= 1, 'with real labels')
