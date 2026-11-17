@@ -1242,8 +1242,8 @@ def guard():
         return Response('Not found', 404, {'Content-Type': 'text/plain; charset=utf-8'})
     if NEWER_DB:                     # 1.31.0: an older version on a newer database: every page says what to do, and nothing is changed
         msg = (f"This plant record was last opened by version {NEWER_DB['last']}, and this is the older version {NEWER_DB['this']}. "
-               f"To keep your data safe it will not run. Install version {NEWER_DB['last']} or newer with the updater (Update Plant Database.cmd), "
-               "or restore a backup made by this version.")
+               f"To keep your data safe, it will not run. Install version {NEWER_DB['last']} or newer with the updater (Update Plant Database.cmd). "
+               "Or restore a backup made by this version.")
         if request.path.startswith('/api/'): return jsonify(error=msg, newer_db=NEWER_DB['last']), 503
         return Response(f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Plant record: newer database</title>'
                         '<style>body{font:1.25rem/1.5 system-ui,sans-serif;max-width:40rem;margin:3rem auto;padding:0 1rem;color:#0e2233;background:#f5f7f6}</style></head>'

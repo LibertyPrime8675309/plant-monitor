@@ -15,7 +15,8 @@
   <div class="ps-tools noprint">
     <p class="crumb"><a href="/#/today">Back to Today</a></p>
     <h1>Plant-sitter sheet</h1>
-    <p>A printable plan for someone looking after your plants while you are away: which plants to check for water each day, with a photo, where each one is, how to tell if it needs water, and any cold nights in the forecast.</p>
+    <p>A printable plan for someone looking after your plants while you are away. It shows:</p>
+    <ul><li>which plants to check for water each day, with a photo</li><li>where each one is</li><li>how to tell if it needs water</li><li>any cold nights in the forecast</li></ul>
     <form id="ps-opts" class="ps-opts">
       <fieldset class="opt-group"><legend>When you are away</legend>
         <div class="ps-dates">
@@ -42,7 +43,7 @@
         <p class="row"><button class="btn" type="button" id="ps-mklink">Make a link</button>
           <span class="hint" id="ps-share-msg" aria-live="polite"></span></p>
         <div id="ps-links" class="ps-links"></div>
-        <p class="hint" id="ps-share-hint" hidden>Links will only work from outside your home network once the <code>/share</code> path is published with Tailscale Funnel and the public address is saved in Calendar. The README says how (the same steps as the calendar link).</p>
+        <p class="hint" id="ps-share-hint" hidden>Links work from outside your home network once two things are done. The <code>/share</code> path is published with Tailscale Funnel. The public address is saved in Calendar. The README says how (the same steps as the calendar link).</p>
       </fieldset>
       <p class="row"><button class="btn" type="button" id="ps-print">Print</button>
         <a class="btn ghost" id="ps-open" href="/sitter.html" target="_blank" rel="noopener" hidden>Open in the browser to print</a>

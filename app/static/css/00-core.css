@@ -408,8 +408,8 @@ table.cal{width:100%;border-collapse:separate;border-spacing:.3rem;table-layout:
 .day{display:flex;flex-direction:column;align-items:flex-start;gap:.2rem;width:100%;min-height:5.2rem;padding:.4rem .45rem;background:var(--sheet);border:2px solid var(--line);color:var(--ink);font:inherit;text-align:left;cursor:pointer;overflow:hidden}
 .day:hover{border-color:var(--ink)}
 .day .dn{font-weight:700;font-size:1.1rem;line-height:1.1}
-.day .tdy{font-size:.75rem;font-weight:700;background:var(--ink);color:var(--paper);padding:0 .3rem;margin-left:.2rem}
-.day .bd{display:block;font-size:.82rem;font-weight:700;line-height:1.2;overflow-wrap:anywhere}
+.day .tdy{font-size:.9rem;font-weight:700;background:var(--ink);color:var(--paper);padding:0 .3rem;margin-left:.2rem}
+.day .bd{display:block;font-size:.9rem;font-weight:700;line-height:1.2;overflow-wrap:anywhere}
 .day.today{border-color:var(--ink);border-width:3px}
 .day.sel{outline:var(--ring) solid var(--focus);outline-offset:1px}
 .day.cal-in{background:var(--moss-soft)}

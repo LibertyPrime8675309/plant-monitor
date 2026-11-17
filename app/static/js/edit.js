@@ -74,7 +74,7 @@ async function histDay(kind, ds) {
         ${day.fertilized.length ? html`<dt>Fertilizer</dt><dd>${day.fertilized.map(e => `${e.product}, ${doseText(e)}`).join('; ')}</dd>` : ''}</dl>
       ${chartCard('hd-' + kind, { title: `${label} on ${midDay(ds)}`, series, fmt: v => String(Math.round(v * 100) / 100), unit, bands, refs, zero: m === 'light', clamp: m === 'humidity' || m === 'soil_moisture' ? [0, 100] : null })}`
       : html`<p>No ${label.toLowerCase()} readings were recorded on this day${S.source === 'auto' ? '' : ' from ' + (names[S.source] || 'that source')}.</p>
-        <p class="hint">${m.startsWith('soil') ? 'Soil values come from your sensor or from numbers you type in under Current conditions.' : 'Online weather history is stored from the first time the app ran (it loads about 3 months back); sensor values start when the sensor first reports. You can load older weather on the Weather page.'}</p>
+        <p class="hint">${m.startsWith('soil') ? 'Soil values come from your sensor or from numbers you type in under Current conditions.' : 'Online weather history is stored from the first time the app ran, and it loads about 3 months back. Sensor values start when the sensor first reports. You can load older weather on the Weather page.'}</p>
         ${has(lo) || has(hi) ? html`<p>Comfortable range then: ${rangeTxt}.</p>` : ''}`}
     <div class="row noprint"><button class="btn ghost small" type="button" data-act="calnav" data-cal="h-${kind}" data-d="0">Back to today</button></div></section>`);
   if (main) paintChart('hd-' + kind);

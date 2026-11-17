@@ -75,7 +75,9 @@ function cmpFilters() {
 }
 function cmpRows() {
   const q = CMP.q.trim().toLowerCase(), fs = cmpFilters(), col = cmpCols()[CMP.sort.k] || cmpCols().ppfd, dir = CMP.sort.dir;
-  let rows = CMP.d.rows.filter(r => fs.every(([, , t]) => t(r)) && (!q || [r.name, r.brand, r.kind, r.model].join(' ').toLowerCase().includes(q)));
+  let rows = CMP.d.rows.filter(r => fs.every(([, , t]) => t(r)));
+  const pick = fzPick(rows.map(r => [r.name, r.brand, r.kind, r.model].join(' ')), q);   // close spellings when nothing is spelt that way
+  CMP.close = pick.close; rows = rows.filter((r, i) => pick.on[i]);
   const key = r => col.s(r);
   rows = rows.slice().sort((a, b) => {
     const x = key(a), y = key(b);
@@ -147,7 +149,7 @@ function cmpDraw1() {
   chips.innerHTML = rend(fs.length ? html`<span class="muted">Filters on:</span> ${fs.map(([k, w]) => html`<button class="chip" type="button" data-act="cmpchip" data-k="${k}" aria-label="Remove the filter: ${w}">${w} <span aria-hidden="true">✕</span></button>`)}
     <button class="btn ghost small" type="button" data-act="cmpchip" data-k="*">Clear all filters</button>` : '');
   const c = cols[CMP.sort.k];
-  document.getElementById('cmp-say').textContent = `${rows.length} of ${CMP.d.rows.length} lights${CMP.q.trim() ? ` matching "${CMP.q.trim()}"` : ''}, sorted by ${c ? (/^[A-Z]{2}/.test(c.label) ? c.label : c.label.charAt(0).toLowerCase() + c.label.slice(1)) : 'name'}, ${CMP.sort.k === 'name' ? (CMP.sort.dir === 'desc' ? 'Z to A' : 'A to Z') : cmpDirWord(CMP.sort.k, CMP.sort.dir)}. Not known goes last.`;
+  document.getElementById('cmp-say').textContent = `${rows.length} of ${CMP.d.rows.length} lights${CMP.q.trim() ? ` matching "${CMP.q.trim()}"` : ''}, sorted by ${c ? (/^[A-Z]{2}/.test(c.label) ? c.label : c.label.charAt(0).toLowerCase() + c.label.slice(1)) : 'name'}, ${CMP.sort.k === 'name' ? (CMP.sort.dir === 'desc' ? 'Z to A' : 'A to Z') : cmpDirWord(CMP.sort.k, CMP.sort.dir)}. Not known goes last.${fzNote(CMP.q, CMP.close)}`;
   const list = document.getElementById('cmp-list');
   const pick = r => { const on = CMP.picked.includes(r.id), full = !on && CMP.picked.length >= 4;
     return html`<label class="chk cmp-pick"><input type="checkbox" data-act="cmppick" data-id="${r.id}" ${on ? raw('checked') : ''} ${full ? raw('disabled') : ''}> Pick<span class="sr"> ${r.name} to compare</span>${CMP.cards ? ' to compare' : ''}</label>`; };

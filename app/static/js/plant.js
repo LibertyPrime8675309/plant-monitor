@@ -103,7 +103,7 @@ function humBlock(p, cur) {
   const verdict = t => t < lo ? ['dry', 'Drier than this plant likes. Raise humidity or move it.'] : t > hi ? ['wet', 'More humid than ideal. Give it airflow and avoid watering late in the day.'] : ['ok', 'Comfortable.'];
   const h = cur && has(cur.humidity) ? cur.humidity : null;
   const kk = k => k === 'dry' ? 'hot' : k === 'wet' ? 'cool' : 'ok';
-  return html`<p>Comfortable between <strong>${lo}%</strong> and <strong>${hi}%</strong> relative humidity.${has(p.vpd_low) && has(p.vpd_high) ? html` Ideal air dryness (VPD) is <strong>${p.vpd_low} to ${p.vpd_high} kPa</strong>. VPD is how hard the air pulls water out of leaves; it rises when the air is warm and dry.` : ''}</p>
+  return html`<p>Comfortable between <strong>${lo}%</strong> and <strong>${hi}%</strong> relative humidity.${has(p.vpd_low) && has(p.vpd_high) ? html` Ideal air dryness (VPD) is <strong>${p.vpd_low} to ${p.vpd_high} kPa</strong>. VPD is how hard the air pulls water out of leaves. It rises when the air is warm and dry.` : ''}</p>
     ${h == null ? '' : (() => { const [k, txt] = verdict(h); return html`<p class="nowstate v-${kk(k)}"><strong>Now ${h}%.</strong> ${txt}${cur.vpd != null && has(p.vpd_low) ? html` Air dryness now: ${cur.vpd} kPa.` : ''}</p>`; })()}
     ${strip([['z-dry', a], ['z-ok', b - a], ['z-wet', 100 - b]], humMarks().map(m => [m[1], m[0]]), [0, 25, 50, 75, 100].map(x => [x, x + '%']), h == null ? null : { pos: posLin(h, 0, 100), label: h + '%' })}
     ${keyOf([['z-dry', 'Too dry'], ['z-ok', 'Comfortable'], ['z-wet', 'Too humid'], ...(h != null ? [['z-now', 'Now']] : [])])}

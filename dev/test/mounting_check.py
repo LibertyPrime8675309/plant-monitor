@@ -44,7 +44,7 @@ check(status('PUT', f'/api/lights/{key["gooingtop-clip"]["id"]}', {'mount': {'ki
 place = {p['label'].split(', ')[-1]: p['id'] for p in LT['places']}
 side, tall = place['Side Table'], place['Tall Brown Shelf']
 P = call('GET', f'/api/rooms/{side}')
-check(P['sheet'].get('levels') == 1 and P['sheet'].get('top') == 'nothing' and 'nothing above the top' in P['words'], 'batch C4 says the side table is one level with nothing above it')
+check(P['sheet'].get('levels') == 1 and P['sheet'].get('top') == 'nothing' and 'nothing above the top' in P['words'].lower(), 'batch C4 says the side table is one level with nothing above it')
 TB = call('GET', f'/api/rooms/{tall}')
 check(TB['sheet'].get('gaps_in') == [23, 13, 27] and TB['sheet'].get('width_in') == 22 and 'Measurements to come' not in TB['sheet'].get('notes', ''),
       'batch C7: the tall brown shelf has its measurements, a height for each level (23, 13, 27 in from the bottom)')

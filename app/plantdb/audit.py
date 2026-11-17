@@ -1,6 +1,7 @@
 """The audit log.
 Split out of server.py in 1.32.0; the names it uses from other modules are linked by server.py (see plantdb/core.py, link())."""
 from .core import *   # noqa: F401,F403
+from .fuzzy import fz_nearest
 # ---------------------------------------------------------------- audit log: every change to every record (filters added in 1.10.0)
 AUDIT_KINDS = {                          # kind of change (the filter on the Audit log page) -> actions in audit_log
     'edits': ('Changes to plant pages', ('update', 'edit', 'restore')),
@@ -96,7 +97,17 @@ def audit_search():
     sql, args = audit_query(c, request.args)
     csql, cargs = audit_query(c, request.args, count=True)
     total = c.execute(csql, cargs).fetchone()[0]
-    return jsonify(entries=audit_rows(c, sql + ' LIMIT ? OFFSET ?', args + [limit, offset]), total=total, offset=offset, limit=limit,
+    close = None
+    q = (request.args.get('q') or '').strip()
+    if not total and len(q) >= 5:                # 1.58.0: nothing spelt that way, so search for the nearest word the log or a plant uses
+        words = [r[0] for r in c.execute('SELECT common_name FROM plants UNION SELECT DISTINCT changed_by FROM audit_log')] + list(FIELD_LABEL.values())
+        near = fz_nearest(words, q)
+        if near:
+            a = dict(request.args); a['q'] = near
+            sql, args = audit_query(c, a); csql, cargs = audit_query(c, a, count=True)
+            total = c.execute(csql, cargs).fetchone()[0]
+            close = near if total else None
+    return jsonify(entries=audit_rows(c, sql + ' LIMIT ? OFFSET ?', args + [limit, offset]), total=total, offset=offset, limit=limit, close=close,
                    max_id=c.execute('SELECT MAX(id) FROM audit_log').fetchone()[0] or 0)
 
 @app.route('/api/audit/facets')

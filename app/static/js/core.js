@@ -61,6 +61,18 @@ function fzMatch(text, q) {
   return qs.every(x => t.includes(x) || words.some(w => fzWord(x, w) != null)) ? 'close' : false;
 }
 // the word in the record nearest to what was typed, for "Did you mean ...?"
+// One search box over a list (1.58.0 sweep): what to show for q, exact first; with no exact match, close spellings, and the nearest
+// word for the note (close is null when nothing was a close spelling). hays: one text per item.
+function fzPick(hays, q) {
+  const qq = String(q || '').trim().toLowerCase();
+  if (!qq) return { on: hays.map(() => true), close: null };
+  let on = hays.map(h => String(h || '').toLowerCase().includes(qq));
+  if (on.some(Boolean)) return { on, close: null };
+  on = hays.map(h => !!fzMatch(h, qq));
+  const hit = hays.filter((h, i) => on[i]);
+  return { on, close: hit.length ? (fzNearest(hit, qq) || '') : null };
+}
+const fzNote = (q, close) => close == null ? '' : ` Nothing is spelt "${String(q).trim()}", so these are close spellings${close ? `, such as ${close}` : ''}.`;
 function fzNearest(texts, q) {
   let best = null, bd = 99;
   for (const x of fzWords(q)) for (const t of texts) for (const w of String(t || '').split(/[\s,()/'"]+/)) {
@@ -657,7 +669,7 @@ function viewSettings() {
     <section class="blk set-card set-health" id="health"><h2>Health of the app</h2><div id="health-box" aria-live="polite"><p class="loading">Checking</p></div>
       <div class="row"><button class="btn" type="button" data-act="jobs" aria-haspopup="dialog">Open the Jobs list</button><button class="btn ghost" type="button" data-act="problems" aria-haspopup="dialog">Open the Problems list<span id="prob-n"></span></button></div></section>
     ${card('Words used in the app', 'The short forms the app uses, such as PAR, DLI and ASPCA, in plain words.', html`<a class="btn" href="#/words">Open Words used in the app</a>`)}
-    ${card('Recent messages', 'The short messages that pop up at the bottom of the screen ("Saved", "Watered"), the last 30 on this device, to read again.', html`<button class="btn" type="button" data-act="recentmsgs" aria-haspopup="dialog">Read recent messages</button>`)}
+    ${card('Recent messages', 'The short messages that pop up ("Saved", "Watered"). The last 30 on this device, to read again.', html`<button class="btn" type="button" data-act="recentmsgs" aria-haspopup="dialog">Read recent messages</button>`)}
     ${card('Debug', 'A live view of the audit log at the bottom of the screen, and other tools for checking the app.', html`<button class="btn" type="button" id="debug-btn" data-act="debug" aria-haspopup="dialog">Open Debug</button>`)}
     </div>` };
 }

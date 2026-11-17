@@ -41,3 +41,29 @@ def test_search_finds_a_misspelt_plant_and_says_so():
     assert d['close'] == 'Philodendron'
     d = c.get('/api/search?q=philodendron').get_json()
     assert d['close'] is None, 'spelt right: nothing to say'
+
+
+@pytest.mark.skipif(not shutil.which('node'), reason='node is not installed')
+def test_fzpick_shows_exact_first_then_close_spellings():
+    """The lists with their own search box (Issue tracker, Compare lights, a light spot's plants, Add on a layout) use fzPick."""
+    src = open(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'app', 'static', 'js', 'core.js'), encoding='utf-8').read()
+    part = src[src.index('function fzNorm'):src.index('// ---------- plant codes')]
+    js = part + '\nconst N = %s; console.log(JSON.stringify([fzPick(N, "monstra"), fzPick(N, "monstera"), fzPick(N, ""), fzPick(N, "xyzzy"), fzNote("monstra", "Monstera")]));' % json.dumps(NAMES)
+    close, exact, empty, none, note = json.loads(subprocess.run(['node', '-e', js], capture_output=True, text=True, check=True).stdout)
+    assert [n for n, on in zip(NAMES, close['on']) if on] == ['Monstera deliciosa'] and close['close'] == 'Monstera'
+    assert exact['close'] is None and sum(exact['on']) == 1
+    assert all(empty['on']) and empty['close'] is None
+    assert not any(none['on']) and none['close'] is None
+    assert note == ' Nothing is spelt "monstra", so these are close spellings, such as Monstera.'
+
+
+def test_audit_log_search_forgives_spelling():
+    c = S.app.test_client()
+    name = c.get('/api/plants').get_json()[0]['common_name']
+    word = max(re.findall(r'[A-Za-z]{6,}', name) or ['Philodendron'], key=len)
+    typo = word[:2] + word[3:]                                 # one letter out
+    d = c.get('/api/audit/search', query_string={'q': typo}).get_json()
+    if d['close'] is None: assert d['total'] > 0, 'spelt that way somewhere, or a close spelling found'
+    else: assert d['total'] > 0 and d['close'].lower().startswith(word[:2].lower())
+    d = c.get('/api/audit/search', query_string={'q': word}).get_json()
+    assert d['close'] is None

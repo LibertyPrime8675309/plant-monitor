@@ -139,7 +139,7 @@ def place_rows(c, pid):
     return sp, (c.execute('SELECT * FROM areas WHERE id=?', (sp['area_id'],)).fetchone() if sp else None)
 
 def sheet_words(s, u=None):
-    """The measurements in one line, for a card."""
+    """The measurements in short sentences, for a card."""
     if not s: return ''
     L = lambda x: len_text(x, u); bits = []
     if s.get('levels'):
@@ -157,7 +157,8 @@ def sheet_words(s, u=None):
     elif s.get('edge') == 'no': bits.append('no edge to clamp to')
     if s.get('socket') == 'yes': bits.append('an outlet within reach')
     elif s.get('socket') == 'no': bits.append('no outlet within reach')
-    return '; '.join(bits)
+    # 1.58.0: one short sentence each (the first stays as it is, as it follows "Its measurements:"; the caller adds the last full stop)
+    return '. '.join([b if i == 0 else b[0].upper() + b[1:] for i, b in enumerate(bits)])
 
 def place_words(c, pid):
     sp, room = place_rows(c, pid)

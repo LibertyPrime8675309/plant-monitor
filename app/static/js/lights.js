@@ -340,9 +340,10 @@ function spotFilter() {
   const num = (r, k) => r.dataset[k] === '' ? null : +r.dataset[k];
   const verdict = r => ltVerdict(dli, num(r, 'lo'), num(r, 'hi'));
   let shown = 0;
-  rows.forEach(r => {
+  const pick = fzPick(rows.map(r => r.dataset.name + ' ' + r.dataset.code), q);          // close spellings when nothing is spelt that way
+  rows.forEach((r, i) => {
     const v = verdict(r), tick = r.querySelector('input').checked;
-    const ok = (!q || r.dataset.name.includes(q) || r.dataset.code.toLowerCase().includes(q)) &&
+    const ok = pick.on[i] &&
       (!show || (show === 'fit' && v === 'good') || (show === 'near' && ['good', 'dim', 'bright'].includes(v)) || (show === 'free' && (r.dataset.free === '1' || tick)) ||
        (show === 'ticked' && tick) || (show === 'inside' && r.dataset.inside === '1') || (show === 'coming' && r.dataset.inside === '0'));
     const taken = hide && r.dataset.other === '1' && !tick;
@@ -356,7 +357,7 @@ function spotFilter() {
   if (order.some((r, i) => r !== rows[i])) order.forEach(r => ul.appendChild(r));      // appendChild moves; focus stays on a moved box
   const ticked = rows.filter(r => r.querySelector('input').checked).length;
   const nTaken = hide ? rows.filter(r => r.dataset.other === '1' && !r.querySelector('input').checked).length : 0;
-  f.querySelector('#sp-count').textContent = `Showing ${shown} of ${rows.length}. ${ticked} ticked for this spot.${nTaken ? ` ${nTaken} in another spot are hidden.` : ''}`;
+  f.querySelector('#sp-count').textContent = `Showing ${shown} of ${rows.length}. ${ticked} ticked for this spot.${nTaken ? ` ${nTaken} in another spot are hidden.` : ''}${fzNote(q, pick.close)}`;
 }
 const LIGHT_WORD = { too_dim: 'Too dim', dim: 'A bit dim', good: 'Good', bright: 'A bit bright', too_bright: 'Too bright', unknown: 'Needs not set' };
 function spotPreview(now) {

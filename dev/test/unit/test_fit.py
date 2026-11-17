@@ -109,7 +109,7 @@ def test_mounts_and_measurements_are_checked_on_the_way_in():
     assert F.mount_clean({'kind': ''}) is None
     assert F.sheet_clean({'levels': '4', 'gap_in': '13', 'top': 'nothing', 'notes': ' x '}) == {'levels': 4, 'gap_in': 13.0, 'top': 'nothing', 'notes': 'x'}
     w = F.sheet_words({'levels': 4, 'gap_in': 13, 'width_in': 16, 'depth_in': 11, 'top': 'nothing', 'edge': 'no'}, U)
-    assert w == '4 levels, 13 in between them; 16 in by 11 in (width by depth); nothing above the top; no edge to clamp to'
+    assert w == '4 levels, 13 in between them. 16 in by 11 in (width by depth). Nothing above the top. No edge to clamp to'
     assert 'cm' in F.mount_words(T8, {'temp': 'c', 'len': 'cm', 'rain': 'mm'}) and '61 cm' in F.mount_words(T8, {'temp': 'c', 'len': 'cm', 'rain': 'mm'})
 
 def test_routes_tick_and_untick_and_photos():
@@ -172,5 +172,5 @@ def test_batch_c7_measured_the_shelves():
         b = json.load(open(os.path.join(os.path.dirname(S.__file__), 'seed', 'batches', 'batchC7.json')))
         assert next(u for u in b['place_sheets_update'] if u.get('name') == 'Tall Brown Shelf')['set']['gaps_in'] == [None, [23, 13, 27]]
         assert '44 in by 13 in' in sheets['Large Brown Hutch'] and '5 levels, 11 in between them' in sheets['Tall Black Shelf']
-        assert sheets['Side Table'].startswith('one level; 26 in by 9 in')
+        assert sheets['Side Table'].startswith('one level. 26 in by 9 in')
         assert t.post('/api/lights/spots', json={'name': 'Bad level', 'light': 1, 'distance': 12, 'hours': 12, 'level': 'L99'}, headers={'X-Editor': 'Unit'}).status_code == 400

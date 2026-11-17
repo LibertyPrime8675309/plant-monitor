@@ -29,7 +29,8 @@ check(W['entry']['lines'] and all('**' not in l or l.count('**') % 2 == 0 for l 
 check(W['seen'] is False and W['update'] is None, 'not seen yet on a fresh install; no update known')
 check(W['restore'] == {'last': None, 'days': None, 'due': True}, 'a restore has never been tried, so the test is due')
 page = urllib.request.urlopen(BASE + '/api/whatsnew/all').read().decode()
-check(f'<h2>{version}' in page and '<ul>' in page and '<script' not in page, "the every-version page lists this version, with bullets and no script")
+check(f'<h2>{version}' in page and '<ul>' in page and page.count('<script') == 1 and '<script src="/prefs.js">' in page and '<li>  -' not in page,
+      "the every-version page lists this version, with nested bullets and only the Display settings' script")
 
 # the owner's Today
 with sync_playwright() as p:
