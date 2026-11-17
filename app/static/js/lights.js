@@ -22,9 +22,9 @@ function ltRoomsBlock() {
   return html`<div class="lt-rooms">${rooms.map(([room, ps]) => {
     const self = ps.find(pl => !pl.name), shelves = ps.filter(pl => pl.name), here = self ? spotsAt(self) : '';
     const nsp = LT.spots.filter(sp => ps.some(pl => pl.id === sp.place_id)).length;
-    const box = ltOpt() === 'off' ? x => x : x => html`<details class="lt-spot lt-spot-fold lt-room-fold" data-id="R${room}" ${ltFoldOpen('R' + room) ? raw('open') : ''}><summary><h3>${room}</h3>
+    const box = x => html`<details class="lt-spot lt-spot-fold lt-room-fold" data-id="R${room}" ${ltFoldOpen('R' + room) ? raw('open') : ''}><summary><h3>${room}</h3>
       <span class="lt-sum"><span><strong>Shelves:</strong> ${shelves.length}</span><span><strong>Light spots:</strong> ${nsp}</span></span></summary><div class="lt-spot-in">${x}</div></details>`;
-    return box(html`<section class="lt-room" aria-label="${room}"><div class="lt-room-head">${ltOpt() === 'off' ? html`<h3>${room}</h3>` : ''}
+    return box(html`<section class="lt-room" aria-label="${room}"><div class="lt-room-head">
       <span class="row noprint"><button class="btn small" type="button" data-act="shelfnew" data-room="${room}" aria-label="New shelf in ${room}">New Shelf</button>
         ${self ? html`<button class="btn ghost small" type="button" data-act="roomedit" data-id="${self.id}" aria-label="Rename the room ${room}">Rename</button><button class="btn ghost small" type="button" data-act="roomdel" data-id="${self.id}" aria-label="Remove room: ${room}">Remove room</button>` : ''}</span></div>
       ${self ? html`<div class="fit-place">${placeBits(self)}${self.words ? html`<p class="muted">${self.words}</p>` : ''}</div>` : ''}
@@ -119,7 +119,6 @@ function ltSpotBody(s, i, plan) {
       : html`<button class="btn ghost" type="button" data-act="spotadd" data-id="${s.id}" aria-label="Add plants to ${s.name}">Add plants</button><button class="btn ghost" type="button" data-act="spotedit" data-id="${s.id}" aria-label="Change this spot: ${s.name}">Change this spot</button><button class="btn ghost" type="button" data-act="spotdel" data-id="${s.id}" aria-label="Remove this spot: ${s.name}">Remove this spot</button>`}</div>`;
 }
 function ltSpotCard(s, i, plan) {
-  if (plan && ltOpt() === 'off') return html`<article class="lt-spot" aria-labelledby="lts-p${i}"><h3 id="lts-p${i}">${s.name}</h3>${ltSpotBody(s, i, true)}</article>`;
   if (plan) return html`<details class="lt-spot lt-spot-fold lt-plan-fold" data-id="P${i}" ${ltFoldOpen('P' + i) ? raw('open') : ''}>
     <summary><h3 id="lts-p${i}">${s.name}</h3>
       <span class="lt-sum"><span><strong>Light:</strong> ${s.light}</span><span><strong>${has(s.dli) ? s.dli : '?'} mol/m² per day</strong></span><span><strong>Plants:</strong> ${s.plants.length}</span></span></summary>
@@ -133,26 +132,24 @@ function ltSpotCard(s, i, plan) {
         ${read ? html`<span class="lg-sum">${read === n ? (n === 1 ? 'Read from its layout' : `All ${n} read from a layout`) : `${read} of ${n} read from a layout`}</span>` : ''}</span></summary>
     <div class="lt-spot-in">${ltSpotBody(s, i, false)}</div></details>`;
 }
-// PREVIEW (a shorter Grow lights, for Ethan to choose): 'off' as before; 'fold' each light and each suggested spot folds; 'tight' folds,
-// and inside an open light each fact is one line and each of the maker's figures one line. Taken out once he has chosen.
-const ltOpt = () => { try { return localStorage.getItem('plantdb.ltopt') || 'tight'; } catch (e) { return 'tight'; } };
+// 1.58.0, a shorter Grow lights (Ethan chose option B, November 16, 2026): each light, suggested spot, room and the list of plants
+// with no light left folds as the spots do (ids L<light>, P<index>, R<room>, U, kept with the spots'); inside an open light each fact
+// is one line and each of the maker's figures one line (css/lights-compact.css).
 const ltFoldOpen = id => LT_OPEN.has(String(id));
 function ltLightCard(L) {
-  if (ltOpt() === 'off') return ltLightArticle(L, true);
   const p = L.points[0];
   return html`<details class="lt-spot lt-spot-fold lt-light-fold" data-id="L${L.id}" ${ltFoldOpen('L' + L.id) ? raw('open') : ''}>
     <summary><h3 id="ltl-${L.id}">${L.name}</h3>
       <span class="lt-sum"><span><strong>You have:</strong> ${L.count}${L.in_use ? ` (${L.in_use} in use)` : ''}</span>${L.specs.kind ? html`<span>${L.specs.kind}</span>` : ''}
         ${p ? html`<span><strong>Most light:</strong> ${fmt(p.ppfd)} PAR at ${lenF(p.distance_in)}</span>` : html`<span>No light figures yet</span>`}</span></summary>
-    <div class="lt-spot-in">${ltLightArticle(L, false)}</div></details>`;
+    <div class="lt-spot-in">${ltLightArticle(L)}</div></details>`;
 }
-function ltLightArticle(L, head) {
+function ltLightArticle(L) {
   const S = L.specs, bits = [S.watts ? S.watts + ' W' : '', S.lumens ? fmt(S.lumens) + ' lumens' : '', S.kelvin ? S.kelvin + 'K ' + (S.kelvin >= 5000 ? 'cool white' : S.kelvin >= 3500 ? 'neutral white' : 'warm white') : '', S.cri ? 'colour rendering (CRI) ' + S.cri : ''].filter(Boolean);
   const sp = S.spectrum;
-  const tight = ltOpt() === 'tight';
-  return html`<article class="lt-light${L.photo ? '' : ' no-photo'}${tight ? ' lt-tight' : ''}" aria-labelledby="ltl-${L.id}">
+  return html`<article class="lt-light lt-tight${L.photo ? '' : ' no-photo'}" aria-labelledby="ltl-${L.id}">
     ${L.photo ? html`<img class="lt-photo" src="${L.photo}" alt="${S.photo_alt || ''}" loading="lazy">` : ''}
-    <div class="lt-body">${head ? html`<h3 id="ltl-${L.id}">${L.name}</h3>` : ''}
+    <div class="lt-body">
     <dl class="dl lt-facts"><dt>You have</dt><dd>${L.count}${L.in_use ? ` (${L.in_use} in use in your spots)` : ''}</dd>${S.model ? html`<dt>Model</dt><dd>${S.model}</dd>` : ''}${L.fixture ? html`<dt>Where it is</dt><dd>${L.fixture}</dd>` : ''}</dl>
     ${canChange() ? html`<p class="row noprint"><button class="btn ghost small" type="button" data-act="ltedit" data-id="${L.id}" aria-expanded="false" aria-controls="lt-ed-${L.id}">Edit the name, count, model and where it is</button></p>` : ''}
     ${(() => { const can = canChange(), ed = k => raw(`data-ed="light" data-id="${L.id}" data-k="${k}" ${can ? '' : 'readonly'}`); return html`<div class="field-grid lt-ed" id="lt-ed-${L.id}" hidden>
@@ -170,11 +167,8 @@ function ltLightArticle(L, head) {
       ${S.size ? html`<dt>Size</dt><dd>${S.size}</dd>` : ''}
       ${mountLine(L)}
     </dl>${edLong('light', L.id, 'notes', 'Notes', L.notes, canChange())}
-    ${L.points.length && tight ? html`<h4 class="lt-pts-h">${S.estimated ? "Claude's estimates" : "Maker's figures"}: light under its centre</h4>
-      <ul class="lt-pts">${L.points.map(p => html`<li><strong>${lenF(p.distance_in)}:</strong> ${fmt(p.ppfd, 1)} PAR. 12 hours a day gives ${fmt(p.ppfd * 12 * 0.0036, 1)} mol/m².${p.area_sqft ? ` Lights about ${areaF(p.area_sqft)}${S.area_estimated && !S.estimated ? ' (estimate)' : ''}.` : ''}</li>`)}</ul>`
-    : L.points.length ? html`<div class="tbl-wrap"><table class="tbl lt-ppfd"><caption>${S.estimated ? "Claude's estimates" : "Maker's figures"}: light under its centre</caption>
-      <thead><tr><th scope="col">Distance</th><th scope="col" class="num">PAR (µmol/m²/s)</th><th scope="col" class="num">12 hours a day gives</th><th scope="col" class="num">Lights about</th></tr></thead>
-      <tbody>${L.points.map(p => html`<tr><th scope="row">${lenF(p.distance_in)}</th><td class="num">${fmt(p.ppfd, 1)}</td><td class="num">${fmt(p.ppfd * 12 * 0.0036, 1)} mol/m²</td><td class="num">${p.area_sqft ? areaF(p.area_sqft) + (S.area_estimated && !S.estimated ? ' (estimate)' : '') : ''}</td></tr>`)}</tbody></table></div>` : ''}
+    ${L.points.length ? html`<h4 class="lt-pts-h">${S.estimated ? "Claude's estimates" : "Maker's figures"}: light under its centre</h4>
+      <ul class="lt-pts">${L.points.map(p => html`<li><strong>${lenF(p.distance_in)}:</strong> ${fmt(p.ppfd, 1)} PAR. 12 hours a day gives ${fmt(p.ppfd * 12 * 0.0036, 1)} mol/m².${p.area_sqft ? ` Lights about ${areaF(p.area_sqft)}${S.area_estimated && !S.estimated ? ' (estimate)' : ''}.` : ''}</li>`)}</ul>` : ''}
     ${S.ppfd_note ? html`<p class="hint">${S.ppfd_note}</p>` : ''}
     ${L.chart ? html`<p class="hint"><a href="${L.chart}" target="_blank" rel="noopener">Open the maker's chart</a> (picture). ${S.chart_alt || ''}</p>` : ''}
     ${S.url ? html`<p class="hint"><a href="${S.url}" target="_blank" rel="noopener noreferrer">Product page</a></p>` : ''}
@@ -203,7 +197,7 @@ async function viewLights() {
           <td data-h="7-day mol/m² average">${has(LT.outdoor_dli) ? LT.outdoor_dli : 'Not known yet'}</td></tr></tbody></table></div>
       <p class="hint">${LT.plan.length ? `The suggested layout below places ${sug} more under your lights. ` : ''}${LT.unplaced.length ? `${LT.unplaced.length} ${LT.unplaced.length === 1 ? 'has' : 'have'} no light left in it. ` : ''}${has(LT.outdoor_dli) ? 'The 7-day average is outdoors in the open; under the porch roof it is much less.' : ''}</p></div></div>
     <section class="blk" id="lt-lights"><header class="sec-head"><h2>Your lights (${LT.lights.length})</h2><button class="btn ghost small noprint" type="button" data-act="lightnew">Add a light</button></header>
-      ${ltOpt() !== 'off' && LT.lights.length > 1 ? ltAllBtns('light') : ''}
+      ${LT.lights.length > 1 ? ltAllBtns('light') : ''}
       <div class="lt-lights">${LT.lights.map(ltLightCard)}</div></section>
     <section class="blk" id="lt-spots"><header class="sec-head"><h2>Your light spots</h2><button class="btn small noprint" type="button" data-act="spotnew">Set up a spot</button></header>
       ${lgNote()}
@@ -214,11 +208,10 @@ async function viewLights() {
     <section class="blk" id="lt-plan"><h2>Suggested layout</h2>
       <p>For the plants that are not in a spot yet. Plants that need the most light are placed first. Each goes under the smallest of your lights that can give it enough. Plants whose needs overlap share a light, while there is room under it. "Set up this spot" opens it so you can rename it or change anything before saving.</p>
       ${LT.plan.length > 1 ? html`<p class="row noprint"><button class="btn" type="button" data-act="spotplanall">Set up all ${LT.plan.length} suggested spots</button></p>` : ''}
-      ${ltOpt() !== 'off' && LT.plan.length > 1 ? ltAllBtns('suggested spot') : ''}
+      ${LT.plan.length > 1 ? ltAllBtns('suggested spot') : ''}
       ${LT.plan.length ? html`<div class="lt-grid">${LT.plan.map((s, i) => ltSpotCard(s, i, true))}</div>` : html`<p class="muted">Every plant that needs a light is in a spot.</p>`}
-      ${LT.unplaced.length && ltOpt() !== 'off' ? html`<details class="lt-spot lt-spot-fold lt-un-fold" data-id="U" ${ltFoldOpen('U') ? raw('open') : ''}><summary><h3>No light left for these</h3><span class="lt-sum"><span><strong>Plants:</strong> ${LT.unplaced.length}</span></span></summary>
-        <div class="lt-spot-in"><ul class="lt-plants lt-two">${LT.unplaced.map(u => ltPlantLi(u, html`<span>${u.why}</span>`))}</ul></div></details>`
-      : LT.unplaced.length ? html`<h3>No light left for these</h3><ul class="lt-plants lt-two">${LT.unplaced.map(u => ltPlantLi(u, html`<span>${u.why}</span>`))}</ul>` : ''}</section>
+      ${LT.unplaced.length ? html`<details class="lt-spot lt-spot-fold lt-un-fold" data-id="U" ${ltFoldOpen('U') ? raw('open') : ''}><summary><h3>No light left for these</h3><span class="lt-sum"><span><strong>Plants:</strong> ${LT.unplaced.length}</span></span></summary>
+        <div class="lt-spot-in"><ul class="lt-plants lt-two">${LT.unplaced.map(u => ltPlantLi(u, html`<span>${u.why}</span>`))}</ul></div></details>` : ''}</section>
     <section class="blk"><h2>How the numbers work</h2>
       <p>Makers measure light straight under the centre of the light at a few distances. The app draws a smooth line through those figures to get the light at any distance. Then it multiplies by the hours a day: 100 PAR for 12 hours is about 4.3 mol/m².</p>
       <p>The edges of a light's circle get less, and a window adds some. Plants that stretch or go pale want more; bleached or crisp leaves want less. Several of the same light side by side light a bigger area at about the same strength.</p></section>`,

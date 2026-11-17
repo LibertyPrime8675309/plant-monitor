@@ -1,5 +1,6 @@
-/* A shorter Grow lights (PREVIEW for Ethan's choice; js/lights.js ltOpt). Each light and each suggested spot folds as the spots do;
-   inside a light that is open, with "tight", each fact is one line (its name, then its value) and each of the maker's figures is one line. */
+/* A shorter Grow lights (1.58.0; Ethan chose option B, November 16, 2026; js/lights.js). Each light, suggested spot, room and the list
+   with no light left folds as the spots do; inside a light that is open each fact is one line (its name, then its value) and each of
+   the maker's figures is one line. */
 .lt-light-fold .lt-light{border:0;background:none;padding:.6rem 0 0}
 .lt-light-fold>summary .lt-sum,.lt-plan-fold>summary .lt-sum{font-weight:400}
 .lt-tight dl.dl{display:block}
