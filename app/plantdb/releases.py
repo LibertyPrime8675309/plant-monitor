@@ -136,15 +136,29 @@ def whatsnew_all():
             with open(p, encoding='utf-8') as f: text = f.read(); break
         except OSError: continue
     if not text: abort(404, 'The list of changes is not in this install.')
-    out = []
+    strong = lambda t: re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', html.escape(t))
+    out, depth = [], []                        # depth: the indent of each list that is open (1.58.0: nested lists, not "  - " in text)
+    def close_to(n):
+        while len(depth) > n: depth.pop(); out.append('</li></ul>')
     for line in text.splitlines():
+        m = re.match(r'^(\s*)[-*] (.*)$', line)
+        if m:
+            ind = len(m.group(1).replace('\t', '    '))
+            while depth and ind < depth[-1]: depth.pop(); out.append('</li></ul>')
+            if depth and ind == depth[-1]: out.append('</li><li>' + strong(m.group(2)))
+            else: depth.append(ind); out.append('<ul><li>' + strong(m.group(2)))
+            continue
+        if depth and line.startswith(' ') and line.strip(): out.append(' ' + strong(line.strip())); continue   # a wrapped item goes on
+        close_to(0)
         if line.startswith('# '): out.append(f'<h1>{html.escape(line[2:])}</h1>')
-        elif line.startswith('## '): out.append(f'<h2>{html.escape(line[3:])}</h2>')
-        elif re.match(r'^[-*] ', line): out.append('<li>' + re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', html.escape(line[2:])) + '</li>')
-        elif line.strip(): out.append('<p>' + re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', html.escape(line)) + '</p>')
-    body = re.sub(r'(<li>.*?</li>)(?=(?:<li>)|$)', r'\1', '\n'.join(out))
-    body = re.sub(r'((?:<li>.*?</li>\n?)+)', r'<ul>\1</ul>', body)
+        elif line.startswith('## '):          # dates in words (1.58.0): "1.57.0 (November 11, 2026)", not 2026-11-11
+            h = re.sub(r'(\d{4})-(\d\d)-(\d\d)', lambda m: time.strftime('%B ', time.strptime(m.group(0), '%Y-%m-%d')) + str(int(m.group(3))) + ', ' + m.group(1), line[3:])
+            out.append(f'<h2>{html.escape(h)}</h2>')
+        elif line.strip(): out.append('<p>' + strong(line) + '</p>')
+    close_to(0)
+    body = '\n'.join(out)
     page = ('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Plant record: what changed</title>'
-            '<style>body{font:120%/1.5 system-ui,sans-serif;max-width:52rem;margin:1.5rem auto;padding:0 1rem;color:#111;background:#fff}h2{margin-top:2rem}@media (prefers-color-scheme: dark){body{color:#eee;background:#111}}</style></head><body>'
-            + body + '</body></html>')
+            '<link rel="stylesheet" href="/style.css"><script src="/prefs.js"></script>'      # the reader's own Display and Reading settings (1.58.0)
+            '<style>.rl-page{max-width:52rem;margin:1.5rem auto;padding:0 1rem}.rl-page h2{margin-top:2rem}</style></head><body><main class="rl-page">'
+            + body + '</main></body></html>')
     return Response(page, mimetype='text/html')

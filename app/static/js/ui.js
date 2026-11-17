@@ -724,7 +724,7 @@ async function viewBackups() {
           <label class="f">At about<small>For daily, 3-day and weekly backups</small><select name="hour">${[...Array(24).keys()].map(h => html`<option value="${h}" ${+S.hour === h ? raw('selected') : ''}>${hourOpt(h)}</option>`)}</select></label>
           <label class="f">Keep this many automatic backups<small>Older automatic ones are deleted. Of the backups made before an update, the newest ${BK.keep_updates} are kept. Your own backups are never deleted automatically.</small><input type="number" name="keep" min="1" max="365" value="${S.keep}"></label></div>
         <label class="chk-row" style="border:0"><input type="checkbox" name="photos" ${S.photos ? raw('checked') : ''}><span>Include the photos in automatic backups (about ${mb(BK.photo_bytes)} in each)</span></label>
-        <p class="hint">The database is ${mb(BK.db_bytes)} (most of it is weather history${WB && WB.covered ? ', which these backups leave out: it has its own, below' : ''}); ${WB && WB.covered ? 'a backup zip without photos is a few MB' : 'a backup zip is usually a third to a half of that'}. Backups now use ${mb(BK.total_bytes)}; ${mb(BK.free_bytes)} free. The app must be running for automatic backups; a missed one runs when it next starts.</p>
+        <p class="hint">The database is ${mb(BK.db_bytes)}, and most of it is weather history.${WB && WB.covered ? ' These backups leave the weather out: it has its own, below. A backup zip without photos is a few MB.' : ' A backup zip is usually a third to a half of that.'} Backups now use ${mb(BK.total_bytes)}, with ${mb(BK.free_bytes)} free. The app must be running for automatic backups. A missed one runs when it next starts.</p>
         <button class="btn" type="submit">Save automatic backup settings</button></form></section>
     ${WB ? wbHtml(WB, hourOpt) : ''}
     ${CP ? copiesHtml(CP) : ''}
@@ -860,7 +860,7 @@ async function audLoad(focusSel) {
   if (my !== AUD.seq) return;
   AUD.total = r.total;
   const end = Math.min(r.offset + r.entries.length, r.total), words = audWords();
-  document.getElementById('aud-sum').textContent = r.total ? `Showing ${(r.offset + 1).toLocaleString()} to ${end.toLocaleString()} of ${r.total.toLocaleString()} ${r.total === 1 ? 'change' : 'changes'}${words ? ' ' + words : ''}.` : `No changes${words ? ' ' + words : ''}.`;
+  document.getElementById('aud-sum').textContent = r.total ? `Showing ${(r.offset + 1).toLocaleString()} to ${end.toLocaleString()} of ${r.total.toLocaleString()} ${r.total === 1 ? 'change' : 'changes'}${words ? ' ' + words : ''}.${r.close ? fzNote(AUD.f.q, r.close) : ''}` : `No changes${words ? ' ' + words : ''}.`;
   box.innerHTML = rend(audRows(r.entries));
   const pages = Math.max(1, Math.ceil(r.total / AUD.limit)), page = Math.floor(r.offset / AUD.limit) + 1;
   const pager = document.getElementById('aud-pager');

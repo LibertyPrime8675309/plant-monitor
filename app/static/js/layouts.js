@@ -1299,8 +1299,9 @@ document.addEventListener('prefs', () => { if (lyOn()) setTimeout(() => { if (ly
 document.addEventListener('input', e => {               // the search box in the Add window narrows the list of plants as you type
   if (e.target.id !== 'ly-add-q') return;
   const q = e.target.value.trim().toLowerCase(); let n = 0;
-  dlg.querySelectorAll('.ly-pick').forEach(li => { const on = !q || li.dataset.q.includes(q) || li.querySelector('input').checked; li.hidden = !on; if (on) n++; });
-  const m = document.getElementById('ly-add-n'); if (m) m.textContent = q ? `${n} ${n === 1 ? 'plant matches' : 'plants match'}.` : '';
+  const lis = [...dlg.querySelectorAll('.ly-pick')], pick = fzPick(lis.map(li => li.dataset.q), q);   // close spellings when nothing is spelt that way
+  lis.forEach((li, i) => { const on = pick.on[i] || li.querySelector('input').checked; li.hidden = !on; if (on) n++; });
+  const m = document.getElementById('ly-add-n'); if (m) m.textContent = q ? `${n} ${n === 1 ? 'plant matches' : 'plants match'}.${fzNote(q, pick.close)}` : '';
 });
 document.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.id === 'ly-add-q') e.preventDefault(); });      // Enter in the search box must not add
 

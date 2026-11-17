@@ -106,8 +106,13 @@ async function issSend(form) {            // Enter in the name box sends too: th
 // ---------- the Issue tracker page (the owner's) ----------
 const ISS = { show: 'active', q: '', data: null };
 const ISS_SHOW = [['active', 'Open and being looked at'], ['open', 'Open'], ['looking', 'Being looked at'], ['fixed', 'Fixed'], ['closed', 'Closed'], ['all', 'All']];
-const issMatch = x => (ISS.show === 'all' || (ISS.show === 'active' ? x.status === 'open' || x.status === 'looking' : x.status === ISS.show))
-  && (!ISS.q || [x.notes, x.name, x.login, x.device, x.page_title, x.page, x.owner_notes, 'number ' + x.id].join(' ').toLowerCase().includes(ISS.q.toLowerCase()));
+const issShow = x => ISS.show === 'all' || (ISS.show === 'active' ? x.status === 'open' || x.status === 'looking' : x.status === ISS.show);
+const issHay = x => [x.notes, x.name, x.login, x.device, x.page_title, x.page, x.owner_notes, 'number ' + x.id].join(' ');
+let ISS_CLOSE = null;                        // the nearest word when the search shows close spellings
+function issList() {                         // the reports for Show and the search box: exact letters first, else close spellings
+  const shown = ISS.data.issues.filter(issShow), p = fzPick(shown.map(issHay), ISS.q);
+  ISS_CLOSE = p.close; return shown.filter((x, i) => p.on[i]);
+}
 const issBehind = x => x.page_version && x.server_version && x.page_version !== x.server_version;
 function issText(x) {                         // one report in plain words, for pasting into a chat with Claude
   const L = [`Report ${x.id}: ${x.status_word}${x.fixed_in ? ' in ' + x.fixed_in : ''}`,
@@ -147,8 +152,8 @@ function issCard(x) {
       <button class="btn small danger" type="button" data-act="issdel" data-id="${x.id}">Remove<span class="sr"> report ${x.id}</span></button></div></article>`;
 }
 function issListHtml() {
-  const list = ISS.data.issues.filter(issMatch);
-  return html`<p class="iss-count" role="status" aria-live="polite">${list.length === ISS.data.issues.length ? `${list.length} report${list.length === 1 ? '' : 's'}` : `${list.length} of ${ISS.data.issues.length} reports`}, newest first.</p>
+  const list = issList();
+  return html`<p class="iss-count" role="status" aria-live="polite">${list.length === ISS.data.issues.length ? `${list.length} report${list.length === 1 ? '' : 's'}` : `${list.length} of ${ISS.data.issues.length} reports`}, newest first.${fzNote(ISS.q, ISS_CLOSE)}</p>
     ${list.length ? html`<div class="iss-grid">${list.map(issCard)}</div>`
       : html`<p class="notice">${ISS.data.issues.length ? 'No report matches. Choose All under Show, or clear the search box.' : 'No reports yet. They arrive here when someone presses Report a problem, at the foot of Navigation on any page.'}</p>`}`;
 }
@@ -198,7 +203,7 @@ Object.assign(acts, {
   issreport() { const d = document.querySelector('dialog[open]'); if (d) d.close(); issReportDialog(); },
   isscancel() { if (dlg.open) dlg.close('cancel'); },
   async isscopy(el) {
-    const list = el.dataset.id === 'all' ? ISS.data.issues.filter(issMatch) : ISS.data.issues.filter(x => x.id === +el.dataset.id);
+    const list = el.dataset.id === 'all' ? issList() : ISS.data.issues.filter(x => x.id === +el.dataset.id);
     if (!list.length) { issSay('There is nothing shown to copy.'); return; }
     const text = `Problem reports from Plant record ${ISS.data.version} (${list.length}):\n\n` + list.map(issText).join('\n\n----------\n\n');
     try { await navigator.clipboard.writeText(text); issSay(`Copied ${list.length === 1 ? 'report ' + list[0].id : list.length + ' reports'}. Paste ${list.length === 1 ? 'it' : 'them'} into the chat with Claude. Pictures are not copied: attach them there yourself.`); toast('Copied'); }

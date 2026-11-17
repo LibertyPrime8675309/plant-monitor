@@ -352,7 +352,7 @@ PREP_METHODS = [
         'Spray again every 5 to 7 days, 2 or 3 times in all, because it does not kill eggs.',
         'Press "Done today" after each round, and the Today page reminds you of the next one.']},
     {'key': 'oil', 'title': 'Spray horticultural or neem oil', 'repeat': True, 'steps': [
-        'Use it outdoors only (neem oil smells), in the shade, between 50 and 90°F, and never on a plant that is dry or wilting.',
+        'Use it outdoors only, since neem oil smells. Use it in the shade, between 50 and 90°F, and only on a plant that is watered, not wilting.',
         'Test it on one leaf first and wait 2 days.',
         'Mix it as its label says and wet every surface, especially the stems and the undersides of the leaves, where scale and eggs sit.',
         'Spray again in 7 to 10 days if you still find live scale.']},

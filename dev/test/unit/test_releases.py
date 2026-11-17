@@ -109,4 +109,4 @@ def test_every_versions_changes_is_a_plain_page():
         r = c.get('/api/whatsnew/all')
         assert r.status_code == 200 and r.mimetype == 'text/html'
         t = r.get_data(as_text=True)
-        assert f'<h2>{S.APP_VERSION}' in t and '<ul>' in t and '<script' not in t and '<strong>' in t
+        assert f'<h2>{S.APP_VERSION}' in t and '<ul>' in t and '<script>' not in t and t.count('<script') == 1 and '<script src="/prefs.js">' in t and '<strong>' in t
