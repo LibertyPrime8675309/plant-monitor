@@ -15,11 +15,22 @@
   <div class="sh-tools noprint" role="group" aria-label="Page settings">
     <button class="btn ghost" type="button" id="sh-smaller">Smaller text</button>
     <button class="btn ghost" type="button" id="sh-larger">Larger text</button>
-    <button class="btn ghost" type="button" id="sh-theme" aria-pressed="false">Dark</button>
-    <button class="btn ghost" type="button" id="sh-contrast" aria-pressed="false">High contrast</button>
+    <button class="btn ghost" type="button" id="sh-easy" aria-pressed="false">Easier reading</button>
     <button class="btn ghost" type="button" id="sh-print">Print</button>
     <span class="hint" id="sh-saved" aria-live="polite"></span>
   </div>
+  <details class="sh-disp noprint" id="sh-disp"><summary>Colours and reading</summary>
+    <div class="sh-disp-grid">
+      <label class="f">Colours<select id="sh-o-theme"><option value="auto">Match my device</option><option value="light">Light</option><option value="cream">Cream paper</option><option value="dark">Dark</option><option value="softdark">Soft dark</option></select></label>
+      <label class="f">Contrast<select id="sh-o-contrast"><option value="auto">Match my device</option><option value="normal">Usual</option><option value="high">High contrast</option></select></label>
+      <label class="f">Colour vision<select id="sh-o-cvd"><option value="usual">Usual colours</option><option value="rg">Hard to tell red from green</option><option value="by">Hard to tell blue from yellow</option></select></label>
+      <label class="f">Letter shapes<select id="sh-o-font"><option value="atkinson">Atkinson Hyperlegible</option><option value="lexend">Lexend</option><option value="dyslexic">OpenDyslexic</option></select></label>
+      <label class="f">Spacing<select id="sh-o-space"><option value="normal">Usual</option><option value="roomy">Roomy</option><option value="widest">Widest</option></select></label>
+      <label class="f">Page tint (light pages)<select id="sh-o-tint"><option value="none">No tint</option><option value="blue">Blue</option><option value="green">Green</option><option value="peach">Peach</option></select></label>
+      <label class="chk"><input type="checkbox" id="sh-o-plain"> One plain font for everything</label>
+    </div>
+    <p class="hint">These stay in this browser only.</p>
+  </details>
   <div id="ps-sheet" class="ps-sheet sh-sheet"><p>Loading the sheet…</p></div>
   <p class="hint noprint sh-foot" id="sh-foot" hidden>Tick a box when a plant is done. Each tick is saved at once and shows up for the owner too. This page stops working the day after the last day on the sheet.</p>
 </main>

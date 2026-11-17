@@ -39,3 +39,8 @@ html[data-touch="1"] .ps-tick{width:2.4rem;height:2.4rem}
 .ps-placelist{list-style:none;padding:0;margin:.3rem 0;display:flex;flex-wrap:wrap;gap:.8rem}
 .ps-placelist li{display:flex;flex-direction:column;gap:.25rem;max-width:11rem;break-inside:avoid}
 .ps-placelist img{width:11rem;max-width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+/* 1.58.0: the sheet by link has the app's colours and reading choices, folded under the page buttons */
+.sh-disp{margin:0 0 1rem;border:2px solid var(--line);padding:.4rem .8rem}
+.sh-disp summary{font-weight:700;cursor:pointer;min-height:2.6rem;display:flex;align-items:center}
+.sh-disp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,15rem),1fr));gap:.6rem 1rem;margin:.5rem 0}
+.sh-disp-grid .chk{align-self:end}
