@@ -292,6 +292,9 @@ Some pages had lists so long that they took a hundred screens or more at large t
 - 2026 in review shows twelve plants at a time.
 - The Audit log shows 25 changes a page, with **Previous page** and **Next page**.
 - **Most likely to be eaten** on Pests that eat plants still shows every plant.
+- Groups shows its suggested groups ten at a time. So do Identify's plant photos, each group of Getting plants ready to come inside, and each kind of amendment on Potting mixes.
+- Library shows the plants found twelve at a time. A new search starts again at the first twelve.
+- Weather and sensors shows its Places ten at a time. The three commands under **Connect your sensor** fold into one line, **Try it from this computer**.
 
 On a phone, or an iPad at large text, lists like Repotting put a plant's words under its photo. Its buttons sit side by side.
 
