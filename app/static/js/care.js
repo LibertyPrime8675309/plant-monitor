@@ -109,7 +109,7 @@ function careUndoToast(msg, ids, code) {
     <span class="undo-acts"><button class="btn small" type="button" data-undo="undo" aria-describedby="undo-msg">Undo</button>
     <button class="btn small ghost" type="button" data-undo="close" aria-label="Close this message">Close</button></span>
     <span class="undo-left" aria-hidden="true"></span>`);
-  document.getElementById('toasts').appendChild(el);
+  toastHost().appendChild(el);
   UNDO = { el, ids: fn ? [] : ids.slice(), fn, code, left: UNDO_SECS, paused: 0, timer: 0 };
   const left = el.querySelector('.undo-left'), keys = window.PlantPrefs.get().keys === '1' && matchMedia('(any-pointer: fine)').matches;     // no key hint on a phone
   const paint = () => { left.textContent = (n > 1 ? `Undo removes all ${n} entries. ` : '') + `Closes in ${UNDO.left} s${keys ? ' (U undoes it)' : ''}.`; };
