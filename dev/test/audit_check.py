@@ -71,10 +71,10 @@ with sync_playwright() as pw:
     pg.goto(f'{BASE}/#/audit'); pg.wait_for_timeout(2500)
     check(pg.locator('h1').inner_text() == 'Audit log' and pg.locator('[data-nav=history]').inner_text() == 'Audit log', '#/audit opens the Audit log page; the menu says Audit log')
     tot = call('GET', '/api/audit/facets')['total']
-    check(pg.locator('#aud-sum').inner_text().startswith(f'Showing 1 to 100 of {tot:,}'), 'summary: Showing 1 to 100 of all')
-    check(pg.locator('.aud-tbl tbody tr').count() == 100, '100 rows on a page')
+    check(pg.locator('#aud-sum').inner_text().startswith(f'Showing 1 to 25 of {tot:,}'), 'summary: Showing 1 to 25 of all (1.58.0: 25 a page)')
+    check(pg.locator('.aud-tbl tbody tr').count() == 25, '25 rows on a page')
     pg.locator('[data-act=audpage][data-d="1"]').click(); pg.wait_for_timeout(900)
-    check(pg.locator('#aud-sum').inner_text().startswith('Showing 101 to 200'), 'Next page')
+    check(pg.locator('#aud-sum').inner_text().startswith('Showing 26 to 50'), 'Next page')
     check(not pg.locator('#aud-fbox').evaluate('d => d.open'), '1.39.1: the search and filters box starts folded, so the log comes first')
     pg.click('#aud-fbox summary'); pg.wait_for_timeout(300)
     pg.fill('input[data-f=audq]', 'hyacinth'); pg.wait_for_timeout(1200)
@@ -90,7 +90,7 @@ with sync_playwright() as pw:
     pg.reload(); pg.wait_for_timeout(2500)
     check(pg.locator('input[data-f=audq]').input_value() == 'hyacinth' and pg.locator('select[name=plant]').input_value() == 'P-050', 'filters are remembered')
     pg.locator('[data-act=audclear]').first.click(); pg.wait_for_timeout(1500)
-    check(pg.locator('#aud-sum').inner_text().startswith('Showing 1 to 100 of'), 'Clear filters')
+    check(pg.locator('#aud-sum').inner_text().startswith('Showing 1 to 25 of'), 'Clear filters')
     summ = lambda: pg.locator('#aud-sum').inner_text()
     col = lambda label: pg.locator(f'.aud-tbl td[data-label={label}]').all_inner_texts()
     n_health = S(field='health_rating')['total']

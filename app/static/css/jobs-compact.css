@@ -1,0 +1,13 @@
+/* 1.58.0: a shorter list of jobs (Repotting, Pests that eat plants, Missing details and the other lists built with jobRow) when
+   the list is narrow for its text: a phone, or an iPad at large text. (A container query in em: the bigger the text, the wider
+   the list it applies to.) A plant's words run beside its photo and then under it, instead of in a narrow column, and its
+   buttons sit side by side, each as wide as its words (never under a fingertip, 44 px). */
+.jobs{container-type:inline-size}
+@container (max-width:30em){
+  .job{display:block}
+  .job::after{content:"";display:table;clear:both}
+  .job>img,.job>.job-nophoto{float:left;width:52px;height:52px;margin:.15rem .7rem .3rem 0}
+  .job .muted{white-space:normal}
+  .job-acts{clear:both;flex-direction:row;flex-wrap:wrap;align-items:flex-start;min-width:0;padding-top:.5rem}
+  .job-acts .btn{flex:0 1 auto;max-width:100%;min-width:44px;min-height:44px;white-space:normal}
+}
