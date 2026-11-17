@@ -156,7 +156,7 @@ function drawIdPhotos() {
   const day = t => t ? new Date(t).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '';
   const multi = HOMES().length > 1;
   box.innerHTML = rend(r.length ? html`<div class="tbl-wrap"><table class="tbl idph"><caption class="sr">Your plants and their photos</caption><thead><tr>
-    <th scope="col">Plant</th><th scope="col">Photos</th><th scope="col">${multi ? 'Home and spot' : 'Where'}</th><th scope="col">Newest photo</th></tr></thead><tbody>
+    <th scope="col">Plant</th><th scope="col">Photos</th><th scope="col">${multi ? 'Home and spot' : 'Where'}</th><th scope="col">Newest photo</th></tr></thead><tbody data-more="idph">
     ${show.map(p => { const ph = p.photos || [];
       return html`<tr><th scope="row"><a href="#/plant/${enc(p.code)}"><strong>${p.code}</strong> ${p.common_name}</a><div class="latin muted">${p.scientific_name || ''}</div><div>${ph.length} photo${ph.length === 1 ? '' : 's'}</div></th>
       <td>${ph.length ? html`<div class="idph-strip">${ph.slice(0, 8).map((f, i) => html`<a href="#/plant/${enc(p.code)}"><img src="${thumbUrl(f)}" alt="${p.common_name}, photo ${i + 1} of ${ph.length}${i === 0 ? ' (main photo)' : ''}" loading="lazy"></a>`)}
@@ -164,6 +164,7 @@ function drawIdPhotos() {
       <td>${multi ? html`<div>${plantHome(p).name}</div>` : ''}<div class="${multi ? 'muted' : ''}">${p.location || p.site || ''}</div></td>
       <td>${day(p.photo_at)}</td></tr>`; })}</tbody></table></div>`
     : html`<p class="notice">No plants match these filters. <button class="btn ghost small" type="button" data-act="clearfilters">Clear filters</button></p>`);
+  moreLists(box);                                  // 1.58.0: ten plants at a time
   const more = document.getElementById('idph-more'); if (more) { more.hidden = r.length <= IDPH.shown; more.textContent = `Show ${Math.min(IDPH_PAGE, r.length - IDPH.shown)} more`; }
   if (typeof fitTables === 'function') fitTables();
 }
