@@ -1,6 +1,5 @@
-/* 1.58.0: a shorter Grow lights page. On a narrow screen (a phone, or an iPad held upright) a light's photo is smaller, so its name
-   and facts come sooner. Each light's figures, notes and the maker's chart fold into one line (details.lt-more), as does
+/* 1.58.0: a shorter Grow lights page.
+   Each light's figures, notes and the maker's chart fold into one line (details.lt-more), as does
    No light left for these; each suggested spot folds like your own spots (lt-plan-fold uses the lt-spot-fold styles). */
-html[data-narrow="1"] .lt-photo{max-width:150px}
 details.lt-more{margin:.6rem 0}
 details.lt-more>summary{cursor:pointer;min-height:44px;padding:.6rem 0;font-weight:700}
