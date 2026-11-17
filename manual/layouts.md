@@ -19,6 +19,7 @@ Part of the Plant record manual. The README in the folder above has how to start
     - a plant: tick any of yours, or name one you have not bought yet
     - a grow light from your list
     - one of your shelves, or a board or table you describe
+    - a **window**: in which wall, which way it faces, and its width, height and how far off the floor
     - something else, such as a humidifier or a fan
     - an **area to keep clear**, such as a walkway or a door
 
@@ -51,7 +52,53 @@ Part of the Plant record manual. The README in the folder above has how to start
 - **Two locks.** Under the chosen thing's boxes, **Lock its place** keeps it where it is, and **Lock its size** keeps its size. They are apart, so a thing with its size locked can still be dragged around without being made larger or smaller by accident: its size boxes are off and it has no corner handle. **Turn a quarter** needs both unlocked. A shelf's boards are locked both ways.
 - **Also:** **Make a copy** and **Take it off the layout** are under the chosen thing's boxes; Delete on the drawing takes the chosen thing off. **Smaller** and **Larger** change the size of the drawing, and each layout remembers its own.
 - A plant's own page says which layouts it is drawn on.
-- People who can only view can look and choose a thing to read its place, its size and its light. Changing a layout needs a connection to the plant server.
+- People who can only view can look and choose a thing to read its place, its size and its light.
+
+### The 3D view (1.58.0)
+- **3D view**, beside Top view and Front view, draws the space from a corner above. Each thing is a box, and a pot is round. A shelf with levels shows its boards and four posts. The floor and the two walls behind are drawn too.
+- **Turn left** and **Turn right** go round it. **Look from higher** and **Look from lower** tilt it. **Start view** goes back to the front left.
+- You can also turn it with the mouse. Hold the right button anywhere on the drawing and move the mouse. Left and right go round it, and up and down tilt it.
+- Holding the left button on the floor or a wall does the same. On a touch screen, drag a finger left or right on the floor to go round it.
+- Press a thing to choose it. Its name shows above it. The arrow keys move it along the floor, the way nearest to the arrow as you look.
+- To drag a thing or change its size, use the top or front view.
+
+### The light map (1.58.0)
+- Tick **Light map** to see the light over the whole top view. Deeper yellow is more light, and numbers on it say how much, in mol/m² a day.
+- It is the light a plant would get with its top at that height: the chosen plant's top, or 1 ft off the floor.
+- **Light map at**, under **Grid and settings**, chooses another height.
+- It counts the grow lights and the windows drawn, and what is in their way.
+
+### Windows and shade (1.58.0)
+- **Add something** has **Window**. It goes in the middle of the wall you choose, at the height you give.
+- A window gives daylight at the glass. It starts from the way it faces: about 12 mol/m² a day facing south, 9 west, 8 east and 4 north.
+- Type your own reading under **Daylight at the glass** if you have a light meter. **Which way it faces** changes the starting number.
+- The daylight is half as much 2 ft from the glass, and a fifth at 4 ft. It is less to the side of the window, and none through a shelf or a wall.
+- A plant in the way of a light or a window shades what is behind it. The bottom of its box is its pot, and the rest is its leaves.
+- To start with, a pot in the way blocks all the light, and leaves block half. Change both under **Grid and settings**, **Size and name**, **Shade from plants in the way**. Each layout keeps its own.
+- A plant's pot height is under **Its pot's height**, when the plant is chosen. It starts as its pot's height in Pots and trays. With no height there, it is a guess from its width. Type the real height, or empty the box to go back.
+- **Light here** names the plants that shade it, and says when it is a pot.
+- A plant's light, its mark and Grow lights all count the daylight from the windows drawn.
+
+### Choosing several things (1.58.0)
+- Choose one thing. Then hold **Shift** (or Ctrl, or Cmd on a Mac) and press others on the drawing. With the keyboard, use **Shift** with **Enter**.
+- In **On this layout**, tick **With the chosen thing** beside any thing to add it.
+- The group has a dashed ring. Drag one of them, or use the arrow keys, and they all move. What stands on them goes too.
+- **Chosen thing** lists them. **Line them up** puts their left edges, right edges, backs, fronts, middles or bottoms where the first one's are.
+- **Spread them out evenly** puts the same space between each, left to right or back to front. It needs three or more.
+- One **Undo** takes back the whole change. **Escape**, or **Choose only**, goes back to one thing.
+
+### A shelf's measurements from its layout (1.58.0)
+- On a shelf unit's own layout, move or resize its boards. **A shelf's measurements**, under the lists, then says how they differ from its measurements.
+- **Save these to its measurements** saves its levels, the clear height of each level, its width and its depth. The rest of its measurements stay as they are.
+- On a room's layout, make one of your shelves wider or deeper. The page offers to save its new width and depth the same way.
+- **Undo** puts back what its measurements said.
+
+### Without a connection (1.58.0)
+- Everything on a layout works without a connection. You can move things, change their size and settings, and put things on or take them off.
+- The change is kept on this device, and the layout says so. It is sent by itself when the plant server can be reached.
+- A thing you put on is drawn at once, with its light worked out. It gets its number in the record when it is sent, and the changes you made to it go after it.
+- **Move it here in the record** still needs a connection.
+- A layout opens without a connection once this device has opened it before. **Keep a copy on this device**, on the Offline page, keeps every layout.
 
 ## Grow lights reads your layouts
 

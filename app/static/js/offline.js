@@ -15,7 +15,13 @@ const OFF_OK = [                              // the changes that can wait for a
   ['PUT', /^\/api\/plants\/[^/]+$/], ['POST', /^\/api\/plants\/[^/]+\/(site|status|photos)$/],
   ['POST', /^\/api\/fungi$/], ['PUT', /^\/api\/fungi\/[^/]+$/], ['POST', /^\/api\/fungi\/[^/]+\/(status|photos)$/], ['PATCH', /^\/api\/fungi\/photos\/\d+$/], ['DELETE', /^\/api\/fungi\/photos\/\d+$/],
   ['PUT', /^\/api\/library\/notes$/], ['PUT', /^\/api\/wishlist$/], ['DELETE', /^\/api\/wishlist$/],
-  ['POST', /^\/api\/report$/]];               // 1.58.0: a problem report (issues.js): often written exactly when the connection is the problem
+  ['POST', /^\/api\/report$/],               // 1.58.0: a problem report (issues.js): often written exactly when the connection is the problem
+  // 1.58.0 (Ethan, November 17, 2026: "Changing a layout with no connection"): a thing moved, made larger or smaller, renamed, locked or
+  // set up on a layout, and a layout's own size and grid. Then ("Would it be possible to have things be put on or off compatible with
+  // offline mode?"): a thing put on or taken off too. A thing put on with no connection has a number below 0 on the page (_temps) until
+  // it is sent; offSync swaps it for the server's number (added) in every change after it.
+  ['PUT', /^\/api\/layouts\/items\/-?\d+$/], ['PUT', /^\/api\/layouts\/\d+$/], ['POST', /^\/api\/layouts\/\d+\/items$/], ['DELETE', /^\/api\/layouts\/items\/-?\d+$/]];
+const offLyTemp = url => /^\/api\/layouts\/items\/-\d/.test(url.split('?')[0]);      // a change to a thing put on with no connection, not sent yet
 const offQueueable = (m, url) => OFF_OK.some(([mm, re]) => mm === m && re.test(url.split('?')[0]));
 const offId = () => Date.now().toString(36) + '-' + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join('');
 let OFFDB = null;
@@ -66,6 +72,10 @@ function offWords(op) {                       // what a waiting change is, in wo
   if (u === '/api/library/notes') return `Notes and tags for ${b.name}`;
   if (u === '/api/report') { const t = ((op.form || []).find(p => p.k === 'notes') || {}).v || ''; return `A problem report${t ? ': ' + t.slice(0, 60) + (t.length > 60 ? '…' : '') : ''}`; }
   if (u === '/api/wishlist') return op.method === 'DELETE' ? `${b.name} taken off the wishlist` : `${b.name} on the wishlist`;
+  if (/^\/api\/layouts\/\d+\/items$/.test(u)) { const it = b.items || []; return `A layout: ${it.length === 1 ? (it[0].name || 'a thing') : it.length + ' things'} put on`; }
+  if (/^\/api\/layouts\/items\//.test(u) && op.method === 'DELETE') return `A layout: ${b._what || 'a thing'} taken off`;
+  if (/^\/api\/layouts\/items\//.test(u)) return `A layout: ${b._what || b.name ? (b._what || b.name) + ' ' : 'a thing '}${['x', 'y', 'z'].some(k => k in b) ? 'moved' : ['w', 'd', 'h'].some(k => k in b) ? 'made larger or smaller' : 'changed'}`;
+  if (/^\/api\/layouts\/\d+$/.test(u)) return `A layout: ${b.name || 'its size or grid'} changed`;
   return op.method + ' ' + u;
 }
 async function offSavedJson(url) {
@@ -193,11 +203,21 @@ async function offQueue(method, url, body, form) {
     const L = N.notes || [], k = L.findIndex(x => x.name === op.body.name), row = { name: op.body.name, notes: op.body.notes || '', tags: op.body.tags || '', updated_by: op.who, updated_at: op.made, pending: true };
     if (k >= 0) Object.assign(L[k], row); else L.push(row);
   });
+  const lyItem = path.match(/^\/api\/layouts\/items\/(-?\d+)$/), lyOne = path.match(/^\/api\/layouts\/(\d+)$/);
+  if (lyItem) for (const u of await offCachedUrls(/^\/api\/layouts\/\d+(\?|$)/)) await offPatch(u, L => {      // the saved layout shows the change when opened again offline
+    const k = (L.items || []).findIndex(x => x.id === +lyItem[1]); if (k < 0) return;
+    if (method === 'DELETE') L.items.splice(k, 1); else Object.assign(L.items[k], op.body);
+  });
+  if (/^\/api\/layouts\/\d+\/items$/.test(path)) shim = { offline: true, temps: (op.body && op.body._temps) || [] };      // the page draws them (lyPost) and keeps them in the saved layout (offLayoutKeep)
+  if (lyOne) for (const u of await offCachedUrls(new RegExp(`^/api/layouts/${lyOne[1]}(\\?|$)`))) await offPatch(u, L => { Object.assign(L, op.body); });
   if (/\/status$/.test(path) && /^\/api\/plants\//.test(path)) await offPatch(path.replace(/\/status$/, ''), j => { j.status = op.body.archived ? 'archived' : 'active'; });
   await idbPut('outbox', op);
   OFF.queuedAt = Date.now();
   offPaint();
   return shim;
+}
+async function offLayoutKeep(lid, fn) {       // 1.58.0: things put on a layout with no connection, in its saved copy, so it shows them when opened again
+  for (const u of await offCachedUrls(new RegExp(`^/api/layouts/${lid}(\\?|$)`))) await offPatch(u, fn);
 }
 async function offCachedUrls(re) {             // the saved answers whose path matches (so a change can be shown on every page that uses them)
   try { const c = await caches.open('plantdb-api'); return (await c.keys()).map(r => new URL(r.url)).filter(u => re.test(u.pathname + u.search)).map(u => u.pathname + u.search); } catch (e) { return []; }
@@ -287,12 +307,13 @@ async function offSync() {
   const ops = (await offOps()).filter(o => !o.failed);
   if (!ops.length && !(await idbAll('idq')).some(x => !x.result)) { OFF.sending = false; offPaint(); return; }
   OFF.sending = true; offPaint();
-  const map = await offKv('idmap', {});
+  const map = await offKv('idmap', {}), lymap = await offKv('lymap', {});
   let sent = 0, problems = 0;
   try {
     for (const op of ops) {
-      const url = op.url.replace(/NEW-[a-z0-9-]+/gi, m => map[m] || m);
+      const url = op.url.replace(/NEW-[a-z0-9-]+/gi, m => map[m] || m).replace(/^(\/api\/layouts\/items\/)(-\d+)$/, (m, a, t) => (lymap[t] ? a + lymap[t] : m));
       if (/NEW-/i.test(url)) { op.failed = true; op.error = 'The plant or find it belongs to could not be sent.'; await idbPut('outbox', op); problems++; continue; }
+      if (offLyTemp(url)) { op.failed = true; op.error = 'The thing on the layout it belongs to could not be sent.'; await idbPut('outbox', op); problems++; continue; }
       const h = { 'X-Editor': op.who, 'X-Offline-Op': op.id, 'X-Offline-Made': op.made, 'X-Offline-Device': op.device };
       if (op.place) h['X-Place'] = op.place;
       let body;
@@ -303,6 +324,7 @@ async function offSync() {
       let d = null; try { d = await r.json(); } catch (e) { /* no answer */ }
       if (r.ok) {
         if (op.temp && d && d.code) { map[op.temp] = d.code; await idbPut('kv', map, 'idmap'); await idbDel('finds', op.temp); }
+        if (op.body && Array.isArray(op.body._temps) && d && Array.isArray(d.added)) { op.body._temps.forEach((t, i) => { if (d.added[i]) lymap[t] = d.added[i]; }); await idbPut('kv', lymap, 'lymap'); }
         await idbDel('outbox', op.id); sent++;
       } else if (r.status >= 500) break;
       else { op.failed = true; op.error = (d && d.error) || `Refused (${r.status})`; await idbPut('outbox', op); problems++; }

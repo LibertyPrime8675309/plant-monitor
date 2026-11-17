@@ -27,7 +27,17 @@ so the page can say how much light each plant gets where it is drawn (js/layouts
 from .core import *   # noqa: F401,F403
 ORDER = 66            # calls into where.py and lights.py (50) and fit.py (60): rooms and shelves, a light's reach, a shelf's measurements
 
-LAYOUT_KINDS = {'plant': 'Plant', 'light': 'Grow light', 'shelf': 'Shelf or furniture', 'other': 'Something else', 'zone': 'Area to keep clear'}
+LAYOUT_KINDS = {'plant': 'Plant', 'light': 'Grow light', 'shelf': 'Shelf or furniture', 'window': 'Window', 'other': 'Something else', 'zone': 'Area to keep clear'}
+# A window (1.58.0, Ethan: "Daylight from windows and the shade one plant casts on another"): which way it faces, and the daylight it
+# gives at the glass on a usual day (mol/m² a day), to start with (a light meter's reading is better: type it on the layout).
+LAYOUT_FACING = {'N': 'North', 'NE': 'Northeast', 'E': 'East', 'SE': 'Southeast', 'S': 'South', 'SW': 'Southwest', 'W': 'West', 'NW': 'Northwest'}
+LAYOUT_WINDOW_DLI = {'N': 4, 'NE': 6, 'E': 8, 'SE': 10, 'S': 12, 'SW': 10, 'W': 9, 'NW': 6}
+LAYOUT_WIN_FALL_IN = 24          # a window's daylight is half as much this far from the glass, a fifth at twice as far
+# Shade (Ethan, November 17, 2026: "Pots will block 100% of light while plants will block ~50%. Having the ability to change these values
+# myself would be nice."): how much of the light a pot in the way blocks, and how much a plant's leaves block, in percent. Each layout
+# can say its own (pot_block, leaf_block). A plant's pot is the bottom part of its box, pot_h tall.
+LAYOUT_POT_BLOCK, LAYOUT_LEAF_BLOCK = 100, 50
+LAYOUT_POT_TALL = 0.85           # a pot with no height in Pots and trays is taken to be this much as tall as it is wide
 LAYOUT_SHAPES = ('box', 'round')
 LAYOUT_GRIDS = (0.5, 1, 2, 3, 6, 12)                 # the squares offered, in inches (the page offers round centimetres to a person who reads them)
 LAYOUT_BOARD_IN = 0.75                               # a shelf board's thickness, when nothing says
@@ -39,6 +49,7 @@ CREATE TABLE IF NOT EXISTS layouts(
   id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, home_id INTEGER, area_id INTEGER, spot_id INTEGER,
   width_in REAL NOT NULL, depth_in REAL NOT NULL, height_in REAL NOT NULL,
   grid_in REAL NOT NULL DEFAULT 1, snap INTEGER NOT NULL DEFAULT 1, clear_in REAL NOT NULL DEFAULT 1, notes TEXT NOT NULL DEFAULT '',
+  pot_block INTEGER, leaf_block INTEGER,
   created_by TEXT, created_at TEXT NOT NULL, updated_by TEXT, updated_at TEXT);
 CREATE TABLE IF NOT EXISTS layout_items(
   id INTEGER PRIMARY KEY AUTOINCREMENT, layout_id INTEGER NOT NULL REFERENCES layouts(id) ON DELETE CASCADE,
@@ -46,7 +57,7 @@ CREATE TABLE IF NOT EXISTS layout_items(
   plant_code TEXT, light_id INTEGER, spot_id INTEGER,
   x REAL NOT NULL DEFAULT 0, y REAL NOT NULL DEFAULT 0, z REAL NOT NULL DEFAULT 0, w REAL NOT NULL, d REAL NOT NULL, h REAL NOT NULL,
   locked INTEGER NOT NULL DEFAULT 0, notes TEXT NOT NULL DEFAULT '', sort INTEGER NOT NULL DEFAULT 0,
-  hours REAL, dim_pct INTEGER, size_locked INTEGER NOT NULL DEFAULT 0,
+  hours REAL, dim_pct INTEGER, size_locked INTEGER NOT NULL DEFAULT 0, facing TEXT, day_dli REAL, pot_h REAL,
   created_by TEXT, created_at TEXT NOT NULL, updated_by TEXT, updated_at TEXT);
 CREATE INDEX IF NOT EXISTS layout_items_of ON layout_items(layout_id, sort);
 """
@@ -57,11 +68,14 @@ def layout_tables(c):
     size is locked apart from the place). Before it, locked held both, so a thing that was locked keeps its size locked too."""
     c.executescript(LAYOUT_SCHEMA)
     have = {r[1] for r in c.execute('PRAGMA table_info(layout_items)')}
-    for col, kind in (('hours', 'REAL'), ('dim_pct', 'INTEGER')):
+    for col, kind in (('hours', 'REAL'), ('dim_pct', 'INTEGER'), ('facing', 'TEXT'), ('day_dli', 'REAL'), ('pot_h', 'REAL')):
         if col not in have: c.execute(f'ALTER TABLE layout_items ADD COLUMN {col} {kind}')
     if 'size_locked' not in have:
         c.execute('ALTER TABLE layout_items ADD COLUMN size_locked INTEGER NOT NULL DEFAULT 0')
         c.execute('UPDATE layout_items SET size_locked=locked')
+    has = {r[1] for r in c.execute('PRAGMA table_info(layouts)')}             # how much a pot and leaves block (1.58.0)
+    for col in ('pot_block', 'leaf_block'):
+        if col not in has: c.execute(f'ALTER TABLE layouts ADD COLUMN {col} INTEGER')
 
 # ---------------------------------------------------------------- what the record knows about sizes
 def layout_plant_size(c, r):
@@ -79,6 +93,11 @@ def layout_plant_size(c, r):
     h = r['height_in']
     if not h: h = 12.0; guessed.append('height')
     return round(float(w), 2), round(float(d), 2), round(float(h), 2), shape, guessed
+
+def layout_pot_rec(c, p):
+    """A plant's pot's height in Pots and trays, or None."""
+    x = c.execute('SELECT height_in FROM containers WHERE id=?', (p['pot_id'],)).fetchone() if p is not None and p['pot_id'] else None
+    return round(float(x['height_in']), 2) if x is not None and x['height_in'] else None
 
 def layout_light_size(L):
     """A light's rough size from how it holds (fit.py: lights.data['mount']): (w, d, h, shape, hangs). A starting point to correct on
@@ -168,35 +187,54 @@ def layout_item_dict(c, it):
     d.update(locked=bool(it['locked']), size_locked=bool(it['size_locked']), plant=it['plant_code'], light_id=it['light_id'], spot_id=it['spot_id'], gone=False)
     if it['kind'] == 'light':
         d.update(hours=it['hours'] if it['hours'] is not None else LAYOUT_HOURS, dim_pct=it['dim_pct'] if it['dim_pct'] is not None else LAYOUT_DIM, pts=[], dims=[100])
-    if it['plant_code']:
-        p = c.execute("SELECT * FROM plants WHERE code=?", (it['plant_code'],)).fetchone()
-        if p is None or p['status'] != 'active': d['gone'] = True
-        else:
-            pid = layout_pid(p)
-            d.update(name=p['common_name'], photo=plant_photo(c, p['id']), page_h=p['height_in'], need=plant_need(p), rec=pid, rec_label=place_label(c, pid))
-            if p['height_in']: d['h'] = p['height_in']
-    elif it['light_id']:
-        L = c.execute('SELECT * FROM lights WHERE id=?', (it['light_id'],)).fetchone()
-        if L is None: d['gone'] = True
-        else:
-            specs = light_specs(L); pts = light_points(specs)
-            near, far = light_range(pts)
-            d.update(name=L['name'], near_in=near, far_in=far, owned=L['count'], pts=[list(p) for p in pts],
-                     dims=sorted({int(x) for x in (specs.get('dimming') or [100]) if 0 < int(x) <= 100} | {100}, reverse=True))
-    elif it['spot_id']:
-        sp = c.execute('SELECT * FROM spots WHERE id=?', (it['spot_id'],)).fetchone()
-        if sp is None: d['gone'] = True
-        else:
-            d.update(name=sp['name'], place=place_label(c, it['spot_id']), levels=layout_levels(sheet_of(sp)), board_in=LAYOUT_BOARD_IN)
-            own = c.execute('SELECT id FROM layouts WHERE spot_id=? AND id<>? ORDER BY id LIMIT 1', (it['spot_id'], it['layout_id'])).fetchone()
-            d['layout_id'] = own[0] if own else None                      # this shelf's own layout, to open from here
+    if it['kind'] == 'window':
+        fc = it['facing'] if it['facing'] in LAYOUT_FACING else 'S'
+        d.update(facing=fc, day_dli=it['day_dli'] if it['day_dli'] is not None else LAYOUT_WINDOW_DLI[fc])
+    if it['kind'] == 'plant':
+        # its pot, the bottom part of its box, which shades what is behind it: as tall as the layout says (pot_h), else as its pot in
+        # Pots and trays (pot_rec), else a guess from its width (_ly_pot_h)
+        d.update(pot_h=it['pot_h'], pot_rec=None)
+    if it['plant_code']: part = layout_plant_part(c, c.execute("SELECT * FROM plants WHERE code=?", (it['plant_code'],)).fetchone())
+    elif it['light_id']: part = layout_light_part(c.execute('SELECT * FROM lights WHERE id=?', (it['light_id'],)).fetchone())
+    elif it['spot_id']: part = layout_shelf_part(c, c.execute('SELECT * FROM spots WHERE id=?', (it['spot_id'],)).fetchone(), it['layout_id'])
+    else: part = {}
+    d.update(part)
+    if part.get('page_h'): d['h'] = part['page_h']
     return d
+
+# What a thing on a layout carries from the record (layout_item_dict). The full layout offers each plant, light and shelf with it too
+# (item), so the page can draw one put on with no connection as the server will (1.58.0, Ethan: "Would it be possible to have things
+# be put on or off compatible with offline mode?").
+def layout_plant_part(c, p):
+    if p is None or p['status'] != 'active': return {'gone': True, 'pot_rec': None}
+    pid = layout_pid(p)
+    return {'name': p['common_name'], 'photo': plant_photo(c, p['id']), 'page_h': p['height_in'], 'need': plant_need(p), 'rec': pid, 'rec_label': place_label(c, pid), 'pot_rec': layout_pot_rec(c, p)}
+
+def layout_light_part(L):
+    if L is None: return {'gone': True}
+    specs = light_specs(L); pts = light_points(specs)
+    near, far = light_range(pts)
+    return {'name': L['name'], 'near_in': near, 'far_in': far, 'owned': L['count'], 'pts': [list(p) for p in pts],
+            'dims': sorted({int(x) for x in (specs.get('dimming') or [100]) if 0 < int(x) <= 100} | {100}, reverse=True)}
+
+def layout_shelf_part(c, sp, lid):
+    if sp is None: return {'gone': True}
+    sh = sheet_of(sp)
+    own = c.execute('SELECT id FROM layouts WHERE spot_id=? AND id<>? ORDER BY id LIMIT 1', (sp['id'], lid)).fetchone()
+    return {'name': sp['name'], 'place': place_label(c, sp['id']), 'levels': layout_levels(sh), 'board_in': LAYOUT_BOARD_IN,
+            'sheet': {k: sh.get(k) for k in ('width_in', 'depth_in', 'levels', 'gaps_in', 'gap_in', 'top_in')},      # its measurements, so a new size can be saved to them
+            'layout_id': own[0] if own else None}                                                                 # this shelf's own layout, to open from here
 
 def layout_dict(c, L, full=False):
     """A layout with the things on it. full adds what can be put on it: the plants at its home (those at its own place marked here),
     your lights, and your shelves, each with the size the record suggests."""
     pid = layout_pid(L)
     d = {k: L[k] for k in ('id', 'name', 'home_id', 'area_id', 'spot_id', 'width_in', 'depth_in', 'height_in', 'grid_in', 'clear_in', 'notes', 'updated_at', 'updated_by')}
+    d.update(pot_block=L['pot_block'] if L['pot_block'] is not None else LAYOUT_POT_BLOCK, leaf_block=L['leaf_block'] if L['leaf_block'] is not None else LAYOUT_LEAF_BLOCK)
+    if L['spot_id']:                                       # a shelf unit's own layout: the shelf's measurements, so its boards can be saved to them (1.58.0)
+        sp = c.execute('SELECT * FROM spots WHERE id=?', (L['spot_id'],)).fetchone()
+        sh = sheet_of(sp) if sp else {}
+        d['sheet'] = {k: sh.get(k) for k in ('width_in', 'depth_in', 'levels', 'gaps_in', 'gap_in', 'top_in')} if sp else None
     d.update(snap=bool(L['snap']), pid=pid, place=place_label(c, pid) if pid else None, home=layout_home_name(c, L['home_id']),
              items=[layout_item_dict(c, it) for it in c.execute('SELECT * FROM layout_items WHERE layout_id=? ORDER BY sort, id', (L['id'],)).fetchall()])
     if not full: return d
@@ -207,22 +245,23 @@ def layout_dict(c, L, full=False):
         w, dd, h, shape, guessed = layout_plant_size(c, r)
         here = bool(L['spot_id'] and r['spot_id'] == L['spot_id']) or bool(L['area_id'] and not L['spot_id'] and r['area_id'] == L['area_id'] and not r['spot_id'])
         plants.append({'code': r['code'], 'name': r['common_name'], 'photo': plant_photo(c, r['id']), 'w': w, 'd': dd, 'h': h, 'shape': shape, 'guessed': guessed,
-                       'here': here, 'on': r['code'] in on})
+                       'here': here, 'on': r['code'] in on, 'item': layout_plant_part(c, r)})
     lights = []
     for x in c.execute("SELECT * FROM lights WHERE status='owned' AND count>0 ORDER BY sort, id").fetchall():
         w, dd, h, shape, hangs = layout_light_size(x)
         near, far = light_range(light_points(light_specs(x)))
         hours, dim = layout_light_setting(c, L, x['id'])
         lights.append({'id': x['id'], 'name': x['name'], 'count': x['count'], 'w': w, 'd': dd, 'h': h, 'shape': shape, 'hangs': hangs, 'near_in': near, 'far_in': far,
-                       'hours': hours, 'dim_pct': dim, 'figures': bool(near)})
+                       'hours': hours, 'dim_pct': dim, 'figures': bool(near), 'item': layout_light_part(x)})
     shelves = []
     for sp in c.execute('SELECT s.*, a.name AS area FROM spots s JOIN areas a ON a.id=s.area_id WHERE ' + ('a.home_id IS NULL' if not L['home_id'] else 'a.home_id=?') + ' ORDER BY a.sort, a.id, s.sort, s.id',
                         (() if not L['home_id'] else (L['home_id'],))).fetchall():
         if sp['id'] == L['spot_id']: continue
         s = sheet_of(sp); boards, top = layout_boards(s)
         shelves.append({'spot_id': sp['id'], 'name': sp['name'], 'label': sp['area'] + ', ' + sp['name'], 'w': float(s.get('width_in') or 30), 'd': float(s.get('depth_in') or 12),
-                        'h': float(top or 36), 'guessed': not (s.get('width_in') and s.get('depth_in') and top), 'boards': boards})
-    d.update(plants=plants, lights=lights, shelves=shelves, kinds=LAYOUT_KINDS, grids=list(LAYOUT_GRIDS), verdicts=LIGHT_VERDICT)
+                        'h': float(top or 36), 'guessed': not (s.get('width_in') and s.get('depth_in') and top), 'boards': boards, 'item': layout_shelf_part(c, sp, L['id'])})
+    d.update(plants=plants, lights=lights, shelves=shelves, kinds=LAYOUT_KINDS, grids=list(LAYOUT_GRIDS), verdicts=LIGHT_VERDICT,
+             facing=LAYOUT_FACING, window_dli=LAYOUT_WINDOW_DLI)
     return d
 
 def layout_places(c):
@@ -265,7 +304,11 @@ def layout_fields(b, old=None):
          'width_in': layout_num(b, 'width_in', 'The width', 1, 2400, o.get('width_in')), 'depth_in': layout_num(b, 'depth_in', 'The depth', 1, 2400, o.get('depth_in')),
          'height_in': layout_num(b, 'height_in', 'The height', 1, 600, o.get('height_in')),
          'grid_in': layout_num(b, 'grid_in', 'The size of a square', 0.1, 48, o.get('grid_in', 1)), 'clear_in': layout_num(b, 'clear_in', 'The room to leave around a plant', 0, 48, o.get('clear_in', 1)),
-         'snap': (1 if b['snap'] else 0) if 'snap' in b else o.get('snap', 1), 'notes': str(b.get('notes', o.get('notes') or '')).strip()[:1000]}
+         'snap': (1 if b['snap'] else 0) if 'snap' in b else o.get('snap', 1), 'notes': str(b.get('notes', o.get('notes') or '')).strip()[:1000],
+         'pot_block': layout_amount(b, 'pot_block', 'How much light a pot blocks (%)', 0, 100, o.get('pot_block')),
+         'leaf_block': layout_amount(b, 'leaf_block', "How much light a plant's leaves block (%)", 0, 100, o.get('leaf_block'))}
+    for k in ('pot_block', 'leaf_block'):
+        if f[k] is not None: f[k] = int(round(f[k]))
     for k, label in (('width_in', 'width'), ('depth_in', 'depth'), ('height_in', 'height')):
         if f[k] is None: abort(400, f'Give the {label} of the space')
     return f
@@ -307,7 +350,16 @@ def layout_item_fields(c, L, b, old=None):
     f['locked'] = (1 if b['locked'] else 0) if 'locked' in b else o.get('locked', 0)                 # its place: it is not moved
     f['size_locked'] = (1 if b['size_locked'] else 0) if 'size_locked' in b else o.get('size_locked', 0)   # its size: it is not made larger or smaller
     f['notes'] = str(b.get('notes', o.get('notes') or '')).strip()[:400]
-    f['hours'] = f['dim_pct'] = None
+    f['hours'] = f['dim_pct'] = f['facing'] = f['day_dli'] = f['pot_h'] = None
+    if kind == 'plant':                                    # how tall its pot is: none goes back to its pot's height in Pots and trays, or the guess
+        f['pot_h'] = None if 'pot_h' in b and b['pot_h'] in (None, '') else layout_num(b, 'pot_h', 'How tall its pot is', 0.1, 600, o.get('pot_h'))
+    if kind == 'window':                                   # which way it faces, and the daylight at the glass
+        fc = b.get('facing', o.get('facing') or 'S')
+        if fc not in LAYOUT_FACING: abort(400, 'Say which way it faces: ' + ', '.join(LAYOUT_FACING.values()).lower())
+        f['facing'] = fc
+        day = o.get('day_dli') if old is not None else None
+        if old is not None and o.get('facing') != fc and 'day_dli' not in b: day = LAYOUT_WINDOW_DLI[fc]      # turned another way: that way's usual daylight
+        f['day_dli'] = layout_amount(b, 'day_dli', 'Daylight at the glass', 0, 70, day if day is not None else LAYOUT_WINDOW_DLI[fc])
     if kind == 'light':                                    # how long it is on and how bright: what the light on the page is worked out from
         hours, dim = (o.get('hours'), o.get('dim_pct')) if old is not None else layout_light_setting(c, L, f.get('light_id'))
         f['hours'] = layout_amount(b, 'hours', 'Hours a day', 0, 24, hours if hours is not None else LAYOUT_HOURS)
@@ -336,9 +388,10 @@ def layout_touch(c, lid, who): c.execute('UPDATE layouts SET updated_by=?, updat
 def layout_item_add(c, L, b, who):
     f = layout_item_fields(c, L, b)
     n = c.execute('SELECT COALESCE(MAX(sort),0)+1 FROM layout_items WHERE layout_id=?', (L['id'],)).fetchone()[0]
-    c.execute('INSERT INTO layout_items(layout_id,kind,name,shape,plant_code,light_id,spot_id,x,y,z,w,d,h,locked,size_locked,notes,hours,dim_pct,sort,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+    c.execute('INSERT INTO layout_items(layout_id,kind,name,shape,plant_code,light_id,spot_id,x,y,z,w,d,h,locked,size_locked,notes,hours,dim_pct,facing,day_dli,pot_h,sort,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
               (L['id'], f['kind'], f['name'], f['shape'], f['plant_code'], f['light_id'], f['spot_id'], f['x'], f['y'], f['z'], f['w'], f['d'], f['h'], f['locked'], f['size_locked'], f['notes'],
-               f['hours'], f['dim_pct'], n, who, now()))
+               f['hours'], f['dim_pct'], f['facing'], f['day_dli'], f['pot_h'], n, who, now()))
+    f['id'] = c.execute('SELECT last_insert_rowid()').fetchone()[0]
     return f
 
 def layout_plant_height(c, L, it, b, h, who):
@@ -407,7 +460,7 @@ def layout_one(lid):
         size = any(k in ch for k in ('width_in', 'depth_in', 'height_in'))
         audit_only(c, 'where', 'layout', layout_size_words(L['width_in'], L['depth_in'], L['height_in']) if size else L['name'],
                    layout_size_words(f['width_in'], f['depth_in'], f['height_in']) if size else f['name'], who,
-                   f'Layout "{f["name"]}" changed: ' + ', '.join({'width_in': 'width', 'depth_in': 'depth', 'height_in': 'height', 'grid_in': 'squares', 'clear_in': 'room around a plant', 'snap': 'snapping'}.get(k, k) for k in ch))
+                   f'Layout "{f["name"]}" changed: ' + ', '.join({'width_in': 'width', 'depth_in': 'depth', 'height_in': 'height', 'grid_in': 'squares', 'clear_in': 'room around a plant', 'snap': 'snapping', 'pot_block': 'light a pot blocks', 'leaf_block': 'light leaves block'}.get(k, k) for k in ch))
         c.commit()
     return jsonify(layout_dict(c, c.execute('SELECT * FROM layouts WHERE id=?', (lid,)).fetchone(), True))
 
@@ -420,11 +473,12 @@ def layout_items_add(lid):
     items = b.get('items') if isinstance(b.get('items'), list) else [b]
     if not items or len(items) > 200: abort(400, 'Say what to put on the layout')
     if c.execute('SELECT COUNT(*) FROM layout_items WHERE layout_id=?', (lid,)).fetchone()[0] + len(items) > 400: abort(400, 'A layout holds 400 things at most')
-    names = [layout_item_add(c, L, it if isinstance(it, dict) else {}, who)['name'] for it in items]
+    made = [layout_item_add(c, L, it if isinstance(it, dict) else {}, who) for it in items]
+    names = [f['name'] for f in made]
     layout_touch(c, lid, who)
     audit_only(c, 'where', 'layout_item', None, ', '.join(names)[:400], who, f'Layout "{L["name"]}": ' + (f'{names[0]} put on it' if len(names) == 1 else f'{len(names)} things put on it'))
     c.commit()
-    return jsonify(layout_dict(c, layout_row(c, lid), True)), 201
+    return jsonify(layout_dict(c, layout_row(c, lid), True) | {'added': [f['id'] for f in made]}), 201      # added: the new things' ids, in the order sent (offline.js follows a thing put on with no connection by it)
 
 @app.route('/api/layouts/items/<int:iid>', methods=['PUT', 'DELETE'])
 def layout_item_one(iid):
@@ -508,12 +562,109 @@ def _ly_solids(b):
 def _ly_stands(items, a):
     """Is it standing on the floor or on something (and so not hanging)?"""
     if abs(a['z']) < 0.05: return True
-    return any(b['id'] != a['id'] and b['kind'] not in ('zone', 'light') and _ly_plan(a, b) < -LY_EPS and any(abs(q['z'] + q['h'] - a['z']) < 0.05 for q in _ly_solids(b)) for b in items)
+    return any(b['id'] != a['id'] and b['kind'] not in ('zone', 'light', 'window') and _ly_plan(a, b) < -LY_EPS and any(abs(q['z'] + q['h'] - a['z']) < 0.05 for q in _ly_solids(b)) for b in items)
 def _ly_in_plan(b, x, y):
     if _ly_round(b): return math.hypot(x - b['x'] - b['w'] / 2, y - b['y'] - b['d'] / 2) <= b['w'] / 2 + LY_EPS
     return b['x'] - LY_EPS <= x <= b['x'] + b['w'] + LY_EPS and b['y'] - LY_EPS <= y <= b['y'] + b['d'] + LY_EPS
 
-def layout_light_on(items, pl, li):
+def _ly_cross(q, parts, a, b):
+    """Does the straight line from a to b ((x, y, z) each) go through one of q's parts ([{z, h}]), over the stretch of the line at
+    that part's height (all of it, for a level line at that height)? Not counting its two ends."""
+    for p in parts:
+        z0, z1 = a[2], b[2]
+        if abs(z1 - z0) < LY_EPS:
+            if not (p['z'] - LY_EPS <= z0 <= p['z'] + p['h'] + LY_EPS): continue
+            t0, t1 = 0.0, 1.0
+        else:
+            lo, hi = max(p['z'], min(z0, z1)), min(p['z'] + p['h'], max(z0, z1))
+            if hi - lo < LY_EPS: continue
+            t0, t1 = sorted(((lo - z0) / (z1 - z0), (hi - z0) / (z1 - z0)))
+        t0, t1 = max(t0, 0.02), min(t1, 0.98)
+        if t1 < t0: continue
+        if _ly_seg_plan(q, a, b, t0, t1): return True
+    return False
+
+def _ly_seg_plan(q, a, b, t0, t1):
+    """Does the stretch t0 to t1 of the line from a to b go over q, seen from above? Exactly, so a thin board is not missed (lySegPlan)."""
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    if _ly_round(q):
+        cx, cy = q['x'] + q['w'] / 2, q['y'] + q['d'] / 2; l2 = dx * dx + dy * dy
+        t = min(t1, max(t0, ((cx - a[0]) * dx + (cy - a[1]) * dy) / l2 if l2 > 1e-12 else t0))
+        return math.hypot(a[0] + dx * t - cx, a[1] + dy * t - cy) <= q['w'] / 2 + LY_EPS
+    lo, hi = t0, t1
+    for s0, d, mn, mx in ((a[0], dx, q['x'] - LY_EPS, q['x'] + q['w'] + LY_EPS), (a[1], dy, q['y'] - LY_EPS, q['y'] + q['d'] + LY_EPS)):
+        if abs(d) < 1e-12:
+            if s0 < mn or s0 > mx: return False
+            continue
+        u, v = (mn - s0) / d, (mx - s0) / d
+        lo, hi = max(lo, min(u, v)), min(hi, max(u, v))
+        if lo > hi: return False
+    return True
+
+def _ly_blk(L):
+    """A layout's shade: (how much a pot blocks, how much leaves block), in percent."""
+    g = L.get if isinstance(L, dict) else (lambda k, d=None: d)
+    return (LAYOUT_POT_BLOCK if g('pot_block') is None else g('pot_block'), LAYOUT_LEAF_BLOCK if g('leaf_block') is None else g('leaf_block'))
+
+def _ly_pot_h(q):
+    """How tall a drawn plant's pot is (lyPotH): the layout's own height, else its pot's in Pots and trays, else LAYOUT_POT_TALL of its
+    width to the nearest half inch. Never more than the plant."""
+    v = q.get('pot_h') if q.get('pot_h') is not None else q.get('pot_rec')
+    if v is None: v = max(0.5, math.floor(min(q['w'], q['d']) * LAYOUT_POT_TALL * 2 + 0.5) / 2)
+    return min(v, q['h'])
+
+def _ly_shade(items, skip, a, b, blk=(LAYOUT_POT_BLOCK, LAYOUT_LEAF_BLOCK)):
+    """The plants the line from a to b goes through (lyShade): [{q, pot, k}]. A plant's pot is the bottom pot_h of its box and blocks
+    blk[0] percent; its leaves are the rest and block blk[1]. A line through both counts the part that blocks more; k is the share
+    of the light it lets through."""
+    out = []
+    for q in items:
+        if q['kind'] != 'plant' or q.get('gone') or q['id'] == skip: continue
+        ph = _ly_pot_h(q); hits = []
+        if ph > LY_EPS and _ly_cross(q, [{'z': q['z'], 'h': ph}], a, b): hits.append((True, blk[0]))
+        if q['h'] - ph > LY_EPS and _ly_cross(q, [{'z': q['z'] + ph, 'h': q['h'] - ph}], a, b): hits.append((False, blk[1]))
+        if hits:
+            pot, pct = hits[0]
+            for x in hits[1:]:
+                if x[1] > pct: pot, pct = x
+            out.append({'q': q, 'pot': pot, 'k': 1 - pct / 100})
+    return out
+
+def _ly_through(shade):
+    """The share of the light that gets past everything in shade (lyThrough)."""
+    k = 1.0
+    for x in shade: k *= x['k']
+    return k
+
+def _ly_shade_names(shade): return [x['q']['name'] + ("'s pot" if x['pot'] else '') for x in shade]
+
+def _ly_win_wall(L, w):
+    """The wall a window is in: the nearest (lyWinWall)."""
+    ds = [('back', w['y']), ('left', w['x']), ('right', L['width_in'] - w['x'] - w['w']), ('front', L['depth_in'] - w['y'] - w['d'])]
+    return min(ds, key=lambda x: x[1])[0]
+
+def layout_day_on(L, items, pl, w, blk=None):
+    """What one window gives one plant's top (lyDayOn): its daylight at the glass, less with the angle and with the distance (half as much
+    LAYOUT_WIN_FALL_IN away), none through a board or other solid thing, and less through each plant in the way. None when the plant
+    is not in front of it."""
+    cx, cy, top = pl['x'] + pl['w'] / 2, pl['y'] + pl['d'] / 2, pl['z'] + pl['h']
+    wall = _ly_win_wall(L, w)
+    if wall in ('back', 'front'): nx, ny, qx, qy = 0, (1 if wall == 'back' else -1), _ly_clamp(cx, w['x'], w['x'] + w['w']), (w['y'] + w['d'] if wall == 'back' else w['y'])
+    else: nx, ny, qx, qy = (1 if wall == 'left' else -1), 0, (w['x'] + w['w'] if wall == 'left' else w['x']), _ly_clamp(cy, w['y'], w['y'] + w['d'])
+    qz = _ly_clamp(top, w['z'], w['z'] + w['h'])
+    dx, dy, dz = cx - qx, cy - qy, top - qz
+    depth = dx * nx + dy * ny
+    if depth <= LY_EPS: return None
+    dist = math.sqrt(dx * dx + dy * dy + dz * dz); f = dist / LAYOUT_WIN_FALL_IN
+    out = {'w': w, 'dist': round(dist, 2), 'dli': (w.get('day_dli') or 0) * (depth / dist) / (1 + f * f), 'by': None, 'shade': []}
+    a, b = (qx, qy, qz), (cx, cy, top)
+    out['by'] = next((q for q in items if q is not pl and q['kind'] in ('shelf', 'other') and _ly_cross(q, _ly_solids(q), a, b)), None)
+    if not out['by']:
+        out['shade'] = _ly_shade(items, pl.get('id'), a, b, blk or _ly_blk(L))
+        out['dli'] *= _ly_through(out['shade'])
+    return out
+
+def layout_light_on(items, pl, li, blk=(LAYOUT_POT_BLOCK, LAYOUT_LEAF_BLOCK)):
     """What one drawn light gives one drawn plant (lyLightOn): {up, side, dli, by (something in the way), nofig}, or None when the
     light is not above the plant's top."""
     top = pl['z'] + pl['h']; src = li['z'] + li['h'] if _ly_stands(items, li) else li['z']; up = src - top
@@ -538,6 +689,8 @@ def layout_light_on(items, pl, li):
             t = ((lo + hi) / 2 - top) / up
             if _ly_in_plan(b, cx + (sx - cx) * t, cy + (sy - cy) * t): out['by'] = b; break
         if out['by']: break
+    out['shade'] = [] if out['by'] else _ly_shade(items, pl.get('id'), (sx, sy, src), (cx, cy, top), blk)      # 1.58.0: a plant or a pot in the way blocks some
+    if out['shade']: k = _ly_through(out['shade']); out['par'] *= k; out['dli'] *= k
     return out
 
 def layout_swap(L, light_id, Ln):
@@ -576,13 +729,20 @@ def layout_light(L):
     drawn light has its maker's figures. parts: every drawn light that shines on it unblocked, with its light at full brightness
     (par), whatever its hours; shut: the names of lights something stands in the way of."""
     items = L['items']; lights = [b for b in items if b['kind'] == 'light' and not b.get('gone')]; out = {}
-    if not lights: return out, False
+    wins = [b for b in items if b['kind'] == 'window']
+    if not lights and not wins: return out, False
+    blk = _ly_blk(L)
     for pl in items:
         if pl['kind'] != 'plant': continue
-        alls = [x for x in (layout_light_on(items, pl, li) for li in lights) if x]
+        alls = [x for x in (layout_light_on(items, pl, li, blk) for li in lights) if x]
         on = sorted((x for x in alls if not x['nofig'] and not x['by'] and x['dli'] >= 0.05), key=lambda x: -x['dli'])
-        dli = _ly_r1(sum(x['dli'] for x in on)); reached = dli >= 1 or any(x['side'] < 0.05 for x in on); need = pl.get('need')
-        out[pl['id']] = {'dli': dli, 'reached': reached, 'verdict': (light_verdict(dli, need['lo'], need['hi']) if need else 'unknown') if reached else 'none', 'on': on,
+        days = [x for x in (layout_day_on(L, items, pl, w, blk) for w in wins) if x]
+        day = sum(x['dli'] for x in days if not x['by']); lsum = sum(x['dli'] for x in on)
+        dli = _ly_r1(lsum + day); reached = _ly_r1(lsum) >= 1 or any(x['side'] < 0.05 for x in on); lit = reached or _ly_r1(day) >= 1; need = pl.get('need')
+        shade = sorted({n for x in alls + days for n in _ly_shade_names(x.get('shade') or [])})
+        out[pl['id']] = {'dli': dli, 'reached': reached, 'verdict': (light_verdict(dli, need['lo'], need['hi']) if need else 'unknown') if lit else 'none', 'on': on,
+                         'day': _ly_r1(day), 'wins': [{'name': x['w']['name'], 'dli': _ly_r1(x['dli']), 'dist': x['dist']} for x in sorted(days, key=lambda x: -x['dli']) if not x['by'] and x['dli'] >= 0.05],
+                         'shade': shade,
                          'parts': [{'light_id': x['li'].get('light_id'), 'item': x['li']['id'], 'par': x['par']} for x in alls if not x['nofig'] and not x['by']],
                          'shut': [x['li']['name'] for x in alls if x['by'] and not x['nofig']]}
     return out, any(li.get('pts') for li in lights)
@@ -592,7 +752,7 @@ def layout_reading(L, it, x):
     it and to the side), and the parts Best setting needs."""
     on = [{'light_id': o['li'].get('light_id'), 'name': o['li']['name'], 'up': round(o['up'], 1), 'side': round(o['side'], 1), 'dli': _ly_r1(o['dli'])} for o in x['on']]
     return {'lid': L['id'], 'lname': L['name'], 'pid': L['pid'], 'item': it['id'], 'name': it['name'], 'here': it.get('rec') is not None and it.get('rec') == L['pid'],
-            'dli': x['dli'], 'verdict': x['verdict'], 'reached': x['reached'], 'on': on, 'parts': x['parts'], 'shut': x['shut']}
+            'dli': x['dli'], 'verdict': x['verdict'], 'reached': x['reached'], 'on': on, 'parts': x['parts'], 'shut': x['shut'], 'day': x.get('day', 0), 'wins': x.get('wins', []), 'shade': x.get('shade', [])}
 
 def layout_lights_for_grow(c):
     """For Grow lights (LIGHTS_FROM_LAYOUTS): the lights drawn on a layout of a place (the first of each light on it), and each plant
