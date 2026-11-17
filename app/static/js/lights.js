@@ -64,6 +64,10 @@ function ltPlantLi(p, extra) {      // 1.42.0: the code and the range on lines o
   return html`<li>${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : html`<span></span>`}
     <span class="lt-pt"><a class="nm" href="#/plant/${enc(p.code)}">${p.name}</a><span class="muted">${p.code}</span><span class="muted">${ltRange(p.lo, p.hi)}</span>${extra || ''}</span>${p.verdict ? lvTag(p.verdict, p.verdict_word) : html`<span></span>`}</li>`;
 }
+// 1.58.0 (Ethan, November 16: make Grow lights shorter): each light's figures, notes and maker's chart fold into one line; each
+// suggested spot folds like your own spots (its line says its light, its daily light and how many plants); so does No light left.
+const LT_FOLD = true, LT_PLAN_OPEN = new Set();
+document.addEventListener('toggle', e => { const d = e.target; if (d && d.classList && d.classList.contains('lt-plan-fold')) { const i = Number(d.dataset.plan); if (d.open) LT_PLAN_OPEN.add(i); else LT_PLAN_OPEN.delete(i); } }, true);
 // 1.42.0: each of your spots folds; shut, it still shows its name, where it is, its daily light and how many plants
 const LT_OPEN = (() => { try { return new Set(JSON.parse(localStorage.getItem('plantdb.ltspots') || '[]')); } catch (e) { return new Set(); } })();
 document.addEventListener('toggle', e => { const d = e.target; if (d && d.classList && d.classList.contains('lt-spot-fold')) { if (d.open) LT_OPEN.add(d.dataset.id); else LT_OPEN.delete(d.dataset.id); try { localStorage.setItem('plantdb.ltspots', JSON.stringify([...LT_OPEN])); } catch (x) { /* this visit only */ } } }, true);
@@ -80,7 +84,11 @@ function ltSpotBody(s, i, plan) {
       : html`<button class="btn ghost" type="button" data-act="spotadd" data-id="${s.id}" aria-label="Add plants to ${s.name}">Add plants</button><button class="btn ghost" type="button" data-act="spotedit" data-id="${s.id}" aria-label="Change this spot: ${s.name}">Change this spot</button><button class="btn ghost" type="button" data-act="spotdel" data-id="${s.id}" aria-label="Remove this spot: ${s.name}">Remove this spot</button>`}</div>`;
 }
 function ltSpotCard(s, i, plan) {
-  if (plan) return html`<article class="lt-spot" aria-labelledby="lts-p${i}"><h3 id="lts-p${i}">${s.name}</h3>${ltSpotBody(s, i, true)}</article>`;
+  if (plan && !LT_FOLD) return html`<article class="lt-spot" aria-labelledby="lts-p${i}"><h3 id="lts-p${i}">${s.name}</h3>${ltSpotBody(s, i, true)}</article>`;
+  if (plan) return html`<details class="lt-spot lt-spot-fold lt-plan-fold" data-plan="${i}" ${LT_PLAN_OPEN.has(i) ? raw('open') : ''}>
+    <summary><h3 id="lts-p${i}">${s.name}</h3>
+      <span class="lt-sum"><span><strong>Light:</strong> ${s.light}</span><span><strong>${has(s.dli) ? s.dli : '?'} mol/m² per day</strong></span><span><strong>Plants:</strong> ${s.plants.length}</span></span></summary>
+    <div class="lt-spot-in">${ltSpotBody(s, i, true)}</div></details>`;
   const n = s.plants.length, off = s.plants.filter(p => p.verdict && !['good', 'unknown'].includes(p.verdict)).length;
   return html`<details class="lt-spot lt-spot-fold" data-id="${s.id}" ${LT_OPEN.has(String(s.id)) ? raw('open') : ''}>
     <summary><h3 id="lts-s${i}">${s.name}</h3>
@@ -102,6 +110,7 @@ function ltLightCard(L) {
       <label class="f lt-n">How many you have<input type="number" inputmode="numeric" min="0" max="100" step="1" value="${L.count}" ${ed('count')}><small>${L.in_use ? `${L.in_use} in use in your spots.` : 'None in a spot yet.'}</small></label>
       <label class="f">Manufacturer model<input type="text" maxlength="80" value="${S.model || ''}" ${ed('model')}></label>
       <label class="f">Where it is<input type="text" maxlength="600" value="${L.fixture || ''}" ${ed('fixture')}><small>For a bulb, the lamp or socket it screws into.</small></label></div>`; })()}
+    ${LT_FOLD ? raw('<details class="lt-more"><summary>Its light figures, notes and the maker\'s chart</summary>') : ''}
     <dl class="dl">
       ${S.kind ? html`<dt>Type</dt><dd>${S.kind}</dd>` : ''}
       ${bits.length ? html`<dt>Light</dt><dd>${bits.join(', ')}</dd>` : ''}
@@ -118,6 +127,7 @@ function ltLightCard(L) {
     ${S.ppfd_note ? html`<p class="hint">${S.ppfd_note}</p>` : ''}
     ${L.chart ? html`<p class="hint"><a href="${L.chart}" target="_blank" rel="noopener">Open the maker's chart</a> (picture). ${S.chart_alt || ''}</p>` : ''}
     ${S.url ? html`<p class="hint"><a href="${S.url}" target="_blank" rel="noopener noreferrer">Product page</a></p>` : ''}
+    ${LT_FOLD ? raw('</details>') : ''}
     <div class="row noprint"><button class="btn ghost small" type="button" data-act="lightedit" data-id="${L.id}">Change the light figures, timer and brightness</button></div></div></article>`;
 }
 // 1.42.0: the title and the summary table stay at the top of the page as you scroll, and fold as one
@@ -152,7 +162,8 @@ async function viewLights() {
       <p>For the plants that are not in a spot yet. Plants that need the most light are placed first. Each goes under the smallest of your lights that can give it enough. Plants whose needs overlap share a light, while there is room under it. "Set up this spot" opens it so you can rename it or change anything before saving.</p>
       ${LT.plan.length > 1 ? html`<p class="row noprint"><button class="btn" type="button" data-act="spotplanall">Set up all ${LT.plan.length} suggested spots</button></p>` : ''}
       ${LT.plan.length ? html`<div class="lt-grid">${LT.plan.map((s, i) => ltSpotCard(s, i, true))}</div>` : html`<p class="muted">Every plant that needs a light is in a spot.</p>`}
-      ${LT.unplaced.length ? html`<h3>No light left for these</h3><ul class="lt-plants lt-two">${LT.unplaced.map(u => ltPlantLi(u, html`<span>${u.why}</span>`))}</ul>` : ''}</section>
+      ${LT.unplaced.length ? (LT_FOLD ? html`<details class="lt-more lt-unplaced"><summary>No light left for these (${LT.unplaced.length} plants)</summary><ul class="lt-plants lt-two">${LT.unplaced.map(u => ltPlantLi(u, html`<span>${u.why}</span>`))}</ul></details>`
+        : html`<h3>No light left for these</h3><ul class="lt-plants lt-two">${LT.unplaced.map(u => ltPlantLi(u, html`<span>${u.why}</span>`))}</ul>`) : ''}</section>
     <section class="blk"><h2>How the numbers work</h2>
       <p>Makers measure light straight under the centre of the light at a few distances. The app draws a smooth line through those figures to get the light at any distance. Then it multiplies by the hours a day: 100 PAR for 12 hours is about 4.3 mol/m².</p>
       <p>The edges of a light's circle get less, and a window adds some. Plants that stretch or go pale want more; bleached or crisp leaves want less. Several of the same light side by side light a bigger area at about the same strength.</p></section>`,
