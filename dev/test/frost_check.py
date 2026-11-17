@@ -45,6 +45,12 @@ with sync_playwright() as p:
     # undo the cover
     pg.locator(f'.fz-row[data-code="{code}"] button[data-act=frostundo]').first.click(); pg.wait_for_timeout(1500)
     check(pg.locator(f'.fz-row[data-code="{code}"].is-done').count() == 0, 'undo works')
+    # 1.58.0: each group shows ten plants at a time
+    n_in = pg.locator('#fz-in ul[data-more] > li').count()
+    if n_in > 10:
+        check(pg.locator('#fz-in ul[data-more] > li:not([hidden])').count() == 10, f'Bring inside shows 10 of {n_in} at first')
+        pg.locator('[data-act=showmore][data-k=fz-in]').click()
+        check(pg.locator('#fz-in ul[data-more] > li:not([hidden])').count() == min(20, n_in), 'Show 10 more shows the next ten')
     # the table counts covered plants
     check(pg.locator('.fz-tbl tbody tr').count() == 7, 'seven nights in the table')
     # hide the banner
