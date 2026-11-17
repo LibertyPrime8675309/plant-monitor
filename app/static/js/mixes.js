@@ -48,7 +48,7 @@ async function viewMixes() {
       <p class="hint">How much each holds water and lets in air is a rough guide, from 1 (low) to 5 (very high). It is for comparing them, not a measurement. Change any that your own pots disagree with.</p>
       ${can ? html`<p><button class="btn" type="button" data-act="mxam">Add an amendment</button></p>` : ''}
       ${['part', 'medium', 'additive'].map(role => byRole(role).length ? html`<h3>${MX_ROLE_H[role]} (${byRole(role).length})</h3>
-        <ul class="mx-ams">${byRole(role).map(a => html`<li><span><strong>${a.name}</strong>${a.grades.length ? html` <span class="muted">(${a.grades.join(', ')})</span>` : ''}<br>
+        <ul class="mx-ams" data-more="mx-${role}">${byRole(role).map(a => html`<li><span><strong>${a.name}</strong>${a.grades.length ? html` <span class="muted">(${a.grades.join(', ')})</span>` : ''}<br>
           ${a.words ? html`<ul class="mx-props">${a.words.split(', ').map(w => html`<li>${w[0].toUpperCase() + w.slice(1)}</li>`)}</ul>` : html`<span class="muted">No properties set.</span>`}${a.notes ? html`<br><span class="muted">${a.notes}</span>` : ''}</span>
           ${can ? html`<span class="row"><button class="btn ghost small" type="button" data-act="mxam" data-id="${a.id}" aria-label="Change ${a.name}">Change</button>
             <button class="btn ghost small" type="button" data-act="mxamdel" data-id="${a.id}" aria-label="Remove ${a.name}">Remove</button></span>` : ''}</li>`)}</ul>` : '')}</section>
