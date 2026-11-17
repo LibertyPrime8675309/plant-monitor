@@ -300,12 +300,16 @@ def step_down(L, s, plants, outdoor):
 
 # Grow lights and your layouts (1.58.0, prototype #141; layouts.py fills LIGHTS_FROM_LAYOUTS). Ethan, November 16, 2026:
 # a light's hours and brightness are set on the layout, and a plant under a light drawn on a layout counts as having a light.
+LIGHT_NONE = 'No light reaches it'           # a plant drawn on a layout that no drawn light reaches
+
 def from_layouts(c):
-    """What your layouts say about your grow lights: the lights drawn on a layout of a place, and each drawn plant's light there."""
-    out = {'lights': [], 'plants': {}}
+    """What your layouts say about your grow lights: the lights drawn on a layout of a place, each drawn plant's light there, and
+    the layouts whose lights have figures."""
+    out = {'lights': [], 'plants': {}, 'layouts': []}
     for fn in LIGHTS_FROM_LAYOUTS:
         r = fn(c) or {}
         out['lights'] += r.get('lights') or []
+        out['layouts'] += r.get('layouts') or []
         for code, rs in (r.get('plants') or {}).items(): out['plants'].setdefault(code, []).extend(rs)
     return out
 
@@ -324,12 +328,35 @@ def spot_tie_body(c, b):
     tie = spot_layout(place, light, from_layouts(c))
     return (b | {'hours': max(1, tie['hours']), 'dim': tie['dim_pct']}, tie) if tie else (b, None)
 
+def reading_for(LL, code, pid=None):
+    """The layout reading to use for a plant: on the layout of the spot's own place; else on the layout of the place the record has
+    it; else one where a light reaches it; else any (as the Layouts page would pick it)."""
+    a = LL['plants'].get(code) or []
+    return (next((r for r in a if pid is not None and r['pid'] == pid), None) or next((r for r in a if r['here']), None)
+            or next((r for r in a if r['reached']), None) or (a[0] if a else None))
+
+def read_rows(LL, rows, pid):
+    """A spot's plants (spot_eval's rows): each drawn on a layout gets that reading, and its mark is the layout's (Ethan, November 16,
+    2026: option 1). The spot's own mark stays as spot_verdict."""
+    for p in rows:
+        r = reading_for(LL, p['code'], pid)
+        if not r: continue
+        p.update(layout=r, spot_verdict=p['verdict'], spot_word=p['verdict_word'], verdict=r['verdict'],
+                 verdict_word=LIGHT_VERDICT.get(r['verdict'], LIGHT_NONE))
+    return rows
+
+def drawn_dli(r, light_id, hours, dim):
+    """A drawn plant's daily light with every drawn `light_id` on its layout at these hours and brightness (the others as they are)."""
+    mine = sum(p['par'] for p in r['parts'] if p['light_id'] == light_id)
+    rest = sum(o['dli'] for o in r['on'] if o['light_id'] != light_id)
+    return round(mine * dim / 100 * hours * 0.0036 + rest, 1)
+
 def layout_lit(LL, assigned):
     """Plants in no light spot that a light drawn on a layout reaches. They count as having a light."""
     out = {}
     for code, rs in LL['plants'].items():
         r = next((x for x in rs if x['reached']), None)
-        if r and code not in assigned: out[code] = {k: r[k] for k in ('lid', 'lname', 'item', 'dli', 'verdict')}
+        if r and code not in assigned: out[code] = r | {'verdict_word': LIGHT_VERDICT.get(r['verdict'], LIGHT_NONE)}
     return out
 
 def lights_state(c):
@@ -352,6 +379,7 @@ def lights_state(c):
         tie = spot_layout(s['place_id'], s['light_id'], LL)
         if tie: s = dict(s) | {'hours': tie['hours'], 'dim_pct': tie['dim_pct']}       # set on the layout
         ev = spot_eval(c, s, L, ps)
+        read_rows(LL, ev['plants'], s['place_id'])
         out_spots.append({'id': s['id'], 'name': s['name'], 'light_id': s['light_id'], 'light': L['name'] if L else 'A light that was removed',
                           'place_id': s['place_id'], 'place': place_label(c, s['place_id']), 'place_photo': pphoto.get(s['place_id']),
                           'units': s['units'], 'distance_in': s['distance_in'], 'hours': s['hours'], 'dim_pct': s['dim_pct'], 'notes': s['notes'],
@@ -379,7 +407,7 @@ def lights_state(c):
         return {'levels': sh.get('levels'), 'gaps_in': sh.get('gaps_in') or ([sh['gap_in']] * (sh['levels'] - 1) if sh.get('gap_in') and sh.get('levels') else [])}
     places = [p | {'spots': [s['id'] for s in out_spots if s['place_id'] == p['id']], 'photo': pphoto.get(p['id']), 'words': place_words(c, p['id']), **lv(p['id'])} for p in light_places(c)]
     return {'lights': lights_out, 'spots': out_spots, 'plan': plan, 'unplaced': unplaced, 'places': places,
-            'candidates': cands, 'assigned': {code: sid for sid, codes in assign.items() for code in codes}, 'drawn': drawn, 'readings': LL['plants'], 'outdoor_dli': outdoor,
+            'candidates': cands, 'assigned': {code: sid for sid, codes in assign.items() for code in codes}, 'drawn': drawn, 'readings': LL['plants'], 'read_layouts': LL['layouts'], 'outdoor_dli': outdoor,
             'verdicts': LIGHT_VERDICT, 'mount_kinds': MOUNT_KINDS, 'points': POINTS, 'holders': {k: v[0] for k, v in HOLDERS.items()}}
 
 def better_spot(spots, p, here=None):
@@ -395,33 +423,48 @@ def better_spot(spots, p, here=None):
     s = min(fits, key=lambda s: abs(s['dli'] - mid))
     return {'id': s['id'], 'name': s['name'], 'dli': s['dli']}
 
-def best_setting(c, L, units, plants):
+def best_setting(c, L, units, plants, place=None):
     """1.41.0: the distance, hours and brightness under light L that put the most of these plants in their range, then the
-    fewest just outside it, then not crowded, then nearest the middle of their ranges; whole inches within the light's range."""
+    fewest just outside it, then not crowded, then nearest the middle of their ranges; whole inches within the light's range.
+    1.58.0: where L is drawn on the layout of the spot's place (`place`), a plant drawn there gets its own light from the drawing
+    at each hours and brightness tried, and the distance is only for the plants that are not drawn. The hours and brightness are
+    then the layout's to set (`layout` says where)."""
     d = light_specs(L); pts = light_points(d)
     if not pts: return None
     dmin, dmax = light_range(pts)
     dims = sorted({int(x) for x in (d.get('dimming') or [100]) if 0 < int(x) <= 100} | {100}, reverse=True)
-    ns = [(r, plant_need(r)) for r in plants]
-    known = [(r, n) for r, n in ns if n]
-    foot = sum(plant_foot(c, r) for r in plants)
+    LL = from_layouts(c)
+    tie = spot_layout(place, L['id'], LL)
+    drawn = {r['code']: x for r in plants for x in [reading_for(LL, r['code'], place)] if tie and x and x['pid'] == place}
+    known = [(r, n) for r, n in ((r, plant_need(r)) for r in plants) if n]
+    loose = [r for r in plants if r['code'] not in drawn]
+    foot = sum(plant_foot(c, r) for r in loose)
+    dists = range(int(math.ceil(dmin)), int(math.floor(dmax)) + 1) if loose else [None]
     best = None
-    for dist in range(int(math.ceil(dmin)), int(math.floor(dmax)) + 1):
-        area = area_at(pts, dist); p = ppfd_at(pts, dist) * stack_factor(area, units, foot)       # 1.56.1: several lights add up
+    for dist in dists:
+        area = area_at(pts, dist) if dist else None
+        p = ppfd_at(pts, dist) * stack_factor(area, units, foot) if dist else None       # 1.56.1: several lights add up
         crowded = bool(area and foot > area * units * LIGHT_ROOM * 1.1)
         for h in LIGHT_HOURS:
             for dim in dims:
-                dl = dli_of(p, h, dim)
-                vs = [light_verdict(dl, n['lo'], n['hi']) for _, n in known]
-                off = sum(abs(math.log(max(dl, 0.01) / max(n['target'], 0.01))) for _, n in known)
+                dl = dli_of(p, h, dim) if p else None
+                each = [(drawn_dli(drawn[r['code']], L['id'], h, dim) if r['code'] in drawn else dl, n) for r, n in known]
+                vs = [light_verdict(x, n['lo'], n['hi']) for x, n in each]
+                off = sum(abs(math.log(max(x or 0, 0.01) / max(n['target'], 0.01))) for x, n in each)
                 key = (sum(v == 'good' for v in vs), sum(v in ('dim', 'bright') for v in vs), not crowded, h in (12, 14), dim == 100, -off)
                 if best is None or key > best[0]: best = (key, dist, h, dim, dl, p)
     _, dist, h, dim, dl, p = best
-    return {'distance_in': dist, 'hours': h, 'dim_pct': dim, 'dli': dl, 'ppfd': round(p), 'good': best[0][0], 'of': len(known)}
+    out = {'distance_in': dist, 'hours': h, 'dim_pct': dim, 'dli': dl, 'ppfd': round(p) if p else None, 'good': best[0][0], 'of': len(known), 'drawn': len(drawn)}
+    if tie:
+        lay = c.execute("SELECT id FROM layout_items WHERE layout_id=? AND kind='light' AND light_id=? ORDER BY sort, id", (tie['lid'], L['id'])).fetchall()
+        out['layout'] = {'id': tie['lid'], 'name': tie['lname'], 'item': tie['item'], 'items': [x[0] for x in lay], 'hours': tie['hours'], 'dim_pct': tie['dim_pct'],
+                         'same': (h, dim) == (tie['hours'], tie['dim_pct'])}
+        out['each'] = [{'code': r['code'], 'name': r['common_name'], 'dli': x} for r in plants if r['code'] in drawn for x in [drawn_dli(drawn[r['code']], L['id'], h, dim)]]
+    return out
 
 @app.route('/api/lights/best')
 def lights_best():
-    """Best setting for the ticked plants: ?light=ID&units=N&plants=P-001,P-002"""
+    """Best setting for the ticked plants: ?light=ID&units=N&plants=P-001,P-002&place=PID (the spot's place, for its layout)"""
     c = db()
     try: lid = int(request.args.get('light', 0)); units = max(1, min(50, int(request.args.get('units') or 1)))
     except ValueError: abort(400, 'light and units must be numbers')
@@ -430,7 +473,9 @@ def lights_best():
     codes = [x for x in (request.args.get('plants') or '').split(',') if x]
     ps = [r for r in (c.execute('SELECT * FROM plants WHERE code=?', (x,)).fetchone() for x in codes) if r]
     if not ps: abort(400, 'Tick the plants for this spot first')
-    b = best_setting(c, L, units, ps)
+    try: place = int(request.args.get('place')) if request.args.get('place') not in (None, '', 'null') else None
+    except ValueError: place = None
+    b = best_setting(c, L, units, ps, place)
     if not b: abort(400, 'This light has no light figures yet. Add them with "Change the light figures" under Your lights.')
     return jsonify(b)
 
@@ -451,7 +496,10 @@ def lights_get():
     spots = [{'id': s['id'], 'name': s['name'], 'place': s['place'], 'light': s['light'], 'dli': s['dli'], 'n': len(s['plants']),
               'verdict': light_verdict(s['dli'], n and n['lo'], n and n['hi']), 'verdict_word': LIGHT_VERDICT[light_verdict(s['dli'], n and n['lo'], n and n['hi'])]}
              for s in st['spots']]
-    return jsonify(spot=spot, suggestion=sug, unplaced=un, candidate=cand is not None, lights=len(st['lights']), need=n, spots=spots)
+    lay = reading_for({'plants': st['readings']}, code, spot['place_id'] if spot else None)      # 1.58.0: its light on a layout
+    if lay: lay = lay | {'verdict_word': LIGHT_VERDICT.get(lay['verdict'], LIGHT_NONE)}
+    return jsonify(spot=spot, suggestion=sug, unplaced=un, candidate=cand is not None, lights=len(st['lights']), need=n, spots=spots,
+                   layout=lay, drawn=code in st['drawn'])
 
 @app.route('/api/lights/preview')
 def lights_preview():
@@ -461,10 +509,17 @@ def lights_preview():
     except ValueError: abort(400, 'light must be a number')
     L = c.execute('SELECT * FROM lights WHERE id=?', (lid,)).fetchone()
     if not L: abort(404, 'That light is not in your list')
-    s = spot_fields(request.args, partial=True)
+    try: place = int(request.args.get('place')) if request.args.get('place') not in (None, '', 'null') else None
+    except ValueError: place = None
+    LL = from_layouts(c)
+    tie = spot_layout(place, lid, LL)                   # 1.58.0: drawn on the layout of this place, the layout sets its hours (0 when drawn off)
+    args = request.args.to_dict() | ({'hours': max(1, tie['hours']), 'dim': tie['dim_pct']} if tie else {})
+    s = spot_fields(args, partial=True)
+    if tie: s = dict(s) | {'hours': tie['hours'], 'dim_pct': tie['dim_pct']}
     codes = [x for x in (request.args.get('plants') or '').split(',') if x]
     ps = [r for r in (c.execute('SELECT * FROM plants WHERE code=?', (x,)).fetchone() for x in codes) if r]
     ev = spot_eval(c, s, L, ps)
+    if tie: read_rows({'plants': {k: [r for r in v if r['pid'] == place] for k, v in LL['plants'].items()}}, ev['plants'], place)
     try: here = int(request.args.get('spot') or 0) or None
     except ValueError: here = None
     if any(p['verdict'] not in ('good', 'unknown') for p in ev['plants']):      # 1.41.0: where a plant that does not fit would

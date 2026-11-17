@@ -27,6 +27,17 @@ BASE = sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8080'
 TS = BASE.rsplit(':', 1)[0] + ':' + str(int(BASE.rsplit(':', 1)[1]) + 1)
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'tmp', 'shots'); os.makedirs(OUT, exist_ok=True)
 fails, errs = [], []
+
+def press(pg, sel):
+    """Click a button the page may be drawing again at that moment (Undo and Redo are redrawn after every change): wait until it
+    is shown and on, and try again if it was swapped out under the click (failed once on GitHub with "Element is not visible")."""
+    for n in range(4):
+        until(pg, lambda: pg.locator(sel).is_visible() and pg.locator(sel).is_enabled())
+        try: pg.locator(sel).click(timeout=5000); return
+        except Exception:
+            if n == 3: raise
+            pg.wait_for_timeout(150)
+
 def check(cond, what):
     print(('ok   ' if cond else 'FAIL ') + what)
     if not cond: fails.append(what)
@@ -231,7 +242,7 @@ with sync_playwright() as p:
           and pg.evaluate("getComputedStyle(document.querySelector('svg.ly-svg[data-view=top] g.ly-lab.is-hard .ly-flag')).display") != 'none', 'the mark is bars across the thing and a cross, not only a colour')
     shot(pg, '3-overlap')
     typed = pg.evaluate('LY.undo.length') - undos
-    for k in range(typed): pg.click('#ly-undo'); until(pg, lambda: pg.evaluate('LY.undo.length') == undos + typed - k - 1)
+    for k in range(typed): press(pg, '#ly-undo'); until(pg, lambda: pg.evaluate('LY.undo.length') == undos + typed - k - 1)
     check(typed == 2 and clean() and it(pg, a) == was and until(pg, lambda: (saved(lid, a)['x'], saved(lid, a)['y']) == (was['x'], was['y'])), 'Undo, once for each box typed in, takes the typing back, here and on the server')
 
     # ---- up and down in the front view: it lands on a shelf
@@ -296,7 +307,7 @@ with sync_playwright() as p:
     check(until(pg, lambda: it(pg, c3)['x'] == x0 + 1) and (it(pg, c3)['w'], it(pg, c3)['h']) == sz, 'and it still moves, keeping its size')
     a0 = centre(pg, 'front', c3); drag(pg, a0, -2 * pg.evaluate('LY.Sv.front'), 0)
     check(until(pg, lambda: it(pg, c3)['x'] == x0 - 1) and (it(pg, c3)['w'], it(pg, c3)['h']) == sz, f'dragged by its middle it moves, and its size stays ({it(pg, c3)})')
-    pg.click('#ly-undo'); until(pg, lambda: it(pg, c3)['x'] == x0 + 1); pg.click('#ly-undo'); until(pg, lambda: it(pg, c3)['x'] == x0)
+    press(pg, '#ly-undo'); until(pg, lambda: it(pg, c3)['x'] == x0 + 1); press(pg, '#ly-undo'); until(pg, lambda: it(pg, c3)['x'] == x0)
     pg.uncheck('#ly-f-size_locked'); until(pg, lambda: not it(pg, c3)['size_locked'] and not saved(lid, c3)['size_locked'])
     check(pg.locator(f'.ly-selmark[data-id="{c3}"] .ly-handle').count() >= 1 and not pg.locator('#ly-f-h').is_disabled(), 'unlocked, the corner handle and the size boxes are back')
 
@@ -351,19 +362,19 @@ with sync_playwright() as p:
           'a light has its hours a day and its brightness to set, and says which plants it lights')
     pg.fill('#ly-f-hours', '16'); pg.press('#ly-f-hours', 'Tab')
     check(until(pg, lambda: saved(lid, li['id'])['hours'] == 16) and mine() == glow(16) and 'hours changed' in pg.inner_text('#ly-undo'), f'on 16 hours the plant under it gets what Grow lights gives for 16 ({mine()}), and the hours are saved')
-    pg.click('#ly-undo')
+    press(pg, '#ly-undo')
     check(until(pg, lambda: saved(lid, li['id'])['hours'] == 12) and mine() == glow(12), 'Undo puts its hours back')
     # the height saved on the page is taken back by Undo; a page with no height is given the one drawn by its own button
     pick(a); pg.fill('#ly-f-h', '14'); pg.press('#ly-f-h', 'Tab')
     until(pg, lambda: call('GET', f'/api/plants/{acode}')['height_in'] == 14)
-    pg.click('#ly-undo')
+    press(pg, '#ly-undo')
     check(until(pg, lambda: call('GET', f'/api/plants/{acode}')['height_in'] == 12 and it(pg, a)['h'] == 12), 'Undo of a height puts it back on the layout and on the page')
     bcode = pg.evaluate("i => LY.d.items.find(x => x.id === i).plant", b); pick(b)
     check(call('GET', f'/api/plants/{bcode}')['height_in'] is None and 'Its page has no height yet' in pg.inner_text('#ly-p-tall') and pg.locator('#ly-tallsave').count() == 1, 'a plant with no height on its page says so')
     pg.click('#ly-tallsave')
     check(until(pg, lambda: call('GET', f'/api/plants/{bcode}')['height_in'] == it(pg, b)['h']) and until(pg, lambda: pg.locator('#ly-tallsave').count() == 0) and 'height saved' in pg.inner_text('#ly-undo'),
           '"Save this height on its page" puts the height drawn on its page')
-    pg.click('#ly-undo')
+    press(pg, '#ly-undo')
     check(until(pg, lambda: call('GET', f'/api/plants/{bcode}')['height_in'] is None) and until(pg, lambda: pg.locator('#ly-tallsave').count() == 1), 'and Undo takes it off the page again')
     pg.click('#ly-marks summary'); pg.click('#ly-keyhelp summary')
     check(pg.locator('#ly-marks > ul > li').count() == 7 and 'A sign for its light' in pg.inner_text('#ly-marks') and 'A grey dash' in pg.inner_text('#ly-marks') and 'A heavy edge' in pg.inner_text('#ly-marks') and pg.locator('#ly-marks li').first.is_visible() and 'Too dim' in pg.inner_text('#ly-marks') and 'Page Down' in pg.inner_text('#ly-keyhelp') and 'Ctrl+Y' in pg.inner_text('#ly-keyhelp'), 'What the marks mean and Keys for the drawing open lists, in words')
@@ -385,7 +396,7 @@ with sync_playwright() as p:
     check(put == 0, 'a new thing is not put in an area to keep clear')
     pick(zid); pg.keyboard.press('Delete')
     check(until(pg, lambda: not pg.evaluate("LY.d.items.some(i => i.kind === 'zone')")) and saved(lid, zid) is None, 'Delete takes the chosen thing off the layout')
-    pg.click('#ly-undo')
+    press(pg, '#ly-undo')
     check(until(pg, lambda: pg.evaluate("LY.d.items.some(i => i.kind === 'zone')")), 'and Undo puts it back')
     pg.click(f'.ly-list .ly-row[data-id="{pg.evaluate("LY.d.items.find(i => i.kind === 'zone').id")}"] [data-act=lypick]'); pg.wait_for_selector('#ly-rm'); pg.click('#ly-rm')
     until(pg, lambda: not pg.evaluate("LY.d.items.some(i => i.kind === 'zone')"))
@@ -452,13 +463,13 @@ with sync_playwright() as p:
     check(note.startswith('Moved to ') and 'Tall Brown Shelf' in note and 'layout' in note, f"its page's History says it was moved from the layout ({note})")
     pick(ids[0])
     check('In your record it is here' in pg.inner_text('#ly-p-rec') and pg.locator('#ly-recone').count() == 0, 'chosen, it now says the record has it here')
-    pg.click('#ly-undo')
+    press(pg, '#ly-undo')
     check(until(pg, lambda: place(away[0]['code']) == was_at[away[0]['code']]) and until(pg, lambda: pg.locator('#ly-rec .ly-row').count() == 2) and pg.locator('#ly-recone').count() == 1, 'Undo puts it back where the record had it')
     pg.click('#ly-recall'); pg.wait_for_selector('dialog[open] button[value=ok]')
     check('Move both plants in your record?' in pg.inner_text('dialog[open]') and 'Tall Brown Shelf' in pg.inner_text('dialog[open]'), 'moving them all asks first, and says where to')
     pg.click('dialog[open] button[value=ok]')
     check(until(pg, lambda: all(place(p['code'])[1] == spot['id'] for p in away)) and until(pg, lambda: not pg.locator('#ly-rec').is_visible()) and pg.evaluate("document.activeElement.id") == 'ly-undo', 'once confirmed both are on the shelf in the record, and the list is gone')
-    pg.click('#ly-undo')
+    press(pg, '#ly-undo')
     check(until(pg, lambda: all(place(p['code']) == was_at[p['code']] for p in away)) and until(pg, lambda: pg.locator('#ly-rec .ly-row').count() == 2), 'one Undo puts both back')
     shot(pg, '6b-record')
 
@@ -487,7 +498,7 @@ with sync_playwright() as p:
     check(until(pg, lambda: it(pg, rp)['z'] == 38.25) and (it(pg, rp)['x'], it(pg, rp)['y']) == (was['x'], was['y']) and until(pg, lambda: saved(rid, rp)['z'] == 38.25), 'choosing Level 3 under "Stands on" lifts it to that level, where it is')
     pg.fill('#ly-f-h', '30'); pg.press('#ly-f-h', 'Tab')
     check(until(pg, lambda: 'is too tall for Level 3 of Tall Brown Shelf' in pg.inner_text('#ly-find-body') and 'by 3 in' in pg.inner_text('#ly-find-body')), 'made 30 in tall where the level has 27 in, it is said to be too tall for that level by 3 in')
-    pg.click('#ly-undo'); until(pg, lambda: it(pg, rp)['h'] == 10 and pg.evaluate('LY.F.length') == 0)
+    press(pg, '#ly-undo'); until(pg, lambda: it(pg, rp)['h'] == 10 and pg.evaluate('LY.F.length') == 0)
     pg.click('#ly-v-both', force=True); until(pg, lambda: pg.locator('svg.ly-svg[data-view=front]').count() == 1)
     check(pg.locator(f'svg.ly-svg[data-view=front] g.ly-it[data-id="{block["id"]}"] .ly-board').count() == 4, 'from the front the shelf shows its four boards, open between them')
     pg.click('#ly-v-top', force=True); until(pg, lambda: pg.locator('svg.ly-svg[data-view=front]').count() == 0)
@@ -497,11 +508,11 @@ with sync_playwright() as p:
     check(until(pg, lambda: it(pg, rp)['z'] == 0) and 'on the floor' in pg.inner_text('#ly-say'), 'dragged off the shelf, it goes down to the floor')
     # Redo: its button and Ctrl+Y do again what Undo took back, and a new change empties it
     check(pg.locator('#ly-redo').is_disabled() and pg.locator('#ly-redo').inner_text() == 'Redo', 'with nothing taken back, Redo has nothing to do')
-    pg.click('#ly-undo')
+    press(pg, '#ly-undo')
     check(until(pg, lambda: it(pg, rp)['z'] == table['h']) and pg.locator('#ly-redo').inner_text() == 'Redo: moved' and pg.locator('#ly-redo').get_attribute('aria-label').startswith('Redo: moved. '), 'after Undo, Redo says what it would do again')
-    pg.click('#ly-redo')
+    press(pg, '#ly-redo')
     check(until(pg, lambda: it(pg, rp)['z'] == 0 and saved(rid, rp)['z'] == 0) and pg.locator('#ly-redo').is_disabled() and 'Done again' in pg.inner_text('#toasts'), 'Redo puts the plant back on the floor, in the record of the layout too')
-    pg.click('#ly-undo'); until(pg, lambda: it(pg, rp)['z'] == table['h']); pg.click('#ly-undo'); until(pg, lambda: it(pg, rp)['z'] == 38.25)
+    press(pg, '#ly-undo'); until(pg, lambda: it(pg, rp)['z'] == table['h']); press(pg, '#ly-undo'); until(pg, lambda: it(pg, rp)['z'] == 38.25)
     pg.locator('#ly-status').click(); pg.keyboard.press('Control+y')
     check(until(pg, lambda: it(pg, rp)['z'] == table['h']), 'Ctrl+Y does the same from anywhere on the page')
     pg.keyboard.press('Control+z'); until(pg, lambda: it(pg, rp)['z'] == 38.25)
@@ -524,16 +535,16 @@ with sync_playwright() as p:
           and 'on Level 3 of Tall Brown Shelf' in pg.evaluate(f'lyWhere(LY.d, lyItem({rp3}))') and pg.evaluate('LY.F.length') == 0,
           f"""the shelf moved by the arrow keys carries the plant on its third level with it, on the page and in the record of the layout ({it(pg, block["id"])} {it(pg, rp3)} {pg.inner_text('#ly-say')} {pg.evaluate('LY.F.map(f => f.text)')})""")
     check('it carries' in pg.locator('#ly-undo').get_attribute('aria-label'), 'Undo says that it would put back the shelf and what it carries')
-    pg.click('#ly-undo')
+    press(pg, '#ly-undo')
     check(until(pg, lambda: both(0, 0)) and until(pg, lambda: (saved(rid, rp3)['x'], saved(rid, block['id'])['x']) == (sp['x'], sb['x'])), 'Undo puts the shelf and the plant back together')
-    pg.click('#ly-redo')
+    press(pg, '#ly-redo')
     check(until(pg, lambda: both(1, 1)) and until(pg, lambda: saved(rid, rp3)['y'] == sp['y'] + 1), 'and Redo moves them together again')
-    pg.click('#ly-undo'); until(pg, lambda: both(0, 0))
+    press(pg, '#ly-undo'); until(pg, lambda: both(0, 0))
     pg.evaluate("(() => { const r = document.querySelector('svg.ly-svg[data-view=top]').getBoundingClientRect(); window.scrollBy(0, r.top - 190); })()"); pg.wait_for_timeout(150)
     edge = pg.evaluate("i => { const r = document.querySelector(`svg.ly-svg[data-view=top] g.ly-it[data-id='${i}'] .ly-shape`).getBoundingClientRect(); return [r.x + 7, r.y + r.height / 2]; }", block['id'])
     S = pg.evaluate('LY.Sv.top'); drag(pg, edge, 6 * S, 10 * S)
     check(until(pg, lambda: both(6, 10)) and until(pg, lambda: (saved(rid, rp3)['x'], saved(rid, rp3)['y']) == (sp['x'] + 6, sp['y'] + 10)), f'dragged, the shelf carries the plant too ({it(pg, block["id"])} {it(pg, rp3)})')
-    pg.click('#ly-undo'); until(pg, lambda: both(0, 0))
+    press(pg, '#ly-undo'); until(pg, lambda: both(0, 0))
 
     # ---- the front view of a room looks at one wall, and draws only what is at that wall
     pg.click('#ly-v-both', force=True); until(pg, lambda: pg.locator('svg.ly-svg[data-view=front]').count() == 1)

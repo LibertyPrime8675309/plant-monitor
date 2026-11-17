@@ -25,6 +25,8 @@ Outdoor plants often carry ants, spider mites, mealybugs and other pests. Each p
 
 **Start the checklist** (from 1.40.1) sits right under the plant's status, on its page and inside its fold on the Coming inside page. Once started, the plant shows as In progress. **Undo the start** takes it back until you have done a step, and **Go to the checklist** jumps to the list.
 
+**Folded until you start (from 1.58.0).** On a plant's page, About this plant and the checklist fold into one line, such as **About this plant, and the checklist (10 steps)**. Press it to open them. They open by themselves when you press **Start the checklist**, and **Go to the checklist** opens them too. Once open, they stay open while you tick steps.
+
 **The checklist is tick boxes (from 1.41.1).** All 10 steps are listed in order, each with a tick box, its rating, why, and "How to do it". Tick a step when you have done it (it is logged for today); untick it to take back the last time. Steps rated Not needed or Not for this plant are marked **Not recommended** with a dashed border, and can still be ticked. A spray that needs a second round says when, with a **Round 2 done today** button. A plant that is already inside can be started too, such as a new plant from a store, or one that came in without a check. It is then kept apart for 3 weeks from the day you started.
 
 1. Under **About this plant**, check the **Leaf type** and choose the **Pot size**. Claude filled in the leaf type for every plant; change it if it is wrong.

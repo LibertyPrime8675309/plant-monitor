@@ -30,3 +30,4 @@
 .cmp-try-sum{padding-left:1.2em} .cmp-try-sum li{margin:.3rem 0;max-width:75ch}
 html[data-role=viewer] :is([data-act=cmpnew]){display:none!important}
 .tbl-wrap.wide.cmp-wrap,#cmp-side-wrap{max-height:none;overflow:visible}   /* "wide" only keeps the app's own stacking off: the page draws cards itself */
+.cmp-drawn{display:block;font-weight:400;color:var(--ink-2)}

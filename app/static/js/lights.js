@@ -4,7 +4,7 @@
 
 // ---------- grow lights (1.13.0) ----------
 let LT = null;                     // the last answer from /api/lights
-const LV_ICON = { too_dim: '▼▼', dim: '▼', good: '✓', bright: '▲', too_bright: '▲▲', unknown: '?' };
+const LV_ICON = { too_dim: '▼▼', dim: '▼', good: '✓', bright: '▲', too_bright: '▲▲', unknown: '?', none: '–' };      // none: drawn on a layout, and no drawn light reaches it
 function lvTag(v, word) { return html`<span class="lv lv-${v}"><span aria-hidden="true">${LV_ICON[v] || ''}</span> ${word}</span>`; }
 function ltSetting(s) {
   return `${s.units > 1 ? s.units + ' side by side, ' : ''}${lenF(s.distance_in)} from the leaves, ${fmt(s.hours, 1)} hours a day${s.dim_pct < 100 ? `, at ${s.dim_pct}% brightness` : ''}`;
@@ -21,7 +21,10 @@ function ltRoomsBlock() {
   // so removing a shelf never takes the room with it
   return html`<div class="lt-rooms">${rooms.map(([room, ps]) => {
     const self = ps.find(pl => !pl.name), shelves = ps.filter(pl => pl.name), here = self ? spotsAt(self) : '';
-    return html`<section class="lt-room" aria-label="${room}"><div class="lt-room-head"><h3>${room}</h3>
+    const nsp = LT.spots.filter(sp => ps.some(pl => pl.id === sp.place_id)).length;
+    const box = x => html`<details class="lt-spot lt-spot-fold lt-room-fold" data-id="R${room}" ${ltFoldOpen('R' + room) ? raw('open') : ''}><summary><h3>${room}</h3>
+      <span class="lt-sum"><span><strong>Shelves:</strong> ${shelves.length}</span><span><strong>Light spots:</strong> ${nsp}</span></span></summary><div class="lt-spot-in">${x}</div></details>`;
+    return box(html`<section class="lt-room" aria-label="${room}"><div class="lt-room-head">
       <span class="row noprint"><button class="btn small" type="button" data-act="shelfnew" data-room="${room}" aria-label="New shelf in ${room}">New Shelf</button>
         ${self ? html`<button class="btn ghost small" type="button" data-act="roomedit" data-id="${self.id}" aria-label="Rename the room ${room}">Rename</button><button class="btn ghost small" type="button" data-act="roomdel" data-id="${self.id}" aria-label="Remove room: ${room}">Remove room</button>` : ''}</span></div>
       ${self ? html`<div class="fit-place">${placeBits(self)}${self.words ? html`<p class="muted">${self.words}</p>` : ''}</div>` : ''}
@@ -29,7 +32,7 @@ function ltRoomsBlock() {
       ${shelves.length ? html`<ul>${shelves.map(pl => html`<li><span><strong>${pl.name}</strong><br><span class="muted">${spotsAt(pl) || 'No light spot here yet'}</span>${pl.words ? html`<br><span class="muted">${pl.words}</span>` : ''}
           <span class="fit-place">${placeBits(pl)}</span></span>
         <span class="row noprint"><button class="btn ghost small" type="button" data-act="roomedit" data-id="${pl.id}" aria-label="Rename the shelf ${pl.name}">Rename</button><button class="btn ghost small" type="button" data-act="roomdel" data-id="${pl.id}" aria-label="Remove the shelf ${pl.name}">Remove</button></span></li>`)}</ul>`
-        : html`<p class="muted">No shelves yet.</p>`}</section>`; })}</div>`;
+        : html`<p class="muted">No shelves yet.</p>`}</section>`); })}</div>`;
 }
 async function roomDialog(pl, opt) {
   if (!(await needName())) return;
@@ -60,9 +63,44 @@ function ltSteps(steps) {
     <ol>${steps.map(st => html`<li><strong>${st.when}:</strong> ${st.distance_in != null ? html`${lenF(st.distance_in)} from the leaves, ${fmt(st.hours, 1)} hours a day${st.dim_pct < 100 ? `, ${st.dim_pct}% brightness` : ''}, about ${st.dli} mol/m² a day. ` : ''}${st.text}</li>`)}</ol></details>`;
 }
 const ltRange = (lo, hi) => has(lo) ? `${fmt(lo, 1)}–${fmt(hi, 1)} mol/m² per day` : 'Light needs not set';
-function ltPlantLi(p, extra) {      // 1.42.0: the code and the range on lines of their own
-  return html`<li>${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : html`<span></span>`}
-    <span class="lt-pt"><a class="nm" href="#/plant/${enc(p.code)}">${p.name}</a><span class="muted">${p.code}</span><span class="muted">${ltRange(p.lo, p.hi)}</span>${extra || ''}</span>${p.verdict ? lvTag(p.verdict, p.verdict_word) : html`<span></span>`}</li>`;
+function ltPlantLi(p, extra, s) {      // 1.42.0: the code and the range on lines of their own; 1.58.0: a plant drawn on a layout, its light there (s: its spot)
+  return html`<li ${p.layout ? raw(`class="lg-read" data-lg="${p.verdict}"`) : ''}>${p.photo ? html`<img src="${thumbUrl(p.photo)}" alt="" loading="lazy">` : html`<span></span>`}
+    <span class="lt-pt"><a class="nm" href="#/plant/${enc(p.code)}">${p.name}</a><span class="muted">${p.code}</span><span class="muted">${ltRange(p.lo, p.hi)}</span>${extra || ''}</span>${p.verdict ? lvTag(p.verdict, p.verdict_word) : html`<span></span>`}
+    ${p.layout ? lgLine(p.layout, p, s) : ''}</li>`;
+}
+// 1.58.0 (from prototype #141): Grow lights reads your layouts. A plant drawn on a layout with a grow light has its own light there
+// (the server's layouts.py works it out as the Layouts page does); its mark in its spot is the layout's (Ethan, November 16, 2026).
+const lgMol = n => `${fmt(n, 1)} mol/m² a day`;
+const lgWhere = r => { const o = r.on[0]; return o ? `${lenF(o.up)} under the ${o.name}${o.side >= 0.5 ? `, ${lenF(o.side)} to the side` : ''}` : ''; };
+const lgLink = r => html`<a href="#/layouts/${r.lid}?sel=${r.item}">${r.lname}</a>`;
+// The line under a plant: its light on the layout, and what the spot's one setting would have said where that differs.
+function lgLine(r, p, s) {
+  const differs = s && p.spot_verdict && p.spot_verdict !== p.verdict;
+  return html`<span class="lg-line">On the layout ${lgLink(r)}: ${r.reached ? html`about <strong>${lgMol(r.dli)}</strong>${lgWhere(r) ? `, ${lgWhere(r)}` : ''}.` : html`<strong>no light drawn there reaches it</strong>${r.shut.length ? ` (the ${r.shut[0]} is shut out)` : ''}.`}
+    ${differs ? html` <span class="muted">The spot's one setting gives ${has(s.dli) ? s.dli : '?'} (${p.spot_word}).</span>` : ''}</span>`;
+}
+// A spot with plants drawn on a layout: how far under its light they are there, against the spot's one distance.
+function lgSpotLine(s) {
+  const rs = s.plants.filter(p => p.layout).map(p => p.layout); if (!rs.length) return '';
+  const count = new Map(); rs.forEach(r => count.set(r.lid, (count.get(r.lid) || 0) + 1));
+  const lid = [...count].sort((a, b) => b[1] - a[1])[0][0], mine = rs.filter(r => r.lid === lid), name = mine[0].lname;
+  const ups = mine.filter(r => r.reached).flatMap(r => r.on.filter(o => o.light_id === s.light_id).map(o => o.up)), lo = Math.min(...ups), hi = Math.max(...ups);
+  const n = s.plants.length, k = mine.length, set = s.layout && s.layout.id === lid;
+  return html`<div class="lg-spot" data-lid="${lid}"><p><strong>On the layout <a href="#/layouts/${lid}">${name}</a>:</strong> ${k === n ? (n === 1 ? 'its plant is' : `all ${n} of its plants are`) : `${k} of its ${n} plants ${k === 1 ? 'is' : 'are'}`} drawn.
+      ${ups.length ? `${ups.length === 1 || Math.abs(hi - lo) < 0.5 ? `The top of ${ups.length === 1 ? 'the plant' : 'each'} is ${lenF(lo)}` : `Their tops are ${lenF(lo)} to ${lenF(hi)}`} under this light. This spot says ${lenF(s.distance_in)} from the leaves.` : set ? 'This light reaches none of them there.' : 'This light is not drawn there.'}</p>
+    ${set ? html`<p class="lg-set">Its hours (${fmt(s.hours, 1)} a day) and brightness (${s.dim_pct}%) are set on the layout, for this spot too.</p>` : ''}</div>`;
+}
+// Above the spots: which layouts are read, and the plants a drawn light reaches that are in no spot (they count as having a light).
+function lgNote() {
+  const lit = LT.read_layouts || []; if (!lit.length) return '';
+  const inSpots = LT.spots.reduce((a, s) => a + s.plants.filter(p => p.layout).length, 0), loose = Object.entries(LT.drawn || {});
+  return html`<div class="lg-note" id="lg-note"><p><strong>Read from your layouts.</strong> ${lit.length === 1 ? html`Your layout <a href="#/layouts/${lit[0].id}">${lit[0].name}</a> has a grow light drawn on it.` : html`${lit.length} of your <a href="#/layouts">layouts</a> have a grow light drawn on them.`}
+      ${inSpots ? `${inSpots === 1 ? 'One plant in the spots below is' : `${inSpots} of the plants in the spots below are`} drawn there. ${inSpots === 1 ? 'Its' : 'Their'} light is read from where ${inSpots === 1 ? 'it stands' : 'each stands'} on the drawing: its own distance under the light, and how far to the side.` : 'No plant in the spots below is drawn there yet.'}
+      A plant that is not drawn keeps what its spot gives.</p>
+    ${loose.length ? html`<details class="lg-fold"><summary class="btn small ghost"><span>Under a light on a layout, but in no light spot (${loose.length})</span></summary>
+      <p class="hint">These count as having a light. The summary above and the suggested layout below leave them out.</p>
+      <ul class="lt-plants lt-two">${loose.map(([code, r]) => html`<li><span></span><span class="lt-pt"><a class="nm" href="#/plant/${enc(code)}">${r.name}</a><span class="lg-code">${code}</span></span>${lvTag(r.verdict, r.verdict_word)}
+        <span class="lg-line">On the layout ${lgLink(r)}: about <strong>${lgMol(r.dli)}</strong>${lgWhere(r) ? `, ${lgWhere(r)}` : ''}.</span></li>`)}</ul></details>` : ''}</div>`;
 }
 // 1.42.0: each of your spots folds; shut, it still shows its name, where it is, its daily light and how many plants
 const LT_OPEN = (() => { try { return new Set(JSON.parse(localStorage.getItem('plantdb.ltspots') || '[]')); } catch (e) { return new Set(); } })();
@@ -74,27 +112,44 @@ function ltSpotBody(s, i, plan) {
       ${s.crowded ? html`<strong>Crowded:</strong> the pots take about ${areaF(s.room_needed_sqft)}, so the plants at the edge get less.` : ''}</p>
     ${s.timer_note ? html`<p class="hint">${s.timer_note}</p>` : ''}
     ${ltSocketNote(L)}
-    ${s.plants.length ? html`<ul class="lt-plants lt-two">${s.plants.map(p => ltPlantLi(p, p.better ? html`<span class="lt-better">It would suit <strong>${p.better.name}</strong> (about ${p.better.dli} mol/m² a day).</span>` : ''))}</ul>` : html`<p class="muted">No plants in this spot yet.</p>`}
+    ${plan ? '' : lgSpotLine(s)}
+    ${s.plants.length ? html`<ul class="lt-plants lt-two">${s.plants.map(p => ltPlantLi(p, p.better ? html`<span class="lt-better">It would suit <strong>${p.better.name}</strong> (about ${p.better.dli} mol/m² a day).</span>` : '', plan ? null : s))}</ul>` : html`<p class="muted">No plants in this spot yet.</p>`}
     ${ltSteps(s.steps)}
     <div class="row noprint">${plan ? html`<button class="btn" type="button" data-act="spotnew" data-plan="${i}">Set up this spot</button>`
       : html`<button class="btn ghost" type="button" data-act="spotadd" data-id="${s.id}" aria-label="Add plants to ${s.name}">Add plants</button><button class="btn ghost" type="button" data-act="spotedit" data-id="${s.id}" aria-label="Change this spot: ${s.name}">Change this spot</button><button class="btn ghost" type="button" data-act="spotdel" data-id="${s.id}" aria-label="Remove this spot: ${s.name}">Remove this spot</button>`}</div>`;
 }
 function ltSpotCard(s, i, plan) {
-  if (plan) return html`<article class="lt-spot" aria-labelledby="lts-p${i}"><h3 id="lts-p${i}">${s.name}</h3>${ltSpotBody(s, i, true)}</article>`;
-  const n = s.plants.length, off = s.plants.filter(p => p.verdict && !['good', 'unknown'].includes(p.verdict)).length;
+  if (plan) return html`<details class="lt-spot lt-spot-fold lt-plan-fold" data-id="P${i}" ${ltFoldOpen('P' + i) ? raw('open') : ''}>
+    <summary><h3 id="lts-p${i}">${s.name}</h3>
+      <span class="lt-sum"><span><strong>Light:</strong> ${s.light}</span><span><strong>${has(s.dli) ? s.dli : '?'} mol/m² per day</strong></span><span><strong>Plants:</strong> ${s.plants.length}</span></span></summary>
+    <div class="lt-spot-in">${ltSpotBody(s, i, true)}</div></details>`;
+  const n = s.plants.length, off = s.plants.filter(p => p.verdict && !['good', 'unknown'].includes(p.verdict)).length, read = s.plants.filter(p => p.layout).length;
   return html`<details class="lt-spot lt-spot-fold" data-id="${s.id}" ${LT_OPEN.has(String(s.id)) ? raw('open') : ''}>
     <summary><h3 id="lts-s${i}">${s.name}</h3>
       <span class="lt-sum"><span><strong>Where:</strong> ${s.place || 'Not chosen yet'}</span><span><strong>${has(s.dli) ? s.dli : '?'} mol/m² per day</strong></span>
         <span><strong>Plants:</strong> ${n}${off ? ` (${off} not in their range)` : ''}</span>
-        ${s.fit ? html`<span class="fit-tag fit-${s.fit.status}"><span aria-hidden="true">${FIT_STATUS_ICON[s.fit.status] || ''}</span> ${s.fit.word}</span>` : ''}</span></summary>
+        ${s.fit ? html`<span class="fit-tag fit-${s.fit.status}"><span aria-hidden="true">${FIT_STATUS_ICON[s.fit.status] || ''}</span> ${s.fit.word}</span>` : ''}
+        ${read ? html`<span class="lg-sum">${read === n ? (n === 1 ? 'Read from its layout' : `All ${n} read from a layout`) : `${read} of ${n} read from a layout`}</span>` : ''}</span></summary>
     <div class="lt-spot-in">${ltSpotBody(s, i, false)}</div></details>`;
 }
+// 1.58.0, a shorter Grow lights (Ethan chose option B, November 16, 2026): each light, suggested spot, room and the list of plants
+// with no light left folds as the spots do (ids L<light>, P<index>, R<room>, U, kept with the spots'); inside an open light each fact
+// is one line and each of the maker's figures one line (css/lights-compact.css).
+const ltFoldOpen = id => LT_OPEN.has(String(id));
 function ltLightCard(L) {
+  const p = L.points[0];
+  return html`<details class="lt-spot lt-spot-fold lt-light-fold" data-id="L${L.id}" ${ltFoldOpen('L' + L.id) ? raw('open') : ''}>
+    <summary><h3 id="ltl-${L.id}">${L.name}</h3>
+      <span class="lt-sum"><span><strong>You have:</strong> ${L.count}${L.in_use ? ` (${L.in_use} in use)` : ''}</span>${L.specs.kind ? html`<span>${L.specs.kind}</span>` : ''}
+        ${p ? html`<span><strong>Most light:</strong> ${fmt(p.ppfd)} PAR at ${lenF(p.distance_in)}</span>` : html`<span>No light figures yet</span>`}</span></summary>
+    <div class="lt-spot-in">${ltLightArticle(L)}</div></details>`;
+}
+function ltLightArticle(L) {
   const S = L.specs, bits = [S.watts ? S.watts + ' W' : '', S.lumens ? fmt(S.lumens) + ' lumens' : '', S.kelvin ? S.kelvin + 'K ' + (S.kelvin >= 5000 ? 'cool white' : S.kelvin >= 3500 ? 'neutral white' : 'warm white') : '', S.cri ? 'colour rendering (CRI) ' + S.cri : ''].filter(Boolean);
   const sp = S.spectrum;
-  return html`<article class="lt-light${L.photo ? '' : ' no-photo'}" aria-labelledby="ltl-${L.id}">
+  return html`<article class="lt-light lt-tight${L.photo ? '' : ' no-photo'}" aria-labelledby="ltl-${L.id}">
     ${L.photo ? html`<img class="lt-photo" src="${L.photo}" alt="${S.photo_alt || ''}" loading="lazy">` : ''}
-    <div class="lt-body"><h3 id="ltl-${L.id}">${L.name}</h3>
+    <div class="lt-body">
     <dl class="dl lt-facts"><dt>You have</dt><dd>${L.count}${L.in_use ? ` (${L.in_use} in use in your spots)` : ''}</dd>${S.model ? html`<dt>Model</dt><dd>${S.model}</dd>` : ''}${L.fixture ? html`<dt>Where it is</dt><dd>${L.fixture}</dd>` : ''}</dl>
     ${canChange() ? html`<p class="row noprint"><button class="btn ghost small" type="button" data-act="ltedit" data-id="${L.id}" aria-expanded="false" aria-controls="lt-ed-${L.id}">Edit the name, count, model and where it is</button></p>` : ''}
     ${(() => { const can = canChange(), ed = k => raw(`data-ed="light" data-id="${L.id}" data-k="${k}" ${can ? '' : 'readonly'}`); return html`<div class="field-grid lt-ed" id="lt-ed-${L.id}" hidden>
@@ -112,9 +167,8 @@ function ltLightCard(L) {
       ${S.size ? html`<dt>Size</dt><dd>${S.size}</dd>` : ''}
       ${mountLine(L)}
     </dl>${edLong('light', L.id, 'notes', 'Notes', L.notes, canChange())}
-    ${L.points.length ? html`<div class="tbl-wrap"><table class="tbl lt-ppfd"><caption>${S.estimated ? "Claude's estimates" : "Maker's figures"}: light under its centre</caption>
-      <thead><tr><th scope="col">Distance</th><th scope="col" class="num">PAR (µmol/m²/s)</th><th scope="col" class="num">12 hours a day gives</th><th scope="col" class="num">Lights about</th></tr></thead>
-      <tbody>${L.points.map(p => html`<tr><th scope="row">${lenF(p.distance_in)}</th><td class="num">${fmt(p.ppfd, 1)}</td><td class="num">${fmt(p.ppfd * 12 * 0.0036, 1)} mol/m²</td><td class="num">${p.area_sqft ? areaF(p.area_sqft) + (S.area_estimated && !S.estimated ? ' (estimate)' : '') : ''}</td></tr>`)}</tbody></table></div>` : ''}
+    ${L.points.length ? html`<h4 class="lt-pts-h">${S.estimated ? "Claude's estimates" : "Maker's figures"}: light under its centre</h4>
+      <ul class="lt-pts">${L.points.map(p => html`<li><strong>${lenF(p.distance_in)}:</strong> ${fmt(p.ppfd, 1)} PAR. 12 hours a day gives ${fmt(p.ppfd * 12 * 0.0036, 1)} mol/m².${p.area_sqft ? ` Lights about ${areaF(p.area_sqft)}${S.area_estimated && !S.estimated ? ' (estimate)' : ''}.` : ''}</li>`)}</ul>` : ''}
     ${S.ppfd_note ? html`<p class="hint">${S.ppfd_note}</p>` : ''}
     ${L.chart ? html`<p class="hint"><a href="${L.chart}" target="_blank" rel="noopener">Open the maker's chart</a> (picture). ${S.chart_alt || ''}</p>` : ''}
     ${S.url ? html`<p class="hint"><a href="${S.url}" target="_blank" rel="noopener noreferrer">Product page</a></p>` : ''}
@@ -124,6 +178,7 @@ function ltLightCard(L) {
 function ltTopOpen() { try { return localStorage.getItem('plantdb.lttop') !== '0'; } catch (e) { return true; } }
 function ltTopMeasure() { const t = document.getElementById('lt-top'); document.documentElement.style.setProperty('--lt-top-h', (t && getComputedStyle(t).position === 'sticky' ? t.offsetHeight : 0) + 'px'); }
 window.addEventListener('resize', () => { if (document.getElementById('lt-top')) ltTopMeasure(); });
+const ltAllBtns = what => html`<p class="row noprint"><button class="btn ghost small" type="button" data-act="ltspotsall" data-open="1">Open every ${what}</button><button class="btn ghost small" type="button" data-act="ltspotsall" data-open="0">Close every ${what}</button></p>`;
 async function viewLights() {
   LT = await api('GET', '/api/lights');
   const n = LT.candidates.length, inside = LT.candidates.filter(c => c.inside).length, inSpots = Object.keys(LT.assigned).length, sug = LT.plan.reduce((a, s) => a + s.codes.length, 0);
@@ -142,17 +197,21 @@ async function viewLights() {
           <td data-h="7-day mol/m² average">${has(LT.outdoor_dli) ? LT.outdoor_dli : 'Not known yet'}</td></tr></tbody></table></div>
       <p class="hint">${LT.plan.length ? `The suggested layout below places ${sug} more under your lights. ` : ''}${LT.unplaced.length ? `${LT.unplaced.length} ${LT.unplaced.length === 1 ? 'has' : 'have'} no light left in it. ` : ''}${has(LT.outdoor_dli) ? 'The 7-day average is outdoors in the open; under the porch roof it is much less.' : ''}</p></div></div>
     <section class="blk" id="lt-lights"><header class="sec-head"><h2>Your lights (${LT.lights.length})</h2><button class="btn ghost small noprint" type="button" data-act="lightnew">Add a light</button></header>
+      ${LT.lights.length > 1 ? ltAllBtns('light') : ''}
       <div class="lt-lights">${LT.lights.map(ltLightCard)}</div></section>
     <section class="blk" id="lt-spots"><header class="sec-head"><h2>Your light spots</h2><button class="btn small noprint" type="button" data-act="spotnew">Set up a spot</button></header>
-      ${LT.spots.length ? html`<p class="row noprint"><button class="btn ghost small" type="button" data-act="ltspotsall" data-open="1">Open every spot</button><button class="btn ghost small" type="button" data-act="ltspotsall" data-open="0">Close every spot</button></p>
+      ${lgNote()}
+      ${LT.spots.length ? html`${ltAllBtns('spot')}
         <div class="lt-spots">${LT.spots.map((s, i) => ltSpotCard(s, i, false))}</div>` : html`<p class="muted">None yet. Set one up from the suggested layout below with one press, or with "Set up a spot".</p>`}</section>
     <section class="blk" id="lt-rooms"><h2>Rooms and shelves</h2><p>Where your plants go inside. Choose one for each light spot.</p>${ltRoomsBlock()}
       <div class="row noprint"><button class="btn ghost" type="button" data-act="roomnew">New Room</button></div></section>
     <section class="blk" id="lt-plan"><h2>Suggested layout</h2>
       <p>For the plants that are not in a spot yet. Plants that need the most light are placed first. Each goes under the smallest of your lights that can give it enough. Plants whose needs overlap share a light, while there is room under it. "Set up this spot" opens it so you can rename it or change anything before saving.</p>
       ${LT.plan.length > 1 ? html`<p class="row noprint"><button class="btn" type="button" data-act="spotplanall">Set up all ${LT.plan.length} suggested spots</button></p>` : ''}
+      ${LT.plan.length > 1 ? ltAllBtns('suggested spot') : ''}
       ${LT.plan.length ? html`<div class="lt-grid">${LT.plan.map((s, i) => ltSpotCard(s, i, true))}</div>` : html`<p class="muted">Every plant that needs a light is in a spot.</p>`}
-      ${LT.unplaced.length ? html`<h3>No light left for these</h3><ul class="lt-plants lt-two">${LT.unplaced.map(u => ltPlantLi(u, html`<span>${u.why}</span>`))}</ul>` : ''}</section>
+      ${LT.unplaced.length ? html`<details class="lt-spot lt-spot-fold lt-un-fold" data-id="U" ${ltFoldOpen('U') ? raw('open') : ''}><summary><h3>No light left for these</h3><span class="lt-sum"><span><strong>Plants:</strong> ${LT.unplaced.length}</span></span></summary>
+        <div class="lt-spot-in"><ul class="lt-plants lt-two">${LT.unplaced.map(u => ltPlantLi(u, html`<span>${u.why}</span>`))}</ul></div></details>` : ''}</section>
     <section class="blk"><h2>How the numbers work</h2>
       <p>Makers measure light straight under the centre of the light at a few distances. The app draws a smooth line through those figures to get the light at any distance. Then it multiplies by the hours a day: 100 PAR for 12 hours is about 4.3 mol/m².</p>
       <p>The edges of a light's circle get less, and a window adds some. Plants that stretch or go pale want more; bleached or crisp leaves want less. Several of the same light side by side light a bigger area at about the same strength.</p></section>`,
@@ -258,7 +317,7 @@ async function spotDialog(x, opt) {
     SP = { light: String(L.id), dli: null, x };
     if (opt && opt.show) { const f = dlg.querySelector('form[data-spot]'); f.querySelector('[data-sp=show]').value = opt.show; f.querySelector('[data-sp=q]').focus(); }
     spotFilter(); spotPreview(true);
-    if ((await shown) !== 'ok') return;
+    if ((await shown) !== 'ok') { if (SP && SP.changed) route(); return; }      // set on the layout from Best setting: the page shows it
     const f = dlg.querySelector('form'), v = k => f.elements[k].value;
     const body = { name: v('name'), place: v('place'), light: v('light'), units: v('units'), distance: lenIn(v('distance')), hours: v('hours'), dim: v('dim'), notes: v('notes'),     // 1.47.0: the distance is typed in the person's unit
       level: v('level'), holder: ltLight(v('light')) && (ltLight(v('light')).mount || {}).kind === 'socket' ? v('holder') : '',      // 1.56.0 (PLAN.md step 8)
@@ -338,13 +397,33 @@ async function spotBest() {
   const codes = [...f.querySelectorAll('input[name=plant]:checked')].map(i => i.value);
   if (!codes.length) { say.textContent = 'Tick the plants for this spot first.'; return; }
   try {
-    const b = await api('GET', '/api/lights/best?' + new URLSearchParams({ light: f.elements.light.value, units: f.elements.units.value, plants: codes.join(',') }).toString());
-    f.elements.distance.value = lenF(b.distance_in, false);
+    const b = await api('GET', '/api/lights/best?' + new URLSearchParams({ light: f.elements.light.value, units: f.elements.units.value, plants: codes.join(','), place: f.elements.place.value }).toString());
+    if (has(b.distance_in)) f.elements.distance.value = lenF(b.distance_in, false);
     if (!f.elements.hours.readOnly) {                    // a spot whose hours are set on its layout keeps them
       f.elements.hours.value = b.hours;
       if ([...f.elements.dim.options].some(o => +o.value === b.dim_pct)) f.elements.dim.value = String(b.dim_pct);
     }
-    say.textContent = `Set to ${b.distance_in} in from the leaves, ${b.hours} hours a day${b.dim_pct < 100 ? `, ${b.dim_pct}% brightness` : ''}: about ${b.dli} mol/m² a day. ${b.good} of the ${b.of} ticked plants with light needs are in their range${b.good < b.of ? '. The list under it shows which are not, and a spot of yours that would suit them, if there is one' : ''}.`;
+    const set = `${b.hours} hours a day${b.dim_pct < 100 ? `, ${b.dim_pct}% brightness` : ''}`, fit = `${b.good} of the ${b.of} ticked plants with light needs are in their range${b.good < b.of ? '. The list under it shows which are not, and a spot of yours that would suit them, if there is one' : ''}.`;
+    SP.best = b.layout && !b.layout.same ? b : null;
+    // 1.58.0: plants drawn on the layout of this place get their own light from the drawing; the layout sets the hours and brightness
+    say.innerHTML = rend(b.layout ? html`${has(b.distance_in) ? `${lenF(b.distance_in)} from the leaves for the ${codes.length - b.drawn} not drawn on the layout. ` : ''}${b.drawn} ${b.drawn === 1 ? 'plant is' : 'plants are'} drawn on the layout <a href="#/layouts/${b.layout.id}?sel=${b.layout.item}">${b.layout.name}</a>, so ${b.drawn === 1 ? 'its' : 'their'} light comes from the drawing.
+        ${b.layout.same ? `The layout's ${set} is already the best.` : `Best on the layout: ${set}. It has ${b.layout.hours} hours${b.layout.dim_pct < 100 ? `, ${b.layout.dim_pct}%` : ''} now.`} ${fit}
+        ${b.layout.same ? '' : html`<span class="row"><button class="btn small" type="button" data-act="spotbestlay">Set ${set} on the layout</button></span>`}`
+      : `Set to ${lenF(b.distance_in)} from the leaves, ${set}: about ${b.dli} mol/m² a day. ${fit}`);
+    spotPreview(true);
+  } catch (e) { say.textContent = e.message; }
+}
+// 1.58.0: Best setting for a spot whose light is drawn on its place's layout: its hours and brightness go on the layout (each drawn
+// light of that kind there), and the spot follows (layouts.py: layout_light_to_spots).
+async function spotBestLayout() {
+  const b = SP && SP.best, say = document.getElementById('sp-best'), f = dlg.querySelector('form[data-spot]'); if (!b || !f) return;
+  try {
+    for (const id of b.layout.items) await api('PUT', '/api/layouts/items/' + id, { hours: b.hours, dim_pct: b.dim_pct });
+    f.elements.hours.value = b.hours;
+    if (![...f.elements.dim.options].some(o => +o.value === b.dim_pct)) f.elements.dim.insertAdjacentHTML('beforeend', `<option value="${b.dim_pct}">${b.dim_pct}%</option>`);
+    f.elements.dim.value = String(b.dim_pct);
+    SP.best = null; SP.changed = true;
+    say.textContent = `Set on the layout ${b.layout.name}: ${b.hours} hours a day${b.dim_pct < 100 ? `, ${b.dim_pct}% brightness` : ''}. This spot follows it.`;
     spotPreview(true);
   } catch (e) { say.textContent = e.message; }
 }
@@ -384,19 +463,22 @@ async function lightDialog(L) {
 }
 // a plant's own page: its spot, or what the layout suggests; 1.41.0: put it in a spot from here
 let GROW = null;
+const lgPlant = r => html`<p class="lg-plant" id="lg-plant"><strong>Its light on the layout ${lgLink(r)}:</strong> ${r.reached ? html`about ${lgMol(r.dli)}${lgWhere(r) ? `, ${lgWhere(r)}` : ''}.` : 'no light drawn there reaches it.'} ${lvTag(r.verdict, r.verdict_word)}
+  <span class="hint lg-hint">Read from where it is drawn. A light spot gives one number for every plant in it.</span></p>`;
 async function loadGrowPlant(code) {
   const el = document.getElementById('pl-grow'); if (!el) return;
   try {
     const g = await api('GET', '/api/lights?plant=' + enc(code)); GROW = { code, ...g };
-    if (!g.lights || (!g.spot && !g.suggestion && !g.unplaced && !g.candidate)) { el.innerHTML = ''; return; }
+    if (!g.lights || (!g.spot && !g.suggestion && !g.unplaced && !g.candidate && !g.layout)) { el.innerHTML = ''; return; }
     const me = s => s.plants.find(p => p.code === code) || {};
     const acts = !g.spot && g.candidate ? html`<p class="row noprint">${g.suggestion ? html`<button class="btn small" type="button" data-act="growsug" data-code="${code}">Set up the suggested spot</button>` : ''}
       ${g.spots.length ? html`<button class="btn small ${g.suggestion ? 'ghost' : ''}" type="button" data-act="growadd" data-code="${code}">Add it to one of your spots</button>` : ''}
       <button class="btn small ghost" type="button" data-act="grownew" data-code="${code}">Set up a new spot for it</button></p>` : '';
-    el.innerHTML = rend(html`<h3>Grow light this winter</h3>${g.spot ? html`<p>In the spot <strong>${g.spot.name}</strong>${g.spot.place ? ` (${g.spot.place})` : ''}${g.spot.name.includes(g.spot.light) ? '' : `, under the ${g.spot.light}`}: ${ltSetting(g.spot)}. About ${g.spot.dli} mol/m² a day. ${lvTag(me(g.spot).verdict, me(g.spot).verdict_word)}</p>
+    el.innerHTML = rend(html`<h3>Grow light this winter</h3>${g.spot ? html`<p>In the spot <strong>${g.spot.name}</strong>${g.spot.place ? ` (${g.spot.place})` : ''}${g.spot.name.includes(g.spot.light) ? '' : `, under the ${g.spot.light}`}: ${ltSetting(g.spot)}. About ${g.spot.dli} mol/m² a day${me(g.spot).layout ? ' for a plant that is not drawn.' : html`. ${lvTag(me(g.spot).verdict, me(g.spot).verdict_word)}`}</p>
         ${me(g.spot).better ? html`<p>It would suit <strong>${me(g.spot).better.name}</strong> better (about ${me(g.spot).better.dli} mol/m² a day).</p>` : ''}`
       : g.suggestion ? html`<p>Not in a light spot yet. The suggested layout puts it under the <strong>${g.suggestion.light}</strong>, ${ltSetting(g.suggestion)}: about ${g.suggestion.dli} mol/m² a day. ${lvTag(me(g.suggestion).verdict, me(g.suggestion).verdict_word)}</p>`
-      : g.unplaced ? html`<p>Not in a light spot yet. ${g.unplaced.why}</p>` : html`<p>Not in a light spot yet.</p>`}${acts}<p class="noprint"><a href="#/lights">Open Grow lights</a></p>`);
+      : g.drawn ? html`<p>Not in a light spot. A light drawn on a layout reaches it, so it counts as having a light.</p>`
+      : g.unplaced ? html`<p>Not in a light spot yet. ${g.unplaced.why}</p>` : html`<p>Not in a light spot yet.</p>`}${g.layout ? lgPlant(g.layout) : ''}${acts}<p class="noprint"><a href="#/lights">Open Grow lights</a></p>`);
   } catch (e) { el.innerHTML = ''; }
 }
 async function growAddDialog(code) {

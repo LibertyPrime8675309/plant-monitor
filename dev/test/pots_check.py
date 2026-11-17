@@ -72,7 +72,7 @@ with sync_playwright() as p:
     check(until(pg, lambda: pg.locator(CARD + ' .ct-photos img').count() == 1), 'a photo can be added')
     pg.screenshot(path=os.path.join(OUT, 'pots-1-page.png'), full_page=True)
     # light cards and plant pages, edited in place
-    pg.goto(TS + '/#/lights')
+    pg.goto(TS + '/#/lights'); pg.wait_for_selector('#lt-lights'); pg.evaluate("document.querySelectorAll('#lt-lights details.lt-spot-fold, #lt-rooms details.lt-spot-fold, #lt-plan details.lt-spot-fold').forEach(d => d.open = true)")
     lid = L['lights'][0]['id']
     ed = pg.locator(f'[data-act=ltedit][data-id="{lid}"]'); ed.wait_for(); pg.wait_for_timeout(1500); ed.click()      # 1.39.1: the fields wait behind a button
     m = pg.locator(f'[data-ed=light][data-id="{lid}"][data-k=model]'); m.wait_for(); m.fill('TEST-MODEL-1'); m.press('Tab')

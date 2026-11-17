@@ -524,10 +524,11 @@ def layout_light_on(items, pl, li):
         sx, sy = mx + (cx - mx) * k, my + (cy - my) * k
     else: sx, sy = _ly_clamp(cx, li['x'], li['x'] + li['w']), _ly_clamp(cy, li['y'], li['y'] + li['d'])
     side = math.hypot(cx - sx, cy - sy); dist = math.hypot(up, side)
-    out = {'li': li, 'up': round(up, 2), 'side': round(side, 2), 'dli': 0.0, 'by': None, 'nofig': False}
+    out = {'li': li, 'up': round(up, 2), 'side': round(side, 2), 'dli': 0.0, 'par': 0.0, 'by': None, 'nofig': False}
     if not li.get('pts'): return out | {'nofig': True}
     near = li.get('near_in') or 3
     par = (_loglog([(p[0], p[1]) for p in li['pts']], max(dist, near)) or 0) * (up / dist) ** 2
+    out['par'] = par                                     # at full brightness, while it is on: Best setting varies the hours and brightness
     out['dli'] = par * (100 if li.get('dim_pct') is None else li['dim_pct']) / 100 * (12 if li.get('hours') is None else li['hours']) * 0.0036
     for b in items:
         if b is li or b is pl or b['kind'] not in ('shelf', 'other'): continue
@@ -539,9 +540,41 @@ def layout_light_on(items, pl, li):
         if out['by']: break
     return out
 
+def layout_swap(L, light_id, Ln):
+    """The layout with every drawn light `light_id` given light row Ln's figures instead (Compare lights: "Try it"), drawn the same
+    size and in the same place, with its own hours, and its brightness or the next step up that Ln has. Returns (layout, notes)."""
+    d = light_specs(Ln); pts = [[x, y, a] for x, y, a in light_points(d)]
+    dims = sorted({int(x) for x in (d.get('dimming') or [100]) if 0 < int(x) <= 100} | {100})
+    notes = set()
+    def sw(it):
+        if it['kind'] != 'light' or it.get('light_id') != light_id: return it
+        dim = 100 if it.get('dim_pct') is None else it['dim_pct']
+        if dim not in dims:
+            new = min((x for x in dims if x >= dim), default=100); notes.add(f'It has no {dim}% setting, so this is at {new}%.'); dim = new
+        return it | {'pts': pts, 'near_in': light_range(pts)[0] if pts else None, 'name': Ln['name'], 'dim_pct': dim}
+    return L | {'items': [sw(it) for it in L['items']]}, sorted(notes)
+
+def layout_try(c, lid, light_id, Ln):
+    """Compare lights: each plant drawn on layout `lid`, with its light there now and with every drawn `light_id` swapped for Ln."""
+    r = c.execute('SELECT * FROM layouts WHERE id=?', (lid,)).fetchone()
+    if not r: return None
+    L = layout_dict(c, r); now, _ = layout_light(L); Ls, notes = layout_swap(L, light_id, Ln); new, _ = layout_light(Ls)
+    word = lambda x: LIGHT_VERDICT.get(x['verdict'], 'No light reaches it')
+    rows = []
+    for it in L['items']:
+        if it['kind'] != 'plant' or not it['plant'] or it['gone'] or it['id'] not in now: continue
+        a, b = now[it['id']], new[it['id']]
+        if not (a['reached'] or b['reached']): continue
+        n = it.get('need') or {}
+        rows.append({'code': it['plant'], 'name': it['name'], 'item': it['id'], 'lo': n.get('lo'), 'hi': n.get('hi'),
+                     'now_dli': a['dli'], 'now_verdict': a['verdict'], 'now_word': word(a), 'new_dli': b['dli'], 'new_verdict': b['verdict'], 'new_word': word(b)})
+    return {'id': L['id'], 'name': L['name'], 'pid': L['pid'], 'place': L.get('place'), 'rows': rows, 'notes': notes,
+            'drawn': sum(1 for it in L['items'] if it['kind'] == 'light' and it.get('light_id') == light_id and not it['gone'])}
+
 def layout_light(L):
-    """Each drawn plant's light on a layout (lyLight): {item id: {dli, verdict, reached, on: [...]}}, and whether any drawn light
-    has its maker's figures."""
+    """Each drawn plant's light on a layout (lyLight): {item id: {dli, verdict, reached, on: [...], parts, shut}}, and whether any
+    drawn light has its maker's figures. parts: every drawn light that shines on it unblocked, with its light at full brightness
+    (par), whatever its hours; shut: the names of lights something stands in the way of."""
     items = L['items']; lights = [b for b in items if b['kind'] == 'light' and not b.get('gone')]; out = {}
     if not lights: return out, False
     for pl in items:
@@ -549,28 +582,37 @@ def layout_light(L):
         alls = [x for x in (layout_light_on(items, pl, li) for li in lights) if x]
         on = sorted((x for x in alls if not x['nofig'] and not x['by'] and x['dli'] >= 0.05), key=lambda x: -x['dli'])
         dli = _ly_r1(sum(x['dli'] for x in on)); reached = dli >= 1 or any(x['side'] < 0.05 for x in on); need = pl.get('need')
-        out[pl['id']] = {'dli': dli, 'reached': reached, 'verdict': (light_verdict(dli, need['lo'], need['hi']) if need else 'unknown') if reached else 'none', 'on': on}
+        out[pl['id']] = {'dli': dli, 'reached': reached, 'verdict': (light_verdict(dli, need['lo'], need['hi']) if need else 'unknown') if reached else 'none', 'on': on,
+                         'parts': [{'light_id': x['li'].get('light_id'), 'item': x['li']['id'], 'par': x['par']} for x in alls if not x['nofig'] and not x['by']],
+                         'shut': [x['li']['name'] for x in alls if x['by'] and not x['nofig']]}
     return out, any(li.get('pts') for li in lights)
+
+def layout_reading(L, it, x):
+    """What Grow lights is told about one drawn plant: its light there, the light that gives the most of it (with how far under
+    it and to the side), and the parts Best setting needs."""
+    on = [{'light_id': o['li'].get('light_id'), 'name': o['li']['name'], 'up': round(o['up'], 1), 'side': round(o['side'], 1), 'dli': _ly_r1(o['dli'])} for o in x['on']]
+    return {'lid': L['id'], 'lname': L['name'], 'pid': L['pid'], 'item': it['id'], 'name': it['name'], 'here': it.get('rec') is not None and it.get('rec') == L['pid'],
+            'dli': x['dli'], 'verdict': x['verdict'], 'reached': x['reached'], 'on': on, 'parts': x['parts'], 'shut': x['shut']}
 
 def layout_lights_for_grow(c):
     """For Grow lights (LIGHTS_FROM_LAYOUTS): the lights drawn on a layout of a place (the first of each light on it), and each plant
     drawn on a layout whose lights have figures, with its light there."""
     if not c.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='layout_items'").fetchone(): return {}
     layout_tables(c)
-    lights, plants, seen = [], {}, set()
+    lights, plants, seen, lit = [], {}, set(), []
     for r in c.execute('SELECT * FROM layouts ORDER BY id').fetchall():
         L = layout_dict(c, r); pid = L['pid']
         for it in L['items']:
             if it['kind'] == 'light' and it['light_id'] and not it['gone'] and pid is not None and (pid, it['light_id']) not in seen:
                 seen.add((pid, it['light_id']))
                 lights.append({'pid': pid, 'light_id': it['light_id'], 'hours': it['hours'], 'dim_pct': it['dim_pct'], 'lid': L['id'], 'lname': L['name'], 'item': it['id']})
-        m, lit = layout_light(L)
-        if not lit: continue
+        m, figs = layout_light(L)
+        if not figs: continue
+        lit.append({'id': L['id'], 'name': L['name'], 'pid': pid})
         for it in L['items']:
             x = m.get(it['id']) if it['kind'] == 'plant' and it['plant'] and not it['gone'] else None
-            if x: plants.setdefault(it['plant'], []).append({'lid': L['id'], 'lname': L['name'], 'pid': pid, 'item': it['id'], 'here': it.get('rec') is not None and it.get('rec') == pid,
-                                                           'dli': x['dli'], 'verdict': x['verdict'], 'reached': x['reached']})
-    return {'lights': lights, 'plants': plants}
+            if x: plants.setdefault(it['plant'], []).append(layout_reading(L, it, x))
+    return {'lights': lights, 'plants': plants, 'layouts': lit}
 LIGHTS_FROM_LAYOUTS.append(layout_lights_for_grow)
 
 def layout_light_to_spots(c, L, iid, who):

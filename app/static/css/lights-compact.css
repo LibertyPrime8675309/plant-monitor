@@ -1,0 +1,17 @@
+/* A shorter Grow lights (1.58.0; Ethan chose option B, November 16, 2026; js/lights.js). Each light, suggested spot, room and the list
+   with no light left folds as the spots do; inside a light that is open each fact is one line (its name, then its value) and each of
+   the maker's figures is one line. */
+.lt-light-fold .lt-light{border:0;background:none;padding:.6rem 0 0}
+.lt-light-fold>summary .lt-sum,.lt-plan-fold>summary .lt-sum{font-weight:400}
+.lt-tight dl.dl{display:block}
+.lt-tight dl.dl dt{display:inline;margin:0}
+.lt-tight dl.dl dt::after{content:': '}
+.lt-tight dl.dl dd{display:inline;margin:0;white-space:normal}
+.lt-tight dl.dl dd::after{content:'';display:block;margin-bottom:.4rem}
+.lt-tight .lt-pts-h{font-size:1em;margin:.7rem 0 .2rem}
+.lt-tight .lt-pts{list-style:none;padding:0;margin:0 0 .5rem}
+.lt-tight .lt-pts li{margin:.2rem 0;overflow-wrap:anywhere}
+#lt-plan .lt-grid:has(.lt-plan-fold){grid-template-columns:minmax(0,1fr);gap:.7rem}
+.lt-room-fold .lt-room{border:0;background:none;padding:.4rem 0 0}
+.lt-rooms:has(.lt-room-fold){display:grid;gap:.7rem}
+#lt-plan .lt-un-fold{margin-top:1rem}

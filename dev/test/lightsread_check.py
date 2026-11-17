@@ -1,12 +1,14 @@
-"""Checks Grow lights reading a layout (prototype, proto/lights-read-layouts; js/layoutlights.js): a shelf with a strip light drawn
+"""Checks Grow lights reading a layout (1.58.0; lights.py and layouts.py, drawn by js/lights.js): a shelf with a strip light drawn
 on its layout and a light spot on Grow lights for the same shelf. Each plant of the spot that is drawn gets its own daily light
 from the drawing (the number layouts.js works out), with a link to the layout that opens it with the plant chosen; its mark in
 the spot is the layout's; a plant above the light is told no light reaches it; a plant that is not drawn keeps what its spot
 gives; the spot's summary counts by those marks; the spot says how far under the light its plants are on the drawing and where
 the light's hours and brightness are the layout's (the spot takes them, follows a change made there, and keeps them when saved
 on Grow lights); a plant under a light on a layout but in no spot is listed and counts as having a light (the summary and the
-suggested layout); the server's sums agree with the page's; a plant's own page; nothing is added when no layout has a light; a
-phone at the largest text and with the reading settings at their strongest; the dark theme at 7 to 1.
+suggested layout); the server's sums agree with the page's; Best setting works out the layout's hours and brightness for the
+drawn plants and sets them on the layout; Compare lights tries another light in place of the drawn one, on the layout and in the
+spot; a plant's own page; nothing is added when no layout has a light; a phone at the largest text and with the reading settings
+at their strongest; the dark theme at 7 to 1.
 Start the mock server with a fresh data folder, then: python3 dev/test/lightsread_check.py [http://127.0.0.1:8080]
 Screenshots: dev/tmp/shots/lightsread-*.png"""
 import json, os, sys, urllib.request
@@ -61,12 +63,13 @@ with sync_playwright() as p:
     check(ok and 'under the Barrina' in row(pg, P['cal']).locator('.lg-line').inner_text() and 'to the side' in row(pg, P['haw']).locator('.lg-line').inner_text(),
           "each drawn plant has a line with the layout's own number for it, how far under the light it is (and to the side), and a link to the layout with it chosen")
     check(row(pg, P['cal']).locator(':scope > .lv-good').count() == 1 and row(pg, P['phil']).locator(':scope > .lv-dim').count() == 1 and row(pg, P['haw']).locator(':scope > .lv-too_dim').count() == 1
-          and row(pg, P['fern']).locator(':scope > .lg-none').count() == 1 and 'No light reaches it' in row(pg, P['fern']).inner_text() and 'no light drawn there reaches it' in row(pg, P['fern']).locator('.lg-line').inner_text(),
+          and row(pg, P['fern']).locator(':scope > .lv-none').count() == 1 and 'No light reaches it' in row(pg, P['fern']).inner_text() and 'no light drawn there reaches it' in row(pg, P['fern']).locator('.lg-line').inner_text(),
           "the plant's mark in its spot is the layout's: good, a bit dim, too dim; the plant above the strip is told no light reaches it")
     sp = pg.evaluate(f"LT.spots.find(s => s.id === {sid})"); was = {p['code']: p for p in sp['plants']}
     check(sp['hours'] == 14 and sp['layout']['id'] == lid and call('GET', '/api/lights')['spots'][0]['hours'] == 14, "the spot's hours are the drawn light's (14 a day on the layout, though the spot was set up with 12)")
-    check(all((f"The spot's one setting gives {was[P[k]]['verdict'] and sp['dli']} ({was[P[k]]['verdict_word']})" in row(pg, P[k]).inner_text()) == (was[P[k]]['verdict'] != mine[P[k]][1]) for k in ('cal', 'phil', 'haw')),
-          f"where the spot's one setting would have said something else, the line says what ({sp['dli']}, {[(k, was[P[k]]['verdict']) for k in ('cal', 'phil', 'haw')]})")
+    check(all((f"The spot's one setting gives {sp['dli']} ({was[P[k]]['spot_word']})" in row(pg, P[k]).inner_text()) == (was[P[k]]['spot_verdict'] != mine[P[k]][1]) for k in ('cal', 'phil', 'haw'))
+          and all(was[P[k]]['verdict'] == mine[P[k]][1] for k in ('cal', 'phil', 'haw', 'fern')),
+          f"the server gives each drawn plant the layout's mark, and where the spot's one setting would have said something else, the line says what ({sp['dli']}, {[(k, was[P[k]]['spot_verdict']) for k in ('cal', 'phil', 'haw')]})")
     srv = pg.evaluate('LT.readings')
     check(all(srv[P[k]][0]['dli'] == mine[P[k]][0] and srv[P[k]][0]['verdict'] == mine[P[k]][1] for k in ('cal', 'phil', 'haw', 'fern', 'ever')),
           f"the server works out the same light for each drawn plant as the page does ({[(k, srv[P[k]][0]['dli'], mine[P[k]][0]) for k in ('cal', 'phil', 'haw', 'fern', 'ever')]})")
@@ -74,7 +77,7 @@ with sync_playwright() as p:
     sm = pg.inner_text(f'#lt-spots details.lt-spot-fold[data-id="{sid}"] summary')
     check('Plants: 5 (3 not in their range)' in sm and '4 of 5 read from a layout' in sm, f'the spot says how many are read from a layout, and counts the plants out of their range by those marks ({sm!r})')
     sl = pg.inner_text(f'#lt-spots details.lt-spot-fold[data-id="{sid}"] .lg-spot')
-    check('4 of its 5 plants are drawn' in sl and 'Their tops are 7.5 in to 16.5 in under this light; this spot says 8 in from the leaves' in sl and 'Its hours (14 a day) and brightness (100%) are set on the layout' in sl,
+    check('4 of its 5 plants are drawn' in sl and 'Their tops are 7.5 in to 16.5 in under this light. This spot says 8 in from the leaves' in sl and 'Its hours (14 a day) and brightness (100%) are set on the layout' in sl,
           f'the spot says how far under the light its plants are on the drawing against its own one distance, and that its hours and brightness are set on the layout ({sl!r})')
     pg.click('#lg-note .lg-fold summary')
     check('no light spot (1)' in pg.inner_text('#lg-note .lg-fold summary') and pg.locator(f'#lg-note .lg-fold a.nm[href="#/plant/{P["ever"]}"]').is_visible() and 'mol/m² a day' in pg.inner_text('#lg-note .lg-fold'),
@@ -100,7 +103,50 @@ with sync_playwright() as p:
     check(until(pg, lambda: shown() == [True, '10', True, True, 1]), f"Change this spot shows the hours and brightness as set on the layout, with a link to it ({shown()})")
     pg.click('dialog[open] button[value=ok]'); pg.wait_for_selector('dialog[open]', state='detached')
     check(until(pg, lambda: call('GET', '/api/lights')['spots'][0]['hours'] == 10), 'saved, the spot keeps the layout\'s hours')
-    call('PUT', f'/api/layouts/items/{strip}', {'hours': 14})
+    call('PUT', f'/api/layouts/items/{strip}', {'hours': 8})      # less than is best, so Best setting has something to set
+
+    # ---- Best setting: the drawn plants get their own light from the drawing at each hours and brightness tried; set on the layout
+    ticked = [P[k] for k in ('cal', 'phil', 'haw', 'fern', 'beg')]
+    b = call('GET', f"/api/lights/best?light={t5['id']}&units=1&plants={','.join(ticked)}&place={spot['id']}")
+    raw = {P[k]: mine[P[k]][0] / 14 for k in ('cal', 'phil', 'haw')}      # a mol a day for each hour of this light at 100% (mine was read at 14 hours)
+    each = {e['code']: e['dli'] for e in b.get('each', [])}
+    check(b.get('layout', {}).get('id') == lid and b['drawn'] == 4 and b['layout']['items'] == [strip] and all(abs(each[c] - raw[c] * b['hours'] * b['dim_pct'] / 100) < 0.2 for c in raw) and b['distance_in'] is not None,
+          f"Best setting reads the drawing for the 4 drawn plants, at the hours and brightness it tries; the distance is for the one that is not ({b})")
+    pg.goto(BASE + '/#/lights'); pg.wait_for_selector(f'#lt-spots details.lt-spot-fold[data-id="{sid}"] [data-act=spotedit]')
+    pg.click(f'#lt-spots details.lt-spot-fold[data-id="{sid}"] [data-act=spotedit]'); pg.wait_for_selector('dialog[open] form[data-spot]')
+    until(pg, lambda: pg.locator('dialog[open] input[name=hours]').input_value() == '8')
+    pg.click('dialog[open] [data-act=spotbest]')
+    check(until(pg, lambda: 'drawn on the layout' in pg.inner_text('#sp-best')) and pg.locator(f'#sp-best a[href="#/layouts/{lid}?sel={strip}"]').count() == 1
+          and not b['layout']['same'] and pg.locator('#sp-best [data-act=spotbestlay]').count() == 1,
+          f"in Change this spot, Best setting says the plants drawn on the layout get their light from the drawing, and what to set there ({pg.inner_text('#sp-best')!r})")
+    if not b['layout']['same']:
+        pg.click('#sp-best [data-act=spotbestlay]')
+        check(until(pg, lambda: 'This spot follows it' in pg.inner_text('#sp-best')) and pg.locator('dialog[open] input[name=hours]').input_value() == f"{b['hours']:g}"
+              and next(i for i in call('GET', f'/api/layouts/{lid}')['items'] if i['id'] == strip)['hours'] == b['hours'] and call('GET', '/api/lights')['spots'][0]['hours'] == b['hours'],
+              'Set it on the layout: the drawn light takes the hours and brightness, and the spot follows')
+        pg.click('dialog[open] button[value=cancel]'); pg.wait_for_selector('dialog[open]', state='detached')
+        check(until(pg, lambda: f"Its hours ({b['hours']:g} a day)" in pg.inner_text('.lg-spot')), 'closed, Grow lights shows the new hours')
+    else:
+        pg.click('dialog[open] button[value=cancel]'); pg.wait_for_selector('dialog[open]', state='detached')
+    call('PUT', f'/api/layouts/items/{strip}', {'hours': 14, 'dim_pct': 100})
+
+    # ---- Compare lights: another light in place of the drawn one, on the layout and in the spot
+    cmp = call('GET', '/api/lights/compare')
+    other = next(r for r in cmp['rows'] if r['id'] != t5['id'] and r['chart'] and r['status'] == 'owned')
+    check(any(d['item'] == strip and d['layout'] == 'Tall Brown Shelf' for d in cmp['drawn']), 'Compare lights lists the light drawn on the layout, to try another in its place')
+    tl = call('GET', f"/api/lights/{other['id']}/try?item={strip}"); tr = {r['code']: r for r in tl['plants']}
+    check(tl['layout']['id'] == lid and all(tr[P[k]]['now_dli'] == mine[P[k]][0] for k in ('cal', 'phil', 'haw')) and all('new_verdict' in tr[P[k]] for k in ('cal', 'phil', 'haw')) and P['fern'] not in tr,
+          f"tried on the layout: each plant drawn there, its light now (the layout's) and with the other light in the same place ({[(c, r['now_dli'], r['new_dli']) for c, r in tr.items()]})")
+    ts = call('GET', f"/api/lights/{other['id']}/try?spot={sid}"); ts_by = {r['code']: r for r in ts['plants']}
+    check(ts['layout'] and ts['layout']['id'] == lid and all(ts_by[P[k]].get('drawn') and ts_by[P[k]]['new_dli'] == tr[P[k]]['new_dli'] for k in ('cal', 'phil', 'haw')) and not ts_by[P['beg']].get('drawn'),
+          'tried in the spot: its drawn plants get the same, and the plant that is not drawn the spot\'s one setting')
+    pg.goto(BASE + '/#/compare'); pg.locator('.cmp-name', has_text=other['name']).first.click(); pg.wait_for_selector('form.cmp-dlg')
+    pg.locator('form.cmp-dlg button[value=try]').click(); pg.wait_for_selector('#cmp-try-spot')
+    pg.select_option('#cmp-try-spot', f'item:{strip}')
+    check(until(pg, lambda: 'in place of the Barrina' in pg.inner_text('#cmp-try-out') and pg.locator('#cmp-try-out tbody tr').count() == len(tr)) and 'mol/m²' in pg.inner_text('#cmp-try-out tbody'),
+          f"on the page, Try it on a layout shows each plant drawn there, now and with this light ({pg.inner_text('#cmp-try-out')[:160]!r})")
+    shot(pg, '3-compare')
+    pg.click('dialog[open] button[value=cancel]')
 
     # ---- a plant's own page
     pg.goto(f"{BASE}/#/plant/{P['phil']}")
@@ -126,7 +172,7 @@ with sync_playwright() as p:
     opened(pg); pg.wait_for_selector(f'#lt-spots details.lt-spot-fold[data-id="{sid}"] ul.lt-plants > li'); pg.wait_for_timeout(1500)
     sp = pg.evaluate(f"LT.spots.find(s => s.id === {sid})"); off = sum(1 for p in sp['plants'] if p['verdict'] not in ('good', 'unknown'))
     check(pg.locator('#lg-note').count() == 0 and pg.locator('.lg-line').count() == 0 and pg.locator('.lg-spot').count() == 0 and sp['layout'] is None and not pg.evaluate('Object.keys(LT.drawn).length')
-          and row(pg, P['haw']).locator(f":scope > .lv-{was[P['haw']]['verdict']}").count() == 1
+          and row(pg, P['haw']).locator(f":scope > .lv-{was[P['haw']]['spot_verdict']}").count() == 1
           and (f'Plants: 5 ({off} not in their range)' if off else 'Plants: 5') in pg.inner_text(f'#lt-spots details.lt-spot-fold[data-id="{sid}"] summary'), 'with no grow light drawn on any layout, Grow lights is as it was, and the spot sets its own hours again')
     br.close()
 
