@@ -82,8 +82,7 @@ with sync_playwright() as p:
     check('closest match' in pg.inner_text('#about'), f'a plant with an unsure ID ({lo}) says the details are for the closest match')
     pg.goto(LOCAL + '/#/plant/P-020/edit')
     fs = pg.locator('fieldset', has=pg.locator('legend', has_text='About this plant'))
-    until(pg, lambda: fs.count() == 1 and fs.locator('textarea, input').count() >= 23)        # the form draws once more after it opens
-    check(fs.count() == 1 and fs.locator('textarea, input').count() >= 23, 'the edit form has an About this plant section with every field')
+    check(until(pg, lambda: fs.count() == 1 and fs.locator('textarea, input').count() >= 23), f"the edit form has an About this plant section with every field ({fs.locator('textarea, input').count()})")      # wait for all: the form may still be drawing
     check(fs.locator('label', has_text='Coldest zone (USDA)').count() == 1 and fs.locator('label', has_text='Sources').count() >= 1, 'with real labels')
     ph = b.new_page(viewport={'width': 390, 'height': 844})
     ph.add_init_script("localStorage.setItem('plantdb.editor','Details Test');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")

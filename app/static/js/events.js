@@ -22,6 +22,7 @@ const acts = {
   spotnew(el) { const p = el.dataset.plan != null ? LT.plan[+el.dataset.plan] : null; spotDialog(p ? { name: p.name, light_id: p.light_id, units: p.units, distance_in: p.distance_in, hours: p.hours, dim_pct: p.dim_pct, codes: p.codes } : { light_id: ltSorted()[0] && ltSorted()[0].id }); },
   spotadd(el) { const s = LT.spots.find(x => x.id === +el.dataset.id); if (s) spotDialog({ ...s, codes: s.plants.map(p => p.code) }, { show: 'free' }); },     // 1.41.0
   spotbest() { spotBest(); },
+  spotbestlay() { spotBestLayout(); },
   async spotplanall() {
     if (!(await needName())) return;
     const n = LT.plan.length, k = LT.plan.reduce((a, s) => a + s.codes.length, 0);
@@ -166,7 +167,7 @@ const acts = {
     try { localStorage.setItem('plantdb.lttop', open ? '1' : '0'); } catch (e) { /* this visit only */ }
     ltTopMeasure();
   },
-  ltspotsall(el) { const on = el.dataset.open === '1'; document.querySelectorAll('details.lt-spot-fold').forEach(d => { d.open = on; }); },
+  ltspotsall(el) { const on = el.dataset.open === '1'; (el.closest('section') || document).querySelectorAll('details.lt-spot-fold').forEach(d => { d.open = on; }); },      // the spots, lights or suggested spots of its own section
   secfold(el) {               // 1.42.0: Show or hide a section
     const it = NAVITEMS.find(x => x.id === el.dataset.for); if (!it) return;
     const folded = el.getAttribute('aria-expanded') === 'true';

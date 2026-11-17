@@ -194,7 +194,7 @@ with sync_playwright() as p:
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and '404' not in m.text else None)
     pg.add_init_script("localStorage.setItem('plantdb.editor','Light Test')")
-    pg.goto(LOCAL + '/#/lights'); pg.wait_for_timeout(2500)
+    pg.goto(LOCAL + '/#/lights'); pg.wait_for_timeout(2500); pg.evaluate("document.querySelectorAll('#lt-lights details.lt-spot-fold, #lt-rooms details.lt-spot-fold, #lt-plan details.lt-spot-fold').forEach(d => d.open = true)"); pg.wait_for_timeout(200)      # lights, rooms and suggested spots fold: open them
     check(pg.locator('#lt-rooms .lt-room').count() == 6 and 'Big Brown Hutch' in pg.inner_text('#lt-rooms') and 'Living room window' in pg.inner_text('#lt-rooms'), 'the page lists his rooms with the spot on its shelf')
     # 1.56.3 (Ethan, November 10): each section has the line above its title, and Show/Hide stays put when it is pressed
     secs = ['lt-lights', 'lt-spots', 'lt-rooms', 'lt-plan']
@@ -214,7 +214,7 @@ with sync_playwright() as p:
     check('SANSI-80W-TEST' in pg.inner_text('#lt-lights') and pg.locator('#lt-lights .lt-ed:visible').count() == 0, '1.39.1: each light shows its model as text; the edit fields wait behind a button')
     pg.locator('[data-act=ltedit]').first.click(); pg.wait_for_timeout(300)
     check('Manufacturer model' in pg.inner_text('#lt-lights') and pg.locator('#lt-lights [data-k=model]').evaluate_all("els => els.some(e => e.value === 'SANSI-80W-TEST')"), 'each light shows its manufacturer model (1.29.0: in a box you can type in)')
-    check(pg.locator('#lt-spots details.lt-spot-fold').count() == 1 and pg.locator('#lt-plan article').count() >= 5 and pg.locator('.lt-light').count() == 11, 'the page shows your spot, the suggestions and your 11 lights')
+    check(pg.locator('#lt-spots details.lt-spot-fold').count() == 1 and pg.locator('#lt-plan details.lt-plan-fold').count() >= 5 and pg.locator('.lt-light').count() == 11, 'the page shows your spot, the suggestions and your 11 lights')
     check(pg.locator('.lt-light img.lt-photo').count() == 10 and all(pg.locator('.lt-light img.lt-photo').nth(i).get_attribute('alt') for i in range(10)), 'every light photo has a description')
     check(pg.locator('.lv').count() > 10 and pg.locator('.lv span[aria-hidden]').count() == pg.locator('.lv').count(), 'verdicts are words with a symbol, not colour alone')
     pg.screenshot(path=os.path.join(OUT, 'lights-1-page.png'))
@@ -248,14 +248,15 @@ with sync_playwright() as p:
         check(it is True, f'"{t_}" is in Navigation and has Show or hide')
     # 1.42.0: rooms: New Room and New Shelf open Build-A-Room; removing a shelf keeps the room and your place on the page
     check(pg.locator('#lt-rooms [data-act=roomnew]').inner_text().strip() == 'New Room' and pg.locator('#lt-rooms .lt-room-head [data-act=shelfnew]').count() == pg.locator('#lt-rooms .lt-room').count(), 'New Room, and New Shelf by each room')
-    rm = pg.locator('#lt-rooms .lt-room').first; rname = rm.locator('h3').inner_text().strip()
+    rm = pg.locator('#lt-rooms details.lt-room-fold').first; rname = rm.locator('summary h3').inner_text().strip()      # a room folds: its name is in its summary
     rm.locator('[data-act=shelfnew]').click(); pg.wait_for_timeout(500)
     check(pg.locator('dialog h2').inner_text().strip() == 'Build-A-Room' and pg.input_value('dialog input[name=room]') == rname and pg.evaluate('document.activeElement.name') == 'name', 'New Shelf opens Build-A-Room for that room, at the shelf box')
     pg.fill('dialog input[name=name]', 'Test shelf only'); pg.click('dialog button[value=ok]'); pg.wait_for_timeout(2000)
     pg.click('[data-act=roomnew]'); pg.wait_for_timeout(500)
     check(pg.locator('dialog h2').inner_text().strip() == 'Build-A-Room', 'New Room opens Build-A-Room')
     pg.fill('dialog input[name=room]', 'Test single-shelf room'); pg.fill('dialog input[name=name]', 'Lone shelf'); pg.click('dialog button[value=ok]'); pg.wait_for_timeout(2000)
-    room = pg.locator('#lt-rooms .lt-room', has_text='Test single-shelf room')
+    room = pg.locator('#lt-rooms details.lt-room-fold', has_text='Test single-shelf room')
+    room.evaluate('d => { d.open = true; }'); pg.wait_for_timeout(200)      # a new room starts shut
     room.scroll_into_view_if_needed(); y0 = pg.evaluate('scrollY')
     room.locator('li [data-act=roomdel]').click(); pg.wait_for_timeout(400)
     check('The room Test single-shelf room stays' in pg.inner_text('dialog'), 'removing a shelf says the room stays')
@@ -326,12 +327,12 @@ with sync_playwright() as p:
     pg.click('dialog input[name=spot] >> nth=0'); pg.click('dialog button[value=ok]'); pg.wait_for_timeout(2000)
     check('In the spot' in pg.inner_text('#pl-grow'), 'and adds it')
     dk = b.new_context(viewport={'width': 1280, 'height': 900}, color_scheme='dark').new_page()
-    dk.add_init_script("localStorage.setItem('plantdb.display',JSON.stringify({theme:'light'}))"); dk.goto(LOCAL + '/#/lights'); dk.wait_for_timeout(1500)
+    dk.add_init_script("localStorage.setItem('plantdb.display',JSON.stringify({theme:'light'}))"); dk.goto(LOCAL + '/#/lights'); dk.wait_for_timeout(1500); dk.evaluate("document.querySelectorAll('#lt-lights details.lt-spot-fold, #lt-rooms details.lt-spot-fold, #lt-plan details.lt-spot-fold').forEach(d => d.open = true)")
     check(dk.evaluate('getComputedStyle(document.documentElement).colorScheme') == 'light', 'tick boxes and menus follow the chosen light theme on a computer set to dark (they were dark squares)')
     dk.close()
     ph = b.new_page(viewport={'width': 390, 'height': 844})
     ph.add_init_script("localStorage.setItem('plantdb.editor','Light Test');localStorage.setItem('plantdb.display',JSON.stringify({size:'190'}))")
-    ph.goto(LOCAL + '/#/lights'); ph.wait_for_timeout(2500)
+    ph.goto(LOCAL + '/#/lights'); ph.wait_for_timeout(2500); ph.evaluate("document.querySelectorAll('#lt-lights details.lt-spot-fold, #lt-rooms details.lt-spot-fold, #lt-plan details.lt-spot-fold').forEach(d => d.open = true)")
     check(ph.evaluate('document.documentElement.scrollWidth <= innerWidth + 1'), 'on a phone with the largest text there is no sideways scrolling')
     ph.click('[data-act=spotnew] >> nth=0'); ph.wait_for_timeout(1500)
     check(ph.evaluate('(() => { const d = document.querySelector("dialog"); return d.scrollWidth <= d.clientWidth + 1; })()'), 'and none in the spot window')
@@ -339,10 +340,10 @@ with sync_playwright() as p:
     ph.click('dialog button[value=cancel]'); ph.wait_for_timeout(300)
     ph.screenshot(path=os.path.join(OUT, 'lights-3-phone.png'), full_page=False)
     vw = b.new_page(viewport={'width': 1280, 'height': 900}, extra_http_headers=V)
-    vw.goto(TS + '/#/lights'); vw.wait_for_timeout(2500)
+    vw.goto(TS + '/#/lights'); vw.wait_for_timeout(2500); vw.evaluate("document.querySelectorAll('#lt-lights details.lt-spot-fold, #lt-rooms details.lt-spot-fold, #lt-plan details.lt-spot-fold').forEach(d => d.open = true)")
     check(vw.locator('[data-act=spotnew]:visible, [data-act=lightedit]:visible, [data-act=spotedit]:visible, [data-act=roomnew]:visible, [data-act=roomedit]:visible, [data-act=spotadd]:visible, [data-act=spotplanall]:visible').count() == 0, 'a viewer sees no buttons that make changes')
     # 1.41.0: set up every suggested spot in one go
-    pg.goto(LOCAL + '/#/lights'); pg.wait_for_timeout(2500)
+    pg.goto(LOCAL + '/#/lights'); pg.wait_for_timeout(2500); pg.evaluate("document.querySelectorAll('#lt-lights details.lt-spot-fold, #lt-rooms details.lt-spot-fold, #lt-plan details.lt-spot-fold').forEach(d => d.open = true)")
     before = call('GET', '/api/lights')[1]; np = len(before['plan'])
     pg.click('[data-act=spotplanall]'); pg.wait_for_timeout(600); pg.locator('dialog .btn').first.click(); pg.wait_for_timeout(3000)
     after = call('GET', '/api/lights')[1]

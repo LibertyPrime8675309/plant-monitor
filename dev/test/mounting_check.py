@@ -111,7 +111,7 @@ with sync_playwright() as p:
     pg.on('pageerror', lambda e: errs.append(str(e)))
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' and 'Failed to load resource' not in m.text else None)
     pg.add_init_script("localStorage.setItem('plantdb.editor','Fit Test')")
-    pg.goto(BASE + '/#/lights'); pg.wait_for_selector('#lt-spots', timeout=20000)
+    pg.goto(BASE + '/#/lights'); pg.wait_for_selector('#lt-spots', timeout=20000); pg.evaluate("document.querySelectorAll('#lt-lights details.lt-spot-fold, #lt-rooms details.lt-spot-fold, #lt-plan details.lt-spot-fold').forEach(d => d.open = true)")
     summ = pg.inner_text('#lt-spots')
     check(summ.count('Does not fit') >= 2 and 'Fits' in summ and 'Not checked yet' in summ, 'each folded spot says Fits, Does not fit or Not checked yet in words')
     card = pg.locator(f'details.lt-spot-fold[data-id="{s_t8tall}"]')
@@ -119,7 +119,7 @@ with sync_playwright() as p:
     t = card.inner_text()
     check('16 in wide' in t and 'Too tall for the level' in t and 'Not set up and checked yet' in t, 'opened, the spot shows each reason, and that it is not checked yet')
     card.screenshot(path=os.path.join(OUT, 'mounting-1-spot-nofit.png'))
-    lc = pg.locator('article.lt-light', has_text=key['sansi-t8']['name']).first
+    lc = pg.locator('details.lt-light-fold', has_text=key['sansi-t8']['name']).first
     check('How it holds' in lc.inner_text() and 'at least 24 in long' in lc.inner_text(), "the light's card says how it holds")
     # How it holds, for the GooingTop (keyboard)
     pg.locator(f'[data-act=ltmount][data-id="{key["gooingtop-clip"]["id"]}"]').focus(); pg.keyboard.press('Enter')
@@ -128,7 +128,7 @@ with sync_playwright() as p:
     pg.fill('form[data-mount] [name=grip_in]', '1.5'); pg.fill('form[data-mount] [name=reach_in]', '10')
     pg.locator('form[data-mount]').screenshot(path=os.path.join(OUT, 'mounting-2-mount.png'))
     pg.click('form[data-mount] button[value=ok]')
-    check(until(pg, lambda: 'up to 1.5 in thick' in pg.locator('article.lt-light', has_text='GooingTop').inner_text()), 'saved: it clamps to an edge up to 1.5 in thick')
+    check(until(pg, lambda: 'up to 1.5 in thick' in pg.locator('details.lt-light-fold', has_text='GooingTop').inner_text()), 'saved: it clamps to an edge up to 1.5 in thick')
     # Measurements and photos, for the side table
     pg.locator(f'[data-act=ltplace][data-id="{side}"]').first.click(); pg.wait_for_selector('form[data-place]')
     pg.set_input_files('form[data-place] input[type=file]', [pic, pic2]); pg.wait_for_selector('#pd-photos figure:nth-child(2)', timeout=10000)
@@ -214,7 +214,7 @@ with sync_playwright() as p:
                              extra_http_headers={'Tailscale-User-Login': login, 'Tailscale-User-Name': 'Vee'} if login else {})
         ph = ctx.new_page(); ph.on('pageerror', lambda e: errs.append(str(e)))
         ph.add_init_script("localStorage.setItem('plantdb.editor','Phone');localStorage.setItem('plantdb.display', JSON.stringify(%s))" % json.dumps(disp))
-        ph.goto(base + '/#/lights'); ph.wait_for_selector('#lt-spots', timeout=20000); ph.wait_for_timeout(600)
+        ph.goto(base + '/#/lights'); ph.wait_for_selector('#lt-spots', timeout=20000); ph.evaluate("document.querySelectorAll('#lt-lights details.lt-spot-fold, #lt-rooms details.lt-spot-fold, #lt-plan details.lt-spot-fold').forEach(d => d.open = true)"); ph.wait_for_timeout(600)
         if name == 'viewer':
             check(all(ph.locator(f'[data-act={a}]').evaluate_all('els => els.every(e => !e.offsetParent)') for a in ('ltmount', 'ltplace', 'spotcheck')),
                   'a viewer sees no How it holds, Measurements and photos, or Set up and checked buttons')
