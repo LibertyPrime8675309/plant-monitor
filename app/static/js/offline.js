@@ -20,7 +20,8 @@ const OFF_OK = [                              // the changes that can wait for a
   // set up on a layout, and a layout's own size and grid. Then ("Would it be possible to have things be put on or off compatible with
   // offline mode?"): a thing put on or taken off too. A thing put on with no connection has a number below 0 on the page (_temps) until
   // it is sent; offSync swaps it for the server's number (added) in every change after it.
-  ['PUT', /^\/api\/layouts\/items\/-?\d+$/], ['PUT', /^\/api\/layouts\/\d+$/], ['POST', /^\/api\/layouts\/\d+\/items$/], ['DELETE', /^\/api\/layouts\/items\/-?\d+$/]];
+  ['PUT', /^\/api\/layouts\/items\/-?\d+$/], ['PUT', /^\/api\/layouts\/\d+$/], ['POST', /^\/api\/layouts\/\d+\/items$/], ['DELETE', /^\/api\/layouts\/items\/-?\d+$/],
+  ['POST', /^\/api\/layouts\/\d+\/record$/]];      // "Move it in the record" from a layout
 const offLyTemp = url => /^\/api\/layouts\/items\/-\d/.test(url.split('?')[0]);      // a change to a thing put on with no connection, not sent yet
 const offQueueable = (m, url) => OFF_OK.some(([mm, re]) => mm === m && re.test(url.split('?')[0]));
 const offId = () => Date.now().toString(36) + '-' + Array.from(crypto.getRandomValues(new Uint8Array(8)), b => b.toString(16).padStart(2, '0')).join('');
@@ -72,6 +73,7 @@ function offWords(op) {                       // what a waiting change is, in wo
   if (u === '/api/library/notes') return `Notes and tags for ${b.name}`;
   if (u === '/api/report') { const t = ((op.form || []).find(p => p.k === 'notes') || {}).v || ''; return `A problem report${t ? ': ' + t.slice(0, 60) + (t.length > 60 ? '…' : '') : ''}`; }
   if (u === '/api/wishlist') return op.method === 'DELETE' ? `${b.name} taken off the wishlist` : `${b.name} on the wishlist`;
+  if (/^\/api\/layouts\/\d+\/record$/.test(u)) { const n = (b.moves || []).length; return `A layout: ${n === 1 ? (b._what || 'a plant') : n + ' plants'} moved in the record`; }
   if (/^\/api\/layouts\/\d+\/items$/.test(u)) { const it = b.items || []; return `A layout: ${it.length === 1 ? (it[0].name || 'a thing') : it.length + ' things'} put on`; }
   if (/^\/api\/layouts\/items\//.test(u) && op.method === 'DELETE') return `A layout: ${b._what || 'a thing'} taken off`;
   if (/^\/api\/layouts\/items\//.test(u)) return `A layout: ${b._what || b.name ? (b._what || b.name) + ' ' : 'a thing '}${['x', 'y', 'z'].some(k => k in b) ? 'moved' : ['w', 'd', 'h'].some(k => k in b) ? 'made larger or smaller' : 'changed'}`;

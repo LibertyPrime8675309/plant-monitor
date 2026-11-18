@@ -134,8 +134,6 @@ Ethan: "I would like to have all of these implemented please!" Built in the pull
 ## What is not done
 - Grow lights keeps its own spots (which plants are under which light). A layout does not move plants between spots.
 - The 3D view chooses things, moves them with the arrow keys and turns by dragging; dragging a thing and resizing are in the top and front views.
-- **Move it in the record** needs a connection.
-- A window's daylight is one number for a usual day; it does not follow the seasons or the weather.
 
 ## What Ethan said about the six additions (November 17, 2026)
 1. **The starting daylight for each direction.** He asked what the numbers mean. They are the daily light at the glass, in mol/m² a day (the unit Grow lights uses). Unchanged until he says.

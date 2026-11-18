@@ -76,6 +76,13 @@ Part of the Plant record manual. The README in the folder above has how to start
 - Type a reading under **Daylight at the glass** to give one window its own number. Empty the box to go back to the home's.
 - With its own number, the owner sees **Use it for every north window** (or the way it faces). That makes it the home's number.
 - **Which way it faces** goes back to the home's number for the new way.
+- These numbers are for a usual day across the year. **Daylight on**, beside **Light map**, picks the day the layout shows:
+  - **This time of year** (the first choice). Grow lights counts this one too.
+  - **Today, with its weather**: this time of year, times today's sunlight against the last 30 days'.
+  - **A usual day**: the numbers as typed.
+  - **Mid January** to **Mid December**, to plan ahead.
+- The time of year comes from the sun's path at the home. In winter the low sun comes straight in at a south window, so it gets more than usual. A north window gets less. In summer it is the other way round.
+- Every number, mark and the light map follow the day chosen. Each layout keeps its own choice.
 - The daylight is half as much 2 ft from the glass, and a fifth at 4 ft. It is less to the side of the window, and none through a shelf or a wall.
 - A plant in the way of a light or a window shades what is behind it. The bottom of its box is its pot, and the rest is its leaves.
 - To start with, a pot in the way blocks all the light, and leaves block half. Change both under **Grid and settings**, **Size and name**, **Shade from plants in the way**. Each layout keeps its own.
@@ -101,7 +108,7 @@ Part of the Plant record manual. The README in the folder above has how to start
 - Everything on a layout works without a connection. You can move things, change their size and settings, and put things on or take them off.
 - The change is kept on this device, and the layout says so. It is sent by itself when the plant server can be reached.
 - A thing you put on is drawn at once, with its light worked out. It gets its number in the record when it is sent, and the changes you made to it go after it.
-- **Move it here in the record** still needs a connection.
+- **Move it here in the record** works without a connection too. The layout shows the plant at its new place at once, and its page changes when the move is sent.
 - A layout opens without a connection once this device has opened it before. **Keep a copy on this device**, on the Offline page, keeps every layout.
 
 ## Grow lights reads your layouts
