@@ -391,6 +391,7 @@ def init_db():
     if 'units' not in lcols: c.execute("ALTER TABLE locations ADD COLUMN units TEXT NOT NULL DEFAULT ''")          # a region key (UNIT_REGIONS) or '' for US
     if 'season' not in lcols: c.execute("ALTER TABLE locations ADD COLUMN season TEXT NOT NULL DEFAULT 'temperate'")   # temperate | mild | tropical
     if 'tended' not in lcols: c.execute('ALTER TABLE locations ADD COLUMN tended INTEGER NOT NULL DEFAULT 1')   # 1.58.0: 0 = its plants are cared for outside the app; bulk watering leaves them out
+    if 'window_dli' not in lcols: c.execute("ALTER TABLE locations ADD COLUMN window_dli TEXT NOT NULL DEFAULT ''")   # 1.58.0: a home's own daylight at a window, by the way it faces (JSON; WINDOW_DLI for the rest)
     if 'edit_homes' not in {r[1] for r in c.execute('PRAGMA table_info(people)')}: c.execute("ALTER TABLE people ADD COLUMN edit_homes TEXT NOT NULL DEFAULT ''")   # 1.48.0: an editor limited to some homes (JSON list of ids; '' = all)
     c.execute("UPDATE locations SET country='US' WHERE country='' AND lat BETWEEN 24 AND 50 AND lon BETWEEN -125 AND -66")   # 1.48.0: a first guess for places in the lower 48; editable on Homes and places
     if 'place_id' not in {r[1] for r in c.execute('PRAGMA table_info(light_spots)')}: c.execute('ALTER TABLE light_spots ADD COLUMN place_id INTEGER')   # 1.13.1
@@ -1026,6 +1027,12 @@ UNIT_REGIONS = {'us': {'temp': 'f', 'len': 'in', 'rain': 'in'}, 'ca': {'temp': '
 # 1.48.0: what kind of year a site has. temperate: a winter with frost (the cold-season pages apply); mild: a cool season where
 # frost is rare (the pages stay, since one night can still bite); tropical: wet and dry seasons and no frost (the cold-season pages
 # and Today's cold blocks are left out there).
+# 1.58.0: the daylight at the glass of a window on a usual day, in mol/m² a day, by the way it faces. A home can give its own numbers
+# (locations.window_dli, on Homes and places; Ethan, November 17, 2026: "if you can make them customizable in the app per "Home" that
+# would be ideal. I can go through the house with a light meter another day"). A window on a layout follows its home's number unless
+# it has its own.
+WINDOW_FACING = {'N': 'North', 'NE': 'Northeast', 'E': 'East', 'SE': 'Southeast', 'S': 'South', 'SW': 'Southwest', 'W': 'West', 'NW': 'Northwest'}
+WINDOW_DLI = {'N': 4, 'NE': 6, 'E': 8, 'SE': 10, 'S': 12, 'SW': 10, 'W': 9, 'NW': 6}
 SEASONS = {'temperate': 'A winter with frost', 'mild': 'A cool season, frost rare', 'tropical': 'Wet and dry seasons, no frost'}
 
 def units_for(c, login=None):

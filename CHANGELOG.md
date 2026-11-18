@@ -46,6 +46,7 @@
   - A **3D view** beside the top and front views. Turn it, and look from higher or lower. Hold the right mouse button and move the mouse to turn it, or drag the floor.
   - **Light map**: the light over the whole top view, deeper yellow for more, with numbers.
   - **Windows**, with their daylight, and the **shade** a plant casts on the plants behind it. A plant's light, its mark and Grow lights count both.
+  - Each home has its own **window daylight** for each way a window faces, set on Homes and places. Every window at the home follows it, unless you give one window its own number.
   - A plant's **pot** in the way blocks all the light, and its **leaves** block half. You can change both for each layout, and give each plant its pot's height.
   - A shelf's boards or size changed on a layout can be **saved to its measurements**.
   - **Choose several things** with Shift, move them together, and **line them up** or spread them out evenly.

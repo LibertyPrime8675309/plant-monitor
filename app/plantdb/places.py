@@ -31,7 +31,21 @@ def loc_dict(r):
     d['tended'] = bool(r['tended']) if 'tended' in r.keys() else True       # 1.58.0: False = its plants are cared for outside the app
     for k in ('country', 'units'): d[k] = d[k] or ''
     d['season'] = d['season'] if d['season'] in SEASONS else 'temperate'
+    d['window_dli'] = home_window_own(r['window_dli'] if 'window_dli' in r.keys() else '')     # 1.58.0: only the numbers this home gives itself
     return d
+
+def home_window_own(v):
+    """A home's own daylight at a window, by the way it faces (locations.window_dli): {facing: number}, only those it gives."""
+    try: o = json.loads(v) if v else {}
+    except ValueError: return {}
+    return {k: float(o[k]) for k in WINDOW_DLI if isinstance(o, dict) and isinstance(o.get(k), (int, float))}
+
+def home_window_dli(c, home_id=None):
+    """The daylight at a window at a home, by the way it faces: its own numbers, else WINDOW_DLI. The main home when home_id is empty."""
+    H = loc_get(c, home_id) if home_id else None
+    if H is None: H = home_place(c)
+    own = H.get('window_dli') or {}
+    return {'dli': {k: own.get(k, v) for k, v in WINDOW_DLI.items()}, 'own': sorted(own, key=list(WINDOW_DLI).index), 'home_id': H.get('id'), 'home': H.get('name')}
 
 def loc_get(c, loc_id=None):
     """A place by id; the home place when loc_id is empty. Falls back to the built-in default if the table is empty."""
@@ -125,6 +139,18 @@ def site_fields(c, pid, b):
     if 'tended' in b:                                      # 1.58.0: is care for this home's plants logged in the app?
         on = str(b.get('tended')).strip().lower() not in ('0', 'false', 'no', '')
         c.execute('UPDATE locations SET tended=? WHERE id=?', (1 if on else 0, pid))
+    if 'window_dli' in b:                                  # 1.58.0: {facing: number, or none to go back to the usual one}
+        new = b.get('window_dli')
+        if not isinstance(new, dict) or any(k not in WINDOW_DLI for k in new): abort(400, 'Window daylight is given by the way a window faces: ' + ', '.join(WINDOW_DLI))
+        own = loc_json(c, pid, 'window_dli')
+        own = own if isinstance(own, dict) else {}
+        for k, v in new.items():
+            if v in (None, ''): own.pop(k, None); continue
+            try: v = float(v)
+            except (TypeError, ValueError): abort(400, 'Window daylight must be a number')
+            if not 0 <= v <= 70: abort(400, f'Daylight at a {WINDOW_FACING[k].lower()} window must be 0 to 70')
+            own[k] = round(v, 1)
+        c.execute('UPDATE locations SET window_dli=? WHERE id=?', (json.dumps({k: own[k] for k in WINDOW_DLI if k in own}) if own else '', pid))
     if 'season' in b:
         se = str(b.get('season') or 'temperate').strip()
         if se not in SEASONS: abort(400, 'Season must be one of: ' + ', '.join(SEASONS))
