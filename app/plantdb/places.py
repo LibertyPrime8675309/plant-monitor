@@ -1,6 +1,8 @@
 """Places: the homes and weather places (the locations table), loc_get() and friends, and the /api/places routes.
 Split out of weather.py in 1.57.0 (review item 25); the names it uses from other modules are linked by server.py (core.link())."""
 from .core import *   # noqa: F401,F403
+import functools
+from zoneinfo import ZoneInfo
 # ---------------------------------------------------------------- places (1.5: several; 1.28.0: homes; 1.48.0: sites)
 def migrate_places(c):
     """Version 1.5: weather can be tracked for several places. The place used until now becomes the home place
@@ -45,7 +47,70 @@ def home_window_dli(c, home_id=None):
     H = loc_get(c, home_id) if home_id else None
     if H is None: H = home_place(c)
     own = H.get('window_dli') or {}
-    return {'dli': {k: own.get(k, v) for k, v in WINDOW_DLI.items()}, 'own': sorted(own, key=list(WINDOW_DLI).index), 'home_id': H.get('id'), 'home': H.get('name')}
+    return {'dli': {k: own.get(k, v) for k, v in WINDOW_DLI.items()}, 'own': sorted(own, key=list(WINDOW_DLI).index), 'home_id': H.get('id'), 'home': H.get('name'),
+            'lat': H.get('lat'), 'tz': H.get('tz')}
+
+# ---------------------------------------------------------------- window daylight through the year, and today's weather
+# 1.58.0 (Ethan, November 17, 2026: "Go ahead and implement both ideas please!", after "A window's daylight is one number all year.
+# I could make it shorter in winter, or lower on cloudy days"). A home's window numbers are for a usual day across the year. How much
+# of that a window gets on a given day depends on the sun's path there (its latitude and the date) and the way the window faces:
+# the low winter sun comes straight in at a south window and hardly reaches a north one. window_year() works out, for each day and
+# each way, the sunlight on an upright pane (sun straight in, light from the sky, and light off the ground, with the sun dimmed
+# through the air when it is low), and divides by that way's average over the year. So 1 is a usual day; 0.6 is six tenths of it.
+WIN_AZ = {'N': 0, 'NE': 45, 'E': 90, 'SE': 135, 'S': 180, 'SW': 225, 'W': 270, 'NW': 315}
+
+@functools.lru_cache(maxsize=16)
+def window_year(lat):
+    """For latitude lat (degrees, rounded to 0.5 by the caller): {way: [366 numbers]}, day 1 first, each a share of that way's
+    average day (1 = a usual day). Sun every 15 minutes."""
+    phi = math.radians(max(-89.0, min(89.0, lat))); sp, cp = math.sin(phi), math.cos(phi)
+    tot = {k: [0.0] * 366 for k in WIN_AZ}
+    for n in range(1, 367):
+        dec = math.radians(23.44) * math.sin(2 * math.pi * (284 + n) / 365); sd, cd = math.sin(dec), math.cos(dec)
+        for i in range(96):
+            h = math.radians(-180 + 3.75 * (i + 0.5))
+            sa = sp * sd + cp * cd * math.cos(h)
+            if sa <= 0.01: continue
+            alt = math.asin(sa); ca = math.cos(alt)
+            az = math.acos(max(-1.0, min(1.0, (sd - sa * sp) / (ca * cp))))      # from north, morning east of it
+            if h > 0: az = 2 * math.pi - az
+            am = 1 / (sa + 0.50572 * (math.degrees(alt) + 6.07995) ** -1.6364)
+            ib = 1361 * 0.7 ** (am ** 0.678)                                       # the sun's beam through the air
+            idh = 0.15 * ib                                                          # light from the sky onto the ground
+            rest = 0.5 * idh + 0.5 * 0.2 * (ib * sa + idh)                           # half the sky, and the ground's light, on an upright pane
+            for k, g in WIN_AZ.items():
+                tot[k][n - 1] += max(0.0, ca * math.cos(az - math.radians(g))) * ib + rest
+    out = {}
+    for k, v in tot.items():
+        avg = sum(v[:365]) / 365
+        out[k] = [x / avg if avg else 1.0 for x in v]
+    return out
+
+def home_daylight(c, H):
+    """How a home's window daylight changes with the time of year and today's weather (for a layout: day_k). H is home_window_dli's
+    answer. {season: {way: share} for today, months: [{way: share} on the 15th of each month], today: {way: share} with the weather,
+    or None, weather: today's sunlight as a share of the last 30 days', date}. The page and _ly_day multiply a window's number by
+    one of them (season unless the person picks another)."""
+    try: tz = ZoneInfo(H.get('tz') or 'UTC')
+    except Exception: tz = timezone.utc
+    day = datetime.now(tz).date()
+    if H.get('lat') is None: one = {k: 1.0 for k in WIN_AZ}; return {'season': one, 'months': [one] * 12, 'today': None, 'weather': None, 'date': day.isoformat(), 'lat': None}
+    Y = window_year(round(H['lat'] * 2) / 2)
+    at = lambda d: {k: round(Y[k][d.timetuple().tm_yday - 1], 3) for k in WIN_AZ}
+    season = at(day)
+    months = [at(day.replace(month=m, day=15)) for m in range(1, 13)]
+    wx = None
+    if H.get('home_id'):
+        rows = c.execute("SELECT date, data FROM weather_daily WHERE loc_id=? AND date<=? ORDER BY date DESC LIMIT 31", (H['home_id'], day.isoformat())).fetchall()
+        sw = {}
+        for d, x in rows:
+            try: v = (json.loads(x) or {}).get('shortwave_radiation_sum')
+            except ValueError: v = None
+            if isinstance(v, (int, float)) and v >= 0: sw[d] = v
+        now_v, past = sw.get(day.isoformat()), [v for d, v in sw.items() if d != day.isoformat()]
+        if now_v is not None and len(past) >= 7 and sum(past) > 0: wx = round(max(0.2, min(1.6, now_v / (sum(past) / len(past)))), 2)
+    today = {k: round(v * wx, 3) for k, v in season.items()} if wx is not None else None
+    return {'season': season, 'months': months, 'today': today, 'weather': wx, 'date': day.isoformat(), 'lat': H['lat']}
 
 def loc_get(c, loc_id=None):
     """A place by id; the home place when loc_id is empty. Falls back to the built-in default if the table is empty."""

@@ -236,7 +236,8 @@ def layout_dict(c, L, full=False):
         sh = sheet_of(sp) if sp else {}
         d['sheet'] = {k: sh.get(k) for k in ('width_in', 'depth_in', 'levels', 'gaps_in', 'gap_in', 'top_in')} if sp else None
     hw = home_window_dli(c, L['home_id'])                  # the daylight at its home's windows, by the way they face
-    d.update(window_dli=hw['dli'], window_own=hw['own'], window_home={'id': hw['home_id'], 'name': hw['home']})
+    d.update(window_dli=hw['dli'], window_own=hw['own'], window_home={'id': hw['home_id'], 'name': hw['home']},
+             day_k=home_daylight(c, hw) if layout_has_window(c, L['id']) else None)       # its windows' daylight by the time of year and the weather
     d.update(snap=bool(L['snap']), pid=pid, place=place_label(c, pid) if pid else None, home=layout_home_name(c, L['home_id']),
              items=[layout_item_dict(c, it) for it in c.execute('SELECT * FROM layout_items WHERE layout_id=? ORDER BY sort, id', (L['id'],)).fetchall()])
     if not full: return d
@@ -645,10 +646,16 @@ def _ly_win_wall(L, w):
     ds = [('back', w['y']), ('left', w['x']), ('right', L['width_in'] - w['x'] - w['w']), ('front', L['depth_in'] - w['y'] - w['d'])]
     return min(ds, key=lambda x: x[1])[0]
 
+def layout_has_window(c, lid):
+    return c.execute("SELECT 1 FROM layout_items WHERE layout_id=? AND kind='window' LIMIT 1", (lid,)).fetchone() is not None
+
 def _ly_day(L, w):
-    """A window's daylight at the glass (lyDay): its own, else its home's for the way it faces (window_dli)."""
-    if w.get('day_dli') is not None: return w['day_dli']
-    return ((L.get('window_dli') if isinstance(L, dict) else None) or LAYOUT_WINDOW_DLI).get(w.get('facing') or 'S', 0)
+    """A window's daylight at the glass (lyDay): its own, else its home's for the way it faces (window_dli); for this time of year
+    (day_k.season: Grow lights and the page's first choice)."""
+    g = L.get if isinstance(L, dict) else (lambda k: None)
+    base = w['day_dli'] if w.get('day_dli') is not None else (g('window_dli') or LAYOUT_WINDOW_DLI).get(w.get('facing') or 'S', 0)
+    k = ((g('day_k') or {}).get('season') or {}).get(w.get('facing') or 'S', 1)
+    return base * k
 
 def layout_day_on(L, items, pl, w, blk=None):
     """What one window gives one plant's top (lyDayOn): its daylight at the glass, less with the angle and with the distance (half as much

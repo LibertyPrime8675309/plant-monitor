@@ -158,6 +158,23 @@ with sync_playwright() as p:
     check(over(pg) <= 1, 'Homes and places with the window numbers open scrolls nothing sideways')
     opened(pg, rid, 5)
 
+    # ---- daylight through the year and today's weather (Ethan: "Go ahead and implement both ideas please!")
+    K = call('GET', f'/api/layouts/{rid}')['day_k']
+    check(K and len(K['months']) == 12 and pg.locator('#ly-dayon').input_value() == 'season' and pg.locator('#ly-dayon option').count() == 15,
+          'a layout with a window has "Daylight on": this time of year first, then today, a usual day and the middle of each month')
+    def day_of(code): return pg.evaluate(f"LY.F.light.get({ids[code]}).day")
+    d_season = day_of(B)
+    pg.select_option('#ly-dayon', 'usual')
+    check(until(pg, lambda: abs(day_of(B) * K['season']['S'] - d_season) < 0.06), f"a usual day: the window's daylight without the time of year ({day_of(B)}, {d_season}, {K['season']['S']})")
+    pg.select_option('#ly-dayon', 'm6')
+    check(until(pg, lambda: abs(day_of(B) - d_season / K['season']['S'] * K['months'][5]['S']) < 0.06) and 'the middle of June' in pg.text_content('#ly-say'),
+          f"the middle of June: a south window gets less than in winter ({K['months'][5]['S']} of a usual day)")
+    check(pg.evaluate(f"(JSON.parse(localStorage.getItem('{'plantdb.layouts'}') || '{{}}').each || {{}})[{rid}].dayon") == 'm6', 'the choice is kept for this layout')
+    pick(pg, win['id'])
+    check('The box is for a usual day' in pg.inner_text('#ly-p-day') and 'For the middle of June' in pg.inner_text('#ly-p-day'), f"the window says its box is for a usual day, and what it gives in June ({pg.inner_text('#ly-p-day')[:200]!r})")
+    pg.select_option('#ly-dayon', 'season')
+    check(until(pg, lambda: abs(day_of(B) - d_season) < 1e-9), 'back to this time of year, as Grow lights counts it')
+
     # ---- shade from a pot and from leaves, set by the person (Ethan, November 17, 2026)
     def agree():
         pgv = pg.evaluate("() => Object.fromEntries([...LY.F.light].map(([id, x]) => [id, { dli: x.dli, day: x.day, shade: x.shade }]))")
@@ -316,14 +333,22 @@ with sync_playwright() as p:
     until(pg, lambda: it(pg, fan)['x'] != x0); xf = it(pg, fan)['x']
     pick(pg, blk); pg.click('#ly-rm')
     check(until(pg, lambda: pg.evaluate("i => !LY.d.items.some(x => x.id === i)", blk)), 'a shelf block taken off with no connection goes from the page')
+    # "Move it in the record" with no connection (Ethan: "Go ahead and implement both ideas please!")
+    pid_to = pg.evaluate("c => { const x = lyRecList(LY.d).find(x => x.it.plant === c); return x ? x.to.pid : null; }", free['code'])
+    pg.locator(f'[data-act=lyrec][data-id="{pl["id"]}"]').click()
+    check(until(pg, lambda: pg.evaluate("c => LY.d.items.find(i => i.plant === c).rec", free['code']) == pid_to) and 'Undo' in pg.inner_text('#ly-undo'),
+          f'with no connection, the plant put on is moved in the record: the layout shows it at its new place at once ({pid_to})')
+    check(pg.evaluate("offOps().then(o => offWords(o[o.length - 1]))").endswith('moved in the record'), 'and the waiting change says so')
     ops = pg.evaluate("offOps().then(o => o.map(x => [x.method, x.url]))")
-    check([m for m, _ in ops if '/api/layouts' in _] == ['POST', 'PUT', 'DELETE'] and any(u == f'/api/layouts/items/{fan}' for _, u in ops), f'three changes wait, in order: put on, the move of the new fan by its number here, taken off ({ops})')
+    check([m for m, _ in ops if '/api/layouts' in _] == ['POST', 'PUT', 'DELETE', 'POST'] and any(u == f'/api/layouts/items/{fan}' for _, u in ops) and ops[-1][1].endswith('/record'),
+          f'four changes wait, in order: put on, the move of the new fan by its number here, taken off, moved in the record ({ops})')
     pg.unroute('**/api/layouts/**')
     pg.evaluate('offSync()')
     def sent():
         S = call('GET', f'/api/layouts/{rid}')['items']; F = [i for i in S if i['name'] == 'Offline fan']
         return len(F) == 1 and F[0]['x'] == xf and any(i['plant'] == free['code'] for i in S) and not any(i['id'] == blk for i in S)
     check(until(pg, sent, 30000), 'once the server can be reached, they are sent in order: the fan put on and then moved, the plant put on, the block taken off')
+    check(until(pg, lambda: (lambda P: P['area_id'] == area['id'] and not P.get('spot_id'))(call('GET', f"/api/plants/{free['code']}")), 15000), 'and the plant is moved in the record once it is on the layout there')
     check(until(pg, lambda: pg.evaluate("offOps().then(o => o.filter(x => x.url.includes('/api/layouts')).length)") == 0, 15000), 'and nothing is left waiting')
     check(until(pg, lambda: pg.evaluate("(LY.d.items.find(i => i.name === 'Offline fan') || { id: -1 }).id") > 0, 15000), 'the page then shows the fan with its number from the server')
     urls = call('GET', '/api/offline/manifest')['urls']

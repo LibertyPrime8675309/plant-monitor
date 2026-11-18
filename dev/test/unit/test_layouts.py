@@ -425,3 +425,41 @@ def test_a_home_has_its_own_window_daylight_and_windows_follow_it():
         assert c.put(f"/api/places/{home['id']}", json={'window_dli': {'S': None, 'N': ''}}, headers=OWN).status_code == 200
         assert next(p for p in c.get('/api/places').get_json() if p['is_home'])['window_dli'] == {}, 'empty goes back to the usual numbers'
         assert c.delete(f'/api/layouts/{lid}', headers=OWN).status_code == 200
+
+def test_window_daylight_follows_the_time_of_year_and_the_weather():
+    """Ethan, November 17, 2026: "Go ahead and implement both ideas please!" (a window's daylight shorter in winter, lower on cloudy days)."""
+    import datetime as dt, json as js
+    from plantdb import places as P
+    Y = P.window_year(30.5)
+    jan, jun = 14, 171
+    assert Y['S'][jan] > 1.15 > 0.7 > Y['S'][jun], 'the low winter sun comes straight in at a south window; the high summer sun hardly does'
+    assert Y['N'][jun] > 1.4 and Y['N'][jan] < 0.75, 'a north window is the other way round'
+    assert abs(Y['E'][jun] - Y['W'][jun]) < 0.02, 'east and west alike'
+    assert all(abs(sum(v[:365]) / 365 - 1) < 1e-9 for v in Y.values()), 'each way averages a usual day over the year'
+    S2 = P.window_year(-30.5)
+    assert S2['N'][jan] < 0.75 < 1.15 < S2['N'][jun], 'south of the equator a north window is the sunny one, in June'
+    with S.app.test_client() as c:
+        r = c.post('/api/layouts', json={'name': 'Season test', 'width_in': 100, 'depth_in': 100, 'height_in': 96,
+                                         'items': [{'kind': 'plant', 'name': 'A plant', 'x': 30, 'y': 20, 'w': 8, 'd': 8, 'h': 12}]}, headers=OWN)
+        lid = r.get_json()['id']
+        assert c.get(f'/api/layouts/{lid}').get_json()['day_k'] is None, 'no window, no daylight sums'
+        c.post(f'/api/layouts/{lid}/items', json={'kind': 'window', 'name': 'South window', 'facing': 'S', 'x': 20, 'y': 0, 'z': 30, 'w': 40, 'd': 1, 'h': 48}, headers=OWN)
+        d = c.get(f'/api/layouts/{lid}').get_json(); K = d['day_k']
+        assert set(K['season']) == set(P.WIN_AZ) and len(K['months']) == 12 and K['months'][0]['S'] > K['months'][5]['S']
+        win = next(i for i in d['items'] if i['kind'] == 'window'); pl = next(i for i in d['items'] if i['kind'] == 'plant')
+        usual = LY.layout_day_on({**d, 'day_k': None}, d['items'], pl, win)['dli']
+        assert abs(LY.layout_day_on(d, d['items'], pl, win)['dli'] - usual * K['season']['S']) < 1e-9, 'Grow lights counts this time of year'
+        # the weather: today's sunlight against the last 30 days'
+        db = S.db(); home = d['window_home']['id']; H = P.home_window_dli(db, None)
+        today = dt.date.fromisoformat(K['date'])
+        old = db.execute('SELECT date, data, kind FROM weather_daily WHERE loc_id=?', (home,)).fetchall()
+        db.execute('DELETE FROM weather_daily WHERE loc_id=?', (home,))
+        for i in range(1, 11):
+            db.execute("INSERT INTO weather_daily(loc_id,date,data,kind,updated_at) VALUES(?,?,?,?,?)", (home, (today - dt.timedelta(days=i)).isoformat(), js.dumps({'shortwave_radiation_sum': 16}), 'observed', 'x'))
+        assert P.home_daylight(db, H)['today'] is None, 'no weather for today yet'
+        db.execute("INSERT INTO weather_daily(loc_id,date,data,kind,updated_at) VALUES(?,?,?,?,?)", (home, today.isoformat(), js.dumps({'shortwave_radiation_sum': 8}), 'forecast', 'x'))
+        W = P.home_daylight(db, H)
+        assert W['weather'] == 0.5 and W['today']['S'] == round(W['season']['S'] * 0.5, 3), 'a cloudy day with half the sunlight gives half'
+        db.execute('DELETE FROM weather_daily WHERE loc_id=?', (home,))
+        db.executemany('INSERT INTO weather_daily(date,data,kind,loc_id,updated_at) VALUES(?,?,?,?,?)', [(a, b, k, home, 'x') for a, b, k in old]); db.commit()
+        assert c.delete(f'/api/layouts/{lid}', headers=OWN).status_code == 200
