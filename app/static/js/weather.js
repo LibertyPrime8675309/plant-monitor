@@ -480,7 +480,18 @@ function siteCells(p) {
     <label class="f">Country<input type="text" maxlength="2" size="3" value="${p.country || ''}" data-act="placesite" data-id="${p.id}" data-k="country" aria-label="${'Country code for ' + p.name}"></label>
     <label class="f">Units there<select data-act="placesite" data-id="${p.id}" data-k="units" aria-label="${'Units at ' + p.name}">${Object.entries(UNIT_WORDS.region).map(([v, l]) => html`<option value="${v}" ${(p.units || 'us') === v ? raw('selected') : ''}>${l}</option>`)}</select></label>
     <label class="f">Seasons<select data-act="placesite" data-id="${p.id}" data-k="season" aria-label="${'Seasons at ' + p.name}">${Object.entries(SEASON_WORDS).map(([v, l]) => html`<option value="${v}" ${(p.season || 'temperate') === v ? raw('selected') : ''}>${l}</option>`)}</select></label>
+    ${winDliHtml(p)}
     ${p.is_home ? '' : html`<label class="f">Care<select data-act="placesite" data-id="${p.id}" data-k="tended" aria-label="${'Care at ' + p.name}"><option value="1" ${p.tended !== false ? raw('selected') : ''}>Logged in this app</option><option value="0" ${p.tended === false ? raw('selected') : ''}>Done outside the app</option></select><small>With "Done outside the app", Water all and a group's care leave its plants out. One plant can still be logged on its page.</small></label>`}</div>`;
+}
+// 1.58.0: the daylight at this home's windows, by the way they face (mol/m² a day at the glass on a usual day). Layouts start each
+// window here; a window can still have its own. An empty box goes back to the usual number.
+const WIN_WAYS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];      // round the compass, as the layout's list has them
+function winDliHtml(p) {
+  const M = META.window_dli || {}, own = p.window_dli || {}, set = Object.keys(own).length;
+  return html`<details class="site-dli"><summary>Window daylight${set ? ` (${set} set here)` : ''}</summary>
+    <p class="hint">Daylight at the glass on a usual day, in mol/m² a day. Layouts use it for a window that faces each way. A light meter's reading is best.</p>
+    <div class="dli-grid">${WIN_WAYS.filter(k => (M.facing || {})[k]).map(k => { const name = M.facing[k]; return html`<label class="f">${name} <small>(usual ${String((M.usual || {})[k])})</small><input type="number" inputmode="decimal" min="0" max="70" step="0.5" value="${k in own ? own[k] : ''}" data-act="placedli" data-id="${p.id}" data-k="${k}" aria-label="${'Daylight at a ' + name.toLowerCase() + ' window at ' + p.name + ', usual ' + (M.usual || {})[k]}"></label>`; })}</div>
+    <p class="hint">An empty box uses the usual number.</p></details>`;
 }
 function placesBlock(W) {
   const P = W.places || [];

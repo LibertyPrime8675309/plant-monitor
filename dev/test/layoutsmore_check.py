@@ -105,7 +105,9 @@ with sync_playwright() as p:
         iid = next(i['id'] for i in R['items'] if i['plant'] == code); call('PUT', f'/api/layouts/items/{iid}', {'h': h})
     R = call('GET', f'/api/layouts/{rid}'); ids = {i['plant']: i['id'] for i in R['items'] if i['plant']}
     win = next(i for i in R['items'] if i['kind'] == 'window')
-    check(win['facing'] == 'S' and win['day_dli'] == 12 and set(R['facing']) >= {'N', 'S', 'E', 'W'}, f"a window is saved with the way it faces and its usual daylight ({win.get('facing')}, {win.get('day_dli')})")
+    home = R['window_home']['name']
+    check(win['facing'] == 'S' and win['day_dli'] is None and R['window_dli']['S'] == 12 and set(R['facing']) >= {'N', 'S', 'E', 'W'},
+          f"a window is saved with the way it faces, and follows its home's daylight for that way ({win.get('facing')}, {win.get('day_dli')}, {R['window_dli'].get('S')})")
     check(opened(pg, rid, 5), 'the room opens with its window, light and plants')
     page = pg.evaluate("() => Object.fromEntries([...LY.F.light].map(([id, x]) => [id, { dli: x.dli, day: x.day, shade: x.shade, verdict: x.verdict }]))")
     rd = call('GET', '/api/lights')['readings']
@@ -120,15 +122,41 @@ with sync_playwright() as p:
     check('South window' in words and 'from the glass' in words and f'In the shade of {an}' in words and 'Daylight is from the windows drawn here' in words,
           f"the chosen plant's boxes say its daylight, from which window and how far, and what shades it ({words[:240]!r})")
     pick(pg, win['id'])
-    check(pg.locator('#ly-f-facing').input_value() == 'S' and pg.locator('#ly-f-day_dli').input_value() == '12' and 'In the back wall' in pg.inner_text('#ly-panel'),
-          'a window\'s boxes: the way it faces, its daylight at the glass, and the wall it is in')
+    check(pg.locator('#ly-f-facing').input_value() == 'S' and pg.locator('#ly-f-day_dli').input_value() == '12' and 'In the back wall' in pg.inner_text('#ly-panel')
+          and f'The usual number for a south window at {home}' in pg.inner_text('#ly-p-day'),
+          f"a window's boxes: the way it faces, its home's daylight at the glass, and the wall it is in ({pg.inner_text('#ly-p-day')[:160]!r})")
+    check(pg.evaluate("[...document.querySelectorAll('#ly-f-facing option')].map(o => o.value)") == ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'], 'the ways it can face are listed round the compass')
     pg.select_option('#ly-f-facing', 'N')
-    check(until(pg, lambda: it(pg, win['id'])['day_dli'] == 4 and saved(rid, win['id'])['facing'] == 'N' and saved(rid, win['id'])['day_dli'] == 4),
-          'turned to face north, it takes a north window\'s usual daylight, saved')
+    check(until(pg, lambda: saved(rid, win['id'])['facing'] == 'N' and saved(rid, win['id'])['day_dli'] is None and pg.locator('#ly-f-day_dli').input_value() == '4'),
+          "turned to face north, it takes its home's number for a north window")
     pg.fill('#ly-f-day_dli', '7.5'); pg.press('#ly-f-day_dli', 'Enter')
-    check(until(pg, lambda: saved(rid, win['id'])['day_dli'] == 7.5), 'a daylight reading typed in is saved')
+    check(until(pg, lambda: saved(rid, win['id'])['day_dli'] == 7.5 and 'Its own number' in pg.inner_text('#ly-p-day')), 'a daylight reading typed in is saved as its own')
+    btn = pg.locator('[data-act=lydayhome]')
+    check(btn.count() == 1 and btn.inner_text() == f'Use 7.5 for every north window at {home}', f"it offers that number for every north window at the home ({btn.all_inner_texts()})")
+    btn.click()
+    check(until(pg, lambda: call('GET', f'/api/layouts/{rid}')['window_dli']['N'] == 7.5 and pg.evaluate("LY.d.window_dli.N") == 7.5 and pg.locator('[data-act=lydayhome]').count() == 0),
+          'pressed: the home now gives 7.5 to a north window, and the button goes')
+    pg.fill('#ly-f-day_dli', ''); pg.press('#ly-f-day_dli', 'Enter')
+    check(until(pg, lambda: saved(rid, win['id'])['day_dli'] is None and pg.locator('#ly-f-day_dli').input_value() == '7.5' and f'The number for a north window at {home}' in pg.inner_text('#ly-p-day')),
+          "the box emptied goes back to the home's number, now 7.5")
+    press(pg, '#ly-undo')
+    check(until(pg, lambda: saved(rid, win['id'])['day_dli'] == 7.5), 'Undo gives it its own number again')
     press(pg, '#ly-undo'); press(pg, '#ly-undo')
-    check(until(pg, lambda: saved(rid, win['id'])['facing'] == 'S' and saved(rid, win['id'])['day_dli'] == 12), 'Undo twice puts back its way and its daylight')
+    check(until(pg, lambda: saved(rid, win['id'])['facing'] == 'S' and saved(rid, win['id'])['day_dli'] is None), 'Undo twice more puts back its way, following the home')
+    # the home's numbers on Homes and places (Ethan: "customizable in the app per "Home"")
+    hid = R['window_home']['id']
+    pg.goto(f'{BASE}/#/weather?sec=places'); until(pg, lambda: pg.locator(f'details.site-dli input[data-id="{hid}"][data-k="S"]').count() == 1)
+    pg.locator(f'details.site-dli:has(input[data-id="{hid}"]) summary').click()
+    check(pg.locator(f'input[data-act=placedli][data-id="{hid}"][data-k="N"]').input_value() == '7.5' and '(usual 12)' in pg.locator(f'label:has(input[data-act=placedli][data-id="{hid}"][data-k="S"])').inner_text() and pg.locator(f'input[data-act=placedli][data-id="{hid}"][data-k="S"]').input_value() == ''
+          and '(1 set here)' in pg.locator(f'details.site-dli:has(input[data-id="{hid}"]) summary').inner_text(),
+          'Homes and places has each way a window faces: the home gives north 7.5, and south is empty, with its usual 12 said in its label')
+    pg.fill(f'input[data-act=placedli][data-id="{hid}"][data-k="S"]', '11'); pg.press(f'input[data-act=placedli][data-id="{hid}"][data-k="S"]', 'Tab')
+    check(until(pg, lambda: call('GET', f'/api/layouts/{rid}')['window_dli']['S'] == 11), 'a south number typed there is what the layout uses')
+    pg.fill(f'input[data-act=placedli][data-id="{hid}"][data-k="S"]', ''); pg.press(f'input[data-act=placedli][data-id="{hid}"][data-k="S"]', 'Tab')
+    pg.fill(f'input[data-act=placedli][data-id="{hid}"][data-k="N"]', ''); pg.press(f'input[data-act=placedli][data-id="{hid}"][data-k="N"]', 'Tab')
+    check(until(pg, lambda: call('GET', f'/api/layouts/{rid}')['window_dli'] == {'N': 4, 'NE': 6, 'E': 8, 'SE': 10, 'S': 12, 'SW': 10, 'W': 9, 'NW': 6}), 'emptied, they go back to the usual numbers')
+    check(over(pg) <= 1, 'Homes and places with the window numbers open scrolls nothing sideways')
+    opened(pg, rid, 5)
 
     # ---- shade from a pot and from leaves, set by the person (Ethan, November 17, 2026)
     def agree():

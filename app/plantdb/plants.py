@@ -7,7 +7,7 @@ def meta():
     c = db()
     L = location(c)
     return jsonify(fields=[{'name': n, 'kind': k, 'label': l} for n, k, l in FIELDS], winter_plans=WINTER_PLANS, health=HEALTH, sites=SITES, inside_sites=INSIDE_SITES,
-                   enums=ENUMS, optional_enums=OPTIONAL_ENUMS, pests=PESTS,
+                   enums=ENUMS, optional_enums=OPTIONAL_ENUMS, pests=PESTS, window_dli={'facing': WINDOW_FACING, 'usual': WINDOW_DLI},
                    counts={'plants': c.execute("SELECT COUNT(*) FROM plants WHERE status='active'").fetchone()[0],
                            'photos': c.execute('SELECT COUNT(*) FROM photos').fetchone()[0]},
                    password_protected=bool(PASSWORD), int_ranges=INT_RANGES, num_ranges=NUM_RANGES, version=APP_VERSION,

@@ -734,6 +734,16 @@ const changeActs = {
       const n = document.querySelector(`[data-act=placesite][data-id="${el.dataset.id}"][data-k="${k}"]`); if (n) n.focus({ preventScroll: true });
     });
   },
+  // 1.58.0: a home's own daylight at a window facing one way (Homes and places); empty goes back to the usual number
+  async placedli(el) {
+    const k = el.dataset.k, v = el.value.trim(), n = parseFloat(v.replace(',', '.'));
+    if (v !== '' && (isNaN(n) || n < 0 || n > 70)) { toast('Daylight at a window is a number from 0 to 70.'); return; }
+    await guard(async () => {
+      const r = await api('PUT', '/api/places/' + el.dataset.id, { window_dli: { [k]: v === '' ? null : n } });
+      const name = ((META.window_dli || {}).facing || {})[k] || k, own = (r.place.window_dli || {})[k];
+      toast(own != null ? `${name} windows there now have ${own}.` : `${name} windows there use the usual number again.`);
+    });
+  },
   // 1.47.0: units in Display. A new region resets the three; one unit changed by hand stands until the region changes.
   async unitset(el) {
     const raw = unitsSet({ [el.dataset.u]: el.value });
