@@ -395,11 +395,11 @@ async function viewWhere() {
       <label class="chk"><input type="checkbox" data-ed="area" data-id="${a.id}" data-k="sheltered" ${a.sheltered ? raw('checked') : ''} ${can ? '' : raw('disabled')}>${a.side === 'out' ? 'Roof overhead (like a covered porch)' : 'Heated (not a garage or shed)'}</label>
       <span class="muted">${a.plants} plant${a.plants === 1 ? '' : 's'}${a.lights ? `, ${a.lights} light spot${a.lights === 1 ? '' : 's'}` : ''}. Counts as: ${a.site}.</span>
       ${mv('area', a, ai, an)}${can ? html`<button class="btn small ghost wh-del" type="button" data-act="whareadel" data-id="${a.id}" data-name="${a.name}">Remove ${a.name}</button>` : ''}</div>
-    <ul class="wh-spots">${a.spots.map((sp, si) => html`<li><label class="f">Spot<input type="text" maxlength="60" value="${sp.name}" data-ed="spot" data-id="${sp.id}" data-k="name" ${can ? '' : raw('readonly')}></label>
+    <ul class="wh-spots" data-more="whs-${a.id}">${a.spots.map((sp, si) => html`<li><label class="f">Spot<input type="text" maxlength="60" value="${sp.name}" data-ed="spot" data-id="${sp.id}" data-k="name" ${can ? '' : raw('readonly')}></label>
       <span class="muted">${sp.plants} plant${sp.plants === 1 ? '' : 's'}${sp.sheet ? `. ${sp.sheet[0].toUpperCase() + sp.sheet.slice(1)}.` : ''}</span>
       <span class="wh-btns"><button class="btn small ghost" type="button" data-act="ltplace" data-id="${sp.id}" aria-label="Measurements and photos of ${sp.name}">Measurements and photos</button>${mv('spot', sp, si, a.spots.length)}${can ? html`<button class="btn small ghost" type="button" data-act="whspotdel" data-id="${sp.id}" data-name="${sp.name}" aria-label="Remove the spot ${sp.name}">Remove</button>` : ''}</span></li>`)}
-      ${can ? html`<li><form class="row wh-add" data-form="whspotadd" data-aid="${a.id}"><label class="f">New spot in ${a.name}<input type="text" name="name" maxlength="60" placeholder="${a.side === 'out' ? 'Pallet shelf' : 'Brown hutch'}"></label><button class="btn small" type="submit">Add spot</button></form></li>` : ''}</ul></li>`;
-  const sideHtml = (h, side) => html`<section class="blk wh-side"><h3>${side === 'out' ? 'Outside' : 'Inside'}</h3><ul class="wh-areas">${h.areas.filter(a => a.side === side).map((a, i, all) => areaHtml(a, i, all.length))}</ul>
+      ${can ? html`<li data-more-keep><form class="row wh-add" data-form="whspotadd" data-aid="${a.id}"><label class="f">New spot in ${a.name}<input type="text" name="name" maxlength="60" placeholder="${a.side === 'out' ? 'Pallet shelf' : 'Brown hutch'}"></label><button class="btn small" type="submit">Add spot</button></form></li>` : ''}</ul></li>`;
+  const sideHtml = (h, side) => html`<section class="blk wh-side"><h3>${side === 'out' ? 'Outside' : 'Inside'}</h3><ul class="wh-areas" data-more="wha-${h.home.id}-${side}">${h.areas.filter(a => a.side === side).map((a, i, all) => areaHtml(a, i, all.length))}</ul>
     ${can ? html`<form class="row wh-add" data-form="whareaadd" data-home="${h.home.is_home ? '' : h.home.id}" data-side="${side}"><label class="f">New ${side === 'out' ? 'area outside' : 'room inside'}<input type="text" name="name" maxlength="60" placeholder="${side === 'out' ? 'Patio' : 'Dining room'}"></label>
       <label class="chk"><input type="checkbox" name="sheltered" ${side === 'in' ? raw('checked') : ''}>${side === 'out' ? 'Roof overhead' : 'Heated'}</label><button class="btn small" type="submit">Add ${side === 'out' ? 'area' : 'room'}</button></form>` : ''}</section>`;
   return { title: 'Rooms and spots', html: html`<h1>Rooms and spots</h1>
@@ -872,7 +872,7 @@ function timingKeep(T, t0, tData, tEnd) {
 const MORE_SHOWN = new Map();
 function moreLists(root = document) {
   root.querySelectorAll('[data-more]').forEach(list => {
-    const key = list.dataset.more, step = +list.dataset.step || 10, items = [...list.children];
+    const key = list.dataset.more, step = +list.dataset.step || 10, items = [...list.children].filter(x => !x.hasAttribute('data-more-keep'));   // a kept one (an Add form) always shows
     const n = Math.max(step, MORE_SHOWN.get(key) || 0), left = items.length - n;
     items.forEach((it, i) => { it.hidden = i >= n; });
     const host = list.closest('table') || list, next = host.nextElementSibling;
