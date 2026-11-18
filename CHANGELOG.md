@@ -119,6 +119,7 @@
 - **A shorter plant page.** In Getting ready to come inside, About this plant and the checklist fold into one line until you start the checklist. On a phone or an iPad held upright, each section's Read aloud button shows only its speaker sign, beside Hide. On a phone at the largest text a plant's page is about a quarter shorter.
 - **Five shorter pages.** Repotting, Pests that eat plants, Fertilizer's feeding seasons and 2026 in review show ten (or twelve) at a time, with **Show 10 more**. The Audit log shows 25 changes a page. On a phone at the largest text, 2026 in review went from 142 screens to 21, and Repotting from 88 to 17.
 - **Six more shorter pages.** Library, Groups, Identify, Getting plants ready to come inside, Potting mixes and Weather's Places now show ten (or twelve) at a time too. No picture is smaller. On a phone at the largest text, Library went from 60 screens to 23.
+- **Ten at a time on the cold-night checklist, the winter plan and Rooms and spots.** On a phone at the largest text the cold-night checklist went from 97 screens to 42 (78 plants on it).
 
 ## 1.57.0 (2026-11-11)
 - **Notes on request.** Display has a new choice, **Notes under buttons and boxes**: **Always show them** (as now) or **Show them when I ask**. With the second, each small note under a button, box or picture becomes a round **Note** button: press it (or Tab to it and press Enter) to read it, and again to fold it. Pointing at a field with the mouse shows its note too, and on a phone a long press on a box opens its note. Printed pages always show every note.

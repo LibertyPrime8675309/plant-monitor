@@ -325,7 +325,7 @@ const acts = {
     const list = document.querySelector(`[data-more="${el.dataset.k}"]`); if (!list) return;
     const step = +list.dataset.step || 10, first = Math.max(step, MORE_SHOWN.get(el.dataset.k) || 0);
     MORE_SHOWN.set(el.dataset.k, first + step); moreLists();
-    const it = list.children[first]; if (!it) return;
+    const it = [...list.children].filter(x => !x.hasAttribute('data-more-keep'))[first]; if (!it) return;
     const f = it.querySelector('a, button, input, select') || it; if (f === it) it.tabIndex = -1;
     f.focus();
   },
